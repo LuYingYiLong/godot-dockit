@@ -122,6 +122,21 @@
     <ClCompile Include="src\formats\html\html_resources.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_image_blend.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_border_image.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_image_metadata.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_system_fonts.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_text_layout.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_markup.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
@@ -131,7 +146,22 @@
     <ClCompile Include="src\formats\html\html_text_mask.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_text_spacing.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_text_transform.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\css\css_color.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_counter_style.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_font_face.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_font_feature_values.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_declarations.cpp">
@@ -141,6 +171,12 @@
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_supports.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_image_value.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_border_image.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_values_background.cpp">
@@ -165,6 +201,36 @@
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\layout\html_geometry.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_hyphenation.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_hyphenation_dictionary.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_line_alignment.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_text_autospace.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_punctuation_spacing.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_line_break.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_lexical_breaks.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_inline_text_fragment.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_text_wrap.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_white_space.cpp">
       <Filter>Source Files\formats\html\layout</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\layout\grid\litehtml_grid_placement.cpp">
@@ -346,7 +412,22 @@
     <ClInclude Include="src\formats\html\html_resources.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\html_image_blend.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_border_image.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_image_metadata.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_system_fonts.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\html_shaped_text.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_text_layout.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\litehtml_box_shadow.h">
@@ -358,6 +439,15 @@
     <ClInclude Include="src\formats\html\css\css_color.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_counter_style.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_font_face.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_font_feature_values.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\css\css_declarations.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
@@ -365,6 +455,12 @@
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_supports.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_image_value.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_border_image.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_value_parser.h">
@@ -382,6 +478,42 @@
     <ClInclude Include="src\formats\html\layout\html_geometry.h">
       <Filter>Header Files\formats\html\layout</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_hyphenation.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_hyphenation_dictionary.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_line_break.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_text_autospace.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_punctuation_spacing.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_lexical_breaks.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_inline_text_fragment.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\unicode_line_break.inc">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\unicode_text_autospace.inc">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\unicode_hyphenation_skip.inc">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\unicode_hyphenation_compose.inc">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\unicode_hyphenation_word_break.inc">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\layout\grid\litehtml_grid_placement.h">
       <Filter>Header Files\formats\html\layout\grid</Filter>
     </ClInclude>
@@ -395,6 +527,9 @@
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\unicode_case_folding.inc">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\unicode_emphasis_skip.inc">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\litehtml_container.h">

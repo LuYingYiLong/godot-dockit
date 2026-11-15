@@ -4,12 +4,47 @@
 #include <litehtml/html.h>
 
 #include <algorithm>
+#include <string_view>
 #include <unordered_set>
 
 namespace litehtml {
 	namespace {
+		thread_local const element* scope_root = nullptr;
+
+		std::vector<std::string_view> language_subtags(std::string_view p_value) {
+			std::vector<std::string_view> subtags;
+			size_t start = 0;
+			for (;;) {
+				const auto end = p_value.find('-', start);
+				subtags.push_back(p_value.substr(start, end == std::string_view::npos ? end : end - start));
+				if (end == std::string_view::npos) return subtags;
+				start = end + 1;
+			}
+		}
+
+		// RFC 4647 extended filtering permits skipped subtags up to an extension singleton.
+		bool matches_language_range(const string& p_language, const string& p_range) {
+			if (p_language.empty() || p_range.empty()) return p_language.empty() && p_range.empty();
+			if (p_language == p_range || p_range == "*") return true;
+			const auto tag = language_subtags(p_language);
+			const auto range = language_subtags(p_range);
+			if (range[0] != "*" && range[0] != tag[0]) return false;
+
+			size_t tag_index = 1;
+			for (size_t range_index = 1; range_index < range.size(); ++range_index) {
+				const auto subtag = range[range_index];
+				if (subtag == "*") continue;
+				while (tag_index < tag.size() && tag[tag_index] != subtag) {
+					if (tag[tag_index++].size() <= 1) return false;
+				}
+				if (tag_index == tag.size()) return false;
+				++tag_index;
+			}
+			return true;
+		}
+
 		bool is_dom_element(const element& p_element) {
-			return !is_one_of(p_element.tag(), empty_id, __tag_before_, __tag_after_);
+			return p_element.tag() != empty_id && !is_generated_tag(p_element.tag());
 		}
 
 		// The parser stores a complex selector from right to left. Each step here
@@ -64,6 +99,34 @@ namespace litehtml {
 			}
 			return false;
 		}
+	}
+
+	selector_scope::selector_scope(const element* p_root) : previous(scope_root) {
+		scope_root = p_root;
+	}
+
+	selector_scope::~selector_scope() {
+		scope_root = previous;
+	}
+
+	bool matches_selector_scope(const element& p_element) {
+		return scope_root ? scope_root == &p_element : p_element.is_root();
+	}
+
+	const char* get_element_language(const element& p_element) {
+		if (const char* value = p_element.get_attr("lang")) return value;
+		for (auto parent = p_element.parent(); parent; parent = parent->parent()) {
+			if (const char* value = parent->get_attr("lang")) return value;
+		}
+		return nullptr;
+	}
+
+	bool matches_element_language(const element& p_element, const string_vector& p_ranges) {
+		const char* value = get_element_language(p_element);
+		const auto language = lowcase(value ? value : "");
+		return std::any_of(p_ranges.begin(), p_ranges.end(), [&](const string& p_range) {
+			return matches_language_range(language, p_range);
+		});
 	}
 
 	bool matches_relative_selector(const element& p_anchor, const css_selector::vector& p_selectors) {

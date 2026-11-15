@@ -1,0 +1,32 @@
+diff --git a/include/litehtml/css_position.h b/include/litehtml/css_position.h
+--- a/include/litehtml/css_position.h
++++ b/include/litehtml/css_position.h
+@@ -5,6 +5,28 @@
+ 
+ namespace litehtml
+ {
++	enum class object_fit { fill, contain, cover, none, scale_down, cover_scale_down };
++
++	struct css_object_position
++	{
++		css_length x{ 50, css_units_percentage };
++		css_length y{ 50, css_units_percentage };
++		bool from_right = false;
++		bool from_bottom = false;
++
++		pixel_t offset_x(pixel_t available) const
++		{
++			const auto offset = x.calc_percent(available);
++			return from_right ? available - offset : offset;
++		}
++
++		pixel_t offset_y(pixel_t available) const
++		{
++			const auto offset = y.calc_percent(available);
++			return from_bottom ? available - offset : offset;
++		}
++	};
++
+ 	struct css_position
+ 	{
+ 		css_length	x;

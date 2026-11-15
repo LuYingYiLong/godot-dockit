@@ -98,7 +98,10 @@ public:
 		bool p_fit_images = false,
 		const godot::String& p_default_stylesheet = {},
 		const docrender::HTMLFontConfig& p_fonts = {},
-		const godot::Dictionary& p_local_stylesheets = {}
+		const godot::Dictionary& p_local_stylesheets = {},
+		const godot::Dictionary& p_local_fonts = {},
+		const godot::Dictionary& p_image_dpi = {},
+		const godot::Dictionary& p_image_orientations = {}
 	);																				// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
 	godot::Error layout(const godot::Vector2i& p_viewport_size);					// 按给定视口尺寸排版并更新几何
 	godot::Vector2i get_content_size() const;										// 返回最近一次成功排版的内容尺寸

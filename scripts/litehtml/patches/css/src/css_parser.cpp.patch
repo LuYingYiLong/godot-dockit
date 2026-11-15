@@ -37,3 +37,41 @@ diff --git a/src/css_parser.cpp b/src/css_parser.cpp
  	for (int i = 0; i < (int)tokens.size(); i++)
  	{
  		auto& tok = tokens[i];
+@@ -431,10 +447,15 @@
+ 
+ 	trim_whitespace(value); // deviation from standard: removing leading whitespace as well
+ 
+-	if (at(value, -1).ident() == "important" && at(value, -2).ch == '!')
+-	{
+-		remove(value, -2, 2);
+-		decl.important = true;
++	if (at(value, -1).ident() == "important")
++	{
++		int bang = static_cast<int>(value.size()) - 2;
++		while (bang >= 0 && value[bang].type == WHITESPACE) --bang;
++		if (bang >= 0 && value[bang].ch == '!')
++		{
++			value.erase(value.begin() + bang, value.end());
++			decl.important = true;
++		}
+ 	}
+ 
+ 	// 6. While the last token in the declaration’s value is a <whitespace-token>, remove that token.
+@@ -536,7 +557,7 @@
+ 	{
+ 		if (is_one_of(tok.type, BAD_STRING, BAD_URL, ')', ']', '}'))
+ 			return false;
+-		else if (tok.is_component_value() && !is_any_value(tok.value))
++		else if (tok.is_component_value() && !tok.value.empty() && !is_any_value(tok.value))
+ 			return false;
+ 	}
+ 	return true;
+@@ -553,7 +574,7 @@
+ 		if (is_one_of(tok.type, BAD_STRING, BAD_URL, ')', ']', '}', ';', '!'))
+ 			return false;
+ 		// Note: ';' '!' inside component values are allowed, so using is_any_value here.
+-		else if (tok.is_component_value() && !is_any_value(tok.value))
++		else if (tok.is_component_value() && !tok.value.empty() && !is_any_value(tok.value))
+ 			return false;
+ 	}
+ 	return true;

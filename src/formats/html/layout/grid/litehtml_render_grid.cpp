@@ -175,7 +175,7 @@ namespace litehtml {
 
 		grid_intrinsic_width intrinsic_content_width(const render_item& item, rendered_width measured) {
 			const auto preferred = std::max<pixel_t>(0, item.width() - item.content_offset_width());
-			const bool nowrap = is_one_of(item.css().get_white_space(), white_space_nowrap, white_space_pre);
+			const bool nowrap = item.css().get_text_wrap_mode() == text_wrap_nowrap;
 			const auto minimum = nowrap ? preferred :
 				std::clamp(measured.min_width - item.content_offset_width(), pixel_t(0), preferred);
 			return { minimum, preferred };
@@ -190,7 +190,11 @@ namespace litehtml {
 			if (height) cell.height = { *height, context::cbc_value_type_absolute };
 			const auto& margins = item.css().get_margins();
 			const bool replaced = item.src_el()->is_replaced();
-			if (item.css().get_width().is_predefined()) {
+			const auto& css_width = item.css().get_width();
+			const auto& css_height = item.css().get_height();
+			const bool has_ratio = item.has_preferred_aspect_ratio();
+			const bool width_from_height = has_ratio && !css_height.is_predefined() && align.horizontal.keyword != alignment::stretch;
+			if (css_width.is_predefined() && css_width.intrinsic_size() == css_intrinsic_size::none && !width_from_height) {
 				if (stretches(align.horizontal, replaced) && !margins.left.is_predefined() && !margins.right.is_predefined()) {
 					cell.size_mode |= context::size_mode_grid_assigned_width;
 				} else if (!replaced) {
@@ -206,7 +210,7 @@ namespace litehtml {
 					cell.size_mode |= context::size_mode_grid_assigned_width;
 				}
 			}
-			if (height && item.css().get_height().is_predefined() && stretches(align.vertical, replaced) &&
+			if (height && css_height.is_predefined() && stretches(align.vertical, replaced || has_ratio) &&
 				!margins.top.is_predefined() && !margins.bottom.is_predefined())
 				cell.size_mode |= context::size_mode_grid_stretch_height;
 			return cell;
@@ -366,25 +370,33 @@ namespace litehtml {
 	size size_grid_image(const render_item& item, const context& self, const size& intrinsic) {
 		const bool width_auto = !is_definite(self.width);
 		const bool height_auto = !is_definite(self.height);
-		const pixel_t ratio = intrinsic.height > 0 ? intrinsic.width / intrinsic.height : 0;
+		const double natural_ratio = intrinsic.height > 0 ? static_cast<double>(intrinsic.width) / intrinsic.height : 0;
+		const auto specified = item.css().get_aspect_ratio();
+		const auto ratio = specified.value > 0 && (!specified.prefer_natural || natural_ratio == 0) ?
+			specified : css_aspect_ratio{ natural_ratio, true };
 		pixel_t width = width_auto ? intrinsic.width : self.render_width;
 		pixel_t height = height_auto ? intrinsic.height : self.height - item.box_sizing_height();
-		if (ratio > 0 && width_auto && height_auto) {
+		if (ratio.value > 0 && width_auto && height_auto) {
 			// Use the intersection of the two axes' limits to scale the natural image.
 			auto lower = self.min_width;
 			auto upper = self.max_width;
-			if (is_definite(self.min_height))
-				lower = { std::max(is_definite(lower) ? lower.value : 0, self.min_height * ratio), context::cbc_value_type_absolute };
-			if (is_definite(self.max_height))
-				upper = { is_definite(upper) ? std::min(upper.value, self.max_height * ratio) :
-					self.max_height * ratio, context::cbc_value_type_absolute };
+			if (is_definite(self.min_height)) {
+				const auto transferred = item.size_from_aspect_ratio(self.min_height, ratio, true);
+				lower = { std::max(is_definite(lower) ? lower.value : 0, transferred), context::cbc_value_type_absolute };
+			}
+			if (is_definite(self.max_height)) {
+				const auto transferred = item.size_from_aspect_ratio(self.max_height, ratio, true);
+				upper = { is_definite(upper) ? std::min(upper.value, transferred) : transferred, context::cbc_value_type_absolute };
+			}
+			if (width == 0 && height > 0) width = item.size_from_aspect_ratio(height, ratio, true);
 			width = clamp_size(width, lower, upper);
-			return { width, width / ratio };
+			height = item.size_from_aspect_ratio(width, ratio, false);
+			return { width, clamp_size(height, self.min_height, self.max_height) };
 		}
 		if (!width_auto) width = clamp_size(width, self.min_width, self.max_width);
 		if (!height_auto) height = clamp_size(height, self.min_height, self.max_height);
-		if (ratio > 0 && width_auto) width = height * ratio;
-		if (ratio > 0 && height_auto) height = width / ratio;
+		if (ratio.value > 0 && width_auto) width = item.size_from_aspect_ratio(height, ratio, true);
+		if (ratio.value > 0 && height_auto) height = item.size_from_aspect_ratio(width, ratio, false);
 		return { clamp_size(width, self.min_width, self.max_width), clamp_size(height, self.min_height, self.max_height) };
 	}
 
@@ -457,6 +469,7 @@ namespace litehtml {
 		std::vector<std::optional<grid_intrinsic_width>> intrinsic(items.size());
 		std::vector<grid_column_measurement> measured_columns(items.size());
 		std::vector<grid_track_baselines> column_minimum_baselines(columns.size());
+		std::vector<grid_track_baselines> column_min_content_baselines(columns.size());
 		std::vector<grid_track_baselines> column_preferred_baselines(columns.size());
 		for (std::size_t index = 0; index < items.size(); ++index) {
 			const auto range = placement.items[index].columns;
@@ -473,16 +486,16 @@ namespace litehtml {
 			intrinsic[index] = intrinsic_content_width(item, widths);
 			const auto& css_width = item.css().get_width();
 			const bool explicit_width = !css_width.is_predefined() && css_width.units() != css_units_percentage;
-			const bool has_min_width = !item.css().get_min_width().is_predefined() &&
-				item.css().get_min_width().units() != css_units_percentage;
-			const auto min_width = has_min_width ? item.css().get_min_width().calc_percent(0) : 0;
-			const auto outer_min_width = min_width + item.content_offset_width() - item.box_sizing_width();
-			const bool nowrap = is_one_of(item.css().get_white_space(), white_space_nowrap, white_space_pre);
+			const auto& css_min_width = item.css().get_min_width();
+			const bool explicit_minimum = !css_min_width.is_predefined();
+			const auto min_width = explicit_minimum ? css_min_width.calc_percent(0) : 0;
+			const auto outer_min_width = std::max<pixel_t>(0, min_width - item.box_sizing_width()) + item.content_offset_width();
 			const bool auto_minimum = grid_range_has_auto_minimum(columns, range, definite_width);
-			const auto minimum = explicit_width ? item.width() : std::max(outer_min_width,
-				has_scrollable_overflow(item) || !auto_minimum ? item.content_offset_width() :
-				nowrap || item.src_el()->is_replaced() ? item.width() : std::min(widths.min_width, item.width()));
 			const auto preferred = item.width();
+			const auto min_content = explicit_width || item.src_el()->is_replaced() ? preferred :
+				std::max(outer_min_width, intrinsic[index]->minimum + item.content_offset_width());
+			const auto minimum = explicit_width ? preferred :
+				explicit_minimum || has_scrollable_overflow(item) || !auto_minimum ? outer_min_width : min_content;
 			if (measured.baseline_aligned) {
 				measured.left_margin = item.margin_left();
 				if (const auto span = fixed_grid_span(columns, range, column_gutters, column_gap, width)) {
@@ -491,13 +504,15 @@ namespace litehtml {
 					item.render(0, 0, cell, nullptr);
 					const auto sample = measure_column_baseline(range, align, item.width(), item.margin_left());
 					include_baseline(column_minimum_baselines, sample);
+					include_baseline(column_min_content_baselines, sample);
 					include_baseline(column_preferred_baselines, sample);
 				} else if (needs_content) {
 					include_baseline(column_minimum_baselines, measure_column_baseline(range, align, minimum, measured.left_margin));
+					include_baseline(column_min_content_baselines, measure_column_baseline(range, align, min_content, measured.left_margin));
 					include_baseline(column_preferred_baselines, measure_column_baseline(range, align, preferred, measured.left_margin));
 				}
 			}
-			if (needs_content) measured.contribution = grid_track_contribution{ range, minimum, preferred };
+			if (needs_content) measured.contribution = grid_track_contribution{ range, minimum, min_content, preferred };
 		}
 		std::vector<grid_track_contribution> column_content;
 		column_content.reserve(items.size());
@@ -509,6 +524,8 @@ namespace litehtml {
 				const auto align = alignments[index].horizontal;
 				contribution.minimum += measure_column_baseline(contribution.range, align, contribution.minimum,
 					measured.left_margin).shim(column_minimum_baselines);
+				contribution.min_content += measure_column_baseline(contribution.range, align, contribution.min_content,
+					measured.left_margin).shim(column_min_content_baselines);
 				contribution.preferred += measure_column_baseline(contribution.range, align, contribution.preferred,
 					measured.left_margin).shim(column_preferred_baselines);
 			}
@@ -520,11 +537,20 @@ namespace litehtml {
 		m_pos.width = definite_width ? available_width : clamp_size(
 			measure_width ? initial_columns.extent : std::clamp(available_width, initial_columns.minimum, initial_columns.extent),
 			self.min_width, self.max_width);
-		if (measure_width)
-			return { m_pos.width + content_offset_width(), std::min(m_pos.width, initial_columns.minimum) + content_offset_width() };
+		if (self.ratio_width && css().get_min_width().is_predefined() &&
+			css().get_min_width().intrinsic_size() == css_intrinsic_size::none && css().get_overflow() == overflow_visible) {
+			m_pos.width = clamp_size(std::max(m_pos.width, initial_columns.minimum), self.min_width, self.max_width);
+		}
+		if (measure_width) {
+			const auto& intrinsic = containing_block_size.intrinsic_inline;
+			const bool fit = is_one_of(css().get_width().intrinsic_size(), css_intrinsic_size::fit_content, css_intrinsic_size::fit_content_limit);
+			const auto minimum = intrinsic.preferred && !fit ? m_pos.width :
+				std::min(m_pos.width, std::max(initial_columns.minimum, intrinsic.minimum.value_or(0)));
+			return { m_pos.width + content_offset_width(), minimum + content_offset_width() };
+		}
 
 		const auto horizontal_gap = column_gap.calc_percent(m_pos.width);
-		const auto column_sizes = !definite_width ?
+		const auto column_sizes = !definite_width || m_pos.width != available_width ?
 			size_grid_tracks(columns, column_content, column_gutters, horizontal_gap, m_pos.width, stretches(justify_content)) : initial_columns;
 		const grid_axis_geometry column_geometry(column_sizes.tracks, column_gutters, horizontal_gap, m_pos.width, justify_content);
 
@@ -567,12 +593,12 @@ namespace litehtml {
 			const bool explicit_height = !item.css().get_height().is_predefined() &&
 				item.css().get_height().units() != css_units_percentage;
 			const auto& min_height = item.css().get_min_height();
-			const bool has_min_height = !min_height.is_predefined() && min_height.units() != css_units_percentage;
+			const bool explicit_minimum = !min_height.is_predefined();
 			const bool auto_minimum = grid_range_has_auto_minimum(rows, placed.rows, definite_height);
-			const auto minimum = !explicit_height && (has_scrollable_overflow(item) || !auto_minimum) ?
-				item.content_offset_height() + (has_min_height ? std::max<pixel_t>(0, min_height.calc_percent(0) - item.box_sizing_height()) : 0) :
+			const auto minimum = !explicit_height && (explicit_minimum || has_scrollable_overflow(item) || !auto_minimum) ?
+				item.content_offset_height() + (explicit_minimum ? std::max<pixel_t>(0, min_height.calc_percent(0) - item.box_sizing_height()) : 0) :
 				item.height();
-			measurement.contribution = grid_track_contribution{ placed.rows, minimum, item.height() };
+			measurement.contribution = grid_track_contribution{ placed.rows, minimum, item.height(), item.height() };
 		}
 		std::vector<grid_track_contribution> row_content;
 		row_content.reserve(items.size());
@@ -582,6 +608,7 @@ namespace litehtml {
 			if (measurement.baseline) {
 				const auto shim = measurement.baseline->shim(row_baselines);
 				contribution.minimum += shim;
+				contribution.min_content += shim;
 				contribution.preferred += shim;
 			}
 			row_content.push_back(contribution);
@@ -590,6 +617,12 @@ namespace litehtml {
 		const auto initial_rows = size_grid_tracks(rows, row_content, row_gutters,
 			row_gap.calc_percent(height.value_or(0)), height, stretches(align_content));
 		m_pos.height = definite_height ? available_height : clamp_size(initial_rows.extent, self.min_height, self.max_height);
+		if (self.ratio_height) {
+			auto ratio_height = size_from_aspect_ratio(m_pos.width, css().get_aspect_ratio(), false);
+			if (css().get_min_height().is_predefined() && css().get_overflow() == overflow_visible)
+				ratio_height = std::max(ratio_height, initial_rows.minimum);
+			m_pos.height = clamp_size(ratio_height, self.min_height, self.max_height);
+		}
 		const auto natural_width = inline_grid && !definite_width ?
 			clamp_size(initial_columns.extent, self.min_width, self.max_width) : m_pos.width;
 		const auto minimum_width = inline_grid && !definite_width ?
@@ -601,7 +634,7 @@ namespace litehtml {
 		if (measuring_height && !measuring_baseline) return widths;
 
 		const auto vertical_gap = row_gap.calc_percent(m_pos.height);
-		const bool resolve_rows = !definite_height &&
+		const bool resolve_rows = definite_height ? m_pos.height != available_height :
 			(grid_tracks_use_percentage(rows) || m_pos.height != initial_rows.extent);
 		const auto row_sizes = resolve_rows ?
 			size_grid_tracks(rows, row_content, row_gutters, vertical_gap, m_pos.height, stretches(align_content)) : initial_rows;

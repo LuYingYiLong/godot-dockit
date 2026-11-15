@@ -1,5 +1,6 @@
 #include "html_layout.h"
 
+#include "css/css_relational_selector.h"
 #include "html_canvas_renderer.h"
 #include "html_markup.h"
 #include "layout/html_geometry.h"
@@ -85,7 +86,7 @@ namespace {
 
 	bool is_html_element(const litehtml::element& p_element) {
 		const auto tag = p_element.tag();
-		return tag != litehtml::empty_id && tag != litehtml::__tag_before_ && tag != litehtml::__tag_after_ && *p_element.get_tagName();
+		return tag != litehtml::empty_id && !litehtml::is_generated_tag(tag) && *p_element.get_tagName();
 	}
 
 	litehtml::element::ptr find_html_ancestor(litehtml::element::ptr p_element) {
@@ -107,7 +108,7 @@ namespace {
 
 	template <typename Visitor>
 	bool visit_elements(const litehtml::element::ptr& p_node, const Visitor& p_visit) {
-		if (!p_node || p_node->tag() == litehtml::__tag_before_ || p_node->tag() == litehtml::__tag_after_) {
+		if (!p_node || litehtml::is_generated_tag(p_node->tag())) {
 			return false;
 		}
 		if (is_html_element(*p_node) && p_visit(p_node)) {
@@ -183,22 +184,6 @@ namespace {
 		}
 		return closing.empty();
 	}
-
-	class SelectorScope {
-		litehtml::element* scope;
-		const litehtml::string_id scope_id = litehtml::_id("scope");
-		bool added;
-
-	public:
-		explicit SelectorScope(litehtml::element* p_scope) :
-			scope(p_scope), added(scope && scope->set_pseudo_class(scope_id, true)) {}
-
-		~SelectorScope() {
-			if (added) {
-				scope->set_pseudo_class(scope_id, false);
-			}
-		}
-	};
 
 } // namespace
 
@@ -295,7 +280,8 @@ Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const St
 
 Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
 	const Dictionary& p_textures, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
-	const Dictionary& p_local_stylesheets) {
+	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
+	const Dictionary& p_image_orientations) {
 	clear();
 	const std::optional<String> base_dir = docrender::normalize_html_resource_path(p_base_dir);
 	if (!base_dir) {
@@ -303,7 +289,8 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
 	try {
-		state->container = std::make_unique<LiteHTMLContainer>(*base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets);
+		state->container = std::make_unique<LiteHTMLContainer>(*base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
+			p_local_fonts, p_image_dpi, p_image_orientations);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->master_styles = litehtml::master_css;
 		if (!p_default_stylesheet.is_empty()) {
@@ -569,7 +556,7 @@ String HTMLLayout::serialize_children(const litehtml::element& p_element) const 
 	std::string html;
 	const auto append_children = [&](const auto& p_append_children, const litehtml::element& p_parent) -> void {
 		for (const auto& child : p_parent.children()) {
-			if (child->tag() == litehtml::__tag_before_ || child->tag() == litehtml::__tag_after_) {
+			if (litehtml::is_generated_tag(child->tag())) {
 				continue;
 			}
 			if (is_html_element(*child)) {
@@ -760,7 +747,7 @@ TypedArray<HTMLElement> HTMLLayout::select_elements(const String& p_selector, Se
 		return matches;
 	}
 	const auto root = p_scope ? p_scope : state->document->root();
-	const SelectorScope scope(root.get());
+	const litehtml::selector_scope scope(root.get());
 	const auto collect = [&](const litehtml::element::ptr& p_element) {
 		if (p_element->select(selectors) == litehtml::select_no_match) {
 			return false;
@@ -833,6 +820,11 @@ Ref<HTMLElement> HTMLLayout::get_element_at(const Vector2& p_position) const {
 }
 
 Ref<HTMLElement> HTMLLayout::wrap_hit_element(litehtml::element::ptr p_element) const {
+	for (auto ancestor = p_element; ancestor; ancestor = ancestor->parent()) {
+		if (litehtml::is_generated_tag(ancestor->tag())) {
+			p_element = ancestor->parent();
+		}
+	}
 	return make_element(find_html_ancestor(std::move(p_element)));
 }
 

@@ -1,4 +1,5 @@
 #include "html_canvas_renderer.h"
+#include "html_shaped_text.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -16,6 +17,18 @@
 using namespace godot;
 
 namespace docrender {
+	namespace {
+		RenderingServer::CanvasItemTextureFilter to_canvas_filter(HTMLTextureFilter p_filter) {
+			switch (p_filter) {
+				case HTMLTextureFilter::nearest: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST;
+				case HTMLTextureFilter::linear: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR;
+				case HTMLTextureFilter::linear_mipmaps: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS;
+				case HTMLTextureFilter::inherited: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
+			}
+			return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
+		}
+	}
+
 	void HTMLPaintRun::draw(RenderingServer& p_server, const RID& p_canvas, const Vector2& p_offset,
 		const TextServer* p_text_server, const HTMLHighlight& p_search, const HTMLHighlight& p_selection) const {
 		for (const HTMLPaintCommand& command : commands) {
@@ -31,10 +44,8 @@ namespace docrender {
 							const int64_t from = std::max<int64_t>(0, highlight->from - p_draw.offset);
 							const int64_t to = std::min(p_draw.length, highlight->to - p_draw.offset);
 							if (from < to) {
-								const auto ranges = p_text_server->shaped_text_get_selection(p_draw.line->get_rid(), from, to);
-								for (int64_t i = 0; i < ranges.size(); ++i) {
-									const Vector2 range = ranges[i];
-									const Rect2 rect = translate_rect(Rect2(range.x, 0, range.y - range.x, p_draw.line->get_size().y),
+								for (const Vector2& range : p_draw.layout.selection(*p_text_server, from, to)) {
+									const Rect2 rect = translate_rect(Rect2(range.x, 0, range.y - range.x, p_draw.layout.height()),
 										p_draw.position + p_offset);
 									if (highlight->style) {
 										highlight->style->draw(p_canvas, rect);
@@ -45,14 +56,11 @@ namespace docrender {
 							}
 						}
 					}
-					p_draw.line->draw(p_canvas, p_draw.position + p_offset, p_draw.color);
+					p_draw.layout.draw(p_text_server, p_canvas, p_draw.position + p_offset, p_draw.color);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLImage>) {
 					const Rect2 rect = translate_rect(p_draw.destination, p_offset);
-					if (p_draw.repeat) {
-						p_server.canvas_item_set_default_texture_repeat(p_canvas, RenderingServer::CANVAS_ITEM_TEXTURE_REPEAT_ENABLED);
-					}
-					p_draw.texture->draw_rect_region(p_canvas, rect, p_draw.source, Color(1, 1, 1), false, !p_draw.repeat);
+					p_draw.texture->draw_rect_region(p_canvas, rect, p_draw.source, Color(1, 1, 1), false, !sampling.repeat);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLCircle>) {
 					const Vector2 center = p_draw.center + p_offset;
@@ -119,12 +127,12 @@ namespace docrender {
 		}
 
 		RenderingServer& server = *RenderingServer::get_singleton();
-		const Ref<TextServer> text_server = p_selection.from < p_selection.to || p_search.from < p_search.to
-			? TextServerManager::get_singleton()->get_primary_interface() : Ref<TextServer>();
+		const Ref<TextServer> text_server = TextServerManager::get_singleton()->get_primary_interface();
 		RID target;
 		std::optional<Rect2> previous_clip;
 		Ref<ShaderMaterial> previous_material;
 		Transform2D previous_matrix;
+		HTMLTextureSampling previous_sampling;
 		const auto submit_run = [&](const HTMLPaintRun& p_run) {
 			std::optional<Rect2> clip;
 			if (p_run.clip) {
@@ -138,7 +146,8 @@ namespace docrender {
 			}
 
 			const bool transformed = p_run.material.is_valid() || p_run.matrix != Transform2D();
-			if (!target.is_valid() || clip != previous_clip || p_run.material != previous_material || p_run.matrix != previous_matrix) {
+			if (!target.is_valid() || clip != previous_clip || p_run.material != previous_material || p_run.matrix != previous_matrix ||
+				p_run.sampling != previous_sampling) {
 				if (drawing->items.empty()) {
 					drawing->add_item(server, p_canvas.get_canvas_item(), -1);
 				}
@@ -160,9 +169,16 @@ namespace docrender {
 				if (transformed) {
 					server.canvas_item_set_transform(target, Transform2D(0.0, p_position) * p_run.matrix);
 				}
+				if (p_run.sampling.filter != HTMLTextureFilter::inherited) {
+					server.canvas_item_set_default_texture_filter(target, to_canvas_filter(p_run.sampling.filter));
+				}
+				if (p_run.sampling.repeat) {
+					server.canvas_item_set_default_texture_repeat(target, RenderingServer::CANVAS_ITEM_TEXTURE_REPEAT_ENABLED);
+				}
 				previous_clip = clip;
 				previous_material = p_run.material;
 				previous_matrix = p_run.matrix;
+				previous_sampling = p_run.sampling;
 			}
 			p_run.draw(server, target, transformed ? Vector2() : p_position, text_server.ptr(), p_search, p_selection);
 		};

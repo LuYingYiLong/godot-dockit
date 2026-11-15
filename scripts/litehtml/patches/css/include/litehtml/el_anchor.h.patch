@@ -1,0 +1,11 @@
+diff --git a/include/litehtml/el_anchor.h b/include/litehtml/el_anchor.h
+--- a/include/litehtml/el_anchor.h
++++ b/include/litehtml/el_anchor.h
+@@ -11,7 +11,6 @@
+ 		explicit el_anchor(const std::shared_ptr<litehtml::document>& doc);
+ 
+ 		void	on_click() override;
+-		void	apply_stylesheet(const litehtml::css& stylesheet) override;
+ 	};
+ }
+ 

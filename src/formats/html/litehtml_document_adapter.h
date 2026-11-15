@@ -38,7 +38,7 @@ namespace litehtml {
 			element& p_element,
 			const char* p_name,
 			const char* p_value
-		);																			// 更新属性和链接状态，空指针表示移除属性
+		);																			// 更新属性，空指针表示移除属性
 		static elements_list parse_fragment(
 			document& p_document,
 			const element& p_parent,
@@ -54,8 +54,10 @@ namespace litehtml {
 
 	private:
 		static document::ptr parse_tree(const godot::CharString& p_html, document_container& p_container);
-		static void reset_link(html_tag& p_element, bool p_has_href);
+		static void apply_author_styles(const document::ptr& p_document, docrender::LiteHTMLContainer& p_container,
+			const string& p_additional_styles);
 		static void remove_attribute(html_tag& p_element, const char* p_name);
 		static void reset_tree(element& p_element);
+		static void trim_white_space(render_item& p_root);
 	};
 }

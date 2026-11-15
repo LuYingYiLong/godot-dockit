@@ -1,4 +1,5 @@
 #include "litehtml_css_transform.h"
+#include "litehtml_css_math.h"
 
 #include <litehtml/html.h>
 
@@ -16,24 +17,19 @@ namespace litehtml {
 		}
 
 		bool parse_angle(const css_token& p_token, double& r_angle) {
-			if (p_token.type == NUMBER) {
-				return p_token.n.number == 0;
-			}
-			if (p_token.type != DIMENSION || !std::isfinite(p_token.n.number)) {
-				return false;
-			}
-			const auto unit = lowcase(p_token.unit);
-			constexpr double pi = 3.14159265358979323846;
-			const double angle = p_token.n.number;
-			if (unit == "deg") r_angle = std::remainder(angle, 360.0) * pi / 180.0;
-			else if (unit == "grad") r_angle = std::remainder(angle, 400.0) * pi / 200.0;
-			else if (unit == "rad") r_angle = std::remainder(angle, 2 * pi);
-			else if (unit == "turn") r_angle = std::remainder(angle, 1.0) * 2 * pi;
-			else return false;
+			const auto angle = parse_css_angle(p_token, true);
+			if (!angle) return false;
+			r_angle = *angle;
 			return true;
 		}
 
 		bool parse_number(const css_token& p_token, double& r_number) {
+			if (p_token.type == CV_FUNCTION) {
+				const auto number = evaluate_css_scalar_math(p_token, css_math_scalar::number);
+				if (!number || !std::isfinite(*number)) return false;
+				r_number = *number;
+				return true;
+			}
 			if (p_token.type != NUMBER || !std::isfinite(p_token.n.number)) {
 				return false;
 			}

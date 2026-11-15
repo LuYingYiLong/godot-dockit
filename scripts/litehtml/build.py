@@ -37,6 +37,26 @@ def apply_litehtml_patch(target, source, env):
         patched.replace(output)
 
 
+def embed_hyphenation_patterns(target, source, env):
+    with Path(str(target[0])).open("w", encoding="utf-8", newline="\n") as output:
+        output.write('#include "formats/html/layout/html_hyphenation_dictionary.h"\n\nnamespace docrender {\nnamespace {\n')
+        for index, pattern in enumerate(source):
+            data = Path(str(pattern)).read_bytes()
+            output.write(f"constexpr uint8_t dictionary_{index}[] = {{\n")
+            for start in range(0, len(data), 24):
+                output.write("\t" + ", ".join(f"0x{byte:02x}" for byte in data[start:start + 24]) + ",\n")
+            output.write("};\n")
+        output.write("constexpr HyphenationPatternData dictionaries[] = {\n")
+        for index, pattern in enumerate(source):
+            locale = Path(str(pattern)).stem.removeprefix("hyph-")
+            output.write(f'\t{{ "{locale}", dictionary_{index}, sizeof(dictionary_{index}) }},\n')
+        output.write("};\n}\n\n")
+        output.write("const HyphenationPatternData* find_hyphenation_patterns(std::string_view locale) {\n"
+                     "\tfor (const auto& dictionary : dictionaries) {\n"
+                     "\t\tif (dictionary.locale == locale) return &dictionary;\n"
+                     "\t}\n\treturn nullptr;\n}\n}\n")
+
+
 def build_litehtml(env, html_sources, enable_cpp_exceptions):
     litehtml = "src/thirdparty/litehtml"
     gumbo = f"{litehtml}/src/gumbo"
@@ -80,6 +100,13 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
         html_env.AppendUnique(CXXFLAGS=["/permissive-"])
     html_object = html_env.StaticObject if env["platform"] == "ios" else html_env.SharedObject
     html_objects = list(html_object(html_sources))
+    patterns = sorted(html_env.Glob("src/thirdparty/hyphenation-patterns/hyph-*.hyb"))
+    if not patterns:
+        raise UserError("Missing DocRender hyphenation patterns.")
+    embedded_patterns = html_env.Command(f"{staged_dir}/src/hyphenation_patterns.gen.cpp", patterns,
+                                         html_env.Action(embed_hyphenation_patterns, "Embedding HTML hyphenation patterns"))
+    html_env.Depends(embedded_patterns, html_env.File(__file__))
+    html_objects += html_object(embedded_patterns)
 
     for source in html_env.Glob(f"{litehtml}/src/*.cpp"):
         relative = Path(str(source)).relative_to(litehtml)

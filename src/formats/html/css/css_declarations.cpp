@@ -28,7 +28,8 @@ namespace {
 	const property_definition* find_property(string_id name) {
 		static const std::map<string_id, property_definition> properties = {
 			{ _z_index_, { property_family::box } },
-			{ _text_indent_, { property_family::box } },
+			{ _text_indent_, { property_family::text } },
+			{ _id("tab-size"), { property_family::text } },
 			{ _padding_left_, { property_family::box } },
 			{ _padding_right_, { property_family::box } },
 			{ _padding_top_, { property_family::box } },
@@ -43,6 +44,7 @@ namespace {
 			{ _margin_top_, { property_family::box } },
 			{ _margin_bottom_, { property_family::box } },
 			{ _width_, { property_family::box } },
+			{ _aspect_ratio_, { property_family::box } },
 			{ _height_, { property_family::box } },
 			{ _min_width_, { property_family::box } },
 			{ _min_height_, { property_family::box } },
@@ -62,6 +64,12 @@ namespace {
 				_background_color_, _background_position_x_, _background_position_y_, _background_repeat_,
 				_background_attachment_, _background_image_, _background_image_baseurl_, _background_size_,
 				_background_origin_, _background_clip_ } } },
+			{ _id("object-fit"), { property_family::background } },
+			{ _id("object-position"), { property_family::background } },
+			{ _id("image-rendering"), { property_family::keyword, {}, image_rendering_keywords } },
+			{ _id("image-orientation"), { property_family::background } },
+			{ _id("image-resolution"), { property_family::background } },
+			{ _id("direction"), { property_family::keyword, {}, direction_keywords } },
 			{ _background_image_, { property_family::background, { _background_image_, _background_image_baseurl_ } } },
 			{ _background_position_, { property_family::background, { _background_position_x_, _background_position_y_ } } },
 			{ _background_size_, { property_family::background } },
@@ -69,10 +77,24 @@ namespace {
 			{ _background_attachment_, { property_family::background, {}, background_attachment_strings } },
 			{ _background_origin_, { property_family::background, {}, background_box_strings } },
 			{ _background_clip_, { property_family::background, {}, background_box_strings } },
+			{ _id("outline"), { property_family::background, {
+				_id("outline-width"), _id("outline-style"), _id("outline-color") } } },
+			{ _id("outline-width"), { property_family::background } },
+			{ _id("outline-style"), { property_family::background } },
+			{ _id("outline-color"), { property_family::background } },
+			{ _id("outline-offset"), { property_family::background } },
+			{ _id("border-image-source"), { property_family::background } },
+			{ _id("border-image-slice"), { property_family::background } },
+			{ _id("border-image-width"), { property_family::background } },
+			{ _id("border-image-outset"), { property_family::background } },
+			{ _id("border-image-repeat"), { property_family::background } },
+			{ _id("border-image"), { property_family::background, {
+				_id("border-image-source"), _id("border-image-slice"), _id("border-image-width"), _id("border-image-outset"), _id("border-image-repeat") } } },
 			{ _border_, { property_family::background, {
 				_border_top_width_, _border_right_width_, _border_bottom_width_, _border_left_width_,
 				_border_top_style_, _border_right_style_, _border_bottom_style_, _border_left_style_,
-				_border_top_color_, _border_right_color_, _border_bottom_color_, _border_left_color_ } } },
+				_border_top_color_, _border_right_color_, _border_bottom_color_, _border_left_color_,
+				_id("border-image-source"), _id("border-image-slice"), _id("border-image-width"), _id("border-image-outset"), _id("border-image-repeat") } } },
 			{ _border_left_, { property_family::background, { _border_left_width_, _border_left_style_, _border_left_color_ } } },
 			{ _border_right_, { property_family::background, { _border_right_width_, _border_right_style_, _border_right_color_ } } },
 			{ _border_top_, { property_family::background, { _border_top_width_, _border_top_style_, _border_top_color_ } } },
@@ -98,13 +120,33 @@ namespace {
 			{ _list_style_, { property_family::background, { _list_style_image_, _list_style_image_baseurl_, _list_style_position_, _list_style_type_ } } },
 			{ _id("box-shadow"), { property_family::background } },
 			{ _id("text-shadow"), { property_family::background } },
-			{ _font_, { property_family::text, { _font_style_, _font_variant_, _font_weight_, _font_size_, _line_height_, _font_family_ } } },
+			{ _font_, { property_family::text, { _font_style_, _font_weight_, _id("font-width"), _font_size_, _line_height_,
+				_id("font-variant-ligatures"), _id("font-variant-numeric"), _id("font-variant-east-asian"), _id("font-variant-caps"),
+				_id("font-variant-alternates"),
+				_font_family_, _id("font-feature-settings"), _id("font-variation-settings"), _id("font-kerning"),
+				_id("font-optical-sizing") } } },
+			{ _font_variant_, { property_family::text, { _id("font-variant-ligatures"), _id("font-variant-numeric"),
+				_id("font-variant-east-asian"), _id("font-variant-caps"), _id("font-variant-alternates") } } },
+			{ _id("font-variant-ligatures"), { property_family::text } },
+			{ _id("font-variant-numeric"), { property_family::text } },
+			{ _id("font-variant-east-asian"), { property_family::text } },
+			{ _id("font-variant-caps"), { property_family::text } },
+			{ _id("font-variant-alternates"), { property_family::text } },
 			{ _font_family_, { property_family::text } },
 			{ _font_weight_, { property_family::text } },
+			{ _id("font-width"), { property_family::text } },
+			{ _id("font-feature-settings"), { property_family::text } },
+			{ _id("font-variation-settings"), { property_family::text } },
+			{ _id("font-kerning"), { property_family::keyword, {}, "auto;normal;none" } },
+			{ _id("font-optical-sizing"), { property_family::keyword, {}, "auto;none" } },
+			{ _id("letter-spacing"), { property_family::text } },
+			{ _id("word-spacing"), { property_family::text } },
 			{ _text_decoration_, { property_family::text, { _text_decoration_color_, _text_decoration_line_, _text_decoration_style_, _text_decoration_thickness_ } } },
 			{ _text_decoration_thickness_, { property_family::text } },
 			{ _text_decoration_color_, { property_family::text } },
 			{ _text_decoration_line_, { property_family::text } },
+			{ _id("text-underline-position"), { property_family::text } },
+			{ _id("text-underline-offset"), { property_family::text } },
 			{ _text_emphasis_, { property_family::text, { _text_emphasis_style_, _text_emphasis_color_ } } },
 			{ _text_emphasis_style_, { property_family::text } },
 			{ _text_emphasis_color_, { property_family::text } },
@@ -146,7 +188,9 @@ namespace {
 			{ _order_, { property_family::layout } },
 			{ _counter_increment_, { property_family::layout } },
 			{ _counter_reset_, { property_family::layout } },
+			{ _id("counter-set"), { property_family::layout } },
 			{ _content_, { property_family::layout } },
+			{ _id("quotes"), { property_family::layout } },
 			{ _cursor_, { property_family::layout } },
 			{ _display_, { property_family::keyword, {}, style_display_strings } },
 			{ _visibility_, { property_family::keyword, {}, visibility_strings } },
@@ -156,13 +200,32 @@ namespace {
 			{ _overflow_, { property_family::keyword, {}, overflow_strings } },
 			{ _appearance_, { property_family::keyword, {}, appearance_strings } },
 			{ _box_sizing_, { property_family::keyword, {}, box_sizing_strings } },
-			{ _text_align_, { property_family::keyword, {}, text_align_strings } },
+			{ _text_align_, { property_family::text, { _id("text-align-all"), _id("text-align-last") } } },
+			{ _id("text-align-all"), { property_family::text } },
+			{ _id("text-align-last"), { property_family::text } },
+			{ _id("text-justify"), { property_family::text } },
+			{ _id("text-autospace"), { property_family::text } },
+			{ _id("text-spacing-trim"), { property_family::text } },
+			{ _id("text-spacing"), { property_family::text, { _id("text-spacing-trim"), _id("text-autospace") } } },
 			{ _vertical_align_, { property_family::keyword, {}, vertical_align_strings } },
-			{ _text_transform_, { property_family::keyword, {}, text_transform_strings } },
-			{ _white_space_, { property_family::keyword, {}, white_space_strings } },
-			{ _font_style_, { property_family::keyword, {}, font_style_strings } },
-			{ _font_variant_, { property_family::keyword, {}, font_variant_strings } },
-			{ _list_style_type_, { property_family::keyword, {}, list_style_type_strings } },
+			{ _text_transform_, { property_family::text } },
+			{ _white_space_, { property_family::text, { _id("white-space-collapse"), _id("text-wrap-mode"), _id("white-space-trim") } } },
+			{ _id("white-space-collapse"), { property_family::keyword, {}, white_space_collapse_strings } },
+			{ _id("text-wrap-mode"), { property_family::keyword, {}, text_wrap_mode_strings } },
+			{ _id("text-wrap-style"), { property_family::keyword, {}, text_wrap_style_strings } },
+			{ _id("word-break"), { property_family::keyword, {}, word_break_strings } },
+			{ _id("line-break"), { property_family::keyword, {}, line_break_strings } },
+			{ _id("overflow-wrap"), { property_family::keyword, {}, overflow_wrap_strings } },
+			{ _id("hyphens"), { property_family::keyword, {}, hyphens_strings } },
+			{ _id("hyphenate-character"), { property_family::text } },
+			{ _id("hyphenate-limit-zone"), { property_family::text } },
+			{ _id("hyphenate-limit-lines"), { property_family::text } },
+			{ _id("hyphenate-limit-chars"), { property_family::text } },
+			{ _id("hyphenate-limit-last"), { property_family::keyword, {}, hyphenate_limit_last_strings } },
+			{ _id("text-wrap"), { property_family::text, { _id("text-wrap-mode"), _id("text-wrap-style") } } },
+			{ _id("white-space-trim"), { property_family::text } },
+			{ _font_style_, { property_family::text } },
+			{ _list_style_type_, { property_family::background } },
 			{ _list_style_position_, { property_family::keyword, {}, list_style_position_strings } },
 			{ _border_left_style_, { property_family::keyword, {}, border_style_strings } },
 			{ _border_right_style_, { property_family::keyword, {}, border_style_strings } },
@@ -203,15 +266,10 @@ std::optional<css_diagnostic> check_css_declaration(css_declaration_status statu
 	return css_diagnostic{ kind, _s(name), tokens.empty() ? string() : get_repr(tokens, 0, -1, true), source };
 }
 
-static bool has_drawing_gap(string_id name, const property_value& value)
+static bool has_drawing_gap(string_id, const property_value&)
 {
-	switch (name)
-	{
-	case _text_emphasis_style_:
-		return value.is<string>() && !value.get<string>().empty() && lowcase(value.get<string>()) != "none";
-	default:
-		return false;
-	}
+	// Keep this shared check for declarations that parse ahead of their painting support.
+	return false;
 }
 
 static css_parsed_declaration parse_declaration(string_id name, const css_token_vector& tokens,
@@ -219,11 +277,24 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 	const css_token_vector& original_tokens)
 {
 	using status = css_declaration_status;
+	const auto original_name = name;
+	static const std::map<string_id, string_id> aliases = {
+		{ _id("font-stretch"), _id("font-width") },
+		{ _id("word-wrap"), _id("overflow-wrap") },
+		// DocRender currently lays out boxes in the horizontal writing mode.
+		{ _id("inline-size"), _width_ },
+		{ _id("min-inline-size"), _min_width_ },
+		{ _id("max-inline-size"), _max_width_ },
+		{ _id("block-size"), _height_ },
+		{ _id("min-block-size"), _min_height_ },
+		{ _id("max-block-size"), _max_height_ },
+	};
+	if (const auto alias = aliases.find(name); alias != aliases.end()) name = alias->second;
 	const auto& spelling = _s(name);
 	const bool custom = spelling.size() > 2 && spelling.compare(0, 2, "--") == 0;
 	const auto* definition = find_property(name);
 	if (!custom && !definition) return { status::unknown, {} };
-	if (!custom && tokens.empty()) return { status::invalid, {} };
+	if (tokens.empty() ? !custom : !is_declaration_value(tokens)) return { status::invalid, {} };
 
 	const auto variables = inspect_css_variables(tokens);
 	if (variables == css_variable_syntax::invalid) return { status::invalid, {} };
@@ -236,23 +307,23 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		return css_parsed_declaration{ result, std::move(properties) };
 	};
 
-	if (keyword == "inherit") return expand(property_value(inherit{}, important), status::parsed);
-	if (keyword == "unset") return expand(property_value(invalid{}, important), status::parsed);
-	if (keyword == "initial") return expand(property_value(initial_value{}, important), status::parsed);
-	if (keyword == "revert" || keyword == "revert-layer")
-		return expand(property_value(revert_value{}, important), status::parsed);
+	switch (read_css_wide_keyword(tokens))
+	{
+	case css_wide_keyword::inherit: return expand(property_value(inherit{}, important), status::parsed);
+	case css_wide_keyword::unset: return expand(property_value(invalid{}, important), status::parsed);
+	case css_wide_keyword::initial: return expand(property_value(initial_value{}, important), status::parsed);
+	case css_wide_keyword::revert: return expand(property_value(revert_value{}, important), status::parsed);
+	case css_wide_keyword::revert_layer: return expand(property_value(revert_layer_value{}, important), status::parsed);
+	case css_wide_keyword::none: break;
+	}
 
 	if (custom)
-	{
-		if (tokens.empty() || is_declaration_value(tokens))
-			return expand(property_value(tokens, important), status::parsed);
-		return { status::invalid, {} };
-	}
+		return expand(property_value(tokens, important), status::parsed);
 	if (variables == css_variable_syntax::valid)
 	{
 		property_value value(invalid{}, important);
 		value.deferred = std::make_shared<property_value::deferred_declaration>(
-			property_value::deferred_declaration{ name, tokens, baseurl, source });
+			property_value::deferred_declaration{ original_name, tokens, baseurl, source });
 		return expand(value, status::deferred);
 	}
 
@@ -273,7 +344,7 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		parser.parse_text(name, tokens, important, container);
 		break;
 	case property_family::layout:
-		parser.parse_layout(name, tokens, important);
+		parser.parse_layout(name, tokens, baseurl, important);
 		break;
 	}
 	auto properties = parser.take_properties();
@@ -288,7 +359,7 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		{
 			if (!has_drawing_gap(longhand, value)) continue;
 			if (!origin) origin = std::make_shared<property_value::declaration_origin>(
-				property_value::declaration_origin{ name, get_repr(original_tokens, 0, -1, true), source });
+				property_value::declaration_origin{ original_name, get_repr(original_tokens, 0, -1, true), source });
 			value.origin = origin;
 		}
 	}
@@ -309,8 +380,7 @@ bool supports_css_declaration(const css_token_vector& tokens)
 		return false;
 
 	auto declaration = css_parser(css_token_vector(tokens.begin() + index, tokens.end())).consume_declaration();
-	if (!declaration || (!declaration.value.empty() && !is_declaration_value(declaration.value)))
-		return false;
+	if (!declaration) return false;
 
 	remove_whitespace(declaration.value);
 	const auto name = _id(declaration.name.compare(0, 2, "--") == 0 ? declaration.name : lowcase(declaration.name));
@@ -323,42 +393,80 @@ bool supports_css_declaration(const css_token_vector& tokens)
 		});
 }
 
-void resolve_css_declarations(const props_map& specified, const props_map& defaults, const html_tag& element,
-	css_computed_variables& computed_variables, props_map& computed, std::vector<css_diagnostic>& diagnostics)
+static bool is_rollback(const property_value& value)
+{
+	return value.is<revert_value>() || value.is<revert_layer_value>();
+}
+
+static const property_value& rollback_declaration(string_id name, int layer, bool layer_only,
+	const props_map& defaults, const css_layer_candidates& layers, bool has_author_layers)
+{
+	if (has_author_layers && layer_only)
+	{
+		if (const auto it = layers.find(name); it != layers.end())
+		{
+			const property_value* best = nullptr;
+			for (const auto& [rank, candidate] : it->second)
+			{
+				if (rank >= layer) break;
+				if (!best || takes_cascade_precedence(candidate, *best))
+					best = &candidate;
+			}
+			if (best) return *best;
+		}
+	}
+	// A rollback in the baseline itself has nowhere further to go.
+	if (layer != css_default_layer)
+	{
+		if (const auto it = defaults.find(name); it != defaults.end())
+			return it->second;
+	}
+	static const property_value unset;
+	return unset;
+}
+
+void resolve_css_declarations(const props_map& specified, const props_map& defaults,
+	const css_layer_candidates& layers, const html_tag& element, css_computed_variables& computed_variables,
+	props_map& computed, std::vector<css_diagnostic>& diagnostics)
 {
 	computed.clear();
 	computed_variables.clear();
 	diagnostics.clear();
+	const auto doc = element.get_document();
+	const bool has_author_layers = doc->has_author_layers();
+	const auto rollback = [&](string_id name, int layer, bool layer_only) -> const property_value& {
+		return rollback_declaration(name, layer, layer_only, defaults, layers, has_author_layers);
+	};
 	const auto restore = [&](string_id name, const property_value& value) -> const property_value& {
-		if (value.is<revert_value>())
-		{
-			if (const auto it = defaults.find(name); it != defaults.end() && !it->second.is<revert_value>())
-				return it->second;
-			static const property_value unset;
-			return unset;
-		}
-		return value;
+		const auto* effective = &value;
+		while (is_rollback(*effective))
+			effective = &rollback(name, effective->m_layer, effective->is<revert_layer_value>());
+		return *effective;
 	};
 
 	css_custom_properties local_variables;
-	bool has_deferred = false;
+	std::vector<std::pair<string_id, const property_value*>> deferred_winners;
 	for (const auto& [name, value] : specified)
 	{
 		const auto& effective = restore(name, value);
-		has_deferred |= bool(effective.deferred);
-		if (value.is<revert_value>()) computed.emplace(name, effective);
+		if (effective.deferred)
+			deferred_winners.emplace_back(name, &effective);
+		else if (is_rollback(value))
+			computed.emplace(name, effective);
 		// Only custom declarations carry raw CSS token lists.
-		if (effective.is<css_token_vector>())
-			local_variables.emplace(name, &effective.get<css_token_vector>());
-		else if (effective.is<initial_value>() && _s(name).compare(0, 2, "--") == 0)
-			local_variables.emplace(name, nullptr);
+		if (effective.is<css_token_vector>() || (effective.is<initial_value>() && _s(name).compare(0, 2, "--") == 0))
+			local_variables.emplace(name, &effective);
 	}
 
-	if (!local_variables.empty() || has_deferred)
+	if (!local_variables.empty() || !deferred_winners.empty())
 	{
 		const auto parent = element.parent();
-		css_variable_resolver resolver(dynamic_cast<const html_tag*>(parent.get()), local_variables);
-		auto* container = element.get_document()->container();
+		const css_custom_rollback restore_custom = [&](string_id name, const property_value& value,
+			css_wide_keyword keyword) -> const property_value& {
+			return restore(name, rollback(name, value.m_layer, keyword == css_wide_keyword::revert_layer));
+		};
+		css_variable_resolver resolver(dynamic_cast<const html_tag*>(parent.get()), std::move(local_variables), restore_custom);
+		auto* container = doc->container();
 		std::map<const property_value::deferred_declaration*, props_map> parsed;
 		const auto evaluate = [&](const property_value& value) -> const props_map& {
 			const auto& declaration = *value.deferred;
@@ -380,24 +488,31 @@ void resolve_css_declarations(const props_map& specified, const props_map& defau
 			return it->second;
 		};
 
-		for (const auto& [name, value] : specified)
+		for (const auto& [name, winner] : deferred_winners)
 		{
-			const auto& effective = restore(name, value);
-			if (!effective.deferred) continue;
-			const auto& properties = evaluate(effective);
-			property_value result;
-			if (const auto it = properties.find(name); it != properties.end())
+			const auto* effective = winner;
+			for (;;)
 			{
-				result = restore(name, it->second);
-				if (result.deferred)
+				if (!effective->deferred)
 				{
-					// A computed revert may expose a deferred declaration from the default origin.
-					const auto& fallback = evaluate(result);
-					const auto found = fallback.find(name);
-					result = found == fallback.end() || found->second.is<revert_value>() ? property_value() : found->second;
+					computed.insert_or_assign(name, *effective);
+					break;
 				}
+				const auto& properties = evaluate(*effective);
+				const auto it = properties.find(name);
+				if (it == properties.end())
+				{
+					computed.insert_or_assign(name, property_value{});
+					break;
+				}
+				if (!is_rollback(it->second))
+				{
+					computed.insert_or_assign(name, it->second);
+					break;
+				}
+				// A substituted rollback uses the original declaration's layer.
+				effective = &restore(name, rollback(name, effective->m_layer, it->second.is<revert_layer_value>()));
 			}
-			computed.insert_or_assign(name, std::move(result));
 		}
 		computed_variables = resolver.take_computed();
 	}

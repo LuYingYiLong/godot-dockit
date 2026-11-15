@@ -52,6 +52,9 @@ namespace godot {
 		const auto assets = docrender::collect_html_assets(text, base_dir);
 		document->set_textures(assets.textures);
 		document->set_local_stylesheets(assets.stylesheets);
+		document->set_local_fonts(assets.fonts);
+		document->set_image_dpi(assets.image_dpi);
+		document->set_image_orientations(assets.image_orientations);
 		return ResourceSaver::get_singleton()->save(document, p_save_path + String(".res"));
 	}
 }

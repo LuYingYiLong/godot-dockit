@@ -1,4 +1,5 @@
 #include "html_text_mask.h"
+#include "html_shaped_text.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -68,11 +69,11 @@ namespace docrender {
 			return std::clamp(distance + 0.5f, 0.0f, 1.0f) * p_decoration.alpha;
 		}
 
-		std::vector<GlyphMask> get_glyph_masks(const TextLine& p_line, const Vector2& p_position) {
+		std::vector<GlyphMask> get_glyph_masks(const HTMLTextLayout& p_layout, const Vector2& p_position) {
 			const auto server = TextServerManager::get_singleton()->get_primary_interface();
-			const auto glyphs = server->shaped_text_get_glyphs(p_line.get_rid());
+			const auto glyphs = server->shaped_text_get_glyphs(p_layout.get_rid());
 			std::vector<GlyphMask> masks;
-			Vector2 baseline(0, p_line.get_line_ascent());
+			Vector2 baseline(-p_layout.trim_start(), p_layout.line_ascent());
 			for (int64_t index = 0; index < glyphs.size(); ++index) {
 				const Dictionary glyph = glyphs[index];
 				const RID font = glyph["font_rid"];
@@ -80,7 +81,8 @@ namespace docrender {
 				const int32_t size = glyph["font_size"];
 				const int32_t repeat = glyph["repeat"];
 				const float advance = glyph["advance"];
-				const Vector2 position = baseline + Vector2(glyph["offset"]);
+				Vector2 position = baseline + Vector2(glyph["offset"]);
+				if (p_layout.spacing) position.x += p_layout.spacing->glyph_offset(index);
 				baseline.x += advance * repeat;
 				if (!font.is_valid() || id == 0 || size <= 0) {
 					continue;
@@ -145,9 +147,13 @@ namespace docrender {
 		}
 	}
 
-	HTMLTextMask create_html_text_mask(const TextLine& p_line, const Vector2& p_position,
-		const std::vector<TextDecorationMask>& p_decorations, bool p_mipmaps) {
-		const auto glyphs = get_glyph_masks(p_line, p_position);
+	HTMLTextMask create_html_text_mask(const HTMLTextLayout& p_layout, const Vector2& p_position,
+		const std::vector<TextDecorationMask>& p_decorations, const std::vector<TextEmphasisMask>& p_emphasis,
+		bool p_mipmaps) {
+		const auto glyphs = get_glyph_masks(p_layout, p_position);
+		// Every emphasis instance in a run uses the same shaped glyph.
+		const auto emphasis_glyphs = p_emphasis.empty() ? std::vector<GlyphMask>() :
+			get_glyph_masks(HTMLTextLayout{ p_emphasis.front().line }, Vector2());
 		Rect2 bounds;
 		const auto include = [&](const Rect2& p_rect) { bounds = bounds.has_area() ? bounds.merge(p_rect) : p_rect; };
 		for (const auto& glyph : glyphs) {
@@ -155,6 +161,9 @@ namespace docrender {
 		}
 		for (const auto& decoration : p_decorations) {
 			include(decoration_bounds(decoration));
+		}
+		for (const auto& mark : p_emphasis) {
+			for (const auto& glyph : emphasis_glyphs) include(Rect2(glyph.rect.position + mark.position, glyph.rect.size));
 		}
 		if (!bounds.is_finite() || !bounds.has_area() || bounds.size.x > MAX_MASK_SIDE || bounds.size.y > MAX_MASK_SIDE) {
 			return {};
@@ -191,6 +200,13 @@ namespace docrender {
 		}
 		for (const auto& decoration : p_decorations) {
 			paint(decoration_bounds(decoration), [&](const Vector2& p_sample) { return decoration_coverage(decoration, p_sample); });
+		}
+		for (const auto& mark : p_emphasis) {
+			for (const auto& glyph : emphasis_glyphs) {
+				paint(Rect2(glyph.rect.position + mark.position, glyph.rect.size), [&](const Vector2& p_sample) {
+					return sample_glyph(glyph, p_sample - mark.position) * mark.alpha;
+				});
+			}
 		}
 		const Ref<Image> image = Image::create_from_data(size.x, size.y, false, Image::FORMAT_LA8, data);
 		if (p_mipmaps) {

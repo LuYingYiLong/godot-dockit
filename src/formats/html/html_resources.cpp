@@ -2,16 +2,128 @@
 
 #include "html_markup.h"
 
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/text_server.hpp>
+#include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
+#include <algorithm>
+#include <array>
+#include <charconv>
+#include <cmath>
 #include <optional>
+#include <string_view>
 
 using namespace godot;
 
 namespace docrender {
-	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets) :
-		base_dir(p_base_dir), textures(p_textures), local_stylesheets(p_local_stylesheets) {
+	namespace {
+		struct ImageFragment {
+			std::array<int, 4> coordinates;
+			bool percent = false;
+
+			Rect2i region(const Vector2i& p_size) const {
+				Vector2i origin;
+				Vector2i end;
+				for (int axis = 0; axis < 2; ++axis) {
+					const int64_t start = coordinates[axis];
+					const int64_t stop = start + coordinates[axis + 2];
+					const int64_t limit = p_size[axis];
+					origin[axis] = static_cast<int32_t>(std::min(limit, percent ? (start * limit) / 100 : start));
+					end[axis] = static_cast<int32_t>(std::min(limit, percent ? (stop * limit + 99) / 100 : stop));
+				}
+				return Rect2i(origin, end - origin);
+			}
+		};
+
+		std::optional<ImageFragment> parse_image_fragment(const String& p_fragment) {
+			if (!p_fragment.begins_with("xywh=")) return std::nullopt;
+			const CharString bytes = p_fragment.utf8();
+			std::string_view value(bytes.get_data() + 5, bytes.length() - 5);
+			ImageFragment fragment;
+			if (value.rfind("percent:", 0) == 0) {
+				fragment.percent = true;
+				value.remove_prefix(8);
+			}
+			else if (value.rfind("pixel:", 0) == 0) {
+				value.remove_prefix(6);
+			}
+			for (size_t index = 0; index < fragment.coordinates.size(); ++index) {
+				const auto comma = value.find(',');
+				const auto field = value.substr(0, comma);
+				const bool last = index + 1 == fragment.coordinates.size();
+				if (field.empty() || field.front() < '0' || field.front() > '9' ||
+					last != (comma == std::string_view::npos)) return std::nullopt;
+				const auto* end = field.data() + field.size();
+				const auto parsed = std::from_chars(field.data(), end, fragment.coordinates[index]);
+				if (parsed.ec != std::errc() || parsed.ptr != end) return std::nullopt;
+				if (!last) value.remove_prefix(comma + 1);
+			}
+			if (fragment.coordinates[2] == 0 || fragment.coordinates[3] == 0) return std::nullopt;
+			if (fragment.percent && std::any_of(fragment.coordinates.begin(), fragment.coordinates.end(),
+				[](int p_coordinate) { return p_coordinate > 100; })) return std::nullopt;
+			return fragment;
+		}
+
+		Ref<Texture2D> orient_texture(const Ref<Texture2D>& p_texture, litehtml::css_image_orientation p_orientation) {
+			using orientation = litehtml::css_image_orientation;
+			if (p_texture.is_null() || p_orientation == orientation::identity) return p_texture;
+			const Ref<Image> source = p_texture->get_image();
+			if (source.is_null() || source->is_empty()) return {};
+			const Ref<Image> pixels = source->duplicate();
+			if (pixels->is_compressed() && pixels->decompress() != OK) return {};
+			const bool mipmaps = pixels->has_mipmaps();
+			if (mipmaps) pixels->clear_mipmaps();
+			Vector2i nominal_size(p_texture->get_size());
+			switch (p_orientation) {
+				case orientation::rotate_90:
+				case orientation::transpose:
+					pixels->rotate_90(CLOCKWISE);
+					nominal_size = Vector2i(nominal_size.y, nominal_size.x);
+					break;
+				case orientation::rotate_270:
+				case orientation::transverse:
+					pixels->rotate_90(COUNTERCLOCKWISE);
+					nominal_size = Vector2i(nominal_size.y, nominal_size.x);
+					break;
+				case orientation::rotate_180:
+					pixels->rotate_180();
+					break;
+				default: break;
+			}
+			if (p_orientation == orientation::flip_x || p_orientation == orientation::transpose ||
+				p_orientation == orientation::transverse) pixels->flip_x();
+			else if (p_orientation == orientation::flip_y) pixels->flip_y();
+			if (mipmaps) pixels->generate_mipmaps();
+			const Ref<ImageTexture> texture = ImageTexture::create_from_image(pixels);
+			if (texture.is_valid() && nominal_size != pixels->get_size()) texture->set_size_override(nominal_size);
+			return texture;
+		}
+
+		Ref<Texture2D> crop_texture(const Ref<Texture2D>& p_texture, const ImageFragment& p_fragment) {
+			if (p_texture.is_null()) return {};
+			const auto nominal_size = Vector2i(p_texture->get_size());
+			const Rect2i nominal_region = p_fragment.region(nominal_size);
+			if (!nominal_region.has_area()) return {};
+			if (nominal_region == Rect2i(Vector2i(), nominal_size)) return p_texture;
+			const Ref<Image> pixels = p_texture->get_image();
+			if (pixels.is_null() || pixels->is_empty()) return {};
+			const Rect2i region = p_fragment.region(pixels->get_size());
+			if (!region.has_area()) return {};
+			const bool mipmaps = pixels->has_mipmaps();
+			if (pixels->is_compressed() && pixels->decompress() != OK) return {};
+			const Ref<Image> cropped = pixels->get_region(region);
+			if (mipmaps) cropped->generate_mipmaps();
+			return ImageTexture::create_from_image(cropped);
+		}
+	}
+
+	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets,
+		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations) :
+		base_dir(p_base_dir), textures(p_textures), local_stylesheets(p_local_stylesheets), local_fonts(p_local_fonts),
+		image_dpi(p_image_dpi), image_orientations(p_image_orientations) {
 	}
 
 	std::string_view HTMLResources::stylesheet_path(std::string_view p_css_base) {
@@ -52,24 +164,140 @@ namespace docrender {
 		r_text = file->utf8().get_data();
 	}
 
-	Ref<Texture2D> HTMLResources::load_texture(const char* p_src, const char* p_css_base) {
+	bool HTMLResources::is_vector_image(const char* p_src, const char* p_css_base) const {
 		const String path = resolve_html_image_path(String::utf8(p_src), get_url_dir(p_css_base));
-		if (path.is_empty()) {
-			return {};
-		}
-		if (const Ref<Texture2D>* cached = images.getptr(path)) {
-			return *cached;
-		}
+		return path.get_extension().nocasecmp_to("svg") == 0;
+	}
 
-		Ref<Texture2D> texture = textures.get(path, Variant());
-		if (texture.is_valid()) {
+	const HTMLImageMetadata& HTMLResources::get_image_metadata(const String& p_path) {
+		if (const auto* cached = image_metadata.getptr(p_path)) return *cached;
+		auto metadata = read_html_image_metadata(p_path);
+		const Variant stored_dpi = image_dpi.get(p_path, Variant());
+		if (stored_dpi.get_type() == Variant::FLOAT || stored_dpi.get_type() == Variant::INT) {
+			const double value = stored_dpi;
+			if (value > 0 && std::isfinite(value)) metadata.dpi = value;
+		}
+		const Variant stored_orientation = image_orientations.get(p_path, Variant());
+		if (stored_orientation.get_type() == Variant::INT) {
+			const int64_t value = stored_orientation;
+			if (value >= 1 && value <= 8) metadata.orientation = static_cast<int>(value);
+		}
+		return image_metadata.insert(p_path, metadata)->value;
+	}
+
+	double HTMLResources::get_image_dpi(const char* p_src, const char* p_css_base) {
+		const String path = resolve_html_image_path(String::utf8(p_src), get_url_dir(p_css_base));
+		return path.is_empty() ? 0 : get_image_metadata(path).dpi;
+	}
+
+	Ref<Texture2D> HTMLResources::load_texture(const char* p_src, const char* p_css_base,
+		litehtml::css_image_orientation p_orientation) {
+		using orientation = litehtml::css_image_orientation;
+		const String source = String::utf8(p_src);
+		const String path = resolve_html_image_path(source, get_url_dir(p_css_base));
+		if (path.is_empty()) return {};
+		if (p_orientation == orientation::from_image)
+			p_orientation = static_cast<orientation>(get_image_metadata(path).orientation);
+		else if (p_orientation == orientation::none)
+			p_orientation = orientation::identity;
+
+		const int64_t separator = source.find("#");
+		const String variant_key = String::num_int64(static_cast<int>(p_orientation)) + ":" + path;
+		const auto load_oriented = [&]() {
+			if (p_orientation == orientation::identity) return load_texture_file(path);
+			if (const auto* cached = images.getptr(variant_key)) return *cached;
+			const auto texture = orient_texture(load_texture_file(path), p_orientation);
+			images.insert(variant_key, texture);
 			return texture;
-		}
-		ResourceLoader* loader = ResourceLoader::get_singleton();
-		if (loader->exists(path, "Texture2D")) {
-			texture = loader->load(path, "Texture2D");
-		}
-		images.insert(path, texture);
+		};
+		if (separator < 0) return load_oriented();
+
+		const String fragment = decode_html_fragment(source.substr(separator + 1));
+		// Include the path length so fragments cannot alias file names containing an escaped hash.
+		const String key = String::num_int64(path.length()) + "/" + variant_key + "#" + fragment;
+		if (const auto* cached = images.getptr(key)) return *cached;
+		Ref<Texture2D> texture;
+		if (const auto selection = parse_image_fragment(fragment)) texture = crop_texture(load_oriented(), *selection);
+		images.insert(key, texture);
 		return texture;
+	}
+
+	Ref<Texture2D> HTMLResources::load_texture_file(const String& p_path) {
+		if (const auto* cached = images.getptr(p_path)) return *cached;
+		Ref<Texture2D> texture = textures.get(p_path, Variant());
+		if (texture.is_null()) {
+			ResourceLoader* loader = ResourceLoader::get_singleton();
+			if (loader->exists(p_path, "Texture2D")) texture = loader->load(p_path, "Texture2D");
+		}
+		images.insert(p_path, texture);
+		return texture;
+	}
+
+	Ref<FontFile> HTMLResources::load_font(const char* p_src, const char* p_css_base) {
+		const String source = String::utf8(p_src);
+		const String path = resolve_html_font_path(source, get_url_dir(p_css_base));
+		if (path.is_empty()) return {};
+		const int64_t separator = source.find("#");
+		if (separator < 0) return load_font_file(path);
+		const String name = decode_html_fragment(source.substr(separator + 1));
+		if (name.is_empty() || name.length() > 63) return {};
+		constexpr std::u32string_view excluded = U"[](){}<>/%";
+		for (int64_t index = 0; index < name.length(); ++index) {
+			const char32_t character = name[index];
+			if (character < 33 || character > 126 || excluded.find(character) != std::u32string_view::npos) return {};
+		}
+		const String key = path + String("#") + name;
+		if (const auto* cached = fonts.getptr(key)) return *cached;
+		const Ref<FontFile> base = load_font_file(path);
+		Ref<FontFile> selected;
+		if (base.is_valid()) {
+			const auto server = TextServerManager::get_singleton()->get_primary_interface();
+			const auto data = base->get_data();
+			const auto count = base->get_face_count();
+			for (int64_t index = 0; index < count; ++index) {
+				// Read names from a fresh face, so the text server never reuses metadata from another index.
+				const RID probe = server->create_font();
+				server->font_set_data(probe, data);
+				server->font_set_face_index(probe, index);
+				const Dictionary names = server->font_get_ot_name_strings(probe);
+				server->free_rid(probe);
+				bool matches = false;
+				for (const Variant& language : names.keys()) {
+					const Dictionary localized = names[language];
+					const String postscript_name = localized.get("postscript_name", String());
+					if (name == postscript_name) {
+						matches = true;
+						break;
+					}
+				}
+				if (matches) {
+					selected = base->duplicate();
+					selected->set_face_index(0, index);
+					break;
+				}
+			}
+		}
+		fonts.insert(key, selected);
+		return selected;
+	}
+
+	Ref<FontFile> HTMLResources::load_font_file(const String& p_path) {
+		if (const auto* cached = fonts.getptr(p_path)) return *cached;
+		Ref<FontFile> font = local_fonts.get(p_path, Variant());
+		ResourceLoader* loader = ResourceLoader::get_singleton();
+		if (font.is_null() && loader->exists(p_path, "FontFile")) {
+			font = loader->load(p_path, "FontFile");
+		}
+		if (font.is_valid() && !font->get_data().is_empty() && font->get_face_count() > 0) {
+			// Let shaping try the CSS font stack before using implicit system fallbacks.
+			font = font->duplicate();
+			font->set_allow_system_fallback(false);
+			font->set_fallbacks(TypedArray<Font>());
+		}
+		else {
+			font.unref();
+		}
+		fonts.insert(p_path, font);
+		return font;
 	}
 } // namespace docrender

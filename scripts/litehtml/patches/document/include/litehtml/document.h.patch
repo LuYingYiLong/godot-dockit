@@ -1,15 +1,16 @@
 diff --git a/include/litehtml/document.h b/include/litehtml/document.h
 --- a/include/litehtml/document.h
 +++ b/include/litehtml/document.h
-@@ -46,6 +46,7 @@
+@@ -46,6 +46,8 @@
  
  	class document : public std::enable_shared_from_this<document>
  	{
 +		friend struct docrender_editor;
++		friend class render_item;
  	public:
  		typedef std::shared_ptr<document>	ptr;
  		typedef std::weak_ptr<document>		weak_ptr;
-@@ -58,7 +59,6 @@
+@@ -58,7 +60,6 @@
  		litehtml::css						m_styles;
  		litehtml::web_color					m_def_color;
  		litehtml::css						m_master_css;
@@ -17,3 +18,49 @@ diff --git a/include/litehtml/document.h b/include/litehtml/document.h
  		litehtml::size						m_size;
  		position::vector					m_fixed_boxes;
  		std::shared_ptr<element>			m_over_element;
+@@ -70,18 +71,34 @@
+ 		string								m_culture;
+ 		string								m_text;
+ 		document_mode						m_mode = no_quirks_mode;
++		size_t								m_quote_depth = 0;
++		uint64_t m_layout_generation = 0;
+ 	public:
+ 		document(document_container* objContainer);
+ 		virtual ~document();
+ 
+ 		document_container*				container()	{ return m_container; }
+ 		document_mode					mode() const { return m_mode; }
++		void reset_quote_depth() { m_quote_depth = 0; }
++		size_t open_quote() { return m_quote_depth++; }
++		std::optional<size_t> close_quote()
++		{
++			if (m_quote_depth == 0) return std::nullopt;
++			return --m_quote_depth;
++		}
++		const css_counter_style* find_counter_style(const string& name) const
++		{
++			if (const auto* style = m_styles.find_counter_style(name)) return style;
++			return m_master_css.find_counter_style(name);
++		}
++		bool							has_author_layers() const { return m_styles.has_layers(); }
+ 		uint_ptr						get_font(const font_description& descr, font_metrics* fm);
++		font_metrics					initial_font_metrics();
+ 		pixel_t							render(pixel_t max_width, render_type rt = render_all);
+ 		void							draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip);
+ 		web_color						get_def_color()	{ return m_def_color; }
+ 		void 							cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const;
+-		pixel_t							to_pixels(const css_length& val, const font_metrics& metrics, pixel_t size) const;
++		pixel_t							to_pixels(const css_length& val, const font_metrics& metrics, pixel_t size, css_length_context context = {}) const;
+ 		pixel_t							width() const;
+ 		pixel_t							height() const;
+ 		pixel_t							content_width() const;
+@@ -120,6 +137,9 @@
+ 
+ 		GumboOutput* parse_html(estring str);
+ 		void create_node(void* gnode, elements_list& elements, bool parseTextNode, bool process_root);
++		void append_document_stylesheets();
++		void apply_document_author_styles();
++		void apply_author_styles(element& root);
+ 		bool update_media_lists(const media_features& features);
+ 		void fix_tables_layout();
+ 		void fix_table_children(const std::shared_ptr<render_item>& el_ptr, style_display disp, const char* disp_str);

@@ -9,12 +9,14 @@
 
 namespace litehtml {
 
-enum class grid_breadth_kind { automatic, length, fraction };
+enum class grid_breadth_kind { automatic, length, fraction, min_content, max_content, fit_content };
 
 struct grid_breadth {
 	grid_breadth_kind kind = grid_breadth_kind::automatic;
 	css_length length;
 	double fraction = 0;
+
+	bool has_length() const { return kind == grid_breadth_kind::length || kind == grid_breadth_kind::fit_content; }
 };
 
 struct grid_track {
@@ -73,6 +75,7 @@ struct grid_track_gutters {
 struct grid_track_contribution {
 	grid_track_range range;
 	pixel_t minimum = 0;
+	pixel_t min_content = 0;
 	pixel_t preferred = 0;
 };
 

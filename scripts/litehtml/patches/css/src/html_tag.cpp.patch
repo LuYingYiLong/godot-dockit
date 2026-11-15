@@ -1,21 +1,31 @@
 diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 --- a/src/html_tag.cpp
 +++ b/src/html_tag.cpp
-@@ -1,6 +1,7 @@
+@@ -1,20 +1,39 @@
  #include <algorithm>
++#include <cstdint>
  
  #include "html.h"
 +#include "formats/html/css/css_relational_selector.h"
  #include "html_tag.h"
  #include "document.h"
  #include "html_microsyntaxes.h"
-@@ -16,6 +17,16 @@
+ #include "iterators.h"
+ #include "stylesheet.h"
+ #include "table.h"
+-#include "num_cvt.h"
+ #include "line_box.h"
+ #include "render_item.h"
+ #include "internal.h"
+ #include "document_container.h"
++#include "el_before_after.h"
+ 
  namespace litehtml
  {
- 
++
 +static bool is_generated_content(const element& el)
 +{
-+	return is_one_of(el.tag(), __tag_before_, __tag_after_);
++	return is_generated_tag(el.tag());
 +}
 +
 +static bool is_selector_tree_element(const element& el)
@@ -23,27 +33,53 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 +	return el.tag() != empty_id && !is_generated_content(el);
 +}
 +
++static bool matches_sibling_index(int index, int a, int b)
++{
++	const auto delta = static_cast<int64_t>(index) - b;
++	if (delta == 0) return true;
++	return a != 0 && (delta > 0) == (a > 0) && delta % a == 0;
++}
+ 
  litehtml::html_tag::html_tag(const std::shared_ptr<document>& doc) : element(doc)
  {
- 	m_tag = empty_id;
-@@ -206,41 +217,16 @@
+@@ -205,62 +224,39 @@
+ 
  			if(sel->is_media_valid())
  			{
- 				auto apply_before_after = [&]()
--					{
+-				auto apply_before_after = [&]()
++				auto apply_generated = [&]()
++				{
++					element::ptr el;
++					if (apply & select_match_with_marker)
++						el = get_element_marker(true);
++					else if (apply & select_match_with_after)
++						el = get_element_after(*sel->m_style, true);
++					else if (apply & select_match_with_before)
++						el = get_element_before(*sel->m_style, true);
++
++					if (el) static_cast<html_tag&>(*el).m_style.combine(*sel->m_style, sel->m_layer);
++					us->m_used = true;
++				};
++
++				if(apply & select_match_pseudo_class)
++				{
++					if(select(*sel, true))
+ 					{
 -						const auto& content_property = sel->m_style->get_property(_content_);
 -						bool content_none = content_property.is<string>() && content_property.get<string>() == "none";
 -						bool create = !content_none && (sel->m_right.m_attrs.size() > 1 || sel->m_right.m_tag != star_id);
 -
 -						element::ptr el;
 -						if(apply & select_match_with_after)
--						{
++						if((apply & select_match_with_generated))
+ 						{
 -							el = get_element_after(*sel->m_style, create);
 -						} else if(apply & select_match_with_before)
 -						{
 -							el = get_element_before(*sel->m_style, create);
--						} else
--						{
++							apply_generated();
+ 						} else
+ 						{
 -							return;
 -						}
 -						if(el)
@@ -65,20 +101,35 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 -						us->m_used = true;
 -					};
 -
+-
+-				if(apply & select_match_pseudo_class)
+-				{
+-					if(select(*sel, true))
+-					{
+-						if((apply & (select_match_with_after | select_match_with_before)))
+-						{
+-							apply_before_after();
+-						} else
+-						{
+-							add_style(*sel->m_style);
++							m_style.combine(*sel->m_style, sel->m_layer);
+ 							us->m_used = true;
+ 						}
+ 					}
+-				} else if((apply & (select_match_with_after | select_match_with_before)))
+-				{
+-					apply_before_after();
++				} else if((apply & select_match_with_generated))
 +				{
-+					element::ptr el;
-+					if (apply & select_match_with_after)
-+						el = get_element_after(*sel->m_style, true);
-+					else if (apply & select_match_with_before)
-+						el = get_element_before(*sel->m_style, true);
-+
-+					if (el) el->add_style(*sel->m_style);
-+					us->m_used = true;
-+				};
- 
- 				if(apply & select_match_pseudo_class)
++					apply_generated();
+ 				} else
  				{
-@@ -270,7 +256,7 @@
+-					add_style(*sel->m_style);
++					m_style.combine(*sel->m_style, sel->m_layer);
+ 					us->m_used = true;
+ 				}
+ 			}
+@@ -270,7 +266,7 @@
  
  	for(auto& el : m_children)
  	{
@@ -87,7 +138,36 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			el->apply_stylesheet(stylesheet);
  		}
-@@ -325,16 +311,16 @@
+@@ -296,69 +292,49 @@
+ 	pos.y	+= y;
+ 
+ 	draw_background(hdc, x, y, clip, ri);
+-
+-	if(m_css.get_display() == display_list_item &&
+-		(m_css.get_list_style_type() != list_style_type_none || m_css.get_list_style_image() != ""))
+-	{
+-		if(m_css.get_overflow() > overflow_visible)
+-		{
+-			position border_box = pos;
+-			border_box += ri->get_paddings();
+-			border_box += ri->get_borders();
+-
+-			border_radiuses bdr_radius = m_css.get_borders().radius.calc_percents(border_box.width, border_box.height);
+-
+-			bdr_radius -= ri->get_borders();
+-			bdr_radius -= ri->get_paddings();
+-
+-			get_document()->container()->set_clip(pos, bdr_radius);
+-		}
+-
+-		draw_list_marker(hdc, pos, ri);
+-
+-		if(m_css.get_overflow() > overflow_visible)
+-		{
+-			get_document()->container()->del_clip();
+-		}
+-	}
+ }
  
  bool html_tag::get_custom_property(string_id name, css_token_vector& result) const
  {
@@ -114,17 +194,25 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  	}
  	return false;
  }
-@@ -346,10 +332,19 @@
  
- 	if (style)
- 	{
--		m_style.add(style, "", doc->container());
-+		m_style.add(style, "", doc->container(), this);
- 	}
- 
- 	m_style.subst_vars(this);
-+	handle_counter_properties();
++void html_tag::apply_inline_style()
++{
++	if (const char* style = get_attr("style"))
++		m_style.add(style, "", get_document()->container(), this);
++}
 +
+ void litehtml::html_tag::compute_styles(bool recursive)
+ {
+-	const char* style = get_attr("style");
+ 	document::ptr doc = get_document();
+-
+-	if (style)
+-	{
+-		m_style.add(style, "", doc->container());
+-	}
+-
+ 	m_style.subst_vars(this);
+ 
 +	if (const auto* diagnostics = m_style.get_diagnostics())
 +	{
 +		for (const auto& diagnostic : *diagnostics)
@@ -132,10 +220,21 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 +	}
 +	for (const auto& diagnostic : m_style.get_computed_diagnostics())
 +		doc->container()->report_css_diagnostic(diagnostic, this);
- 
++
  	m_css.compute(this, doc);
++	if (!is_generated_content(*this)) handle_counter_properties();
  
-@@ -498,17 +493,9 @@
+ 	if (recursive)
+ 	{
+-		for (const auto& el : m_children)
+-		{
+-			el->compute_styles();
+-		}
++		compute_child_styles();
+ 	}
+ }
+ 
+@@ -498,18 +474,13 @@
  		case select_pseudo_element:
  			if(attr.name == _after_)
  			{
@@ -151,13 +250,34 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 -					return select_no_match;
 -				}
  				res |= select_match_with_before;
++			} else if(attr.name == _id("marker"))
++			{
++				res |= select_match_with_marker;
  			} else
  			{
-@@ -540,6 +527,20 @@
- int html_tag::select_pseudoclass(const css_attribute_selector& sel)
+ 				return select_no_match;
+@@ -541,40 +512,72 @@
  {
  	element::ptr el_parent = parent();
-+
+ 
++	if (sel.name == _id("scope"))
++		return matches_selector_scope(*this) ? select_match : select_no_match;
++	if (sel.name == _id("any-link") || sel.name == _link_)
++		return is_one_of(m_tag, _a_, _id("area")) && get_attr("href") ? select_match : select_no_match;
++	if (sel.name == _id("focus-within"))
++	{
++		std::vector<const element*> pending{ this };
++		while (!pending.empty())
++		{
++			const auto* node = pending.back();
++			pending.pop_back();
++			if (const auto* tag = dynamic_cast<const html_tag*>(node); tag && _id("focus") in tag->m_pseudo_classes)
++				return select_match;
++			for (const auto& child : node->children())
++				if (is_selector_tree_element(*child)) pending.push_back(child.get());
++		}
++		return select_no_match;
++	}
 +	if (sel.name == _id("has"))
 +		return matches_relative_selector(*this, sel.selector_list) ? select_match : select_no_match;
 +	if (sel.name == _id("where"))
@@ -171,18 +291,93 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 +		}
 +		return select_match;
 +	}
- 
++
  	switch (sel.name)
  	{
-@@ -860,6 +861,25 @@
+ 	case _only_child_:
+-		if (!el_parent || !el_parent->is_only_child(shared_from_this(), false))
++		if (el_parent && !el_parent->is_only_child(shared_from_this(), false))
+ 		{
+ 			return select_no_match;
+ 		}
+ 		break;
+ 	case _only_of_type_:
+-		if (!el_parent || !el_parent->is_only_child(shared_from_this(), true))
++		if (el_parent && !el_parent->is_only_child(shared_from_this(), true))
+ 		{
+ 			return select_no_match;
+ 		}
+ 		break;
+ 	case _first_child_:
+-		if (!el_parent || !el_parent->is_nth_child(shared_from_this(), 0, 1, false))
++		if (el_parent && !el_parent->is_nth_child(shared_from_this(), 0, 1, false))
+ 		{
+ 			return select_no_match;
+ 		}
+ 		break;
+ 	case _first_of_type_:
+-		if (!el_parent || !el_parent->is_nth_child(shared_from_this(), 0, 1, true))
++		if (el_parent && !el_parent->is_nth_child(shared_from_this(), 0, 1, true))
+ 		{
+ 			return select_no_match;
+ 		}
+ 		break;
+ 	case _last_child_:
+-		if (!el_parent || !el_parent->is_nth_last_child(shared_from_this(), 0, 1, false))
++		if (el_parent && !el_parent->is_nth_last_child(shared_from_this(), 0, 1, false))
+ 		{
+ 			return select_no_match;
+ 		}
+ 		break;
+ 	case _last_of_type_:
+-		if (!el_parent || !el_parent->is_nth_last_child(shared_from_this(), 0, 1, true))
++		if (el_parent && !el_parent->is_nth_last_child(shared_from_this(), 0, 1, true))
+ 		{
+ 			return select_no_match;
+ 		}
+@@ -584,11 +587,13 @@
+ 	case _nth_last_child_:
+ 	case _nth_last_of_type_:
+ 	{
+-		if (!el_parent) return select_no_match;
+-
+ 		int num = sel.a;
+ 		int off = sel.b;
+-		if (!num && !off) return select_no_match;
++		if (!el_parent)
++		{
++			return matches_sibling_index(1, num, off) && (sel.selector_list.empty() || select(sel.selector_list, true)) ?
++				select_match : select_no_match;
++		}
+ 
+ 		switch (sel.name)
+ 		{
+@@ -635,7 +640,7 @@
+ 		}
+ 		break;
+ 	case _lang_:
+-		if (!get_document()->match_lang(sel.value))
++		if (!matches_element_language(*this, sel.language_ranges))
+ 		{
+ 			return select_no_match;
+ 		}
+@@ -860,6 +865,33 @@
  void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip,
  										 const std::shared_ptr<render_item> &ri)
  {
 +
-+	const auto paint_borders = [&](borders decoration, const position& box, bool root) {
++	const bool has_border_image = !m_css.get_border_image().source.value.is_empty();
++	const auto paint_borders = [&](borders decoration, const position& box, bool root, const position* image_box, bool first, bool last) {
 +		const bool collapsed = m_css.get_border_collapse() == border_collapse_collapse &&
 +			is_one_of(m_css.get_display(), display_table, display_inline_table, display_table_cell, display_table_row,
 +				display_table_row_group, display_table_header_group, display_table_footer_group);
++		if (has_border_image && !collapsed)
++		{
++			const auto& image_border = image_box ? m_css.get_borders() : decoration;
++			if (get_document()->container()->draw_border_image(*this, image_border, image_box ? *image_box : box,
++				image_box ? &box : nullptr, first, last)) return;
++		}
++		if (!decoration.is_visible()) return;
 +		for (auto* side : { &decoration.left, &decoration.right, &decoration.top, &decoration.bottom })
 +		{
 +			side->color = side->color.to_srgb(m_css.get_color());
@@ -200,33 +395,59 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  	if(m_css.get_display() != display_inline && m_css.get_display() != display_table_row)
  	{
  		position pos = ri->pos();
-@@ -870,6 +890,10 @@
+@@ -870,7 +902,11 @@
  		border_box += ri->get_paddings();
  		border_box += ri->get_borders();
  
+-		if(border_box.does_intersect(clip) || is_root())
 +
 +		borders shadow_box = m_css.get_borders();
 +		shadow_box.radius = m_css.get_borders().radius.calc_percents(border_box.width, border_box.height);
 +		paint_shadows(border_box, shadow_box, false);
- 		if(border_box.does_intersect(clip) || is_root())
++		if(has_border_image || border_box.does_intersect(clip) || is_root())
  		{
  			auto v_offset = ri->get_draw_vertical_offset();
-@@ -900,12 +924,13 @@
+ 			pos.y += v_offset;
+@@ -900,12 +936,13 @@
  				}
  			}
  
 +			paint_shadows(border_box, shadow_box, true);
  			borders bdr = m_css.get_borders();
- 			if(bdr.is_visible())
+-			if(bdr.is_visible())
++			if(has_border_image || bdr.is_visible())
  			{
  				border_box.round();
  				bdr.radius = m_css.get_borders().radius.calc_percents(border_box.width, border_box.height);
 -				get_document()->container()->draw_borders(hdc, bdr, border_box, is_root());
-+				paint_borders(bdr, border_box, is_root());
++				paint_borders(bdr, border_box, is_root(), nullptr, true, true);
  			}
  		}
  	} else
-@@ -960,6 +985,10 @@
+@@ -915,14 +952,21 @@
+ 		position::vector boxes;
+ 		ri->get_inline_boxes(boxes);
+ 
++		// Slice a single horizontal decoration across an inline's line fragments.
++		const bool split_image = has_border_image && m_css.get_display() == display_inline && boxes.size() > 1;
++		pixel_t image_width = 0;
++		if (split_image)
++			for (const auto& fragment : boxes) image_width += fragment.width;
++		pixel_t image_offset = 0;
+ 		position content_box;
+ 
+ 		for(auto box = boxes.begin(); box != boxes.end(); box++)
+ 		{
++			const auto fragment_width = box->width;
+ 			box->x	+= x;
+ 			box->y	+= y;
+ 
+-			if(box->does_intersect(clip))
++			if(has_border_image || box->does_intersect(clip))
+ 			{
+ 				content_box = *box;
+ 				content_box -= ri->get_borders();
+@@ -960,6 +1004,10 @@
  					bdr.right	= m_css.get_borders().right;
  				}
  
@@ -237,31 +458,180 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  				if(bg)
  				{
  					int num_layers = bg->get_layers_number();
-@@ -978,12 +1007,13 @@
+@@ -978,14 +1026,20 @@
  						bg->draw_layer(hdc, i, layer, get_document()->container());
  					}
  				}
+-				if(bdr.is_visible())
 +				paint_shadows(*box, shadow_box, true);
- 				if(bdr.is_visible())
++				if(has_border_image || bdr.is_visible())
  				{
  					borders b = bdr;
  					b.radius = bdr.radius.calc_percents(box->width, box->height);
  					box->round();
 -					get_document()->container()->draw_borders(hdc, b, *box, false);
-+					paint_borders(b, *box, false);
++					position image_box = *box;
++					image_box.x -= image_offset;
++					image_box.width = image_width;
++					paint_borders(b, *box, false, split_image ? &image_box : nullptr,
++						box == boxes.begin(), box == boxes.end() - 1);
  				}
  			}
- 		}
-@@ -1153,7 +1183,7 @@
- 				text_pos.move_to(text_pos.right() - tw, text_pos.y);
- 				text_pos.width = tw;
- 				text_pos.round();
--				get_document()->container()->draw_text(hdc, marker_text.c_str(), lm.font, lm.color, text_pos);
-+				get_document()->container()->draw_styled_text(hdc, marker_text.c_str(), lm.font, lm.color, text_pos, *this);
- 			}
++			image_offset += fragment_width;
  		}
  	}
-@@ -1213,7 +1243,7 @@
+ }
+@@ -1063,176 +1117,17 @@
+ 	return false;
+ }
+ 
+-void litehtml::html_tag::draw_list_marker( uint_ptr hdc, const position& pos, const std::shared_ptr<render_item> &ri )
+-{
+-	list_marker lm;
+-
+-	size img_size;
+-	if (css().get_list_style_image() != "")
+-	{
+-		lm.image   = css().get_list_style_image();
+-		lm.baseurl = css().get_list_style_image_baseurl().c_str();
+-		get_document()->container()->get_image_size(lm.image.c_str(), lm.baseurl, img_size);
+-	} else
+-	{
+-		lm.baseurl = nullptr;
+-	}
+-
+-	pixel_t ln_height	= css().line_height().computed_value;
+-	pixel_t sz_font		= css().get_font_size();
+-	lm.pos.x		= pos.x;
+-	lm.pos.width    = sz_font / 3;
+-	lm.color        = css().get_color();
+-	lm.marker_type  = css().get_list_style_type();
+-	lm.font         = css().get_font();
+-
+-	if (css().get_list_style_type() >= list_style_type_armenian)
+-	{
+-		auto li_baseline = pos.y + ri->get_first_baseline() - ri->content_offset_top();
+-		lm.pos.y = li_baseline - css().get_font_metrics().ascent;
+-		lm.pos.height = css().get_font_metrics().height;
+-
+-		lm.index = atoi(get_attr("list_index", "0"));
+-	}
+-	else
+-	{
+-		lm.pos.height = sz_font / 3;
+-		lm.pos.y = pos.y + ln_height / 2 - lm.pos.height / 2;
+-		lm.index = -1;
+-	}
+-
+-	if(img_size.width != 0 && img_size.height != 0)
+-	{
+-		if(lm.pos.y + img_size.height > pos.y + pos.height)
+-		{
+-			lm.pos.y = pos.y + pos.height - img_size.height;
+-		}
+-		if(img_size.width > lm.pos.width)
+-		{
+-			lm.pos.x -= img_size.width - lm.pos.width;
+-		}
+-
+-		lm.pos.width	= img_size.width;
+-		lm.pos.height	= img_size.height;
+-	}
+-
+-	if (m_css.get_list_style_position() == list_style_position_outside)
+-	{
+-		if (m_css.get_list_style_type() >= list_style_type_armenian)
+-		{
+-			if(lm.font)
+-			{
+-				auto tw_space = get_document()->container()->text_width(" ", lm.font);
+-				lm.pos.x = pos.x - tw_space * 2;
+-				lm.pos.width = tw_space;
+-			} else
+-			{
+-				lm.pos.width = 0;
+-			}
+-		}
+-		else
+-		{
+-			lm.pos.x -= sz_font;
+-		}
+-	}
+-
+-	if (m_css.get_list_style_type() >= list_style_type_armenian)
+-	{
+-		auto marker_text = get_list_marker_text(lm.index);
+-		if (marker_text.empty())
+-		{
+-			get_document()->container()->draw_list_marker(hdc, lm);
+-		}
+-		else
+-		{
+-			if(lm.font)
+-			{
+-				marker_text += ".";
+-				auto tw = get_document()->container()->text_width(marker_text.c_str(), lm.font);
+-				auto text_pos = lm.pos;
+-				text_pos.move_to(text_pos.right() - tw, text_pos.y);
+-				text_pos.width = tw;
+-				text_pos.round();
+-				get_document()->container()->draw_text(hdc, marker_text.c_str(), lm.font, lm.color, text_pos);
+-			}
+-		}
+-	}
+-	else
+-	{
+-		get_document()->container()->draw_list_marker(hdc, lm);
+-	}
+-}
+-
+-litehtml::string litehtml::html_tag::get_list_marker_text(int index)
+-{
+-	switch (m_css.get_list_style_type())
+-	{
+-	case litehtml::list_style_type_decimal:
+-		return std::to_string(index);
+-	case litehtml::list_style_type_decimal_leading_zero:
+-		{
+-			auto txt = std::to_string(index);
+-			if (txt.length() == 1)
+-			{
+-				txt = "0" + txt;
+-			}
+-			return txt;
+-		}
+-	case litehtml::list_style_type_lower_latin:
+-	case litehtml::list_style_type_lower_alpha:
+-		return num_cvt::to_latin_lower(index);
+-	case litehtml::list_style_type_lower_greek:
+-		return num_cvt::to_greek_lower(index);
+-	case litehtml::list_style_type_upper_alpha:
+-	case litehtml::list_style_type_upper_latin:
+-		return num_cvt::to_latin_upper(index);
+-	case litehtml::list_style_type_lower_roman:
+-		return num_cvt::to_roman_lower(index);
+-	case litehtml::list_style_type_upper_roman:
+-		return num_cvt::to_roman_upper(index);
+-	default:
+-		return "";
+-//	case litehtml::list_style_type_armenian:
+-//	case litehtml::list_style_type_georgian:
+-//	case litehtml::list_style_type_hebrew:
+-//	case litehtml::list_style_type_hiragana:
+-//	case litehtml::list_style_type_hiragana_iroha:
+-//	case litehtml::list_style_type_katakana:
+-//	case litehtml::list_style_type_katakana_iroha:
+-//  case litehtml::list_style_type_none:
+-//  case litehtml::list_style_type_circle:
+-//  case litehtml::list_style_type_disc:
+-//  case litehtml::list_style_type_square:
+-//  case litehtml::list_style_type_cjk_ideographic:
+-//      break;
+-	}
+-}
+-
+ bool html_tag::is_nth_child(const element::ptr& el, int num, int off, bool of_type, const css_selector::vector& selector_list) const
+ {
  	int idx = 1;
  	for(const auto& child : m_children)
  	{
@@ -270,7 +640,27 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			if( (!of_type && selector_list.empty()) ||
  				(of_type && child->tag() == el->tag()) || child->select(selector_list) )
-@@ -1246,7 +1276,7 @@
+ 			{
+-				if(el == child)
+-				{
+-					if(num != 0)
+-					{
+-						if((idx - off) * num >= 0 && (idx - off) % num == 0)
+-						{
+-							return true;
+-						}
+-
+-					} else if(idx == off)
+-					{
+-						return true;
+-					}
+-					return false;
+-				}
++				if (el == child) return matches_sibling_index(idx, num, off);
+ 				idx++;
+ 			}
+ 			if(el == child) break;
+@@ -1246,26 +1141,12 @@
  	int idx = 1;
  	for(auto child = m_children.rbegin(); child != m_children.rend(); child++)
  	{
@@ -279,7 +669,27 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			if( (!of_type && selector_list.empty()) ||
  				(of_type && (*child)->tag() == el->tag()) || (*child)->select(selector_list) )
-@@ -1279,7 +1309,7 @@
+ 			{
+-				if(el == (*child))
+-				{
+-					if(num != 0)
+-					{
+-						if((idx - off) * num >= 0 && (idx - off) % num == 0)
+-						{
+-							return true;
+-						}
+-
+-					} else if(idx == off)
+-					{
+-						return true;
+-					}
+-					return false;
+-				}
++				if (el == (*child)) return matches_sibling_index(idx, num, off);
+ 				idx++;
+ 			}
+ 			if(el == (*child)) break;
+@@ -1279,7 +1160,7 @@
  	element::ptr ret;
  	for(auto& e : m_children)
  	{
@@ -288,7 +698,7 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			if(e == el)
  			{
-@@ -1316,7 +1346,7 @@
+@@ -1316,7 +1197,7 @@
  	element::ptr ret = nullptr;
  	for(auto& e : m_children)
  	{
@@ -297,7 +707,7 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			if(e == el)
  			{
-@@ -1349,7 +1379,7 @@
+@@ -1349,7 +1230,7 @@
  	int child_count = 0;
  	for(const auto& child : m_children)
  	{
@@ -306,7 +716,84 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  		{
  			if( !of_type || (of_type && el->tag() == child->tag()) )
  			{
-@@ -1400,30 +1430,34 @@
+@@ -1365,65 +1246,120 @@
+ 	return true;
+ }
+ 
+-litehtml::element::ptr litehtml::html_tag::get_element_before(const style& style, bool create)
++element::ptr html_tag::get_element_marker(bool create)
++{
++	if (!m_children.empty() && m_children.front()->tag() == marker_tag())
++		return m_children.front();
++	if (!create) return nullptr;
++	auto element = std::make_shared<el_marker>(get_document());
++	element->parent(shared_from_this());
++	m_children.push_front(element);
++	return element;
++}
++
++element::ptr html_tag::get_element_before(const style&, bool create)
++{
++	auto where = m_children.begin();
++	if (where != m_children.end() && (*where)->tag() == marker_tag()) ++where;
++	if (where != m_children.end() && (*where)->tag() == __tag_before_) return *where;
++	if (!create) return nullptr;
++	auto element = std::make_shared<el_before>(get_document());
++	element->parent(shared_from_this());
++	m_children.insert(where, element);
++	return element;
++}
++
++litehtml::element::ptr litehtml::html_tag::get_element_after(const style& style, bool create)
+ {
+ 	if(!m_children.empty())
+ 	{
+-		if( m_children.front()->tag() == __tag_before_ )
+-		{
+-			return m_children.front();
++		if( m_children.back()->tag() == __tag_after_ )
++		{
++			return m_children.back();
+ 		}
+ 	}
+ 	if(create)
+ 	{
+-		return add_pseudo_before(style);
++		return add_pseudo_after(style);
+ 	}
+ 	return nullptr;
+ }
+ 
+-litehtml::element::ptr litehtml::html_tag::get_element_after(const style& style, bool create)
+-{
+-	if(!m_children.empty())
+-	{
+-		if( m_children.back()->tag() == __tag_after_ )
+-		{
+-			return m_children.back();
+-		}
+-	}
+-	if(create)
+-	{
+-		return add_pseudo_after(style);
+-	}
+-	return nullptr;
+-}
+-
++
++void litehtml::html_tag::compute_child_styles()
++{
++	if (css().get_display() == display_list_item)
++		get_element_marker(true);
++	const element* preceding = nullptr;
++	for (const auto& child : m_children)
++	{
++		child->inherit_counters(preceding);
++		child->compute_styles();
++		if (child->tag() != empty_id && child->css().get_display() != display_none)
++			preceding = child.get();
++	}
++}
  
  void litehtml::html_tag::handle_counter_properties()
  {
@@ -329,29 +816,59 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
 -	}
 -}
 -
-+	const auto counter_property = [&](string_id name) -> const property_value& {
-+		for (const html_tag* tag = this; tag; tag = dynamic_cast<const html_tag*>(tag->parent().get()))
++	if (css().get_display() == display_none) return;
++	for (auto ancestor = parent(); ancestor; ancestor = ancestor->parent())
++	{
++		if (ancestor->css().get_display() == display_none) return;
++	}
++	static const auto set = _id("counter-set");
++	static const auto list_item = _id("list-item");
++	static const css_counter_changes empty;
++	const auto declarations = [&](string_id property) -> const css_counter_changes& {
++		for (const auto* current = this; current;)
 +		{
-+			const auto& value = tag->m_style.get_property(name);
-+			if (!value.is<inherit>()) return value;
++			const auto& value = current->m_style.get_property(property);
++			if (value.is<css_counter_changes>()) return value.get<css_counter_changes>();
++			if (!value.is<inherit>()) break;
++			current = dynamic_cast<const html_tag*>(current->parent().get());
 +		}
-+		static const property_value unset;
-+		return unset;
++		return empty;
 +	};
-+	const auto& reset_property = counter_property(_counter_reset_);
-+	if (reset_property.is<string_vector>())
++	const auto& resets = declarations(_counter_reset_);
++	const auto& increments = declarations(_counter_increment_);
++	const auto& sets = declarations(set);
++	const auto mentions_list_item = [&](const css_counter_change& change) { return change.name == list_item; };
++
++	if (is_one_of(tag(), _ol_, _ul_, _id("menu"), _dir_) && !std::any_of(resets.begin(), resets.end(), mentions_list_item))
 +	{
-+		parse_counter_tokens(reset_property.get<string_vector>(), 0, [&](const string_id& name, int value) {
-+			reset_counter(name, value);
-+		});
++		const bool reversed = tag() == _ol_ && get_attr("reversed");
++		int start = 1;
++		const char* start_attribute = tag() == _ol_ ? get_attr("start") : nullptr;
++		if (reversed && (!start_attribute || !html_parse_integer(start_attribute, start)))
++		{
++			start = static_cast<int>(std::count_if(m_children.begin(), m_children.end(), [](const element::ptr& child) {
++				return child->tag() == _li_;
++			}));
++		}
++		else if (start_attribute)
++			html_parse_integer(start_attribute, start);
++		reset_list_counter(list_item, start, reversed);
 +	}
-+	const auto& increment_property = counter_property(_counter_increment_);
-+	if (increment_property.is<string_vector>())
++	for (const auto& change : resets) reset_counter(change.name, change.value);
++	for (const auto& change : increments) increment_counter(change.name, change.value);
++
++	if (css().get_display() == display_list_item)
 +	{
-+		parse_counter_tokens(increment_property.get<string_vector>(), 1, [&](const string_id& name, int value) {
-+			increment_counter(name, value);
-+		});
++		if (!std::any_of(increments.begin(), increments.end(), mentions_list_item))
++			increment_list_counter(list_item);
++		if (!std::any_of(sets.begin(), sets.end(), mentions_list_item))
++		{
++			int value;
++			const char* attribute = tag() == _li_ ? get_attr("value") : nullptr;
++			if (attribute && html_parse_integer(attribute, value)) set_counter(list_item, value);
++		}
 +	}
++	for (const auto& change : sets) set_counter(change.name, change.value);
 +}
  
  void litehtml::html_tag::add_style(const style& style)
@@ -361,3 +878,77 @@ diff --git a/src/html_tag.cpp b/src/html_tag.cpp
  }
  
  void litehtml::html_tag::refresh_styles()
+@@ -1446,55 +1382,24 @@
+ 		{
+ 			int apply = select(*usel->m_selector, false);
+ 
+-			if(apply != select_no_match)
+-			{
+-				if(apply & select_match_pseudo_class)
+-				{
+-					if(select(*usel->m_selector, true))
+-					{
+-						if(apply & select_match_with_after)
+-						{
+-							element::ptr el = get_element_after(*usel->m_selector->m_style, false);
+-							if(el)
+-							{
+-								el->add_style(*usel->m_selector->m_style);
+-							}
+-						} else if(apply & select_match_with_before)
+-						{
+-							element::ptr el = get_element_before(*usel->m_selector->m_style, false);
+-							if(el)
+-							{
+-								el->add_style(*usel->m_selector->m_style);
+-							}
+-						}
+-						else
+-						{
+-							add_style(*usel->m_selector->m_style);
+-							usel->m_used = true;
+-						}
+-					}
+-				} else if(apply & select_match_with_after)
+-				{
+-					element::ptr el = get_element_after(*usel->m_selector->m_style, false);
+-					if(el)
+-					{
+-						el->add_style(*usel->m_selector->m_style);
+-					}
+-				} else if(apply & select_match_with_before)
+-				{
+-					element::ptr el = get_element_before(*usel->m_selector->m_style, false);
+-					if(el)
+-					{
+-						el->add_style(*usel->m_selector->m_style);
+-					}
+-				} else
+-				{
+-					add_style(*usel->m_selector->m_style);
+-					usel->m_used = true;
+-				}
+-			}
+-		}
+-	}
++			if (apply == select_no_match || ((apply & select_match_pseudo_class) && !select(*usel->m_selector, true)))
++				continue;
++			const auto& selector = *usel->m_selector;
++			element::ptr generated;
++			if (apply & select_match_with_marker)
++				generated = get_element_marker(false);
++			else if (apply & select_match_with_after)
++				generated = get_element_after(*selector.m_style, false);
++			else if (apply & select_match_with_before)
++				generated = get_element_before(*selector.m_style, false);
++			if (generated)
++				static_cast<html_tag&>(*generated).m_style.combine(*selector.m_style, selector.m_layer);
++			else if (!(apply & select_match_with_generated))
++				m_style.combine(*selector.m_style, selector.m_layer);
++			usel->m_used = true;
++		}
++	}
++	apply_inline_style();
+ }
+ 
+ const litehtml::background* litehtml::html_tag::get_background(bool own_only)

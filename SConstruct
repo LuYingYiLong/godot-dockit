@@ -8,6 +8,8 @@ pdfium_sdk_option = ARGUMENTS.pop("pdfium_sdk", None)
 env = SConscript("godot-cpp/SConstruct")
 
 env.Append(CPPPATH=["src/"])
+if env["platform"] == "windows":
+    env.AppendUnique(LIBS=["dwrite"])
 if env.get("is_msvc", False):
     env.AppendUnique(CCFLAGS=["/utf-8", "/wd4828"])
 

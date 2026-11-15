@@ -1,17 +1,267 @@
 diff --git a/src/line_box.cpp b/src/line_box.cpp
-index 091a96c..4d95f56 100644
 --- a/src/line_box.cpp
 +++ b/src/line_box.cpp
-@@ -381,7 +381,7 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
+@@ -1,5 +1,7 @@
+ #include "html.h"
+ #include "line_box.h"
++#include "formats/html/layout/html_line_break.h"
++#include "formats/html/layout/html_text_autospace.h"
+ #include "element.h"
+ #include "render_item.h"
+ #include "types.h"
+@@ -15,6 +17,13 @@
+ 	m_element->pos().y = y + m_element->content_offset_top();
+ }
+ 
++void litehtml::line_box_item::set_punctuation_reduction(punctuation_trim trim, pixel_t reduction)
++{
++	if (m_punctuation_reduction != reduction) pos().width += m_punctuation_reduction - reduction;
++	m_punctuation_reduction = reduction;
++	m_element->set_punctuation_trim(reduction > 0 ? trim : punctuation_trim::none);
++}
++
+ litehtml::position& litehtml::line_box_item::pos()
+ {
+ 	return m_element->pos();
+@@ -160,6 +169,33 @@
+ }
+ 
+ //////////////////////////////////////////////////////////////////////////////////////////
++
++litehtml::pixel_t litehtml::line_box::spacing_before(const line_box_item& item, pixel_t* autospace) const
++{
++	if (autospace) *autospace = 0;
++	const auto& next = item.get_el();
++	if (item.get_type() != line_box_item::type_text_part || next->width() <= 0 || next->src_el()->is_break() ||
++		next->src_el()->is_preserved_tab() || !next->src_el()->is_inline()) return 0;
++	bool has_edge = false;
++	for (auto it = m_items.rbegin(); it != m_items.rend(); ++it)
++	{
++		const auto& previous = (*it)->get_el();
++		const auto type = (*it)->get_type();
++		if (type != line_box_item::type_text_part)
++		{
++			if (type != line_box_item::type_inline_continue)
++				has_edge |= separates_autospace(*previous, type == line_box_item::type_inline_start, m_right - m_left);
++			continue;
++		}
++		if (previous->skip()) continue;
++		if (previous->src_el()->is_break() || previous->src_el()->is_preserved_tab() || !previous->src_el()->is_inline()) break;
++		if (previous->width() <= 0) continue;
++		const auto gap = has_edge ? 0 : text_autospace_gap(*previous->src_el(), *next->src_el());
++		if (autospace) *autospace = gap;
++		return fragment_spacing(*previous, previous->width(), *next, next->width()) + gap;
++	}
++	return 0;
++}
+ 
+ void litehtml::line_box::add_item(std::unique_ptr<line_box_item> item)
+ {
+@@ -181,10 +217,20 @@
+ 	}
+ 	if(add)
+ 	{
+-		item->place_to(m_left + m_width, m_top);
+-		m_width += item->width();
++		const auto punctuation = punctuation_before(*item);
++		if (item->get_type() == line_box_item::type_text_part)
++			item->set_punctuation_reduction(punctuation.next_trim, punctuation.next_reduction);
++		if (punctuation.previous)
++			apply_punctuation_trim(*punctuation.previous, punctuation_trim::right, punctuation.previous_reduction);
++		measure_tab(*item);
++		pixel_t autospace = 0;
++		const auto spacing = spacing_before(*item, &autospace);
++		item->set_spacing_before(spacing, autospace);
++		item->place_to(m_left + m_width + item->spacing_before(), m_top);
++		m_width += item->occupied_width();
+ 		m_height = std::max(m_height, item->get_el()->height());
+ 		m_items.emplace_back(std::move(item));
++		remember_wrap_point(std::prev(m_items.end()));
+ 	} else
+ 	{
+ 		item->get_el()->skip(true);
+@@ -218,14 +264,12 @@
+ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish(bool last_box, const containing_block_context &containing_block_size)
+ {
+ 	std::list< std::unique_ptr<line_box_item> > ret_items;
+-	bool									  finished_with_break = false;
++	if (m_finished) return ret_items;
++	m_ended_with_break = ends_with_forced_break();
++	m_finished = true;
+ 
+ 	if(!last_box)
+ 	{
+-		if(!is_empty())
+-		{
+-			finished_with_break = m_items.back()->get_el()->src_el()->is_break();
+-		}
+ 		while(!m_items.empty())
+ 		{
+ 			if (m_items.back()->get_type() == line_box_item::type_text_part)
+@@ -234,7 +278,7 @@
+ 				if (m_items.back()->get_el()->src_el()->is_break() ||
+ 					m_items.back()->get_el()->src_el()->is_white_space())
+ 				{
+-					m_width -= m_items.back()->width();
++					m_width -= m_items.back()->occupied_width();
+ 					m_items.back()->get_el()->skip(true);
+ 					m_items.pop_back();
+ 				} else
+@@ -246,25 +290,26 @@
+ 				// remove trailing empty inline_start markers
+ 				// these markers will be added at the beginning of the next line box
+ 				m_width -= m_items.back()->width();
+-				ret_items.emplace_back(std::move(m_items.back()));
++				ret_items.emplace_front(std::move(m_items.back()));
+ 				m_items.pop_back();
+ 			} else
+ 			{
+ 				break;
+ 			}
+ 		}
+-	} else
+-	{
+-		// remove trailing spaces
++	}
++	{
++		// Remove trailing spaces even when an inline end marker follows them.
+ 		auto iter = m_items.rbegin();
+ 		while(iter != m_items.rend())
+ 		{
+ 			if ((*iter)->get_type() == line_box_item::type_text_part)
+ 			{
+-				if((*iter)->get_el()->src_el()->is_white_space())
++				if ((*iter)->get_el()->src_el()->is_white_space() ||
++					(!last_box && (*iter)->get_el()->src_el()->is_break()))
+ 				{
+ 					(*iter)->get_el()->skip(true);
+-					m_width -= (*iter)->width();
++					m_width -= (*iter)->occupied_width();
+ 					// Space can be between text and inline_end marker
+ 					// We have to shift all items on the right side
+ 					if(iter != m_items.rbegin())
+@@ -273,7 +318,7 @@
+ 						r_iter--;
+ 						while (true)
+ 						{
+-							(*r_iter)->pos().x -= (*iter)->width();
++							(*r_iter)->pos().x -= (*iter)->occupied_width();
+ 							if (r_iter == m_items.rbegin())
+ 							{
+ 								break;
+@@ -301,39 +346,38 @@
+         return ret_items;
+     }
+ 
+-    pixel_t spacing_x = 0;	// Number of pixels to distribute between elements
+-    pixel_t shift_x = 0;	// Shift elements by X to apply the text-align
+-
+-    switch(m_text_align)
+-    {
+-        case text_align_right:
+-            if(m_width < (m_right - m_left))
+-            {
+-				shift_x = (m_right - m_left) - m_width;
+-            }
+-            break;
+-        case text_align_center:
+-            if(m_width < (m_right - m_left))
+-            {
+-				shift_x = ((m_right - m_left) - m_width) / 2;
+-            }
+-            break;
+-        case text_align_justify:
+-			if(m_width < (m_right - m_left) && !last_box && !finished_with_break)
+-			{
+-				shift_x	  = 0;
+-				spacing_x = (m_right - m_left) - m_width;
+-			}
+-			break;
+-		default:
+-			shift_x = 0;
+-    }
+-
+-    int counter = 0;
+-    float offj  = float(spacing_x) / std::max(1.f, float(m_items.size()) - 1.f);
+-    float cixx  = 0.0f;
++	trim_line_end(trailing_hanging_width());
++
++	// Divide tracking between adjacent inline boxes after the line edges are trimmed.
++	auto previous = m_items.end();
++	for (auto item = m_items.begin(); item != m_items.end(); ++item)
++	{
++		if ((*item)->get_type() != line_box_item::type_text_part) continue;
++		const auto& next = (*item)->get_el();
++		if (next->skip() || next->width() <= 0) continue;
++		const auto autospace = (*item)->autospace_before();
++		const auto tracking = (*item)->spacing_before() - autospace;
++		if (previous != m_items.end() && (tracking != 0 || autospace != 0))
++		{
++			const auto before = (*previous)->get_el()->css().get_font_metrics().letter_spacing / 2;
++			const auto after = next->css().get_font_metrics().letter_spacing / 2;
++			const auto shift = before + after != 0 ? before * (tracking / (before + after)) : 0;
++			// Automatic spacing belongs to the common ancestor, outside the adjacent inline fragments.
++			for (auto marker = std::next(previous); marker != item; ++marker)
++			{
++				const bool opening = (*marker)->get_type() != line_box_item::type_inline_end;
++				(*marker)->pos().x += shift + (opening ? autospace : 0);
++			}
++		}
++		previous = item;
++	}
++
++	const auto hanging_width = trailing_hanging_width();
++	measure_intrinsic_width(hanging_width);
++	align_horizontal(last_box || m_ended_with_break, hanging_width);
+ 
+ 	std::optional<pixel_t> line_height;
++	bool has_emphasis = false;
+ 
+ 	if(!m_default_line_height.css_value.is_predefined())
+ 	{
+@@ -348,8 +392,6 @@
+ 	current_context.start_lbi = nullptr;
+ 	current_context.line_height = m_default_line_height.computed_value;
+ 
+-	m_rendered_width.reset();
+-
+ 	struct items_dimensions
+ 	{
+ 		pixel_t top = 0;
+@@ -373,32 +415,12 @@
+ 	items_dimensions inline_boxes_dims;
+ 
+ 	// First pass
+-	// 1. Apply text-align-justify
+ 	// 1. Align all items by baseline
+ 	// 2. top/button aligned items are aligned by baseline
+ 	// 3. Calculate top and button of the linebox separately for items in baseline
+ 	//    and for top and bottom aligned items
      for (const auto& lbi : m_items)
  	{
- 		// Apply text-align-justify
+-		// Apply text-align-justify
 -		m_rendered_width.natural_width += lbi->get_rendered_min_width();
-+		m_rendered_width.natural_width += lbi->get_rendered_natural_width();
- 		m_rendered_width.min_width		= std::max(m_rendered_width.min_width, lbi->get_rendered_min_width());
- 		if (spacing_x != 0 && counter)
- 		{
-@@ -473,7 +473,7 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
+-		m_rendered_width.min_width		= std::max(m_rendered_width.min_width, lbi->get_rendered_min_width());
+-		if (spacing_x != 0 && counter)
+-		{
+-			cixx += offj;
+-			if ((counter + 1) == int(m_items.size()))
+-				cixx += 0.99f;
+-			lbi->pos().x += (pixel_t) cixx;
+-		}
+-		counter++;
+-		if ((m_text_align == text_align_right || spacing_x != 0) && counter == int(m_items.size()))
+-		{
+-			// Forcible justify the last element to the right side for text align right and justify;
+-			lbi->pos().x = m_right - lbi->pos().width;
+-		} else if (shift_x != 0)
+-		{
+-			lbi->pos().x += shift_x;
+-		}
+ 
+ 		// Calculate new baseline for inline start/continue
+ 		// Inline start/continue elements are inline containers like <span>
+@@ -473,7 +495,7 @@
  		}
  		if(!ignore)
  		{
@@ -20,7 +270,31 @@ index 091a96c..4d95f56 100644
  		}
  
  		if(is_top_bottom_box)
-@@ -652,7 +652,7 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
+@@ -514,6 +536,12 @@
+ 			}
+ 		}
+ 
++		if (lbi->get_type() == line_box_item::type_text_part && lbi->get_el()->css().get_display() == display_inline_text &&
++			!lbi->get_el()->src_el()->is_white_space())
++		{
++			has_emphasis |= lbi->get_el()->css().get_font_metrics().emphasis_extent > 0;
++		}
++
+ 		if(!lbi->get_el()->src_el()->is_inline_box() && !lbi->get_el()->css().line_height().css_value.is_predefined())
+ 		{
+ 			if(line_height.has_value())
+@@ -536,6 +564,10 @@
+ 	}
+ 
+ 	pixel_t top_shift = 0;
++	if (line_height.has_value() && has_emphasis)
++	{
++		line_height = std::max(*line_height, line_max_height.height());
++	}
+ 	if(line_height.has_value())
+ 	{
+ 		m_height = line_height.value();
+@@ -652,7 +684,7 @@
  
  		if(current_context.start_lbi)
  		{
@@ -29,7 +303,76 @@ index 091a96c..4d95f56 100644
  						   lbi->get_el()->content_offset_top();
  		} else if(is_one_of(lbi->get_el()->css().get_vertical_align(), va_top, va_bottom) && lbi->get_type() == line_box_item::type_text_part)
  		{
-@@ -825,6 +825,13 @@ litehtml::pixel_t litehtml::line_box::bottom_margin() const
+@@ -730,52 +762,11 @@
+ }
+ 
+ 
+-bool litehtml::line_box::can_hold(const std::unique_ptr<line_box_item>& item, white_space ws) const
+-{
+-    if(!item->get_el()->src_el()->is_inline()) return false;
+-
+-	if(item->get_type() == line_box_item::type_text_part)
+-	{
+-		// force new line on floats clearing
+-		if (item->get_el()->src_el()->is_break() && item->get_el()->css().get_clear() != clear_none)
+-		{
+-			return false;
+-		}
+-
+-		auto last_el = get_last_text_part();
+-
+-		// the first word is always can be hold
+-		if(!last_el)
+-		{
+-			return true;
+-		}
+-
+-		// force new line if the last placed element was line break
+-		// Skip If the break item is float clearing
+-		if (last_el && last_el->src_el()->is_break() && last_el->css().get_clear() == clear_none)
+-		{
+-			return false;
+-		}
+-
+-		// line break should stay in current line box
+-		if (item->get_el()->src_el()->is_break())
+-		{
+-			return true;
+-		}
+-
+-		if (ws == white_space_nowrap || ws == white_space_pre ||
+-			(ws == white_space_pre_wrap && item->get_el()->src_el()->is_space()))
+-		{
+-			return true;
+-		}
+-
+-		if (m_left + m_width + item->width() > m_right)
+-		{
+-			return false;
+-		}
+-	}
+-
+-    return true;
++bool litehtml::line_box::ends_with_forced_break() const
++{
++	if (m_finished) return m_ended_with_break;
++	const auto last = get_last_text_part();
++	return last && last->src_el()->is_break();
+ }
+ 
+ bool litehtml::line_box::have_last_space()  const
+@@ -801,7 +792,9 @@
+     {
+ 		if(el->get_type() == line_box_item::type_text_part)
+ 		{
+-			if (!el->get_el()->skip() || el->get_el()->src_el()->is_break())
++			const auto& item = el->get_el();
++			if (item->width() == 0 && (is_explicit_wrap_point(*item->src_el()) || is_soft_hyphen(*item->src_el()))) continue;
++			if (!item->skip() || item->src_el()->is_break())
+ 			{
+ 				return false;
+ 			}
+@@ -825,6 +818,13 @@
      return 0;
  }
  
@@ -43,3 +386,70 @@ index 091a96c..4d95f56 100644
  void litehtml::line_box::y_shift( pixel_t shift )
  {
  	m_top += shift;
+@@ -859,37 +859,34 @@
+ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::new_width( pixel_t left, pixel_t right)
+ {
+ 	std::list< std::unique_ptr<line_box_item> > ret_items;
+-    pixel_t add = left - m_left;
+-    if(add != 0)
+-    {
+-		m_left	= left;
+-		m_right	= right;
+-        m_width = 0;
+-        auto remove_begin = m_items.end();
+-		auto i = m_items.begin();
+-		i++;
+-		while (i != m_items.end())
+-        {
+-            if(!(*i)->get_el()->skip())
+-            {
+-                if(m_left + m_width + (*i)->width() > m_right)
+-                {
+-                    remove_begin = i;
+-                    break;
+-                }
+-				(*i)->pos().x += add;
+-				m_width += (*i)->get_el()->width();
+-            }
+-			i++;
+-        }
+-        if(remove_begin != m_items.end())
+-        {
+-			while(remove_begin != m_items.end())
+-			{
+-				ret_items.emplace_back(std::move(*remove_begin));
+-			}
+-            m_items.erase(remove_begin, m_items.end());
+-        }
+-    }
++	left += m_indent;
++	if (left == m_left && right == m_right) return ret_items;
++	m_left = left;
++	m_right = right;
++	m_width = 0;
++	m_height = 0;
++	item_list unplaced;
++	unplaced.splice(unplaced.end(), m_items);
++	m_last_wrap_point = m_items.end();
++	m_last_wrap_hyphen = nullptr;
++	m_line_end_hyphen = 0;
++	m_hyphenated_at = nullptr;
++	m_ordinary_wrap_end.reset();
++	m_hyphenation_zone = m_hyphenation_limits.zone.calc_percent(m_right - m_left + m_indent);
++	m_last_overflow_wrap_point = m_items.end();
++	while (!unplaced.empty())
++	{
++		if (!m_items.empty())
++		{
++			if (auto tail = wrap_before(*unplaced.front()))
++			{
++				ret_items.splice(ret_items.end(), *tail);
++				ret_items.splice(ret_items.end(), unplaced);
++				break;
++			}
++		}
++		add_item(std::move(unplaced.front()));
++		unplaced.pop_front();
++	}
+ 	return ret_items;
+ }

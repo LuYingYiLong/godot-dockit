@@ -1,15 +1,19 @@
 #include "html_markup.h"
+#include "html_image_metadata.h"
 
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/font_file.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
 #include <gumbo.h>
 #include <litehtml/css_parser.h>
+#include <litehtml/html.h>
 #include <litehtml/style.h>
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace godot;
@@ -38,21 +42,47 @@ namespace docrender {
 			}
 		}
 
-		void collect_css_paths(const char* p_css, const String& p_base_dir, HashSet<String>& r_paths) {
+		void collect_css_paths(const char* p_css, const String& p_base_dir, HashSet<String>& r_images,
+			HashSet<String>* r_fonts = nullptr) {
 			using namespace litehtml;
-			const css_token_vector tokens = tokenize(p_css);
-			for (size_t i = 0; i < tokens.size(); ++i) {
-				const css_token& token = tokens[i];
-				if (token.type == URL) {
-					add_image_path(r_paths, token.str.c_str(), p_base_dir);
+			const auto add = [&](const char* p_url) {
+				add_image_path(r_images, p_url, p_base_dir);
+				if (r_fonts) {
+					const String path = resolve_html_font_path(String::utf8(p_url), p_base_dir);
+					if (!path.is_empty()) r_fonts->insert(path);
 				}
-				else if (token.type == FUNCTION && String::utf8(token.str.c_str()).nocasecmp_to("url") == 0) {
-					size_t argument = i + 1;
-					while (argument < tokens.size() && tokens[argument].type == WHITESPACE) {
-						++argument;
+			};
+			const auto add_string_source = [&](const css_token& p_source) {
+				const css_token* source = &p_source;
+				while (source->type == CV_FUNCTION && equal_i(source->name, "var") &&
+					source->value.size() >= 3 && source->value[1].type == ',') {
+					source = &source->value[2];
+				}
+				if (source->type == STRING) add_image_path(r_images, source->str.c_str(), p_base_dir);
+			};
+			const auto tokens = normalize(std::string(p_css), f_componentize | f_remove_whitespace);
+			std::vector<const css_token_vector*> pending{ &tokens };
+			while (!pending.empty()) {
+				const auto& components = *pending.back();
+				pending.pop_back();
+				for (const auto& token : components) {
+					std::string url;
+					if (parse_url(token, url)) {
+						add(url.c_str());
 					}
-					if (argument < tokens.size() && tokens[argument].type == STRING) {
-						add_image_path(r_paths, tokens[argument].str.c_str(), p_base_dir);
+					else if (token.is_component_value()) {
+						pending.push_back(&token.value);
+						if (token.type != CV_FUNCTION || token.value.empty()) continue;
+						if (equal_i(token.name, "image-set")) {
+							for (size_t index = 0; index < token.value.size(); ++index) {
+								if (index == 0 || token.value[index - 1].type == ',') add_string_source(token.value[index]);
+							}
+						}
+						else if (equal_i(token.name, "image")) {
+							const auto tag = token.value.front().ident();
+							const size_t index = is_one_of(tag, "ltr", "rtl") ? 1 : 0;
+							if (index < token.value.size()) add_string_source(token.value[index]);
+						}
 					}
 				}
 			}
@@ -63,6 +93,7 @@ namespace docrender {
 
 		public:
 			HashSet<String> images;
+			HashSet<String> fonts;
 			Dictionary stylesheets;
 
 			void add_stylesheet(const String& p_url, const String& p_dir) {
@@ -80,7 +111,7 @@ namespace docrender {
 			void add_css(const char* p_css, const String& p_dir) {
 				using namespace litehtml;
 				const std::string text(p_css);
-				collect_css_paths(p_css, p_dir, images);
+				collect_css_paths(p_css, p_dir, images, &fonts);
 				for (const auto& rule : css_parser::parse_stylesheet(text, true)) {
 					if (rule->type != raw_rule::at || String::utf8(rule->name.c_str()).nocasecmp_to("import") != 0) {
 						continue;
@@ -145,7 +176,8 @@ namespace docrender {
 	}
 
 	String resolve_html_image_path(const String& p_src, const String& p_base_dir) {
-		const String path = resolve_local_path(p_src, p_base_dir);
+		const int64_t fragment = p_src.find("#");
+		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);
 		const String extension = path.get_extension().to_lower();
 		if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "webp" && extension != "svg") {
 			return {};
@@ -156,6 +188,36 @@ namespace docrender {
 	String resolve_html_stylesheet_path(const String& p_src, const String& p_base_dir) {
 		const String path = resolve_local_path(p_src, p_base_dir);
 		return path.get_extension().to_lower() == "css" ? path : String();
+	}
+
+	String resolve_html_font_path(const String& p_src, const String& p_base_dir) {
+		const int64_t fragment = p_src.find("#");
+		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);
+		const String extension = path.get_extension().to_lower();
+		return litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2") ? path : String();
+	}
+
+	bool is_html_stylesheet_link(const char* p_rel) {
+		if (!p_rel) {
+			return false;
+		}
+		constexpr std::string_view whitespace = " \t\n\r\f";
+		const std::string_view rel(p_rel);
+		bool stylesheet = false;
+		for (auto start = rel.find_first_not_of(whitespace); start != std::string_view::npos;) {
+			const auto end = rel.find_first_of(whitespace, start);
+			const auto token = rel.substr(start, end - start);
+			const auto is = [token](std::string_view p_name) {
+				return token.size() == p_name.size() &&
+					litehtml::t_strncasecmp(token.data(), p_name.data(), token.size()) == 0;
+			};
+			if (is("alternate")) {
+				return false;
+			}
+			stylesheet |= is("stylesheet");
+			start = rel.find_first_not_of(whitespace, end);
+		}
+		return stylesheet;
 	}
 
 	std::optional<String> read_html_stylesheet(const String& p_path) {
@@ -293,7 +355,7 @@ namespace docrender {
 			if (element.tag == GUMBO_TAG_LINK) {
 				const GumboAttribute* rel = gumbo_get_attribute(&element.attributes, "rel");
 				const GumboAttribute* href = gumbo_get_attribute(&element.attributes, "href");
-				if (rel && href && String::utf8(rel->value).nocasecmp_to("stylesheet") == 0) {
+				if (href && is_html_stylesheet_link(rel ? rel->value : nullptr)) {
 					assets.add_stylesheet(String::utf8(href->value), p_base_dir);
 				}
 			}
@@ -310,15 +372,27 @@ namespace docrender {
 		}
 
 		Dictionary textures;
+		Dictionary image_dpi;
+		Dictionary image_orientations;
 		ResourceLoader* loader = ResourceLoader::get_singleton();
 		for (const String& path : assets.images) {
 			if (loader->exists(path, "Texture2D")) {
 				const Ref<Texture2D> texture = loader->load(path, "Texture2D");
 				if (texture.is_valid()) {
 					textures[path] = texture;
+					const auto metadata = read_html_image_metadata(path);
+					if (metadata.dpi > 0) image_dpi[path] = metadata.dpi;
+					if (metadata.orientation != 1) image_orientations[path] = metadata.orientation;
 				}
 			}
 		}
-		return { textures, assets.stylesheets };
+		Dictionary fonts;
+		for (const String& path : assets.fonts) {
+			if (loader->exists(path, "FontFile")) {
+				const Ref<FontFile> font = loader->load(path, "FontFile");
+				if (font.is_valid()) fonts[path] = font;
+			}
+		}
+		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations };
 	}
 }

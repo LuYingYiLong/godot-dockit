@@ -12,7 +12,7 @@ using namespace godot;
 namespace {
 	void append_text(const litehtml::element& p_element, litehtml::string& r_text) {
 		const auto tag = p_element.tag();
-		if (tag == litehtml::__tag_before_ || tag == litehtml::__tag_after_) {
+		if (litehtml::is_generated_tag(tag)) {
 			return;
 		}
 		if (p_element.is_text()) {

@@ -4,6 +4,8 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_value_parser.h"
+#include "css_image_value.h"
+#include "../litehtml_css_math.h"
 
 #include <litehtml/css_parser.h>
 
@@ -14,9 +16,130 @@ static bool parse_bg_position_size(const css_token_vector& tokens, int& index, c
 static bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size);
 static bool parse_border_width(const css_token& token, css_length& width);
 
+namespace {
+	std::optional<css_image_orientation> parse_image_orientation(const css_token_vector& p_tokens)
+	{
+		using orientation = css_image_orientation;
+		if (p_tokens.size() == 1) {
+			const auto keyword = p_tokens.front().ident();
+			if (keyword == "none") return orientation::none;
+			if (keyword == "from-image") return orientation::from_image;
+		}
+		bool flip = false;
+		std::optional<double> angle;
+		for (const auto& token : p_tokens) {
+			if (token.ident() == "flip" && !flip) flip = true;
+			else if (!angle) {
+				angle = parse_css_angle(token);
+				if (!angle) return std::nullopt;
+			}
+			else return std::nullopt;
+		}
+		if (!angle && !flip) return std::nullopt;
+		constexpr double quarter_turn = 1.57079632679489661923;
+		const int turns = static_cast<int>(std::floor(angle.value_or(0.0) / quarter_turn + 0.5));
+		constexpr orientation rotations[] = {
+			orientation::identity, orientation::rotate_90, orientation::rotate_180, orientation::rotate_270,
+		};
+		constexpr orientation flipped_rotations[] = {
+			orientation::flip_x, orientation::transpose, orientation::flip_y, orientation::transverse,
+		};
+		const int index = (turns + 4) % 4;
+		return flip ? flipped_rotations[index] : rotations[index];
+	}
+
+	std::optional<css_image_resolution> parse_image_resolution(const css_token_vector& p_tokens)
+	{
+		css_image_resolution result;
+		for (const auto& token : p_tokens) {
+			const auto keyword = token.ident();
+			if (keyword == "from-image" && !result.from_image) result.from_image = true;
+			else if (keyword == "snap" && !result.snap) result.snap = true;
+			else {
+				if (result.density) return std::nullopt;
+				result.density = parse_css_resolution(token);
+				if (!result.density) return std::nullopt;
+			}
+		}
+		return result.density || result.from_image ? std::optional(result) : std::nullopt;
+	}
+
+	std::optional<object_fit> parse_object_fit(const css_token_vector& tokens)
+	{
+		if (tokens.size() == 1) {
+			const auto keyword = tokens.front().ident();
+			if (keyword == "fill") return object_fit::fill;
+			if (keyword == "contain") return object_fit::contain;
+			if (keyword == "cover") return object_fit::cover;
+			if (keyword == "none") return object_fit::none;
+			if (keyword == "scale-down") return object_fit::scale_down;
+		}
+		if (tokens.size() == 2) {
+			auto fit = tokens[0].ident();
+			auto modifier = tokens[1].ident();
+			if (fit == "scale-down") std::swap(fit, modifier);
+			if (modifier == "scale-down") {
+				if (fit == "contain") return object_fit::scale_down;
+				if (fit == "cover") return object_fit::cover_scale_down;
+			}
+		}
+		return std::nullopt;
+	}
+
+	std::optional<css_object_position> parse_object_position(const css_token_vector& tokens)
+	{
+		constexpr int length_flags = f_length_percentage | f_math;
+		css_object_position result;
+		if (tokens.size() <= 2) {
+			int index = 0;
+			if (parse_bg_position(tokens, index, result.x, result.y, true, length_flags) &&
+				index == static_cast<int>(tokens.size())) return result;
+			return std::nullopt;
+		}
+		if (tokens.size() != 4) return std::nullopt;
+		std::size_t horizontal = 0;
+		std::size_t vertical = 2;
+		if (is_one_of(tokens[horizontal].ident(), "top", "bottom")) std::swap(horizontal, vertical);
+		const auto x_side = tokens[horizontal].ident();
+		const auto y_side = tokens[vertical].ident();
+		if (!is_one_of(x_side, "left", "right") || !is_one_of(y_side, "top", "bottom") ||
+			!result.x.from_token(tokens[horizontal + 1], length_flags) || !result.y.from_token(tokens[vertical + 1], length_flags))
+			return std::nullopt;
+		result.from_right = x_side == "right";
+		result.from_bottom = y_side == "bottom";
+		return result;
+	}
+}
+
 void css_value_parser::parse_background_and_border(string_id name, const css_token_vector& value,
 	const string& baseurl, bool important, document_container* container)
 {
+	if (is_one_of(name, _id("outline"), _id("outline-width"), _id("outline-style"), _id("outline-color"),
+		_id("outline-offset"))) {
+		parse_outline(name, value, important, container);
+		return;
+	}
+	if (is_one_of(name, _id("border-image"), _id("border-image-source"), _id("border-image-slice"),
+		_id("border-image-width"), _id("border-image-outset"), _id("border-image-repeat"))) {
+		parse_border_image(name, value, baseurl, important, container);
+		return;
+	}
+	if (name == _id("object-fit")) {
+		if (const auto fit = parse_object_fit(value)) add_parsed_property(name, property_value(*fit, important));
+		return;
+	}
+	if (name == _id("image-orientation")) {
+		if (const auto orientation = parse_image_orientation(value)) add_parsed_property(name, property_value(*orientation, important));
+		return;
+	}
+	if (name == _id("image-resolution")) {
+		if (const auto resolution = parse_image_resolution(value)) add_parsed_property(name, property_value(*resolution, important));
+		return;
+	}
+	if (name == _id("object-position")) {
+		if (const auto position = parse_object_position(value)) add_parsed_property(name, property_value(*position, important));
+		return;
+	}
 	if (name == _id("box-shadow") || name == _id("text-shadow")) {
 		std::vector<box_shadow> shadows;
 		const bool parsed = name == _id("box-shadow") ? parse_box_shadows(value, container, shadows)
@@ -147,6 +270,13 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 
 	//  =============================  LIST  =============================
 
+	case _list_style_type_:
+		if (val.type == STRING)
+			add_parsed_property(name, property_value(css_list_marker_type{ {}, val.str }, important));
+		else if (auto reference = parse_counter_style_reference(val, true))
+			add_parsed_property(name, property_value(css_list_marker_type{ std::move(*reference), {} }, important));
+		break;
+
 	case _list_style_image_:
 		if (string url; parse_list_style_image(val, url))
 		{
@@ -179,7 +309,7 @@ bool css_value_parser::parse_list_style_image(const css_token& tok, string& url)
 void css_value_parser::parse_list_style(const css_token_vector& tokens, string baseurl, bool important)
 {
 	// initial values:  https://developer.mozilla.org/en-US/docs/Web/CSS/list-style#formal_definition
-	int type     = list_style_type_disc;
+	css_list_marker_type type;
 	int position = list_style_position_outside;
 	string image = ""; // none
 
@@ -196,12 +326,22 @@ void css_value_parser::parse_list_style(const css_token_vector& tokens, string b
 			none_count++;
 			continue;
 		}
-		if (!type_found && parse_keyword(token, type, list_style_type_strings))
-			type_found = true;
-		else if (!position_found && parse_keyword(token, position, list_style_position_strings))
+		if (!position_found && parse_keyword(token, position, list_style_position_strings))
 			position_found = true;
 		else if (!image_found && parse_list_style_image(token, image))
 			image_found = true;
+		else if (!type_found && token.type == STRING)
+		{
+			type_found = true;
+			type.text = token.str;
+		}
+		else if (!type_found && !value_in_list(token.ident(), list_style_position_strings))
+		{
+			auto reference = parse_counter_style_reference(token, false);
+			if (!reference) return;
+			type_found = true;
+			type.counter = std::move(*reference);
+		}
 		else
 			return; // syntax error
 	}
@@ -212,11 +352,11 @@ void css_value_parser::parse_list_style(const css_token_vector& tokens, string b
 		break;
 	case 1:
 		if (type_found && image_found) return;
-		if (!type_found) type = list_style_type_none;
+		if (!type_found) type.counter.name = "none";
 		break;
 	case 2:
 		if (type_found || image_found) return;
-		type = list_style_type_none;
+		type.counter.name = "none";
 		break;
 	default:
 		return; // syntax error
@@ -264,7 +404,7 @@ void css_value_parser::parse_border_radius(const css_token_vector& tokens, bool 
 bool parse_border_width(const css_token& token, css_length& w)
 {
 	css_length width;
-	if (!width.from_token(token, f_length | f_positive, border_width_strings))
+	if (!width.from_token(token, f_length | f_positive | f_math, border_width_strings))
 		return false;
 
 	if (width.is_predefined())
@@ -272,6 +412,66 @@ bool parse_border_width(const css_token& token, css_length& w)
 
 	w = width;
 	return true;
+}
+
+namespace {
+	bool parse_outline_style(const css_token& token, int& r_style) {
+		if (token.ident() == "auto") {
+			r_style = outline_style_auto;
+			return true;
+		}
+		return parse_keyword(token, r_style, border_style_strings) && r_style != border_style_hidden;
+	}
+}
+
+void css_value_parser::parse_outline(string_id name, const css_token_vector& tokens, bool important, document_container* container)
+{
+	const auto width_id = _id("outline-width");
+	const auto style_id = _id("outline-style");
+	const auto color_id = _id("outline-color");
+	if (name != _id("outline")) {
+		if (tokens.size() != 1) return;
+		const auto& token = tokens.front();
+		css_length length;
+		int style;
+		web_color color;
+		if (name == width_id && parse_border_width(token, length))
+			add_parsed_property(name, property_value(length, important));
+		else if (name == style_id && parse_outline_style(token, style))
+			add_parsed_property(name, property_value(style, important));
+		else if (name == color_id) {
+			if (token.ident() == "auto")
+				add_parsed_property(name, property_value(std::optional<web_color>(), important));
+			else if (parse_color(token, color, container))
+				add_parsed_property(name, property_value(std::optional<web_color>(color), important));
+		}
+		else if (name == _id("outline-offset") && length.from_token(token, f_length | f_math))
+			add_parsed_property(name, property_value(length, important));
+		return;
+	}
+
+	css_outline result;
+	bool width_found = false;
+	bool style_found = false;
+	int autos = 0;
+	for (const auto& token : tokens) {
+		web_color color;
+		if (token.ident() == "auto")
+			++autos;
+		else if (!width_found && parse_border_width(token, result.width))
+			width_found = true;
+		else if (!style_found && parse_outline_style(token, result.style))
+			style_found = true;
+		else if (!result.color && parse_color(token, color, container))
+			result.color = color;
+		else
+			return;
+	}
+	if (autos + static_cast<int>(style_found) + static_cast<int>(result.color.has_value()) > 2) return;
+	if (autos > 0 && !style_found) result.style = outline_style_auto;
+	add_parsed_property(width_id, property_value(result.width, important));
+	add_parsed_property(style_id, property_value(result.style, important));
+	add_parsed_property(color_id, property_value(result.color, important));
 }
 
 // https://drafts.csswg.org/css-backgrounds/#propdef-border
@@ -487,7 +687,8 @@ bool is_one_of_predef(const css_length& x, int idx1, int idx2)
 // <bg-position> = [ left | center | right | top | bottom | <length-percentage> ] |
 //   [ left | center | right | <length-percentage> ]  [ top | center | bottom | <length-percentage> ]
 // Side-relative values (like bottom 10%) are not supported, so only 1 or 2 values are parsed (not 3 or 4).
-bool parse_bg_position(const css_token_vector& tokens, int& index, css_length& x, css_length& y, bool convert_keywords_to_percents)
+bool parse_bg_position(const css_token_vector& tokens, int& index, css_length& x, css_length& y,
+	bool convert_keywords_to_percents, int length_flags)
 {
 	enum {
 		left   = background_position_left,
@@ -499,10 +700,10 @@ bool parse_bg_position(const css_token_vector& tokens, int& index, css_length& x
 
 	css_length a, b;
 
-	if (!a.from_token(at(tokens, index), f_length_percentage, background_position_strings))
+	if (!a.from_token(at(tokens, index), length_flags, background_position_strings))
 		return false;
 
-	if (!b.from_token(at(tokens, index + 1), f_length_percentage, background_position_strings))
+	if (!b.from_token(at(tokens, index + 1), length_flags, background_position_strings))
 	{
 		// If only one value is specified, the second value is assumed to be center.
 		b.predef(center);
@@ -563,7 +764,6 @@ void css_value_parser::parse_background_image(const css_token_vector& tokens, co
 }
 
 // <bg-image> = <image> | none
-// <image> = <url> | <gradient>
 bool parse_bg_image(const css_token& tok, image& bg_image, document_container* container)
 {
 	if (tok.ident() == "none")
@@ -572,17 +772,9 @@ bool parse_bg_image(const css_token& tok, image& bg_image, document_container* c
 		return true;
 	}
 
-	string url;
-	if (parse_url(tok, url))
+	if (auto value = parse_css_image(tok, container))
 	{
-		bg_image.type = image::type_url;
-		bg_image.url = url;
-		return true;
-	}
-
-	if (parse_gradient(tok, bg_image.m_gradient, container))
-	{
-		bg_image.type = image::type_gradient;
+		bg_image = std::move(*value);
 		return true;
 	}
 

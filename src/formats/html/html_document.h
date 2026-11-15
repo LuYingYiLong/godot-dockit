@@ -13,6 +13,9 @@ class HTMLDocument : public godot::Resource {
 	godot::String stylesheet;
 	godot::Dictionary textures;
 	godot::Dictionary local_stylesheets;
+	godot::Dictionary local_fonts;
+	godot::Dictionary image_dpi;
+	godot::Dictionary image_orientations;
 	void parse_into(HTMLLayout& p_layout, const godot::String& p_default_stylesheet = {}) const;
 
 protected:
@@ -34,6 +37,12 @@ public:
 	
 	void set_local_stylesheets(const godot::Dictionary& p_stylesheets);				// 设置导入时收集的本地样式表文本
 	godot::Dictionary get_local_stylesheets() const;								// 返回本地样式表路径到 CSS 文本映射的副本
+	void set_local_fonts(const godot::Dictionary& p_fonts);							// 保存导入时收集的字体资源
+	godot::Dictionary get_local_fonts() const;										// 返回字体路径到资源映射的副本
+	void set_image_dpi(const godot::Dictionary& p_dpi);								// 保存本地位图的 DPI 元数据
+	godot::Dictionary get_image_dpi() const;										// 返回位图路径到 DPI 的映射副本
+	void set_image_orientations(const godot::Dictionary& p_orientations);			// 保存本地位图的 EXIF 方向
+	godot::Dictionary get_image_orientations() const;								// 返回位图路径到 EXIF 方向的映射副本
 	
 	godot::Ref<HTMLLayout> create_layout() const;									// 从资源当前内容创建独立的已解析布局实例
 };

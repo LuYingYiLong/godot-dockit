@@ -1,0 +1,30 @@
+diff --git a/include/litehtml/media_query.h b/include/litehtml/media_query.h
+--- a/include/litehtml/media_query.h
++++ b/include/litehtml/media_query.h
+@@ -1,7 +1,9 @@
+ #ifndef LH_MEDIA_QUERY_H
+ #define LH_MEDIA_QUERY_H
+ 
++#include "css_length.h"
+ #include "css_tokenizer.h"
++#include <optional>
+ #include "string_id.h"
+ #include "types.h"
+ 
+@@ -70,11 +72,14 @@
+ 		float value2 = 0;
+ 		short op = 0;
+ 		short op2 = 0;
++		std::optional<css_length> length;
++		std::optional<css_length> length2;
++		std::weak_ptr<document> length_document;
++		font_metrics length_font;
+ 
+ 		bool verify_and_convert_units(string_id syntax, css_token val[2] = 0, css_token val2[2] = 0, shared_ptr<document> doc = 0);
+ 
+-		bool compare(int x) const { return compare((float)x); }
+-		bool compare(float x) const;
++		bool compare(float x, const media_features& features) const;
+ 		bool check(const media_features& features) const;
+ 	};
+ 

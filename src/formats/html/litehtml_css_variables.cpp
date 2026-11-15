@@ -60,10 +60,27 @@ namespace litehtml {
 		return has_variable ? css_variable_syntax::valid : css_variable_syntax::none;
 	}
 
-	css_variable_resolver::css_variable_resolver(const html_tag* p_parent, const css_custom_properties& p_declarations) :
-		parent(p_parent), declarations(p_declarations) {
-		invalidate_cycles();
-		for (const auto& declaration : declarations) resolve(declaration.first, 0);
+	css_wide_keyword read_css_wide_keyword(const css_token_vector& p_tokens) {
+		const auto keyword = p_tokens.size() == 1 ? p_tokens.front().ident() : string();
+		if (keyword == "inherit") return css_wide_keyword::inherit;
+		if (keyword == "initial") return css_wide_keyword::initial;
+		if (keyword == "unset") return css_wide_keyword::unset;
+		if (keyword == "revert") return css_wide_keyword::revert;
+		if (keyword == "revert-layer") return css_wide_keyword::revert_layer;
+		return css_wide_keyword::none;
+	}
+
+	css_variable_resolver::css_variable_resolver(const html_tag* p_parent, css_custom_properties p_declarations,
+		const css_custom_rollback& p_rollback) : parent(p_parent), declarations(std::move(p_declarations)), rollback(p_rollback) {
+		do {
+			dependencies_changed = false;
+			computed.clear();
+			invalidate_cycles();
+			for (const auto& declaration : declarations) {
+				resolve(declaration.first, 0);
+				if (dependencies_changed) break;
+			}
+		} while (dependencies_changed);
 	}
 
 	void css_variable_resolver::invalidate_cycles() {
@@ -75,8 +92,8 @@ namespace litehtml {
 			bool self_reference = false;
 		};
 		std::map<string_id, Node> graph;
-		for (const auto& [name, tokens] : declarations) {
-			if (!tokens) continue;
+		for (const auto& [name, value] : declarations) {
+			if (!value->is<css_token_vector>()) continue;
 			auto& node = graph[name];
 			const auto collect = [&](const auto& p_self, const css_token_vector& p_tokens, int p_depth) -> void {
 				if (p_depth >= MAX_DEPTH) {
@@ -90,7 +107,9 @@ namespace litehtml {
 						if (!spelling.empty()) {
 							const auto target = _id(spelling);
 							const auto declaration = declarations.find(target);
-							if (declaration != declarations.end() && declaration->second) node.dependencies.push_back(target);
+							if (declaration != declarations.end() && declaration->second->is<css_token_vector>()) {
+								node.dependencies.push_back(target);
+							}
 							node.self_reference |= name == target;
 						}
 					}
@@ -98,7 +117,7 @@ namespace litehtml {
 					p_self(p_self, token.value, p_depth + 1);
 				}
 			};
-			collect(collect, *tokens, 0);
+			collect(collect, value->get<css_token_vector>(), 0);
 		}
 
 		// Tarjan's algorithm, with an explicit stack so long dependency chains stay off the C++ stack.
@@ -150,14 +169,42 @@ namespace litehtml {
 		const auto [entry, inserted] = computed.try_emplace(p_name);
 		if (!inserted || p_depth >= MAX_DEPTH) return entry->second;
 		const auto declaration = declarations.find(p_name);
-		if (declaration == declarations.end()) {
-			css_token_vector inherited;
-			if (parent && parent->get_custom_property(p_name, inherited)) entry->second = std::move(inherited);
-		}
-		else if (declaration->second) {
+		const auto* value = declaration != declarations.end() ? declaration->second : nullptr;
+		if (value && value->is<css_token_vector>()) {
 			css_token_vector output;
 			size_t budget = MAX_EXPANDED_BYTES;
-			if (substitute(*declaration->second, 0, output, budget, p_depth + 1)) entry->second = std::move(output);
+			if (!substitute(value->get<css_token_vector>(), 0, output, budget, p_depth + 1)) return entry->second;
+			switch (const auto keyword = read_css_wide_keyword(output)) {
+				case css_wide_keyword::none:
+					entry->second = std::move(output);
+					return entry->second;
+				case css_wide_keyword::initial:
+					return entry->second;
+				case css_wide_keyword::inherit:
+				case css_wide_keyword::unset:
+					value = nullptr;
+					break;
+				case css_wide_keyword::revert:
+				case css_wide_keyword::revert_layer:
+					value = &rollback(p_name, *value, keyword);
+					if (value->is<css_token_vector>()) {
+						const auto& restored = value->get<css_token_vector>();
+						if (inspect_css_variables(restored) == css_variable_syntax::valid) {
+							// Switch the candidate before rebuilding the graph so cycles through restored values are detected.
+							declaration->second = value;
+							dependencies_changed = true;
+						}
+						else {
+							entry->second = restored;
+						}
+						return entry->second;
+					}
+					break;
+			}
+		}
+		if (!value || value->is<inherit>() || value->is<invalid>()) {
+			css_token_vector inherited;
+			if (parent && parent->get_custom_property(p_name, inherited)) entry->second = std::move(inherited);
 		}
 		return entry->second;
 	}
@@ -179,6 +226,7 @@ namespace litehtml {
 				if (name.empty() || (args.size() > 1 && args[1].ch != ',')) return false;
 				const size_t start = r_output.size();
 				const auto& resolved = resolve(_id(name), p_depth + 1);
+				if (dependencies_changed) return false;
 				if (resolved) {
 					if (resolved->size() > MAX_EXPANDED_TOKENS - r_output.size() || !append_tokens(*resolved, r_output, r_budget)) return false;
 				}

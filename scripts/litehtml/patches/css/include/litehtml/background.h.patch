@@ -1,7 +1,17 @@
 diff --git a/include/litehtml/background.h b/include/litehtml/background.h
 --- a/include/litehtml/background.h
 +++ b/include/litehtml/background.h
-@@ -62,7 +62,7 @@
+@@ -25,6 +25,9 @@
+ 		background_repeat repeat;
+ 		// is_root is true for root element. Container can use this flag to apply background to the top window.
+ 		bool is_root;
++		css_image_orientation image_orientation = css_image_orientation::from_image;
++		bool flip_image_x = false;
++		bool fill_image_tile = false;
+ 
+ 		background_layer() :
+ 				attachment(background_attachment_scroll),
+@@ -62,7 +65,7 @@
  			hue_interpolation_t  hue_interpolation = hue_interpolation_none;
  
  			void color_points_transparent_fix();
@@ -10,15 +20,25 @@ diff --git a/include/litehtml/background.h b/include/litehtml/background.h
  		};
  
  		class linear_gradient : public gradient_base
-@@ -104,6 +104,7 @@
+@@ -95,6 +98,8 @@
+ 		{
+ 			type_none,
+ 			type_color,
++			type_solid_image,
++			type_cross_fade,
+ 			type_image,
+ 			type_linear_gradient,
+ 			type_radial_gradient,
+@@ -104,6 +109,8 @@
  		vector<image>			m_image;
  		string					m_baseurl;
  		web_color				m_color;
 +		web_color				m_current_color;
++		int					m_direction = static_cast<int>(css_direction::ltr);
  		int_vector				m_attachment;
  		length_vector			m_position_x;
  		length_vector			m_position_y;
-@@ -114,7 +115,7 @@
+@@ -114,7 +121,7 @@
  
  		bool is_empty() const
  		{
@@ -27,7 +47,7 @@ diff --git a/include/litehtml/background.h b/include/litehtml/background.h
  				return false;
  			if(m_image.empty())
  				return true;
-@@ -126,7 +127,7 @@
+@@ -126,7 +133,7 @@
  		}
  		int get_layers_number() const
  		{

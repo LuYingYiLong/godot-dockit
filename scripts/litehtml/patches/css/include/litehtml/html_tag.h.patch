@@ -1,16 +1,46 @@
 diff --git a/include/litehtml/html_tag.h b/include/litehtml/html_tag.h
-index 7f3938f..bf05bb6 100644
 --- a/include/litehtml/html_tag.h
 +++ b/include/litehtml/html_tag.h
-@@ -14,6 +14,7 @@ namespace litehtml
+@@ -14,6 +14,8 @@
  
  	class html_tag : public element
  	{
 +		friend struct docrender_editor;
++		friend class document;
  		friend class elements_iterator;
  		friend class el_table;
  		friend class table_grid;
-@@ -138,7 +139,7 @@ namespace litehtml
+@@ -29,6 +31,7 @@
+ 		string_map				m_attrs;
+ 		vector<string_id>		m_pseudo_classes;
+ 
++		void			apply_inline_style();
+ 		void			select_all(const css_selector& selector, elements_list& res) override;
+ 
+ 	public:
+@@ -105,8 +108,7 @@
+ 		string				dump_get_name() override;
+ 
+ 	protected:
+-		void				draw_list_marker( uint_ptr hdc, const position &pos, const std::shared_ptr<render_item> &ri );
+-		string				get_list_marker_text(int index);
++		element::ptr get_element_marker(bool create);
+ 		element::ptr		get_element_before(const style& style, bool create);
+ 		element::ptr		get_element_after(const style& style, bool create);
+ 
+@@ -115,8 +117,9 @@
+ 		void map_to_dimension_property(string_id prop_name, string attr_value);
+ 		void map_to_dimension_property_ignoring_zero(string_id prop_name, string attr_value);
+ 
+-	private:
+-		void				handle_counter_properties();
++	protected:
++		void handle_counter_properties();
++		void compute_child_styles();
+ 
+ 	};
+ 
+@@ -138,7 +141,7 @@
  		{
  			return value.get<Type>();
  		}

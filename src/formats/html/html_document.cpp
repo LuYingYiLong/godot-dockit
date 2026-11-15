@@ -13,6 +13,12 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_get_textures"), &HTMLDocument::get_textures);
 	ClassDB::bind_method(D_METHOD("_set_local_stylesheets", "stylesheets"), &HTMLDocument::set_local_stylesheets);
 	ClassDB::bind_method(D_METHOD("_get_local_stylesheets"), &HTMLDocument::get_local_stylesheets);
+	ClassDB::bind_method(D_METHOD("_set_local_fonts", "fonts"), &HTMLDocument::set_local_fonts);
+	ClassDB::bind_method(D_METHOD("_get_local_fonts"), &HTMLDocument::get_local_fonts);
+	ClassDB::bind_method(D_METHOD("_set_image_dpi", "dpi"), &HTMLDocument::set_image_dpi);
+	ClassDB::bind_method(D_METHOD("_get_image_dpi"), &HTMLDocument::get_image_dpi);
+	ClassDB::bind_method(D_METHOD("_set_image_orientations", "orientations"), &HTMLDocument::set_image_orientations);
+	ClassDB::bind_method(D_METHOD("_get_image_orientations"), &HTMLDocument::get_image_orientations);
 	ClassDB::bind_method(D_METHOD("create_layout"), &HTMLDocument::create_layout);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
@@ -21,6 +27,12 @@ void HTMLDocument::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "_set_textures", "_get_textures");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_local_stylesheets", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_local_stylesheets", "_get_local_stylesheets");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_local_fonts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_local_fonts", "_get_local_fonts");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_image_dpi", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_image_dpi", "_get_image_dpi");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_image_orientations", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_image_orientations", "_get_image_orientations");
 }
 
 void HTMLDocument::set_text(const String& p_text) {
@@ -74,6 +86,33 @@ Dictionary HTMLDocument::get_local_stylesheets() const {
 	return local_stylesheets.duplicate();
 }
 
+void HTMLDocument::set_local_fonts(const Dictionary& p_fonts) {
+	local_fonts = p_fonts.duplicate();
+	emit_changed();
+}
+
+Dictionary HTMLDocument::get_local_fonts() const {
+	return local_fonts.duplicate();
+}
+
+void HTMLDocument::set_image_dpi(const Dictionary& p_dpi) {
+	image_dpi = p_dpi.duplicate();
+	emit_changed();
+}
+
+Dictionary HTMLDocument::get_image_dpi() const {
+	return image_dpi.duplicate();
+}
+
+void HTMLDocument::set_image_orientations(const Dictionary& p_orientations) {
+	image_orientations = p_orientations.duplicate();
+	emit_changed();
+}
+
+Dictionary HTMLDocument::get_image_orientations() const {
+	return image_orientations.duplicate();
+}
+
 Ref<HTMLLayout> HTMLDocument::create_layout() const {
 	Ref<HTMLLayout> result;
 	result.instantiate();
@@ -82,5 +121,5 @@ Ref<HTMLLayout> HTMLDocument::create_layout() const {
 }
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
-	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets);
+	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets, local_fonts, image_dpi, image_orientations);
 }

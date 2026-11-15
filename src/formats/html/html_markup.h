@@ -14,6 +14,9 @@ namespace docrender {
 	struct HTMLAssets {
 		godot::Dictionary textures;
 		godot::Dictionary stylesheets;
+		godot::Dictionary fonts;
+		godot::Dictionary image_dpi;
+		godot::Dictionary image_orientations;
 	};
 
 	HTMLInlineColors parse_html_inline_colors(const godot::String& p_style);		// 从行内 CSS 读取前景色和背景色
@@ -33,6 +36,8 @@ namespace docrender {
 		const godot::String& p_src,
 		const godot::String& p_base_dir
 	);																				// 按基目录解析并校验本地 CSS 文件路径
+	bool is_html_stylesheet_link(const char* p_rel);									// 判断 rel 是否声明默认应用的样式表
+	godot::String resolve_html_font_path(const godot::String& p_src, const godot::String& p_base_dir); // 解析项目内的动态字体路径
 	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path); // 读取大小受限的本地 UTF-8 样式表
 	HTMLAssets collect_html_assets(
 		const godot::String& p_html,

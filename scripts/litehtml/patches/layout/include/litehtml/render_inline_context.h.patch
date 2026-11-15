@@ -1,8 +1,40 @@
 diff --git a/include/litehtml/render_inline_context.h b/include/litehtml/render_inline_context.h
-index 6a4a5bc..1aa624e 100644
 --- a/include/litehtml/render_inline_context.h
 +++ b/include/litehtml/render_inline_context.h
-@@ -53,6 +53,9 @@ namespace litehtml
+@@ -29,6 +29,7 @@
+ 		};
+ 	protected:
+ 		std::vector<std::unique_ptr<litehtml::line_box>> m_line_boxes;
++		std::vector<size_t> m_suppressed_hyphen_lines;
+ 		rendered_width									 m_rendered_width;
+ 
+ 		rendered_width _render_content(pixel_t x, pixel_t y, bool second_pass,
+@@ -37,10 +38,23 @@
+ 							const containing_block_context &self_size, formatting_context* fmt_ctx) override;
+ 
+ 		std::list<std::unique_ptr<line_box_item> > finish_last_box(bool end_of_render, const containing_block_context &self_size);
+-		void place_inline(std::unique_ptr<line_box_item> item, const containing_block_context &self_size, formatting_context* fmt_ctx);
++		void place_inline(std::unique_ptr<line_box_item> item, const containing_block_context &self_size,
++			formatting_context* fmt_ctx, bool force_wrap = false);
++		void layout_inlines(const containing_block_context& self_size, formatting_context* fmt_ctx,
++			const std::unordered_set<const render_item*>* forced_cuts = nullptr);
++		void prepare_text_fragments(const containing_block_context& self_size);
++		void merge_text_fragments();
++		void apply_text_wrap(const containing_block_context& self_size, formatting_context* fmt_ctx, bool protect_final_line);
++		bool protects_last_hyphenation(const containing_block_context& self_size) const;
++		const render_item* last_full_line_hyphen() const;
++		void avoid_last_hyphenation(const containing_block_context& self_size, formatting_context* fmt_ctx,
++			const formatting_context& initial_context);
++		std::vector<std::vector<pixel_t>> wrap_slack_by_group() const;
++		std::pair<pixel_t, pixel_t> line_indentation(const containing_block_context& self_size, bool first, bool after_break) const;
+ 		pixel_t new_box(const std::unique_ptr<line_box_item>& el, const containing_block_context& self_size,
+ 						formatting_context* fmt_ctx);
+ 		void apply_vertical_align() override;
++		bool first_formatted_line() const;
+ 
+ 	  public:
+ 		explicit render_item_inline_context(std::shared_ptr<element> src_el) :
+@@ -53,6 +67,9 @@
  			return std::make_shared<render_item_inline_context>(src_el());
  		}
  

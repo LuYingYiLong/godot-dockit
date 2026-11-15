@@ -1,59 +1,251 @@
 diff --git a/src/document.cpp b/src/document.cpp
 --- a/src/document.cpp
 +++ b/src/document.cpp
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
  #include "html.h"
 +#include "formats/html/litehtml_css_math.h"
++#include "formats/html/litehtml_document_adapter.h"
  #include "document.h"
  #include "stylesheet.h"
  #include "html_tag.h"
-@@ -84,11 +85,6 @@
+@@ -82,12 +84,7 @@
+ 	if (master_styles != "")
+ 	{
  		doc->m_master_css.parse_css_stylesheet(master_styles, "", doc);
- 		doc->m_master_css.sort_selectors();
- 	}
+-		doc->m_master_css.sort_selectors();
+-	}
 -	if (user_styles != "")
 -	{
 -		doc->m_user_css.parse_css_stylesheet(user_styles, "", doc);
 -		doc->m_user_css.sort_selectors();
--	}
++		doc->m_master_css.sort_selectors(false);
+ 	}
  
  	// Let's process created elements tree
- 	if (doc->m_root)
-@@ -115,7 +111,10 @@
- 			}
- 			doc->m_styles.parse_css_stylesheet(css.text, css.baseurl, doc, media);
- 		}
+@@ -97,35 +94,17 @@
+ 
+ 		doc->m_root->set_pseudo_class(_root_, true);
+ 
+-		// apply master CSS
++		// Apply the default rules using the same media state as the author rules.
++		doc->update_media_lists(doc->m_media);
+ 		doc->m_root->apply_stylesheet(doc->m_master_css);
+ 
+ 		// parse elements attributes
+ 		doc->m_root->parse_attributes();
+ 
+-		// parse style sheets linked in document
+-		for (const auto& css : doc->m_css)
+-		{
+-			media_query_list_list::ptr media;
+-			if (css.media != "")
+-			{
+-				auto mq_list = parse_media_query_list(css.media, doc);
+-				media = make_shared<media_query_list_list>();
+-				media->add(mq_list);
+-			}
+-			doc->m_styles.parse_css_stylesheet(css.text, css.baseurl, doc, media);
+-		}
 -		// Sort css selectors using CSS rules.
-+		if (!user_styles.empty())
-+			doc->m_styles.parse_css_stylesheet(user_styles, "", doc);
-+
-+		// Sort all author selectors together.
- 		doc->m_styles.sort_selectors();
- 
- 		// Apply media features.
-@@ -123,9 +122,6 @@
- 
- 		// Apply parsed styles.
- 		doc->m_root->apply_stylesheet(doc->m_styles);
+-		doc->m_styles.sort_selectors();
+-
+-		// Apply media features.
+-		doc->update_media_lists(doc->m_media);
+-
+-		// Apply parsed styles.
+-		doc->m_root->apply_stylesheet(doc->m_styles);
 -
 -		// Apply user styles if any
 -		doc->m_root->apply_stylesheet(doc->m_user_css);
++		doc->append_document_stylesheets();
++		if (!user_styles.empty())
++			doc->m_styles.parse_css_stylesheet(user_styles, "", doc);
++		doc->apply_document_author_styles();
  
  		// Initialize element::m_css
  		doc->m_root->compute_styles();
-@@ -532,7 +528,7 @@
+@@ -324,16 +303,8 @@
+ 	break;
+ 	case GUMBO_NODE_TEXT:
+ 	{
+-		if (!parseTextNode)
+-		{
+-			elements.push_back(std::make_shared<el_text>(node->v.text.text, shared_from_this()));
+-		}
+-		else
+-		{
+-			m_container->split_text(node->v.text.text,
+-				[this, &elements](const char* text) { elements.push_back(std::make_shared<el_text>(text, shared_from_this())); },
+-				[this, &elements](const char* text) { elements.push_back(std::make_shared<el_space>(text, shared_from_this())); });
+-		}
++		auto text = docrender_editor::create_text(shared_from_this(), node->v.text.text, parseTextNode);
++		elements.splice(elements.end(), text);
+ 	}
+ 	break;
+ 	case GUMBO_NODE_CDATA:
+@@ -497,6 +468,7 @@
+ 
+ pixel_t document::render( pixel_t max_width, render_type rt )
+ {
++	++m_layout_generation;
+ 	pixel_t ret = 0;
+ 	if(m_root && m_root_render)
+ 	{
+@@ -532,82 +504,97 @@
  {
  	if(m_root && m_root_render)
  	{
 -		m_root->draw(hdc, x, y, clip, m_root_render);
-+		m_root_render->paint(hdc, x, y, clip);
- 		m_root_render->draw_stacking_context(hdc, x, y, clip, true);
- 	}
- }
-@@ -600,6 +596,15 @@
+-		m_root_render->draw_stacking_context(hdc, x, y, clip, true);
+-	}
+-}
+-
+-pixel_t document::to_pixels( const css_length& val, const font_metrics& metrics, pixel_t size ) const
+-{
+-	if(val.is_predefined())
+-	{
++		m_root_render->paint_group(hdc, x, y, clip, true);
++	}
++}
++
++font_metrics document::initial_font_metrics()
++{
++	font_description description;
++	description.size = m_container->get_default_font_size();
++	description.weight = 400;
++	font_metrics metrics;
++	get_font(description, &metrics);
++	metrics.line_height = metrics.height;
++	return metrics;
++}
++
++pixel_t document::to_pixels(const css_length& val, const font_metrics& metrics, pixel_t size,
++	css_length_context context) const
++{
++	if (val.is_predefined())
+ 		return 0;
+-	}
+-	pixel_t ret;
+-	switch(val.units())
+-	{
+-	case css_units_percentage:
+-		ret = val.calc_percent(size);
+-		break;
+-	case css_units_em:
+-		ret = val.val() * metrics.font_size;
+-		break;
++	if (const auto& expression = val.expression())
++		return static_cast<pixel_t>(compute_css_math(*expression, *this, metrics, context)->evaluate(size));
++
++	const auto& viewport = context.viewport ? *context.viewport : m_media;
++	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
++	const float amount = val.val();
++	switch (val.units())
++	{
++	case css_units_percentage: return val.calc_percent(size);
++	case css_units_em: return amount * metrics.font_size;
++	case css_units_ex: return amount * metrics.x_height;
++	case css_units_cap: return amount * metrics.cap_height;
++	case css_units_ch: return amount * metrics.ch_width;
++	case css_units_ic: return amount * metrics.ic_width;
++	case css_units_lh: return amount * metrics.line_height;
++	case css_units_rem: return amount * root.font_size;
++	case css_units_rex: return amount * root.x_height;
++	case css_units_rcap: return amount * root.cap_height;
++	case css_units_rch: return amount * root.ch_width;
++	case css_units_ric: return amount * root.ic_width;
++	case css_units_rlh: return amount * root.line_height;
  
- void document::cvt_units( css_length& val, const font_metrics& metrics, pixel_t size ) const
- {
+ 	// https://drafts.csswg.org/css-values-4/#absolute-lengths
+-	case css_units_pt:
+-		ret = m_container->pt_to_px(val.val());
+-		break;
+-	case css_units_in:
+-		ret = m_container->pt_to_px(val.val() * 72); // 1in = 72pt
+-		break;
+-	case css_units_pc:
+-		ret = m_container->pt_to_px(val.val() * 12); // 1pc = (1/6)in = 12pt
+-		break;
+-	case css_units_cm:
+-		ret = m_container->pt_to_px(val.val() * 72 / 2.54f); // 1cm = (1/2.54)in = (72/2.54)pt
+-		break;
+-	case css_units_mm:
+-		ret = m_container->pt_to_px(val.val() * 72 / 2.54f / 10);
+-		break;
+-
+-	case css_units_vw:
+-		ret = (pixel_t) (m_media.width * val.val() / 100.0);
+-		break;
+-	case css_units_vh:
+-		ret = (pixel_t) (m_media.height * val.val() / 100.0);
+-		break;
+-	case css_units_vmin:
+-		ret = (pixel_t) (std::min(m_media.height, m_media.width) * val.val() / 100.0);
+-		break;
+-	case css_units_vmax:
+-		ret = (pixel_t) (std::max(m_media.height, m_media.width) * val.val() / 100.0);
+-		break;
+-	case css_units_rem:
+-		ret = (pixel_t) (m_root->css().get_font_size() * val.val());
+-		break;
+-	case css_units_ex:
+-		ret = (pixel_t) (metrics.x_height * val.val());
+-		break;
+-	case css_units_ch:
+-		ret = (pixel_t) (metrics.ch_width * val.val());
+-		break;
+-	default:
+-		ret = (pixel_t) val.val();
+-		break;
+-	}
+-	return ret;
+-}
+-
+-void document::cvt_units( css_length& val, const font_metrics& metrics, pixel_t size ) const
+-{
+-	if(val.is_predefined())
+-	{
++	case css_units_pt: return m_container->pt_to_px(amount);
++	case css_units_pc: return m_container->pt_to_px(amount * 12);
++	case css_units_in: return m_container->pt_to_px(amount * 72);
++	case css_units_cm: return m_container->pt_to_px(amount * 72 / 2.54f);
++	case css_units_mm: return m_container->pt_to_px(amount * 72 / 25.4f);
++	case css_units_q: return m_container->pt_to_px(amount * 72 / 101.6f);
++
++	// The embedded viewport has one size and uses horizontal writing mode.
++	case css_units_vw: case css_units_vi:
++	case css_units_svw: case css_units_svi:
++	case css_units_lvw: case css_units_lvi:
++	case css_units_dvw: case css_units_dvi:
++		return static_cast<pixel_t>(viewport.width * (amount / 100.0));
++	case css_units_vh: case css_units_vb:
++	case css_units_svh: case css_units_svb:
++	case css_units_lvh: case css_units_lvb:
++	case css_units_dvh: case css_units_dvb:
++		return static_cast<pixel_t>(viewport.height * (amount / 100.0));
++	case css_units_vmin: case css_units_svmin: case css_units_lvmin: case css_units_dvmin:
++		return static_cast<pixel_t>(std::min(viewport.width, viewport.height) * (amount / 100.0));
++	case css_units_vmax: case css_units_svmax: case css_units_lvmax: case css_units_dvmax:
++		return static_cast<pixel_t>(std::max(viewport.width, viewport.height) * (amount / 100.0));
++	default: return amount;
++	}
++}
++
++void document::cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const
++{
++	const auto intrinsic = val.intrinsic_size();
++	if (is_one_of(intrinsic, css_intrinsic_size::fit_content_limit, css_intrinsic_size::stretch_limit))
++	{
++		auto limit = val.intrinsic_size_limit();
++		cvt_units(limit, metrics, size);
++		limit.set_intrinsic_size(intrinsic);
++		val = std::move(limit);
+ 		return;
+ 	}
+-	if(val.units() != css_units_percentage)
+-	{
+-		val.set_value((float)to_pixels(val, metrics, size), css_units_px);
+-	}
 +	if (const auto& expression = val.expression())
 +	{
 +		auto computed = compute_css_math(*expression, *this, metrics);
@@ -63,16 +255,63 @@ diff --git a/src/document.cpp b/src/document.cpp
 +			val.set_value(static_cast<float>(computed->evaluate(0)), css_units_px);
 +		return;
 +	}
- 	if(val.is_predefined())
- 	{
- 		return;
-@@ -1135,9 +1140,6 @@
- 		// Apply parsed styles.
- 		child->apply_stylesheet(m_styles);
++	if (!val.is_predefined() && val.units() != css_units_percentage)
++		val.set_value(to_pixels(val, metrics, size), css_units_px);
+ }
  
+ pixel_t document::width() const
+@@ -618,6 +605,42 @@
+ pixel_t document::height() const
+ {
+ 	return m_size.height;
++}
++
++void document::append_document_stylesheets()
++{
++	const auto doc = shared_from_this();
++	for (const auto& sheet : m_css)
++	{
++		media_query_list_list::ptr media;
++		if (!sheet.media.empty())
++		{
++			media = make_shared<media_query_list_list>();
++			media->add(parse_media_query_list(sheet.media, doc));
++		}
++		m_styles.parse_css_stylesheet(sheet.text, sheet.baseurl, doc, media);
++	}
++}
++
++void document::apply_document_author_styles()
++{
++	m_styles.sort_selectors();
++	update_media_lists(m_media);
++	apply_author_styles(*m_root);
++}
++
++void document::apply_author_styles(element& root)
++{
++	const auto visit_tags = [](const auto& visit, element& node, const auto& action) -> void {
++		if (auto* tag = dynamic_cast<html_tag*>(&node))
++			action(*tag);
++		for (const auto& child : node.children())
++			visit(visit, *child, action);
++	};
++	// Include generated nodes from the default stylesheet in the rollback baseline.
++	visit_tags(visit_tags, root, [](html_tag& tag) { tag.m_style.snapshot_defaults(); });
++	root.apply_stylesheet(m_styles);
++	visit_tags(visit_tags, root, [](html_tag& tag) { tag.apply_inline_style(); });
+ }
+ 
+ void document::add_stylesheet( const char* str, const char* baseurl, const char* media )
+@@ -1133,10 +1156,7 @@
+ 		child->parse_attributes();
+ 
+ 		// Apply parsed styles.
+-		child->apply_stylesheet(m_styles);
+-
 -		// Apply user styles if any
 -		child->apply_stylesheet(m_user_css);
--
++		apply_author_styles(*child);
+ 
  		// Initialize m_css
  		child->compute_styles();
- 

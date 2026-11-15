@@ -71,7 +71,12 @@ namespace litehtml {
 		}
 
 		bool parse_breadth(const css_token& token, bool allow_fraction, grid_breadth& breadth) {
-			if (token.ident() == "auto") return true;
+			const auto keyword = token.ident();
+			if (keyword == "auto") return true;
+			if (keyword == "min-content" || keyword == "max-content") {
+				breadth.kind = keyword == "min-content" ? grid_breadth_kind::min_content : grid_breadth_kind::max_content;
+				return true;
+			}
 			if (token.type == DIMENSION && lowcase(token.unit) == "fr") {
 				if (!allow_fraction || !std::isfinite(token.n.number) || token.n.number < 0) return false;
 				breadth.kind = grid_breadth_kind::fraction;
@@ -85,11 +90,16 @@ namespace litehtml {
 		}
 
 		bool uses_percentage(const grid_breadth& breadth) {
-			return breadth.kind == grid_breadth_kind::length && breadth.length.units() == css_units_percentage;
+			return breadth.has_length() && breadth.length.units() == css_units_percentage;
 		}
 
 		grid_breadth_kind used_kind(const grid_breadth& breadth, bool definite) {
-			return !definite && uses_percentage(breadth) ? grid_breadth_kind::automatic : breadth.kind;
+			if (definite || !uses_percentage(breadth)) return breadth.kind;
+			return breadth.kind == grid_breadth_kind::fit_content ? grid_breadth_kind::max_content : grid_breadth_kind::automatic;
+		}
+
+		bool is_intrinsic(grid_breadth_kind kind) {
+			return !is_one_of(kind, grid_breadth_kind::length, grid_breadth_kind::fraction);
 		}
 
 		bool parse_track(const css_token& token, grid_track& track) {
@@ -97,6 +107,12 @@ namespace litehtml {
 				const auto& args = token.value;
 				return args.size() == 3 && args[1].ch == ',' &&
 					parse_breadth(args[0], false, track.minimum) && parse_breadth(args[2], true, track.maximum);
+			}
+			if (token.type == CV_FUNCTION && lowcase(token.name) == "fit-content") {
+				if (token.value.size() != 1 || !track.maximum.length.from_token(token.value.front(), f_length_percentage | f_positive | f_math))
+					return false;
+				track.maximum.kind = grid_breadth_kind::fit_content;
+				return true;
 			}
 			if (!parse_breadth(token, true, track.maximum)) return false;
 			if (track.maximum.kind != grid_breadth_kind::fraction) track.minimum = track.maximum;
@@ -178,9 +194,9 @@ namespace litehtml {
 			double base = 0;
 			double limit = 0;
 			double factor = 0;
-			bool automatic_maximum = false;
-			bool automatic_minimum = false;
-			bool flexible = false;
+			double fit_limit = std::numeric_limits<double>::infinity();
+			grid_breadth_kind minimum = grid_breadth_kind::automatic;
+			grid_breadth_kind maximum = grid_breadth_kind::automatic;
 			bool unbounded = false;
 		};
 
@@ -238,39 +254,59 @@ namespace litehtml {
 			double capacity;
 			double factor;
 			double increase = 0;
-			bool intrinsic_maximum;
 		};
 
-		enum class span_sizing { base, minimum_limit, preferred_limit };
+		enum class span_sizing { intrinsic_base, min_content_base, max_content_base, minimum_limit, preferred_limit };
+
+		bool affects_track(grid_breadth_kind kind, span_sizing step) {
+			switch (step) {
+				case span_sizing::intrinsic_base:
+				case span_sizing::minimum_limit:
+					return is_intrinsic(kind);
+				case span_sizing::min_content_base:
+					return is_one_of(kind, grid_breadth_kind::min_content, grid_breadth_kind::max_content);
+				case span_sizing::max_content_base:
+					return kind == grid_breadth_kind::max_content;
+				case span_sizing::preferred_limit:
+					return is_intrinsic(kind) && kind != grid_breadth_kind::min_content;
+			}
+			return false;
+		}
 
 		// Equal distribution up to each limit, with saturated tracks frozen.
 		void distribute_within_limits(std::vector<track_increase>& entries, double& space) {
 			std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a.capacity < b.capacity; });
 			for (std::size_t i = 0; i < entries.size() && space > 0; ++i) {
 				auto& entry = entries[i];
-				entry.increase = std::min(entry.capacity, space / (entries.size() - i));
-				space -= entry.increase;
+				const double growth = std::min(entry.capacity, space / (entries.size() - i));
+				entry.increase += growth;
+				space -= growth;
 			}
 		}
 
 		void span_increase(const std::vector<sized_track>& sizes, const grid_track_contribution& item, double span_gaps,
 			bool flexible, span_sizing step, std::vector<double>& planned, std::vector<track_increase>& eligible,
 			std::vector<track_increase>& others) {
-			const bool grow_limits = step != span_sizing::base;
-			double space = (step == span_sizing::preferred_limit ? item.preferred : item.minimum) - span_gaps;
+			const bool grow_limits = step == span_sizing::minimum_limit || step == span_sizing::preferred_limit;
+			const bool use_preferred = step == span_sizing::max_content_base || step == span_sizing::preferred_limit;
+			double space = (use_preferred ? item.preferred :
+				step == span_sizing::intrinsic_base ? item.minimum : item.min_content) - span_gaps;
 			eligible.clear();
 			others.clear();
 			for (auto i = item.range.start; i < item.range.end; ++i) {
 				const auto& track = sizes[i];
-				space -= grow_limits ? track.limit : track.base;
-				const bool applies = grow_limits ? track.automatic_maximum :
-					track.automatic_minimum && (!flexible || track.flexible);
-				const double capacity = track.unbounded || track.flexible ? std::numeric_limits<double>::infinity() :
-					grow_limits ? 0 : track.limit - track.base;
+				const double current = grow_limits ? track.limit : track.base;
+				space -= current;
+				const auto kind = grow_limits ? track.maximum : track.minimum;
+				const bool applies = affects_track(kind, step) && (!flexible || track.maximum == grid_breadth_kind::fraction);
+				const auto limit = track.unbounded || track.maximum == grid_breadth_kind::fraction ?
+					track.fit_limit : std::min(track.fit_limit, track.limit);
+				const double capacity = std::max(0.0, limit - current);
 				if (applies) {
-					eligible.push_back({ i, capacity, track.factor, 0, track.automatic_maximum });
-				} else if (!flexible && capacity > 0) {
-					others.push_back({ i, capacity, 0, 0, false });
+					eligible.push_back({ i, capacity, track.factor });
+				} else if (!flexible && capacity > 0 &&
+					!(step == span_sizing::preferred_limit && kind == grid_breadth_kind::min_content)) {
+					others.push_back({ i, capacity, 0 });
 				}
 			}
 			if (space <= 0 || eligible.empty()) return;
@@ -283,17 +319,30 @@ namespace litehtml {
 			} else {
 				distribute_within_limits(eligible, space);
 				distribute_within_limits(others, space);
-				// If intrinsic minima still need space, prefer tracks with an
-				// intrinsic maximum for the beyond-limit part of the increase.
-				const auto intrinsic = std::count_if(eligible.begin(), eligible.end(),
-					[](const auto& entry) { return entry.intrinsic_maximum; });
-				const double extra = space / (intrinsic ? intrinsic : eligible.size());
-				for (auto& entry : eligible)
-					if (!intrinsic || entry.intrinsic_maximum) entry.increase += extra;
+				for (const auto& entry : others)
+					planned[entry.index] = std::max(planned[entry.index], entry.increase);
+
+				// Distribute beyond the current growth limits to eligible intrinsic maxima.
+				// A fit-content maximum stops accepting growth at its argument.
+				others.clear();
+				for (const auto& entry : eligible) {
+					const auto& track = sizes[entry.index];
+					const bool preferred = use_preferred ?
+						is_one_of(track.maximum, grid_breadth_kind::max_content, grid_breadth_kind::automatic, grid_breadth_kind::fit_content) :
+						is_intrinsic(track.maximum);
+					if (!preferred) continue;
+					const double current = grow_limits ? track.limit : track.base;
+					const double capacity = track.fit_limit - current - entry.increase;
+					if (capacity > 0) others.push_back({ entry.index, capacity, 0, entry.increase });
+				}
+				distribute_within_limits(others, space);
+				// Minimum contributions can grow beyond a fit-content cap if needed.
+				const double extra = !grow_limits ? space / eligible.size() : 0;
+				for (auto& entry : eligible) entry.increase += extra;
+				for (const auto& entry : others)
+					planned[entry.index] = std::max(planned[entry.index], entry.increase + extra);
 			}
 			for (const auto& entry : eligible)
-				planned[entry.index] = std::max(planned[entry.index], entry.increase);
-			for (const auto& entry : others)
 				planned[entry.index] = std::max(planned[entry.index], entry.increase);
 		}
 
@@ -314,10 +363,12 @@ namespace litehtml {
 						span_increase(sizes, item, gap * gutters.count_inside(item.range), flexible, step, planned, eligible, others);
 					}
 				};
-				plan_increases(span_sizing::base);
-				for (std::size_t i = 0; i < sizes.size(); ++i) {
-					sizes[i].base += planned[i];
-					sizes[i].limit = std::max(sizes[i].limit, sizes[i].base);
+				for (const auto step : { span_sizing::intrinsic_base, span_sizing::min_content_base, span_sizing::max_content_base }) {
+					plan_increases(step);
+					for (std::size_t i = 0; i < sizes.size(); ++i) {
+						sizes[i].base += planned[i];
+						sizes[i].limit = std::max(sizes[i].limit, sizes[i].base);
+					}
 				}
 				if (!flexible) {
 					plan_increases(span_sizing::minimum_limit);
@@ -667,8 +718,8 @@ namespace litehtml {
 	bool grid_range_needs_content(const grid_track_list& tracks, grid_track_range range, bool definite) {
 		for (auto i = range.start; i < range.end; ++i) {
 			const auto& track = tracks[i];
-			if (used_kind(track.minimum, definite) == grid_breadth_kind::automatic ||
-				used_kind(track.maximum, definite) == grid_breadth_kind::automatic ||
+			if (is_intrinsic(used_kind(track.minimum, definite)) ||
+				is_intrinsic(used_kind(track.maximum, definite)) ||
 				(!definite && track.maximum.kind == grid_breadth_kind::fraction && track.maximum.fraction > 0)) return true;
 		}
 		return false;
@@ -692,10 +743,9 @@ namespace litehtml {
 	}
 
 	bool grid_range_has_auto_minimum(const grid_track_list& tracks, grid_track_range range, bool definite) {
-		if (span_of(range) == 1) return true;
 		bool automatic = false;
 		for (auto i = range.start; i < range.end; ++i) {
-			if (tracks[i].maximum.kind == grid_breadth_kind::fraction) return false;
+			if (span_of(range) > 1 && tracks[i].maximum.kind == grid_breadth_kind::fraction) return false;
 			automatic |= used_kind(tracks[i].minimum, definite) == grid_breadth_kind::automatic;
 		}
 		return automatic;
@@ -721,6 +771,7 @@ namespace litehtml {
 			if (span_of(item.range) == 1) {
 				auto& single = singles[item.range.start];
 				single.minimum = std::max(single.minimum, item.minimum);
+				single.min_content = std::max(single.min_content, item.min_content);
 				single.preferred = std::max(single.preferred, item.preferred);
 			} else {
 				bool crosses_flexible = false;
@@ -740,16 +791,24 @@ namespace litehtml {
 			const auto max_kind = used_kind(track.maximum, available.has_value());
 			const double fixed_max = max_kind == grid_breadth_kind::length ? track.maximum.length.calc_percent(basis) : 0;
 			sized_track size;
-			size.base = min_kind == grid_breadth_kind::length ? track.minimum.length.calc_percent(basis) : content.minimum;
+			size.minimum = min_kind;
+			size.maximum = max_kind;
+			switch (min_kind) {
+				case grid_breadth_kind::length: size.base = track.minimum.length.calc_percent(basis); break;
+				case grid_breadth_kind::min_content: size.base = content.min_content; break;
+				case grid_breadth_kind::max_content: size.base = content.preferred; break;
+				default: size.base = content.minimum; break;
+			}
 			if (min_kind == grid_breadth_kind::automatic && max_kind == grid_breadth_kind::length)
 				size.base = std::min(size.base, fixed_max);
 			size.base = std::max(0.0, size.base);
-			size.automatic_maximum = max_kind == grid_breadth_kind::automatic;
-			size.automatic_minimum = min_kind == grid_breadth_kind::automatic;
-			size.limit = std::max(size.base, size.automatic_maximum ? static_cast<double>(content.preferred) : fixed_max);
+			if (max_kind == grid_breadth_kind::fit_content)
+				size.fit_limit = std::max<pixel_t>(0, track.maximum.length.calc_percent(basis));
+			const double max_contribution = max_kind == grid_breadth_kind::min_content ? content.min_content : content.preferred;
+			const double growth_limit = is_intrinsic(max_kind) ? std::min(size.fit_limit, max_contribution) : fixed_max;
+			size.limit = std::max(size.base, growth_limit);
 			size.factor = track.maximum.fraction;
-			size.flexible = max_kind == grid_breadth_kind::fraction;
-			size.unbounded = size.automatic_maximum && content.preferred == 0;
+			size.unbounded = is_intrinsic(max_kind) && content.preferred == 0;
 			sizes.push_back(size);
 		}
 		std::sort(spans.begin(), spans.end(), [](const auto* a, const auto* b) { return span_of(a->range) < span_of(b->range); });
@@ -764,10 +823,12 @@ namespace litehtml {
 			grow_to_limits(sizes, free_space);
 			grow_flexible_tracks(sizes, free_space);
 			if (stretch && free_space > 0) {
-				const auto automatic = std::count_if(sizes.begin(), sizes.end(), [](const auto& track) { return track.automatic_maximum; });
+				const auto automatic = std::count_if(sizes.begin(), sizes.end(), [](const auto& track) {
+					return track.maximum == grid_breadth_kind::automatic;
+				});
 				if (automatic)
 					for (auto& track : sizes)
-						if (track.automatic_maximum) track.base += free_space / static_cast<double>(automatic);
+						if (track.maximum == grid_breadth_kind::automatic) track.base += free_space / static_cast<double>(automatic);
 			}
 		}
 		else {

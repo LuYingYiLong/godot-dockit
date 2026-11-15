@@ -1,7 +1,7 @@
 diff --git a/src/style.cpp b/src/style.cpp
 --- a/src/style.cpp
 +++ b/src/style.cpp
-@@ -1,1673 +1,117 @@
+@@ -1,1673 +1,129 @@
  #include "html.h"
  #include "style.h"
  #include "css_parser.h"
@@ -576,15 +576,12 @@ diff --git a/src/style.cpp b/src/style.cpp
  	}
 -
 -	return parse_url(tok, url);
-+	for (auto& entry : result.properties)
-+		add_parsed_property(entry.first, std::move(entry.second));
- }
- 
+-}
+-
 -// https://drafts.csswg.org/css-lists/#list-style-property
 -// <'list-style-position'> || <'list-style-image'> || <'list-style-type'>
 -void style::parse_list_style(const css_token_vector& tokens, string baseurl, bool important)
-+void style::remember_diagnostic(const css_diagnostic& diagnostic)
- {
+-{
 -	// initial values:  https://developer.mozilla.org/en-US/docs/Web/CSS/list-style#formal_definition
 -	int type     = list_style_type_disc;
 -	int position = list_style_position_outside;
@@ -596,7 +593,8 @@ diff --git a/src/style.cpp b/src/style.cpp
 -	int none_count = 0;
 -
 -	for (const auto& token : tokens)
--	{
++	for (auto& entry : result.properties)
+ 	{
 -		// "...none is a valid value for both list-style-image and list-style-type. To resolve this ambiguity,
 -		// a value of none ... must be applied to whichever of the two properties aren’t otherwise set by the shorthand."
 -		if (token.ident() == "none") {
@@ -633,20 +631,12 @@ diff --git a/src/style.cpp b/src/style.cpp
 -	add_parsed_property(_list_style_position_,		property_value(position, important));
 -	add_parsed_property(_list_style_image_,			property_value(image,	 important));
 -	add_parsed_property(_list_style_image_baseurl_,	property_value(baseurl,	 important));
-+	if (!diagnostics) diagnostics = std::make_shared<std::vector<css_diagnostic>>();
-+	const auto same_declaration = [&](const css_diagnostic& other) {
-+		return diagnostic.kind == other.kind && diagnostic.property == other.property && diagnostic.value == other.value &&
-+			diagnostic.source.kind == other.source.kind && diagnostic.source.path == other.source.path;
-+	};
-+	if (std::none_of(diagnostics->begin(), diagnostics->end(), same_declaration))
-+		diagnostics->push_back(diagnostic);
- }
- 
+-}
+-
 -// https://developer.mozilla.org/en-US/docs/Web/CSS/border-radius
 -// border-radius = <length-percentage [0,∞]>{1,4} [ / <length-percentage [0,∞]>{1,4} ]?
 -void style::parse_border_radius(const css_token_vector& tokens, bool important)
-+void style::add_parsed_property(string_id name, property_value value)
- {
+-{
 -	int i;
 -	for (i = 0; i < (int)tokens.size() && tokens[i].ch != '/'; i++) {}
 -
@@ -673,11 +663,14 @@ diff --git a/src/style.cpp b/src/style.cpp
 -			add_four_properties(_border_top_left_radius_x_, rx, n, important);
 -			add_four_properties(_border_top_left_radius_y_, ry, m, important);
 -		}
--	}
--}
--
++		if (element) entry.second.m_layer = css_inline_layer;
++		add_parsed_property(entry.first, std::move(entry.second));
+ 	}
+ }
+ 
 -bool parse_border_width(const css_token& token, css_length& w)
--{
++void style::remember_diagnostic(const css_diagnostic& diagnostic)
+ {
 -	css_length width;
 -	if (!width.from_token(token, f_length | f_positive, border_width_strings))
 -		return false;
@@ -687,15 +680,23 @@ diff --git a/src/style.cpp b/src/style.cpp
 -
 -	w = width;
 -	return true;
--}
--
++	if (!diagnostics) diagnostics = std::make_shared<std::vector<css_diagnostic>>();
++	const auto same_declaration = [&](const css_diagnostic& other) {
++		return diagnostic.kind == other.kind && diagnostic.property == other.property && diagnostic.value == other.value &&
++			diagnostic.source.kind == other.source.kind && diagnostic.source.path == other.source.path;
++	};
++	if (std::none_of(diagnostics->begin(), diagnostics->end(), same_declaration))
++		diagnostics->push_back(diagnostic);
+ }
+ 
 -// https://drafts.csswg.org/css-backgrounds/#propdef-border
 -// <line-width> || <line-style> || <color>
 -// <line-width> = <length [0,∞]> | thin | medium | thick
 -// <line-style> = none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset
 -bool parse_border_helper(const css_token_vector& tokens, document_container* container,
 -	css_length& width, border_style& style, web_color& color)
--{
++void style::add_parsed_property(string_id name, property_value value)
+ {
 -	// initial values:  https://developer.mozilla.org/en-US/docs/Web/CSS/border#formal_definition
 -	css_length   _width = border_width_medium_value;
 -	border_style _style = border_style_none;
@@ -706,7 +707,8 @@ diff --git a/src/style.cpp b/src/style.cpp
 -	bool color_found = false;
 -
 -	for (const auto& token : tokens)
--	{
++	if (value.m_layer >= 0 && value.m_layer != css_inline_layer)
+ 	{
 -		if (!width_found && parse_border_width(token, _width))
 -			width_found = true;
 -		else if (!style_found && parse_keyword(token, _style, border_style_strings))
@@ -715,16 +717,24 @@ diff --git a/src/style.cpp b/src/style.cpp
 -			color_found = true;
 -		else
 -			return false;
--	}
++		auto& candidates = layer_candidates[name];
++		auto [entry, inserted] = candidates.try_emplace(value.m_layer, value);
++		if (!inserted && takes_cascade_precedence(value, entry->second))
++			entry->second = value;
+ 	}
 -
 -	width = _width;
 -	style = _style;
 -	color = _color;
 -	return true;
--}
--
++	auto [entry, inserted] = m_properties.try_emplace(name, std::move(value));
++	if (!inserted && takes_cascade_precedence(value, entry->second))
++		entry->second = std::move(value);
+ }
+ 
 -void style::parse_border(const css_token_vector& tokens, bool important, document_container* container)
--{
++void style::combine(const style& src, int layer)
+ {
 -	css_length width;
 -	border_style style;
 -	web_color color;
@@ -788,10 +798,13 @@ diff --git a/src/style.cpp b/src/style.cpp
 -		return 0;
 -
 -	for (size_t i = 0; i < tokens.size(); i++)
--	{
++	if (src.diagnostics)
+ 	{
 -		if (!parse(tokens[i], result[i], args...))
 -			return 0;
--	}
++		for (const auto& diagnostic : *src.diagnostics)
++			remember_diagnostic(diagnostic);
+ 	}
 -	return (int)tokens.size();
 -}
 -
@@ -835,7 +848,8 @@ diff --git a/src/style.cpp b/src/style.cpp
 -	int_vector repeats, attachments, origins, clips;
 -
 -	for (size_t i = 0; i < layers.size(); i++)
--	{
++	for (const auto& [name, property] : src.m_properties)
+ 	{
 -		background bg;
 -		if (!parse_bg_layer(layers[i], container, bg, i == layers.size() - 1))
 -			return;
@@ -1341,11 +1355,15 @@ diff --git a/src/style.cpp b/src/style.cpp
 -	if(!line_tokens.empty())
 -	{
 -		parse_text_decoration_line(line_tokens, important);
--	}
--}
--
++		auto value = property;
++		value.m_layer = layer;
++		add_parsed_property(name, std::move(value));
+ 	}
+ }
+ 
 -bool style::parse_text_decoration_color(const css_token& token, bool important, document_container* container)
--{
++void style::snapshot_defaults()
+ {
 -	web_color _color;
 -	if(parse_color(token, _color, container))
 -	{
@@ -1609,28 +1627,14 @@ diff --git a/src/style.cpp b/src/style.cpp
 -			m_properties.erase(prop);
 -		}
 -	}
-+	const auto it = m_properties.find(name);
-+	if (it == m_properties.end())
-+		m_properties.emplace(name, std::move(value));
-+	else if (!it->second.m_important || value.m_important)
-+		it->second = std::move(value);
- }
- 
- void style::combine(const style& src)
- {
-+	if (src.diagnostics)
-+	{
-+		for (const auto& diagnostic : *src.diagnostics)
-+			remember_diagnostic(diagnostic);
-+	}
- 	for (const auto& property : src.m_properties)
+-}
+-
+-void style::combine(const style& src)
+-{
+-	for (const auto& property : src.m_properties)
 -	{
- 		add_parsed_property(property.first, property.second);
+-		add_parsed_property(property.first, property.second);
 -	}
-+}
-+
-+void style::snapshot_defaults()
-+{
 +	default_properties = m_properties;
  }
  
@@ -1709,7 +1713,7 @@ diff --git a/src/style.cpp b/src/style.cpp
 -			return true;
 -	}
 -	return false;
-+	resolve_css_declarations(m_properties, default_properties, *element, computed_variables,
++	resolve_css_declarations(m_properties, default_properties, layer_candidates, *element, computed_variables,
 +		computed_declarations, computed_diagnostics);
  }
  

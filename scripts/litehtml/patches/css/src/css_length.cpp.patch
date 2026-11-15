@@ -1,18 +1,20 @@
 diff --git a/src/css_length.cpp b/src/css_length.cpp
-index 798eb0b..ac44033 100644
 --- a/src/css_length.cpp
 +++ b/src/css_length.cpp
-@@ -1,11 +1,33 @@
+@@ -1,12 +1,54 @@
  #include "html.h"
 +#include "formats/html/litehtml_css_math.h"
  #include "css_length.h"
++#include <cmath>
  
  namespace litehtml
  {
  
 +void css_length::set_expression(std::shared_ptr<const css_math_expression> p_expression)
 +{
-+	set_value(0, p_expression->has_percentage ? css_units_percentage : css_units_px);
++	const auto unit = p_expression->is_number ? css_units_none :
++		(p_expression->has_percentage ? css_units_percentage : css_units_px);
++	set_value(0, unit);
 +	m_expression = std::move(p_expression);
 +}
 +
@@ -21,8 +23,24 @@ index 798eb0b..ac44033 100644
 +	return static_cast<pixel_t>(m_expression->evaluate(basis));
 +}
 +
++void css_length::set_intrinsic_size(css_intrinsic_size kind)
++{
++	if (!is_one_of(kind, css_intrinsic_size::fit_content_limit, css_intrinsic_size::stretch_limit)) predef(0);
++	m_is_predefined = true;
++	m_intrinsic_size = kind;
++}
++
++css_length css_length::intrinsic_size_limit() const
++{
++	auto limit = *this;
++	limit.m_is_predefined = false;
++	limit.m_intrinsic_size = css_intrinsic_size::none;
++	return limit;
++}
++
  bool css_length::from_token(const css_token& token, int options, const string& keywords)
  {
+-	if ((options & f_positive) && is_one_of(token.type, NUMBER, DIMENSION, PERCENTAGE) && token.n.number < 0)
 +	if (token.type == CV_FUNCTION && (options & f_math))
 +	{
 +		if (auto expression = parse_css_math(token, options))
@@ -33,13 +51,26 @@ index 798eb0b..ac44033 100644
 +		return false;
 +	}
 +	m_expression.reset();
- 	if ((options & f_positive) && is_one_of(token.type, NUMBER, DIMENSION, PERCENTAGE) && token.n.number < 0)
++	m_intrinsic_size = css_intrinsic_size::none;
++	if (is_one_of(token.type, NUMBER, DIMENSION, PERCENTAGE) &&
++		(!std::isfinite(token.n.number) || ((options & f_positive) && token.n.number < 0)))
  		return false;
  
-@@ -61,6 +83,7 @@ bool css_length::from_token(const css_token& token, int options, const string& k
+ 	if (token.type == IDENT)
+@@ -61,6 +103,17 @@
  
  string css_length::to_string() const
  {
++	switch (m_intrinsic_size)
++	{
++	case css_intrinsic_size::min_content: return "min-content";
++	case css_intrinsic_size::max_content: return "max-content";
++	case css_intrinsic_size::fit_content: return "fit-content";
++	case css_intrinsic_size::fit_content_limit: return "fit-content(" + intrinsic_size_limit().to_string() + ")";
++	case css_intrinsic_size::stretch: return "stretch";
++	case css_intrinsic_size::stretch_limit: return "stretch(" + intrinsic_size_limit().to_string() + ")";
++	default: break;
++	}
 +	if (m_expression) return m_expression->to_string();
  	if(m_is_predefined)
  	{

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "html_text_layout.h"
 #include "layout/html_geometry.h"
 
 #include <godot_cpp/classes/shader_material.hpp>
@@ -8,6 +9,7 @@
 #include <godot_cpp/variant/rid.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -27,7 +29,7 @@ namespace docrender {
 	};
 
 	struct HTMLText {
-		godot::Ref<godot::TextLine> line;
+		HTMLTextLayout layout;
 		godot::Vector2 position;
 		godot::Color color;
 		int64_t offset = -1;
@@ -39,7 +41,17 @@ namespace docrender {
 		godot::Ref<godot::Texture2D> texture;
 		godot::Rect2 destination;
 		godot::Rect2 source;
-		bool repeat;
+	};
+
+	enum class HTMLTextureFilter { inherited, nearest, linear, linear_mipmaps };
+
+	struct HTMLTextureSampling {
+		HTMLTextureFilter filter = HTMLTextureFilter::inherited;
+		bool repeat = false;
+
+		bool operator!=(const HTMLTextureSampling& p_other) const {
+			return filter != p_other.filter || repeat != p_other.repeat;
+		}
 	};
 
 	struct HTMLCircle {
@@ -64,6 +76,7 @@ namespace docrender {
 		std::vector<TransformedClip> clips;
 		godot::Ref<godot::ShaderMaterial> material;
 		std::vector<HTMLPaintCommand> commands;
+		HTMLTextureSampling sampling;
 
 		void draw(
 			godot::RenderingServer& p_server,

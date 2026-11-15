@@ -70,14 +70,6 @@ namespace litehtml {
 		return doc;
 	}
 
-	void docrender_editor::reset_link(html_tag& p_element, bool p_has_href) {
-		auto& classes = p_element.m_pseudo_classes;
-		classes.erase(std::remove(classes.begin(), classes.end(), _link_), classes.end());
-		if (p_has_href) {
-			classes.push_back(_link_);
-		}
-	}
-
 	void docrender_editor::remove_attribute(html_tag& p_element, const char* p_name) {
 		const std::string_view name(p_name);
 		if (name == "class" || name == "id") {
@@ -140,7 +132,7 @@ namespace litehtml {
 		p_element.m_used_styles.clear();
 		p_element.m_counter_values.clear();
 		p_element.m_children.remove_if([](const element::ptr& p_child) {
-			const bool generated = p_child->tag() == __tag_before_ || p_child->tag() == __tag_after_;
+			const bool generated = is_generated_tag(p_child->tag());
 			if (generated) {
 				p_child->parent(nullptr);
 			}
@@ -150,9 +142,6 @@ namespace litehtml {
 			tag->m_style.clear();
 			if (tag->tag() == _button_) {
 				update_button_pseudo_classes(*tag);
-			}
-			if (tag->tag() == _a_) {
-				reset_link(*tag, false);
 			}
 		}
 		for (const auto& child : p_element.children()) {
@@ -166,13 +155,8 @@ namespace litehtml {
 	}
 
 	void docrender_editor::compute_styles(document& p_document) {
-		const auto clear_counters = [](const auto& visit, element& p_element) -> void {
-			p_element.m_counter_values.clear();
-			for (const auto& child : p_element.children()) {
-				visit(visit, *child);
-			}
-		};
-		clear_counters(clear_counters, *p_document.m_root);
+		p_document.reset_quote_depth();
+		p_document.m_root->inherit_counters(nullptr);
 		p_document.m_root->compute_styles();
 	}
 
@@ -209,6 +193,19 @@ namespace litehtml {
 		return nullptr;
 	}
 
+	void docrender_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
+		const string& p_additional_styles) {
+		auto& doc = *p_document;
+		p_container.set_css_source_kind(css_source_kind::style_element);
+		doc.append_document_stylesheets();
+		if (!p_additional_styles.empty()) {
+			p_container.set_css_source_kind(css_source_kind::stylesheet);
+			doc.m_styles.parse_css_stylesheet(p_additional_styles, "", p_document);
+		}
+		p_container.set_css_source_kind(css_source_kind::none);
+		doc.apply_document_author_styles();
+	}
+
 	void docrender_editor::restyle(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_default_styles, const string& p_user_styles) {
 		p_container.reset_stylesheet_reads();
@@ -228,41 +225,48 @@ namespace litehtml {
 
 		doc.container()->get_media_features(doc.m_media);
 		doc.m_master_css.parse_css_stylesheet(p_default_styles, "", p_document);
-		doc.m_master_css.sort_selectors();
+		doc.m_master_css.sort_selectors(false);
 		doc.update_media_lists(doc.m_media);
 		root->apply_stylesheet(doc.m_master_css);
 		root->parse_attributes();
-		const auto snapshot_defaults = [&](const auto& p_visit, element& p_element) -> void {
+		const auto apply_presentational_hints = [](const auto& p_visit, element& p_element) -> void {
 			if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
-				tag->m_style.snapshot_defaults();
+				if (const auto direction = lowcase(tag->get_attr("dir", "")); is_one_of(direction, "ltr", "rtl")) {
+					tag->m_style.add_property(_id("direction"), direction);
+				}
+				if (is_one_of(tag->tag(), _ol_, _li_)) {
+					static const std::map<std::string_view, const char*> marker_types{
+						{ "1", "decimal" }, { "a", "lower-alpha" }, { "A", "upper-alpha" },
+						{ "i", "lower-roman" }, { "I", "upper-roman" },
+					};
+					const auto type = marker_types.find(tag->get_attr("type", ""));
+					if (type != marker_types.end()) {
+						tag->m_style.add_property(_list_style_type_, type->second);
+					}
+				}
 			}
 			for (const auto& child : p_element.children()) {
 				p_visit(p_visit, *child);
 			}
 			};
-		snapshot_defaults(snapshot_defaults, *root);
-		p_container.set_css_source_kind(css_source_kind::style_element);
-		for (const auto& sheet : doc.m_css) {
-			media_query_list_list::ptr media;
-			if (!sheet.media.empty()) {
-				media = std::make_shared<media_query_list_list>();
-				media->add(parse_media_query_list(sheet.media, p_document));
-			}
-			doc.m_styles.parse_css_stylesheet(sheet.text, sheet.baseurl, p_document, media);
+		apply_presentational_hints(apply_presentational_hints, *root);
+		apply_author_styles(p_document, p_container, p_user_styles);
+		auto faces = doc.m_master_css.font_faces();
+		const auto& author_faces = doc.m_styles.font_faces();
+		faces.insert(faces.end(), author_faces.begin(), author_faces.end());
+		auto feature_values = doc.m_master_css.font_feature_values();
+		const auto& author_features = doc.m_styles.font_feature_values();
+		feature_values.insert(feature_values.end(), author_features.begin(), author_features.end());
+		if (p_container.set_font_rules(std::move(faces), std::move(feature_values))) {
+			for (const auto& entry : doc.m_fonts) doc.container()->delete_font(entry.second.font);
+			doc.m_fonts.clear();
 		}
-		if (!p_user_styles.empty()) {
-			p_container.set_css_source_kind(css_source_kind::stylesheet);
-			doc.m_styles.parse_css_stylesheet(p_user_styles, "", p_document);
-		}
-		doc.m_styles.sort_selectors();
-		doc.update_media_lists(doc.m_media);
-		root->apply_stylesheet(doc.m_styles);
-		p_container.set_css_source_kind(css_source_kind::none);
-		root->compute_styles();
+		compute_styles(doc);
 
 		doc.m_root_render = root->create_render_item(nullptr);
 		doc.fix_tables_layout();
 		if (doc.m_root_render) {
+			trim_white_space(*doc.m_root_render);
 			doc.m_root_render = doc.m_root_render->init();
 		}
 	}
@@ -278,9 +282,6 @@ namespace litehtml {
 		else {
 			remove_attribute(*tag, p_name);
 		}
-		if (tag->tag() == _a_ && std::string_view(p_name) == "href") {
-			reset_link(*tag, p_value != nullptr);
-		}
 		if (tag->tag() == _button_ && (std::string_view(p_name) == "disabled" || std::string_view(p_name) == "type")) {
 			update_button_pseudo_classes(*tag);
 		}
@@ -293,8 +294,9 @@ namespace litehtml {
 			children.push_back(std::make_shared<el_text>(p_text, p_document));
 		}
 		else if (*p_text) {
+			const std::string_view source(p_text);
 			p_document->container()->split_text(p_text,
-				[&](const char* p_word) { children.push_back(std::make_shared<el_text>(p_word, p_document)); },
+				[&](const char* p_word) { children.push_back(std::make_shared<el_text>(p_word, p_document, source == p_word)); },
 				[&](const char* p_space) { children.push_back(std::make_shared<el_space>(p_space, p_document)); });
 		}
 		return children;

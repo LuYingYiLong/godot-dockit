@@ -1,24 +1,94 @@
 diff --git a/src/el_before_after.cpp b/src/el_before_after.cpp
 --- a/src/el_before_after.cpp
 +++ b/src/el_before_after.cpp
-@@ -10,71 +10,72 @@
- 	m_tag = before ? __tag_before_ : __tag_after_;
+@@ -1,216 +1,197 @@
+ #include "html.h"
+ #include "el_before_after.h"
++#include "document.h"
++#include "document_container.h"
++#include "el_image.h"
++#include "el_space.h"
+ #include "el_text.h"
+-#include "el_space.h"
+-#include "el_image.h"
+-#include "utf8_strings.h"
++#include "formats/html/css/css_relational_selector.h"
++#include "formats/html/litehtml_document_adapter.h"
+ 
+-litehtml::el_before_after_base::el_before_after_base(const std::shared_ptr<document>& doc, bool before) : html_tag(doc)
++namespace litehtml
+ {
+-	m_tag = before ? __tag_before_ : __tag_after_;
++namespace
++{
++	const string_vector& quote_pairs(const element& node)
++	{
++		static const string_vector english{ "\xe2\x80\x9c", "\xe2\x80\x9d", "\xe2\x80\x98", "\xe2\x80\x99" };
++		static const string_vector french{ "\xc2\xab\xc2\xa0", "\xc2\xa0\xc2\xbb", "\xe2\x80\xb9\xc2\xa0", "\xc2\xa0\xe2\x80\xba" };
++		static const string_vector german{ "\xe2\x80\x9e", "\xe2\x80\x9c", "\xe2\x80\x9a", "\xe2\x80\x98" };
++		static const string_vector japanese{ "\xe3\x80\x8c", "\xe3\x80\x8d", "\xe3\x80\x8e", "\xe3\x80\x8f" };
++		static const string_vector none;
++		static const string_vector fr{ "fr" }, de{ "de" }, ja{ "ja" };
++
++		const css_quotes* quotes = &node.css().get_quotes();
++		auto language = node.parent();
++		while (quotes->kind == css_quotes_kind::match_parent && language)
++		{
++			quotes = &language->css().get_quotes();
++			const auto ancestor = language->parent();
++			if (!ancestor) break;
++			language = ancestor;
++		}
++		if (quotes->kind == css_quotes_kind::pairs) return quotes->pairs;
++		if (quotes->kind == css_quotes_kind::none) return none;
++		const auto& language_node = language ? *language : node;
++		if (matches_element_language(language_node, fr)) return french;
++		if (matches_element_language(language_node, de)) return german;
++		if (matches_element_language(language_node, ja)) return japanese;
++		return english;
++	}
++
  }
  
 -void litehtml::el_before_after_base::add_style(const style& style)
--{
++el_before_after_base::el_before_after_base(const document::ptr& doc, string_id tag) : html_tag(doc)
+ {
 -	html_tag::add_style(style);
--
++	m_tag = tag;
++}
+ 
 -	auto children = m_children;
 -	m_children.clear();
--
++el_marker::el_marker(const document::ptr& doc) : el_before_after_base(doc, marker_tag())
++{
++}
+ 
 -	const auto& content_property = style.get_property(_content_);
 -	if(content_property.is<string>() && !content_property.get<string>().empty())
--	{
++void el_marker::compute_styles(bool recursive)
++{
++	html_tag::compute_styles(false);
++	const auto list_item = parent();
++	css_w().set_display(display_none);
++	if (!list_item || list_item->css().get_display() != display_list_item) return;
++	for (auto ancestor = list_item->parent(); ancestor; ancestor = ancestor->parent())
++		if (ancestor->css().get_display() == display_none) return;
++
++	const auto& content = css().get_content();
++	css_generated_content fallback;
++	if (content.normal)
+ 	{
 -		const string& str = content_property.get<string>();
 -		int idx = value_index(str, content_property_string);
 -		if(idx < 0)
--		{
++		const auto& list_css = list_item->css();
++		const auto& url = list_css.get_list_style_image();
++		size extent;
++		if (!url.empty())
++			get_document()->container()->get_image_size(url.c_str(), list_css.get_list_style_image_baseurl().c_str(), extent,
++				decorative_image_orientation(css().get_image_orientation()));
++		if (extent.width > 0 && extent.height > 0)
+ 		{
 -			string fnc;
 -			string::size_type i = 0;
 -			while(i < str.length() && i != string::npos)
@@ -64,78 +134,260 @@ diff --git a/src/el_before_after.cpp b/src/el_before_after.cpp
 -					i++;
 -				}
 -			}
--		}
--	}
--
++			fallback.base_url = list_css.get_list_style_image_baseurl();
++			fallback.items.push_back({ css_content_kind::image, url, {} });
++			fallback.items.push_back({ css_content_kind::text, " ", {} });
++		}
++		else
++		{
++			const auto& marker = list_css.get_list_marker_type();
++			if (marker.text)
++				fallback.items.push_back({ css_content_kind::text, *marker.text, {} });
++			else if (marker.counter.name != "none")
++				fallback.items.push_back({ css_content_kind::marker_counter, "list-item", {}, marker.counter });
+ 		}
+ 	}
++	const auto& effective = content.normal ? fallback : content;
++	if (effective.items.empty()) return;
++	css_w().prepare_marker(list_item->css().get_list_style_position() == list_style_position_outside);
++	resolve_content(effective);
++	if (recursive) compute_child_styles();
++}
+ 
 -	if(m_children.empty())
--	{
--		m_children = children;
-+void litehtml::el_before_after_base::compute_styles(bool recursive)
++void el_before_after_base::compute_styles(bool recursive)
 +{
 +	html_tag::compute_styles(false);
 +	const auto& content = css().get_content();
-+	if (content.empty() || value_index(content, content_property_string) >= 0)
++	if (content.items.empty())
 +		css_w().set_display(display_none);
-+	resolve_content(content);
 +
-+	if (recursive)
-+	{
-+		for (const auto& child : children())
-+			child->compute_styles();
++	if (css().get_display() == display_none) return;
++	for (auto ancestor = parent(); ancestor; ancestor = ancestor->parent())
+ 	{
+-		m_children = children;
++		if (ancestor->css().get_display() == display_none || ancestor->is_replaced()) return;
 +	}
++	handle_counter_properties();
++	resolve_content(content);
++	if (recursive) compute_child_styles();
 +}
 +
-+void litehtml::el_before_after_base::resolve_content(const string& str)
++void el_before_after_base::resolve_content(const css_generated_content& content)
 +{
-+	if (str == materialized_content) return;
-+	materialized_content = str;
-+	clearRecursive();
-+	if (str.empty() || value_index(str, content_property_string) >= 0) return;
-+
-+	string fnc;
-+	string::size_type i = 0;
-+	while(i < str.length() && i != string::npos)
++	using kind = css_content_kind;
++	const auto doc = get_document();
++	const auto origin = parent();
++	const auto lookup = [&](const string& name) { return doc->find_counter_style(name); };
++	std::vector<std::pair<kind, string>> parts;
++	string text;
++	for (const auto& item : content.items)
 +	{
-+		if(str.at(i) == '"' || str.at(i) == '\'')
++		switch (item.kind)
 +		{
-+			auto chr = str.at(i);
-+			fnc.clear();
-+			i++;
-+			string::size_type pos = str.find(chr, i);
-+			string txt;
-+			if(pos == string::npos)
-+			{
-+				txt = str.substr(i);
-+				i = string::npos;
-+			} else
-+			{
-+				txt = str.substr(i, pos - i);
-+				i = pos + 1;
-+			}
-+			add_text(txt);
-+		} else if(str.at(i) == '(')
++		case kind::text:
++			text += item.value;
++			break;
++		case kind::attribute:
 +		{
-+			i++;
-+			litehtml::trim(fnc);
-+			litehtml::lcase(fnc);
-+			string::size_type pos = str.find(')', i);
-+			string params;
-+			if(pos == string::npos)
-+			{
-+				params = str.substr(i);
-+				i = string::npos;
-+			} else
-+			{
-+				params = str.substr(i, pos - i);
-+				i = pos + 1;
-+			}
-+			add_function(fnc, params);
-+			fnc.clear();
-+		} else
-+		{
-+			fnc += str.at(i);
-+			i++;
++			const char* value = origin ? origin->get_attr(item.value.c_str()) : nullptr;
++			text += value ? value : item.fallback_or_separator;
++			break;
 +		}
++		case kind::image:
++			if (!text.empty()) parts.emplace_back(kind::text, std::move(text));
++			text.clear();
++			parts.emplace_back(kind::image, item.value);
++			break;
++		case kind::counter:
++		case kind::marker_counter:
++			text += format_css_counter(get_counter_value(_id(item.value)), item.counter_style, lookup, item.kind == kind::marker_counter);
++			break;
++		case kind::counters:
++		{
++			const auto values = get_counter_values(_id(item.value));
++			for (size_t i = 0; i < values.size(); ++i)
++			{
++				if (i != 0) text += item.fallback_or_separator;
++				text += format_css_counter(values[i], item.counter_style, lookup);
++			}
++			break;
++		}
++		case kind::open_quote:
++		case kind::close_quote:
++		case kind::no_open_quote:
++		case kind::no_close_quote:
++		{
++			const bool open = item.kind == kind::open_quote || item.kind == kind::no_open_quote;
++			const std::optional<size_t> depth = open ? std::optional<size_t>(doc->open_quote()) : doc->close_quote();
++			if (depth && (item.kind == kind::open_quote || item.kind == kind::close_quote))
++			{
++				const auto& pairs = quote_pairs(*this);
++				if (!pairs.empty())
++					text += pairs[std::min(*depth, pairs.size() / 2 - 1) * 2 + (open ? 0 : 1)];
++			}
++			break;
++		}
++		}
++	}
++	if (!text.empty()) parts.emplace_back(kind::text, std::move(text));
++
++	if (parts == materialized_content && content.base_url == materialized_base) return;
++	materialized_content = std::move(parts);
++	materialized_base = content.base_url;
++	clearRecursive();
++	for (const auto& [type, value] : materialized_content)
++	{
++		if (type == kind::image) add_image(value, materialized_base);
++		else add_text(value);
  	}
  }
  
+-void litehtml::el_before_after_base::add_text( const string& txt )
++void el_before_after_base::add_text(const string& text)
+ {
+-	string word;
+-	string esc;
+-
+-	for(auto chr : txt)
+-	{
+-		if(chr == '\\' ||
+-			(!esc.empty() && esc.length() < 5 &&
+-					(
+-						(chr >= '0' && chr <= '9') ||
+-						(chr >= 'A' && chr <= 'Z') ||
+-						(chr >= 'a' && chr <= 'z')
+-					)
+-			))
+-		{
+-			if(!esc.empty() && chr == '\\')
+-			{
+-				word += convert_escape(esc.c_str() + 1);
+-				esc.clear();
+-			}
+-			esc += chr;
+-		} else
+-		{
+-			if(!esc.empty())
+-			{
+-				word += convert_escape(esc.c_str() + 1);
+-				esc.clear();
+-			}
+-			if(isspace((unsigned char) chr))
+-			{
+-				if(!word.empty())
+-				{
+-					element::ptr el = std::make_shared<el_text>(word.c_str(), get_document());
+-					appendChild(el);
+-					word.clear();
+-				}
+-				word += chr;
+-				element::ptr el = std::make_shared<el_space>(word.c_str(), get_document());
+-				appendChild(el);
+-				word.clear();
+-			} else
+-			{
+-				word += chr;
+-			}
+-		}
+-	}
+-
+-	if(!esc.empty())
+-	{
+-		word += convert_escape(esc.c_str() + 1);
+-	}
+-	if(!word.empty())
+-	{
+-		element::ptr el = std::make_shared<el_text>(word.c_str(), get_document());
+-		appendChild(el);
+-		word.clear();
+-	}
++	for (const auto& run : docrender_editor::create_text(get_document(), text.c_str(), true))
++		appendChild(run);
+ }
+ 
+-void litehtml::el_before_after_base::add_function( const string& fnc, const string& params )
++void el_before_after_base::add_image(const string& url, const string& base)
+ {
+-	int idx = value_index(fnc, "attr;counter;counters;url");
+-	switch(idx)
+-	{
+-	// attr
+-	case 0:
+-		{
+-			string p_name = params;
+-			trim(p_name);
+-			lcase(p_name);
+-			element::ptr el_parent = parent();
+-			if (el_parent)
+-			{
+-				const char* attr_value = el_parent->get_attr(p_name.c_str());
+-				if (attr_value)
+-				{
+-					add_text(attr_value);
+-				}
+-			}
+-		}
+-		break;
+-	// counter
+-	case 1:
+-		add_text(get_counter_value(params));
+-		break;
+-	// counters
+-	case 2:
+-		{
+-			string_vector tokens;
+-			split_string(params, tokens, ",");
+-			for (auto& str : tokens) trim(str);
+-			add_text(get_counters_value(tokens));
+-		}
+-		break;
+-	// url
+-	case 3:
+-		{
+-			string p_url = params;
+-			trim(p_url);
+-			if(!p_url.empty())
+-			{
+-				if(p_url.at(0) == '\'' || p_url.at(0) == '\"')
+-				{
+-					p_url.erase(0, 1);
+-				}
+-			}
+-			if(!p_url.empty())
+-			{
+-				if(p_url.at(p_url.length() - 1) == '\'' || p_url.at(p_url.length() - 1) == '\"')
+-				{
+-					p_url.erase(p_url.length() - 1, 1);
+-				}
+-			}
+-			if(!p_url.empty())
+-			{
+-				element::ptr el = std::make_shared<el_image>(get_document());
+-				el->set_attr("src", p_url.c_str());
+-				el->set_attr("style", "display:inline-block");
+-				el->set_tagName("img");
+-				appendChild(el);
+-				el->parse_attributes();
+-			}
+-		}
+-		break;
+-	}
++	const bool list_style_image = tag() == marker_tag() && css().get_content().normal;
++	const auto image = std::make_shared<el_image>(get_document(), base, list_style_image);
++	image->set_attr("src", url.c_str());
++	image->set_attr("style", "display:inline-block");
++	image->set_tagName("img");
++	appendChild(image);
++	image->parse_attributes();
+ }
+-
+-litehtml::string litehtml::el_before_after_base::convert_escape( const char* txt )
+-{
+-	char* str_end;
+-	char32_t u_str[2];
+-	u_str[0] = (char32_t) strtol(txt, &str_end, 16);
+-	u_str[1] = 0;
+-	return string(litehtml_from_utf32(u_str));
+-}
++} // namespace litehtml

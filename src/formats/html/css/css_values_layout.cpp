@@ -13,51 +13,135 @@
 namespace litehtml {
 
 namespace {
-	std::optional<string_vector> parse_counters(const css_token_vector& tokens) {
+	bool is_counter_name(const css_token& token) {
+		return token.type == IDENT &&
+			!is_one_of(token.ident(), "none", "inherit", "initial", "unset", "revert", "revert-layer", "default");
+	}
+
+	std::optional<css_counter_changes> parse_counters(const css_token_vector& tokens, int default_value) {
+		css_counter_changes result;
 		if (tokens.size() == 1 && tokens.front().ident() == "none") {
-			return string_vector();
+			return result;
 		}
-		string_vector result;
-		for (std::size_t index = 0; index < tokens.size();) {
+		for (size_t index = 0; index < tokens.size();) {
 			const auto& name = tokens[index++];
-			if (name.type != IDENT || is_one_of(name.ident(), "none", "inherit", "initial", "unset", "revert", "revert-layer", "default")) {
-				return std::nullopt;
-			}
-			result.push_back(name.name);
+			if (!is_counter_name(name)) return std::nullopt;
+			int value = default_value;
 			if (index < tokens.size() && tokens[index].type == NUMBER) {
-				const auto& count = tokens[index++];
-				const double number = count.n.number;
-				if (count.n.number_type != css_number_integer ||
-					!std::isfinite(number) || number < std::numeric_limits<int>::min() || number > std::numeric_limits<int>::max()) {
-					return std::nullopt;
-				}
-				result.push_back(std::to_string(static_cast<int>(number)));
+				const auto number = parse_counter_integer(tokens[index++]);
+				if (!number) return std::nullopt;
+				value = *number;
 			}
+			result.push_back({ _id(name.name), value });
 		}
 		return result;
 	}
 
-	bool is_content(const css_token_vector& tokens) {
-		if (tokens.size() == 1 && is_one_of(tokens.front().ident(), "none", "normal")) {
-			return true;
+	std::optional<css_content_item> parse_content_item(const css_token& token) {
+		using kind = css_content_kind;
+		if (token.type == STRING) return css_content_item{ kind::text, token.str, {} };
+		if (token.type == IDENT) {
+			const auto ident = token.ident();
+			if (ident == "open-quote") return css_content_item{ kind::open_quote, {}, {} };
+			if (ident == "close-quote") return css_content_item{ kind::close_quote, {}, {} };
+			if (ident == "no-open-quote") return css_content_item{ kind::no_open_quote, {}, {} };
+			if (ident == "no-close-quote") return css_content_item{ kind::no_close_quote, {}, {} };
+			return std::nullopt;
 		}
-		return !tokens.empty() && std::all_of(tokens.begin(), tokens.end(), [](const css_token& token) {
-			if (token.type == STRING || is_one_of(token.ident(), "open-quote", "close-quote", "no-open-quote", "no-close-quote")) {
-				return true;
+
+		string url;
+		if (parse_url(token, url) && !url.empty()) return css_content_item{ kind::image, std::move(url), {} };
+		if (token.type != CV_FUNCTION || token.value.empty()) return std::nullopt;
+
+		const auto function = lowcase(token.name);
+		const auto args = parse_comma_separated_list(token.value);
+		if (args[0].empty()) return std::nullopt;
+		if (function == "attr") {
+			const auto& name = args[0];
+			if (name.size() > 2 || name[0].type != IDENT ||
+				(name.size() == 2 && (name[1].ident() != "raw-string" || !name[1].preceded_by_space))) {
+				return std::nullopt;
 			}
-			if (token.type == URL) {
-				return true;
+			if (args.size() > 2 || (args.size() == 2 && !args[1].empty() && (args[1].size() != 1 || args[1][0].type != STRING))) {
+				return std::nullopt;
 			}
-			return token.type == CV_FUNCTION && !token.value.empty() &&
-				is_one_of(lowcase(token.name), "attr", "counter", "counters", "url");
-		});
+			const auto fallback = args.size() == 2 && !args[1].empty() ? args[1][0].str : string();
+			return css_content_item{ kind::attribute, lowcase(name[0].name), fallback };
+		}
+		if (function != "counter" && function != "counters") return std::nullopt;
+
+		const bool plural = function == "counters";
+		const size_t style_index = plural ? 2 : 1;
+		if (args[0].size() != 1 || !is_counter_name(args[0][0]) || args.size() > style_index + 1 ||
+			(plural && (args.size() < 2 || args[1].size() != 1 || args[1][0].type != STRING))) {
+			return std::nullopt;
+		}
+		css_counter_style_reference style{ "decimal", {} };
+		if (args.size() > style_index) {
+			const auto& style_arg = args[style_index];
+			if (style_arg.size() != 1) return std::nullopt;
+			auto parsed = parse_counter_style_reference(style_arg[0], true);
+			if (!parsed) return std::nullopt;
+			style = std::move(*parsed);
+		}
+		return css_content_item{ plural ? kind::counters : kind::counter, args[0][0].name, plural ? args[1][0].str : string(), std::move(style) };
 	}
+
+	std::optional<css_generated_content> parse_generated_content(const css_token_vector& tokens, const string& baseurl) {
+		css_generated_content result;
+		if (tokens.size() == 1 && tokens[0].ident() == "normal") return result;
+		result.normal = false;
+		if (tokens.size() == 1 && tokens[0].ident() == "none") return result;
+		result.base_url = baseurl;
+		for (const auto& token : tokens) {
+			auto item = parse_content_item(token);
+			if (!item) return std::nullopt;
+			result.items.push_back(std::move(*item));
+		}
+		return result;
+	}
+
+	std::optional<css_quotes> parse_quotes(const css_token_vector& tokens) {
+		css_quotes result;
+		if (tokens.size() == 1) {
+			const auto ident = tokens[0].ident();
+			if (ident == "auto") return result;
+			if (ident == "none") {
+				result.kind = css_quotes_kind::none;
+				return result;
+			}
+			if (ident == "match-parent") {
+				result.kind = css_quotes_kind::match_parent;
+				return result;
+			}
+		}
+		if (tokens.empty() || tokens.size() % 2 != 0) return std::nullopt;
+		result.kind = css_quotes_kind::pairs;
+		for (const auto& token : tokens) {
+			if (token.type != STRING) return std::nullopt;
+			result.pairs.push_back(token.str);
+		}
+		return result;
+	}
+
 }
 
-void css_value_parser::parse_layout(string_id name, const css_token_vector& value, bool important)
+void css_value_parser::parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important)
 {
 	if (is_one_of(name, _gap_, _row_gap_, _column_gap_)) {
 		parse_gap(name, value, important);
+		return;
+	}
+	static const auto counter_set = _id("counter-set");
+	static const auto quotes = _id("quotes");
+	if (name == quotes) {
+		if (auto parsed = parse_quotes(value))
+			add_parsed_property(name, property_value(std::move(*parsed), important));
+		return;
+	}
+	if (is_one_of(name, _counter_increment_, _counter_reset_, counter_set)) {
+		if (auto counters = parse_counters(value, name == _counter_increment_ ? 1 : 0))
+			add_parsed_property(name, property_value(std::move(*counters), important));
 		return;
 	}
 	const css_token val = value.size() == 1 ? value.front() : css_token();
@@ -204,15 +288,9 @@ void css_value_parser::parse_layout(string_id name, const css_token_vector& valu
 
 	//  =============================  COUNTER, CONTENT  =============================
 
-	case _counter_increment_:
-	case _counter_reset_:
-		if (const auto counters = parse_counters(value))
-			add_parsed_property(name, property_value(*counters, important));
-		break;
-
 	case _content_:
-		if (is_content(value))
-			add_parsed_property(name, property_value(get_repr(value, 0, -1, true), important));
+		if (auto content = parse_generated_content(value, baseurl))
+			add_parsed_property(name, property_value(std::move(*content), important));
 		break;
 
 	//  ==================================  OTHER  ==================================

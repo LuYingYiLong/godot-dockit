@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace docrender {
+	class HTMLTextLayout;
+
 	struct TextDecorationMask {
 		godot::Rect2 rect;
 		litehtml::text_decoration_style style;
@@ -19,6 +21,13 @@ namespace docrender {
 		godot::Rect2 bounds;
 	};
 
-	HTMLTextMask create_html_text_mask(const godot::TextLine& p_line, const godot::Vector2& p_position,
-		const std::vector<TextDecorationMask>& p_decorations, bool p_mipmaps);
+	struct TextEmphasisMask {
+		godot::Ref<godot::TextLine> line;
+		godot::Vector2 position;
+		float alpha;
+	};
+
+	HTMLTextMask create_html_text_mask(const HTMLTextLayout& p_layout, const godot::Vector2& p_position,
+		const std::vector<TextDecorationMask>& p_decorations, const std::vector<TextEmphasisMask>& p_emphasis,
+		bool p_mipmaps);
 }

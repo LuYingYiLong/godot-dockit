@@ -1,7 +1,7 @@
 diff --git a/src/stylesheet.cpp b/src/stylesheet.cpp
 --- a/src/stylesheet.cpp
 +++ b/src/stylesheet.cpp
-@@ -3,6 +3,7 @@
+@@ -3,13 +3,67 @@
  #include "css_parser.h"
  #include "document.h"
  #include "document_container.h"
@@ -9,10 +9,145 @@ diff --git a/src/stylesheet.cpp b/src/stylesheet.cpp
  
  namespace litehtml
  {
-@@ -31,6 +32,16 @@
++
++// https://www.w3.org/TR/css-cascade-5/#layer-names
++static bool parse_layer_name(const css_token_vector& tokens, string_vector& names)
++{
++	size_t first = 0;
++	size_t last = tokens.size();
++	while (first < last && tokens[first].type == WHITESPACE) ++first;
++	while (last > first && tokens[last - 1].type == WHITESPACE) --last;
++	for (size_t index = first; index < last; ++index)
++	{
++		const auto& token = tokens[index];
++		if ((index - first) % 2 == 1)
++		{
++			if (token.type != '.') return false;
++		}
++		else
++		{
++			if (token.type != IDENT || is_one_of(token.ident(), "initial", "inherit", "unset", "revert", "revert-layer"))
++				return false;
++			names.push_back(token.name);
++		}
++	}
++	return (last - first) % 2 == 1;
++}
++
++size_t css::register_layer(size_t parent, const string_vector& names)
++{
++	const auto append_child = [&](size_t index) {
++		const size_t child = m_layers.size();
++		m_layers[index].children.push_back(child);
++		m_layers.emplace_back();
++		return child;
++	};
++	if (names.empty()) return append_child(parent);
++
++	for (const auto& name : names)
++	{
++		const auto [entry, inserted] = m_layers[parent].named_children.try_emplace(name, m_layers.size());
++		const auto child = entry->second;
++		if (inserted) append_child(parent);
++		parent = child;
++	}
++	return parent;
++}
++
++static bool media_matches(document& doc, const media_query_list_list::ptr& media)
++{
++	if (!media) return true;
++	media_features features{};
++	doc.container()->get_media_features(features);
++	media->apply_media_features(features);
++	return media->is_used();
++}
+ 
+ // https://www.w3.org/TR/css-syntax-3/#parse-a-css-stylesheet
+ template<class Input> // Input == string or css_token_vector
+-void css::parse_css_stylesheet(const Input& input, string baseurl, document::ptr doc, media_query_list_list::ptr media, bool top_level)
++void css::parse_css_stylesheet(const Input& input, string baseurl, document::ptr doc, media_query_list_list::ptr media, bool top_level, size_t layer_id)
+ {
+ 	if (doc && media)
+ 		doc->add_media_list(media);
+@@ -17,6 +71,7 @@
+ 	// To parse a CSS stylesheet, first parse a stylesheet.
+ 	auto rules = css_parser::parse_stylesheet(input, top_level);
+ 	bool import_allowed = top_level;
++	bool saw_import = false;
+ 
+ 	// Interpret all of the resulting top-level qualified rules as style rules, defined below.
+ 	// If any style rule is invalid, or any at-rule is not recognized or is invalid according
+@@ -25,12 +80,81 @@
+ 	{
+ 		if (rule->type == raw_rule::qualified)
+ 		{
+-			if (parse_style_rule(rule, baseurl, doc, media))
++			if (parse_style_rule(rule, baseurl, doc, media, layer_id))
+ 				import_allowed = false;
+ 			continue;
  		}
  
  		// Otherwise: at-rule
++		if (equal_i(rule->name, "layer"))
++		{
++			if (rule->block.type == CURLY_BLOCK)
++			{
++				string_vector names;
++				const bool anonymous = std::all_of(rule->prelude.begin(), rule->prelude.end(),
++					[](const css_token& token) { return token.type == WHITESPACE; });
++				if (!anonymous && !parse_layer_name(rule->prelude, names)) continue;
++				import_allowed = false;
++				if (!media_matches(*doc, media)) continue;
++				const auto child = register_layer(layer_id, names);
++				parse_css_stylesheet(rule->block.value, baseurl, doc, media, false, child);
++			}
++			else
++			{
++				const auto list = parse_comma_separated_list(rule->prelude);
++				std::vector<string_vector> paths(list.size());
++				size_t index = 0;
++				while (index < list.size() && parse_layer_name(list[index], paths[index])) ++index;
++				if (index != list.size()) continue;
++				if (saw_import) import_allowed = false;
++				if (media_matches(*doc, media))
++					for (const auto& names : paths) register_layer(layer_id, names);
++			}
++			continue;
++		}
++		if (equal_i(rule->name, "font-face"))
++		{
++			if (rule->block.type != CURLY_BLOCK) continue;
++			if (auto face = parse_font_face_rule(rule->prelude, rule->block.value, baseurl))
++			{
++				import_allowed = false;
++				if (media_matches(*doc, media))
++					m_font_face_rules.push_back({ std::move(*face), layer_id });
++			}
++			continue;
++		}
++		if (equal_i(rule->name, "font-feature-values"))
++		{
++			if (rule->block.type != CURLY_BLOCK) continue;
++			if (auto values = parse_font_feature_values_rule(rule->prelude, rule->block.value))
++			{
++				import_allowed = false;
++				if (media_matches(*doc, media))
++					m_font_feature_values_rules.push_back({ std::move(*values), layer_id });
++			}
++			continue;
++		}
++		if (equal_i(rule->name, "counter-style"))
++		{
++			if (rule->block.type != CURLY_BLOCK) continue;
++			if (auto parsed = parse_counter_style_rule(rule->prelude, rule->block.value))
++			{
++				import_allowed = false;
++				if (media_matches(*doc, media))
++					m_counter_style_rules.push_back({ std::move(parsed->first), std::move(parsed->second), layer_id });
++			}
++			continue;
++		}
 +		if (equal_i(rule->name, "supports"))
 +		{
 +			if (rule->block.type != CURLY_BLOCK) continue;
@@ -20,47 +155,169 @@ diff --git a/src/stylesheet.cpp b/src/stylesheet.cpp
 +			if (!condition) continue;
 +			import_allowed = false;
 +			if (*condition)
-+				parse_css_stylesheet(rule->block.value, baseurl, doc, media, false);
++				parse_css_stylesheet(rule->block.value, baseurl, doc, media, false, layer_id);
 +			continue;
 +		}
  		switch (_id(lowcase(rule->name)))
  		{
  		case _charset_: // ignored  https://www.w3.org/TR/css-syntax-3/#charset-rule
-@@ -68,8 +79,8 @@
+@@ -38,7 +162,7 @@
+ 
+ 		case _import_:
+ 			if (import_allowed)
+-				parse_import_rule(rule, baseurl, doc, media);
++				saw_import = parse_import_rule(rule, baseurl, doc, media, layer_id) || saw_import;
+ 			else
+ 				css_parse_error("incorrect placement of @import rule");
+ 			break;
+@@ -56,7 +180,7 @@
+ 				new_media = make_shared<media_query_list_list>(media ? *media : media_query_list_list());
+ 				new_media->add(mq_list);
+ 			}
+-			parse_css_stylesheet(rule->block.value, baseurl, doc, new_media, false);
++			parse_css_stylesheet(rule->block.value, baseurl, doc, new_media, false, layer_id);
+ 			import_allowed = false;
+ 			break;
+ 		}
+@@ -68,9 +192,8 @@
  }
  
  // https://drafts.csswg.org/css-cascade-5/#at-import
 -// `layer` and `supports` are not supported
 -// @import [ <url> | <string> ] <media-query-list>?
-+// Cascade layer placement is not supported.
-+// @import [ <url> | <string> ] supports( ... )? <media-query-list>?
- void css::parse_import_rule(raw_rule::ptr rule, string baseurl, document::ptr doc, media_query_list_list::ptr media)
+-void css::parse_import_rule(raw_rule::ptr rule, string baseurl, document::ptr doc, media_query_list_list::ptr media)
++// @import [ <url> | <string> ] [ layer | layer(<layer-name>) ]? supports( ... )? <media-query-list>?
++bool css::parse_import_rule(raw_rule::ptr rule, string baseurl, document::ptr doc, media_query_list_list::ptr media, size_t layer_id)
  {
  	auto tokens = rule->prelude;
-@@ -88,13 +99,25 @@
+ 	int index = 0;
+@@ -84,29 +207,56 @@
+ 		return true;
+ 	};
+ 	bool ok = parse_url(tok, url) || parse_string(tok, url);
+-	if (!ok) {
++	if (!ok || rule->block.type == CURLY_BLOCK) {
  		css_parse_error("invalid @import rule");
- 		return;
- 	}
+-		return;
+-	}
+-	document_container* container = doc->container();
++		return false;
++	}
 +	++index;
 +	skip_whitespace(tokens, index);
++	const auto& layer_token = at(tokens, index);
++	const bool named_layer = layer_token.type == CV_FUNCTION && equal_i(layer_token.name, "layer");
++	const bool layered = named_layer || layer_token.ident() == "layer";
++	string_vector names;
++	if (named_layer && !parse_layer_name(layer_token.value, names)) return false;
++	if (layered)
++	{
++		++index;
++		skip_whitespace(tokens, index);
++	}
 +	const auto& condition = at(tokens, index);
-+	if (condition.ident() == "layer" || (condition.type == CV_FUNCTION && equal_i(condition.name, "layer")))
-+		return;
 +	if (condition.type == CV_FUNCTION && equal_i(condition.name, "supports"))
 +	{
-+		if (!evaluate_css_supports(condition.value, doc->mode(), true).value_or(false))
-+			return;
++		const auto supported = evaluate_css_supports(condition.value, doc->mode(), true);
++		if (!supported) return false;
++		if (!*supported) return true;
 +		++index;
 +	}
 +
- 	document_container* container = doc->container();
++	auto new_media = media;
++	tokens = slice(tokens, index);
++	auto mq_list = parse_media_query_list(tokens, doc);
++	if (!mq_list.empty())
++	{
++		new_media = make_shared<media_query_list_list>(media ? *media : media_query_list_list());
++		new_media->add(mq_list);
++	}
++
++	if (layered)
++	{
++		if (new_media) doc->add_media_list(new_media);
++		if (!media_matches(*doc, new_media)) return true;
++		layer_id = register_layer(layer_id, names);
++	}
++
  	string css_text;
  	string css_baseurl = baseurl;
- 	container->import_css(css_text, url, css_baseurl);
- 
- 	auto new_media = media;
+-	container->import_css(css_text, url, css_baseurl);
+-
+-	auto new_media = media;
 -	tokens = slice(tokens, index + 1);
-+	tokens = slice(tokens, index);
- 	auto mq_list = parse_media_query_list(tokens, doc);
- 	if (!mq_list.empty())
+-	auto mq_list = parse_media_query_list(tokens, doc);
+-	if (!mq_list.empty())
+-	{
+-		new_media = make_shared<media_query_list_list>(media ? *media : media_query_list_list());
+-		new_media->add(mq_list);
+-	}
+-
+-	parse_css_stylesheet(css_text, css_baseurl, doc, new_media, true);
++	doc->container()->import_css(css_text, url, css_baseurl);
++	parse_css_stylesheet(css_text, css_baseurl, doc, new_media, true, layer_id);
++	return true;
+ }
+ 
+ // https://www.w3.org/TR/css-syntax-3/#style-rules
+-bool css::parse_style_rule(raw_rule::ptr rule, string baseurl, document::ptr doc, media_query_list_list::ptr media)
++bool css::parse_style_rule(raw_rule::ptr rule, string baseurl, document::ptr doc, media_query_list_list::ptr media, size_t layer_id)
+ {
+ 	// The prelude of the qualified rule is parsed as a <selector-list>. If this returns failure, the entire style rule is invalid.
+ 	auto list = parse_selector_list(rule->prelude, strict_mode, doc->mode());
+@@ -124,14 +274,53 @@
  	{
+ 		sel->m_style = style;
+ 		sel->m_media_query = media;
++		sel->m_layer_id = layer_id;
+ 		sel->calc_specificity();
+ 		add_selector(sel);
+ 	}
+ 	return true;
+ }
+ 
+-void css::sort_selectors()
+-{
++void css::sort_selectors(bool author)
++{
++	if (author)
++	{
++		// Visit layers in reverse cascade order, with the parent before its children.
++		std::vector<size_t> pending = m_layers[0].children;
++		int rank = static_cast<int>(m_layers.size()) - 1;
++		while (!pending.empty())
++		{
++			auto& layer = m_layers[pending.back()];
++			pending.pop_back();
++			layer.rank = --rank;
++			pending.insert(pending.end(), layer.children.begin(), layer.children.end());
++		}
++	}
++	m_font_faces.clear();
++	if (author)
++	{
++		const auto by_layer = [&](const auto& left, const auto& right) {
++			return m_layers[left.layer_id].rank < m_layers[right.layer_id].rank;
++		};
++		std::stable_sort(m_font_face_rules.begin(), m_font_face_rules.end(), by_layer);
++		std::stable_sort(m_font_feature_values_rules.begin(), m_font_feature_values_rules.end(), by_layer);
++	}
++	for (const auto& rule : m_font_face_rules)
++		m_font_faces.push_back(rule.face);
++	m_font_feature_values.clear();
++	for (const auto& rule : m_font_feature_values_rules)
++		m_font_feature_values.push_back(rule.values);
++	m_counter_styles.clear();
++	for (auto& rule : m_counter_style_rules)
++	{
++		const int rank = author ? m_layers[rule.layer_id].rank : css_default_layer;
++		const auto found = m_counter_styles.find(rule.name);
++		if (found == m_counter_styles.end() || found->second.first <= rank)
++			m_counter_styles.insert_or_assign(rule.name, std::make_pair(rank, rule.style));
++	}
++	for (const auto& selector : m_selectors)
++		selector->m_layer = author ? m_layers[selector->m_layer_id].rank : css_default_layer;
++
+ 	std::sort(m_selectors.begin(), m_selectors.end(),
+ 		 [](const css_selector::ptr& v1, const css_selector::ptr& v2)
+ 		 {

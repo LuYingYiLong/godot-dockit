@@ -1,5 +1,8 @@
 #include "litehtml_container.h"
 
+#include "html_image_blend.h"
+#include "css/css_image_value.h"
+#include "html_markup.h"
 #include "litehtml_document_adapter.h"
 
 #include <godot_cpp/classes/translation_server.hpp>
@@ -26,15 +29,30 @@ namespace docrender {
 				html_tag(p_document), stylesheet(p_stylesheet) {}
 
 			void parse_attributes() override {
-				if (stylesheet) {
-					std::string text;
-					get_text(text);
-					get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"));
+				if (!stylesheet) {
+					return;
 				}
+				const char* type = get_attr("type", "");
+				if (*type && lowcase(type) != "text/css") {
+					return;
+				}
+				std::string text;
+				get_text(text);
+				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"));
 			}
 
 			void compute_styles(bool) override {
 				css_w().set_display(display_none);
+			}
+		};
+
+		class StylesheetLinkElement final : public html_tag {
+		public:
+			using html_tag::html_tag;
+
+			void parse_attributes() override {
+				const auto doc = get_document();
+				doc->container()->link(doc, shared_from_this());
 			}
 		};
 
@@ -80,9 +98,15 @@ namespace docrender {
 	} // namespace
 
 	LiteHTMLContainer::LiteHTMLContainer(const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
-		const HTMLFontConfig& p_fonts, const Dictionary& p_local_stylesheets) :
-		resources(p_base_dir, p_textures, p_local_stylesheets),
-		fit_images(p_fit_images), fonts(p_fonts) {
+		const HTMLFontConfig& p_fonts, const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts,
+		const Dictionary& p_image_dpi, const Dictionary& p_image_orientations) :
+		resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations),
+		fit_images(p_fit_images), fonts(p_fonts, resources) {
+	}
+
+	bool LiteHTMLContainer::set_font_rules(std::vector<litehtml::css_font_face> p_faces,
+		std::vector<litehtml::css_font_feature_values_rule> p_feature_values) {
+		return fonts.set_font_rules(std::move(p_faces), std::move(p_feature_values));
 	}
 
 	litehtml::element::ptr LiteHTMLContainer::create_element(const char* p_tag, const litehtml::string_map& p_attributes,
@@ -98,6 +122,9 @@ namespace docrender {
 		const std::string_view tag(p_tag);
 		if (tag == "style" || tag == "script") {
 			return std::make_shared<RawTextElement>(p_document, tag == "style");
+		}
+		if (tag == "link") {
+			return std::make_shared<StylesheetLinkElement>(p_document);
 		}
 		return fit_images && tag == "img" ? std::make_shared<FittedImageElement>(p_document) : nullptr;
 	}
@@ -234,6 +261,16 @@ namespace docrender {
 		return fonts.text_width(p_text, p_font);
 	}
 
+	pixel_t LiteHTMLContainer::trimmed_punctuation_width(const char* p_text, uint_ptr p_font, punctuation_trim p_trim) {
+		return fonts.trimmed_punctuation_width(p_text, p_font, p_trim);
+	}
+
+	text_justify_info LiteHTMLContainer::get_text_justify_info(const char* p_text, uint_ptr p_font, text_justify p_method) {
+		const String value = String::utf8(p_text);
+		const auto layout = fonts.shape_text(p_font, value);
+		return HTMLTextSpacing::get_justification_info(layout, value, p_method);
+	}
+
 	void LiteHTMLContainer::draw_text(uint_ptr, const char* p_text, uint_ptr p_font, web_color p_color,
 		const litehtml::position& p_position) {
 		static const std::vector<box_shadow> no_shadows;
@@ -241,14 +278,36 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::draw_styled_text(uint_ptr, const char* p_text, uint_ptr p_font, web_color p_color,
-		const litehtml::position& p_position, const element& p_element) {
-		record_text(p_text, p_font, p_color, p_position, p_element.css().get_text_shadows());
+		const litehtml::position& p_position, const element& p_element, text_justify_adjustment p_justification, punctuation_trim p_trim) {
+		record_text(p_text, p_font, p_color, p_position, p_element.css().get_text_shadows(), p_element.css().get_underline(),
+			p_justification, p_trim);
 	}
 
 	void LiteHTMLContainer::record_text(const char* p_text, uint_ptr p_font, web_color p_color,
-		const litehtml::position& p_position, const std::vector<box_shadow>& p_shadows) {
+		const litehtml::position& p_position, const std::vector<box_shadow>& p_shadows, const css_underline& p_underline,
+		text_justify_adjustment p_justification, punctuation_trim p_trim) {
 		const String value = String::utf8(p_text);
-		paint.draw_text(fonts.shape_styled_text(p_font, value), value.length(), p_color, p_position, p_shadows);
+		paint.draw_text(fonts.shape_styled_text(p_font, value, p_justification, p_position.width, 0, -1, p_trim), value.length(), p_color, p_position,
+			p_shadows, p_underline);
+	}
+
+	std::vector<HTMLTextCluster> LiteHTMLContainer::get_shaped_clusters(uint_ptr p_font, const String& p_text) {
+		return fonts.shape_text(p_font, p_text).clusters(p_text);
+	}
+
+	void LiteHTMLContainer::draw_text_fragment(const String& p_text, int64_t p_start, int64_t p_end,
+		const litehtml::position& p_position, const element& p_element, text_justify_adjustment p_justification, punctuation_trim p_trim) {
+		const auto& style = p_element.css();
+		paint.draw_text(fonts.shape_styled_text(style.get_font(), p_text, p_justification, p_position.width, p_start, p_end, p_trim),
+			p_end - p_start, style.get_color(), p_position, style.get_text_shadows(), style.get_underline());
+	}
+
+	void LiteHTMLContainer::draw_automatic_hyphen(const litehtml::position& p_position, const element& p_element,
+		text_justify_adjustment p_justification) {
+		const auto& style = p_element.css();
+		const auto text = String::utf8(style.get_hyphenate_character().c_str());
+		paint.draw_text(fonts.shape_styled_text(style.get_font(), text, p_justification, p_position.width),
+			0, style.get_color(), p_position, style.get_text_shadows(), style.get_underline());
 	}
 
 	pixel_t LiteHTMLContainer::pt_to_px(float p_points) const {
@@ -276,28 +335,55 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) {
-		const char* rel = p_element->get_attr("rel");
 		const char* href = p_element->get_attr("href");
-		if (rel && href && std::string_view(rel) != "stylesheet" && String::utf8(rel).nocasecmp_to("stylesheet") == 0) {
-			litehtml::string css;
-			litehtml::string base;
-			import_css(css, href, base);
+		if (!href || p_element->get_attr("disabled") || !is_html_stylesheet_link(p_element->get_attr("rel"))) {
+			return;
+		}
+		const char* type = p_element->get_attr("type", "");
+		if (*type && String::utf8(type).get_slice(";", 0).strip_edges().nocasecmp_to("text/css") != 0) {
+			return;
+		}
+		litehtml::string css;
+		litehtml::string base;
+		import_css(css, href, base);
+		if (!css.empty()) {
 			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"));
 		}
 	}
 
-	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool) {
-		resources.load_texture(p_src, p_css_base);
+	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool, css_image_orientation p_orientation) {
+		resources.load_texture(p_src, p_css_base, p_orientation);
 	}
 
-	void LiteHTMLContainer::get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size) {
-		const Ref<Texture2D> texture = resources.load_texture(p_src, p_css_base);
+	void LiteHTMLContainer::get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size,
+		css_image_orientation p_orientation) {
+		const Ref<Texture2D> texture = resources.load_texture(p_src, p_css_base, p_orientation);
 		const Vector2 size = texture.is_valid() ? texture->get_size() : Vector2();
 		r_size = litehtml::size(size.x, size.y);
 	}
 
+	void LiteHTMLContainer::get_css_image_size(const char* p_src, const char* p_css_base, double p_density, litehtml::size& r_size,
+		css_image_orientation p_orientation) {
+		if (p_density == 1.0) {
+			get_image_size(p_src, p_css_base, r_size, p_orientation);
+			return;
+		}
+		const bool vector_image = resources.is_vector_image(p_src, p_css_base);
+		document_container::get_css_image_size(p_src, p_css_base, vector_image ? 1.0 : p_density, r_size, p_orientation);
+	}
+
+	double LiteHTMLContainer::get_image_dpi(const char* p_src, const char* p_css_base) {
+		return resources.get_image_dpi(p_src, p_css_base);
+	}
+
 	void LiteHTMLContainer::draw_image(uint_ptr, const background_layer& p_layer, const std::string& p_url, const std::string& p_css_base) {
-		paint.draw_image(p_layer, resources.load_texture(p_url.c_str(), p_css_base.c_str()));
+		paint.draw_image(p_layer, resources.load_texture(p_url.c_str(), p_css_base.c_str(), p_layer.image_orientation));
+	}
+
+	void LiteHTMLContainer::draw_cross_fade(uint_ptr, const background_layer& p_layer, const css_cross_fade& p_mix,
+		const std::string& p_css_base, const web_color& p_color, int p_direction) {
+		paint.draw_image(p_layer, rasterize_cross_fade(p_layer, p_mix, p_css_base, p_color, p_direction,
+			paint.get_image_sampling(), resources));
 	}
 
 	void LiteHTMLContainer::draw_solid_fill(uint_ptr, const background_layer& p_layer, const web_color& p_color) {
@@ -323,12 +409,48 @@ namespace docrender {
 		}
 	}
 
-	void LiteHTMLContainer::draw_borders(uint_ptr, const borders& p_borders, const litehtml::position& p_position, bool) {
-		paint.draw_borders(p_borders, p_position);
+	bool LiteHTMLContainer::draw_border_image(const html_tag& p_element, const borders& p_borders,
+		const litehtml::position& p_box, const litehtml::position* p_fragment, bool p_first, bool p_last) {
+		const auto& computed = p_element.css();
+		const auto& style = computed.get_border_image();
+		const auto& value = style.source.value;
+		const auto& base = style.source.baseurl;
+		const Rect2 area = get_border_image_area(style, to_rect(p_box), p_borders);
+		if (!area.is_finite() || !area.has_area()) return false;
+		const auto dimensions = get_css_image_natural_size(value, base, *this);
+		const Vector2 natural(dimensions.width, dimensions.height);
+		Vector2 source_size;
+		Ref<Texture2D> texture;
+		const bool flip = value.type == image::type_url && value.direction &&
+			static_cast<int>(*value.direction) != computed.get_bg().m_direction;
+		if (value.type == image::type_url) {
+			texture = resources.load_texture(value.url.c_str(), base.c_str(), value.orientation);
+			if (texture.is_valid()) source_size = texture->get_size();
+		}
+		else {
+			source_size = natural.x > 0 && natural.y > 0 ? natural : area.size;
+			background_layer tile;
+			tile.origin_box = litehtml::position(0, 0, source_size.x, source_size.y);
+			const auto draw = [&](const css_cross_fade& mix) {
+				return rasterize_cross_fade(tile, mix, base, computed.get_color(), computed.get_bg().m_direction,
+					paint.get_image_sampling(), resources);
+			};
+			texture = value.type == image::type_cross_fade ? draw(*value.m_cross_fade) : draw({ { { value, 1.0 } } });
+		}
+		if (texture.is_null() || source_size.x <= 0 || source_size.y <= 0) return false;
+		Rect2 visible = area;
+		if (p_fragment) {
+			const float left = p_first ? area.position.x : p_fragment->left();
+			const float right = p_last ? area.get_end().x : p_fragment->right();
+			visible = area.intersection(Rect2(left, area.position.y, right - left, area.size.y));
+		}
+		paint.draw_border_image(texture, make_border_image_patches(style, p_borders, area, source_size, natural,
+			texture->get_size(), flip), visible, flip);
+		return true;
 	}
 
-	void LiteHTMLContainer::transform_text(litehtml::string& r_text, text_transform p_transform) {
-		transform_html_text(r_text, p_transform);
+	void LiteHTMLContainer::draw_borders(uint_ptr, const borders& p_borders, const litehtml::position& p_position, bool) {
+		paint.draw_borders(p_borders, p_position);
 	}
 
 	void LiteHTMLContainer::set_clip(const litehtml::position& p_position, const border_radiuses& p_radii) {
@@ -346,6 +468,14 @@ namespace docrender {
 
 	void LiteHTMLContainer::end_render_item() {
 		paint.end_render_item();
+	}
+
+	void LiteHTMLContainer::begin_paint_group() {
+		paint.begin_paint_group();
+	}
+
+	void LiteHTMLContainer::end_paint_group() {
+		paint.end_paint_group();
 	}
 
 	void LiteHTMLContainer::del_clip() {

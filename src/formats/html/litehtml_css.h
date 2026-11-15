@@ -1,10 +1,78 @@
 #pragma once
 
+#include "css/css_counter_style.h"
+#include "css/css_font_face.h"
+#include "css/css_font_feature_values.h"
+
 #include <litehtml/css_length.h>
 #include <litehtml/string_id.h>
 #include <litehtml/web_color.h>
+#include <optional>
 
 namespace litehtml {
+	inline constexpr int outline_style_auto = -1;
+
+	struct css_outline {
+		css_length width = border_width_medium_value;
+		css_length offset;
+		int style = border_style_none;
+		std::optional<web_color> color;
+	};
+	#define text_wrap_style_strings "auto;balance;stable;pretty;avoid-short-last-line"
+	enum text_wrap_style { text_wrap_auto, text_wrap_balance, text_wrap_stable, text_wrap_pretty, text_wrap_avoid_short_last_line };
+	#define word_break_strings "normal;keep-all;break-word;break-all;manual"
+	enum word_break { word_break_normal, word_break_keep_all, word_break_break_word, word_break_break_all, word_break_manual };
+	#define line_break_strings "auto;loose;normal;strict;anywhere"
+	enum line_break { line_break_auto, line_break_loose, line_break_normal, line_break_strict, line_break_anywhere };
+	#define overflow_wrap_strings "normal;break-word;anywhere"
+	enum overflow_wrap { overflow_wrap_normal, overflow_wrap_break_word, overflow_wrap_anywhere };
+	#define hyphens_strings "manual;none;auto"
+	enum hyphens { hyphens_manual, hyphens_none, hyphens_auto };
+	#define hyphenate_limit_last_strings "none;always;column;page;spread"
+	enum hyphenate_limit_last { hyphenate_last_none, hyphenate_last_always, hyphenate_last_column, hyphenate_last_page, hyphenate_last_spread };
+	inline constexpr char default_hyphenate_character[] = "\xe2\x80\x90";
+	struct css_hyphenation_chars {
+		int word = 5;
+		int before = 2;
+		int after = 2;
+
+		bool allows(int64_t prefix, int64_t suffix) const {
+			return prefix >= before && suffix >= after && prefix + suffix >= word;
+		}
+	};
+	struct css_hyphenation_limits {
+		css_length zone;
+		int lines = -1;
+		hyphenate_limit_last last = hyphenate_last_none;
+
+		bool allows_line(size_t preceding) const {
+			return lines < 0 || preceding < static_cast<size_t>(lines);
+		}
+		static bool allows_hyphen_in_zone(pixel_t threshold, pixel_t ordinary_slack) {
+			return threshold <= 0 || ordinary_slack < 0 || ordinary_slack > threshold;
+		}
+	};
+
+	enum white_space_trim {
+		white_space_trim_none = 0,
+		white_space_discard_before = 1 << 0,
+		white_space_discard_after = 1 << 1,
+		white_space_discard_inner = 1 << 2,
+	};
+
+	struct css_text_indent {
+		css_length length;
+		bool hanging = false;
+		bool each_line = false;
+	};
+
+	struct css_font_style {
+		font_style kind = font_style_normal;
+		float angle = 0.0f;
+	};
+	enum css_font_kerning { font_kerning_auto, font_kerning_normal, font_kerning_none };
+	enum css_font_optical_sizing { font_optical_sizing_auto, font_optical_sizing_none };
+
 	struct css_font_family {
 		string name;
 		bool generic = false;
@@ -12,6 +80,48 @@ namespace litehtml {
 	using css_font_families = std::vector<css_font_family>;
 
 	bool parse_font_families(const css_token_vector& p_tokens, css_font_families& r_families);
+
+	enum class css_content_kind { text, attribute, image, counter, counters, marker_counter, open_quote, close_quote, no_open_quote, no_close_quote };
+
+	struct css_content_item {
+		css_content_kind kind;
+		string value;
+		string fallback_or_separator;
+		css_counter_style_reference counter_style{};
+	};
+
+	struct css_generated_content {
+		bool normal = true;
+		std::vector<css_content_item> items;
+		string base_url;
+	};
+
+	struct css_list_marker_type {
+		css_counter_style_reference counter{ "disc", {} };
+		std::optional<string> text;
+	};
+
+	enum class css_quotes_kind { automatic, none, match_parent, pairs };
+
+	inline string_id marker_tag() {
+		static const auto marker = _id("-tag-marker");
+		return marker;
+	}
+
+	inline bool is_generated_tag(string_id p_tag) {
+		return p_tag == __tag_before_ || p_tag == __tag_after_ || p_tag == marker_tag();
+	}
+
+	struct css_quotes {
+		css_quotes_kind kind = css_quotes_kind::automatic;
+		string_vector pairs;
+	};
+
+	struct css_counter_change {
+		string_id name;
+		int value;
+	};
+	using css_counter_changes = std::vector<css_counter_change>;
 
 	enum class alignment_keyword {
 		normal, automatic, stretch,
@@ -64,6 +174,20 @@ namespace litehtml {
 		text_decoration_style style = text_decoration_style_solid;
 		css_length thickness = css_length::predef_value(text_decoration_thickness_auto);
 		web_color color = web_color::current_color;
+	};
+
+	enum text_underline_position {
+		underline_auto = 0,
+		underline_from_font = 1,
+		underline_under = 2,
+		underline_left = 4,
+		underline_right = 8,
+	};
+
+	struct css_underline {
+		int position = underline_auto;
+		std::optional<pixel_t> offset;
+		pixel_t font_position = 0;
 	};
 
 	bool parse_decoration_line(const css_token_vector& p_tokens, int& r_line);
