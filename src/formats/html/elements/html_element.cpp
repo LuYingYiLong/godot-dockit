@@ -1,6 +1,7 @@
 #include "html_element.h"
 
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/html_layout.h"
 
 #include <godot_cpp/templates/hash_set.hpp>
@@ -115,6 +116,8 @@ void HTMLElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_inner_html", "html"), &HTMLElement::set_inner_html);
 	ClassDB::bind_method(D_METHOD("append_child", "child"), &HTMLElement::append_child);
 	ClassDB::bind_method(D_METHOD("insert_before", "child", "reference"), &HTMLElement::insert_before, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("append_fragment", "fragment"), &HTMLElement::append_fragment);
+	ClassDB::bind_method(D_METHOD("insert_fragment_before", "fragment", "reference"), &HTMLElement::insert_fragment_before, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("replace_child", "new_child", "old_child"), &HTMLElement::replace_child);
 	ClassDB::bind_method(D_METHOD("remove_child", "child"), &HTMLElement::remove_child);
 	ClassDB::bind_method(D_METHOD("clone_node", "deep"), &HTMLElement::clone_node, DEFVAL(false));
@@ -184,17 +187,8 @@ Ref<HTMLElement> HTMLElement::get_parent() const {
 }
 
 TypedArray<HTMLElement> HTMLElement::get_children() const {
-	TypedArray<HTMLElement> children;
-	if (const auto node = lock_element()) {
-		auto& dom = get_dom();
-		for (const auto& child : node->children()) {
-			const Ref<HTMLElement> wrapped = dom.make_element(child);
-			if (wrapped.is_valid()) {
-				children.append(wrapped);
-			}
-		}
-	}
-	return children;
+	const auto node = lock_element();
+	return node ? get_dom().get_children(*node) : TypedArray<HTMLElement>();
 }
 
 TypedArray<Rect2> HTMLElement::get_client_rects() const {
@@ -368,6 +362,19 @@ Error HTMLElement::insert_before(const Ref<HTMLElement>& p_child, const Ref<HTML
 		return ERR_INVALID_PARAMETER;
 	}
 	return get_dom().insert_child(parent, child, reference);
+}
+
+Error HTMLElement::append_fragment(const Ref<HTMLDocumentFragment>& p_fragment) {
+	return insert_fragment_before(p_fragment);
+}
+
+Error HTMLElement::insert_fragment_before(const Ref<HTMLDocumentFragment>& p_fragment, const Ref<HTMLElement>& p_reference) {
+	const auto parent = lock_element();
+	const auto reference = lock_related_element(p_reference);
+	if (!parent || p_fragment.is_null() || (p_reference.is_valid() && !reference)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	return get_dom().insert_fragment(parent, *p_fragment.ptr(), reference);
 }
 
 Error HTMLElement::replace_child(const Ref<HTMLElement>& p_new_child, const Ref<HTMLElement>& p_old_child) {

@@ -1,5 +1,6 @@
 #include "html_label.h"
 
+#include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/elements/html_input_node.h"
 
 #include "formats/html/markup/html_markup.h"
@@ -309,6 +310,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		(point - visible_rect.position).distance_squared_to(pressed_position) <= DRAG_DEADZONE * DRAG_DEADZONE;
 	const bool link_clicked = clicked && pressed_link != 0 && pressed_link == hit.id;
 	const bool element_clicked = clicked && element.is_valid() && pressed_element == element;
+	const uint64_t click_version = element_clicked ? element->adoption_version : 0;
 	const bool button_clicked = !selection_dragged && !button->is_canceled() &&
 		pressed_button == target_button && label->layout->is_enabled_button(target_button);
 	if (selecting) {
@@ -334,7 +336,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			target->activate_element(target_button);
 		}
 	}
-	if (element_clicked && element->is_valid()) {
+	if (element_clicked && element->is_valid() && element->adoption_version == click_version) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);
 		}
@@ -614,6 +616,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_scroll_offset", "offset"), &HTMLLabel::set_scroll_offset);
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "id", "align"), &HTMLLabel::scroll_to_anchor, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLabel::create_element);
+	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLabel::create_document_fragment);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLabel::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLabel::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLabel::get_element_by_id);
@@ -833,6 +836,11 @@ Ref<HTMLElement> HTMLLabel::create_element(const String& p_tag_name) {
 	return layout->create_element(p_tag_name);
 }
 
+Ref<HTMLDocumentFragment> HTMLLabel::create_document_fragment() {
+	parse_pending_source();
+	return layout->create_document_fragment();
+}
+
 Ref<HTMLElement> HTMLLabel::query_selector(const String& p_selector) const {
 	return source_dirty ? Ref<HTMLElement>() : layout->query_selector(p_selector);
 }
@@ -854,7 +862,7 @@ Ref<HTMLElement> HTMLLabel::get_element_at(const Vector2& p_position) const {
 }
 
 Ref<HTMLElement> HTMLLabel::get_focused_element() const {
-	return canvas && has_focus() && canvas->focused_element.is_valid() && canvas->focused_element->is_valid()
+	return canvas && has_focus() && layout->is_element_connected(canvas->focused_element)
 		? canvas->focused_element : Ref<HTMLElement>();
 }
 
@@ -1040,6 +1048,12 @@ void HTMLLabel::on_layout_edited() {
 	if (canvas) {
 		canvas->cancel_press();
 		clear_selection();
+		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
+			canvas->set_focused_element({});
+		}
+		auto& tabs = canvas->tab_elements;
+		tabs.erase(std::remove_if(tabs.begin(), tabs.end(),
+			[this](const auto& p_element) { return !layout->is_element_connected(p_element); }), tabs.end());
 	}
 	queue_refresh();
 }

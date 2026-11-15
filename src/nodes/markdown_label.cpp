@@ -1,6 +1,7 @@
 #include "markdown_label.h"
 
 #include "formats/html/markup/html_markup.h"
+#include "formats/html/resources/html_resource_paths.h"
 #include "formats/html/layout/html_geometry.h"
 
 #include <godot_cpp/classes/display_server.hpp>

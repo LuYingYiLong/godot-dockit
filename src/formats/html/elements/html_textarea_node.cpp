@@ -55,6 +55,16 @@ namespace docrender {
 		return changed;
 	}
 
+	bool HTMLTextAreaNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const {
+		auto* target = dynamic_cast<HTMLTextAreaNode*>(&p_target);
+		if (!target) {
+			return false;
+		}
+		target->editor.copy_value_state(editor, p_mode == HTMLNodeCopyMode::ADOPT);
+		target->update_pseudos();
+		return true;
+	}
+
 	void HTMLTextAreaNode::parse_attributes() {
 		html_tag::parse_attributes();
 		update_pseudos();

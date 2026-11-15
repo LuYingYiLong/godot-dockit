@@ -39,10 +39,12 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 	const StringName signal = input->editor.is_multiline() ? "textarea_committed" : "input_committed";
 	if (p_deferred) {
 		const ObjectID id(label->get_instance_id());
-		callable_mp_static(+[](uint64_t p_id, const Ref<HTMLElement>& element, const StringName& p_signal) {
+		callable_mp_static(+[](uint64_t p_id, const Ref<HTMLElement>& element, uint64_t p_adoption_version, const StringName& p_signal) {
 			auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(p_id)));
-			if (owner && element->is_valid()) owner->emit_signal(p_signal, element);
-		}).call_deferred(uint64_t(id), p_input, signal);
+			if (owner && element->adoption_version == p_adoption_version && owner->layout->text_control(element)) {
+				owner->emit_signal(p_signal, element);
+			}
+		}).call_deferred(uint64_t(id), p_input, p_input->adoption_version, signal);
 	} else {
 		label->emit_signal(signal, p_input);
 	}
@@ -54,7 +56,7 @@ void HTMLLabelCanvas::toggle_checkbox(const Ref<HTMLInputElement>& p_input) {
 		!input->set_checked(!input->is_checked())) return;
 	const ObjectID id(label->get_instance_id());
 	change_input(p_input);
-	if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id)); owner && p_input->is_valid()) {
+	if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id)); owner && owner->layout->text_control(p_input) == input) {
 		owner->emit_signal("input_committed", p_input);
 	}
 }
@@ -162,6 +164,10 @@ void HTMLLabelCanvas::close_ime() {
 
 void HTMLLabelCanvas::update_ime() {
 	const auto handle = focused_element;
+	if (!label->layout->is_element_connected(handle)) {
+		close_ime();
+		return;
+	}
 	const auto input = label->layout->text_control(handle);
 	auto* display = DisplayServer::get_singleton();
 	Window* window = label->is_inside_tree() ? label->get_window() : nullptr;
@@ -192,6 +198,10 @@ void HTMLLabelCanvas::update_ime() {
 void HTMLLabelCanvas::on_ime_update() {
 	if (!ime_window || !label->has_focus()) return;
 	const auto handle = focused_element;
+	if (!label->layout->is_element_connected(handle)) {
+		close_ime();
+		return;
+	}
 	const auto input = label->layout->text_control(handle);
 	if (!input || !input->is_editable()) return;
 	auto* display = DisplayServer::get_singleton();

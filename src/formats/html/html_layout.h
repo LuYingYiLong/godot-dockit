@@ -64,6 +64,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;
 	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;
+	bool is_element_connected(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_focus_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	std::vector<godot::Ref<HTMLElement>> get_tab_elements(bool& r_has_focusable_elements) const;
 	std::optional<godot::Vector2> input_local_point(const HTMLElement& p_input, const godot::Vector2& p_point) const;
@@ -145,7 +146,9 @@ public:
 	godot::Rect2 get_anchor_rect(const godot::String& p_id) const;					// 返回指定 HTML ID 的锚点矩形
 	const godot::HashMap<godot::String, godot::Rect2>& get_anchor_rects() const;	// 返回当前布局中各 HTML ID 对应的锚点矩形
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建同一布局中尚未插入文档的元素
+	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建属于当前布局的空片段
 	godot::Ref<HTMLElement> import_node(const godot::Ref<HTMLElement>& p_element, bool p_deep = false);	// 在当前布局中创建分离副本，可选复制后代
+	godot::Ref<HTMLElement> adopt_node(const godot::Ref<HTMLElement>& p_element);	// 将整棵子树迁到当前布局，保持分离并保留原句柄
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const;	// 按文档顺序返回第一个匹配元素
 	godot::TypedArray<HTMLElement> query_selector_all(
 		const godot::String& p_selector

@@ -1,11 +1,12 @@
 #pragma once
 
 #include "html_text_control_node.h"
+#include "html_node_copy_state.h"
 
 #include <string_view>
 
 namespace docrender {
-	class HTMLInputNode final : public HTMLTextControlNode {
+	class HTMLInputNode final : public HTMLTextControlNode, public HTMLNodeCopyState {
 		bool checked = false;
 		bool dirty_checked = false;
 
@@ -25,6 +26,6 @@ namespace docrender {
 		godot::String get_value() const;
 		bool is_checked() const { return checked; }
 		bool set_checked(bool p_checked);
-		void copy_state_for_clone(const HTMLInputNode& p_source);
+		bool copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const override;
 	};
 }

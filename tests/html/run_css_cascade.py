@@ -148,6 +148,12 @@ def main():
             '<path fill="cyan" d="M1 1h1v1H1z"/><path fill="magenta" d="M2 1h1v1H2z"/></svg>\n',
             encoding="utf-8", newline="\n",
         )
+        (styles / "nested/inline-resources.md").write_text(
+            'Before <img src="../../object%2Dfit.svg" width="20" alt="Preview"> '
+            '<a href="#end%2Dpoint">Open &amp; go</a>\n\n' + 'Paragraph\n\n' * 12
+            + '<div id="end-point">Target</div>\n',
+            encoding="utf-8", newline="\n",
+        )
         (project / "image_set.html").write_text(
             '<!doctype html><link rel="stylesheet" href="styles/image-set.css"><div id="imported_set"></div>\n',
             encoding="utf-8", newline="\n",

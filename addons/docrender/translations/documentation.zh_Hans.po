@@ -1029,8 +1029,12 @@ msgid "The current text or checkbox value."
 msgstr "文本框或复选框的当前值。"
 
 #. doc_classes/HTMLLabel.xml
-msgid "Returns the focused element, or [code]null[/code] when the label has no DOM focus."
-msgstr "返回当前聚焦的元素。控件没有 DOM 焦点时返回 [code]null[/code]。"
+msgid ""
+"Returns the focused element, or [code]null[/code] when the label has no DOM focus. Removing the focused element "
+"from the document clears focus and ends input method composition immediately. Reinserting it does not restore focus."
+msgstr ""
+"返回当前聚焦的元素。控件没有 DOM 焦点时返回 [code]null[/code]。聚焦元素移出文档时会立即失焦并结束输入法预编辑。"
+"重新插入该元素后，需要再次聚焦。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -2601,8 +2605,8 @@ msgid "Returns whether the element has an attribute with the given name, includi
 msgstr "返回元素是否具有指定名称的属性，空属性也视为存在。"
 
 #. doc_classes/HTMLElement.xml
-msgid "Returns whether the handle still refers to an element in its original parsed layout."
-msgstr "返回句柄是否仍指向原始解析布局中的元素。"
+msgid "Returns whether the handle still refers to an element in its owning layout."
+msgstr "返回句柄是否仍指向所属布局中的元素。"
 
 #. doc_classes/HTMLLayout.xml
 msgid "Returns the frontmost element at the given document pixel position, accounting for overflow clipping. Returns [code]null[/code] when there is no hit or no layout."
@@ -2855,9 +2859,10 @@ msgstr "将 [param child] 追加到当前元素的子元素末尾，并保留子
 #. doc_classes/HTMLElement.xml
 msgid ""
 "Obtain a handle from [method HTMLLayout.query_selector] or [method HTMLLabel.query_selector]. A "
-"handle belongs to one layout and stays valid across viewport resizes. While a handle is held, "
-"querying or hitting the same element in that layout returns the same object. Parsing again, "
-"clearing the layout, or freeing its owner invalidates it. An invalid handle returns empty results"
+"handle belongs to one layout at a time and stays valid across viewport resizes. It follows the element "
+"when moved with [method HTMLLayout.adopt_node]. While a handle is held, "
+"querying or hitting the same element in its current layout returns the same object. Parsing again, "
+"clearing the owning layout, or freeing its owner invalidates it. An invalid handle returns empty results"
 " or the supplied attribute default. Use these methods on the main thread.\n"
 "Edits affect this layout only. Other views of the same [HTMLDocument] and the source resource are"
 " unaffected. Queries and attribute reads see edits immediately. Geometry is available after the "
@@ -2868,7 +2873,7 @@ msgid ""
 "invalid handle or invalid arguments."
 msgstr ""
 "通过 [method HTMLLayout.query_selector] 或 [method HTMLLabel.query_selector] "
-"获取句柄。句柄属于单个布局，调整视口尺寸后仍然有效。持有句柄期间，在同一布局中查询或命中同一个元素会返回同一对象。重新解析、清空布局或释放所属对象后，句柄会失效。无效句柄返回空结果或传入的属性默认值。请在主线程调用这些方法。"
+"获取句柄。句柄同一时间归一个布局所有，调整视口尺寸后仍然有效。通过 [method HTMLLayout.adopt_node] 迁移时，句柄会跟随元素。持有句柄期间，在当前布局中查询或命中同一个元素会返回同一对象。重新解析、清空所属布局或释放它后，句柄会失效。无效句柄返回空结果或传入的属性默认值。请在主线程调用这些方法。"
 "\n"
 "修改只作用于当前布局。同一 [HTMLDocument] 的其他视图及源资源保持原状。查询和属性读取会立即反映修改，几何信息在下次排版后可用。[HTMLLabel] 会合并修改，新布局就绪后发出"
 " [signal HTMLLabel.layout_changed]。已有视口的独立 [HTMLLayout] 会延迟重排，也可调用 [method HTMLLayout.layout] "
@@ -3336,3 +3341,76 @@ msgstr ""
 "将副本插入当前布局的父元素后即可排版。相对资源路径以当前布局的基目录解析。"
 "空文档首次导入后也可以查询 [code]html[/code]、[code]head[/code] 和 [code]body[/code]。\n"
 "来源句柄无效或当前布局尚未成功调用 [method parse] 时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLLayout.xml
+msgid ""
+"Moves [param element] and its descendants to this layout and returns the same handle. Existing descendant "
+"handles also follow the move. The subtree is detached and can be inserted under a parent in this layout. "
+"Adopting within the same layout detaches the subtree.\n"
+"Form controls keep their current values, modified flags, checked state, and selection. The source ends "
+"focus and input method composition for the moved subtree and discards its pending input commit signals.\n"
+"Moving a connected subtree schedules reflow in the source. The target lays it out when it is inserted "
+"into the target document tree.\n"
+"Returns [code]null[/code] if the handle is invalid, the element is the source document root, or the target "
+"has no successful [method parse]."
+msgstr ""
+"将 [param element] 及其后代迁到当前布局，并返回同一个句柄。已有的后代句柄也会随之迁移。"
+"子树处于分离状态，可插入当前布局中的父元素下。在同一布局中调用时会分离该子树。\n"
+"表单控件保留当前值、修改标记、勾选状态和选区。源控件结束被迁移子树的焦点与输入法预编辑，并丢弃其待发出的输入提交信号。\n"
+"移出已连接的子树会调度源布局重排。将子树插入目标文档树后，目标布局会对其排版。\n"
+"句柄无效、元素是源文档根节点，或目标尚未成功调用 [method parse] 时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid "A detached collection of HTML elements for batch insertion."
+msgstr "用于批量插入的分离 HTML 元素集合。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Create a fragment with [method HTMLLayout.create_document_fragment] or [method HTMLLabel.create_document_fragment]. "
+"Add elements from the same layout with [method append_child]. Insert them through [method HTMLElement.append_fragment] "
+"or [method HTMLElement.insert_fragment_before]. A successful insertion preserves the element handles and empties the "
+"fragment for reuse.\n"
+"Direct children are detached from the document and return [code]null[/code] from [method HTMLElement.get_parent] "
+"while in the fragment. Clearing or reparsing the layout invalidates the fragment and the handles it still holds."
+msgstr ""
+"通过 [method HTMLLayout.create_document_fragment] 或 [method HTMLLabel.create_document_fragment] 创建片段。"
+"使用 [method append_child] 添加同一布局中的元素，再用 [method HTMLElement.append_fragment] 或 "
+"[method HTMLElement.insert_fragment_before] 插入。成功插入后保留元素句柄，并清空片段以供复用。\n"
+"片段中的直接子元素与文档分离，调用 [method HTMLElement.get_parent] 返回 [code]null[/code]。"
+"清空或重新解析布局时，片段及它仍持有的句柄会失效。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Moves [param child] to the end of the fragment. If the child was connected, its removal schedules a document update. "
+"Returns [constant ERR_INVALID_PARAMETER] for an invalid fragment or child, a child from a different layout, or the document root."
+msgstr ""
+"将 [param child] 移到片段末尾。如果该子元素原先已连接到文档，移出时会调度文档更新。"
+"片段或子元素无效、子元素来自其他布局，或子元素是文档根节点时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid "Returns a snapshot of the direct children in order, or an empty array if the fragment is invalid."
+msgstr "按顺序返回直接子元素的快照。片段无效时返回空数组。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Creates an empty fragment owned by this layout. Returns [code]null[/code] if the layout has no successful [method parse]."
+msgstr "创建属于当前布局的空片段。布局尚未成功调用 [method parse] 时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Creates an empty fragment owned by this control's layout. See [method HTMLLayout.create_document_fragment]."
+msgstr "创建属于当前控件布局的空片段。参见 [method HTMLLayout.create_document_fragment]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Appends all children of [param fragment] to this element. See [method insert_fragment_before]."
+msgstr "将 [param fragment] 的全部子元素追加到当前元素。参见 [method insert_fragment_before]。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Moves all children of [param fragment] before the direct child [param reference]. If [param reference] is [code]null[/code], "
+"appends them. The fragment must belong to this layout.\n"
+"On success, the fragment is emptied and all moved handles are preserved. Moving a nonempty fragment into the document "
+"schedules one layout update. Invalid arguments leave both trees unchanged and return [constant ERR_INVALID_PARAMETER]."
+msgstr ""
+"将 [param fragment] 的全部子元素移到直接子元素 [param reference] 前面。"
+"如果 [param reference] 为 [code]null[/code]，则追加到末尾。片段必须属于当前布局。\n"
+"成功后清空片段并保留所有移出的句柄。将非空片段插入文档会调度一次布局更新。"
+"参数无效时两棵树保持原状，并返回 [constant ERR_INVALID_PARAMETER]。"

@@ -7,10 +7,19 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 namespace litehtml {
 	class document;
 }
+
+struct HTMLElement::DetachedTree {
+	std::weak_ptr<docrender::HTMLDOM> owner;
+	litehtml::element::ptr root;
+
+	DetachedTree(std::weak_ptr<docrender::HTMLDOM> p_owner, const litehtml::element::ptr& p_root);
+	~DetachedTree();
+};
 
 namespace docrender {
 	class HTMLDOM : public std::enable_shared_from_this<HTMLDOM> {
@@ -27,6 +36,12 @@ namespace docrender {
 		};
 		godot::HashMap<const litehtml::element*, SourceAttributes> source_attributes;
 		std::function<void()> on_change;
+
+		struct AdoptedHandle {
+			const litehtml::element* source;
+			litehtml::element::ptr target;
+			godot::Ref<HTMLElement> handle;
+		};
 
 		enum class SelectorQuery {
 			FIRST,
@@ -47,8 +62,10 @@ namespace docrender {
 		godot::Error place_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
 			const litehtml::element::ptr& p_reference, bool p_replace_reference);
 		void forget_subtree(const litehtml::element& p_element);
+		godot::Ref<HTMLElement> find_element_handle(const litehtml::element& p_element) const;
 		godot::Ref<HTMLElement> make_detached_element(const litehtml::element::ptr& p_element);
-		litehtml::element::ptr clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep);
+		litehtml::element::ptr clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep,
+			std::vector<AdoptedHandle>* r_adopted = nullptr);
 		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const;
 		void set_source_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		void forget_source_attributes(const litehtml::element& p_element);
@@ -79,8 +96,11 @@ namespace docrender {
 		}
 
 		godot::Ref<HTMLElement> make_element(const litehtml::element::ptr& p_element) const;
+		godot::TypedArray<HTMLElement> get_children(const litehtml::element& p_element) const;
 		godot::Ref<HTMLElement> create_element(const godot::CharString& p_tag);
+		godot::Ref<HTMLDocumentFragment> create_document_fragment();
 		godot::Ref<HTMLElement> copy_node(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep);
+		bool adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_source);
 		godot::Ref<HTMLElement> query_selector(const godot::String& p_selector, const litehtml::element::ptr& p_scope = {}) const;
 		godot::TypedArray<HTMLElement> query_selector_all(const godot::String& p_selector, const litehtml::element::ptr& p_scope = {}) const;
 		bool matches(const godot::String& p_selector, const litehtml::element::ptr& p_scope) const;
@@ -94,6 +114,8 @@ namespace docrender {
 		godot::Error edit_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		godot::Error replace_children(const litehtml::element::ptr& p_element, const godot::String& p_content, bool p_parse_html);
 		godot::Error insert_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
+			const litehtml::element::ptr& p_reference);
+		godot::Error insert_fragment(const litehtml::element::ptr& p_parent, const HTMLDocumentFragment& p_fragment,
 			const litehtml::element::ptr& p_reference);
 		godot::Error replace_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_new_child,
 			const litehtml::element::ptr& p_old_child);

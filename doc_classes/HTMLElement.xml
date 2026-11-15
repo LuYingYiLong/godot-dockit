@@ -4,7 +4,7 @@
 		A handle to an element in a parsed HTML layout.
 	</brief_description>
 	<description>
-		Obtain a handle from [method HTMLLayout.query_selector] or [method HTMLLabel.query_selector]. A handle belongs to one layout and stays valid across viewport resizes. While a handle is held, querying or hitting the same element in that layout returns the same object. Parsing again, clearing the layout, or freeing its owner invalidates it. An invalid handle returns empty results or the supplied attribute default. Use these methods on the main thread.
+		Obtain a handle from [method HTMLLayout.query_selector] or [method HTMLLabel.query_selector]. A handle belongs to one layout at a time and stays valid across viewport resizes. It follows the element when moved with [method HTMLLayout.adopt_node]. While a handle is held, querying or hitting the same element in its current layout returns the same object. Parsing again, clearing the owning layout, or freeing its owner invalidates it. An invalid handle returns empty results or the supplied attribute default. Use these methods on the main thread.
 		Edits affect this layout only. Other views of the same [HTMLDocument] and the source resource are unaffected. Queries and attribute reads see edits immediately. Geometry is available after the next layout pass. [HTMLLabel] batches edits and emits [signal HTMLLabel.layout_changed] when the new layout is ready. A standalone [HTMLLayout] with a previous viewport reflows on a deferred call, or can be laid out immediately with [method HTMLLayout.layout].
 		Editing methods return [constant OK] on success and [constant ERR_INVALID_PARAMETER] for an invalid handle or invalid arguments.
 	</description>
@@ -21,6 +21,13 @@
 			<param index="0" name="child" type="HTMLElement" />
 			<description>
 				Appends [param child] to the end of this element's children and preserves the subtree's handles. Accepts both unattached elements from [method HTMLLayout.create_element] and existing elements from the same layout. Cycles, moving the document root, and inserting elements into tags that cannot contain them are rejected.
+			</description>
+		</method>
+		<method name="append_fragment">
+			<return type="int" enum="Error" />
+			<param index="0" name="fragment" type="HTMLDocumentFragment" />
+			<description>
+				Appends all children of [param fragment] to this element. See [method insert_fragment_before].
 			</description>
 		</method>
 		<method name="clone_node" qualifiers="const">
@@ -141,6 +148,15 @@
 				Moves [param child] before the direct child [param reference]. If [param reference] is [code]null[/code], appends the child. The moved subtree keeps its handles. See [method append_child] for insertion constraints.
 			</description>
 		</method>
+		<method name="insert_fragment_before">
+			<return type="int" enum="Error" />
+			<param index="0" name="fragment" type="HTMLDocumentFragment" />
+			<param index="1" name="reference" type="HTMLElement" default="null" />
+			<description>
+				Moves all children of [param fragment] before the direct child [param reference]. If [param reference] is [code]null[/code], appends them. The fragment must belong to this layout.
+				On success, the fragment is emptied and all moved handles are preserved. Moving a nonempty fragment into the document schedules one layout update. Invalid arguments leave both trees unchanged and return [constant ERR_INVALID_PARAMETER].
+			</description>
+		</method>
 		<method name="is_connected" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -150,7 +166,7 @@
 		<method name="is_valid" qualifiers="const">
 			<return type="bool" />
 			<description>
-				Returns whether the handle still refers to an element in its original parsed layout.
+				Returns whether the handle still refers to an element in its owning layout.
 			</description>
 		</method>
 		<method name="matches" qualifiers="const">

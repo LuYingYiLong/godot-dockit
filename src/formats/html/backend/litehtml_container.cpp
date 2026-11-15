@@ -7,7 +7,6 @@
 #include "formats/html/text/html_image_alt_text.h"
 #include "formats/html/paint/html_image_blend.h"
 #include "formats/html/css/css_image_value.h"
-#include "formats/html/markup/html_markup.h"
 #include "litehtml_document_adapter.h"
 
 #include <godot_cpp/classes/translation_server.hpp>

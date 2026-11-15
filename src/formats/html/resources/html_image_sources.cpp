@@ -2,10 +2,10 @@
 
 #include "formats/html/css/css_image_value.h"
 #include "formats/html/css/css_math.h"
-#include "formats/html/backend/litehtml_container.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/document.h>
+#include <litehtml/element.h>
 #include <litehtml/media_query.h>
 
 #include <algorithm>
@@ -68,7 +68,7 @@ namespace docrender {
 		}
 
 		HTMLImageSelection select_from_attributes(const litehtml::element& p_source, const char* p_fallback,
-			const LiteHTMLContainer& p_container, const litehtml::media_features& p_media) {
+			const HTMLImageSourceResolver& p_resolve, const litehtml::media_features& p_media) {
 			auto candidates = parse_html_srcset(p_source.get_attr("srcset", ""));
 			const bool uses_width = std::any_of(candidates.begin(), candidates.end(),
 				[](const HTMLImageCandidate& p_candidate) { return p_candidate.width_descriptor; });
@@ -86,11 +86,11 @@ namespace docrender {
 					const bool enough = density >= output_density;
 					if (previous >= output_density ? !enough || density >= previous : !enough && density <= previous) continue;
 				}
-				const auto resolved = p_container.resolve_image_source(candidate.url);
+				const auto resolved = p_resolve(candidate.url);
 				if (!resolved.is_empty()) selected = {candidate.url, resolved.utf8().get_data(), density, {}};
 			}
 			if (selected.source.empty() && *p_fallback) {
-				const auto resolved = p_container.resolve_image_source(p_fallback);
+				const auto resolved = p_resolve(p_fallback);
 				if (!resolved.is_empty()) selected = {p_fallback, resolved.utf8().get_data(), {}, {}};
 			}
 			return selected;
@@ -129,7 +129,7 @@ namespace docrender {
 	}
 
 	HTMLImageSelection select_html_image(const litehtml::element& p_image,
-		const LiteHTMLContainer& p_container, const litehtml::media_features& p_media) {
+		const HTMLImageSourceResolver& p_resolve, const litehtml::media_features& p_media) {
 		using namespace litehtml;
 		const auto parent = p_image.parent();
 		if (parent && parent->tag() == _picture_) {
@@ -141,7 +141,7 @@ namespace docrender {
 				if (const char* type = source->get_attr("type"); type && !supports_image_mime(type)) continue;
 				const char* media = source->get_attr("media", "");
 				if (*media && !parse_media_query_list(media, p_image.get_document()).check(p_media)) continue;
-				auto selection = select_from_attributes(*source, "", p_container, p_media);
+				auto selection = select_from_attributes(*source, "", p_resolve, p_media);
 				if (selection.source.empty()) continue;
 				const char* width = source->get_attr("width");
 				const char* height = source->get_attr("height");
@@ -149,6 +149,6 @@ namespace docrender {
 				return selection;
 			}
 		}
-		return select_from_attributes(p_image, p_image.get_attr("src", ""), p_container, p_media);
+		return select_from_attributes(p_image, p_image.get_attr("src", ""), p_resolve, p_media);
 	}
 }

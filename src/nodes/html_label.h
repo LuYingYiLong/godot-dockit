@@ -176,6 +176,7 @@ public:
 	void set_scroll_offset(const godot::Vector2i& p_offset);						// 设置滚动偏移并限制在可滚动范围内
 	bool scroll_to_anchor(const godot::String& p_id, float p_align = 0.0f);			// 将指定 HTML ID 的锚点滚到视口内的对齐位置
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建可插入当前控件文档的元素
+	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建可插入当前控件文档的片段
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const;	// 返回当前控件文档中第一个匹配元素
 	godot::TypedArray<HTMLElement> query_selector_all(
 		const godot::String& p_selector

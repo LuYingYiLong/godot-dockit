@@ -335,6 +335,12 @@ func _run() -> void:
 	await _check_dom_clone()
 	await _check_form_clone()
 	await _check_dom_import()
+	await _check_dom_adopt()
+	await _check_adopted_input_focus()
+	await _check_disconnected_input_focus()
+	_check_document_fragments()
+	await _check_fragment_reflow()
+	await _check_markdown_markup_resources()
 	_check_layers()
 	_check_box_and_transform_functions()
 	_check_math_functions()
@@ -1114,6 +1120,303 @@ func _check_dom_import() -> void:
 		image.get_intrinsic_size().x > 0.0, "Target reflow keeps the clean textarea value and uses target styles and resources")
 	shallow.default_value = "Target default"
 	_check(shallow.value == "Target default", "The imported clean textarea still follows changes to its default text")
+
+
+func _check_dom_adopt() -> void:
+	var source: HTMLLayout = HTMLLayout.new()
+	var target: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><div id="card" style="height:100px"><input id="text" value="Default">
+		<textarea id="area">Default area</textarea><input id="check" type="checkbox" checked></div>
+		<div id="source-marker" style="height:12px"></div>"""
+	var size: Vector2i = Vector2i(320, 250)
+	_check(source.parse(html) == OK and source.layout(size) == OK, "Lay out the source for adoption")
+	var card: HTMLElement = source.get_element_by_id("card")
+	var text: HTMLInputElement = source.get_element_by_id("text") as HTMLInputElement
+	var area: HTMLTextAreaElement = source.get_element_by_id("area") as HTMLTextAreaElement
+	var checkbox: HTMLInputElement = source.get_element_by_id("check") as HTMLInputElement
+	var marker: HTMLElement = source.get_element_by_id("source-marker")
+	if card == null or text == null or area == null or checkbox == null or marker == null:
+		_check(false, "Query the adoption fixture")
+		return
+	_check(target.adopt_node(card) == null and card.is_connected() and card.get_bounding_rect().has_area(),
+		"Adoption into an unparsed target leaves the source tree and geometry intact")
+	_check(target.parse("") == OK and target.adopt_node(source.query_selector("html")) == null and
+		target.query_selector("html") == null and source.get_element_by_id("card") == card,
+		"Rejecting the document root leaves both the source and parsed empty target intact")
+	_check(target.parse('<!doctype html><div id="target-marker" style="height:12px"></div>',
+		"res://", "#card { width:90px }") == OK and target.layout(size) == OK, "Lay out the target for adoption")
+	var body: HTMLElement = target.query_selector("body")
+	var target_marker: HTMLElement = target.get_element_by_id("target-marker")
+	if body == null or target_marker == null:
+		_check(false, "Query the adoption target")
+		return
+	text.value = "Live input"
+	text.set_selection_range(1, 5)
+	area.value = "Live area"
+	area.set_selection_range(2, 7)
+	checkbox.checked = false
+	_check(source.layout(size) == OK, "Settle the source form layout before moving it")
+	var marker_y: float = marker.get_bounding_rect().position.y
+	_check(target.adopt_node(card) == card and not card.is_connected() and card.get_parent() == null and
+		source.get_element_by_id("card") == null and target.get_element_by_id("card") == null and
+		card.query_selector("#text") == text and card.query_selector("#area") == area and
+		card.query_selector("#check") == checkbox, "Adoption moves a detached subtree while preserving every live handle")
+	_check(not marker.get_bounding_rect().has_area() and target_marker.get_bounding_rect().has_area(),
+		"Moving a connected subtree invalidates only the source geometry")
+	area.default_value = "Other area default"
+	_check(text.set_attribute("value", "Other input default") == OK and text.value == "Live input" and
+		text.get_selection_start() == 1 and text.get_selection_end() == 5 and
+		area.value == "Live area" and area.get_selection_start() == 2 and area.get_selection_end() == 7 and
+		checkbox.remove_attribute("checked") == OK and checkbox.set_attribute("checked", "") == OK and not checkbox.checked,
+		"Adoption preserves form values, modification flags and text selection")
+	await process_frame
+	await process_frame
+	_check(marker.get_bounding_rect().position.y < marker_y and target_marker.get_bounding_rect().has_area(),
+		"The source reflows after removal while the target retains its geometry")
+	source.clear()
+	_check(card.is_valid() and text.is_valid() and body.append_child(card) == OK and
+		target.get_element_by_id("text") == text and not target_marker.get_bounding_rect().has_area(),
+		"Clearing the source leaves adopted handles valid and connecting them invalidates the target")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(card.get_bounding_rect().size.x, 90.0), "The inserted subtree reflows with the target styles")
+
+	_check(source.parse("<!doctype html><div></div>") == OK and source.layout(size) == OK, "Prepare a detached adoption source")
+	var detached: HTMLElement = source.create_element("div")
+	var child: HTMLElement = source.create_element("span")
+	var contents: HTMLElement = source.query_selector("div")
+	if detached == null or child == null or contents == null:
+		_check(false, "Create and query the detached adoption fixture")
+		return
+	_check(detached.append_child(child) == OK and target.adopt_node(child) == child and detached.get_children().is_empty() and
+		contents.get_bounding_rect().size.x > 0.0 and card.get_bounding_rect().has_area(),
+		"Moving a child out of a detached tree keeps both layouts current")
+	_check(target.adopt_node(card) == card and not card.is_connected() and card.query_selector("#text") == text,
+		"Adopting within the same layout detaches the subtree and retains its handles")
+	target.clear()
+	_check(not card.is_valid() and not child.is_valid() and detached.is_valid(),
+		"The target owns migrated handles and clearing it retires only those handles")
+
+
+func _check_adopted_input_focus() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 150)
+	root.add_child(viewport)
+	var source: HTMLLabel = HTMLLabel.new()
+	source.size = Vector2(300.0, 150.0)
+	source.text = '<div id="group"><input id="first" value="A"><input id="second" value="B"></div>'
+	viewport.add_child(source)
+	var target: HTMLLayout = HTMLLayout.new()
+	_check(target.parse("") == OK, "Parse the focus adoption target")
+	await process_frame
+	await process_frame
+	var group: HTMLElement = source.get_element_by_id("group")
+	var first: HTMLInputElement = source.get_element_by_id("first") as HTMLInputElement
+	var second: HTMLInputElement = source.get_element_by_id("second") as HTMLInputElement
+	if group == null or first == null or second == null:
+		_check(false, "Find the inputs for the focus adoption test")
+		viewport.queue_free()
+		return
+	var commits: Array[HTMLElement] = []
+	source.input_committed.connect(func(element: HTMLElement) -> void: commits.append(element))
+	_check(source.focus_element(first), "Focus the first source field")
+	first.set_selection_range(1, 1)
+	_send_dom_key(viewport, KEY_NONE, 0x78)
+	_check(first.value == "Ax" and source.focus_element(second), "Changing focus queues the first field's commit")
+	second.set_selection_range(1, 1)
+	_send_dom_key(viewport, KEY_NONE, 0x79)
+	_check(second.value == "By" and source.get_focused_element() == second, "The second field has uncommitted text and focus")
+	_check(target.adopt_node(group) == group and source.get_focused_element() == null and not second.matches(":focus"),
+		"Adoption clears source focus immediately")
+	await process_frame
+	await process_frame
+	_check(commits.is_empty() and first.value == "Ax" and second.value == "By",
+		"Adoption cancels queued and pending source commits while preserving the edited values")
+	viewport.queue_free()
+
+
+func _check_disconnected_input_focus() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 240)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(300.0, 240.0)
+	label.text = """<div id="fields"><input id="fragment" value="A">
+		<input id="detach" value="A"><textarea id="replace">A</textarea><input id="remove" value="A"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var parent: HTMLElement = label.get_element_by_id("fields")
+	var fragment: HTMLDocumentFragment = label.create_document_fragment()
+	var replacement: HTMLElement = label.create_element("span")
+	if parent == null or fragment == null or replacement == null:
+		_check(false, "Set up the disconnection focus fixture")
+		viewport.queue_free()
+		return
+	var input_commits: Array[HTMLElement] = []
+	var textarea_commits: Array[HTMLElement] = []
+	label.input_committed.connect(func(element: HTMLElement) -> void: input_commits.append(element))
+	label.textarea_committed.connect(func(element: HTMLElement) -> void: textarea_commits.append(element))
+	var expected_input_commits: Array[HTMLElement] = []
+	var expected_textarea_commits: Array[HTMLElement] = []
+	for operation: String in ["fragment", "detach", "replace", "remove",]:
+		var field: HTMLElement = label.get_element_by_id(operation)
+		if field == null or not label.focus_element(field):
+			_check(false, "Focus the field for %s" % operation)
+			viewport.queue_free()
+			return
+		_send_dom_key(viewport, KEY_NONE, 0x78)
+		var result: Error
+		match operation:
+			"fragment":
+				_check(parent.append_child(field) == OK and label.get_focused_element() == field and field.matches(":focus"),
+					"Reordering a connected input retains focus")
+				result = fragment.append_child(field)
+				expected_input_commits.append(field)
+			"detach":
+				result = field.detach()
+				expected_input_commits.append(field)
+			"replace":
+				result = parent.replace_child(replacement, field)
+				expected_textarea_commits.append(field)
+			_:
+				result = field.remove()
+		_check(result == OK and not field.is_connected() and label.get_focused_element() == null and not field.matches(":focus"),
+			"%s clears DOM focus and the focus pseudo-class before returning" % operation)
+		if operation == "fragment":
+			_check(parent.append_fragment(fragment) == OK and field.is_connected() and label.get_focused_element() == null,
+				"Reinserting the input in the same frame does not restore focus")
+		await process_frame
+		await process_frame
+		_check(input_commits == expected_input_commits and textarea_commits == expected_textarea_commits,
+			"%s follows the pending input commit policy" % operation)
+	viewport.queue_free()
+
+
+func _check_document_fragments() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.create_document_fragment() == null, "An unparsed layout cannot create a fragment")
+	_check(layout.parse('<!doctype html><div id="target" style="height:20px"><span id="ref">Reference</span></div><img id="void">')
+		== OK and layout.layout(Vector2i(240, 140)) == OK, "Set up the fragment document")
+	var target: HTMLElement = layout.get_element_by_id("target")
+	var reference: HTMLElement = layout.get_element_by_id("ref")
+	var void_element: HTMLElement = layout.get_element_by_id("void")
+	var fragment: HTMLDocumentFragment = layout.create_document_fragment()
+	var a: HTMLElement = layout.create_element("div")
+	var b: HTMLElement = layout.create_element("div")
+	var descendant: HTMLElement = layout.create_element("span")
+	var holder: HTMLElement = layout.create_element("div")
+	if target == null or reference == null or void_element == null or fragment == null or a == null or b == null or descendant == null or holder == null:
+		_check(false, "Create the fragment and query the test nodes")
+		return
+	_check(a.append_child(descendant) == OK and fragment.append_child(a) == OK and fragment.append_child(b) == OK and
+		fragment.get_children() == [a, b] and a.get_parent() == null and not a.is_connected() and descendant.get_parent() == a,
+		"Fragments hold detached elements in order and retain the original handles")
+	var foreign: HTMLLayout = HTMLLayout.new()
+	_check(foreign.parse("") == OK, "Parse an empty layout for a foreign fragment")
+	var foreign_fragment: HTMLDocumentFragment = foreign.create_document_fragment()
+	var foreign_element: HTMLElement = foreign.create_element("div")
+	_check(foreign_fragment != null and foreign_element != null and foreign_fragment.append_child(foreign_element) == OK and
+		target.append_fragment(foreign_fragment) == ERR_INVALID_PARAMETER and foreign_fragment.get_children() == [foreign_element] and
+		fragment.append_child(foreign_element) == ERR_INVALID_PARAMETER,
+		"Fragments and their children are scoped to one layout")
+	_check(descendant.append_fragment(fragment) == ERR_INVALID_PARAMETER and void_element.append_fragment(fragment) == ERR_INVALID_PARAMETER and
+		target.insert_fragment_before(fragment, descendant) == ERR_INVALID_PARAMETER and fragment.get_children() == [a, b] and
+		target.get_children() == [reference] and target.get_bounding_rect().has_area(),
+		"Cycles, void elements and invalid references leave the whole fragment and document unchanged")
+	_check(holder.append_fragment(fragment) == OK and fragment.get_children().is_empty() and holder.get_children() == [a, b] and
+		descendant.get_parent() == a and target.get_bounding_rect().has_area(),
+		"Inserting into a detached element moves the whole fragment without invalidating the layout")
+	_check(fragment.append_child(a) == OK and fragment.append_child(b) == OK and holder.get_children().is_empty() and
+		target.insert_fragment_before(fragment, reference) == OK and fragment.get_children().is_empty() and
+		target.get_children() == [a, b, reference] and a.get_parent() == target and a.is_connected(),
+		"A reused fragment inserts its children before the reference in their original order")
+	_check(fragment.append_child(reference) == OK and not reference.is_connected() and target.get_children() == [a, b],
+		"Appending a previously connected element moves it into the fragment")
+	layout.clear()
+	_check(fragment.get_children().is_empty() and fragment.append_child(reference) == ERR_INVALID_PARAMETER and
+		not a.is_valid() and not descendant.is_valid() and not reference.is_valid(),
+		"Clearing a layout invalidates its fragment and the handles it contains")
+
+
+func _check_fragment_reflow() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 180)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(300.0, 180.0)
+	label.text = '<div id="target" style="height:120px"><span id="reference">Reference</span></div>'
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var target: HTMLElement = label.get_element_by_id("target")
+	var reference: HTMLElement = label.get_element_by_id("reference")
+	var fragment: HTMLDocumentFragment = label.create_document_fragment()
+	if target == null or reference == null or fragment == null:
+		_check(false, "Create a fragment for a connected HTMLLabel")
+		viewport.queue_free()
+		return
+	var updates: Array[bool] = []
+	label.layout_changed.connect(func() -> void: updates.append(true))
+	var children: Array[HTMLElement] = []
+	for index: int in range(3):
+		var item: HTMLElement = label.create_element("p")
+		if item == null:
+			_check(false, "Create a fragment child")
+			viewport.queue_free()
+			return
+		_check(item.set_text_content("Child %d" % index) == OK and fragment.append_child(item) == OK, "Populate the fragment")
+		children.append(item)
+	await process_frame
+	await process_frame
+	_check(updates.is_empty() and target.get_bounding_rect().has_area(), "Assembling detached fragment children leaves the layout current")
+	_check(target.insert_fragment_before(fragment, reference) == OK and fragment.get_children().is_empty() and
+		target.append_fragment(fragment) == OK, "Insert the entire fragment, then append the empty fragment")
+	await process_frame
+	await process_frame
+	await process_frame
+	children.append(reference)
+	_check(updates.size() == 1 and target.get_children() == children and children[0].get_bounding_rect().has_area(),
+		"A nonempty batch triggers exactly one layout update and the empty batch triggers none")
+	viewport.queue_free()
+
+
+func _check_markdown_markup_resources() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 100)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: MarkdownLabel = MarkdownLabel.new()
+	label.size = Vector2(240.0, 100.0)
+	label.parse_html = true
+	var test_icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		label.add_theme_icon_override(icon, test_icon)
+	viewport.add_child(label)
+	var loaded: Error = label.load_markdown_file("res://styles/nested/inline-resources.md")
+	_check(loaded == OK, "Open the Markdown fixture with its own base directory")
+	if loaded != OK:
+		viewport.queue_free()
+		return
+	var image_bounds: Rect2i
+	for frame: int in range(30):
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var output: Image = viewport.get_texture().get_image()
+		image_bounds = _color_bounds(output, Rect2i(Vector2i.ZERO, viewport.size), Color("#c5692b"))
+		if image_bounds.has_area():
+			break
+	_check(image_bounds.has_area(), "Markdown paints an inline HTML image from its percent-encoded relative path")
+	label.select_all()
+	_check("Open & go" in label.get_selected_text(), "Markdown decodes entities in inline HTML")
+	var uris: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: uris.append(uri))
+	var scroll: VScrollBar = label.get_v_scroll_bar()
+	scroll.value = 0.0
+	label.activate_link_uri("#end%2Dpoint")
+	_check(label.has_anchor("end-point") and scroll.value > 0.0 and uris == ["#end%2Dpoint"],
+		"Markdown resolves an encoded anchor and emits its original URI")
+	viewport.queue_free()
 
 
 func _check_layers() -> void:

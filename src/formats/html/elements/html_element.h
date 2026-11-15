@@ -18,6 +18,7 @@ namespace docrender { class HTMLDOM; }
 
 class HTMLLayout;
 class HTMLInputElement;
+class HTMLDocumentFragment;
 
 class HTMLElement : public godot::RefCounted {
 	GDCLASS(HTMLElement, godot::RefCounted)
@@ -27,10 +28,13 @@ class HTMLElement : public godot::RefCounted {
 	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
+	friend class HTMLLabelCanvas;
+	friend class HTMLDocumentFragment;
 
 	struct DetachedTree;
 	godot::ObjectID layout_id;
 	uint64_t parse_version = 0;
+	uint64_t adoption_version = 0;
 	std::weak_ptr<litehtml::element> element;
 	std::shared_ptr<DetachedTree> detached_tree;
 
@@ -43,7 +47,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool is_valid() const;															// 检查句柄是否仍指向原布局中的元素
+	bool is_valid() const;															// 检查句柄是否仍指向所属布局中的元素
 	bool is_connected() const;														// 检查有效元素是否连接到当前文档树
 	godot::String get_tag_name() const;												// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;							// 检查指定属性是否存在，空属性也视为存在
@@ -90,6 +94,9 @@ public:
 	godot::Error append_child(const godot::Ref<HTMLElement>& p_child);				// 将同一布局中的新元素或已有元素追加到当前元素的子元素末尾
 	godot::Error insert_before(const godot::Ref<HTMLElement>& p_child,
 		const godot::Ref<HTMLElement>& p_reference = {});							// 将元素插到指定直接子元素前，省略参照元素时追加到末尾
+	godot::Error append_fragment(const godot::Ref<HTMLDocumentFragment>& p_fragment);	// 将片段的全部子元素移到末尾并清空片段
+	godot::Error insert_fragment_before(const godot::Ref<HTMLDocumentFragment>& p_fragment,
+		const godot::Ref<HTMLElement>& p_reference = {});							// 将片段的全部子元素移到指定直接子元素前，省略时追加到末尾
 	godot::Error replace_child(const godot::Ref<HTMLElement>& p_new_child,
 		const godot::Ref<HTMLElement>& p_old_child);								// 将新元素移到原子元素的位置并保留移出子树的句柄
 	godot::Error remove_child(const godot::Ref<HTMLElement>& p_child);				// 分离指定直接子元素并保留其子树句柄

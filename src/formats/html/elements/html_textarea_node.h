@@ -1,9 +1,10 @@
 #pragma once
 
 #include "html_text_control_node.h"
+#include "html_node_copy_state.h"
 
 namespace docrender {
-	class HTMLTextAreaNode final : public HTMLTextControlNode {
+	class HTMLTextAreaNode final : public HTMLTextControlNode, public HTMLNodeCopyState {
 		godot::Rect2 resize_handle;
 		godot::Vector2 border_extras;
 		godot::Vector2 border_size;
@@ -13,6 +14,7 @@ namespace docrender {
 		bool is_text_control() const override { return true; }
 		bool is_replaced() const override { return true; }
 		bool update_pseudos() override;
+		bool copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const override;
 		bool appendChild(const litehtml::element::ptr& p_child) override;
 		void parse_attributes() override;
 		godot::String get_default_value() const;

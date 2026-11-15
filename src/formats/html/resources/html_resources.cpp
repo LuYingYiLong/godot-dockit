@@ -1,13 +1,16 @@
 #include "html_resources.h"
 
 #include "formats/html/markup/html_markup.h"
+#include "html_resource_paths.h"
 
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <litehtml/html.h>
 
 #include <algorithm>
 #include <array>
@@ -20,6 +23,8 @@ using namespace godot;
 
 namespace docrender {
 	namespace {
+		constexpr int MAX_STYLESHEET_BYTES = 1024 * 1024;
+
 		struct ImageFragment {
 			std::array<int, 4> coordinates;
 			bool percent = false;
@@ -118,6 +123,47 @@ namespace docrender {
 			if (mipmaps) cropped->generate_mipmaps();
 			return ImageTexture::create_from_image(cropped);
 		}
+	}
+
+	bool is_html_stylesheet_link(const char* p_rel) {
+		if (!p_rel) {
+			return false;
+		}
+		constexpr std::string_view whitespace = " \t\n\r\f";
+		const std::string_view rel(p_rel);
+		bool stylesheet = false;
+		for (auto start = rel.find_first_not_of(whitespace); start != std::string_view::npos;) {
+			const auto end = rel.find_first_of(whitespace, start);
+			const auto token = rel.substr(start, end - start);
+			const auto is = [token](std::string_view p_name) {
+				return token.size() == p_name.size() &&
+					litehtml::t_strncasecmp(token.data(), p_name.data(), token.size()) == 0;
+			};
+			if (is("alternate")) {
+				return false;
+			}
+			stylesheet |= is("stylesheet");
+			start = rel.find_first_not_of(whitespace, end);
+		}
+		return stylesheet;
+	}
+
+	std::optional<String> read_html_stylesheet(const String& p_path) {
+		const Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
+		if (file.is_null()) {
+			return std::nullopt;
+		}
+		const uint64_t length = file->get_length();
+		if (length > MAX_STYLESHEET_BYTES) {
+			return std::nullopt;
+		}
+		const PackedByteArray bytes = file->get_buffer(length);
+		String text;
+		if (static_cast<uint64_t>(bytes.size()) != length ||
+			(!bytes.is_empty() && (bytes.has(0) || text.parse_utf8(reinterpret_cast<const char*>(bytes.ptr()), bytes.size()) != OK))) {
+			return std::nullopt;
+		}
+		return text;
 	}
 
 	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets,

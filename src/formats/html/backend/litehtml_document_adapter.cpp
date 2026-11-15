@@ -18,6 +18,16 @@ namespace litehtml {
 	using docrender::LiteHTMLContainer;
 
 	namespace {
+		elements_list::iterator child_insert_position(elements_list& p_children, const element::ptr& p_reference) {
+			if (p_reference) {
+				return std::find(p_children.begin(), p_children.end(), p_reference);
+			}
+			if (!p_children.empty() && p_children.back()->tag() == __tag_after_) {
+				return std::prev(p_children.end());
+			}
+			return p_children.end();
+		}
+
 		void update_button_pseudo_classes(element& p_element) {
 			const bool button = docrender_editor::is_command_button(p_element);
 			const bool disabled = button && p_element.get_attr("disabled");
@@ -114,15 +124,9 @@ namespace litehtml {
 			return child_edit_result::invalid;
 		}
 		auto& target_children = to->m_children;
-		auto position = target_children.end();
-		if (p_reference) {
-			position = std::find(target_children.begin(), target_children.end(), p_reference);
-			if (position == target_children.end()) {
-				return child_edit_result::invalid;
-			}
-		}
-		else if (!target_children.empty() && target_children.back()->tag() == __tag_after_) {
-			position = std::prev(position);
+		const auto position = child_insert_position(target_children, p_reference);
+		if (p_reference && position == target_children.end()) {
+			return child_edit_result::invalid;
 		}
 
 		const auto old_parent = p_child->parent();
@@ -149,6 +153,24 @@ namespace litehtml {
 			target_children.erase(position);
 		}
 		return child_edit_result::changed;
+	}
+
+	bool docrender_editor::insert_children(element& p_source, element& p_parent, const element::ptr& p_reference) {
+		auto* to = dynamic_cast<html_tag*>(&p_parent);
+		if (!to || &p_source == to) {
+			return false;
+		}
+		auto& target_children = to->m_children;
+		const auto position = child_insert_position(target_children, p_reference);
+		if (p_reference && position == target_children.end()) {
+			return false;
+		}
+		const auto parent = to->shared_from_this();
+		for (const auto& child : p_source.m_children) {
+			child->parent(parent);
+		}
+		target_children.splice(position, p_source.m_children);
+		return true;
 	}
 
 	void docrender_editor::reset_tree(element& p_element) {

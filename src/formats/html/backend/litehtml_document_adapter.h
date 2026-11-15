@@ -53,6 +53,8 @@ namespace litehtml {
 		enum class child_edit_result { invalid, unchanged, changed };
 		static child_edit_result place_child(const element::ptr& p_child, element& p_parent,
 			const element::ptr& p_reference, bool p_replace_reference);			// 插入或替换子节点，保留节点身份并报告是否改变顺序
+		static bool insert_children(element& p_source, element& p_parent,
+			const element::ptr& p_reference);									// 按顺序移动来源的全部子节点
 
 	private:
 		static document::ptr parse_tree(const godot::CharString& p_html, document_container& p_container);

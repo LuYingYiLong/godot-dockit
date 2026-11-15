@@ -5,8 +5,9 @@
 
 #include "formats/html/paint/html_canvas_renderer.h"
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/resources/html_image_sources.h"
-#include "formats/html/markup/html_markup.h"
+#include "formats/html/resources/html_resource_paths.h"
 #include "layout/html_geometry.h"
 #include "formats/html/backend/litehtml_container.h"
 #include "formats/html/backend/litehtml_document_adapter.h"
@@ -137,7 +138,9 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_link_at", "position"), &HTMLLayout::get_link_at);
 	ClassDB::bind_method(D_METHOD("get_anchor_rect", "id"), &HTMLLayout::get_anchor_rect);
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLayout::create_element);
+	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLayout::create_document_fragment);
 	ClassDB::bind_method(D_METHOD("import_node", "element", "deep"), &HTMLLayout::import_node, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("adopt_node", "element"), &HTMLLayout::adopt_node);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLayout::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLayout::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLayout::get_element_by_id);
@@ -269,13 +272,16 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	state->container->set_viewport(p_viewport_size);
 	litehtml::media_features image_media;
 	document->container()->get_media_features(image_media);
+	const docrender::HTMLImageSourceResolver resolve_image = [this](std::string_view p_source) {
+		return state->container->resolve_image_source(p_source);
+	};
 	std::vector<litehtml::el_image*> images;
 	bool image_hints_changed = false;
 	std::vector<std::pair<litehtml::element::ptr, Vector2>> scroll_offsets;
 	HTMLDOM::visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
 		if (p_element->tag() == litehtml::_img_) {
 			if (auto* image = dynamic_cast<litehtml::el_image*>(p_element.get())) {
-				image_hints_changed |= image->select_source(docrender::select_html_image(*image, *state->container, image_media));
+				image_hints_changed |= image->select_source(docrender::select_html_image(*image, resolve_image, image_media));
 				images.push_back(image);
 			}
 		}
@@ -420,6 +426,18 @@ Ref<HTMLElement> HTMLLayout::create_element(const String& p_tag_name) {
 	return {};
 }
 
+Ref<HTMLDocumentFragment> HTMLLayout::create_document_fragment() {
+	try {
+		if (ensure_document_for_editing()) {
+			return state->dom->create_document_fragment();
+		}
+	}
+	catch (const std::exception&) {
+		return {};
+	}
+	return {};
+}
+
 Ref<HTMLElement> HTMLLayout::import_node(const Ref<HTMLElement>& p_element, bool p_deep) {
 	const auto node = p_element.is_valid() ? p_element->lock_element() : nullptr;
 	if (!node) {
@@ -428,6 +446,27 @@ Ref<HTMLElement> HTMLLayout::import_node(const Ref<HTMLElement>& p_element, bool
 	try {
 		if (ensure_document_for_editing()) {
 			return state->dom->copy_node(p_element->get_dom(), *node, p_deep);
+		}
+	}
+	catch (const std::exception&) {
+		return {};
+	}
+	return {};
+}
+
+Ref<HTMLElement> HTMLLayout::adopt_node(const Ref<HTMLElement>& p_element) {
+	const auto node = p_element.is_valid() ? p_element->lock_element() : nullptr;
+	if (!node) {
+		return {};
+	}
+	auto& source = p_element->get_dom();
+	const auto& source_document = source.get_document();
+	if (!source_document || source_document->root() == node) {
+		return {};
+	}
+	try {
+		if (ensure_document_for_editing() && state->dom->adopt_node(source, node)) {
+			return p_element;
 		}
 	}
 	catch (const std::exception&) {
@@ -738,6 +777,14 @@ bool HTMLLayout::is_focusable(const Ref<HTMLElement>& p_element) const {
 	if (p_element.is_null() || p_element->get_owner() != this) return false;
 	const auto element = p_element->element.lock();
 	return element && can_focus_node(*element) && get_element_scroll_bounds(p_element).has_value();
+}
+
+bool HTMLLayout::is_element_connected(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null() || p_element->get_owner() != this) {
+		return false;
+	}
+	const auto element = p_element->element.lock();
+	return element && state->dom->is_element_connected(*element);
 }
 
 Ref<HTMLElement> HTMLLayout::get_focus_ancestor(const Ref<HTMLElement>& p_element) const {

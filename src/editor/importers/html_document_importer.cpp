@@ -2,7 +2,7 @@
 
 #include "formats/docrender_source.h"
 #include "formats/html/html_document.h"
-#include "formats/html/markup/html_markup.h"
+#include "formats/html/resources/html_asset_collector.h"
 
 namespace godot {
 	String HTMLDocumentImporter::_get_importer_name() const {

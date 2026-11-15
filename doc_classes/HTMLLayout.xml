@@ -15,10 +15,26 @@
 		<link title="CSS support reference">https://github.com/LuYingYiLong/godot-docrender/blob/main/addons/docrender/docs/html_css_support.md</link>
 	</tutorials>
 	<methods>
+		<method name="adopt_node">
+			<return type="HTMLElement" />
+			<param index="0" name="element" type="HTMLElement" />
+			<description>
+				Moves [param element] and its descendants to this layout and returns the same handle. Existing descendant handles also follow the move. The subtree is detached and can be inserted under a parent in this layout. Adopting within the same layout detaches the subtree.
+				Form controls keep their current values, modified flags, checked state, and selection. The source ends focus and input method composition for the moved subtree and discards its pending input commit signals.
+				Moving a connected subtree schedules reflow in the source. The target lays it out when it is inserted into the target document tree.
+				Returns [code]null[/code] if the handle is invalid, the element is the source document root, or the target has no successful [method parse].
+			</description>
+		</method>
 		<method name="clear">
 			<return type="void" />
 			<description>
 				Releases the document, layout, and drawing resources, and clears the last error.
+			</description>
+		</method>
+		<method name="create_document_fragment">
+			<return type="HTMLDocumentFragment" />
+			<description>
+				Creates an empty fragment owned by this layout. Returns [code]null[/code] if the layout has no successful [method parse].
 			</description>
 		</method>
 		<method name="create_element">

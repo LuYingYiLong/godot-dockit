@@ -32,13 +32,19 @@
 		<method name="get_focused_element" qualifiers="const">
 			<return type="HTMLElement" />
 			<description>
-				Returns the focused element, or [code]null[/code] when the label has no DOM focus.
+				Returns the focused element, or [code]null[/code] when the label has no DOM focus. Removing the focused element from the document clears focus and ends input method composition immediately. Reinserting it does not restore focus.
 			</description>
 		</method>
 		<method name="clear_selection">
 			<return type="void" />
 			<description>
 				Clears the text selection.
+			</description>
+		</method>
+		<method name="create_document_fragment">
+			<return type="HTMLDocumentFragment" />
+			<description>
+				Creates an empty fragment owned by this control's layout. See [method HTMLLayout.create_document_fragment].
 			</description>
 		</method>
 		<method name="create_element">

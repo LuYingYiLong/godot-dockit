@@ -1,4 +1,5 @@
 #include "html_dom.h"
+#include "html_document_fragment.h"
 
 #include "formats/html/css/css_litehtml_dom.h"
 
@@ -10,6 +11,7 @@
 #include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_textarea_element.h"
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/elements/html_node_copy_state.h"
 #include "formats/html/elements/html_textarea_node.h"
 #include "formats/html/backend/litehtml_document_adapter.h"
 
@@ -19,6 +21,7 @@
 #include <litehtml/el_cdata.h>
 #include <litehtml/el_comment.h>
 #include <litehtml/el_space.h>
+#include <litehtml/html_tag.h>
 
 #include <algorithm>
 #include <exception>
@@ -137,24 +140,19 @@ namespace {
 
 } // namespace
 
-struct HTMLElement::DetachedTree {
-	std::weak_ptr<HTMLDOM> owner;
-	litehtml::element::ptr root;
+HTMLElement::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const litehtml::element::ptr& p_root) :
+	owner(std::move(p_owner)), root(p_root) {}
 
-	DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const litehtml::element::ptr& p_root) :
-		owner(std::move(p_owner)), root(p_root) {}
-
-	~DetachedTree() {
-		if (const auto dom = owner.lock(); root && dom) {
-			dom->detached_trees.erase(root.get());
-			HTMLDOM::visit_elements(root, [&](const litehtml::element::ptr& p_element) {
-				dom->element_handles.erase(p_element.get());
-				dom->forget_source_attributes(*p_element);
-				return false;
-			});
-		}
+HTMLElement::DetachedTree::~DetachedTree() {
+	if (const auto dom = owner.lock(); root && dom) {
+		dom->detached_trees.erase(root.get());
+		HTMLDOM::visit_elements(root, [&](const litehtml::element::ptr& p_element) {
+			dom->element_handles.erase(p_element.get());
+			dom->forget_source_attributes(*p_element);
+			return false;
+		});
 	}
-};
+}
 
 HTMLDOM::HTMLDOM(std::function<void()> p_on_change) :
 	on_change(std::move(p_on_change)) {}
@@ -213,15 +211,22 @@ bool HTMLDOM::is_element_connected(const litehtml::element& p_element) const {
 	return document && document->root().get() == tree_root(p_element);
 }
 
+Ref<HTMLElement> HTMLDOM::find_element_handle(const litehtml::element& p_element) const {
+	if (const ObjectID* id = element_handles.getptr(&p_element)) {
+		auto* existing = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id));
+		if (existing && existing->element.lock().get() == &p_element) {
+			return Ref<HTMLElement>(existing);
+		}
+	}
+	return {};
+}
+
 Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) const {
 	if (!p_element || !is_element(*p_element)) {
 		return {};
 	}
-	if (const ObjectID* id = element_handles.getptr(p_element.get())) {
-		auto* existing = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id));
-		if (existing && existing->element.lock() == p_element) {
-			return Ref<HTMLElement>(existing);
-		}
+	if (const auto existing = find_element_handle(*p_element); existing.is_valid()) {
+		return existing;
 	}
 	Ref<HTMLElement> handle = create_element_handle(p_element->tag());
 	handle->layout_id = owner_id;
@@ -230,6 +235,16 @@ Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) 
 	handle->detached_tree = get_detached_tree(*p_element);
 	element_handles.insert(p_element.get(), ObjectID(handle->get_instance_id()));
 	return handle;
+}
+
+TypedArray<HTMLElement> HTMLDOM::get_children(const litehtml::element& p_element) const {
+	TypedArray<HTMLElement> children;
+	for (const auto& child : p_element.children()) {
+		if (const auto handle = make_element(child); handle.is_valid()) {
+			children.append(handle);
+		}
+	}
+	return children;
 }
 
 CharString HTMLDOM::normalize_tag_name(const String& p_tag_name) {
@@ -249,6 +264,14 @@ Ref<HTMLElement> HTMLDOM::create_element(const CharString& p_tag) {
 	return make_detached_element(document->create_element(p_tag.get_data(), {}));
 }
 
+Ref<HTMLDocumentFragment> HTMLDOM::create_document_fragment() {
+	Ref<HTMLDocumentFragment> fragment;
+	fragment.instantiate();
+	// An unnamed native tag can hold children without exposing an HTMLElement handle.
+	fragment->tree = register_detached_tree(std::make_shared<litehtml::html_tag>(document));
+	return fragment;
+}
+
 Ref<HTMLElement> HTMLDOM::make_detached_element(const litehtml::element::ptr& p_element) {
 	Ref<HTMLElement> handle = make_element(p_element);
 	if (handle.is_valid()) {
@@ -261,7 +284,44 @@ Ref<HTMLElement> HTMLDOM::copy_node(const HTMLDOM& p_source_dom, const litehtml:
 	return make_detached_element(clone_subtree(p_source_dom, p_source, p_deep));
 }
 
-litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep) {
+bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_source) {
+	const auto source_tree = p_source_dom.get_detached_tree(*p_source);
+	const auto parent = p_source->parent();
+	if (!parent && !source_tree) {
+		return false;
+	}
+	const bool source_connected = p_source_dom.is_element_connected(*p_source);
+	std::vector<AdoptedHandle> handles;
+	const auto copy = clone_subtree(p_source_dom, *p_source, true, &handles);
+	if (!copy) {
+		return false;
+	}
+	// Stage the detached target before editing the source. Its owner cleans up on failure.
+	const auto target_tree = register_detached_tree(copy);
+	for (const auto& entry : handles) {
+		element_handles.insert(entry.target.get(), ObjectID(entry.handle->get_instance_id()));
+	}
+	if (parent && !parent->removeChild(p_source)) {
+		return false;
+	}
+	p_source_dom.release_detached_root(source_tree, p_source);
+	for (const auto& entry : handles) {
+		p_source_dom.element_handles.erase(entry.source);
+		entry.handle->layout_id = owner_id;
+		entry.handle->parse_version = generation;
+		++entry.handle->adoption_version;
+		entry.handle->element = entry.target;
+		entry.handle->detached_tree = target_tree;
+	}
+	p_source_dom.forget_subtree(*p_source);
+	if (source_connected) {
+		p_source_dom.on_change();
+	}
+	return true;
+}
+
+litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep,
+	std::vector<AdoptedHandle>* r_adopted) {
 	if (!is_element(p_source)) {
 		return clone_character_data(p_source, document);
 	}
@@ -276,7 +336,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 			if (litehtml::is_generated_tag(child->tag())) {
 				continue;
 			}
-			const auto child_copy = clone_subtree(p_source_dom, *child, true);
+			const auto child_copy = clone_subtree(p_source_dom, *child, true, r_adopted);
 			if (!child_copy || !copy->appendChild(child_copy)) {
 				if (child_copy) {
 					forget_subtree(*child_copy);
@@ -286,13 +346,15 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 			}
 		}
 	}
-	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_source)) {
-		static_cast<HTMLInputNode&>(*copy).copy_state_for_clone(*input);
+	const auto mode = r_adopted ? HTMLNodeCopyMode::ADOPT : HTMLNodeCopyMode::COPY;
+	if (const auto* state = dynamic_cast<const HTMLNodeCopyState*>(&p_source); state && !state->copy_state_to(*copy, mode)) {
+		forget_subtree(*copy);
+		return {};
 	}
-	else if (const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(&p_source)) {
-		auto& target = static_cast<HTMLTextAreaNode&>(*copy);
-		target.editor.copy_value_for_clone(textarea->editor);
-		target.update_pseudos();
+	if (r_adopted) {
+		if (const auto handle = p_source_dom.find_element_handle(p_source); handle.is_valid()) {
+			r_adopted->push_back({ &p_source, copy, handle });
+		}
 	}
 	return copy;
 }
@@ -551,6 +613,40 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 Error HTMLDOM::insert_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
 	const litehtml::element::ptr& p_reference) {
 	return place_child(p_parent, p_child, p_reference, false);
+}
+
+Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTMLDocumentFragment& p_fragment,
+	const litehtml::element::ptr& p_reference) {
+	const auto& tree = p_fragment.tree;
+	if (!tree || !tree->root || tree->owner.lock().get() != this || !can_contain_elements(*p_parent) ||
+		(p_reference && p_reference->parent() != p_parent)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	const auto& root = tree->root;
+	for (auto ancestor = p_parent; ancestor; ancestor = ancestor->parent()) {
+		if (ancestor == root) {
+			return ERR_INVALID_PARAMETER;
+		}
+	}
+
+	const auto& children = root->children();
+	if (children.empty()) {
+		return OK;
+	}
+	const auto target_tree = get_detached_tree(*p_parent);
+	auto child = children.begin();
+	const size_t count = children.size();
+	if (!DocumentAdapter::insert_children(*root, *p_parent, p_reference)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	// Splice preserves the iterators to the moved children, now in the target list.
+	for (size_t i = 0; i < count; ++i, ++child) {
+		update_detached_handles(*child, target_tree);
+	}
+	if (!target_tree) {
+		on_change();
+	}
+	return OK;
 }
 
 Error HTMLDOM::replace_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_new_child,

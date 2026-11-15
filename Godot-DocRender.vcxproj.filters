@@ -169,11 +169,20 @@
     <ClCompile Include="src\formats\html\dom\html_dom.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_layout.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp">
       <Filter>Source Files\formats\html\paint</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\resources\html_asset_collector.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\resources\html_resource_paths.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\resources\html_resources.cpp">
       <Filter>Source Files\formats\html\resources</Filter>
@@ -606,6 +615,9 @@
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_node_copy_state.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_text_control_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
@@ -627,6 +639,9 @@
     <ClInclude Include="src\formats\html\dom\html_dom.h">
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_document_fragment.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\html_layout.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
@@ -638,6 +653,12 @@
     </ClInclude>
     <ClInclude Include="src\formats\html\paint\html_paint_recorder.h">
       <Filter>Header Files\formats\html\paint</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\resources\html_asset_collector.h">
+      <Filter>Header Files\formats\html\resources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\resources\html_resource_paths.h">
+      <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\resources\html_resources.h">
       <Filter>Header Files\formats\html\resources</Filter>

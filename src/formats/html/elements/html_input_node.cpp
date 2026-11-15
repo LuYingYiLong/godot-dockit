@@ -54,11 +54,16 @@ namespace docrender {
 		return true;
 	}
 
-	void HTMLInputNode::copy_state_for_clone(const HTMLInputNode& p_source) {
-		editor.copy_value_for_clone(p_source.editor);
-		checked = p_source.checked;
-		dirty_checked = p_source.dirty_checked;
-		update_pseudos();
+	bool HTMLInputNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const {
+		auto* target = dynamic_cast<HTMLInputNode*>(&p_target);
+		if (!target) {
+			return false;
+		}
+		target->editor.copy_value_state(editor, p_mode == HTMLNodeCopyMode::ADOPT);
+		target->checked = checked;
+		target->dirty_checked = dirty_checked;
+		target->update_pseudos();
+		return true;
 	}
 
 	void HTMLInputNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,

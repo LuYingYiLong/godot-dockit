@@ -1,5 +1,8 @@
 #pragma once
 
+#include <godot_cpp/variant/string.hpp>
+
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -11,7 +14,7 @@ namespace litehtml {
 }
 
 namespace docrender {
-	class LiteHTMLContainer;
+	using HTMLImageSourceResolver = std::function<godot::String(std::string_view)>;
 
 	struct HTMLImageCandidate {
 		std::string url;
@@ -36,5 +39,5 @@ namespace docrender {
 
 	std::vector<HTMLImageCandidate> parse_html_srcset(std::string_view p_srcset); // 按 HTML 候选语法解析 URL 和描述符
 	HTMLImageSelection select_html_image(const litehtml::element& p_image,
-		const LiteHTMLContainer& p_container, const litehtml::media_features& p_media); // 根据当前视口选择单个图片来源
+		const HTMLImageSourceResolver& p_resolve, const litehtml::media_features& p_media); // 根据当前视口选择单个图片来源
 }

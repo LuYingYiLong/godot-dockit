@@ -149,8 +149,11 @@
     <ClCompile Include="src\formats\html\elements\html_textarea_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_element.cpp" />
     <ClCompile Include="src\formats\html\dom\html_dom.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp" />
+    <ClCompile Include="src\formats\html\resources\html_asset_collector.cpp" />
+    <ClCompile Include="src\formats\html\resources\html_resource_paths.cpp" />
     <ClCompile Include="src\formats\html\resources\html_resources.cpp" />
     <ClCompile Include="src\formats\html\text\html_image_alt_text.cpp" />
     <ClCompile Include="src\formats\html\paint\html_image_blend.cpp" />
@@ -284,6 +287,7 @@
     <ClInclude Include="src\formats\html\elements\html_heading_element.h" />
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />
     <ClInclude Include="src\formats\html\elements\html_input_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_node_copy_state.h" />
     <ClInclude Include="src\formats\html\elements\html_text_control_node.h" />
     <ClInclude Include="src\formats\html\elements\html_text_editor.h" />
     <ClInclude Include="src\formats\html\elements\html_textarea_element.h" />
@@ -291,10 +295,13 @@
     <ClInclude Include="src\formats\html\elements\html_input_element.h" />
     <ClInclude Include="src\formats\html\text\html_font_config.h" />
     <ClInclude Include="src\formats\html\dom\html_dom.h" />
+    <ClInclude Include="src\formats\html\dom\html_document_fragment.h" />
     <ClInclude Include="src\formats\html\html_layout.h" />
     <ClInclude Include="src\formats\html\markup\html_markup.h" />
     <ClInclude Include="src\formats\html\paint\html_paint_run.h" />
     <ClInclude Include="src\formats\html\paint\html_paint_recorder.h" />
+    <ClInclude Include="src\formats\html\resources\html_asset_collector.h" />
+    <ClInclude Include="src\formats\html\resources\html_resource_paths.h" />
     <ClInclude Include="src\formats\html\resources\html_resources.h" />
     <ClInclude Include="src\formats\html\text\html_image_alt_text.h" />
     <ClInclude Include="src\formats\html\paint\html_image_blend.h" />

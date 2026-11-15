@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLDocumentFragment" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		A detached collection of HTML elements for batch insertion.
+	</brief_description>
+	<description>
+		Create a fragment with [method HTMLLayout.create_document_fragment] or [method HTMLLabel.create_document_fragment]. Add elements from the same layout with [method append_child]. Insert them through [method HTMLElement.append_fragment] or [method HTMLElement.insert_fragment_before]. A successful insertion preserves the element handles and empties the fragment for reuse.
+		Direct children are detached from the document and return [code]null[/code] from [method HTMLElement.get_parent] while in the fragment. Clearing or reparsing the layout invalidates the fragment and the handles it still holds.
+	</description>
+	<methods>
+		<method name="append_child">
+			<return type="int" enum="Error" />
+			<param index="0" name="child" type="HTMLElement" />
+			<description>
+				Moves [param child] to the end of the fragment. If the child was connected, its removal schedules a document update. Returns [constant ERR_INVALID_PARAMETER] for an invalid fragment or child, a child from a different layout, or the document root.
+			</description>
+		</method>
+		<method name="get_children" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<description>
+				Returns a snapshot of the direct children in order, or an empty array if the fragment is invalid.
+			</description>
+		</method>
+	</methods>
+</class>

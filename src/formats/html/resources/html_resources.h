@@ -9,10 +9,14 @@
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
 
 namespace docrender {
+	bool is_html_stylesheet_link(const char* p_rel);								// 判断 rel 是否声明默认应用的样式表
+	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path); // 读取大小受限的本地 UTF-8 样式表
+
 	class HTMLResources {
 		godot::String base_dir;
 		godot::Dictionary textures;
