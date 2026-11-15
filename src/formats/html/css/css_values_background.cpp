@@ -5,6 +5,8 @@
 
 #include "css_value_parser.h"
 #include "css_image_value.h"
+#include "css_position_values.h"
+#include "css_stylesheet_rules.h"
 #include "../litehtml_css_math.h"
 
 #include <litehtml/css_parser.h>
@@ -12,7 +14,7 @@
 namespace litehtml {
 
 static bool parse_bg_image(const css_token& token, image& bg_image, document_container* container);
-static bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_length& x, css_length& y, css_size& size);
+static bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size);
 static bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size);
 static bool parse_border_width(const css_token& token, css_length& width);
 
@@ -86,34 +88,19 @@ namespace {
 		return std::nullopt;
 	}
 
-	std::optional<css_object_position> parse_object_position(const css_token_vector& tokens)
-	{
-		constexpr int length_flags = f_length_percentage | f_math;
-		css_object_position result;
-		if (tokens.size() <= 2) {
-			int index = 0;
-			if (parse_bg_position(tokens, index, result.x, result.y, true, length_flags) &&
-				index == static_cast<int>(tokens.size())) return result;
-			return std::nullopt;
-		}
-		if (tokens.size() != 4) return std::nullopt;
-		std::size_t horizontal = 0;
-		std::size_t vertical = 2;
-		if (is_one_of(tokens[horizontal].ident(), "top", "bottom")) std::swap(horizontal, vertical);
-		const auto x_side = tokens[horizontal].ident();
-		const auto y_side = tokens[vertical].ident();
-		if (!is_one_of(x_side, "left", "right") || !is_one_of(y_side, "top", "bottom") ||
-			!result.x.from_token(tokens[horizontal + 1], length_flags) || !result.y.from_token(tokens[vertical + 1], length_flags))
-			return std::nullopt;
-		result.from_right = x_side == "right";
-		result.from_bottom = y_side == "bottom";
-		return result;
-	}
 }
 
 void css_value_parser::parse_background_and_border(string_id name, const css_token_vector& value,
 	const string& baseurl, bool important, document_container* container)
 {
+	if (is_one_of(name, _id("background-position-inline"), _id("background-position-block"))) {
+		parse_background_position(name, value, important);
+		return;
+	}
+	if (is_one_of(name, _background_repeat_, _id("background-repeat-x"), _id("background-repeat-y"))) {
+		parse_background_repeat(name, value, important);
+		return;
+	}
 	if (is_one_of(name, _id("outline"), _id("outline-width"), _id("outline-style"), _id("outline-color"),
 		_id("outline-offset"))) {
 		parse_outline(name, value, important, container);
@@ -137,7 +124,10 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 		return;
 	}
 	if (name == _id("object-position")) {
-		if (const auto position = parse_object_position(value)) add_parsed_property(name, property_value(*position, important));
+		int index = 0;
+		css_image_position position;
+		if (parse_image_position(value, index, position) && index == static_cast<int>(value.size()))
+			add_parsed_property(name, property_value(position, important));
 		return;
 	}
 	if (name == _id("box-shadow") || name == _id("text-shadow")) {
@@ -181,14 +171,15 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 		break;
 
 	case _background_position_:
-		parse_background_position(value, important);
+	case _background_position_x_:
+	case _background_position_y_:
+		parse_background_position(name, value, important);
 		break;
 
 	case _background_size_:
 		parse_background_size(value, important);
 		break;
 
-	case _background_repeat_:
 	case _background_attachment_:
 	case _background_origin_:
 	case _background_clip_:
@@ -544,6 +535,70 @@ void css_value_parser::parse_border_side(string_id name, const css_token_vector&
 	add_parsed_property(side[2], property_value(color, important));
 }
 
+namespace {
+	std::optional<background_repeat> parse_repeat_axis(const css_token& token)
+	{
+		const auto keyword = token.ident();
+		if (keyword == "repeat") return background_repeat::repeat;
+		if (keyword == "no-repeat") return background_repeat::no_repeat;
+		if (keyword == "round") return background_repeat::round;
+		if (keyword == "space") return background_repeat::space;
+		return std::nullopt;
+	}
+
+	bool parse_repeat_pair(const css_token_vector& tokens, int& index, background_repeat_pair& r_pair)
+	{
+		using mode = background_repeat;
+		const auto first = at(tokens, index).ident();
+		// DocRender currently lays out boxes in the horizontal writing mode.
+		if (first == "repeat-x" || first == "repeat-inline") {
+			r_pair = { mode::repeat, mode::no_repeat };
+			++index;
+			return true;
+		}
+		if (first == "repeat-y" || first == "repeat-block") {
+			r_pair = { mode::no_repeat, mode::repeat };
+			++index;
+			return true;
+		}
+		const auto horizontal = parse_repeat_axis(at(tokens, index));
+		if (!horizontal) return false;
+		const auto vertical = parse_repeat_axis(at(tokens, ++index));
+		if (vertical) ++index;
+		r_pair = { *horizontal, vertical.value_or(*horizontal) };
+		return true;
+	}
+}
+
+void css_value_parser::parse_background_repeat(string_id name, const css_token_vector& tokens, bool important)
+{
+	auto layers = parse_comma_separated_list(tokens);
+	if (layers.empty()) return;
+
+	vector<background_repeat> horizontal, vertical;
+	const bool shorthand = name == _background_repeat_;
+	for (const auto& layer : layers) {
+		if (shorthand) {
+			int index = 0;
+			background_repeat_pair repeat;
+			if (!parse_repeat_pair(layer, index, repeat) || index != static_cast<int>(layer.size())) return;
+			horizontal.push_back(repeat.x);
+			vertical.push_back(repeat.y);
+		}
+		else {
+			if (layer.size() != 1) return;
+			const auto repeat = parse_repeat_axis(layer.front());
+			if (!repeat) return;
+			horizontal.push_back(*repeat);
+		}
+	}
+	if (shorthand) {
+		add_parsed_property(_id("background-repeat-x"), property_value(horizontal, important));
+		add_parsed_property(_id("background-repeat-y"), property_value(vertical, important));
+	}
+	else add_parsed_property(name, property_value(horizontal, important));
+}
+
 void css_value_parser::parse_background(const css_token_vector& tokens, const string& baseurl, bool important, document_container* container)
 {
 	auto layers = parse_comma_separated_list(tokens);
@@ -551,9 +606,10 @@ void css_value_parser::parse_background(const css_token_vector& tokens, const st
 
 	web_color color;
 	std::vector<image> images;
-	length_vector x_positions, y_positions;
+	vector<css_axis_position> x_positions, y_positions;
 	size_vector sizes;
-	int_vector repeats, attachments, origins, clips;
+	vector<background_repeat> repeats_x, repeats_y;
+	int_vector attachments, origins, clips;
 
 	for (size_t i = 0; i < layers.size(); i++)
 	{
@@ -566,7 +622,8 @@ void css_value_parser::parse_background(const css_token_vector& tokens, const st
 		x_positions.push_back(bg.m_position_x[0]);
 		y_positions.push_back(bg.m_position_y[0]);
 		sizes.push_back(bg.m_size[0]);
-		repeats.push_back(bg.m_repeat[0]);
+		repeats_x.push_back(bg.m_repeat_x[0]);
+		repeats_y.push_back(bg.m_repeat_y[0]);
 		attachments.push_back(bg.m_attachment[0]);
 		origins.push_back(bg.m_origin[0]);
 		clips.push_back(bg.m_clip[0]);
@@ -578,7 +635,8 @@ void css_value_parser::parse_background(const css_token_vector& tokens, const st
 	add_parsed_property(_background_position_x_,	property_value(x_positions, important));
 	add_parsed_property(_background_position_y_,	property_value(y_positions, important));
 	add_parsed_property(_background_size_,			property_value(sizes,		important));
-	add_parsed_property(_background_repeat_,		property_value(repeats,		important));
+	add_parsed_property(_id("background-repeat-x"), property_value(repeats_x, important));
+	add_parsed_property(_id("background-repeat-y"), property_value(repeats_y, important));
 	add_parsed_property(_background_attachment_,	property_value(attachments, important));
 	add_parsed_property(_background_origin_,		property_value(origins,		important));
 	add_parsed_property(_background_clip_,			property_value(clips,		important));
@@ -591,10 +649,9 @@ bool css_value_parser::parse_bg_layer(const css_token_vector& tokens, document_c
 {
 	bg.m_color = web_color::transparent;
 	bg.m_image = {{}};
-	bg.m_position_x = { css_length(0, css_units_percentage) };
-	bg.m_position_y = { css_length(0, css_units_percentage) };
+	css_image_position position{ {}, {} };
 	bg.m_size = { css_size(css_length::predef_value(background_size_auto), css_length::predef_value(background_size_auto)) };
-	bg.m_repeat = { background_repeat_repeat };
+	background_repeat_pair repeat;
 	bg.m_attachment = { background_attachment_scroll };
 	bg.m_origin = { background_box_padding };
 	bg.m_clip = { background_box_border };
@@ -614,11 +671,10 @@ bool css_value_parser::parse_bg_layer(const css_token_vector& tokens, document_c
 			color_found = true;
 		else if (!image_found && parse_bg_image(tokens[i], bg.m_image[0], container))
 			image_found = true;
-		else if (!position_found && parse_bg_position_size(tokens, i, bg.m_position_x[0], bg.m_position_y[0], bg.m_size[0]))
+		else if (!position_found && parse_bg_position_size(tokens, i, position, bg.m_size[0]))
 			position_found = true, i--;
-		// Note: double keyword <repeat-style> values are not supported yet.
-		else if (!repeat_found && parse_keyword(tokens[i], bg.m_repeat[0], background_repeat_strings))
-			repeat_found = true;
+		else if (!repeat_found && parse_repeat_pair(tokens, i, repeat))
+			repeat_found = true, i--;
 		else if (!attachment_found && parse_keyword(tokens[i], bg.m_attachment[0], background_attachment_strings))
 			attachment_found = true;
 		// If one <visual-box> value is present then it sets both background-origin and background-clip to that value.
@@ -630,14 +686,18 @@ bool css_value_parser::parse_bg_layer(const css_token_vector& tokens, document_c
 		else
 			return false;
 	}
+	bg.m_position_x = { position.x };
+	bg.m_position_y = { position.y };
+	bg.m_repeat_x = { repeat.x };
+	bg.m_repeat_y = { repeat.y };
 	return true;
 }
 
 // <bg-position> [ / <bg-size> ]?
-bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_length& x, css_length& y, css_size& size)
+bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size)
 {
 	int end = index;
-	if (!parse_bg_position(tokens, end, x, y, true))
+	if (!parse_image_position(tokens, end, position, true))
 		return false;
 
 	if (at(tokens, end).ch == '/' && !parse_bg_size(tokens, ++end, size))
@@ -653,7 +713,7 @@ bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size)
 {
 	css_length a, b;
 
-	if (!a.from_token(at(tokens, index), f_length_percentage | f_positive, background_size_strings))
+	if (!a.from_token(at(tokens, index), f_length_percentage | f_positive | f_math, background_size_strings))
 		return false;
 
 	// cover | contain
@@ -664,7 +724,7 @@ bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size)
 		return true;
 	}
 
-	if (b.from_token(at(tokens, index + 1), f_length_percentage | f_positive, "auto"))
+	if (b.from_token(at(tokens, index + 1), f_length_percentage | f_positive | f_math, "auto"))
 		index += 2;
 	else
 	{
@@ -784,21 +844,7 @@ bool parse_bg_image(const css_token& tok, image& bg_image, document_container* c
 // https://drafts.csswg.org/css-values-4/#urls
 bool parse_url(const css_token& tok, string& url)
 {
-	if (tok.type == URL) // legacy syntax without quotes: url(x.com)
-	{
-		url = trim(tok.str);
-		return true;
-	}
-
-	if (tok.type == CV_FUNCTION && is_one_of(lowcase(tok.name), "url", "src") &&
-		// note: relying on whitespace having been removed from tok.value
-		tok.value.size() == 1 && tok.value[0].type == STRING)
-	{
-		url = trim(tok.value[0].str);
-		return true;
-	}
-
-	return false;
+	return docrender::css::parse_url_token(tok, url);
 }
 
 void css_value_parser::parse_keyword_comma_list(string_id name, const css_token_vector& tokens, bool important)
@@ -819,26 +865,33 @@ void css_value_parser::parse_keyword_comma_list(string_id name, const css_token_
 	add_parsed_property(name, property_value(vec, important));
 }
 
-void css_value_parser::parse_background_position(const css_token_vector& tokens, bool important)
+void css_value_parser::parse_background_position(string_id name, const css_token_vector& tokens, bool important)
 {
-	auto layers = parse_comma_separated_list(tokens);
+	const auto layers = parse_comma_separated_list(tokens);
 	if (layers.empty()) return;
 
-	length_vector x_positions, y_positions;
-
-	for (const auto& layer : layers)
-	{
-		css_length x, y;
-		int index = 0;
-		if (!parse_bg_position(layer, index, x, y, true) || index != (int)layer.size())
-			return;
-
-		x_positions.push_back(x);
-		y_positions.push_back(y);
+	vector<css_axis_position> first_axis, second_axis;
+	const bool shorthand = name == _background_position_;
+	const bool horizontal = name == _background_position_x_ || name == _id("background-position-inline");
+	const bool logical = name == _id("background-position-inline") || name == _id("background-position-block");
+	for (const auto& layer : layers) {
+		if (shorthand) {
+			int index = 0;
+			css_image_position position;
+			if (!parse_image_position(layer, index, position, true) || index != static_cast<int>(layer.size())) return;
+			first_axis.push_back(position.x);
+			second_axis.push_back(position.y);
+		}
+		else {
+			const auto position = parse_axis_position(layer, horizontal, logical);
+			if (!position) return;
+			first_axis.push_back(*position);
+		}
 	}
 
-	add_parsed_property(_background_position_x_, property_value(x_positions, important));
-	add_parsed_property(_background_position_y_, property_value(y_positions, important));
+	add_parsed_property(shorthand || horizontal ? _background_position_x_ : _background_position_y_,
+		property_value(first_axis, important));
+	if (shorthand) add_parsed_property(_background_position_y_, property_value(second_axis, important));
 }
 
 void css_value_parser::parse_background_size(const css_token_vector& tokens, bool important)

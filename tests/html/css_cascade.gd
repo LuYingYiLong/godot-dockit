@@ -344,6 +344,10 @@ func _run() -> void:
 	await _check_image_orientation()
 	await _check_border_image()
 	await _check_outlines()
+	await _check_background_tiling()
+	await _check_image_positions()
+	await _check_background_attachment()
+	await _check_embedded_background_attachment()
 	_check_generated_content()
 	await _check_generated_image()
 	await _check_list_markers()
@@ -2408,6 +2412,423 @@ func _check_outlines() -> void:
 	_check(button.get_bounding_rect().is_equal_approx(button_box), "Focus outlines preserve the button's dimensions")
 	_check_pixel(viewport.get_texture().get_image(), focus_sample, Color.WHITE, "Keyboard focus paints the requested outline")
 	viewport.queue_free()
+
+
+func _check_background_tiling() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: #303030; display: grid; grid-template-columns: repeat(5, 96px);
+			grid-auto-rows: 60px; align-items: start; justify-items: start; }
+		.tile { width: 44px; height: 44px; background-color: #303030; image-rendering: crisp-edges; }
+		#spaced { background: #303030 url(density-live.png) 6px 11px / 8px 8px space no-repeat; }
+		#few { width: 13px; background-image: url(density-live.png); background-size: 8px 8px;
+			background-position: right 2px; background-repeat: space no-repeat; }
+		#oversized { width: 13px; background-image: url(orientation-1.png); background-size: 20px 10px;
+			background-position: right top; background-repeat: space no-repeat; }
+		#both_space { background-image: url(density-live.png); background-size: 8px 10px; background-repeat: space; }
+		#round_x { background-image: url(density-live.png); background-size: calc(8px + 8px) auto;
+			background-repeat: round no-repeat; }
+		#round_y { height: 43px; background-image: url(density-live.png); background-size: auto 16px;
+			background-repeat: no-repeat round; }
+		#round_both { height: 42px; background: url(orientation-1.png) left top / 16px 16px round; }
+		#round_position { width: 54px; background-image: url(orientation-1.png); background-size: 17px 10px;
+			background-position: 25% 0%; background-repeat: round no-repeat; background-repeat: repeat-x space; }
+		#gradient { background: linear-gradient(to right, red 50%, blue 50%) left top / 8px 10px space no-repeat; }
+		#fallback { background-image: image("missing-tile.png", red); background-size: 8px 8px;
+			background-repeat-x: space; background-repeat-y: no-repeat; }
+		#blend { background: cross-fade(white, url(density-live.png)) left top / 8px 8px space no-repeat; }
+		#layers { background-image: image(red), image(lime), image(blue); background-size: 8px 7px, 10px 7px;
+			background-position: 0 0, 0 12px, 0 24px; background-repeat-x: space, no-repeat; background-repeat-y: no-repeat; }
+		#padding { background: url(density-live.png) left top / 8px 8px space no-repeat content-box border-box;
+			padding: 0 6px; border: 2px solid transparent; }
+		#var { --modes: space no-repeat; background-image: image(red); background-size: 8px 10px;
+			background-repeat: var(--modes); background-repeat-block: space; background-repeat-x: repeat-y; }
+		#alias { background: image(red) 0 0 / 8px 8px repeat-block; }
+		#reset { background-repeat-inline: no-repeat; background-repeat-y: no-repeat;
+			background: image(red) 0 0 / 8px 8px; }
+		#math { background: image(red) calc(100% - 2px) calc(3px + 3px) / calc(4px + 4px) 8px no-repeat; }
+		#clipped { border-radius: 10px; background: url(density-live.png) 0 0 / 8px 10px space no-repeat; }
+		#flipped { direction: rtl; background: image(ltr "orientation-1.png") 0 0 / 8px 8px space no-repeat; }
+		#fractional { background: image(red) 0 0 / calc(100% / 3) 8px space no-repeat; }
+		#zero { background: image(red) 0 0 / 0px 10px space; }
+	</style>
+	<div class="tile" id="spaced"></div><div class="tile" id="few"></div><div class="tile" id="oversized"></div>
+	<div class="tile" id="both_space"></div><div class="tile" id="round_x"></div><div class="tile" id="round_y"></div>
+	<div class="tile" id="round_both"></div><div class="tile" id="round_position"></div><div class="tile" id="gradient"></div>
+	<div class="tile" id="fallback"></div><div class="tile" id="blend"></div><div class="tile" id="layers"></div>
+	<div class="tile" id="padding"></div><div class="tile" id="var"></div><div class="tile" id="alias"></div>
+	<div class="tile" id="reset"></div><div class="tile" id="math"></div><div class="tile" id="clipped"></div>
+	<div class="tile" id="flipped"></div><div class="tile" id="zero"></div>
+	<div class="tile" id="fractional"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(480, 300)) == OK, "Lay out spaced and rounded backgrounds")
+	_check(_has_diagnostic(layout, "background-repeat", "repeat-x space", "style_element") and
+		_has_diagnostic(layout, "background-repeat-x", "repeat-y", "style_element"), "Mixed directional keywords are rejected")
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(480, 300)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(480.0, 300.0)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var output: Image = viewport.get_texture().get_image()
+	var clear: Color = Color("#303030")
+	var samples: Array[Array] = [
+		["spaced", Vector2(0.0, 12.0), Color.RED, "Space anchors the first tile and ignores horizontal position"],
+		["spaced", Vector2(8.0, 12.0), clear, "Space shows a horizontal gap"],
+		["spaced", Vector2(43.0, 18.0), Color.RED, "The last tile touches the positioning area's far edge"],
+		["spaced", Vector2(9.0, 19.0), clear, "The vertical no-repeat axis honors its position"],
+		["few", Vector2(4.0, 3.0), clear, "A single spaced image honors the requested position"],
+		["few", Vector2(5.0, 3.0), Color.RED, "The fallback tile touches the right edge"],
+		["oversized", Vector2(0.0, 2.0), Color.RED, "An oversized tile can be clipped on the fallback axis"],
+		["oversized", Vector2(12.0, 2.0), Color.GREEN, "The oversized image is aligned at the requested edge"],
+		["both_space", Vector2(43.0, 43.0), Color.RED, "Space fills both dimensions to the last edges"],
+		["both_space", Vector2(7.0, 10.0), clear, "Space creates an independent vertical gap"],
+		["round_x", Vector2(43.0, 6.0), Color.RED, "Round fits three tiles across the full width"],
+		["round_x", Vector2(43.0, 7.0), clear, "An automatic height follows the rounded tile width"],
+		["round_y", Vector2(27.0, 42.0), Color.RED, "Round fits a whole number of tiles vertically"],
+		["round_y", Vector2(29.0, 42.0), clear, "An automatic width follows the rounded tile height"],
+		["round_both", Vector2(14.0, 13.0), Color.YELLOW, "Round keeps fractional horizontal tile edges"],
+		["round_both", Vector2(15.0, 14.0), Color.RED, "The second tile starts in both axes"],
+		["round_position", Vector2(0.0, 1.0), Color.GREEN, "Round uses the scaled size to resolve position"],
+		["round_position", Vector2(10.0, 1.0), Color.RED, "The rounded repeat begins at the resolved position"],
+		["gradient", Vector2(7.0, 1.0), Color.BLUE, "Gradient sizing uses the unspaced tile width"],
+		["gradient", Vector2(8.0, 1.0), clear, "A gradient tile leaves the same gap as a texture"],
+		["gradient", Vector2(9.0, 1.0), Color.RED, "A gradient restarts after its gap"],
+		["fallback", Vector2(8.0, 1.0), clear, "A solid fallback leaves the same gap"],
+		["fallback", Vector2(9.0, 1.0), Color.RED, "A solid fallback fills a spaced tile"],
+		["blend", Vector2(8.0, 1.0), clear, "A cross-fade leaves each gap transparent"],
+		["blend", Vector2(9.0, 1.0), Color("#ff8080"), "A cross-fade repeats the blended tile"],
+		["layers", Vector2(9.0, 3.0), Color.RED, "First layer uses the first horizontal repetition value"],
+		["layers", Vector2(11.0, 13.0), clear, "Second layer uses the second horizontal repetition value"],
+		["layers", Vector2(43.0, 25.0), Color.BLUE, "Third layer cycles the horizontal list independently"],
+		["padding", Vector2(0.0, 3.0), Color.RED, "Space extends its pattern past a narrower positioning area"],
+		["padding", Vector2(7.0, 3.0), clear, "The extended pattern preserves its gap"],
+		["padding", Vector2(8.0, 3.0), Color.RED, "Space uses the content edge as its origin"],
+		["var", Vector2(8.0, 20.0), clear, "The winning horizontal component still comes from var()"],
+		["var", Vector2(9.0, 20.0), Color.RED, "The logical block longhand overrides only the vertical component"],
+		["alias", Vector2(3.0, 16.0), Color.RED, "Repeat-block tiles vertically in horizontal writing"],
+		["alias", Vector2(9.0, 16.0), clear, "Repeat-block places only one tile horizontally"],
+		["reset", Vector2(19.0, 16.0), Color.RED, "Background shorthand restores repeat on both axes"],
+		["math", Vector2(33.0, 7.0), clear, "Math positions keep the gap before a tile"],
+		["math", Vector2(34.0, 7.0), Color.RED, "Math positions and sizes resolve against their correct bases"],
+		["clipped", Vector2(0.0, 0.0), clear, "Rounded clipping masks the gapped image shader"],
+		["clipped", Vector2(3.0, 8.0), Color.RED, "Spaced tiles paint inside the rounded clip"],
+		["flipped", Vector2(0.0, 1.0), Color.GREEN, "Direction flips each tile's pixels"],
+		["flipped", Vector2(8.0, 1.0), clear, "A flipped image still leaves its gap at the same position"],
+		["flipped", Vector2(9.0, 1.0), Color.GREEN, "Each spaced directional tile starts on its flipped side"],
+		["zero", Vector2(0.0, 1.0), clear, "A zero-size tile paints nothing"],
+		["fractional", Vector2(20.0, 1.0), Color.RED, "Space keeps three mathematically exact fractional tiles"],
+	]
+	for sample: Array in samples:
+		var id: String = sample[0]
+		var offset: Vector2 = sample[1]
+		var expected: Color = sample[2]
+		var description: String = sample[3]
+		_check_pixel(output, _label_rect(label, id).position + offset, expected, description)
+	viewport.queue_free()
+
+
+func _check_image_positions() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: #303030; display: grid; grid-template-columns: repeat(5, 96px);
+			grid-auto-rows: 66px; align-items: start; justify-items: start; }
+		.tile { width: 56px; height: 48px; background-color: #303030;
+			background-image: image(red); background-size: 10px 8px;
+			background-repeat: no-repeat; image-rendering: crisp-edges; }
+		#four { background-position: right 12px bottom 8px; }
+		#reversed { background: image(lime) bottom 25% right calc(10% + 1.4px) / 10px 8px no-repeat #303030; }
+		#three { background-position: bottom 5px left; }
+		#center_right { background-position: center right 8px; }
+		#negative_free_space { background-image: url(orientation-1.png); background-size: 64px 16px;
+			background-position: right 25% center; }
+		#negative_offset { background-position: left -3px bottom -2px; }
+		#legacy_pair { background-position: right 7px; background-position: top 7px; }
+		#layers { background-image: image(red), image(lime), image(blue); background-size: 8px 6px;
+			background-position-x: right 4px, left 12px; background-position-y: top 4px, center, bottom 3px; }
+		#var { --position: right 9px bottom 4px; background-position: var(--position);
+			background-position-x: left 11px !important; background-position-y: right 1px; }
+		#invalid { background-position: right 6px top 5px;
+			background-position: left 2px right 3px; background-position-x: 6px right; }
+		#logical_pair { direction: rtl; background-position: x-start y-end; }
+		#logical_axes { direction: rtl; background-position-inline: start 3px; background-position-block: end 6px; }
+		#logical_offset { direction: rtl; background-position-inline: 6px; background-position-block: 7px; }
+		#logical_four { direction: rtl; background-position: block-end 4px inline-end 8px; }
+		#generic_four { direction: rtl; background-position: end 4px start 2px; }
+		#logical_initial { direction: rtl; background-position: left top; background-position-inline: initial; }
+		#parent { direction: rtl; background-position: inline-start 4px block-end 8px; }
+		#inherited { direction: ltr; background-position: inherit; }
+		#round { width: 60px; background: url(orientation-1.png) right 4px bottom 3px / 24px 10px round no-repeat; }
+		#space { width: 16px; background-position: right 2px bottom 4px; background-repeat: space no-repeat; }
+		#origin { padding: 5px; border: 2px solid transparent; background-origin: content-box;
+			background-position: right 12px bottom 8px; }
+		#object { width: 56px; height: 48px; background: #303030; image-resolution: 2x;
+			image-rendering: crisp-edges; direction: rtl; object-fit: none; object-position: inline-end 6px block-end 7px; }
+		#reset { background-position-x: right 8px; background-position-block: end;
+			background: image(red) no-repeat; background-size: 10px 8px; }
+		#incompatible { background-position: left 9px top 6px; background-position: left block-end; }
+		#logical_var { direction: rtl; --pos: start 3px; background-position-inline: var(--pos);
+			background-position-block: var(--missing, end 5px); }
+	</style>
+	<div class="tile" id="four"></div><div class="tile" id="reversed"></div><div class="tile" id="three"></div>
+	<div class="tile" id="center_right"></div><div class="tile" id="negative_free_space"></div>
+	<div class="tile" id="negative_offset"></div><div class="tile" id="legacy_pair"></div><div class="tile" id="layers"></div>
+	<div class="tile" id="var"></div><div class="tile" id="invalid"></div>
+	<div class="tile" id="logical_pair"></div><div class="tile" id="logical_axes"></div><div class="tile" id="logical_offset"></div>
+	<div class="tile" id="logical_four"></div><div class="tile" id="generic_four"></div>
+	<div id="parent"><div class="tile" id="inherited"></div></div>
+	<div class="tile" id="logical_initial"></div><div class="tile" id="round"></div><div class="tile" id="space"></div>
+	<div class="tile" id="origin"></div><img id="object" src="orientation-1.png">
+	<div class="tile" id="reset"></div><div class="tile" id="incompatible"></div><div class="tile" id="logical_var"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(480, 330)) == OK, "Lay out edge offsets and position longhands")
+	_check(_has_diagnostic(layout, "background-position", "top 7px", "style_element") and
+		_has_diagnostic(layout, "background-position", "left 2px right 3px", "style_element") and
+		_has_diagnostic(layout, "background-position", "left block-end", "style_element") and
+		_has_diagnostic(layout, "background-position-y", "right 1px", "style_element") and
+		_has_diagnostic(layout, "background-position-x", "6px right", "style_element"),
+		"Conflicting axes, mixed keyword families, and reversed offsets produce diagnostics")
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(480, 330)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(480.0, 330.0)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var output: Image = viewport.get_texture().get_image()
+	var clear: Color = Color("#303030")
+	var samples: Array[Array] = [
+		["four", Vector2(34.0, 32.0), Color.RED, "Offsets are measured inward from right and bottom"],
+		["four", Vector2(33.0, 32.0), clear, "The tile begins exactly at the right offset"],
+		["reversed", Vector2(40.0, 30.0), Color.LIME, "Reversed pairs work in the background shorthand using math"],
+		["reversed", Vector2(39.0, 30.0), clear, "Percentage offset uses the remaining horizontal space"],
+		["three", Vector2(0.0, 35.0), Color.RED, "An omitted offset is zero on its edge"],
+		["center_right", Vector2(38.0, 20.0), Color.RED, "Center can pair with an edge and offset"],
+		["negative_free_space", Vector2(25.0, 17.0), Color.RED, "Percentages work with negative free space"],
+		["negative_free_space", Vector2(26.0, 17.0), Color.GREEN, "The resulting tile aligns at the negative basis"],
+		["negative_offset", Vector2(0.0, 41.0), clear, "A negative bottom offset moves the tile outward"],
+		["negative_offset", Vector2(0.0, 42.0), Color.RED, "The left edge can be moved outward independently"],
+		["legacy_pair", Vector2(46.0, 7.0), Color.RED, "A two-value position still assigns its length to the vertical axis"],
+		["layers", Vector2(44.0, 4.0), Color.RED, "First axis list entry locates the first layer"],
+		["layers", Vector2(12.0, 21.0), Color.LIME, "Each axis computes its own list position"],
+		["layers", Vector2(44.0, 39.0), Color.BLUE, "A short horizontal list cycles independently"],
+		["var", Vector2(11.0, 36.0), Color.RED, "Substituted position preserves the winning physical longhand"],
+		["invalid", Vector2(40.0, 5.0), Color.RED, "Invalid positions preserve the earlier valid declaration"],
+		["logical_pair", Vector2(46.0, 40.0), Color.RED, "Flow-relative axis keywords read RTL and horizontal writing"],
+		["logical_axes", Vector2(43.0, 34.0), Color.RED, "Logical longhands resolve offsets from their requested edges"],
+		["logical_offset", Vector2(40.0, 7.0), Color.RED, "A logical length alone starts on the logical start side"],
+		["logical_four", Vector2(8.0, 36.0), Color.RED, "Logical edge pairs are accepted in either axis order"],
+		["generic_four", Vector2(44.0, 36.0), Color.RED, "Unqualified edge pairs are in block then inline order"],
+		["inherited", Vector2(42.0, 32.0), Color.RED, "Inheritance uses the parent's computed physical edges"],
+		["logical_initial", Vector2(46.0, 0.0), Color.RED, "Logical initial comes from the inline start side"],
+		["round", Vector2(15.0, 36.0), Color.GREEN, "Right offset is based on the rounded tile's width"],
+		["round", Vector2(16.0, 36.0), Color.RED, "Rounded tiles repeat from the same resolved origin"],
+		["space", Vector2(3.0, 37.0), clear, "One spaced tile honors edge offsets"],
+		["space", Vector2(4.0, 37.0), Color.RED, "The single tile begins at the right offset"],
+		["origin", Vector2(41.0, 39.0), Color.RED, "Edge offsets are relative to the selected background origin"],
+		["object", Vector2(5.0, 32.0), clear, "Object positioning uses the same edge geometry"],
+		["object", Vector2(6.0, 32.0), Color.RED, "Object direction resolves logical edges with the fitted size"],
+		["reset", Vector2(0.0, 0.0), Color.RED, "Background shorthand resets both position axes"],
+		["incompatible", Vector2(9.0, 6.0), Color.RED, "An incompatible logical pair leaves the earlier declaration active"],
+		["logical_var", Vector2(43.0, 35.0), Color.RED, "Logical single-axis shorthands accept var() and its fallback"],
+	]
+	for sample: Array in samples:
+		var id: String = sample[0]
+		var offset: Vector2 = sample[1]
+		var expected: Color = sample[2]
+		var description: String = sample[3]
+		_check_pixel(output, _label_rect(label, id).position + offset, expected, description)
+	viewport.queue_free()
+
+
+func _check_background_attachment() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 290)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(260.0, 104.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: #303030; }
+		.panel { position: absolute; top: 20px; width: 110px; height: 116px; }
+		#fixed { left: 16px; padding: 7px; border-radius: 8px; image-rendering: crisp-edges;
+			background: url(density-live.png) 44px 48px / 20px 18px fixed no-repeat content-box border-box; }
+		#scroll { left: 144px; background: image(blue) 10px 28px / 20px 18px scroll no-repeat; }
+		#fixed_gradient { position: absolute; top: 15px; left: 120px; width: 23px; height: 120px;
+			background: linear-gradient(lime, lime) 123px 50px / 8px 12px fixed no-repeat; }
+		#spacer { width: 340px; height: 230px; }
+	</style><div id="spacer"></div><div class="panel" id="fixed"></div>
+	<div class="panel" id="scroll"></div><div id="fixed_gradient"></div>"""
+	viewport.add_child(label)
+	var nested: HTMLLabel = HTMLLabel.new()
+	nested.position = Vector2(0.0, 124.0)
+	nested.size = Vector2(290.0, 150.0)
+	nested.text = """<!doctype html><style>
+		body { margin: 0; background: #303030; }
+		.inner { position: absolute; top: 10px; width: 72px; height: 46px; overflow: auto; }
+		.content { width: 132px; height: 142px; }
+		#local { left: 10px; background: image(red) 10px 55px / 20% 8px local no-repeat; }
+		#scroll_inner { left: 100px; background: image(blue) 10px 19px / 20% 8px scroll no-repeat; }
+		#inner_fixed { left: 190px; }
+		#inner_fixed_child { height: 142px;
+			background: cross-fade(lime, lime) 205px 25px / 12px 10px fixed no-repeat; }
+		#hidden { left: 10px; top: 70px; overflow: hidden;
+			background: image(lime) 10px 12px / 20% 8px local no-repeat; }
+		#transform { position: absolute; left: 100px; top: 70px; transform: translate(8px, 5px); }
+		#transform_child { width: 72px; height: 46px; background: image(red) 9px 10px / 12px 8px fixed no-repeat; }
+	</style>
+	<div id="local" class="inner"><div id="local_content" class="content"></div></div>
+	<div id="scroll_inner" class="inner"><div id="scroll_content" class="content"></div></div>
+	<div id="inner_fixed" class="inner"><div id="inner_fixed_child"></div></div>
+	<div id="hidden" class="inner"><div id="hidden_content" class="content"></div></div>
+	<div id="transform"><div id="transform_child"></div></div>"""
+	viewport.add_child(nested)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var output: Image = viewport.get_texture().get_image()
+	var clear: Color = Color("#303030")
+	var fixed_point: Vector2 = Vector2(45.0, 49.0)
+	var gradient_point: Vector2 = Vector2(124.0, 51.0)
+	_check_pixel(output, fixed_point, Color.RED, "Fixed texture ignores the element's content-box origin")
+	_check_pixel(output, gradient_point, Color.LIME, "Fixed gradient starts from the viewport origin")
+	_check_pixel(output, Vector2(155.0, 49.0), Color.BLUE, "Scroll attachment starts from the element's box")
+	_check_pixel(output, nested.position + Vector2(22.0, 30.0), clear, "Local tile starts below the inner viewport")
+	_check_pixel(output, nested.position + Vector2(112.0, 30.0), Color.BLUE, "Scroll background is initially visible inside its box")
+	_check_pixel(output, nested.position + Vector2(206.0, 27.0), Color.LIME, "Fixed cross-fade is initially visible through the inner clip")
+	_check_pixel(output, nested.position + Vector2(44.0, 83.0), Color.LIME, "Hidden overflow still sets the local positioning area's size")
+	var transformed_box: Rect2 = _label_rect(nested, "transform_child")
+	_check_pixel(output, nested.position + transformed_box.position + Vector2(10.0, 11.0), Color.RED,
+		"A transformed ancestor makes a descendant's fixed attachment use the element box")
+
+	var inner_content: HTMLElement = nested.get_element_by_id("local_content")
+	var inner_y: float = inner_content.get_bounding_rect().position.y
+	var original_extent: Vector2i = nested.get_content_size()
+	var hidden_before: Rect2 = _label_rect(nested, "hidden_content")
+	_push_html_wheel(viewport, nested.position + Vector2(24.0, 34.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, nested.position + Vector2(114.0, 34.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, nested.position + Vector2(206.0, 34.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, nested.position + Vector2(24.0, 86.0), MOUSE_BUTTON_WHEEL_DOWN)
+	label.set_scroll_offset(Vector2i(12, 30))
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	output = viewport.get_texture().get_image()
+	_check(label.get_scroll_offset() == Vector2i(12, 30), "The label scrolls on both axes")
+	_check_pixel(output, fixed_point, Color.RED, "Fixed image stays pinned during native label scrolling")
+	_check_pixel(output, gradient_point, Color.LIME, "Fixed gradient stays pinned during native label scrolling")
+	_check_pixel(output, Vector2(143.0, 19.0), Color.BLUE, "Scroll background moves with the outer box")
+	_check_pixel(output, Vector2(45.0, 19.0), clear, "The no-repeat fixed image does not repeat outside its viewport tile")
+	_check(is_equal_approx(inner_content.get_bounding_rect().position.y, inner_y - 36.0),
+		"Wheel input moves the content of the inner scroll box")
+	_check(_label_rect(nested, "hidden_content").is_equal_approx(hidden_before), "Hidden overflow does not consume wheel input")
+	_check(nested.get_content_size() == original_extent and nested.get_scroll_offset() == Vector2i.ZERO,
+		"Inner scrolling preserves the document extent and outer offset")
+	_check_pixel(output, nested.position + Vector2(44.0, 30.0), Color.RED, "The local tile scrolls into view and sizes against the scrollable width")
+	_check_pixel(output, nested.position + Vector2(47.0, 30.0), clear, "The scrollable width still bounds the local tile")
+	_check_pixel(output, nested.position + Vector2(112.0, 30.0), Color.BLUE, "The scroll attachment stays at the inner border")
+	_check_pixel(output, nested.position + Vector2(124.0, 30.0), clear, "The scroll attachment sizes against the visible box")
+	_check_pixel(output, nested.position + Vector2(206.0, 27.0), Color.LIME, "The fixed cross-fade also stays pinned in a nested scroller")
+
+	var local: HTMLElement = nested.get_element_by_id("local")
+	_check(local.set_attribute("data-changed", "yes") == OK, "Restyle the already scrolled element")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(is_equal_approx(inner_content.get_bounding_rect().position.y, inner_y - 36.0),
+		"Stylesheet changes restore the element's scroll offset")
+	_check_pixel(viewport.get_texture().get_image(), nested.position + Vector2(44.0, 30.0), Color.RED,
+		"Restyling keeps the local attachment at the same scrolled position")
+	var content_left: float = inner_content.get_bounding_rect().position.x
+	_check(local.set_attribute("style", "background-position-x: right 10px") == OK, "Move the local tile near the scrollable right edge")
+	await process_frame
+	await process_frame
+	_push_html_wheel(viewport, nested.position + Vector2(24.0, 34.0), MOUSE_BUTTON_WHEEL_RIGHT)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(is_equal_approx(inner_content.get_bounding_rect().position.x, content_left - 36.0),
+		"Horizontal wheel input moves the inner content")
+	_check_pixel(viewport.get_texture().get_image(), nested.position + Vector2(71.0, 30.0), Color.RED,
+		"Horizontal scrolling brings the right-aligned local tile into view")
+	viewport.queue_free()
+
+
+func _check_embedded_background_attachment() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: #303030; }
+		div { width: 200px; height: 130px; padding: 10px;
+			background: image(lime) right 8px bottom 6px / 8px 8px fixed no-repeat content-box border-box; }
+	</style><div></div>"""
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(164, 100)) == OK, "Lay out a standalone fixed background")
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 200)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var artwork: Node2D = Node2D.new()
+	viewport.add_child(artwork)
+	artwork.draw.connect(func() -> void:
+		layout.draw(artwork, Vector2(11.0, 12.0), Rect2(11.0, 12.0, 164.0, 100.0))
+	)
+
+	var label: MarkdownLabel = MarkdownLabel.new()
+	label.parse_html = true
+	label.position = Vector2(0.0, 122.0)
+	label.size = Vector2(170.0, 78.0)
+	var test_texture: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		label.add_theme_icon_override(icon, test_texture)
+	label.text = """<div style="width: 70px; height: 34px; overflow: auto;
+		background: #224466 image(red) 5px 42px / 14px 8px local no-repeat;">
+		<div style="height: 110px;"></div>
+	</div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var output: Image = viewport.get_texture().get_image()
+	_check_pixel(output, Vector2(160.0, 99.0), Color.LIME,
+		"Standalone fixed sizes and offsets use the layout viewport and the drawing offset")
+	_check_pixel(output, Vector2(158.0, 99.0), Color("#303030"), "Fixed ignores the positioning box even in standalone drawing")
+	var top_left: Vector2i = Vector2i(-1, -1)
+	for y: int in range(122, 198):
+		for x: int in range(160):
+			if output.get_pixel(x, y).is_equal_approx(Color("#224466")):
+				top_left = Vector2i(x, y)
+				break
+		if top_left.x >= 0:
+			break
+	_check(top_left.x >= 0, "Markdown shows the HTML block's scroller")
+	if top_left.x >= 0:
+		_push_html_wheel(viewport, Vector2(top_left + Vector2i(18, 16)), MOUSE_BUTTON_WHEEL_DOWN)
+		await process_frame
+		await RenderingServer.frame_post_draw
+		_check_pixel(viewport.get_texture().get_image(), Vector2(top_left + Vector2i(6, 7)), Color.RED,
+			"The Markdown HTML block scrolls its local background")
+	viewport.queue_free()
+
+
+func _push_html_wheel(viewport: SubViewport, position: Vector2, index: MouseButton) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = position
+	motion.global_position = position
+	viewport.push_input(motion, true)
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.button_index = index
+	event.pressed = true
+	event.position = position
+	event.global_position = position
+	event.factor = 1.0
+	viewport.push_input(event, true)
 
 
 func _write_image_dpi_fixtures() -> bool:

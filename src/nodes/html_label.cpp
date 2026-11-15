@@ -90,7 +90,7 @@ void HTMLLabelCanvas::_draw() {
 		const Vector2i selection(std::min(selection_anchor, selection_caret), std::max(selection_anchor, selection_caret));
 		const Color color = label->has_theme_color("selection_color", "HTMLLabel")
 			? label->get_theme_color("selection_color", "HTMLLabel") : Color(0.25f, 0.55f, 0.95f, 0.5f);
-		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color);
+		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color, {}, nullptr, visible_rect.position);
 	}
 }
 
@@ -188,10 +188,17 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 
 	const Ref<InputEventMouseButton> button = p_event;
-	if (button.is_null() || button->get_button_index() != MOUSE_BUTTON_LEFT) {
+	if (button.is_null()) return;
+	const Vector2 point = button->get_position();
+	if (button->get_button_index() != MOUSE_BUTTON_LEFT) {
+		if (visible_rect.has_point(point) && label->layout->scroll_overflow_from_wheel(point, *button.ptr())) {
+			cancel_click();
+			if (selecting && selection_dragged) selection_caret = label->layout->hit_test_text(point);
+			label->request_hover_check();
+			accept_event();
+		}
 		return;
 	}
-	const Vector2 point = button->get_position();
 	Ref<HTMLElement> element;
 	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
 		? label->layout->find_link_at(point, &element) : HTMLLayout::LinkHit{};

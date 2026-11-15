@@ -29,7 +29,8 @@ namespace litehtml {
 
 		// parse comma-separated list of keywords
 		void parse_keyword_comma_list(string_id name, const css_token_vector& tokens, bool important);
-		void parse_background_position(const css_token_vector& tokens, bool important);
+		void parse_background_repeat(string_id name, const css_token_vector& tokens, bool important);
+		void parse_background_position(string_id name, const css_token_vector& tokens, bool important);
 		void parse_background_size(const css_token_vector& tokens, bool important);
 
 		void parse_outline(string_id name, const css_token_vector& tokens, bool important, document_container* container);

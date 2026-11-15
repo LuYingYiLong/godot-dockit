@@ -3774,12 +3774,23 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 
 	const Ref<InputEventMouseButton> mouse_button = p_event;
 	if (mouse_button.is_valid()) {
-		if (mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP || mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
-			if (mouse_button->is_ctrl_pressed()) {
-				int32_t delta = mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP ? 1 : -1;
+		const auto index = mouse_button->get_button_index();
+		if (index == MOUSE_BUTTON_WHEEL_UP || index == MOUSE_BUTTON_WHEEL_DOWN ||
+			index == MOUSE_BUTTON_WHEEL_LEFT || index == MOUSE_BUTTON_WHEEL_RIGHT) {
+			if (mouse_button->is_ctrl_pressed() && (index == MOUSE_BUTTON_WHEEL_UP || index == MOUSE_BUTTON_WHEEL_DOWN)) {
+				const int32_t delta = index == MOUSE_BUTTON_WHEEL_UP ? 1 : -1;
 				label->set_extra_font_size(std::max<int32_t>(0, label->get_extra_font_size() + delta));
 				accept_event();
 				return;
+			}
+			const Vector2 point = mouse_button->get_position();
+			if (label->is_parsing_html() && get_html_visible_rect().has_point(point)) {
+				Vector2 html_position;
+				const auto html = html_at_position(point, html_position);
+				if (html.is_valid() && html->scroll_overflow_from_wheel(html_position, *mouse_button.ptr())) {
+					pressed_html_link = 0;
+					accept_event();
+				}
 			}
 			return;
 		}

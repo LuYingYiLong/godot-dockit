@@ -77,6 +77,7 @@ namespace docrender {
 		godot::Ref<godot::ShaderMaterial> material;
 		std::vector<HTMLPaintCommand> commands;
 		HTMLTextureSampling sampling;
+		bool fixed_background = false;
 
 		void draw(
 			godot::RenderingServer& p_server,

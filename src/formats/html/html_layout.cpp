@@ -1,6 +1,7 @@
 #include "html_layout.h"
 
 #include "css/css_relational_selector.h"
+#include "css/css_selectors.h"
 #include "html_canvas_renderer.h"
 #include "html_markup.h"
 #include "layout/html_geometry.h"
@@ -8,6 +9,7 @@
 #include "litehtml_document_adapter.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <litehtml/css_parser.h>
@@ -154,35 +156,6 @@ namespace {
 		for (const auto& child : p_element.children()) {
 			collect_anchors(*child, p_geometry, r_anchors);
 		}
-	}
-
-	bool has_balanced_selector_tokens(const litehtml::css_token_vector& p_tokens) {
-		using namespace litehtml;
-		std::vector<css_token_type> closing;
-		for (const auto& token : p_tokens) {
-			switch (token.type) {
-			case LEFT_BRACKET:
-				closing.push_back(RIGHT_BRACKET);
-				break;
-			case FUNCTION:
-			case LEFT_PAREN:
-				closing.push_back(RIGHT_PAREN);
-				break;
-			case RIGHT_BRACKET:
-			case RIGHT_PAREN:
-				if (closing.empty() || closing.back() != token.type) {
-					return false;
-				}
-				closing.pop_back();
-				break;
-			case BAD_STRING:
-			case BAD_URL:
-				return false;
-			default:
-				break;
-			}
-		}
-		return closing.empty();
 	}
 
 } // namespace
@@ -361,11 +334,25 @@ Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
 
 Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	using Update = State::Update;
+	const auto& document = state->document;
+	std::vector<std::pair<litehtml::element::ptr, Vector2>> scroll_offsets;
+	visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
+		if (const auto* renderers = state->geometry.find_element(p_element.get())) {
+			for (const auto* renderer : *renderers) {
+				const auto& item = renderer->item;
+				const Vector2 offset(item->get_scroll_left(), item->get_scroll_top());
+				if (offset != Vector2()) {
+					scroll_offsets.emplace_back(p_element, offset);
+					break;
+				}
+			}
+		}
+		return false;
+	});
 	state->anchors.clear();
 	state->container->clear_recording();
 	state->geometry.clear();
 	state->container->set_viewport(p_viewport_size);
-	const auto& document = state->document;
 	if (state->pending_update == Update::STYLE || DocumentAdapter::media_changed(*document)) {
 		state->pending_update = Update::STYLE;
 		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
@@ -380,6 +367,20 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	state->geometry.rebuild(document->root_render());
 	const Vector2 original_size(document->width(), document->height());
 	const Vector2 overflow = state->geometry.has_transforms() ? state->geometry.extend_overflow(original_size) : original_size;
+	// Style recomputation can replace render items while keeping their DOM elements.
+	bool restored_scroll = false;
+	for (const auto& [element, offset] : scroll_offsets) {
+		if (const auto* renderers = state->geometry.find_element(element.get())) {
+			for (const auto* renderer : *renderers) {
+				const auto& item = renderer->item;
+				if (!item->scrollable_content_size()) continue;
+				restored_scroll |= item->h_scroll(offset.x - item->get_scroll_left()) != 0;
+				restored_scroll |= item->v_scroll(offset.y - item->get_scroll_top()) != 0;
+				break;
+			}
+		}
+	}
+	if (restored_scroll) state->geometry.rebuild(document->root_render());
 	const double width = std::ceil(overflow.x);
 	const double height = std::ceil(overflow.y);
 	constexpr double MAX_SIZE = std::numeric_limits<int32_t>::max();
@@ -389,11 +390,16 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 		return ERR_INVALID_DATA;
 	}
 	const Vector2i size(static_cast<int32_t>(std::max(0.0, width)), static_cast<int32_t>(std::max(0.0, height)));
-	collect_anchors(*document->root(), state->geometry, state->anchors);
-	state->container->record(*document, size, state->geometry);
-	record_css_diagnostics();
 	state->content_size = size;
+	record_paint();
 	return OK;
+}
+
+void HTMLLayout::record_paint() {
+	state->anchors.clear();
+	collect_anchors(*state->document->root(), state->geometry, state->anchors);
+	state->container->record(*state->document, state->content_size, state->geometry);
+	record_css_diagnostics();
 }
 
 Vector2i HTMLLayout::get_content_size() const {
@@ -424,7 +430,7 @@ TypedArray<Rect2> HTMLLayout::get_selection_rects(int64_t p_from, int64_t p_to) 
 
 void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_position, const Rect2& p_clip,
 	const Vector2i& p_selection, const StyleBox* p_selection_style, const Color& p_selection_color,
-	const Vector2i& p_search, const StyleBox* p_search_style) {
+	const Vector2i& p_search, const StyleBox* p_search_style, const Vector2& p_viewport_origin) {
 	if (!state->has_layout() || !p_canvas || !p_canvas->is_inside_tree()) {
 		return;
 	}
@@ -438,7 +444,7 @@ void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_pos
 	}
 	const HTMLHighlight selection{ p_selection.x, p_selection.y, p_selection_style, p_selection_color };
 	const HTMLHighlight search{ p_search.x, p_search.y, p_search_style, Color(0, 0, 0, 0) };
-	state->canvas_renderer->submit(*p_canvas, p_position, p_clip, runs, diagnostics, selection, search);
+	state->canvas_renderer->submit(*p_canvas, p_position, p_clip, runs, diagnostics, selection, search, p_viewport_origin);
 }
 
 String HTMLLayout::get_link_at(const Vector2& p_position) const {
@@ -738,7 +744,7 @@ TypedArray<HTMLElement> HTMLLayout::select_elements(const String& p_selector, Se
 	TypedArray<HTMLElement> matches;
 	const CharString utf8 = p_selector.utf8();
 	const auto tokens = litehtml::tokenize(std::string(utf8.get_data(), utf8.length()));
-	ERR_FAIL_COND_V_MSG(!has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
+	ERR_FAIL_COND_V_MSG(!docrender::css::has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
 	const auto selectors = litehtml::parse_selector_list(litehtml::normalize(tokens, litehtml::f_componentize),
 		litehtml::strict_mode | litehtml::forbid_pseudo_elements,
 		state->document ? state->document->mode() : litehtml::no_quirks_mode);
@@ -882,6 +888,46 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position) c
 			return {};
 		}
 	}
+}
+
+bool HTMLLayout::scroll_overflow_from_wheel(const Vector2& p_position, const InputEventMouseButton& p_event) {
+	if (!p_event.is_pressed()) return false;
+	Vector2 delta;
+	switch (p_event.get_button_index()) {
+		case MOUSE_BUTTON_WHEEL_UP: delta.y = -1; break;
+		case MOUSE_BUTTON_WHEEL_DOWN: delta.y = 1; break;
+		case MOUSE_BUTTON_WHEEL_LEFT: delta.x = -1; break;
+		case MOUSE_BUTTON_WHEEL_RIGHT: delta.x = 1; break;
+		default: return false;
+	}
+	if (p_event.is_shift_pressed() && delta.y != 0) delta = Vector2(delta.y, 0);
+	const float factor = p_event.get_factor();
+	if (!std::isfinite(factor)) return false;
+	delta *= 36.0f * (factor > 0 ? factor : 1.0f);
+	if (!delta.is_finite()) return false;
+
+	std::shared_ptr<litehtml::render_item> target;
+	for (auto element = hit_test_element(p_position); element && !target; element = element->parent()) {
+		const auto* renderers = state->geometry.find_element(element.get());
+		if (!renderers) continue;
+		for (const auto* renderer : *renderers) {
+			if (renderer->item->is_visible() && renderer->contains_visible_point(p_position)) {
+				target = renderer->item;
+				break;
+			}
+		}
+	}
+
+	Vector2 remaining = delta;
+	for (auto item = target; item && remaining != Vector2(); item = item->parent()) {
+		if (item->is_h_scrollable(remaining.x)) remaining.x -= item->h_scroll(remaining.x);
+		if (item->is_v_scrollable(remaining.y)) remaining.y -= item->v_scroll(remaining.y);
+	}
+	if (remaining == delta) return false;
+	state->geometry.rebuild(state->document->root_render());
+	record_paint();
+	if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
+	return true;
 }
 
 std::optional<Rect2> HTMLLayout::get_element_scroll_bounds(const Ref<HTMLElement>& p_element) const {

@@ -61,7 +61,8 @@ namespace {
 			{ _border_left_color_, { property_family::background } },
 			{ _border_right_color_, { property_family::background } },
 			{ _background_, { property_family::background, {
-				_background_color_, _background_position_x_, _background_position_y_, _background_repeat_,
+				_background_color_, _background_position_x_, _background_position_y_,
+				_id("background-repeat-x"), _id("background-repeat-y"),
 				_background_attachment_, _background_image_, _background_image_baseurl_, _background_size_,
 				_background_origin_, _background_clip_ } } },
 			{ _id("object-fit"), { property_family::background } },
@@ -72,8 +73,15 @@ namespace {
 			{ _id("direction"), { property_family::keyword, {}, direction_keywords } },
 			{ _background_image_, { property_family::background, { _background_image_, _background_image_baseurl_ } } },
 			{ _background_position_, { property_family::background, { _background_position_x_, _background_position_y_ } } },
+			{ _background_position_x_, { property_family::background } },
+			{ _background_position_y_, { property_family::background } },
+			{ _id("background-position-inline"), { property_family::background, { _background_position_x_ } } },
+			{ _id("background-position-block"), { property_family::background, { _background_position_y_ } } },
 			{ _background_size_, { property_family::background } },
-			{ _background_repeat_, { property_family::background, {}, background_repeat_strings } },
+			{ _background_repeat_, { property_family::background, {
+				_id("background-repeat-x"), _id("background-repeat-y") } } },
+			{ _id("background-repeat-x"), { property_family::background } },
+			{ _id("background-repeat-y"), { property_family::background } },
 			{ _background_attachment_, { property_family::background, {}, background_attachment_strings } },
 			{ _background_origin_, { property_family::background, {}, background_box_strings } },
 			{ _background_clip_, { property_family::background, {}, background_box_strings } },
@@ -286,6 +294,8 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		{ _id("min-inline-size"), _min_width_ },
 		{ _id("max-inline-size"), _max_width_ },
 		{ _id("block-size"), _height_ },
+		{ _id("background-repeat-inline"), _id("background-repeat-x") },
+		{ _id("background-repeat-block"), _id("background-repeat-y") },
 		{ _id("min-block-size"), _min_height_ },
 		{ _id("max-block-size"), _max_height_ },
 	};
@@ -307,11 +317,20 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		return css_parsed_declaration{ result, std::move(properties) };
 	};
 
-	switch (read_css_wide_keyword(tokens))
+	const auto wide_keyword = read_css_wide_keyword(tokens);
+	switch (wide_keyword)
 	{
 	case css_wide_keyword::inherit: return expand(property_value(inherit{}, important), status::parsed);
-	case css_wide_keyword::unset: return expand(property_value(invalid{}, important), status::parsed);
-	case css_wide_keyword::initial: return expand(property_value(initial_value{}, important), status::parsed);
+	case css_wide_keyword::unset:
+	case css_wide_keyword::initial:
+		// This non-inherited logical longhand defaults to the flow-start edge, even in RTL.
+		if (name == _id("background-position-inline")) {
+			const vector<css_axis_position> initial{ { {}, css_position_edge::flow_start } };
+			return expand(property_value(initial, important), status::parsed);
+		}
+		return wide_keyword == css_wide_keyword::initial ?
+			expand(property_value(initial_value{}, important), status::parsed) :
+			expand(property_value(invalid{}, important), status::parsed);
 	case css_wide_keyword::revert: return expand(property_value(revert_value{}, important), status::parsed);
 	case css_wide_keyword::revert_layer: return expand(property_value(revert_layer_value{}, important), status::parsed);
 	case css_wide_keyword::none: break;

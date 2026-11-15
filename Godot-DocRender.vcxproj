@@ -77,7 +77,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <!-- Use the same staged litehtml headers as SCons for the editing adapter's friend declarations. -->
-    <NMakeIncludeSearchPath>$(ProjectDir)src;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)src;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
     <NMakePreprocessorDefinitions>NOMINMAX;TYPED_METHOD_BIND;WINDOWS_ENABLED;GDEXTENSION;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <AdditionalOptions>$(AdditionalOptions) /std:c++17 /utf-8 /EHsc</AdditionalOptions>
   </PropertyGroup>
@@ -159,6 +159,14 @@
     <ClCompile Include="src\formats\html\css\css_relational_selector.cpp" />
     <ClCompile Include="src\formats\html\css\css_supports.cpp" />
     <ClCompile Include="src\formats\html\css\css_image_value.cpp" />
+    <ClCompile Include="src\formats\html\css\css_position_values.cpp" />
+    <ClCompile Include="src\formats\html\css\css_litehtml_selectors.cpp" />
+    <ClCompile Include="src\formats\html\css\css_litehtml_stylesheet.cpp" />
+    <ClCompile Include="src\formats\html\css\css_litehtml_syntax.cpp" />
+    <ClCompile Include="src\formats\html\css\css_parser.cpp" />
+    <ClCompile Include="src\formats\html\css\css_selectors.cpp" />
+    <ClCompile Include="src\formats\html\css\css_stylesheet_rules.cpp" />
+    <ClCompile Include="src\formats\html\css\css_tokenizer.cpp" />
     <ClCompile Include="src\formats\html\css\css_border_image.cpp" />
     <ClCompile Include="src\formats\html\css\css_values_background.cpp" />
     <ClCompile Include="src\formats\html\css\css_values_box.cpp" />
@@ -185,6 +193,32 @@
     <ClCompile Include="src\formats\html\litehtml_container.cpp" />
     <ClCompile Include="src\formats\html\litehtml_fonts.cpp" />
     <ClCompile Include="src\formats\html\litehtml_document_adapter.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\background.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\css_length.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\css_properties.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_anchor.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_before_after.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_image.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\html_tag.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\media_query.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\style.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\css\src\web_color.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\document\src\document.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\document\src\document_container.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\document\src\element.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\flex\src\flex_item.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\flex\src\flex_line.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\flex\src\render_flex.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\iterators.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\line_box.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_block.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_block_context.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_image.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_inline_context.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_table.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_space.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_text.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\render_item.cpp" />
     <ClCompile Include="src\editor\docrender_editor_translations.cpp" />
     <ClCompile Include="src\editor\docrender_source_editor.cpp" />
     <ClCompile Include="src\editor\importers\latex_document_importer.cpp" />
@@ -244,6 +278,12 @@
     <ClInclude Include="src\formats\html\css\css_relational_selector.h" />
     <ClInclude Include="src\formats\html\css\css_supports.h" />
     <ClInclude Include="src\formats\html\css\css_image_value.h" />
+    <ClInclude Include="src\formats\html\css\css_position_values.h" />
+    <ClInclude Include="src\formats\html\css\css_parser.h" />
+    <ClInclude Include="src\formats\html\css\css_selectors.h" />
+    <ClInclude Include="src\formats\html\css\css_stylesheet_rules.h" />
+    <ClInclude Include="src\formats\html\css\css_syntax_util.h" />
+    <ClInclude Include="src\formats\html\css\css_tokenizer.h" />
     <ClInclude Include="src\formats\html\css\css_border_image.h" />
     <ClInclude Include="src\formats\html\css\css_value_parser.h" />
     <ClInclude Include="src\formats\html\litehtml_css.h" />
@@ -271,6 +311,38 @@
     <ClInclude Include="src\formats\html\litehtml_container.h" />
     <ClInclude Include="src\formats\html\litehtml_fonts.h" />
     <ClInclude Include="src\formats\html\litehtml_document_adapter.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\background.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_length.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_position.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_properties.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_selector.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_parser.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_tokenizer.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_anchor.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_before_after.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_image.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\font_description.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\gradient.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\html_tag.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\media_query.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\string_id.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\style.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\stylesheet.h" />
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\web_color.h" />
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\document.h" />
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\document_container.h" />
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\element.h" />
+    <ClInclude Include="src\formats\html\litehtml\flex\include\litehtml\flex_line.h" />
+    <ClInclude Include="src\formats\html\litehtml\flex\include\litehtml\render_flex.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\line_box.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_block.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_block_context.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_inline_context.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_table.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\types.h" />
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_space.h" />
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_text.h" />
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\render_item.h" />
     <ClInclude Include="src\editor\docrender_editor_translations.h" />
     <ClInclude Include="src\editor\docrender_source_editor.h" />
     <ClInclude Include="src\editor\importers\latex_document_importer.h" />

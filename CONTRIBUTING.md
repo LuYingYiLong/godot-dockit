@@ -13,7 +13,9 @@ python -m pip install scons
 
 The submodules provide godot-cpp, MicroTeX and its fonts, TinyXML-2, and litehtml v0.10 with bundled Gumbo. SCons compiles litehtml and Gumbo into the extension on each target. Run a build before opening the solution in Visual Studio so IntelliSense can find the generated godot-cpp bindings and staged litehtml headers. [Visual Studio solution](Godot-DocRender.sln)
 
-DocRender's litehtml changes live in `scripts/litehtml/patches/`, grouped by document integration, CSS, render tree, layout, and Flexbox. Each patch mirrors one path relative to the pinned litehtml source root. SCons uses `git apply` on a temporary copy for each patched file and writes the result to `src/gen/html/`. Edit the patch when changing litehtml behavior. SCons regenerates its output when the patch or upstream input changes.
+DocRender maintains its litehtml replacements as C++ sources and headers in `src/formats/html/litehtml/`. Each group mirrors paths relative to the pinned litehtml submodule. Edit these files directly. SCons compiles the replacement sources in place, compiles the remaining sources from the submodule, and stages the combined headers in `src/gen/html/include/`. When updating the litehtml submodule, reconcile each replacement with its matching upstream file. The replacements retain the [litehtml BSD 3-Clause license](addons/docrender/LiteHTML-LICENSES/litehtml.txt).
+
+Edit CSS tokenization, grammar, stylesheet rules, and selectors in `src/formats/html/css/`. The staged litehtml headers adapt the syntax module to the existing style and DOM interfaces. Material migrated from litehtml retains its BSD 3-Clause license.
 
 ## Install optional SDKs
 

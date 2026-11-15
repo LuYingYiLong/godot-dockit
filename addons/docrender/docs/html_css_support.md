@@ -1,6 +1,6 @@
 # HTML CSS support
 
-DocRender parses CSS declarations with its own C++ modules. litehtml v0.10 (`9bc84b8`) provides tokens, stylesheet rules, selector matching, the cascade, and basic layout. This reference applies to `HTMLLayout`, `HTMLLabel`, and HTML blocks in `MarkdownLabel`.
+DocRender maintains CSS tokenization, stylesheet syntax, rule parsing, selector parsing, and declaration parsing in its C++ CSS modules. The litehtml v0.10 integration (`9bc84b8`) applies these rules to the DOM and supplies selector matching, the cascade, and basic layout. This reference applies to `HTMLLayout`, `HTMLLabel`, and HTML blocks in `MarkdownLabel`.
 
 ## Selectors and rules
 
@@ -24,7 +24,7 @@ DocRender parses CSS declarations with its own C++ modules. litehtml v0.10 (`9bc
 | Flexbox spacing | `row-gap`, `column-gap`, and one- or two-value `gap` work with wrapping and reverse directions. The shorthand sets the row gap first and the column gap second. Values include `normal` (zero in Flexbox), non-negative lengths, and percentages. Percentage gaps use the container's inner size on their axis and resolve to zero when that size depends on the flex items. [CSS Gaps](https://www.w3.org/TR/css-gaps-1/#gaps) |
 | Lengths | Absolute, font-relative, and viewport-relative lengths. See the length units and math functions sections below. |
 | Colors | Named and hex colors, `rgb()` and `hsl()` variants, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, predefined `color()` spaces, `color-mix()`, and `currentColor` where applicable. |
-| Backgrounds | Solid colors, local images, and linear, radial, and conic gradients. |
+| Backgrounds | Solid colors, local images, and linear, radial, and conic gradients. Two-axis tiling supports `repeat`, `no-repeat`, `round`, and `space`. |
 | Image fitting | `object-fit` sizes image pixels inside the element's content box. `object-position` aligns the fitted image using keywords, lengths, percentages, or four-component edge offsets. |
 | Image sampling | `image-rendering` supports `auto`, `smooth`, `high-quality`, `crisp-edges`, and `pixelated`. |
 | Image orientation | `image-orientation` reads EXIF by default, supports the encoded orientation with `none`, and accepts legacy quarter-turn and flip overrides for content images. |
@@ -89,13 +89,33 @@ In the supported horizontal writing mode, `inline-size`, `min-inline-size`, and 
 
 `object-fit` applies to `<img>`. The default `fill` scales to the content box. `contain` shows the whole image and preserves its natural proportions. `cover` fills the box and crops any excess. `none` uses the image's natural dimensions, and `scale-down` limits `contain` to the natural dimensions. The two-keyword forms `contain scale-down` and `cover scale-down` limit the corresponding fit mode to the natural dimensions. These values affect the painted image. The element's layout size comes from its sizing properties, including `aspect-ratio`. [CSS object fitting](https://www.w3.org/TR/css-images-4/#the-object-fit)
 
-`object-position` defaults to `50% 50%`. Use one or two components such as `left`, `top right`, or `calc(50% + 4px) 25%`. Four-component positions such as `bottom 6px right 25%` set offsets from the named edges. Percentages use the difference between the box and the fitted image along each axis. The box background remains visible where the image has no coverage. The content box and its rounded corners clip the image. [CSS object positioning](https://www.w3.org/TR/css-images-3/#the-object-position) · [CSS position values](https://www.w3.org/TR/css-values-4/#position)
+`object-position` defaults to `50% 50%`. Use one or two components such as `left`, `top right`, or `calc(50% + 4px) 25%`. Four-component positions such as `bottom 6px right 25%` set offsets from the named edges. Percentages use the difference between the box and the fitted image along each axis. The box background remains visible where the image has no coverage. The content box and its rounded corners clip the image. Flow-relative position keywords use the element's direction in horizontal writing mode. The three-component form is specific to backgrounds. [CSS object positioning](https://www.w3.org/TR/css-images-3/#the-object-position) · [CSS position values](https://drafts.csswg.org/css-values-5/#position)
 
 ## Image sampling
 
 `image-rendering` inherits and controls how local raster textures are sampled in images, backgrounds, and markers. `auto` uses the Godot canvas default. `smooth` uses linear filtering, `high-quality` uses linear filtering with any available texture mipmaps, and `crisp-edges` uses nearest-neighbor filtering. The legacy `optimizeQuality` and `optimizeSpeed` values map to `smooth` and `crisp-edges`, respectively.
 
 `pixelated` first enlarges each axis to its closest positive integer multiple with nearest-neighbor filtering, then linearly samples that intermediate image at the displayed size. This sharpens enlarged pixel art and limits blending to transitions between source pixels. Godot samples the virtual intermediate image directly without allocating a larger texture. [CSS image-rendering](https://www.w3.org/TR/css-images-3/#the-image-rendering)
+
+## Background attachment
+
+`background-attachment` accepts `scroll`, `local`, or `fixed` per layer. The default `scroll` moves with the element box. `local` follows the element's scrolled contents and sizes against its scrollable area. `fixed` uses the document's viewport for positioning and sizing. The image remains visible through the element's background clip. Non-root transformed elements and descendants of transformed elements treat `fixed` as `scroll`. [CSS Backgrounds attachment](https://www.w3.org/TR/css-backgrounds-3/#the-background-attachment) · [CSS Transforms rendering model](https://www.w3.org/TR/css-transforms-1/#transform-rendering)
+
+Wheel input in HTMLLabel and MarkdownLabel's HTML blocks scrolls the nearest eligible `overflow: auto` or `overflow: scroll` box under the pointer. Inner scroll offsets are retained when the same DOM elements are laid out again. Standalone HTMLLayout uses the viewport passed to `layout()` with its origin at the document origin. Each Markdown HTML block has its own viewport.
+
+## Background positions
+
+`background-position: right 12px bottom 8px` places the image 12 CSS pixels inward from the right and 8 inward from the bottom. Edge pairs can be reordered and one offset can be omitted in the three-component form. In a two-component value such as `right 8px`, the length is the vertical position. Negative offsets are allowed. Percentages, including those in CSS math, use the positioning area minus the final tile size on each axis, including when that difference is negative. [CSS Backgrounds positioning](https://www.w3.org/TR/css-backgrounds-3/#the-background-position)
+
+`background-position-x` and `background-position-y` accept individual positions such as `right 10px` and `bottom 20%`. Their comma-separated lists cycle independently and can override the corresponding part of either background shorthand. Flow-relative positions and the `background-position-inline` and `background-position-block` properties use horizontal writing mode and respect the element's `direction`. [CSS Backgrounds position longhands](https://drafts.csswg.org/css-backgrounds-4/#propdef-background-position-x) · [CSS Values flow-relative positions](https://drafts.csswg.org/css-values-5/#position)
+
+## Background tiling
+
+`background-repeat` and the `background` shorthand accept one or two tiling keywords per layer. An omitted second keyword uses the first for both axes. `repeat-x` and `repeat-y` place a single tile on the other axis. In the current horizontal writing mode, `repeat-inline` and `repeat-block` select the horizontal and vertical axes, respectively.
+
+`round` adjusts the tile size so a whole number fits in the background positioning area. When only one axis rounds and the other axis uses an automatic size, the other dimension follows the original tile ratio. `space` puts whole tiles against the two edges and distributes gaps equally. If fewer than two tiles fit, one tile is placed according to `background-position` on that axis. Both patterns extend through the painting area selected by `background-clip`.
+
+`background-repeat-x` and `background-repeat-y` cascade as independent lists. `background-repeat-inline` and `background-repeat-block` map to them in horizontal writing mode. Textures, gradients, solid image fallbacks, and cross-fades share the tiling geometry. Background positions and sizes also accept CSS length and percentage math. [CSS Backgrounds 3 tiling and sizing](https://www.w3.org/TR/css-backgrounds-3/#the-background-repeat) · [CSS Backgrounds 4 repeat longhands](https://drafts.csswg.org/css-backgrounds-4/#the-background-repeat)
 
 ## Outlines
 

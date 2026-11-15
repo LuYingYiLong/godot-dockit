@@ -63,11 +63,12 @@ namespace docrender {
 
 		void index_text(const std::shared_ptr<litehtml::element>& p_element, const TextShaper& p_shape_text, godot::String& r_separator);
 		godot::Ref<godot::ShaderMaterial> create_material(const RoundedRect* p_shape = nullptr);
-		void add_command(Command p_command, godot::Ref<godot::ShaderMaterial> p_material = {}, HTMLTextureSampling p_sampling = {});
+		void add_command(Command p_command, godot::Ref<godot::ShaderMaterial> p_material = {}, HTMLTextureSampling p_sampling = {},
+			bool p_fixed_background = false);
 		void add_command_to(std::vector<HTMLPaintRun>& r_runs, Command p_command, godot::Ref<godot::ShaderMaterial> p_material = {},
-			HTMLTextureSampling p_sampling = {});
+			HTMLTextureSampling p_sampling = {}, bool p_fixed_background = false);
 		void add_image(Image p_image, const RoundedRect* p_shape = nullptr, const godot::Vector2i& p_repeat = {},
-			godot::Ref<godot::ShaderMaterial> p_material = {});
+			godot::Ref<godot::ShaderMaterial> p_material = {}, bool p_fixed_background = false);
 		void add_borders(std::vector<HTMLPaintRun>& r_runs, const litehtml::borders& p_borders, const godot::Rect2& p_rect);
 		void record_outline();
 		void fill_rect(const godot::Rect2& p_rect, const godot::Color& p_color);

@@ -1,40 +1,30 @@
-import os
 from pathlib import Path
-import subprocess
-from tempfile import TemporaryDirectory
 
 from SCons.Errors import UserError
 
 
-def apply_litehtml_patch(target, source, env):
-    upstream, patch = (Path(node.get_abspath()) for node in source)
-    output = Path(target[0].get_abspath())
-    relative = output.relative_to(env["LITEHTML_STAGED_DIR"])
+# These implementations are built with the DocRender HTML sources.
+MIGRATED_CSS_SOURCES = {
+    "src/css_parser.cpp",
+    "src/css_selector.cpp",
+    "src/css_tokenizer.cpp",
+    "src/stylesheet.cpp",
+}
 
-    # Start with the pinned source each time so retries and parallel actions are independent.
-    with TemporaryDirectory(dir=output.parent, prefix="litehtml-") as scratch:
-        patched = Path(scratch, relative)
-        patched.parent.mkdir(parents=True, exist_ok=True)
-        original = upstream.read_text(encoding="utf-8")
-        patched.write_text(original, encoding="utf-8", newline="\n")
 
-        git_env = os.environ.copy()
-        for variable in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
-            git_env.pop(variable, None)
-        git_env["GIT_CEILING_DIRECTORIES"] = str(output.parent)
-        try:
-            result = subprocess.run(
-                ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "apply", "--no-index",
-                 "--whitespace=nowarn", "--no-ignore-whitespace", str(patch)],
-                cwd=scratch, env=git_env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                encoding="utf-8", errors="replace", check=False,
-            )
-        except OSError as error:
-            raise UserError(f"Could not run Git to apply {patch.name}: {error}") from error
-        if result.returncode or not patched.is_file() or patched.read_bytes() == original.encode("utf-8"):
-            detail = result.stderr.rstrip() or "The patch did not modify the expected file."
-            raise UserError(f"Could not apply {patch.name} to litehtml {relative.as_posix()}.\n{detail}")
-        patched.replace(output)
+def find_litehtml_overrides(env):
+    root = Path("src/formats/html/litehtml")
+    overrides = {}
+    for path in sorted(root.rglob("*")):
+        if path.suffix not in (".h", ".cpp") or not path.is_file():
+            continue
+        # The first component groups replacements by responsibility.
+        upstream_path = Path(*path.relative_to(root).parts[1:]).as_posix()
+        if upstream_path in overrides:
+            raise UserError(f"Multiple litehtml replacements for {upstream_path}: "
+                            f"{overrides[upstream_path]} and {path}")
+        overrides[upstream_path] = env.File(path.as_posix())
+    return overrides
 
 
 def embed_hyphenation_patterns(target, source, env):
@@ -65,33 +55,13 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
     if not Path(litehtml, "include/litehtml.h").is_file() or not Path(gumbo, "include/gumbo.h").is_file():
         raise UserError("Missing litehtml or its bundled Gumbo. Run git submodule update --init --recursive.")
 
-    patches = {}
-    patch_root = Path(__file__).resolve().with_name("patches")
-    for patch in sorted(patch_root.glob("*/**/*.patch")):
-        relative = Path(*patch.relative_to(patch_root).parts[1:]).with_suffix("").as_posix()
-        if relative in patches:
-            raise UserError(f"Multiple litehtml patches for {relative}: {patches[relative]} and {patch}")
-        patches[relative] = patch
-
-    html_env = env.Clone(LITEHTML_STAGED_DIR=env.Dir(staged_dir).get_abspath())
-    patched_files = []
-
-    def stage_patch(source, relative):
-        patch = patches.pop(relative, None)
-        if patch is None:
-            return None
-        nodes = html_env.Command(f"{staged_dir}/{relative}", [source, html_env.File(str(patch))], apply_litehtml_patch)
-        patched_files.extend(nodes)
-        return nodes[0]
+    html_env = env.Clone()
+    overrides = find_litehtml_overrides(html_env)
 
     staged_headers = []
     for header in html_env.Glob(f"{litehtml}/include/*.h") + html_env.Glob(f"{litehtml}/include/litehtml/*.h"):
-        relative = Path(str(header)).relative_to(litehtml)
-        staged = stage_patch(header, relative.as_posix())
-        if staged is None:
-            staged_headers += html_env.Install(f"{staged_dir}/{relative.parent.as_posix()}", header)
-        else:
-            staged_headers.append(staged)
+        relative = Path(str(header)).relative_to(litehtml).as_posix()
+        staged_headers += html_env.InstallAs(f"{staged_dir}/{relative}", overrides.pop(relative, header))
 
     html_env.Append(CPPPATH=[staged_include, f"{staged_include}/litehtml", f"{litehtml}/src", f"{gumbo}/include"])
     # litehtml uses C++ exceptions during HTML encoding detection.
@@ -110,13 +80,13 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
 
     for source in html_env.Glob(f"{litehtml}/src/*.cpp"):
         relative = Path(str(source)).relative_to(litehtml)
-        staged = stage_patch(source, relative.as_posix())
+        if relative.as_posix() in MIGRATED_CSS_SOURCES:
+            continue
         object_path = f"{staged_dir}/{relative.with_suffix('').as_posix()}{env['OBJSUFFIX']}"
-        html_objects += html_object(object_path, source if staged is None else staged)
+        html_objects += html_object(object_path, overrides.pop(relative.as_posix(), source))
 
-    if patches:
-        raise UserError(f"litehtml patches have no matching upstream file: {', '.join(sorted(patches))}")
-    html_env.Depends(patched_files, html_env.File(__file__))
+    if overrides:
+        raise UserError(f"litehtml replacements have no matching upstream file: {', '.join(sorted(overrides))}")
     html_env.Depends(html_objects, staged_headers)
 
     gumbo_env = env.Clone()

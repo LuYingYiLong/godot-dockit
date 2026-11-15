@@ -1,4 +1,5 @@
 #include "html_markup.h"
+#include "css/css_stylesheet_rules.h"
 #include "html_image_metadata.h"
 
 #include <godot_cpp/classes/file_access.hpp>
@@ -123,9 +124,7 @@ namespace docrender {
 					}
 					const auto& token = rule->prelude[index];
 					std::string url;
-					if (token.type == STRING) {
-						url = token.str;
-					} else if (!parse_url(token, url)) {
+					if (!css::parse_import_url(token, url)) {
 						continue;
 					}
 					add_stylesheet(String::utf8(url.c_str()), p_dir);

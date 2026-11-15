@@ -108,7 +108,7 @@ namespace docrender {
 
 	void HTMLCanvasRenderer::submit(CanvasItem& p_canvas, const Vector2& p_position, const Rect2& p_clip,
 		const std::vector<HTMLPaintRun>& p_runs, const std::vector<HTMLPaintRun>& p_diagnostics,
-		const HTMLHighlight& p_selection, const HTMLHighlight& p_search) {
+		const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const Vector2& p_viewport_origin) {
 		const uint64_t instance_id = p_canvas.get_instance_id();
 		CanvasDrawing* drawing = drawings.getptr(instance_id);
 		if (!drawing) {
@@ -133,6 +133,7 @@ namespace docrender {
 		Ref<ShaderMaterial> previous_material;
 		Transform2D previous_matrix;
 		HTMLTextureSampling previous_sampling;
+		bool previous_fixed_background = false;
 		const auto submit_run = [&](const HTMLPaintRun& p_run) {
 			std::optional<Rect2> clip;
 			if (p_run.clip) {
@@ -147,7 +148,7 @@ namespace docrender {
 
 			const bool transformed = p_run.material.is_valid() || p_run.matrix != Transform2D();
 			if (!target.is_valid() || clip != previous_clip || p_run.material != previous_material || p_run.matrix != previous_matrix ||
-				p_run.sampling != previous_sampling) {
+				p_run.sampling != previous_sampling || p_run.fixed_background != previous_fixed_background) {
 				if (drawing->items.empty()) {
 					drawing->add_item(server, p_canvas.get_canvas_item(), -1);
 				}
@@ -169,6 +170,10 @@ namespace docrender {
 				if (transformed) {
 					server.canvas_item_set_transform(target, Transform2D(0.0, p_position) * p_run.matrix);
 				}
+				if (p_run.fixed_background && p_viewport_origin != Vector2()) {
+					const Vector2 offset = p_run.matrix.affine_inverse().basis_xform(p_viewport_origin);
+					server.canvas_item_set_instance_shader_parameter(target, "scroll_origin", offset);
+				}
 				if (p_run.sampling.filter != HTMLTextureFilter::inherited) {
 					server.canvas_item_set_default_texture_filter(target, to_canvas_filter(p_run.sampling.filter));
 				}
@@ -179,6 +184,7 @@ namespace docrender {
 				previous_material = p_run.material;
 				previous_matrix = p_run.matrix;
 				previous_sampling = p_run.sampling;
+				previous_fixed_background = p_run.fixed_background;
 			}
 			p_run.draw(server, target, transformed ? Vector2() : p_position, text_server.ptr(), p_search, p_selection);
 		};

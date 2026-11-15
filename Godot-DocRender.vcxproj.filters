@@ -26,6 +26,12 @@
     <Filter Include="Header Files\formats\html">
       <UniqueIdentifier>{458d247b-1727-407d-8723-386218d28393}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\formats\html\litehtml" />
+    <Filter Include="Header Files\formats\html\litehtml\css" />
+    <Filter Include="Header Files\formats\html\litehtml\document" />
+    <Filter Include="Header Files\formats\html\litehtml\flex" />
+    <Filter Include="Header Files\formats\html\litehtml\layout" />
+    <Filter Include="Header Files\formats\html\litehtml\render_tree" />
     <Filter Include="Header Files\formats\html\layout">
       <UniqueIdentifier>{a0c05941-511c-4ed6-a491-3e2053e775d3}</UniqueIdentifier>
     </Filter>
@@ -63,6 +69,12 @@
     <Filter Include="Source Files\formats\html">
       <UniqueIdentifier>{ce13e574-6124-4bc6-bca6-240a08c6d482}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\formats\html\litehtml" />
+    <Filter Include="Source Files\formats\html\litehtml\css" />
+    <Filter Include="Source Files\formats\html\litehtml\document" />
+    <Filter Include="Source Files\formats\html\litehtml\flex" />
+    <Filter Include="Source Files\formats\html\litehtml\layout" />
+    <Filter Include="Source Files\formats\html\litehtml\render_tree" />
     <Filter Include="Source Files\formats\html\layout">
       <UniqueIdentifier>{dfa2fd6c-bf30-4d13-822f-f500af8ed117}</UniqueIdentifier>
     </Filter>
@@ -176,6 +188,30 @@
     <ClCompile Include="src\formats\html\css\css_image_value.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_position_values.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_litehtml_selectors.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_litehtml_stylesheet.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_litehtml_syntax.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_parser.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_selectors.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_stylesheet_rules.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_tokenizer.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\css\css_border_image.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
@@ -253,6 +289,84 @@
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml_document_adapter.cpp">
       <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\background.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\css_length.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\css_properties.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_anchor.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_before_after.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\el_image.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\html_tag.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\media_query.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\style.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\css\src\web_color.cpp">
+      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\document\src\document.cpp">
+      <Filter>Source Files\formats\html\litehtml\document</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\document\src\document_container.cpp">
+      <Filter>Source Files\formats\html\litehtml\document</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\document\src\element.cpp">
+      <Filter>Source Files\formats\html\litehtml\document</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\flex\src\flex_item.cpp">
+      <Filter>Source Files\formats\html\litehtml\flex</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\flex\src\flex_line.cpp">
+      <Filter>Source Files\formats\html\litehtml\flex</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\flex\src\render_flex.cpp">
+      <Filter>Source Files\formats\html\litehtml\flex</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\iterators.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\line_box.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_block.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_block_context.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_image.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_inline_context.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\render_table.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_space.cpp">
+      <Filter>Source Files\formats\html\litehtml\render_tree</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_text.cpp">
+      <Filter>Source Files\formats\html\litehtml\render_tree</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\render_tree\src\render_item.cpp">
+      <Filter>Source Files\formats\html\litehtml\render_tree</Filter>
     </ClCompile>
     <ClCompile Include="src\register_types.cpp">
       <Filter>Source Files</Filter>
@@ -460,6 +574,24 @@
     <ClInclude Include="src\formats\html\css\css_image_value.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_position_values.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_parser.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_selectors.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_stylesheet_rules.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_syntax_util.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_tokenizer.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\css\css_border_image.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
@@ -540,6 +672,102 @@
     </ClInclude>
     <ClInclude Include="src\formats\html\litehtml_document_adapter.h">
       <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\background.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_length.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_position.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_properties.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_selector.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_parser.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_tokenizer.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_anchor.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_before_after.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\el_image.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\font_description.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\gradient.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\html_tag.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\media_query.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\string_id.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\style.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\stylesheet.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\web_color.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\document.h">
+      <Filter>Header Files\formats\html\litehtml\document</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\document_container.h">
+      <Filter>Header Files\formats\html\litehtml\document</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\document\include\litehtml\element.h">
+      <Filter>Header Files\formats\html\litehtml\document</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\flex\include\litehtml\flex_line.h">
+      <Filter>Header Files\formats\html\litehtml\flex</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\flex\include\litehtml\render_flex.h">
+      <Filter>Header Files\formats\html\litehtml\flex</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\line_box.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_block.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_block_context.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_inline_context.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_table.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\types.h">
+      <Filter>Header Files\formats\html\litehtml\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_space.h">
+      <Filter>Header Files\formats\html\litehtml\render_tree</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_text.h">
+      <Filter>Header Files\formats\html\litehtml\render_tree</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\render_item.h">
+      <Filter>Header Files\formats\html\litehtml\render_tree</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\markdown\markdown_document.h">
       <Filter>Header Files\formats\markdown</Filter>

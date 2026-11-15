@@ -2,9 +2,13 @@
 
 #include <array>
 
-namespace litehtml {
-	class document_container;
+namespace docrender::css {
 	struct css_token;
+}
+
+namespace litehtml {
+	using docrender::css::css_token;
+	class document_container;
 	struct web_color;
 
 	enum class css_color_space {

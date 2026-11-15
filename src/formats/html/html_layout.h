@@ -20,6 +20,7 @@
 
 namespace godot {
 	class CanvasItem;
+	class InputEventMouseButton;
 	class StyleBox;
 }
 
@@ -43,6 +44,7 @@ class HTMLLayout : public godot::RefCounted {
 
 	bool initialize_document(const godot::CharString& p_html);
 	godot::Error reflow(const godot::Vector2i& p_viewport_size);
+	void record_paint();
 	godot::Ref<HTMLElement> make_element(const std::shared_ptr<litehtml::element>& p_element) const;
 	std::shared_ptr<HTMLElement::DetachedTree> get_detached_tree(const litehtml::element& p_element) const;
 	godot::TypedArray<HTMLElement> select_elements(const godot::String& p_selector, SelectorQuery p_query,
@@ -123,7 +125,8 @@ public:
 		const godot::StyleBox* p_selection_style,
 		const godot::Color& p_selection_color,
 		const godot::Vector2i& p_search = {},
-		const godot::StyleBox* p_search_style = nullptr
+		const godot::StyleBox* p_search_style = nullptr,
+		const godot::Vector2& p_viewport_origin = {}
 	);																				// 在指定画布上绘制 HTML，并显示选区与搜索高亮
 	godot::String get_link_at(const godot::Vector2& p_position) const;				// 返回指定文档坐标处链接的原始 href
 	LinkHit find_link_at(
@@ -139,6 +142,7 @@ public:
 	) const;																		// 按文档顺序返回所有匹配元素的去重数组
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
+	bool scroll_overflow_from_wheel(const godot::Vector2& p_position, const godot::InputEventMouseButton& p_event);
 	std::optional<godot::Rect2> get_element_scroll_bounds(
 		const godot::Ref<HTMLElement>& p_element
 	) const; // 获取同一布局中目标元素可用于滚动定位的边界

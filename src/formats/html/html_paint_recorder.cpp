@@ -99,13 +99,12 @@ uniform sampler2D gradient_stops : filter_nearest, repeat_disable;
 uniform vec2 gradient_start;
 uniform vec2 gradient_parameters;
 uniform vec4 tile;
-uniform ivec2 repeat_axes;
-
-uniform bool border_image;
-uniform bool border_image_flip_x;
-uniform vec2 border_image_origin;
-uniform vec2 border_image_tile;
-uniform vec2 border_image_period;
+uniform vec2 tile_period;
+uniform ivec2 tile_repeat_axes;
+instance uniform vec2 scroll_origin;
+uniform bool tiled_fill;
+uniform bool tiled_image;
+uniform bool tile_flip_image_x;
 
 uniform bool pixelated;
 uniform vec4 pixelated_source;
@@ -368,6 +367,13 @@ vec2 pixelated_uv(vec2 texel, vec2 dx, vec2 dy, vec4 source, ivec2 repeats) {
 	return source.xy + clamp(sample_point, vec2(0.5), max(vec2(0.5), source.zw - 0.5));
 }
 
+vec2 tile_coordinates(vec2 point) {
+	vec2 local = point - tile.xy - scroll_origin;
+	if (tile_repeat_axes.x != 0) local.x = mod(local.x, tile_period.x);
+	if (tile_repeat_axes.y != 0) local.y = mod(local.y, tile_period.y);
+	return local;
+}
+
 void fragment() {
 	// Take derivatives before the corner and paint branches diverge.
 	vec2 pixel_x = dFdx(document_point);
@@ -474,37 +480,36 @@ void fragment() {
 			border_color = mix(border_color, border_inner_colors[side], inner_band);
 		}
 		COLOR *= border_color;
-	} else if (gradient_type > 0) {
-		vec2 point = document_point;
-		if (repeat_axes.x != 0) {
-			point.x = tile.x + mod(point.x - tile.x, tile.z);
-		}
-		if (repeat_axes.y != 0) {
-			point.y = tile.y + mod(point.y - tile.y, tile.w);
-		}
-		vec2 delta = point - gradient_start;
-		float t = 0.0;
-		if (gradient_type == 1) {
-			t = dot(delta, gradient_parameters) / max(dot(gradient_parameters, gradient_parameters), 0.000001);
-		} else if (gradient_type == 2) {
-			t = length(delta / max(gradient_parameters, vec2(0.000001)));
-		} else {
-			t = fract(atan(delta.x, -delta.y) / TAU - gradient_parameters.x);
-		}
-		COLOR *= sample_gradient(t);
-	} else if (border_image) {
-		vec2 local = mod(document_point - border_image_origin, border_image_period);
-		if (any(greaterThanEqual(local, border_image_tile))) {
+	} else if (gradient_type > 0 || tiled_fill) {
+		vec2 local = tile_coordinates(document_point);
+		if (any(lessThan(local, vec2(0.0))) || any(greaterThanEqual(local, tile.zw))) {
 			discard;
 		}
-		vec2 ratio = local / border_image_tile;
-		vec2 axis = vec2(border_image_flip_x ? -1.0 : 1.0, 1.0);
-		if (border_image_flip_x) {
+		if (gradient_type > 0) {
+			vec2 delta = tile.xy + local - gradient_start;
+			float t;
+			if (gradient_type == 1) {
+				t = dot(delta, gradient_parameters) / max(dot(gradient_parameters, gradient_parameters), 0.000001);
+			} else if (gradient_type == 2) {
+				t = length(delta / max(gradient_parameters, vec2(0.000001)));
+			} else {
+				t = fract(atan(delta.x, -delta.y) / TAU - gradient_parameters.x);
+			}
+			COLOR *= sample_gradient(t);
+		}
+	} else if (tiled_image) {
+		vec2 local = tile_coordinates(document_point);
+		if (any(lessThan(local, vec2(0.0))) || any(greaterThanEqual(local, tile.zw))) {
+			discard;
+		}
+		vec2 ratio = local / tile.zw;
+		vec2 axis = vec2(tile_flip_image_x ? -1.0 : 1.0, 1.0);
+		if (tile_flip_image_x) {
 			ratio.x = 1.0 - ratio.x;
 		}
 		vec4 region = REGION_RECT / TEXTURE_PIXEL_SIZE.xyxy;
 		vec2 texel = region.xy + ratio * region.zw;
-		vec2 step_scale = axis * region.zw / border_image_tile;
+		vec2 step_scale = axis * region.zw / tile.zw;
 		if (pixelated) {
 			vec2 point = pixelated_uv(texel, pixel_x * step_scale, pixel_y * step_scale, region, ivec2(0));
 			COLOR = paint_modulate * textureLod(TEXTURE, point * TEXTURE_PIXEL_SIZE, 0.0);
@@ -550,11 +555,32 @@ void fragment() {
 			return to_rect(p_layer.border_box).intersection(to_rect(p_layer.clip_box));
 		}
 
-		Rect2 get_tile_bounds(const background_layer& p_layer, const Rect2& p_clip, bool p_repeat_x, bool p_repeat_y) {
-			const Rect2 tile = to_rect(p_layer.origin_box);
-			return p_clip.intersection(Rect2(p_repeat_x ? p_clip.position.x : tile.position.x,
-				p_repeat_y ? p_clip.position.y : tile.position.y, p_repeat_x ? p_clip.size.x : tile.size.x,
-				p_repeat_y ? p_clip.size.y : tile.size.y));
+		struct BackgroundTiles {
+			Rect2 tile;
+			Vector2i repeat_axes;
+			Vector2 spacing;
+			bool fixed;
+
+			explicit BackgroundTiles(const background_layer& p_layer) :
+				tile(to_rect(p_layer.origin_box)), repeat_axes(p_layer.repeat.x != background_repeat::no_repeat,
+					p_layer.repeat.y != background_repeat::no_repeat),
+				spacing(p_layer.tile_spacing.width, p_layer.tile_spacing.height),
+				fixed(p_layer.attachment == background_attachment_fixed) {}
+
+			Rect2 bounds(const Rect2& p_clip) const {
+				if (!tile.is_finite() || !tile.has_area()) return {};
+				if (fixed) return p_clip;
+				return p_clip.intersection(Rect2(repeat_axes.x ? p_clip.position.x : tile.position.x,
+					repeat_axes.y ? p_clip.position.y : tile.position.y, repeat_axes.x ? p_clip.size.x : tile.size.x,
+					repeat_axes.y ? p_clip.size.y : tile.size.y));
+			}
+		};
+
+		void set_tile_uniforms(const Ref<ShaderMaterial>& p_material, const Rect2& p_tile, const Vector2& p_period,
+			const Vector2i& p_repeat_axes = Vector2i(1, 1)) {
+			p_material->set_shader_parameter("tile", Vector4(p_tile.position.x, p_tile.position.y, p_tile.size.x, p_tile.size.y));
+			p_material->set_shader_parameter("tile_period", p_period);
+			p_material->set_shader_parameter("tile_repeat_axes", p_repeat_axes);
 		}
 
 		Vector4 box_uniform(const Rect2& p_rect) {
@@ -944,12 +970,13 @@ void fragment() {
 		return material;
 	}
 
-	void HTMLPaintRecorder::add_command(Command p_command, Ref<ShaderMaterial> p_material, HTMLTextureSampling p_sampling) {
-		add_command_to(paint_runs, std::move(p_command), std::move(p_material), p_sampling);
+	void HTMLPaintRecorder::add_command(Command p_command, Ref<ShaderMaterial> p_material, HTMLTextureSampling p_sampling,
+		bool p_fixed_background) {
+		add_command_to(paint_runs, std::move(p_command), std::move(p_material), p_sampling, p_fixed_background);
 	}
 
 	void HTMLPaintRecorder::add_command_to(std::vector<HTMLPaintRun>& r_runs, Command p_command, Ref<ShaderMaterial> p_material,
-		HTMLTextureSampling p_sampling) {
+		HTMLTextureSampling p_sampling, bool p_fixed_background) {
 		if (active_geometry && !active_geometry->inverse) return;
 		const Transform2D matrix = active_geometry ? active_geometry->matrix : Transform2D();
 		std::optional<Rect2> clip;
@@ -969,8 +996,8 @@ void fragment() {
 			}
 		}
 		if (r_runs.empty() || r_runs.back().clip != clip || r_runs.back().matrix != matrix || r_runs.back().material != p_material ||
-			r_runs.back().sampling != p_sampling) {
-			r_runs.push_back({ clip, matrix, {}, p_material, {}, p_sampling });
+			r_runs.back().sampling != p_sampling || r_runs.back().fixed_background != p_fixed_background) {
+			r_runs.push_back({ clip, matrix, {}, p_material, {}, p_sampling, p_fixed_background });
 			if (matrix != Transform2D() || (!clips.empty() && clips.back().has_precise_clip)) {
 				for (const auto& entry : clips) r_runs.back().clips.push_back({ entry.shape, entry.matrix });
 			}
@@ -1128,7 +1155,7 @@ void fragment() {
 	}
 
 	void HTMLPaintRecorder::add_image(Image p_image, const RoundedRect* p_shape, const Vector2i& p_repeat,
-		Ref<ShaderMaterial> p_material) {
+		Ref<ShaderMaterial> p_material, bool p_fixed_background) {
 		const auto mode = get_image_sampling();
 		HTMLTextureSampling sampling{ HTMLTextureFilter::inherited, p_repeat != Vector2i() };
 		switch (mode) {
@@ -1154,30 +1181,35 @@ void fragment() {
 		else if (p_shape) {
 			p_material = create_material(p_shape);
 		}
-		add_command(std::move(p_image), std::move(p_material), sampling);
+		add_command(std::move(p_image), std::move(p_material), sampling, p_fixed_background);
 	}
 
 	void HTMLPaintRecorder::draw_image(const background_layer& p_layer, const Ref<Texture2D>& p_texture) {
-		const Rect2 tile = to_rect(p_layer.origin_box);
-		if (p_texture.is_null() || !tile.has_area()) {
+		if (p_texture.is_null()) return;
+		const BackgroundTiles tiles(p_layer);
+		const Rect2 bounds = get_background_clip(p_layer);
+		Rect2 destination = tiles.bounds(bounds);
+		if (!destination.has_area()) return;
+
+		const RoundedRect shape = RoundedRect(to_rect(p_layer.border_box), p_layer.border_radius).inset(bounds);
+		const auto* rounded = shape.has_radius() ? &shape : nullptr;
+		const Vector2 texture_size = p_texture->get_size();
+		if (tiles.fixed || tiles.spacing != Vector2()) {
+			const auto material = create_material(rounded);
+			material->set_shader_parameter("tiled_image", true);
+			material->set_shader_parameter("tile_flip_image_x", p_layer.flip_image_x);
+			set_tile_uniforms(material, tiles.tile, tiles.tile.size + tiles.spacing, tiles.repeat_axes);
+			add_image(Image{ p_texture, destination, Rect2(Vector2(), texture_size) }, nullptr, {}, material, tiles.fixed);
 			return;
 		}
 
-		const bool repeat_x = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_x;
-		const bool repeat_y = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_y;
-		const Rect2 bounds = get_background_clip(p_layer);
-		Rect2 destination = get_tile_bounds(p_layer, bounds, repeat_x, repeat_y);
-		if (destination.has_area()) {
-			const Vector2 texture_size = p_texture->get_size();
-			const Vector2 scale = texture_size / tile.size;
-			Rect2 source((destination.position - tile.position) * scale, destination.size * scale);
-			if (p_layer.flip_image_x) {
-				source.position.x = texture_size.x - source.get_end().x;
-				destination.size.x = -destination.size.x;
-			}
-			const RoundedRect shape = RoundedRect(to_rect(p_layer.border_box), p_layer.border_radius).inset(bounds);
-			add_image(Image{ p_texture, destination, source }, shape.has_radius() ? &shape : nullptr, Vector2i(repeat_x, repeat_y));
+		const Vector2 scale = texture_size / tiles.tile.size;
+		Rect2 source((destination.position - tiles.tile.position) * scale, destination.size * scale);
+		if (p_layer.flip_image_x) {
+			source.position.x = texture_size.x - source.get_end().x;
+			destination.size.x = -destination.size.x;
 		}
+		add_image(Image{ p_texture, destination, source }, rounded, tiles.repeat_axes);
 	}
 
 	void HTMLPaintRecorder::draw_solid_fill(const background_layer& p_layer, const web_color& p_color) {
@@ -1187,25 +1219,31 @@ void fragment() {
 			return;
 		}
 		const RoundedRect shape = RoundedRect(to_rect(p_layer.border_box), p_layer.border_radius).inset(bounds);
+		const auto* rounded = shape.has_radius() ? &shape : nullptr;
 		Rect2 destination = bounds;
+		Ref<ShaderMaterial> material;
+		const bool fixed = p_layer.fill_image_tile && p_layer.attachment == background_attachment_fixed;
 		if (p_layer.fill_image_tile) {
-			const bool repeat_x = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_x;
-			const bool repeat_y = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_y;
-			destination = get_tile_bounds(p_layer, bounds, repeat_x, repeat_y);
+			const BackgroundTiles tiles(p_layer);
+			destination = tiles.bounds(bounds);
 			if (!destination.has_area()) return;
+			if (fixed || tiles.spacing != Vector2()) {
+				material = create_material(rounded);
+				material->set_shader_parameter("tiled_fill", true);
+				set_tile_uniforms(material, tiles.tile, tiles.tile.size + tiles.spacing, tiles.repeat_axes);
+			}
 		}
-		add_command(Fill{ destination, color }, shape.has_radius() ? create_material(&shape) : Ref<ShaderMaterial>());
+		if (material.is_null() && rounded) material = create_material(rounded);
+		add_command(Fill{ destination, color }, material, {}, fixed);
 	}
 
 	void HTMLPaintRecorder::draw_gradient(const background_layer& p_layer, const background_layer::gradient_base& p_gradient,
 		int p_type, const Vector2& p_start, const Vector2& p_parameters) {
-		const Rect2 tile = to_rect(p_layer.origin_box);
+		const BackgroundTiles tiles(p_layer);
 		const Rect2 bounds = get_background_clip(p_layer);
-		const bool repeat_x = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_x;
-		const bool repeat_y = p_layer.repeat == background_repeat_repeat || p_layer.repeat == background_repeat_repeat_y;
-		const Rect2 destination = get_tile_bounds(p_layer, bounds, repeat_x, repeat_y);
+		const Rect2 destination = tiles.bounds(bounds);
 		const auto& points = p_gradient.color_points;
-		if (!tile.has_area() || !destination.has_area() || !p_start.is_finite() || !p_parameters.is_finite() ||
+		if (!destination.has_area() || !p_start.is_finite() || !p_parameters.is_finite() ||
 			points.empty() || points.size() > 4096) {
 			return;
 		}
@@ -1230,9 +1268,8 @@ void fragment() {
 		material->set_shader_parameter("gradient_stops", texture);
 		material->set_shader_parameter("gradient_start", p_start);
 		material->set_shader_parameter("gradient_parameters", p_parameters);
-		material->set_shader_parameter("tile", Vector4(tile.position.x, tile.position.y, tile.size.x, tile.size.y));
-		material->set_shader_parameter("repeat_axes", Vector2i(repeat_x, repeat_y));
-		add_command(Fill{ destination, Color(1, 1, 1) }, material);
+		set_tile_uniforms(material, tiles.tile, tiles.tile.size + tiles.spacing, tiles.repeat_axes);
+		add_command(Fill{ destination, Color(1, 1, 1) }, material, {}, tiles.fixed);
 	}
 
 	void HTMLPaintRecorder::draw_linear_gradient(const background_layer& p_layer, const background_layer::linear_gradient& p_gradient) {
@@ -1309,11 +1346,9 @@ void fragment() {
 				(!clips.empty() && !clips.back().bounds.intersects(
 					active_geometry ? active_geometry->matrix.xform(destination) : destination))) continue;
 			const auto material = create_material();
-			material->set_shader_parameter("border_image", true);
-			material->set_shader_parameter("border_image_flip_x", p_flip_x);
-			material->set_shader_parameter("border_image_origin", patch.origin);
-			material->set_shader_parameter("border_image_tile", patch.tile);
-			material->set_shader_parameter("border_image_period", patch.period);
+			material->set_shader_parameter("tiled_image", true);
+			material->set_shader_parameter("tile_flip_image_x", p_flip_x);
+			set_tile_uniforms(material, Rect2(patch.origin, patch.tile), patch.period);
 			add_image(Image{ p_texture, destination, patch.source }, nullptr, {}, material);
 		}
 	}
