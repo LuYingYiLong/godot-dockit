@@ -14,6 +14,7 @@ extends EditorPlugin
 const SOURCE_MARKERS: Array[String] = [
 	"Shared document",
 	"LaTeX reference",
+	"LaTeX 3D reference",
 	"Mermaid MMD reference",
 	"Mermaid long extension reference",
 ]
@@ -47,6 +48,7 @@ func _probe() -> void:
 	var first: HTMLLabel = scene.get_node("First") as HTMLLabel
 	var second: HTMLLabel = scene.get_node("Second") as HTMLLabel
 	var latex: LatexLabel = scene.get_node("Formula") as LatexLabel
+	var latex_3d: LatexLabel3D = scene.get_node("Formula3D") as LatexLabel3D
 	var mermaid: MermaidLabel = scene.get_node("Diagram") as MermaidLabel
 	var packed: PackedScene = PackedScene.new()
 	if packed.pack(scene) != OK or ResourceSaver.save(packed, "res://roundtrip.tscn") != OK:
@@ -62,6 +64,7 @@ func _probe() -> void:
 	var expected: Dictionary[String, Resource] = {
 		"res://source.html": first.document,
 		"res://source.tex": latex.document,
+		"res://source_3d.tex": latex_3d.document,
 		"res://source.mmd": mermaid.document,
 		"res://other.mermaid": scene.get(&"other_document") as Resource,
 	}
@@ -83,7 +86,7 @@ func _probe() -> void:
 				path, document.resource_path, cache_matches, external,
 			])
 			passed = false
-	if not passed or not await _check_document_refresh(latex, mermaid):
+	if not passed or not await _check_document_refresh(latex, latex_3d, mermaid):
 		get_tree().quit(1)
 		return
 	var merman_status: String = "passed" if MermaidRender.is_available() else "unavailable"
@@ -91,40 +94,52 @@ func _probe() -> void:
 	get_tree().quit()
 
 
-func _check_document_refresh(latex: LatexLabel, mermaid: MermaidLabel) -> bool:
+func _check_document_refresh(latex: LatexLabel, latex_3d: LatexLabel3D, mermaid: MermaidLabel) -> bool:
 	var latex_document: LatexDocument = latex.document
+	var latex_3d_document: LatexDocument = latex_3d.document
 	var mermaid_document: MermaidDocument = mermaid.document
 	var has_merman: bool = MermaidRender.is_available()
 	var initial_width: float = latex.get_minimum_size().x
 	if initial_width <= 0.0 or not latex.get_render_error().is_empty():
 		push_error("The imported LaTeX expression did not render")
 		return false
+	var quad: QuadMesh = latex_3d.mesh as QuadMesh
+	if quad == null or quad.size.x <= 0.0 or not latex_3d.get_render_error().is_empty():
+		push_error("The imported LaTeX expression did not generate a 3D quad")
+		return false
+	var initial_width_3d: float = quad.size.x
 	if has_merman and not await _wait_for_diagram(mermaid):
 		return false
 
 	latex_document.set(&"text", "")
+	latex_3d_document.set(&"text", "")
 	mermaid_document.set(&"text", "")
 	await get_tree().process_frame
 	var empty_width: float = latex.get_minimum_size().x
 	if empty_width >= initial_width or mermaid.get_texture() != null or not mermaid.get_render_error().is_empty():
 		push_error("The labels did not refresh when the document resources changed")
 		return false
+	if latex_3d.mesh != null or not latex_3d.get_render_error().is_empty():
+		push_error("LatexLabel3D kept its mesh after the document was emptied")
+		return false
 
 	var edited_formula: String = "x + y + z + 1234567890\\n"
 	var edited_diagram: String = "flowchart LR\\n  A[Reimported] --> B[Diagram]\\n"
-	var latex_path: String = latex_document.resource_path
-	var mermaid_path: String = mermaid_document.resource_path
-	var formula_file: FileAccess = FileAccess.open(latex_path, FileAccess.WRITE)
-	var diagram_file: FileAccess = FileAccess.open(mermaid_path, FileAccess.WRITE)
-	if formula_file == null or diagram_file == null \\
-			or not formula_file.store_string(edited_formula) or not diagram_file.store_string(edited_diagram):
-		push_error("Could not update the source files for reimport")
-		return false
-	formula_file.close()
-	diagram_file.close()
-	EditorInterface.get_resource_filesystem().reimport_files(PackedStringArray([latex_path, mermaid_path]))
+	var edited_sources: Dictionary[String, String] = {
+		latex_document.resource_path: edited_formula,
+		latex_3d_document.resource_path: edited_formula,
+		mermaid_document.resource_path: edited_diagram,
+	}
+	for path: String in edited_sources:
+		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+		if file == null or not file.store_string(edited_sources[path]):
+			push_error("Could not update %s for reimport" % path)
+			return false
+		file.close()
+	EditorInterface.get_resource_filesystem().reimport_files(PackedStringArray(edited_sources.keys()))
 	await get_tree().process_frame
 	if latex.document != latex_document or latex_document.get_text() != edited_formula \\
+			or latex_3d.document != latex_3d_document or latex_3d_document.get_text() != edited_formula \\
 			or mermaid.document != mermaid_document or mermaid_document.get_text() != edited_diagram:
 		push_error("Reimport did not update the same document resources")
 		return false
@@ -132,16 +147,27 @@ func _check_document_refresh(latex: LatexLabel, mermaid: MermaidLabel) -> bool:
 	if reimported_width <= initial_width or not latex.get_render_error().is_empty():
 		push_error("The reimported LaTeX expression did not render")
 		return false
+	quad = latex_3d.mesh as QuadMesh
+	if quad == null or quad.size.x <= initial_width_3d or not latex_3d.get_render_error().is_empty():
+		push_error("LatexLabel3D did not expand its quad after reimport")
+		return false
+	var reimported_width_3d: float = quad.size.x
 	if has_merman and not await _wait_for_diagram(mermaid):
 		return false
 
 	var previous_diagram: Texture2D = mermaid.get_texture()
 	latex.document = null
+	latex_3d.document = null
 	mermaid.document = null
+	await get_tree().process_frame
 	var fallback_width: float = latex.get_minimum_size().x
 	if latex.text != "z" or mermaid.text != "flowchart LR; A[Fallback]" \\
 			or fallback_width <= empty_width or fallback_width >= reimported_width:
 		push_error("Clearing the document did not restore the local text")
+		return false
+	quad = latex_3d.mesh as QuadMesh
+	if latex_3d.text != "w" or quad == null or quad.size.x <= 0.0 or quad.size.x >= reimported_width_3d:
+		push_error("Clearing the LatexLabel3D document did not restore the local formula")
 		return false
 	if has_merman and (not await _wait_for_diagram(mermaid) or mermaid.get_texture() == previous_diagram):
 		push_error("Clearing the Mermaid document did not render the local diagram")
@@ -189,6 +215,7 @@ def main():
         write("addons/probe/probe.gd", PROBE)
         write("source.html", "<p>Shared document</p>\n")
         write("source.tex", "% LaTeX reference\nx + y\n")
+        write("source_3d.tex", "% LaTeX 3D reference\na + b\n")
         write("source.mmd", "%% Mermaid MMD reference\ngraph TD\n  A --> B\n")
         write("other.mermaid", "%% Mermaid long extension reference\ngraph TD\n  C --> D\n")
         write("document_references.gd", '''extends Control
@@ -198,7 +225,7 @@ def main():
         env = {**os.environ, "APPDATA": str(profile), "DOCRENDER_REFERENCE_PROBE": "0"}
         command = [str(godot), "--headless", "--path", str(project)]
         imported = subprocess.run([*command, "--import"], env=env, cwd=project, timeout=60, capture_output=True)
-        sources = ("source.html", "source.tex", "source.mmd", "other.mermaid")
+        sources = ("source.html", "source.tex", "source_3d.tex", "source.mmd", "other.mermaid")
         if imported.returncode or not all((project / f"{source}.import").is_file() for source in sources):
             print(imported.stdout.decode(errors="replace"), imported.stderr.decode(errors="replace"))
             return imported.returncode or 1
@@ -210,6 +237,7 @@ def main():
 [ext_resource type="LatexDocument" path="res://source.tex" id="3_latex"]
 [ext_resource type="MermaidDocument" path="res://source.mmd" id="4_mermaid"]
 [ext_resource type="MermaidDocument" path="res://other.mermaid" id="5_other"]
+[ext_resource type="LatexDocument" path="res://source_3d.tex" id="6_latex_3d"]
 
 [sub_resource type="HTMLDocument" id="HTMLDocument_embedded"]
 text = "Embedded document"
@@ -231,13 +259,17 @@ document = SubResource("HTMLDocument_embedded")
 text = "z"
 document = ExtResource("3_latex")
 
+[node name="Formula3D" type="LatexLabel3D" parent="."]
+text = "w"
+document = ExtResource("6_latex_3d")
+
 [node name="Diagram" type="MermaidLabel" parent="."]
 text = "flowchart LR; A[Fallback]"
 document = ExtResource("4_mermaid")
 ''')
         write(".godot/editor/editor_layout.cfg", '[EditorNode]\nopen_scenes=PackedStringArray("res://main.tscn")\n'
               'current_scene="res://main.tscn"\n[ScriptEditor]\n'
-              'open_scripts=["res://source.html", "res://source.tex", "res://source.mmd", "res://other.mermaid"]\n'
+              'open_scripts=["res://source.html", "res://source.tex", "res://source_3d.tex", "res://source.mmd", "res://other.mermaid"]\n'
               'selected_script="res://source.html"\n')
         result = subprocess.run([*command, "--editor", "--quit-after", "600"],
                                 env={**env, "DOCRENDER_REFERENCE_PROBE": "1"}, cwd=project,

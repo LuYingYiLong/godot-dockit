@@ -1236,10 +1236,11 @@ msgid ""
 msgstr "未设置 [member document] 时显示的 LaTeX 表达式。直接填写公式源码，例如 [code]\\sum_{n=1}^{10} n^2[/code]。"
 
 #. doc_classes/LatexLabel3D.xml
-msgid "The LaTeX expression to display. Use the formula source directly."
-msgstr "要显示的 LaTeX 表达式。直接填写公式源码。"
+msgid "The LaTeX expression to display when [member document] is unset. Use the formula source directly."
+msgstr "未设置 [member document] 时显示的 LaTeX 表达式。直接填写公式源码。"
 
 #. doc_classes/LatexLabel.xml
+#. doc_classes/LatexLabel3D.xml
 msgid ""
 "The LaTeX resource to display, such as an imported [code].tex[/code] file containing a math "
 "expression. The formula updates when the resource changes or is reimported. Set this to "

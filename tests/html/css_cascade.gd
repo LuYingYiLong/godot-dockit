@@ -7484,6 +7484,37 @@ First &amp; line
 	_check("width: 112px" in field.get_attribute("style") and
 		absf(field.get_bounding_rect().size.y - box.size.y - expected_height_gain) < 1.1,
 		"The rotated resize handle applies the pointer delta along the allowed local axis: %s" % field.get_attribute("style"))
+
+	field.set_attribute("style", "width: 112px; height: 64px; resize: both")
+	await process_frame
+	await process_frame
+	box = field.get_bounding_rect()
+	handle = box.end - Vector2(5.0, 5.0)
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = handle
+	click.pressed = true
+	viewport.push_input(click)
+	var previous: Vector2 = handle
+	var offsets: Array[Vector2] = [
+		Vector2(24.0, 12.0),
+		Vector2(36.0, 28.0),
+		Vector2(-16.0, -20.0),
+	]
+	for delta: Vector2 in offsets:
+		var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+		motion.position = handle + delta
+		motion.relative = motion.position - previous
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		viewport.push_input(motion)
+		previous = motion.position
+		await process_frame
+		await process_frame
+		_check(field.get_bounding_rect().size.is_equal_approx(box.size + delta),
+			"A held textarea resize handle follows each motion after reflow: %s" % delta)
+	click.position = previous
+	click.pressed = false
+	viewport.push_input(click)
 	viewport.queue_free()
 
 

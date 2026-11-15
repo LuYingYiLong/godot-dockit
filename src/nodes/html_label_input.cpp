@@ -315,7 +315,11 @@ void HTMLLabelCanvas::flush_textarea_resize() {
 		const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
 		const auto axes = textarea ? textarea->resize_axes() : Vector2i();
 		const auto allowed_axes = Vector2i(drag.axes.x && axes.x, drag.axes.y && axes.y);
-		if (allowed_axes != Vector2i()) label->layout->resize_textarea(drag.element, *size, allowed_axes);
+		if (allowed_axes != Vector2i()) {
+			applying_textarea_resize = true;
+			label->layout->resize_textarea(drag.element, *size, allowed_axes);
+			applying_textarea_resize = false;
+		}
 	}
 }
 

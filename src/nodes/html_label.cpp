@@ -1078,7 +1078,10 @@ void HTMLLabel::on_layout_edited() {
 	close_select_menu();
 	layout_updated = true;
 	if (canvas) {
-		canvas->cancel_press();
+		// Writing the size during a resize schedules reflow while the handle is held.
+		if (!canvas->applying_textarea_resize) {
+			canvas->cancel_press();
+		}
 		clear_selection();
 		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
 			canvas->set_focused_element({});
