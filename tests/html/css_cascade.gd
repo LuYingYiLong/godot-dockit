@@ -334,6 +334,7 @@ func _run() -> void:
 	await _check_dom_child_edits()
 	await _check_dom_clone()
 	await _check_form_clone()
+	await _check_dom_import()
 	_check_layers()
 	_check_box_and_transform_functions()
 	_check_math_functions()
@@ -1047,6 +1048,72 @@ Value</textarea><div id="fields"><input id="text" value="Default">
 	cloned_area.default_value = "Changed default"
 	_check(cloned_area.value == "Current area" and dirty.default_value == "Default area",
 		"Changing the cloned textarea default preserves its dirty value and leaves the source unchanged")
+
+
+func _check_dom_import() -> void:
+	var source: HTMLLayout = HTMLLayout.new()
+	var target: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><textarea id="clean">Initial text</textarea>
+		<div id="card" data-origin="source"><input id="text" value="Default">
+		<!--mark--><input id="check" type="checkbox" checked><textarea id="dirty">Default area</textarea>
+		<img id="image" src="orientation-1.png"></div>"""
+	var viewport_size: Vector2i = Vector2i(320, 240)
+	_check(source.parse(html, "res://styles", "#card { width: 110px; }") == OK and source.layout(viewport_size) == OK,
+		"Lay out the source document for import")
+	var card: HTMLElement = source.get_element_by_id("card")
+	var clean: HTMLTextAreaElement = source.get_element_by_id("clean") as HTMLTextAreaElement
+	var text: HTMLInputElement = source.get_element_by_id("text") as HTMLInputElement
+	var checkbox: HTMLInputElement = source.get_element_by_id("check") as HTMLInputElement
+	var dirty: HTMLTextAreaElement = source.get_element_by_id("dirty") as HTMLTextAreaElement
+	if card == null or clean == null or text == null or checkbox == null or dirty == null:
+		_check(false, "Query the source elements for import")
+		return
+	_check(target.import_node(card) == null, "Import needs a successfully parsed target")
+	_check(target.parse("", "res://", "#card { width: 70px; }") == OK and target.layout(viewport_size) == OK and
+		target.import_node(null) == null and target.query_selector("html") == null,
+		"An invalid import leaves the parsed empty target untouched")
+
+	text.value = "Live text"
+	checkbox.checked = false
+	dirty.value = "Live area"
+	dirty.set_selection_range(1, 4)
+	var imported: HTMLElement = target.import_node(card, true)
+	var shallow: HTMLTextAreaElement = target.import_node(clean) as HTMLTextAreaElement
+	var body: HTMLElement = target.query_selector("body")
+	if imported == null or shallow == null or body == null:
+		_check(false, "Import initializes an empty target and preserves element types")
+		return
+	_check(imported != card and not imported.is_connected() and target.get_element_by_id("card") == null and
+		imported.get_inner_html() == card.get_inner_html() and card.is_connected(),
+		"Cross-layout import makes a detached copy with source attributes and child order")
+	_check(body.append_child(card) == ERR_INVALID_PARAMETER and shallow.default_value.is_empty() and
+		shallow.value == "Initial text", "Cross-layout insertion requires import and keeps the shallow textarea value")
+	var imported_text: HTMLInputElement = imported.query_selector("#text") as HTMLInputElement
+	var imported_checkbox: HTMLInputElement = imported.query_selector("#check") as HTMLInputElement
+	var imported_area: HTMLTextAreaElement = imported.query_selector("#dirty") as HTMLTextAreaElement
+	var image: HTMLImageElement = imported.query_selector("#image") as HTMLImageElement
+	if imported_text == null or imported_checkbox == null or imported_area == null or image == null:
+		_check(false, "Query the imported subtree")
+		return
+	_check(imported.set_attribute("data-origin", "target") == OK and card.get_attribute("data-origin") == "source",
+		"Editing imported attributes leaves the original unchanged")
+	source.clear()
+	_check(not card.is_valid() and imported.is_valid() and imported.query_selector("#text") == imported_text and
+		target.import_node(card) == null, "Clearing the source retires its handles while imported handles remain valid")
+	_check(imported_text.set_attribute("value", "New default") == OK and imported_text.value == "Live text" and
+		imported_checkbox.has_attribute("checked") and imported_checkbox.remove_attribute("checked") == OK and
+		imported_checkbox.set_attribute("checked", "") == OK and not imported_checkbox.checked and
+		imported_area.get_selection_end() == 0, "Imported form controls preserve live state and reset selection")
+	imported_area.default_value = "New area default"
+	_check(imported_area.value == "Live area" and body.append_child(imported) == OK and body.append_child(shallow) == OK and
+		target.get_element_by_id("card") == imported, "A dirty imported textarea keeps its value and the copies can be inserted")
+	await process_frame
+	await process_frame
+	_check(shallow.value == "Initial text" and shallow.get_bounding_rect().has_area() and
+		is_equal_approx(imported.get_bounding_rect().size.x, 70.0) and image.current_src == "res://orientation-1.png" and
+		image.get_intrinsic_size().x > 0.0, "Target reflow keeps the clean textarea value and uses target styles and resources")
+	shallow.default_value = "Target default"
+	_check(shallow.value == "Target default", "The imported clean textarea still follows changes to its default text")
 
 
 func _check_layers() -> void:

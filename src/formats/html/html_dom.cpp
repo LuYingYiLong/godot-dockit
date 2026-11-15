@@ -257,15 +257,15 @@ Ref<HTMLElement> HTMLDOM::make_detached_element(const litehtml::element::ptr& p_
 	return handle;
 }
 
-Ref<HTMLElement> HTMLDOM::clone_node(const litehtml::element& p_source, bool p_deep) {
-	return make_detached_element(clone_subtree(p_source, p_deep));
+Ref<HTMLElement> HTMLDOM::copy_node(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep) {
+	return make_detached_element(clone_subtree(p_source_dom, p_source, p_deep));
 }
 
-litehtml::element::ptr HTMLDOM::clone_subtree(const litehtml::element& p_source, bool p_deep) {
+litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep) {
 	if (!is_element(p_source)) {
 		return clone_character_data(p_source, document);
 	}
-	const auto* source_attributes = get_source_attributes(p_source);
+	const auto* source_attributes = p_source_dom.get_source_attributes(p_source);
 	const litehtml::string_map attributes = source_attributes ? *source_attributes : litehtml::string_map();
 	const auto copy = document->create_element(p_source.get_tagName(), attributes);
 	if (!copy) {
@@ -276,7 +276,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const litehtml::element& p_source,
 			if (litehtml::is_generated_tag(child->tag())) {
 				continue;
 			}
-			const auto child_copy = clone_subtree(*child, true);
+			const auto child_copy = clone_subtree(p_source_dom, *child, true);
 			if (!child_copy || !copy->appendChild(child_copy)) {
 				if (child_copy) {
 					forget_subtree(*child_copy);

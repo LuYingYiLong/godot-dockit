@@ -106,6 +106,16 @@
 				Returns the nearest caret offset in [method get_plain_text] for a point in document coordinates. Returns [code]0[/code] when there is no text.
 			</description>
 		</method>
+		<method name="import_node">
+			<return type="HTMLElement" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="deep" type="bool" default="false" />
+			<description>
+				Copies [param element] into this layout as a detached element with a new handle. The source can belong to any layout. See [method HTMLElement.clone_node] for what [param deep] copies and how form controls retain their state. The copy remains valid if the source layout is cleared.
+				Insert the copy under a parent in this layout to lay it out. Relative resource paths resolve from this layout's base directory. On an empty document, the first import also makes [code]html[/code], [code]head[/code], and [code]body[/code] available to queries.
+				Returns [code]null[/code] if the source handle is invalid or this layout has no successful [method parse].
+			</description>
+		</method>
 		<method name="layout">
 			<return type="int" enum="Error" />
 			<param index="0" name="viewport_size" type="Vector2i" />

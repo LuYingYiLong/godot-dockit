@@ -137,6 +137,7 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_link_at", "position"), &HTMLLayout::get_link_at);
 	ClassDB::bind_method(D_METHOD("get_anchor_rect", "id"), &HTMLLayout::get_anchor_rect);
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLayout::create_element);
+	ClassDB::bind_method(D_METHOD("import_node", "element", "deep"), &HTMLLayout::import_node, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLayout::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLayout::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLayout::get_element_by_id);
@@ -206,6 +207,20 @@ bool HTMLLayout::initialize_document(const CharString& p_html) {
 		ObjectID(get_instance_id()), parse_version);
 	state->has_hover_styles = state->dom->get_document() && DocumentAdapter::has_hover_styles(*state->dom->get_document());
 	return bool(state->dom->get_document());
+}
+
+bool HTMLLayout::ensure_document_for_editing() {
+	if (!state->container || state->parse_error != OK) {
+		return false;
+	}
+	if (state->dom->get_document()) {
+		return true;
+	}
+	if (!initialize_document(String("<!doctype html>").utf8())) {
+		return false;
+	}
+	state->implicit_empty_document = true;
+	return true;
 }
 
 Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
@@ -390,25 +405,35 @@ const HashMap<String, Rect2>& HTMLLayout::get_anchor_rects() const {
 }
 
 Ref<HTMLElement> HTMLLayout::create_element(const String& p_tag_name) {
-	if (!state->container || state->parse_error != OK) {
-		return {};
-	}
 	const CharString tag = HTMLDOM::normalize_tag_name(p_tag_name);
 	if (tag.length() == 0) {
 		return {};
 	}
 	try {
-		if (!state->dom->get_document()) {
-			if (!initialize_document(String("<!doctype html>").utf8())) {
-				return {};
-			}
-			state->implicit_empty_document = true;
+		if (ensure_document_for_editing()) {
+			return state->dom->create_element(tag);
 		}
-		return state->dom->create_element(tag);
 	}
 	catch (const std::exception&) {
 		return {};
 	}
+	return {};
+}
+
+Ref<HTMLElement> HTMLLayout::import_node(const Ref<HTMLElement>& p_element, bool p_deep) {
+	const auto node = p_element.is_valid() ? p_element->lock_element() : nullptr;
+	if (!node) {
+		return {};
+	}
+	try {
+		if (ensure_document_for_editing()) {
+			return state->dom->copy_node(p_element->get_dom(), *node, p_deep);
+		}
+	}
+	catch (const std::exception&) {
+		return {};
+	}
+	return {};
 }
 
 void HTMLLayout::set_edit_callback(const Callable& p_callback) {

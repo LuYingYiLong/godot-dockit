@@ -385,7 +385,11 @@ Error HTMLElement::remove_child(const Ref<HTMLElement>& p_child) {
 
 Ref<HTMLElement> HTMLElement::clone_node(bool p_deep) const {
 	const auto node = lock_element();
-	return node ? get_dom().clone_node(*node, p_deep) : Ref<HTMLElement>();
+	if (!node) {
+		return {};
+	}
+	auto& dom = get_dom();
+	return dom.copy_node(dom, *node, p_deep);
 }
 
 Error HTMLElement::detach() {
