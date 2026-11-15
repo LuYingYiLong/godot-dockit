@@ -1,5 +1,8 @@
 #include "html_layout.h"
 
+#include "elements/html_input_node.h"
+#include "elements/html_textarea_node.h"
+
 #include "css/css_litehtml_dom.h"
 #include "html_canvas_renderer.h"
 #include "html_markup.h"
@@ -23,6 +26,9 @@
 #include <unordered_set>
 
 using namespace godot;
+using docrender::HTMLInputNode;
+using docrender::HTMLTextAreaNode;
+using docrender::HTMLTextControlNode;
 using docrender::HTMLCanvasRenderer;
 using docrender::HTMLGeometryIndex;
 using docrender::HTMLHighlight;
@@ -192,6 +198,7 @@ struct HTMLLayout::State {
 	Update pending_update = Update::LAYOUT;
 	bool implicit_empty_document = false;
 	bool reflow_queued = false;
+	bool input_paint_pending = false;
 	bool has_hover_styles = false;
 	bool css_diagnostics_enabled = false;
 
@@ -395,6 +402,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 }
 
 void HTMLLayout::record_paint() {
+	state->input_paint_pending = false;
 	state->anchors.clear();
 	collect_anchors(*state->document->root(), state->geometry, state->anchors);
 	state->container->record(*state->document, state->content_size, state->geometry);
@@ -433,6 +441,7 @@ void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_pos
 	if (!state->has_layout() || !p_canvas || !p_canvas->is_inside_tree()) {
 		return;
 	}
+	if (state->input_paint_pending) record_paint();
 	const auto& runs = state->container->get_paint_recorder().get_paint_runs();
 	const auto& diagnostics = state->container->get_paint_recorder().get_diagnostic_runs();
 	if (runs.empty() && diagnostics.empty()) {
@@ -506,7 +515,17 @@ Ref<HTMLElement> HTMLLayout::make_element(const litehtml::element::ptr& p_elemen
 		}
 	}
 	Ref<HTMLElement> handle;
-	handle.instantiate();
+	if (p_element->tag() == litehtml::_textarea_) {
+		Ref<HTMLTextAreaElement> textarea;
+		textarea.instantiate();
+		handle = textarea;
+	} else if (p_element->tag() == litehtml::_input_) {
+		Ref<HTMLInputElement> input;
+		input.instantiate();
+		handle = input;
+	} else {
+		handle.instantiate();
+	}
 	handle->layout_id = ObjectID(get_instance_id());
 	handle->parse_version = parse_version;
 	handle->element = p_element;
@@ -550,7 +569,12 @@ Error HTMLLayout::edit_attribute(const litehtml::element::ptr& p_element, const 
 	if (!DocumentAdapter::set_attribute(*p_element, p_name, p_value)) {
 		return ERR_UNAVAILABLE;
 	}
-	state->container->set_source_attribute(p_element, p_name, p_value);
+		state->container->set_source_attribute(p_element, p_name, p_value);
+	if (auto* input = dynamic_cast<HTMLInputNode*>(p_element.get())) {
+		input->attribute_changed(p_name);
+	} else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
+		textarea->update_pseudos();
+	}
 	if (!get_detached_tree(*p_element)) {
 		invalidate_styles();
 	}
@@ -614,7 +638,7 @@ Error HTMLLayout::replace_children(const litehtml::element::ptr& p_element, cons
 	}
 	litehtml::elements_list children;
 	try {
-		const bool split = !has_raw_text(*p_element);
+		const bool split = p_element->tag() != litehtml::_textarea_ && !has_raw_text(*p_element);
 		children = p_parse_html ? DocumentAdapter::parse_fragment(*state->document, *p_element, content) :
 			DocumentAdapter::create_text(state->document, content.get_data(), split);
 	}
@@ -625,6 +649,7 @@ Error HTMLLayout::replace_children(const litehtml::element::ptr& p_element, cons
 		forget_subtree(*child);
 	}
 	DocumentAdapter::replace_children(*p_element, std::move(children));
+	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) textarea->sync_default_value();
 	if (!get_detached_tree(*p_element)) {
 		invalidate_styles();
 	}
@@ -891,24 +916,36 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position) c
 	}
 }
 
-bool HTMLLayout::scroll_overflow_from_wheel(const Vector2& p_position, const InputEventMouseButton& p_event) {
-	if (!p_event.is_pressed()) return false;
+Vector2 HTMLLayout::wheel_delta(const InputEventMouseButton& p_event) {
+	if (!p_event.is_pressed()) return {};
 	Vector2 delta;
 	switch (p_event.get_button_index()) {
 		case MOUSE_BUTTON_WHEEL_UP: delta.y = -1; break;
 		case MOUSE_BUTTON_WHEEL_DOWN: delta.y = 1; break;
 		case MOUSE_BUTTON_WHEEL_LEFT: delta.x = -1; break;
 		case MOUSE_BUTTON_WHEEL_RIGHT: delta.x = 1; break;
-		default: return false;
+		default: return {};
 	}
 	if (p_event.is_shift_pressed() && delta.y != 0) delta = Vector2(delta.y, 0);
 	const float factor = p_event.get_factor();
-	if (!std::isfinite(factor)) return false;
+	if (!std::isfinite(factor)) return {};
 	delta *= 36.0f * (factor > 0 ? factor : 1.0f);
-	if (!delta.is_finite()) return false;
+	if (!delta.is_finite()) return {};
+
+	return delta;
+}
+
+bool HTMLLayout::scroll_overflow_from_wheel(const Vector2& p_position, const InputEventMouseButton& p_event) {
+	return scroll_overflow(p_position, wheel_delta(p_event)) != Vector2();
+}
+
+Vector2 HTMLLayout::scroll_overflow(const Vector2& p_position, const Vector2& p_delta) {
+	if (p_delta == Vector2() || !state->has_layout()) return {};
+	flush_input_paint();
 
 	std::shared_ptr<litehtml::render_item> target;
-	for (auto element = hit_test_element(p_position); element && !target; element = element->parent()) {
+	const auto hit = hit_test_element(p_position);
+	for (auto element = hit; element && !target; element = element->parent()) {
 		const auto* renderers = state->geometry.find_element(element.get());
 		if (!renderers) continue;
 		for (const auto* renderer : *renderers) {
@@ -919,16 +956,23 @@ bool HTMLLayout::scroll_overflow_from_wheel(const Vector2& p_position, const Inp
 		}
 	}
 
-	Vector2 remaining = delta;
+	Vector2 remaining = p_delta;
+	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(hit.get())) {
+		const auto overflow = textarea->css().get_overflow();
+		if (overflow == litehtml::overflow_auto || overflow == litehtml::overflow_scroll) {
+			remaining -= textarea->editor.scroll_by(remaining);
+		}
+	}
+	const Vector2 after_field = remaining;
 	for (auto item = target; item && remaining != Vector2(); item = item->parent()) {
 		if (item->is_h_scrollable(remaining.x)) remaining.x -= item->h_scroll(remaining.x);
 		if (item->is_v_scrollable(remaining.y)) remaining.y -= item->v_scroll(remaining.y);
 	}
-	if (remaining == delta) return false;
-	state->geometry.rebuild(state->document->root_render());
+	if (remaining == p_delta) return {};
+	if (remaining != after_field) state->geometry.rebuild(state->document->root_render());
 	record_paint();
 	if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
-	return true;
+	return p_delta - remaining;
 }
 
 std::optional<Rect2> HTMLLayout::get_element_scroll_bounds(const Ref<HTMLElement>& p_element) const {
@@ -990,42 +1034,139 @@ bool HTMLLayout::is_enabled_button(const Ref<HTMLElement>& p_element) const {
 		get_element_scroll_bounds(p_element).has_value();
 }
 
-std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_buttons(bool& r_has_enabled_buttons) const {
-	struct TabButton {
+namespace {
+	std::optional<int64_t> explicit_tab_index(const litehtml::element& p_element) {
+		const String value = String::utf8(p_element.get_attr("tabindex", "")).strip_edges();
+		return value.is_valid_int() ? std::optional<int64_t>(value.to_int()) : std::nullopt;
+	}
+
+	bool can_focus_node(const litehtml::element& p_node) {
+		const auto tag = p_node.tag();
+		if (p_node.get_attr("hidden")) return false;
+		if (tag == litehtml::_textarea_) return !p_node.get_attr("disabled");
+		if (tag == litehtml::_input_) {
+			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
+			return input && input->type() != HTMLInputNode::Type::OTHER && !p_node.get_attr("disabled");
+		}
+		if (tag == litehtml::_button_ && p_node.get_attr("disabled")) return false;
+		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
+			(tag == litehtml::_a_ && p_node.get_attr("href"));
+	}
+}
+
+bool HTMLLayout::is_focusable(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null() || p_element->get_owner() != this) return false;
+	const auto element = p_element->element.lock();
+	return element && can_focus_node(*element) && get_element_scroll_bounds(p_element).has_value();
+}
+
+Ref<HTMLElement> HTMLLayout::get_focus_ancestor(const Ref<HTMLElement>& p_element) const {
+	if (!p_element.is_valid() || p_element->get_owner() != this) return {};
+	for (auto node = p_element->element.lock(); node; node = node->parent()) {
+		if (!can_focus_node(*node)) continue;
+		const auto handle = make_element(node);
+		if (get_element_scroll_bounds(handle)) return handle;
+	}
+	return {};
+}
+
+std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable_elements) const {
+	struct TabElement {
 		Ref<HTMLElement> element;
 		int64_t index;
 	};
-	std::vector<TabButton> buttons;
-	r_has_enabled_buttons = false;
+	std::vector<TabElement> elements;
+	r_has_focusable_elements = false;
 	if (state->has_layout() && state->document) {
 		visit_elements(state->document->root(), [&](const litehtml::element::ptr& p_element) {
-			if (DocumentAdapter::is_command_button(*p_element)) {
-				const auto handle = make_element(p_element);
-				if (is_enabled_button(handle)) {
-					r_has_enabled_buttons = true;
-					const char* value = p_element->get_attr("tabindex");
-					const String index_text = value ? String::utf8(value).strip_edges() : String();
-					const int64_t index = index_text.is_valid_int() ? index_text.to_int() : 0;
-					if (index >= 0) {
-						buttons.push_back({ handle, index });
-					}
-				}
+			if (!can_focus_node(*p_element)) return false;
+			const auto handle = make_element(p_element);
+			if (get_element_scroll_bounds(handle)) {
+				r_has_focusable_elements = true;
+				const int64_t index = explicit_tab_index(*p_element).value_or(0);
+				if (index >= 0) elements.push_back({handle, index});
 			}
 			return false;
 		});
 	}
-	std::stable_sort(buttons.begin(), buttons.end(), [](const TabButton& p_left, const TabButton& p_right) {
-		if (p_left.index == 0 || p_right.index == 0) {
-			return p_left.index > p_right.index;
-		}
+	std::stable_sort(elements.begin(), elements.end(), [](const TabElement& p_left, const TabElement& p_right) {
+		if (p_left.index == 0 || p_right.index == 0) return p_left.index > p_right.index;
 		return p_left.index < p_right.index;
 	});
 	std::vector<Ref<HTMLElement>> result;
-	result.reserve(buttons.size());
-	for (auto& button : buttons) {
-		result.push_back(std::move(button.element));
-	}
+	result.reserve(elements.size());
+	for (auto& entry : elements) result.push_back(std::move(entry.element));
 	return result;
+}
+
+std::shared_ptr<HTMLTextControlNode> HTMLLayout::text_control(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null() || p_element->get_owner() != this) return {};
+	return std::dynamic_pointer_cast<HTMLTextControlNode>(p_element->element.lock());
+}
+
+std::optional<Transform2D> HTMLLayout::input_inverse(const HTMLElement& p_input) const {
+	if (!state->has_layout() || p_input.get_owner() != this) return std::nullopt;
+	const auto element = p_input.element.lock();
+	const auto* renderers = state->geometry.find_element(element.get());
+	if (!renderers || renderers->empty()) return std::nullopt;
+	return renderers->front()->inverse;
+}
+
+std::optional<Vector2> HTMLLayout::input_local_point(const HTMLElement& p_input, const Vector2& p_point) const {
+	const auto inverse = input_inverse(p_input);
+	return inverse ? std::optional<Vector2>(inverse->xform(p_point)) : std::nullopt;
+}
+
+std::optional<Vector2> HTMLLayout::input_caret_point(const HTMLElement& p_input) const {
+	const auto inverse = input_inverse(p_input);
+	const auto node = std::dynamic_pointer_cast<HTMLTextControlNode>(p_input.lock_element());
+	if (!inverse || !node) return std::nullopt;
+	const auto caret = node->editor.get_caret_rect();
+	if (!caret.has_area()) return std::nullopt;
+	auto point = Vector2(caret.position.x, caret.get_end().y);
+	if (node->editor.is_multiline()) {
+		const auto viewport = node->editor.get_viewport();
+		point = point.clamp(viewport.position, viewport.get_end());
+	}
+	return inverse->affine_inverse().xform(point);
+}
+
+void HTMLLayout::flush_input_paint() {
+	if (state->has_layout() && state->input_paint_pending) record_paint();
+}
+
+bool HTMLLayout::resize_textarea(const Ref<HTMLElement>& p_element, const Vector2& p_size, const Vector2i& p_axes) {
+	if (!p_size.is_finite() || p_axes == Vector2i()) return false;
+	const auto node = text_control(p_element);
+	if (!node || !node->editor.is_multiline()) return false;
+
+	litehtml::raw_declaration::vector declarations;
+	litehtml::raw_rule::vector rules;
+	litehtml::css_parser(litehtml::normalize(node->get_attr("style", ""), litehtml::f_componentize))
+		.consume_style_block_contents(declarations, rules);
+	litehtml::string style;
+	for (const auto& declaration : declarations) {
+		const auto name = litehtml::lowcase(declaration.name);
+		if ((p_axes.x && name == "width") || (p_axes.y && name == "height")) continue;
+		style += declaration.name + ": " + litehtml::get_repr(declaration.value);
+		if (declaration.important) style += " !important";
+		style += "; ";
+	}
+	if (p_axes.x) style += "width: " + std::to_string(std::max(0.0f, p_size.x)) + "px; ";
+	if (p_axes.y) style += "height: " + std::to_string(std::max(0.0f, p_size.y)) + "px;";
+	return edit_attribute(node, "style", style.c_str()) == OK;
+}
+
+void HTMLLayout::repaint_input() {
+	state->input_paint_pending = true;
+	if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
+}
+
+void HTMLLayout::update_input(HTMLTextControlNode& p_input) {
+	const bool style_changed = p_input.update_pseudos();
+	if (get_detached_tree(p_input)) return;
+	if (style_changed) invalidate_styles();
+	else repaint_input();
 }
 
 bool HTMLLayout::set_interaction_pseudo(const Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled) {
@@ -1033,6 +1174,9 @@ bool HTMLLayout::set_interaction_pseudo(const Ref<HTMLElement>& p_element, const
 		return false;
 	}
 	const auto element = p_element->element.lock();
+	if (auto* input = dynamic_cast<HTMLTextControlNode*>(element.get()); input && std::string_view(p_name) == "focus") {
+		input->set_focus_style(p_enabled);
+	}
 	return element && element->set_pseudo_class(litehtml::_id(p_name), p_enabled);
 }
 

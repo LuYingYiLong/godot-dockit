@@ -713,6 +713,9 @@ namespace litehtml {
 		return c == 0x000b || c == 0x000c || c == 0x0085 || c == 0x2028 || c == 0x2029;
 	}
 
+#define resize_strings "none;both;horizontal;vertical;inline;block"
+	enum resize_mode { resize_none, resize_both, resize_horizontal, resize_vertical, resize_inline, resize_block };
+
 #define overflow_strings		"visible;hidden;scroll;auto;no-display;no-content"
 
 	enum overflow

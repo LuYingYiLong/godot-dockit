@@ -204,6 +204,7 @@ namespace {
 			{ _float_, { property_family::keyword, {}, element_float_strings } },
 			{ _clear_, { property_family::keyword, {}, element_clear_strings } },
 			{ _overflow_, { property_family::keyword, {}, overflow_strings } },
+			{ _id("resize"), { property_family::keyword, {}, resize_strings } },
 			{ _appearance_, { property_family::keyword, {}, appearance_strings } },
 			{ _box_sizing_, { property_family::keyword, {}, box_sizing_strings } },
 			{ _text_align_, { property_family::text, { _id("text-align-all"), _id("text-align-last") } } },

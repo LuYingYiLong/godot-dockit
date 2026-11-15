@@ -38,6 +38,17 @@ namespace docrender {
 			const godot::Vector2i& p_content_size,
 			const HTMLGeometryIndex& p_geometry
 		);																			// 记录已排版文档的绘制命令并建立可选择文本的索引
+		HTMLTextLayout shape_input(litehtml::uint_ptr p_font, const godot::String& p_text) {
+			return p_font && !p_text.is_empty() ? fonts.shape_text(p_font, p_text) : HTMLTextLayout{};
+		}
+		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
+			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
+			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent = 0, float p_descent = 0) {
+			paint.draw_input(p_box, p_text, p_origin, p_color, p_selection, p_preedit, p_caret, p_ascent, p_descent);
+		}
+		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color) {
+			paint.draw_input_chrome(p_clip, p_rect, p_color);
+		}
 		void clear_recording() { paint.clear(); }
 		const HTMLPaintRecorder& get_paint_recorder() const { return paint; }
 		void record_css_diagnostic(const RenderGeometry& p_geometry, const godot::Rect2& p_box) {

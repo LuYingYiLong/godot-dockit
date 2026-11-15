@@ -963,6 +963,152 @@ msgstr ""
 "表示区分大小写，[code]2[/code] 表示匹配整个单词，[code]4[/code] 表示向后搜索。返回匹配位置的行列坐标 [Vector2i]，没有匹配时返回 "
 "[code]Vector2i(-1, -1)[/code]。匹配结果会在控件中高亮显示。"
 
+#. doc_classes/HTMLInputElement.xml
+msgid "A handle to an HTML input element."
+msgstr "HTML 输入元素的句柄。"
+
+#. doc_classes/HTMLDocument.xml
+msgid ""
+"Load an imported [code].html[/code] or [code].htm[/code] file, or create an [HTMLDocument] and "
+"set its [member text]. Assign the resource to [member HTMLLabel.document] for automatic display. "
+"Use [method create_layout] when drawing directly.\n"
+"Scripts that previously called [code]HTMLDocument.new().parse(html)[/code] should call "
+"[code]HTMLLayout.new().parse(html)[/code]. Each [HTMLLayout] keeps its own parsed document, "
+"viewport, and drawing state.\n"
+"The HTML importer embeds linked and imported CSS and records their textures and local [code"
+"]@font-face[/code] fonts as resource dependencies for export. Reimport the HTML file after "
+"changing a linked stylesheet.\n"
+"Imported documents include local image dependencies from all media query branches. In a selected-"
+"scenes export preset, add [code]addons/docrender/docrender.gdextension[/code] to the include "
+"filter so the exported project can load DocRender classes."
+msgstr ""
+"加载导入的 [code].html[/code] 或 [code].htm[/code] 文件，或创建 [HTMLDocument] 并设置 [member text]。将资源赋给 [member HTMLLabel.document] 即可自动显示。直接绘制时使用 [method create_layout]。\n"
+"原先调用 [code]HTMLDocument.new().parse(html)[/code] 的脚本可改为调用 [code]HTMLLayout.new().parse(html)[/code]。每个 [HTMLLayout] 独立持有解析后的文档、视口和绘制状态。\n"
+"HTML 导入器嵌入链接和导入的 CSS，并将所用纹理及本地 [code]@font-face[/code] 字体记录为导出依赖。更改链接的样式表后请重新导入 HTML 文件。\n"
+"导入资源包含全部媒体查询分支的本地图像依赖。选定场景导出时，请在包含过滤器中加入 [code]addons/docrender/docrender.gdextension[/code]，使导出的项目可以加载 DocRender 类。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"Returned by element queries and by [method HTMLLayout.create_element] for [code]<input>[/code]. "
+"[HTMLLabel] supports single-line text and checkboxes. The value and checked state apply to the "
+"current layout. Changing them from script emits no user editing signals.\n"
+"Text inputs keep their current value separate from the [code]value[/code] attribute. A checkbox "
+"has a separate checked state and uses the [code]value[/code] attribute for its value, with "
+"[code]on[/code] as the default."
+msgstr ""
+"查询元素或通过 [method HTMLLayout.create_element] 创建 [code]<input>[/code] 时返回此句柄。[HTMLLabel] "
+"支持单行文本框和复选框。当前值和勾选状态属于当前布局。通过脚本修改时不发出用户编辑信号。\n"
+"文本框的当前值与 [code]value[/code] 属性分开保存。复选框单独保存勾选状态，值来自 [code]value[/code] 属性，默认为 [code]on[/code]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"Returns the end of the single-line text selection. Other input types and invalid handles return "
+"[code]-1[/code]."
+msgstr "返回单行文本选区的终点。其他输入类型和无效句柄返回 [code]-1[/code]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"Returns the start of the single-line text selection. Other input types and invalid handles return"
+" [code]-1[/code]."
+msgstr "返回单行文本选区的起点。其他输入类型和无效句柄返回 [code]-1[/code]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"Sets the single-line selection using Godot string character indices. Indices snap to grapheme "
+"boundaries. Equal indices set the caret."
+msgstr "使用 Godot 字符串字符索引设置单行文本选区。索引会对齐到字素边界。两个索引相等时设置光标位置。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"The current checked state. Before a script or user sets it, the state follows the "
+"[code]checked[/code] attribute."
+msgstr "当前勾选状态。脚本或用户设置之前，状态随 [code]checked[/code] 属性变化。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The current text or checkbox value."
+msgstr "文本框或复选框的当前值。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the focused element, or [code]null[/code] when the label has no DOM focus."
+msgstr "返回当前聚焦的元素。控件没有 DOM 焦点时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Focuses a visible, enabled element from this label and scrolls it into view. Returns "
+"[code]false[/code] if the element cannot receive focus."
+msgstr "聚焦此控件中可见且已启用的元素并将其滚入视口。元素无法聚焦时返回 [code]false[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted when the user edits a text input or toggles a checkbox. Read the new value from the "
+"element."
+msgstr "用户编辑文本框或切换复选框时发出。可从元素读取新值。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted when the left mouse button is pressed and released over the same visible link without "
+"dragging or scrolling, or when Enter activates a focused link. [param uri] is the link's original"
+" [code]href[/code]."
+msgstr "左键在同一可见链接上按下和松开且期间没有拖动或滚动，或者按 Enter 激活已聚焦的链接时发出。[param uri] 为链接原始的 [code]href[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted after a user edit is committed with Enter or by moving focus away. A checkbox toggle "
+"commits immediately after [signal input_changed]."
+msgstr "用户按 Enter 或移走焦点提交修改时发出。切换复选框会在 [signal input_changed] 之后立即提交。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Displays [member document] or inline [member text] using [HTMLLayout]. Give the control a size "
+"with anchors, offsets, or a parent [Container]. The document wraps to the available width, and "
+"scrollbars appear as needed to reach overflowing content.\n"
+"Source changes are applied on a deferred update and reset the scroll position. Resizing "
+"recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link "
+"scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.\n"
+"Drag to select rendered text. The focused control supports the standard select-all and copy "
+"shortcuts. The theme color [code]selection_color[/code] sets the selection highlight.\n"
+"CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates "
+"the hovered element even when the mouse is stationary. During text selection by dragging, hover "
+"styles stay fixed until the drag ends.\n"
+"CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], "
+"[code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], "
+"[code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. "
+"With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an "
+"I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the "
+"I-beam.\n"
+"[code]<button type=\"button\">[/code] has a default style that author CSS can override. Use "
+"[code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], "
+"and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even "
+"when text selection is disabled.\n"
+"Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code]"
+" or [code]data-*[/code] attributes to identify the command.\n"
+"Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and"
+" elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order "
+"before the default stops. A negative value allows direct focus. At either end, focus passes to "
+"another Godot control when one is available.\n"
+"Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles "
+"text editing, its own selection, and system IME composition. A focused checkbox can be toggled "
+"with Space."
+msgstr ""
+"使用 [HTMLLayout] 显示 [member document] 或内联的 [member text]。通过锚点、偏移或父级 [Container] "
+"为控件分配尺寸。文档按可用宽度换行，滚动条按需出现，以便查看溢出的内容。\n"
+"源内容变更会延迟应用并重置滚动位置。调整尺寸会重新布局，并将当前滚动偏移限制在可滚动范围内。点击 [code]#id[/code] 链接会滚动到对应的 HTML 元素。连接 [signal "
+"link_pressed] 可处理其他链接。\n"
+"拖动鼠标可选中渲染后的文字。控件获得焦点时支持标准的全选和复制快捷键。主题颜色 [code]selection_color[/code] 控制选区高亮。\n"
+"CSS [code]:hover[/code] 匹配鼠标下的元素及其祖先。鼠标静止时滚动也会更新悬停目标。拖选文字时保持当前悬停样式，直到拖选结束。\n"
+"CSS [code]cursor[/code] 支持 "
+"[code]default[/code]、[code]pointer[/code]、[code]text[/code]、[code]crosshair[/code]、[code]move[/code]、[code]wait[/code]、[code]progress[/code]、[code]help[/code]、[code"
+"]not-allowed[/code]、[code]ew-resize[/code] 和 [code]ns-resize[/code]。使用 [code]auto[/code] "
+"或未支持的值时，链接上显示手形，启用文字选择时显示工字形，其余情况显示箭头。拖选文字时显示工字形。\n"
+"[code]<button type=\"button\">[/code] 有可被作者 CSS 覆盖的默认样式。可使用 "
+"[code]:active[/code]、[code]:focus[/code]、[code]:focus-visible[/code]、[code]:enabled[/code] 和 "
+"[code]:disabled[/code] 设置各状态的样式。关闭文本选择后，Enter 和空格键仍可激活获得焦点的按钮。\n"
+"连接 [signal button_pressed] 即可在 GDScript 中处理命令。通过按钮的 [code]id[/code] 或 [code]data-*[/code] 属性识别命令。"
+"\n"
+"Tab 和 Shift+Tab 遍历可见且已启用的输入框、按钮、带 [code]href[/code] 的链接以及设置了有效 [code]tabindex[/code] "
+"的元素。正值按升序优先访问。负值允许直接聚焦。到达任一边界时，若有其他 Godot 控件可用，就把焦点交给该控件。\n"
+"文本框和复选框由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。"
+
 #. doc_classes/HTMLLabel.xml doc_classes/MarkdownLabel.xml
 msgid "Selects all text in the document."
 msgstr "选中文档中的所有文本。"
@@ -2497,12 +2643,6 @@ msgid "Displays a scrollable HTML document."
 msgstr "显示可滚动的 HTML 文档。"
 
 #. doc_classes/HTMLLabel.xml
-msgid ""
-"Emitted when the left mouse button is pressed and released over the same visible link without "
-"dragging or scrolling. [param uri] is the link's original [code]href[/code]."
-msgstr "左键在同一可见链接上按下和松开，且期间没有拖动或滚动时发出。[param uri] 为链接原始的 [code]href[/code]。"
-
-#. doc_classes/HTMLLabel.xml
 msgid "Returns the horizontal and vertical scroll offset in pixels from the start of the document."
 msgstr "返回相对于文档起点的水平和垂直滚动偏移，单位为像素。"
 
@@ -2544,50 +2684,6 @@ msgid ""
 "Additional CSS for this document. The rules share the document stylesheets' author origin and "
 "follow them in source order. See [method HTMLLayout.parse]."
 msgstr "此文档的附加 CSS。它与文档样式表同属作者来源，源码顺序排在文档样式表之后。参见 [method HTMLLayout.parse]。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Displays [member document] or inline [member text] using [HTMLLayout]. Give the control a size "
-"with anchors, offsets, or a parent [Container]. The document wraps to the available width, and "
-"scrollbars appear as needed to reach overflowing content.\n"
-"Source changes are applied on a deferred update and reset the scroll position. Resizing "
-"recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link "
-"scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.\n"
-"Drag to select rendered text. The focused control supports the standard select-all and copy "
-"shortcuts. The theme color [code]selection_color[/code] sets the selection highlight.\n"
-"CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates "
-"the hovered element even when the mouse is stationary. During text selection by dragging, hover "
-"styles stay fixed until the drag ends.\n"
-"CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], "
-"[code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], "
-"[code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. "
-"With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an "
-"I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the "
-"I-beam.\n"
-"[code]<button type=\"button\">[/code] has a default style that author CSS can override. Use "
-"[code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], and "
-"[code]:disabled[/code] to style its states. Tab and Shift+Tab navigate enabled, visible buttons "
-"and scroll the focused button into view. A negative [code]tabindex[/code] skips the button in tab "
-"order. Enter and Space activate the focused button even when text selection is disabled.\n"
-"Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code] "
-"or [code]data-*[/code] attributes to identify the command."
-msgstr ""
-"使用 [HTMLLayout] 显示 [member document] 或内联的 [member text]。通过锚点、偏移或父级 [Container] "
-"为控件分配尺寸。文档按可用宽度换行，滚动条按需出现，以便查看溢出的内容。\n"
-"源内容变更会延迟应用并重置滚动位置。调整尺寸会重新布局，并将当前滚动偏移限制在可滚动范围内。"
-"点击 [code]#id[/code] 链接会滚动到对应的 HTML 元素。连接 [signal link_pressed] 可处理其他链接。\n"
-"拖动鼠标可选中渲染后的文字。控件获得焦点时支持标准的全选和复制快捷键。主题颜色 [code]selection_color[/code] 控制选区高亮。\n"
-"CSS [code]:hover[/code] 匹配鼠标下的元素及其祖先。鼠标静止时滚动也会更新悬停目标。拖选文字时保持当前悬停样式，直到拖选结束。\n"
-"CSS [code]cursor[/code] 支持 [code]default[/code]、[code]pointer[/code]、[code]text[/code]、"
-"[code]crosshair[/code]、[code]move[/code]、[code]wait[/code]、[code]progress[/code]、"
-"[code]help[/code]、[code]not-allowed[/code]、[code]ew-resize[/code] 和 [code]ns-resize[/code]。"
-"使用 [code]auto[/code] 或未支持的值时，链接上显示手形，启用文字选择时显示工字形，其余情况显示箭头。拖选文字时显示工字形。\n"
-"[code]<button type=\"button\">[/code] 有可被作者 CSS 覆盖的默认样式。可使用 [code]:active[/code]、"
-"[code]:focus[/code]、[code]:focus-visible[/code]、[code]:enabled[/code] 和 [code]:disabled[/code] "
-"设置各状态的样式。Tab 和 Shift+Tab 在已启用且可见的按钮之间移动，并将获得焦点的按钮滚入视口。负数 "
-"[code]tabindex[/code] 会让 Tab 导航跳过该按钮。关闭文本选择后，Enter 和空格键仍可激活获得焦点的按钮。\n"
-"连接 [signal button_pressed] 即可在 GDScript 中处理命令。通过按钮的 [code]id[/code] 或 "
-"[code]data-*[/code] 属性识别命令。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -2663,27 +2759,6 @@ msgstr ""
 "行内 [code]<img>[/code] 与 [HTMLLayout] 支持相同的项目图片路径和格式。支持 "
 "[code]src[/code]、[code]alt[/code]、[code]title[/code]，以及以像素为单位的正整数 [code]width[/code] 和 "
 "[code]height[/code]。只指定一个尺寸时，图片会保持宽高比。"
-
-#. doc_classes/HTMLDocument.xml
-msgid ""
-"Load an imported [code].html[/code] or [code].htm[/code] file, or create an [HTMLDocument] and "
-"set its [member text]. Assign the resource to [member HTMLLabel.document] for automatic display. "
-"Use [method create_layout] when drawing directly.\n"
-"Scripts that previously called [code]HTMLDocument.new().parse(html)[/code] should call "
-"[code]HTMLLayout.new().parse(html)[/code]. Each [HTMLLayout] keeps its own parsed document, "
-"viewport, and drawing state.\n"
-"The HTML importer embeds linked and imported CSS and records their textures as resource dependencies for export. Reimport the HTML file after changing a linked stylesheet.\n"
-"Imported documents include local image dependencies from all media query branches. In a "
-"selected-scenes export preset, add [code]addons/docrender/docrender.gdextension[/code] to the "
-"include filter so the exported project can load DocRender classes."
-msgstr ""
-"加载已导入的 [code].html[/code] 或 [code].htm[/code] 文件，也可以创建 [HTMLDocument] 并设置其 [member text]。将资源赋给 "
-"[member HTMLLabel.document] 即可自动显示。直接绘制时使用 [method create_layout]。\n"
-"原来调用 [code]HTMLDocument.new().parse(html)[/code] 的脚本请改用 "
-"[code]HTMLLayout.new().parse(html)[/code]。每个 [HTMLLayout] 独立持有解析结果、视口和绘制状态。\n"
-"HTML 导入器会嵌入链接及导入的 CSS，并将其中引用的纹理保存为导出依赖。修改外部样式表后，请重新导入 HTML 文件。\n"
-"导入的文档包含所有媒体查询分支的本地图片依赖。在仅导出选定场景的预设中，将 "
-"[code]addons/docrender/docrender.gdextension[/code] 加入包含筛选器，使导出的项目可以加载 DocRender 的类。"
 
 #. doc_classes/HTMLDocument.xml
 msgid ""
@@ -2955,3 +3030,54 @@ msgstr "为存在 CSS 声明诊断的可见元素绘制边框。悬停在标出�
 #. doc_classes/HTMLElement.xml
 msgid "Returns the CSS declaration diagnostics associated with this element in the current layout. See [method HTMLLayout.get_css_diagnostics] for the dictionary fields."
 msgstr "返回当前布局中与本元素关联的 CSS 声明诊断。字典字段见 [method HTMLLayout.get_css_diagnostics]。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid "A handle to an HTML multiline text field."
+msgstr "HTML 多行文本字段的句柄。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid "Returns the selection start, or [code]-1[/code] for an invalid textarea handle."
+msgstr "返回选区起点。句柄无效时返回 [code]-1[/code]。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid "Returns the selection end, or [code]-1[/code] for an invalid textarea handle."
+msgstr "返回选区终点。句柄无效时返回 [code]-1[/code]。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid ""
+"Sets a multi-line selection using Godot string character indices. Indices snap to grapheme "
+"boundaries. Visual line breaks do not change the indices."
+msgstr "使用 Godot 字符串索引设置跨行选区。索引对齐到字素边界，视觉换行不会改变索引。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid "The child text used as the initial value."
+msgstr "用作初始值的子文本。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid ""
+"The current value with LF line endings. Setting it from script does not emit a user editing "
+"signal."
+msgstr "当前值使用 LF 换行。从脚本设置时不发出用户编辑信号。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when the user changes the value of a multiline text field."
+msgstr "用户修改多行文本字段的值时发出。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when a multiline text field loses focus after a user edit."
+msgstr "用户编辑多行文本字段后将焦点移出时发出。"
+
+#. doc_classes/HTMLTextAreaElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<textarea>[/code]. Edit the "
+"current value with [member value] and the source text with [member default_value]. A changed "
+"value belongs to the current layout. Fields render in [HTMLLayout] and can be edited in "
+"[HTMLLabel].\n"
+"The default size uses [code]rows[/code] and [code]cols[/code]. CSS can override the size, "
+"wrapping and [code]resize[/code] behavior. In [HTMLLabel], Enter inserts a newline and Tab moves "
+"to the next focusable element. Drag the bottom-right handle to resize a field that allows it."
+msgstr ""
+"查询 [code]<textarea>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。使用 [member value] "
+"编辑当前值，使用 [member default_value] 编辑源文本。修改后的当前值归当前布局所有。字段在 [HTMLLayout] 中绘制，在 [HTMLLabel] 中可以编辑。\n"
+"默认尺寸由 [code]rows[/code] 和 [code]cols[/code] 决定。CSS 可以覆盖尺寸、换行和 [code]resize[/code] 行为。在 "
+"[HTMLLabel] 中按 Enter 插入换行，按 Tab 移至下一个可聚焦元素。允许缩放时可拖动字段右下角的缩放柄。"

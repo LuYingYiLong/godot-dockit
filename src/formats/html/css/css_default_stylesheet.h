@@ -344,6 +344,34 @@ input, textarea, keygen, select, button, isindex {
 	text-shadow: none;
 	display: inline-block;
 }
+input:not([type]), input[type="text" i], input[type="" i], input[type="checkbox" i] {
+	display: inline-block; box-sizing: border-box; font: inherit;
+	background-color: #ffffff; color: #182230; border: 1px solid #64748b; border-radius: 4px;
+}
+input:not([type]), input[type="text" i], input[type="" i] {
+	width: 12em; height: 1.75em; padding: 0 0.4em; cursor: text;
+}
+input[type="checkbox" i] {
+	appearance: checkbox; width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
+}
+input[type="checkbox" i]:checked { background-color: #2563eb; color: #ffffff; }
+input:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
+textarea {
+	font: inherit;
+	background-color: #ffffff;
+	color: #182230;
+	border: 1px solid #64748b;
+	border-radius: 4px;
+	padding: 0.2em 0.4em;
+	white-space: pre-wrap;
+	overflow: auto;
+	resize: both;
+	cursor: text;
+}
+textarea:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
+textarea[hidden], input[hidden] { display: none; }
+textarea:focus-visible { outline: 2px solid #2563eb; }
+input:focus-visible, a[href]:focus-visible, [tabindex]:focus-visible { outline: 2px solid #2563eb; }
 input[type="hidden"] {
 	display: none;
 }

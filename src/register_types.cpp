@@ -50,6 +50,8 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(DocRenderTexLoader);
 		GDREGISTER_CLASS(MarkdownLabel);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLInputElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLTextAreaElement);
 		GDREGISTER_INTERNAL_CLASS(docrender::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
 		GDREGISTER_CLASS(HTMLDocument);

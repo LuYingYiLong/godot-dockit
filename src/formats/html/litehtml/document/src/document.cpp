@@ -272,7 +272,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 					ret = create_element(str.c_str(), attrs);
 				}
 			}
-			if (!strcmp(tag, "script"))
+			if (!strcmp(tag, "script") || !strcmp(tag, "textarea"))
 			{
 				parseTextNode = false;
 			}
@@ -323,6 +323,12 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 	break;
 	case GUMBO_NODE_WHITESPACE:
 	{
+		if (!parseTextNode)
+		{
+			auto text = docrender_editor::create_text(shared_from_this(), node->v.text.text, false);
+			elements.splice(elements.end(), text);
+			break;
+		}
 		string str = node->v.text.text;
 		for (size_t i = 0; i < str.length(); i++)
 		{

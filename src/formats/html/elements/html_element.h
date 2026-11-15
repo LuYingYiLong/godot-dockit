@@ -15,11 +15,14 @@ namespace litehtml {
 }
 
 class HTMLLayout;
+class HTMLInputElement;
 
 class HTMLElement : public godot::RefCounted {
 	GDCLASS(HTMLElement, godot::RefCounted)
 
 	friend class HTMLLayout;
+	friend class HTMLInputElement;
+	friend class HTMLTextAreaElement;
 
 	struct DetachedTree;
 	godot::ObjectID layout_id;

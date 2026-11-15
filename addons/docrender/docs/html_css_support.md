@@ -103,6 +103,8 @@ In the supported horizontal writing mode, `inline-size`, `min-inline-size`, and 
 
 Wheel input in HTMLLabel and MarkdownLabel's HTML blocks scrolls the nearest eligible `overflow: auto` or `overflow: scroll` box under the pointer. Inner scroll offsets are retained when the same DOM elements are laid out again. Standalone HTMLLayout uses the viewport passed to `layout()` with its origin at the document origin. Each Markdown HTML block has its own viewport.
 
+In HTMLLabel, `textarea` wraps text by default. Use `wrap="off"` or `white-space: pre` for horizontal scrolling. `overflow: auto` shows internal scrollbars as needed. `resize` accepts `none`, `both`, `horizontal`, `vertical`, `inline`, and `block`. The default `both` draws a grip in the bottom-right corner when the textarea can scroll or clips overflow. Dragging updates the applicable inline `width` and `height`, subject to CSS sizing and cascade rules. `inline` and `block` correspond to horizontal and vertical resizing in the supported horizontal writing mode.
+
 ## Background positions
 
 `background-position: right 12px bottom 8px` places the image 12 CSS pixels inward from the right and 8 inward from the bottom. Edge pairs can be reordered and one offset can be omitted in the three-component form. In a two-component value such as `right 8px`, the length is the vertical position. Negative offsets are allowed. Percentages, including those in CSS math, use the positioning area minus the final tile size on each axis, including when that difference is negative. [CSS Backgrounds positioning](https://www.w3.org/TR/css-backgrounds-3/#the-background-position)

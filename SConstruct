@@ -41,13 +41,16 @@ if env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc
 tex_render = File("src/formats/latex/tex_render.cpp")
 mermaid_render = File("src/formats/mermaid/mermaid_render.cpp")
 html_sources = (Glob("src/formats/html/*.cpp") + Glob("src/formats/html/css/*.cpp")
-                + Glob("src/formats/html/layout/*.cpp") + Glob("src/formats/html/layout/grid/*.cpp"))
+                + Glob("src/formats/html/elements/*.cpp")
+                + Glob("src/formats/html/layout/*.cpp") + Glob("src/formats/html/layout/grid/*.cpp")
+                + Glob("src/nodes/html_label*.cpp"))
 pdfium_sources = (Glob("src/formats/pdf/reader/*.cpp") + Glob("src/formats/pdf/writer/*.cpp")
                   + Glob("src/formats/pdf/pdfium/*.cpp"))
 format_sources = Glob("src/formats/*.cpp") + Glob("src/formats/*/*.cpp")
 special_format_sources = [tex_render, mermaid_render] + html_sources
 sources = Glob("src/*.cpp") + [source for source in format_sources if source not in special_format_sources]
-sources += Glob("src/nodes/*.cpp") + Glob("src/editor/*.cpp") + Glob("src/editor/importers/*.cpp")
+sources += [source for source in Glob("src/nodes/*.cpp") if source not in html_sources]
+sources += Glob("src/editor/*.cpp") + Glob("src/editor/importers/*.cpp")
 mermaid_object = mermaid_env.StaticObject if env["platform"] == "ios" else mermaid_env.SharedObject
 sources += mermaid_object(mermaid_render)
 

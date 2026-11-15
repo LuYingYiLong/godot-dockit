@@ -94,6 +94,10 @@ namespace docrender {
 		void draw_text(const HTMLShapedText& p_shaped, int64_t p_length, litehtml::web_color p_color,
 			const litehtml::position& p_position, const std::vector<litehtml::box_shadow>& p_shadows,
 			const litehtml::css_underline& p_underline);
+		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
+			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
+			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent, float p_descent);
+		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
 		void draw_list_marker(const litehtml::list_marker& p_marker, const godot::Ref<godot::Texture2D>& p_texture);
 		litehtml::image_rendering get_image_sampling() const; // 获取当前图层的 CSS 采样方式
 		void draw_image(const litehtml::background_layer& p_layer, const godot::Ref<godot::Texture2D>& p_texture);

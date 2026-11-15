@@ -48,6 +48,7 @@ namespace docrender::css {
 		int m_text_autospace = text_autospace_normal;
 		int m_text_spacing_trim = text_spacing_normal;
 		overflow				m_overflow;
+		resize_mode m_resize = resize_none;
 		white_space_collapse m_white_space_collapse = white_space_collapse_spaces;
 		text_wrap_mode m_text_wrap_mode = text_wrap_wrap;
 		text_wrap_style m_text_wrap_style = text_wrap_auto;
@@ -224,6 +225,7 @@ namespace docrender::css {
 		void set_text_align(text_align mTextAlign);
 
 		overflow get_overflow() const;
+		resize_mode get_resize() const { return m_resize; }
 		void set_overflow(overflow mOverflow);
 
 		white_space_collapse get_white_space_collapse() const { return m_white_space_collapse; }

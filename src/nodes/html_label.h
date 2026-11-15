@@ -24,8 +24,25 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Vector2 pressed_position;
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
-	godot::Ref<HTMLElement> focused_button;
-	std::vector<godot::Ref<HTMLElement>> tab_buttons;
+	godot::Ref<HTMLElement> dragging_input;
+	struct TextareaDrag {
+		godot::Ref<HTMLElement> element;
+		godot::Vector2i axes;
+		godot::Transform2D inverse;
+		godot::Vector2 start_point;
+		godot::Vector2 start_size;
+		float scrollbar_grab = 0;
+		bool vertical_scrollbar = false;
+	};
+	std::optional<TextareaDrag> textarea_drag;
+	std::optional<godot::Vector2> resize_pending;
+	bool resize_queued = false;
+	bool dragged_resize = false;
+	godot::Ref<HTMLInputElement> pressed_checkbox;
+	std::optional<int32_t> ime_window;
+	bool checkbox_key_pressed = false;
+	godot::Ref<HTMLElement> focused_element;
+	std::vector<godot::Ref<HTMLElement>> tab_elements;
 	godot::Key activation_key = godot::KEY_NONE;
 	std::optional<bool> tab_entry_backward;
 	uintptr_t pressed_link = 0;
@@ -33,7 +50,7 @@ class HTMLLabelCanvas : public godot::Control {
 	int64_t selection_caret = 0;
 	bool selecting = false;
 	bool selection_dragged = false;
-	bool has_enabled_buttons = false;
+	bool has_focusable_elements = false;
 	mutable godot::ObjectID diagnostic_panel_id;
 	mutable godot::String diagnostic_panel_text;
 
@@ -41,11 +58,25 @@ class HTMLLabelCanvas : public godot::Control {
 	void cancel_click();
 	void cancel_button_press();
 	void cancel_key_press();
-	bool handle_button_key(const godot::InputEventKey& p_key);
+	bool handle_dom_key(const godot::InputEventKey& p_key);
 	void handle_selection_key(const godot::InputEventKey& p_key);
 	void activate_button(const godot::Ref<HTMLElement>& p_button);
-	void set_focused_button(const godot::Ref<HTMLElement>& p_button, bool p_keyboard = false);
-	void set_button_pseudo(const godot::Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled);
+	void activate_link(const godot::String& p_uri);
+	void toggle_checkbox(const godot::Ref<HTMLInputElement>& p_input);
+	bool handle_input_key(const godot::InputEventKey& p_key);
+	void change_input(const godot::Ref<HTMLElement>& p_input);
+	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
+	void set_input_caret(const godot::Ref<HTMLElement>& p_input, const godot::Vector2& p_point, bool p_extend);
+	bool begin_textarea_drag(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_point);
+	void move_textarea_drag(const godot::Vector2& p_point);
+	void flush_textarea_resize();
+	void update_input_autoscroll();
+	std::optional<CursorShape> textarea_resize_cursor(const godot::Vector2& p_point) const;
+	void update_ime();
+	void close_ime();
+	void on_ime_update();
+	void set_focused_element(const godot::Ref<HTMLElement>& p_button, bool p_keyboard = false);
+	void set_element_pseudo(const godot::Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled);
 	void clear_tab_entry();
 	void focus_tab_endpoint(bool p_backward);
 	void update_focus_mode();
@@ -93,13 +124,13 @@ class HTMLLabel : public godot::Control {
 	bool gui_hover_dirty = false;
 	bool updating_gui_hover = false;
 	bool hover_reflow = false;
-	bool button_styles_dirty = false;
-	bool reveal_focused_button = false;
+	bool interaction_styles_dirty = false;
+	bool reveal_focused_element = false;
 	int hover_passes_remaining = 0;
 
 	void ensure_controls();
 	void queue_refresh();
-	void queue_button_style_refresh();
+	void queue_interaction_style_refresh();
 	void source_changed();
 	void document_changed(uint64_t p_document_id);
 	void parse_pending_source();
@@ -109,7 +140,7 @@ class HTMLLabel : public godot::Control {
 		bool p_scroll_horizontal, bool p_scroll_vertical, bool p_layout_changed, const godot::String& p_error = {});
 	godot::Rect2 get_visible_rect() const;
 	bool scroll_to_rect(const godot::Rect2& p_target, float p_align);
-	void reveal_button(const godot::Rect2& p_target);
+	void reveal_element(const godot::Rect2& p_target);
 	void apply_scroll_offset(const godot::Vector2i& p_offset);
 	void apply_pending_scroll();
 	void on_scroll_changed(double p_value);
@@ -152,6 +183,8 @@ public:
 	) const;																		// 返回当前控件文档中的全部匹配元素
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找当前控件文档中的第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 将控件局部坐标换算为文档坐标并命中可见元素
+	godot::Ref<HTMLElement> get_focused_element() const; // 返回当前聚焦的 DOM 元素
+	bool focus_element(const godot::Ref<HTMLElement>& p_element); // 将有效元素设为 DOM 焦点
 	bool scroll_to_element(
 		const godot::Ref<HTMLElement>& p_element,
 		float p_align = 0.0f

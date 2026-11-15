@@ -1,5 +1,7 @@
 #include "html_label.h"
 
+#include "formats/html/elements/html_input_node.h"
+
 #include "formats/html/html_markup.h"
 
 #include <godot_cpp/classes/display_server.hpp>
@@ -22,6 +24,8 @@
 #include <utility>
 
 using namespace godot;
+
+using docrender::HTMLInputNode;
 
 namespace {
 	constexpr int DRAG_DEADZONE = 6;
@@ -91,6 +95,7 @@ void HTMLLabelCanvas::_draw() {
 		const Color color = label->has_theme_color("selection_color", "HTMLLabel")
 			? label->get_theme_color("selection_color", "HTMLLabel") : Color(0.25f, 0.55f, 0.95f, 0.5f);
 		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color, {}, nullptr, visible_rect.position);
+		update_ime();
 	}
 }
 
@@ -161,6 +166,22 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
 		const Vector2 point = motion->get_position();
+		if (textarea_drag) {
+			move_textarea_drag(point);
+			accept_event();
+			return;
+		}
+		if (dragging_input.is_valid()) {
+			set_input_caret(dragging_input, point, true);
+			label->request_hover_check();
+			accept_event();
+			return;
+		}
+		if (pressed_checkbox.is_valid() && (!visible_rect.has_point(point) ||
+			label->layout->get_element_at(point) != pressed_checkbox)) {
+			set_element_pseudo(pressed_checkbox, "active", false);
+			pressed_checkbox.unref();
+		}
 		const bool moved = (point - visible_rect.position).distance_squared_to(pressed_position) > DRAG_DEADZONE * DRAG_DEADZONE;
 		if (!visible_rect.has_point(point) || (selecting && moved)) {
 			cancel_click();
@@ -191,19 +212,44 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
 	if (button->get_button_index() != MOUSE_BUTTON_LEFT) {
-		if (visible_rect.has_point(point) && label->layout->scroll_overflow_from_wheel(point, *button.ptr())) {
+		const Vector2 delta = HTMLLayout::wheel_delta(*button.ptr());
+		const Vector2 consumed = visible_rect.has_point(point) ? label->layout->scroll_overflow(point, delta) : Vector2();
+		if (consumed != Vector2()) {
 			cancel_click();
+			const auto current = label->get_scroll_offset();
+			const Vector2 residual = delta - consumed;
+			if (residual != Vector2()) label->apply_scroll_offset(current + Vector2i(residual.round()));
 			if (selecting && selection_dragged) selection_caret = label->layout->hit_test_text(point);
 			label->request_hover_check();
 			accept_event();
 		}
 		return;
 	}
+	if (!button->is_pressed() && textarea_drag) {
+		if (!button->is_canceled()) move_textarea_drag(point);
+		flush_textarea_resize();
+		textarea_drag.reset();
+		label->request_hover_check();
+		accept_event();
+		return;
+	}
 	Ref<HTMLElement> element;
 	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
 		? label->layout->find_link_at(point, &element) : HTMLLayout::LinkHit{};
 	const Ref<HTMLElement> target_button = label->layout->get_button_ancestor(element);
+	const Ref<HTMLInputElement> target_input = element;
+	if (!button->is_pressed() && dragging_input.is_valid()) {
+		if (!button->is_canceled() && point != pressed_position + visible_rect.position) set_input_caret(dragging_input, point, true);
+		dragging_input.unref();
+		set_process_internal(false);
+		accept_event();
+		return;
+	}
 	if (button->is_pressed()) {
+		if (begin_textarea_drag(element, point)) {
+			accept_event();
+			return;
+		}
 		cancel_button_press();
 		cancel_key_press();
 		pressed_position = point - visible_rect.position;
@@ -211,14 +257,31 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		pressed_element = element;
 		selecting = label->selection_enabled && visible_rect.has_point(point);
 		selection_dragged = false;
-		if (label->layout->is_enabled_button(target_button)) {
-			label->grab_focus();
-			set_focused_button(target_button);
-			pressed_button = target_button;
-			set_button_pseudo(pressed_button, "active", true);
+		const Ref<HTMLElement> target_focus = label->layout->get_focus_ancestor(element);
+		if (target_focus.is_valid()) label->grab_focus();
+		set_focused_element(target_focus);
+		const auto control = label->layout->text_control(element);
+		if (control) {
+			selecting = false;
+			pressed_element.unref();
+			pressed_link = 0;
+			if (target_focus == element) {
+				if (control->is_text_control()) {
+					dragging_input = element;
+					set_input_caret(element, point, button->is_shift_pressed());
+					if (control->editor.is_multiline()) set_process_internal(true);
+				}
+				else if (target_input.is_valid() && target_input->get_input()->type() == HTMLInputNode::Type::CHECKBOX) {
+					pressed_checkbox = target_input;
+					set_element_pseudo(pressed_checkbox, "active", true);
+				}
+			}
+			accept_event();
+			return;
 		}
-		else if (target_button.is_null()) {
-			set_focused_button({});
+		if (label->layout->is_enabled_button(target_button)) {
+			pressed_button = target_button;
+			set_element_pseudo(pressed_button, "active", true);
 		}
 		if (selecting) {
 			selection_anchor = selection_caret = label->layout->hit_test_text(point);
@@ -230,6 +293,15 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (selecting || target_button.is_valid()) {
 			accept_event();
 		}
+		return;
+	}
+
+	if (pressed_checkbox.is_valid()) {
+		const Ref<HTMLInputElement> checkbox = pressed_checkbox;
+		set_element_pseudo(checkbox, "active", false);
+		pressed_checkbox.unref();
+		accept_event();
+		if (!button->is_canceled() && checkbox == target_input) toggle_checkbox(checkbox);
 		return;
 	}
 
@@ -255,10 +327,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	const ObjectID label_id(label->get_instance_id());
 	if (link_clicked) {
-		if (hit.uri.begins_with("#")) {
-			label->scroll_to_anchor(docrender::decode_html_fragment(hit.uri.substr(1)));
-		}
-		label->emit_signal("link_pressed", hit.uri);
+		activate_link(hit.uri);
 	}
 	if (button_clicked) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id));
@@ -273,6 +342,13 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 }
 
+void HTMLLabelCanvas::activate_link(const String& p_uri) {
+	if (p_uri.begins_with("#")) {
+		label->scroll_to_anchor(docrender::decode_html_fragment(p_uri.substr(1)));
+	}
+	label->emit_signal("link_pressed", p_uri);
+}
+
 void HTMLLabelCanvas::activate_button(const Ref<HTMLElement>& p_button) {
 	if (label->is_visible_in_tree() && label->layout->is_enabled_button(p_button)) {
 		label->emit_signal("button_pressed", p_button);
@@ -280,7 +356,7 @@ void HTMLLabelCanvas::activate_button(const Ref<HTMLElement>& p_button) {
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
-	if (!canvas || has_focus() || canvas->tab_buttons.empty() || !is_visible_in_tree()) {
+	if (!canvas || has_focus() || canvas->tab_elements.empty() || !is_visible_in_tree()) {
 		return;
 	}
 	const Ref<InputEventKey> key = p_event;
@@ -295,7 +371,7 @@ void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
 
 void HTMLLabel::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventKey> key = p_event;
-	if (canvas && key.is_valid() && !canvas->handle_button_key(*key.ptr())) {
+	if (canvas && key.is_valid() && !canvas->handle_dom_key(*key.ptr())) {
 		canvas->handle_selection_key(*key.ptr());
 	}
 }
@@ -322,20 +398,20 @@ void HTMLLabelCanvas::clear_tab_entry() {
 }
 
 void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
-	if (label->has_focus() && focused_button.is_null() && !tab_buttons.empty()) {
-		set_focused_button(p_backward ? tab_buttons.back() : tab_buttons.front(), true);
+	if (label->has_focus() && focused_element.is_null() && !tab_elements.empty()) {
+		set_focused_element(p_backward ? tab_elements.back() : tab_elements.front(), true);
 	}
 }
 
-bool HTMLLabelCanvas::handle_button_key(const InputEventKey& p_key) {
-	if (const auto direction = tab_direction(p_key); direction && !tab_buttons.empty()) {
+bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
+	if (const auto direction = tab_direction(p_key); direction && !tab_elements.empty()) {
 		const bool backwards = *direction;
-		auto button = std::find(tab_buttons.begin(), tab_buttons.end(), focused_button);
-		if (button != tab_buttons.end()) {
-			if (backwards && button != tab_buttons.begin()) {
+		auto button = std::find(tab_elements.begin(), tab_elements.end(), focused_element);
+		if (button != tab_elements.end()) {
+			if (backwards && button != tab_elements.begin()) {
 				--button;
 			}
-			else if (!backwards && std::next(button) != tab_buttons.end()) {
+			else if (!backwards && std::next(button) != tab_elements.end()) {
 				++button;
 			}
 			else {
@@ -343,22 +419,30 @@ bool HTMLLabelCanvas::handle_button_key(const InputEventKey& p_key) {
 				if (next && next != label) {
 					return false;
 				}
-				button = backwards ? std::prev(tab_buttons.end()) : tab_buttons.begin();
+				button = backwards ? std::prev(tab_elements.end()) : tab_elements.begin();
 			}
 		}
 		else {
-			button = backwards ? std::prev(tab_buttons.end()) : tab_buttons.begin();
+			button = backwards ? std::prev(tab_elements.end()) : tab_elements.begin();
 		}
 		accept_event();
-		set_focused_button(*button, true);
+		set_focused_element(*button, true);
 		return true;
 	}
 
+		if (handle_input_key(p_key)) return true;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
+	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && p_key.is_pressed() && !p_key.is_echo() &&
+		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() &&
+		focused_element.is_valid() && focused_element->get_tag_name() == "a" && focused_element->has_attribute("href")) {
+		label->accept_event();
+		activate_link(focused_element->get_attribute("href"));
+		return true;
+	}
 	if (key != KEY_ENTER && key != KEY_KP_ENTER && key != KEY_SPACE) {
 		return false;
 	}
-	if (!label->layout->is_enabled_button(focused_button)) {
+	if (!label->layout->is_enabled_button(focused_element)) {
 		cancel_key_press();
 		return false;
 	}
@@ -373,14 +457,14 @@ bool HTMLLabelCanvas::handle_button_key(const InputEventKey& p_key) {
 	}
 	if (p_key.is_pressed() && activation_key == KEY_NONE && pressed_button.is_null()) {
 		activation_key = key;
-		set_button_pseudo(focused_button, "active", true);
+		set_element_pseudo(focused_element, "active", true);
 		if (key != KEY_SPACE) {
-			const Ref<HTMLElement> target = focused_button;
+			const Ref<HTMLElement> target = focused_element;
 			activate_button(target);
 		}
 	}
 	else if (!p_key.is_pressed() && activation_key == key) {
-		const Ref<HTMLElement> target = focused_button;
+		const Ref<HTMLElement> target = focused_element;
 		cancel_key_press();
 		if (key == KEY_SPACE && !p_key.is_canceled()) {
 			activate_button(target);
@@ -389,31 +473,37 @@ bool HTMLLabelCanvas::handle_button_key(const InputEventKey& p_key) {
 	return true;
 }
 
-void HTMLLabelCanvas::set_focused_button(const Ref<HTMLElement>& p_button, bool p_keyboard) {
-	if (focused_button != p_button) {
+void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_keyboard) {
+	if (focused_element != p_element) {
+		const auto previous = focused_element;
+		close_ime();
+		commit_input(previous, true);
+		dragging_input.unref();
 		cancel_key_press();
-		set_button_pseudo(focused_button, "focus", false);
-		set_button_pseudo(focused_button, "focus-visible", false);
-		focused_button = p_button;
-		set_button_pseudo(focused_button, "focus", true);
+		set_element_pseudo(focused_element, "focus", false);
+		set_element_pseudo(focused_element, "focus-visible", false);
+		focused_element = p_element;
+		set_element_pseudo(focused_element, "focus", true);
+		label->layout->repaint_input();
+		update_ime();
 	}
-	set_button_pseudo(focused_button, "focus-visible", p_keyboard);
-	label->reveal_focused_button = focused_button.is_valid() && p_keyboard;
-	if (label->reveal_focused_button) {
+	set_element_pseudo(focused_element, "focus-visible", p_keyboard);
+	label->reveal_focused_element = focused_element.is_valid() && p_keyboard;
+	if (label->reveal_focused_element) {
 		label->queue_interaction();
 	}
 }
 
-void HTMLLabelCanvas::set_button_pseudo(const Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled) {
+void HTMLLabelCanvas::set_element_pseudo(const Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled) {
 	if (label->layout->set_interaction_pseudo(p_button, p_name, p_enabled)) {
-		label->queue_button_style_refresh();
+		label->queue_interaction_style_refresh();
 	}
 }
 
 void HTMLLabelCanvas::update_focus_mode() {
-	label->set_focus_mode(!tab_buttons.empty() ? FOCUS_ALL :
-		(label->selection_enabled || has_enabled_buttons ? FOCUS_CLICK : FOCUS_NONE));
-	label->set_process_input(!tab_buttons.empty());
+	label->set_focus_mode(!tab_elements.empty() ? FOCUS_ALL :
+		(label->selection_enabled || has_focusable_elements ? FOCUS_CLICK : FOCUS_NONE));
+	label->set_process_input(!tab_elements.empty());
 }
 
 void HTMLLabelCanvas::_notification(int p_what) {
@@ -430,11 +520,14 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	}
 	else if (p_what == NOTIFICATION_EXIT_TREE) {
 		cancel_press();
-		set_focused_button({});
-		tab_buttons.clear();
-		has_enabled_buttons = false;
+		set_focused_element({});
+		tab_elements.clear();
+		has_focusable_elements = false;
 		clear_tab_entry();
 		set_default_cursor_shape(CURSOR_ARROW);
+	}
+	else if (p_what == NOTIFICATION_INTERNAL_PROCESS && dragging_input.is_valid()) {
+		update_input_autoscroll();
 	}
 	else if (p_what == NOTIFICATION_INTERNAL_PROCESS && selecting && selection_dragged) {
 		const Rect2 visible = label->get_visible_rect();
@@ -455,6 +548,10 @@ void HTMLLabelCanvas::_notification(int p_what) {
 }
 
 void HTMLLabelCanvas::cancel_press() {
+	textarea_drag.reset();
+	resize_pending.reset();
+	dragged_resize = false;
+	dragging_input.unref();
 	cancel_click();
 	cancel_key_press();
 	selecting = false;
@@ -463,6 +560,10 @@ void HTMLLabelCanvas::cancel_press() {
 }
 
 void HTMLLabelCanvas::cancel_click() {
+	if (pressed_checkbox.is_valid()) {
+		set_element_pseudo(pressed_checkbox, "active", false);
+		pressed_checkbox.unref();
+	}
 	pressed_link = 0;
 	pressed_element.unref();
 	cancel_button_press();
@@ -470,15 +571,16 @@ void HTMLLabelCanvas::cancel_click() {
 
 void HTMLLabelCanvas::cancel_button_press() {
 	if (pressed_button.is_valid()) {
-		set_button_pseudo(pressed_button, "active", false);
+		set_element_pseudo(pressed_button, "active", false);
 		pressed_button.unref();
 	}
 }
 
 void HTMLLabelCanvas::cancel_key_press() {
+	if (std::exchange(checkbox_key_pressed, false)) set_element_pseudo(focused_element, "active", false);
 	if (activation_key != KEY_NONE) {
 		activation_key = KEY_NONE;
-		set_button_pseudo(focused_button, "active", false);
+		set_element_pseudo(focused_element, "active", false);
 	}
 }
 
@@ -487,7 +589,11 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 		set_default_cursor_shape(CURSOR_ARROW);
 		return;
 	}
-	if (selection_dragged) {
+	if (const auto resize = textarea_resize_cursor(*p_point)) {
+		set_default_cursor_shape(*resize);
+		return;
+	}
+	if (selection_dragged || dragging_input.is_valid()) {
 		set_default_cursor_shape(CURSOR_IBEAM);
 		return;
 	}
@@ -524,6 +630,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLabel::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLabel::get_element_by_id);
 	ClassDB::bind_method(D_METHOD("get_element_at", "position"), &HTMLLabel::get_element_at);
+	ClassDB::bind_method(D_METHOD("get_focused_element"), &HTMLLabel::get_focused_element);
+	ClassDB::bind_method(D_METHOD("focus_element", "element"), &HTMLLabel::focus_element);
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
@@ -541,6 +649,14 @@ void HTMLLabel::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("element_clicked", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
 		String(), PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("textarea_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
+		"", PROPERTY_USAGE_DEFAULT, HTMLTextAreaElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("textarea_committed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
+		"", PROPERTY_USAGE_DEFAULT, HTMLTextAreaElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("input_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
+		"", PROPERTY_USAGE_DEFAULT, HTMLInputElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("input_committed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
+		"", PROPERTY_USAGE_DEFAULT, HTMLInputElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("button_pressed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
 		String(), PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("layout_changed"));
@@ -561,6 +677,12 @@ void HTMLLabel::_notification(int p_what) {
 	case NOTIFICATION_THEME_CHANGED:
 		queue_refresh();
 		break;
+	case NOTIFICATION_OS_IME_UPDATE:
+		if (canvas) canvas->on_ime_update();
+		break;
+	case NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		if (canvas) canvas->update_ime();
+		break;
 	case NOTIFICATION_FOCUS_ENTER:
 		if (canvas && canvas->tab_entry_backward) {
 			canvas->focus_tab_endpoint(*canvas->tab_entry_backward);
@@ -571,7 +693,7 @@ void HTMLLabel::_notification(int p_what) {
 		if (canvas) {
 			const bool was_dragging = canvas->selection_dragged;
 			canvas->cancel_press();
-			canvas->set_focused_button({});
+			canvas->set_focused_element({});
 			if (was_dragging) {
 				request_hover_check();
 			}
@@ -584,7 +706,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		else if (canvas) {
 			canvas->cancel_press();
-			canvas->set_focused_button({});
+			canvas->set_focused_element({});
 			hover_passes_remaining = 0;
 			if (layout->update_hover(std::nullopt)) {
 				queue_refresh();
@@ -599,11 +721,12 @@ void HTMLLabel::_notification(int p_what) {
 		view_update_pending = false;
 		scroll_sort_pending = false;
 		layout_signal_pending = false;
-		reveal_focused_button = false;
+		reveal_focused_element = false;
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		if (canvas) {
 			canvas->cancel_press();
+			canvas->close_ime();
 		}
 		break;
 	}
@@ -741,6 +864,19 @@ Ref<HTMLElement> HTMLLabel::get_element_at(const Vector2& p_position) const {
 	return get_visible_rect().has_point(local) ? layout->get_element_at(local) : Ref<HTMLElement>();
 }
 
+Ref<HTMLElement> HTMLLabel::get_focused_element() const {
+	return canvas && has_focus() && canvas->focused_element.is_valid() && canvas->focused_element->is_valid()
+		? canvas->focused_element : Ref<HTMLElement>();
+}
+
+bool HTMLLabel::focus_element(const Ref<HTMLElement>& p_element) {
+	if (!canvas || !is_visible_in_tree() || !layout->is_focusable(p_element)) return false;
+	grab_focus();
+	if (!has_focus()) return false;
+	canvas->set_focused_element(p_element, true);
+	return true;
+}
+
 bool HTMLLabel::scroll_to_element(const Ref<HTMLElement>& p_element, float p_align) {
 	if (!is_inside_tree() || refresh_queued || viewport_size.x <= 0 || viewport_size.y <= 0) {
 		return false;
@@ -848,8 +984,8 @@ void HTMLLabel::queue_refresh() {
 	}
 }
 
-void HTMLLabel::queue_button_style_refresh() {
-	button_styles_dirty = true;
+void HTMLLabel::queue_interaction_style_refresh() {
+	interaction_styles_dirty = true;
 	queue_refresh();
 }
 
@@ -860,9 +996,9 @@ void HTMLLabel::source_changed() {
 	if (canvas) {
 		canvas->refresh_diagnostic_tooltip(std::nullopt);
 		canvas->cancel_press();
-		canvas->set_focused_button({});
-		canvas->tab_buttons.clear();
-		canvas->has_enabled_buttons = false;
+		canvas->set_focused_element({});
+		canvas->tab_elements.clear();
+		canvas->has_focusable_elements = false;
 		canvas->update_focus_mode();
 		clear_selection();
 	}
@@ -905,7 +1041,7 @@ void HTMLLabel::refresh() {
 	if (!is_inside_tree()) {
 		return;
 	}
-	if (!hover_reflow && !button_styles_dirty) {
+	if (!hover_reflow && !interaction_styles_dirty) {
 		canvas->cancel_click();
 	}
 	if (!pending_scroll_offset) {
@@ -913,7 +1049,7 @@ void HTMLLabel::refresh() {
 	}
 
 	parse_pending_source();
-	const bool button_style_changed = std::exchange(button_styles_dirty, false);
+	const bool button_style_changed = std::exchange(interaction_styles_dirty, false);
 	if (button_style_changed && parsed) {
 		layout->mark_styles_pending();
 	}
@@ -961,18 +1097,21 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	if (p_viewport == Vector2i()) {
 		layout->update_hover(std::nullopt);
 		hover_passes_remaining = 0;
-		canvas->tab_buttons.clear();
-		canvas->has_enabled_buttons = false;
+		canvas->tab_elements.clear();
+		canvas->has_focusable_elements = false;
 		canvas->cancel_press();
-		canvas->set_focused_button({});
+		canvas->set_focused_element({});
 	}
 	else {
-		canvas->tab_buttons = layout->get_tab_buttons(canvas->has_enabled_buttons);
-		if (canvas->focused_button.is_valid() && !layout->is_enabled_button(canvas->focused_button)) {
-			canvas->set_focused_button({});
+		canvas->tab_elements = layout->get_tab_elements(canvas->has_focusable_elements);
+		if (canvas->focused_element.is_valid() && !layout->is_focusable(canvas->focused_element)) {
+			canvas->set_focused_element({});
 		}
 		if (canvas->pressed_button.is_valid() && !layout->is_enabled_button(canvas->pressed_button)) {
 			canvas->cancel_button_press();
+		}
+		if (canvas->textarea_drag && !layout->get_element_scroll_bounds(canvas->textarea_drag->element)) {
+			canvas->cancel_press();
 		}
 	}
 	canvas->update_focus_mode();
@@ -1007,7 +1146,7 @@ void HTMLLabel::apply_scroll_offset(const Vector2i& p_offset) {
 	scroll_container->set_v_scroll(offset.y);
 }
 
-void HTMLLabel::reveal_button(const Rect2& p_target) {
+void HTMLLabel::reveal_element(const Rect2& p_target) {
 	const Vector2i offset = get_scroll_offset();
 	const Vector2 start = p_target.position;
 	const Vector2 end = p_target.get_end();
@@ -1072,9 +1211,9 @@ void HTMLLabel::update_interaction() {
 		return;
 	}
 
-	if (std::exchange(reveal_focused_button, false)) {
-		if (const auto bounds = layout->get_element_scroll_bounds(canvas->focused_button)) {
-			reveal_button(*bounds);
+	if (std::exchange(reveal_focused_element, false)) {
+		if (const auto bounds = layout->get_element_scroll_bounds(canvas->focused_element)) {
+			reveal_element(*bounds);
 			if (scroll_sort_pending) {
 				return;
 			}

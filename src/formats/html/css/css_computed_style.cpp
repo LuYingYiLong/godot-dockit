@@ -63,6 +63,8 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_appearance	 = (appearance)			read_property<int>(context,  _appearance_,		false,	appearance_none,			 (parent ? &parent->m_appearance : nullptr));
 	m_box_sizing	 = (box_sizing)			read_property<int>(context,  _box_sizing_,		false,	box_sizing_content_box,	 (parent ? &parent->m_box_sizing : nullptr));
 	m_overflow		 = (overflow)			read_property<int>(context,  _overflow_,		false,	overflow_visible,		 (parent ? &parent->m_overflow : nullptr));
+	m_resize = static_cast<resize_mode>(read_property<int>(context, _id("resize"), false, resize_none,
+		parent ? &parent->m_resize : nullptr));
 	m_text_align = static_cast<text_align>(read_property<int>(context, _id("text-align-all"), true, text_align_left, (parent ? &parent->m_text_align : nullptr)));
 	m_text_align_last = static_cast<text_align>(read_property<int>(context, _id("text-align-last"), true, text_align_auto, (parent ? &parent->m_text_align_last : nullptr)));
 	m_text_justify = static_cast<text_justify>(read_property<int>(context, _id("text-justify"), true, text_justify_auto, (parent ? &parent->m_text_justify : nullptr)));

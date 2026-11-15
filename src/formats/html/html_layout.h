@@ -1,7 +1,8 @@
 #ifndef DOCRENDER_HTML_LAYOUT_H
 #define DOCRENDER_HTML_LAYOUT_H
 
-#include "html_element.h"
+#include "elements/html_input_element.h"
+#include "elements/html_textarea_element.h"
 #include "html_font_config.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
@@ -9,6 +10,7 @@
 #include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/rect2.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
@@ -24,10 +26,14 @@ namespace godot {
 	class StyleBox;
 }
 
+namespace docrender { class HTMLTextControlNode; }
+
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
 
 	friend class HTMLElement;
+	friend class HTMLInputElement;
+	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
 
@@ -66,7 +72,19 @@ class HTMLLayout : public godot::RefCounted {
 	bool update_hover(const std::optional<godot::Vector2>& p_position);
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;
-	std::vector<godot::Ref<HTMLElement>> get_tab_buttons(bool& r_has_enabled_buttons) const;
+	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;
+	godot::Ref<HTMLElement> get_focus_ancestor(const godot::Ref<HTMLElement>& p_element) const;
+	std::vector<godot::Ref<HTMLElement>> get_tab_elements(bool& r_has_focusable_elements) const;
+	std::optional<godot::Vector2> input_local_point(const HTMLElement& p_input, const godot::Vector2& p_point) const;
+	std::optional<godot::Vector2> input_caret_point(const HTMLElement& p_input) const;
+	void update_input(docrender::HTMLTextControlNode& p_input);
+	std::shared_ptr<docrender::HTMLTextControlNode> text_control(const godot::Ref<HTMLElement>& p_element) const;
+	std::optional<godot::Transform2D> input_inverse(const HTMLElement& p_input) const;
+	bool resize_textarea(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_size, const godot::Vector2i& p_axes);
+	godot::Vector2 scroll_overflow(const godot::Vector2& p_position, const godot::Vector2& p_delta);
+	static godot::Vector2 wheel_delta(const godot::InputEventMouseButton& p_event);
+	void flush_input_paint();
+	void repaint_input();
 	bool set_interaction_pseudo(const godot::Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled);
 	void mark_styles_pending();
 	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link) const;

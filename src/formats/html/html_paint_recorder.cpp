@@ -727,7 +727,7 @@ void fragment() {
 	}
 
 	void HTMLPaintRecorder::index_text(const element::ptr& p_element, const TextShaper& p_shape_text, String& r_separator) {
-		if (!p_element || p_element->css().get_display() == display_none) {
+		if (!p_element || p_element->tag() == litehtml::_textarea_ || p_element->css().get_display() == display_none) {
 			return;
 		}
 		const auto display = p_element->css().get_display();
@@ -1033,6 +1033,36 @@ void fragment() {
 		material->set_shader_parameter("decoration_center", p_rect.get_center().y);
 		const real_t margin = pattern == 3 ? p_rect.size.y * 1.5 : 1.0;
 		add_command(Fill{ p_rect.grow_side(SIDE_TOP, margin).grow_side(SIDE_BOTTOM, margin), p_color }, material);
+	}
+
+	void HTMLPaintRecorder::draw_input_chrome(const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
+		if (!active_geometry || !active_geometry->inverse) return;
+		const auto& boxes = active_geometry->fragments;
+		push_clip(boxes.size() == 1 ? boxes.front().inset(p_clip) : RoundedRect(p_clip, {}), active_geometry->matrix);
+		fill_rect(p_rect, p_color);
+		del_clip();
+	}
+
+	void HTMLPaintRecorder::draw_input(const Rect2& p_box, const HTMLTextLayout& p_text, const Vector2& p_origin,
+		const web_color& p_color, const PackedVector2Array& p_selection, const PackedVector2Array& p_preedit,
+		const Rect2& p_caret, float p_ascent, float p_descent) {
+		if (!active_geometry || !active_geometry->inverse) return;
+		const auto& fragments = active_geometry->fragments;
+		const RoundedRect clip = fragments.size() == 1 ? fragments.front().inset(p_box) : RoundedRect(p_box, {});
+		push_clip(clip, active_geometry->matrix);
+		const Color color = to_color(p_color);
+		for (const Vector2 range : p_selection) {
+			fill_rect(Rect2(p_origin.x + range.x, p_origin.y - p_ascent, range.y - range.x, p_ascent + p_descent),
+				Color(0.25f, 0.55f, 0.95f, 0.5f));
+		}
+		if (p_text.is_valid()) {
+			add_command(Text{p_text, p_origin - Vector2(0, p_text.line_ascent()), color});
+		}
+		for (const Vector2 range : p_preedit) {
+			fill_rect(Rect2(p_origin.x + range.x, p_origin.y + 1.0f, range.y - range.x, 1.0f), color);
+		}
+		fill_rect(p_caret, color);
+		del_clip();
 	}
 
 	void HTMLPaintRecorder::draw_text(const HTMLShapedText& p_shaped, int64_t p_length, web_color p_color,

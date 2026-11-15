@@ -92,7 +92,7 @@ namespace litehtml {
 			throw std::runtime_error("Could not parse the HTML fragment.");
 		}
 		elements_list children;
-		p_document.create_node(output->root, children, true, false);
+		p_document.create_node(output->root, children, options.fragment_context != GUMBO_TAG_TEXTAREA, false);
 		return children;
 	}
 

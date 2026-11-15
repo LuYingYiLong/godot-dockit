@@ -9,10 +9,25 @@
 		Drag to select rendered text. The focused control supports the standard select-all and copy shortcuts. The theme color [code]selection_color[/code] sets the selection highlight.
 		CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates the hovered element even when the mouse is stationary. During text selection by dragging, hover styles stay fixed until the drag ends.
 		CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], [code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], [code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the I-beam.
-		[code]&lt;button type="button"&gt;[/code] has a default style that author CSS can override. Use [code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], and [code]:disabled[/code] to style its states. Tab and Shift+Tab navigate enabled, visible buttons and scroll the focused button into view. A negative [code]tabindex[/code] skips the button in tab order. Enter and Space activate the focused button even when text selection is disabled.
+		[code]&lt;button type="button"&gt;[/code] has a default style that author CSS can override. Use [code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even when text selection is disabled.
 		Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code] or [code]data-*[/code] attributes to identify the command.
+		Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order before the default stops. A negative value allows direct focus. At either end, focus passes to another Godot control when one is available.
+		Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space.
 	</description>
 	<methods>
+		<method name="focus_element">
+			<return type="bool" />
+			<param index="0" name="element" type="HTMLElement" />
+			<description>
+				Focuses a visible, enabled element from this label and scrolls it into view. Returns [code]false[/code] if the element cannot receive focus.
+			</description>
+		</method>
+		<method name="get_focused_element" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the focused element, or [code]null[/code] when the label has no DOM focus.
+			</description>
+		</method>
 		<method name="clear_selection">
 			<return type="void" />
 			<description>
@@ -155,6 +170,18 @@
 				Emitted when a left mouse press and release hit the same visible HTML element without dragging or scrolling. Use [method HTMLElement.closest] to find an ancestor with an action attribute. For a link, the built-in anchor scroll and [signal link_pressed] run first. The element signal is emitted if the target still belongs to the current document.
 			</description>
 		</signal>
+		<signal name="input_changed">
+			<param index="0" name="element" type="HTMLInputElement" />
+			<description>
+				Emitted when the user edits a text input or toggles a checkbox. Read the new value from the element.
+			</description>
+		</signal>
+		<signal name="input_committed">
+			<param index="0" name="element" type="HTMLInputElement" />
+			<description>
+				Emitted after a user edit is committed with Enter or by moving focus away. A checkbox toggle commits immediately after [signal input_changed].
+			</description>
+		</signal>
 		<signal name="layout_changed">
 			<description>
 				Emitted after a deferred layout update, when the new content size and scroll range can be queried. Multiple element edits before the update are combined. The signal also reports a cleared or failed layout and reflow caused by hover styles.
@@ -163,7 +190,19 @@
 		<signal name="link_pressed">
 			<param index="0" name="uri" type="String" />
 			<description>
-				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling. [param uri] is the link's original [code]href[/code].
+				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling, or when Enter activates a focused link. [param uri] is the link's original [code]href[/code].
+			</description>
+		</signal>
+		<signal name="textarea_changed">
+			<param index="0" name="element" type="HTMLTextAreaElement" />
+			<description>
+				Emitted when the user changes the value of a multiline text field.
+			</description>
+		</signal>
+		<signal name="textarea_committed">
+			<param index="0" name="element" type="HTMLTextAreaElement" />
+			<description>
+				Emitted when a multiline text field loses focus after a user edit.
 			</description>
 		</signal>
 	</signals>

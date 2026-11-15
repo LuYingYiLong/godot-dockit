@@ -384,6 +384,8 @@ func _run() -> void:
 	await _check_controls()
 	await _check_author_hover()
 	await _check_focus_within()
+	await _check_dom_input()
+	await _check_textarea()
 	await _check_text_emphasis()
 	await _check_underline_position()
 	await _check_color_spaces()
@@ -2418,6 +2420,8 @@ func _check_outlines() -> void:
 	var tab: InputEventKey = InputEventKey.new()
 	tab.keycode = KEY_TAB
 	tab.pressed = true
+	viewport.push_input(tab)
+	_check(link.matches(":focus-visible"), "Tab first reaches the link in document order")
 	viewport.push_input(tab)
 	await process_frame
 	await process_frame
@@ -5944,6 +5948,318 @@ func _check_focus_within() -> void:
 	await process_frame
 	await process_frame
 	_check(button.matches(":disabled:not(:enabled)"), "Disabling a button updates selector state")
+	viewport.queue_free()
+
+
+func _send_dom_key(viewport: SubViewport, key: Key, unicode: int = 0, shift: bool = false, pressed: bool = true) -> void:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = key
+	event.unicode = unicode
+	event.shift_pressed = shift
+	event.pressed = pressed
+	viewport.push_input(event)
+
+
+func _check_dom_input() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(310, 160)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var before: Button = Button.new()
+	var after: Button = Button.new()
+	var label: HTMLLabel = HTMLLabel.new()
+	label.position = Vector2(0, 25)
+	label.size = Vector2(310, 130)
+	label.text = """<style>body { margin: 0; } #field { transform: rotate(5deg); color: #ff0000; } #command { display: block; margin-top: 120px; }</style>
+		<section><a id="link" href="#field" tabindex="2">Jump</a>
+		<input id="field" value="A中" maxlength="4" tabindex="1">
+		<input id="check" type="checkbox" checked>
+		<input id="disabled" disabled>
+		<span id="extra" tabindex="0">Extra</span>
+		<span id="negative" tabindex="-1">Negative</span>
+		<button type="button" id="command">Command</button></section>"""
+	var controls: Control = Control.new()
+	viewport.add_child(controls)
+	controls.add_child(before)
+	controls.add_child(label)
+	controls.add_child(after)
+	after.position.y = 155.0
+	before.focus_next = before.get_path_to(label)
+	after.focus_previous = after.get_path_to(label)
+	label.focus_next = label.get_path_to(after)
+	label.focus_previous = label.get_path_to(before)
+	var changes: Array[HTMLInputElement] = []
+	var commits: Array[HTMLInputElement] = []
+	var links: Array[String] = []
+	label.input_changed.connect(func(element: HTMLInputElement) -> void: changes.append(element))
+	label.input_committed.connect(func(element: HTMLInputElement) -> void: commits.append(element))
+	label.link_pressed.connect(func(uri: String) -> void: links.append(uri))
+	await process_frame
+	await process_frame
+	var field: HTMLInputElement = label.get_element_by_id("field") as HTMLInputElement
+	var checkbox: HTMLInputElement = label.query_selector("#check") as HTMLInputElement
+	var link: HTMLElement = label.get_element_by_id("link")
+	var extra: HTMLElement = label.get_element_by_id("extra")
+	var command: HTMLElement = label.get_element_by_id("command")
+	_check(field != null and checkbox != null, "Input queries return specialized handles")
+	if field == null or checkbox == null:
+		viewport.queue_free()
+		return
+	_check(field.get_bounding_rect().has_area() and field.value == "A中", "An atomic input has a CSS box and default value")
+	_check(checkbox.checked and checkbox.matches(":checked"), "The checked attribute supplies initial checkedness")
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var ink_pixels: int
+	for y: int in range(image.get_height()):
+		for x: int in range(image.get_width()):
+			var pixel: Color = image.get_pixel(x, y)
+			if pixel.r > 0.7 and pixel.g < 0.3 and pixel.b < 0.3:
+				ink_pixels += 1
+	_check(ink_pixels > 0, "The rotated text input draws its CSS-colored glyphs inside its clip")
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = field.get_bounding_rect().get_center() + label.position
+	click.pressed = true
+	viewport.push_input(click)
+	click.pressed = false
+	viewport.push_input(click)
+	_check(label.get_focused_element() == field and field.get_selection_start() == field.get_selection_end(),
+		"The painted field receives pointer focus through the rotated fragment")
+	before.grab_focus()
+	_send_dom_key(viewport, KEY_TAB)
+	await process_frame
+	_check(label.has_focus() and label.get_focused_element() == field and field.matches(":focus-visible"),
+		"Tab enters the HTMLLabel at the first positive tabindex")
+	field.set_selection_range(1, 2)
+	_send_dom_key(viewport, KEY_NONE, 0x6587)
+	_check(field.value == "A文" and field.get_attribute("value") == "A中" and changes == [field],
+		"Unicode replaces the selected range without changing the default value")
+	await process_frame
+	_send_dom_key(viewport, KEY_NONE, 0x1f642)
+	_send_dom_key(viewport, KEY_X, 0x78)
+	_check(field.value == "A文🙂", "Maxlength counts UTF-16 units and accepts a complete emoji")
+	_send_dom_key(viewport, KEY_BACKSPACE)
+	_check(field.value == "A文", "Backspace removes a whole emoji")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(commits == [field], "Enter commits the current user edit once")
+	field.set_attribute("value", "default")
+	_check(field.value == "A文", "A dirty text input ignores updated default attributes")
+	await process_frame
+	await process_frame
+	_send_dom_key(viewport, KEY_TAB)
+	_check(label.get_focused_element() == link, "Positive tabindex is sorted before default elements")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(links == ["#field"], "Enter dispatches the original href")
+	_send_dom_key(viewport, KEY_TAB)
+	_check(label.get_focused_element() == checkbox, "Default-order Tab reaches the checkbox")
+	_send_dom_key(viewport, KEY_SPACE)
+	_send_dom_key(viewport, KEY_SPACE, 0, false, false)
+	_check(not checkbox.checked and checkbox.has_attribute("checked") and not checkbox.matches(":checked"),
+		"Space changes live checkedness and leaves the content attribute intact")
+	await process_frame
+	await process_frame
+	_send_dom_key(viewport, KEY_TAB)
+	_check(label.get_focused_element() == extra, "Tab skips a disabled control and reaches a generic tab stop")
+	_send_dom_key(viewport, KEY_TAB)
+	_check(label.get_focused_element() == command, "Negative tabindex is skipped and buttons stay in the same order")
+	await process_frame
+	await process_frame
+	_check(label.get_scroll_offset().y > 0, "Keyboard focus scrolls an out-of-view DOM element into view")
+	_send_dom_key(viewport, KEY_TAB)
+	_check(after.has_focus(), "Tab leaves the DOM for the configured next Godot control")
+	_send_dom_key(viewport, KEY_TAB, 0, true)
+	_check(label.get_focused_element() == command, "Shift+Tab reenters at the last DOM element")
+	_check(label.focus_element(label.get_element_by_id("negative")), "A negative tabindex permits programmatic focus")
+	_check(not label.focus_element(label.get_element_by_id("disabled")), "Disabled fields reject programmatic focus")
+	var dynamic_input: HTMLInputElement = label.create_element("input") as HTMLInputElement
+	_check(dynamic_input != null and dynamic_input.set_attribute("value", "live") == OK and dynamic_input.value == "live",
+		"New detached inputs support defaults and specialized methods")
+
+	var edited: HTMLInputElement = label.get_element_by_id("field") as HTMLInputElement
+	edited.value = "e\u0301"
+	edited.set_selection_range(2, 2)
+	await process_frame
+	await process_frame
+	_check(label.focus_element(edited), "The rotated text field can receive focus again")
+	_send_dom_key(viewport, KEY_BACKSPACE)
+	_check(edited.value == "", "Backspace removes a combining-character sequence as one unit")
+	var clipboard: String = DisplayServer.clipboard_get()
+	edited.value = "Aאב"
+	_send_dom_key(viewport, KEY_END)
+	_send_dom_key(viewport, KEY_HOME, 0, true)
+	var copy: InputEventKey = InputEventKey.new()
+	copy.keycode = KEY_C
+	copy.physical_keycode = KEY_C
+	copy.ctrl_pressed = true
+	copy.pressed = true
+	_check(edited.get_selection_start() == 0 and edited.get_selection_end() == 3,
+		"Keyboard selection reports logical offsets for bidirectional text")
+	DisplayServer.clipboard_set("DocRender clipboard probe")
+	if DisplayServer.clipboard_get() == "DocRender clipboard probe":
+		viewport.push_input(copy)
+		_check(DisplayServer.clipboard_get() == "Aאב", "Copy uses the field's logical text order")
+		DisplayServer.clipboard_set(clipboard)
+	edited.value = ""
+	edited.set_attribute("readonly", "")
+	await process_frame
+	await process_frame
+	_send_dom_key(viewport, KEY_X, 0x78)
+	_check(edited.value == "", "Readonly input retains focus and rejects typing")
+	edited.set_attribute("disabled", "")
+	await process_frame
+	await process_frame
+	_check(label.get_focused_element() == null, "Disabling the focused field clears DOM focus")
+	var foreign: HTMLLayout = HTMLLayout.new()
+	foreign.parse("<input>")
+	foreign.layout(Vector2i(310, 90))
+	_check(not label.focus_element(foreign.query_selector("input")), "Cross-layout input focus is rejected")
+	var source: HTMLDocument = HTMLDocument.new()
+	source.text = "<input id='shared' value='default'>"
+	label.document = source
+	var other: HTMLLabel = HTMLLabel.new()
+	other.size = Vector2(310, 90)
+	other.document = source
+	controls.add_child(other)
+	await process_frame
+	await process_frame
+	var local_value: HTMLInputElement = label.query_selector("#shared") as HTMLInputElement
+	var other_value: HTMLInputElement = other.query_selector("#shared") as HTMLInputElement
+	local_value.value = "edited"
+	_check(other_value.value == "default", "Labels share source and keep live input state local")
+	viewport.queue_free()
+
+
+func _drag_textarea(viewport: SubViewport, from: Vector2, to: Vector2) -> void:
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = from
+	click.pressed = true
+	viewport.push_input(click)
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = to
+	motion.relative = to - from
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	viewport.push_input(motion)
+	click.position = to
+	click.pressed = false
+	viewport.push_input(click)
+
+
+func _check_textarea() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(340, 210)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(340, 210)
+	label.text = """<style>body { margin: 0; }
+		textarea { width: 112px; height: 64px; line-height: 20px; box-sizing: border-box; vertical-align: top; }
+		#editor { max-width: 160px; resize: horizontal; }
+		#after { display: block; }
+		</style><textarea id="editor" style="color: red; height: 64px">
+First &amp; line
+第二行</textarea><input id="after" value="Next">"""
+	viewport.add_child(label)
+	var changes: Array[HTMLTextAreaElement] = []
+	var commits: Array[HTMLTextAreaElement] = []
+	label.textarea_changed.connect(func(element: HTMLTextAreaElement) -> void: changes.append(element))
+	label.textarea_committed.connect(func(element: HTMLTextAreaElement) -> void: commits.append(element))
+	await process_frame
+	await process_frame
+
+	var field: HTMLTextAreaElement = label.get_element_by_id("editor") as HTMLTextAreaElement
+	_check(field != null, "A textarea query returns the specialized element")
+	if field == null:
+		viewport.queue_free()
+		return
+	_check(field.default_value == "First & line\n第二行" and field.value == field.default_value,
+		"Textarea initial value decodes entities and keeps newlines after the opening newline")
+	label.select_all()
+	_check("First" not in label.get_selected_text(), "Textarea text belongs to the field's own selection")
+	var detached: HTMLTextAreaElement = label.create_element("textarea") as HTMLTextAreaElement
+	detached.default_value = " a\n  b\n"
+	_check(detached.value == " a\n  b\n", "Detached textareas retain whitespace in their default value")
+	_check(detached.set_inner_html(" a  &amp;\n  <b>text</b>") == OK and detached.value == " a  &\n  <b>text</b>",
+		"Textarea fragment parsing keeps RCDATA and literal markup")
+	detached.value = "live\r\nvalue"
+	detached.default_value = "new default"
+	_check(detached.value == "live\nvalue" and detached.default_value == "new default",
+		"A dirty value is independent of its child text and normalizes newlines")
+
+	field.value = "a\nb\nc"
+	_check(label.focus_element(field), "Textarea participates in DOM focus")
+	field.set_selection_range(1, 1)
+	_send_dom_key(viewport, KEY_DOWN, 0, true)
+	_check(field.get_selection_start() == 1 and field.get_selection_end() == 3,
+		"Shift+Down extends selection across an explicit newline")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(field.value == "a\n\nc" and changes == [field] and commits.is_empty(),
+		"Enter replaces the selection with a newline and keeps the textarea active")
+	field.set_selection_range(0, 3)
+	await process_frame
+	await process_frame
+
+	var box: Rect2 = field.get_bounding_rect()
+	var handle: Vector2 = box.end - Vector2(5, 5)
+	_drag_textarea(viewport, handle, handle + Vector2(95, 25))
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(field.get_bounding_rect().size.x, 160.0) and is_equal_approx(field.get_bounding_rect().size.y, box.size.y),
+		"Horizontal resize respects max-width and retains the original height")
+	_check("color: red" in field.get_attribute("style") and "height: 64px" in field.get_attribute("style"),
+		"Resizing retains the other inline declarations")
+	_check(field.value == "a\n\nc" and label.get_focused_element() == field and
+		field.get_selection_start() == 0 and field.get_selection_end() == 3,
+		"Resizing preserves live text, selection and DOM focus")
+	_send_dom_key(viewport, KEY_TAB)
+	await process_frame
+	_check(label.get_focused_element() == label.get_element_by_id("after") and commits == [field],
+		"Tab leaves the textarea and commits the field once")
+
+	field.value = "Alpha Beta Gamma Delta Epsilon Zeta Eta Theta"
+	label.focus_element(field)
+	field.set_selection_range(0, 0)
+	await process_frame
+	_send_dom_key(viewport, KEY_DOWN, 0, true)
+	_check(field.get_selection_end() > 0 and field.get_selection_end() < field.value.length(),
+		"A soft wrap provides a caret stop on the next visual line")
+	field.set_attribute("wrap", "off")
+	field.set_selection_range(0, 0)
+	await process_frame
+	await process_frame
+	_send_dom_key(viewport, KEY_DOWN, 0, true)
+	_check(field.get_selection_end() == 0, "wrap=off keeps a long paragraph on a single horizontal line")
+	field.remove_attribute("wrap")
+	field.value = "0\n1\n2\n3\n4\n5\n6"
+	field.set_selection_range(0, 0)
+	await process_frame
+	await process_frame
+	var text_point: Vector2 = field.get_bounding_rect().position + Vector2(5, 10)
+	_drag_textarea(viewport, text_point, text_point)
+	_check(field.get_selection_start() <= 1, "The top of an unscrolled textarea hits the first line")
+	var wheel: InputEventMouseButton = InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.position = text_point
+	wheel.factor = 1.0
+	wheel.pressed = true
+	viewport.push_input(wheel)
+	_drag_textarea(viewport, text_point, text_point)
+	_check(field.get_selection_start() >= 2 and label.get_scroll_offset() == Vector2i.ZERO,
+		"Wheel scrolling moves the text hit position inside the textarea")
+
+	field.set_attribute("style", "resize: vertical; width: 112px; height: 64px; transform: rotate(5deg); border-radius: 4px")
+	await process_frame
+	await process_frame
+	var angle: float = deg_to_rad(5.0)
+	box = field.get_bounding_rect()
+	handle = field.get_bounding_rect().get_center() + Vector2(51, 27).rotated(angle)
+	_drag_textarea(viewport, handle, handle + Vector2(18, 20).rotated(angle))
+	await process_frame
+	await process_frame
+	var expected_height_gain: float = 20.0 * cos(angle)
+	_check("width: 112px" in field.get_attribute("style") and
+		absf(field.get_bounding_rect().size.y - box.size.y - expected_height_gain) < 1.1,
+		"The rotated resize handle applies the pointer delta along the allowed local axis: %s" % field.get_attribute("style"))
 	viewport.queue_free()
 
 

@@ -1,3 +1,5 @@
+#include "elements/html_input_node.h"
+#include "elements/html_textarea_node.h"
 #include "litehtml_container.h"
 
 #include "html_image_blend.h"
@@ -120,6 +122,10 @@ namespace docrender {
 			return element;
 		}
 		const std::string_view tag(p_tag);
+		if (tag == "textarea") return std::make_shared<HTMLTextAreaNode>(p_document);
+		if (tag == "input") {
+			return std::make_shared<HTMLInputNode>(p_document);
+		}
 		if (tag == "style" || tag == "script") {
 			return std::make_shared<RawTextElement>(p_document, tag == "style");
 		}
