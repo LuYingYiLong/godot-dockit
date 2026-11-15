@@ -328,6 +328,7 @@ func _run() -> void:
 	_check_inline_reflow()
 	_check_css_features()
 	_check_selector_semantics()
+	_check_element_subclasses()
 	_check_layers()
 	_check_box_and_transform_functions()
 	_check_math_functions()
@@ -700,6 +701,53 @@ func _check_selector_semantics() -> void:
 		"Quirks selectors fold ID and class while preserving raw attribute values")
 	_check(mixed != null and not mixed.matches('[id="mixed"], [class="case"], [data-missing=""]'),
 		"Attribute matching distinguishes original case, missing attributes and empty values")
+
+
+func _check_element_subclasses() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><div id="container"><p id="paragraph"><span id="inline">Text</span></p></div>
+		<div id="destination"></div><section id="other"></section>"""
+	_check(layout.parse(html) == OK, "Parse the element subclass fixture")
+	var container: HTMLElement = layout.get_element_by_id("container")
+	var paragraph: HTMLElement = layout.query_selector("#paragraph")
+	var span: HTMLElement = layout.query_selector("#inline")
+	_check(container is HTMLDivElement and paragraph is HTMLParagraphElement and span is HTMLSpanElement,
+		"Element queries return typed div, paragraph and span handles")
+	if container == null or paragraph == null or span == null:
+		return
+	var children: Array[HTMLElement] = container.get_children()
+	_check(children == [paragraph] and span.get_parent() == paragraph and paragraph.get_parent() == container,
+		"Parent and child traversal reuse the typed handles through the base type")
+	var other: HTMLElement = layout.get_element_by_id("other")
+	_check(other != null and other.get_class() == "HTMLElement", "Unmapped tags keep the generic element type")
+	_check(layout.create_element("div") is HTMLDivElement and layout.create_element("p") is HTMLParagraphElement and
+		layout.create_element("span") is HTMLSpanElement, "Detached elements use the same type mapping")
+
+	var heading_markup: String = ""
+	for level: int in range(1, 7):
+		heading_markup += "<h%d>Heading %d</h%d>" % [level, level, level]
+	_check(container.set_inner_html(heading_markup) == OK, "Parse all six heading levels as a fragment")
+	var headings: Array[HTMLElement] = container.query_selector_all("h1, h2, h3, h4, h5, h6")
+	_check(headings.size() == 6, "Heading selector returns all six heading elements")
+	for level: int in range(1, 7):
+		var created: HTMLHeadingElement = layout.create_element("H%d" % level) as HTMLHeadingElement
+		_check(created != null and created.get_level() == level, "Detached heading has level %d" % level)
+		var parsed: HTMLHeadingElement = container.query_selector("h%d" % level) as HTMLHeadingElement
+		_check(parsed != null and parsed.get_level() == level, "Parsed heading has level %d" % level)
+
+	var heading: HTMLHeadingElement = container.query_selector("h3") as HTMLHeadingElement
+	var destination: HTMLElement = layout.get_element_by_id("destination")
+	if heading == null or destination == null:
+		return
+	_check(destination.append_child(heading) == OK and destination.query_selector("h3") == heading,
+		"Moving a heading to another parent preserves its handle")
+	_check(layout.layout(Vector2i(320, 600)) == OK and layout.layout(Vector2i(240, 600)) == OK,
+		"Lay out the same document at two viewport widths")
+	var bounds: Rect2 = heading.get_bounding_rect()
+	_check(bounds.has_area() and layout.get_element_at(bounds.get_center()) == heading and heading.get_level() == 3,
+		"Hit testing after reflow returns the same typed heading handle")
+	_check(layout.parse("<h3>Replacement</h3>") == OK and not heading.is_valid() and heading.get_level() == 0 and
+		layout.query_selector("h3") != heading, "Reparsing invalidates the old heading handle")
 
 
 func _check_layers() -> void:

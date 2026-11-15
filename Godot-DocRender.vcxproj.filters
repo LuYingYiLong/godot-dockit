@@ -127,6 +127,9 @@
     <ClCompile Include="src\formats\html\elements\html_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_heading_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -552,10 +555,22 @@
     <ClInclude Include="src\formats\html\html_document.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_div_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_heading_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_paragraph_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_span_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_text_control_node.h">

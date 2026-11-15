@@ -1,6 +1,10 @@
 #include "html_layout.h"
 
+#include "elements/html_div_element.h"
+#include "elements/html_heading_element.h"
 #include "elements/html_input_node.h"
+#include "elements/html_paragraph_element.h"
+#include "elements/html_span_element.h"
 #include "elements/html_textarea_node.h"
 
 #include "css/css_litehtml_dom.h"
@@ -94,6 +98,30 @@ namespace {
 	bool is_html_element(const litehtml::element& p_element) {
 		const auto tag = p_element.tag();
 		return tag != litehtml::empty_id && !litehtml::is_generated_tag(tag) && *p_element.get_tagName();
+	}
+
+	template <typename Element>
+	Ref<HTMLElement> instantiate_element_handle() {
+		Ref<Element> handle;
+		handle.instantiate();
+		return handle;
+	}
+
+	Ref<HTMLElement> create_element_handle(litehtml::string_id p_tag) {
+		switch (p_tag) {
+			case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
+			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
+			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
+			case litehtml::_h1_:
+			case litehtml::_h2_:
+			case litehtml::_h3_:
+			case litehtml::_h4_:
+			case litehtml::_h5_:
+			case litehtml::_h6_: return instantiate_element_handle<HTMLHeadingElement>();
+			case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
+			case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
+			default: return instantiate_element_handle<HTMLElement>();
+		}
 	}
 
 	litehtml::element::ptr find_html_ancestor(litehtml::element::ptr p_element) {
@@ -514,18 +542,7 @@ Ref<HTMLElement> HTMLLayout::make_element(const litehtml::element::ptr& p_elemen
 			return Ref<HTMLElement>(existing);
 		}
 	}
-	Ref<HTMLElement> handle;
-	if (p_element->tag() == litehtml::_textarea_) {
-		Ref<HTMLTextAreaElement> textarea;
-		textarea.instantiate();
-		handle = textarea;
-	} else if (p_element->tag() == litehtml::_input_) {
-		Ref<HTMLInputElement> input;
-		input.instantiate();
-		handle = input;
-	} else {
-		handle.instantiate();
-	}
+	Ref<HTMLElement> handle = create_element_handle(p_element->tag());
 	handle->layout_id = ObjectID(get_instance_id());
 	handle->parse_version = parse_version;
 	handle->element = p_element;

@@ -3081,3 +3081,57 @@ msgstr ""
 "编辑当前值，使用 [member default_value] 编辑源文本。修改后的当前值归当前布局所有。字段在 [HTMLLayout] 中绘制，在 [HTMLLabel] 中可以编辑。\n"
 "默认尺寸由 [code]rows[/code] 和 [code]cols[/code] 决定。CSS 可以覆盖尺寸、换行和 [code]resize[/code] 行为。在 "
 "[HTMLLabel] 中按 Enter 插入换行，按 Tab 移至下一个可聚焦元素。允许缩放时可拖动字段右下角的缩放柄。"
+
+#. doc_classes/HTMLDivElement.xml
+msgid "A handle to an HTML division element."
+msgstr "HTML 容器元素的句柄。"
+
+#. doc_classes/HTMLDivElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<div>[/code]. Use the "
+"inherited [HTMLElement] methods to access its children, attributes, and layout geometry."
+msgstr ""
+"查询 [code]<div>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。"
+"使用继承自 [HTMLElement] 的方法访问子元素、属性和排版几何。"
+
+#. doc_classes/HTMLParagraphElement.xml
+msgid "A handle to an HTML paragraph element."
+msgstr "HTML 段落元素的句柄。"
+
+#. doc_classes/HTMLParagraphElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<p>[/code]. Use [method "
+"HTMLElement.get_text_content] to read the paragraph's text."
+msgstr ""
+"查询 [code]<p>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。"
+"使用 [method HTMLElement.get_text_content] 读取段落文字。"
+
+#. doc_classes/HTMLSpanElement.xml
+msgid "A handle to an HTML span element."
+msgstr "HTML 行内容器元素的句柄。"
+
+#. doc_classes/HTMLSpanElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<span>[/code]. Use the "
+"inherited [HTMLElement] methods to read or modify its content, classes, and attributes."
+msgstr ""
+"查询 [code]<span>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。"
+"使用继承自 [HTMLElement] 的方法读取或修改其内容、类名和属性。"
+
+#. doc_classes/HTMLHeadingElement.xml
+msgid "A handle to an HTML heading element."
+msgstr "HTML 标题元素的句柄。"
+
+#. doc_classes/HTMLHeadingElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<h1>[/code] through "
+"[code]<h6>[/code]. Use [method get_level] to read its heading level."
+msgstr ""
+"查询 [code]<h1>[/code] 到 [code]<h6>[/code] 或通过 [method HTMLLayout.create_element] 创建它们时返回此句柄。"
+"使用 [method get_level] 读取标题级别。"
+
+#. doc_classes/HTMLHeadingElement.xml
+msgid ""
+"Returns the heading level from [code]1[/code] through [code]6[/code], or [code]0[/code] if the "
+"handle is invalid."
+msgstr "返回 [code]1[/code] 到 [code]6[/code] 之间的标题级别，句柄失效时返回 [code]0[/code]。"
