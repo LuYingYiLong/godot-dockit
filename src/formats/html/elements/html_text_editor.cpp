@@ -265,6 +265,7 @@ namespace docrender {
 	void HTMLTextEditor::paint_single(LiteHTMLContainer& p_container, const Rect2& p_box,
 		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused) {
 		const auto& p_style = p_host.css();
+		viewport = p_box;
 		const auto color = p_style.get_color();
 		const auto from = selection_start();
 		const auto to = selection_end();

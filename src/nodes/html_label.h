@@ -47,6 +47,7 @@ class HTMLLabelCanvas : public godot::Control {
 	bool applying_textarea_resize = false;
 	godot::Ref<HTMLInputElement> pressed_checkbox;
 	std::optional<int32_t> ime_window;
+	std::optional<godot::Vector2i> ime_position;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
 	uint64_t focused_reset_version = 0;

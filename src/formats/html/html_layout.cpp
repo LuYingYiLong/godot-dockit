@@ -893,11 +893,9 @@ std::optional<Vector2> HTMLLayout::input_caret_point(const HTMLElement& p_input)
 	if (!inverse || !node) return std::nullopt;
 	const auto caret = node->editor.get_caret_rect();
 	if (!caret.has_area()) return std::nullopt;
-	auto point = Vector2(caret.position.x, caret.get_end().y);
-	if (node->editor.is_multiline()) {
-		const auto viewport = node->editor.get_viewport();
-		point = point.clamp(viewport.position, viewport.get_end());
-	}
+	const auto viewport = node->editor.get_viewport();
+	if (!viewport.has_area()) return std::nullopt;
+	const Vector2 point = Vector2(caret.position.x, caret.get_end().y).clamp(viewport.position, viewport.get_end());
 	return inverse->affine_inverse().xform(point);
 }
 

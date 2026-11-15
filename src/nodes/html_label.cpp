@@ -702,6 +702,7 @@ void HTMLLabel::_notification(int p_what) {
 		if (canvas) canvas->on_ime_update();
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_IN:
+	case NOTIFICATION_INTERNAL_PROCESS:
 		if (canvas) canvas->update_ime();
 		break;
 	case NOTIFICATION_FOCUS_ENTER:

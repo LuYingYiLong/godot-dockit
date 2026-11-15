@@ -6,6 +6,7 @@
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/sub_viewport_container.hpp>
 #include <godot_cpp/classes/window.hpp>
 
 #include <algorithm>
@@ -14,6 +15,27 @@
 using namespace godot;
 using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
+
+namespace {
+	Window* find_native_ime_window(Viewport* p_viewport) {
+		while (p_viewport) {
+			if (auto* window = Object::cast_to<Window>(p_viewport)) {
+				if (!window->is_embedded()) return window;
+
+				// Find the actual embedder, which can be above the parent viewport.
+				do {
+					Node* parent = p_viewport->get_parent();
+					p_viewport = parent ? parent->get_viewport() : nullptr;
+				} while (p_viewport && !p_viewport->is_embedding_subwindows());
+			} else {
+				auto* container = Object::cast_to<SubViewportContainer>(p_viewport->get_parent());
+				// An offscreen texture has no unique screen position.
+				p_viewport = container ? container->get_viewport() : nullptr;
+			}
+		}
+		return nullptr;
+	}
+}
 
 void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vector2& p_point, bool p_extend) {
 	label->layout->flush_input_paint();
@@ -183,7 +205,10 @@ void HTMLLabelCanvas::close_ime() {
 	if (ime_window) {
 		const auto window = *ime_window;
 		ime_window.reset();
+		ime_position.reset();
+		label->set_process_internal(false);
 		auto* display = DisplayServer::get_singleton();
+		display->window_set_ime_position(Vector2i(), window);
 		display->window_set_ime_active(false, window);
 	}
 	const auto handle = focused_element;
@@ -202,28 +227,40 @@ void HTMLLabelCanvas::update_ime() {
 	}
 	const auto input = label->layout->text_control(handle);
 	auto* display = DisplayServer::get_singleton();
-	Window* window = label->is_inside_tree() ? label->get_window() : nullptr;
-	while (window && window->is_embedded()) {
-		window = window->get_parent() ? window->get_parent()->get_window() : nullptr;
-	}
-	if (!input || !input->is_editable() || !label->has_focus() || !label->is_visible_in_tree() ||
-		!window || !window->has_focus() || !display->has_feature(DisplayServer::FEATURE_IME)) {
+	if (!input || !input->is_editable() || !label->is_inside_tree() || !label->has_focus() ||
+		!label->is_visible_in_tree() || !display->has_feature(DisplayServer::FEATURE_IME)) {
 		if (ime_window) close_ime();
 		return;
 	}
-	const int32_t id = window->get_window_id();
-	if (id < 0) return;
+
+	Viewport* viewport = get_viewport();
+	Window* field_window = get_window();
+	Window* native_window = find_native_ime_window(viewport);
+	const int32_t id = native_window ? native_window->get_window_id() : -1;
+	if (id < 0 || !field_window || !field_window->has_focus() || !native_window->has_focus()) {
+		if (ime_window) close_ime();
+		return;
+	}
 	if (ime_window != id) {
 		if (ime_window) close_ime();
 		ime_window = id;
+		// A window stretch or embedded-window move can change the anchor without redrawing the field.
+		label->set_process_internal(true);
 		display->window_set_ime_active(true, id);
 	}
-	if (const auto point = label->layout->input_caret_point(*handle.ptr())) {
-		const Rect2 visible = label->get_visible_rect();
-		if (!visible.has_area()) return;
-		const Vector2 local = point->clamp(visible.position, visible.get_end());
-		const Vector2 screen = get_screen_transform().xform(local);
-		display->window_set_ime_position(Vector2i(screen.round()) - display->window_get_position(id), id);
+
+	const auto point = label->layout->input_caret_point(*handle.ptr());
+	const Rect2 visible = label->get_visible_rect();
+	if (!point || !visible.has_area()) return;
+	const Vector2 local = point->clamp(visible.position, visible.get_end());
+	// Viewport screen transforms map into the native window's client area.
+	const Vector2 client = (viewport->get_screen_transform() * get_global_transform_with_canvas()).xform(local);
+	const Vector2i client_size = display->window_get_size(id);
+	if (!client.is_finite() || client_size.x <= 0 || client_size.y <= 0) return;
+	const Vector2i position(client.round().clamp(Vector2(), Vector2(client_size - Vector2i(1, 1))));
+	if (ime_position != position) {
+		ime_position = position;
+		display->window_set_ime_position(position, id);
 	}
 }
 
