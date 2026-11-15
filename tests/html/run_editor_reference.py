@@ -1,4 +1,4 @@
-"""Check that editor tab restoration preserves imported source references."""
+"""Check imported document references, editor tab restoration and label refresh."""
 
 import argparse
 import os
@@ -46,6 +46,8 @@ func _probe() -> void:
 		await get_tree().process_frame
 	var first: HTMLLabel = scene.get_node("First") as HTMLLabel
 	var second: HTMLLabel = scene.get_node("Second") as HTMLLabel
+	var latex: LatexLabel = scene.get_node("Formula") as LatexLabel
+	var mermaid: MermaidLabel = scene.get_node("Diagram") as MermaidLabel
 	var packed: PackedScene = PackedScene.new()
 	if packed.pack(scene) != OK or ResourceSaver.save(packed, "res://roundtrip.tscn") != OK:
 		push_error("Could not save the restored scene")
@@ -59,8 +61,8 @@ func _probe() -> void:
 		return
 	var expected: Dictionary[String, Resource] = {
 		"res://source.html": first.document,
-		"res://source.tex": scene.get(&"latex_document") as Resource,
-		"res://source.mmd": scene.get(&"mermaid_document") as Resource,
+		"res://source.tex": latex.document,
+		"res://source.mmd": mermaid.document,
 		"res://other.mermaid": scene.get(&"other_document") as Resource,
 	}
 	var passed: bool = true
@@ -81,11 +83,80 @@ func _probe() -> void:
 				path, document.resource_path, cache_matches, external,
 			])
 			passed = false
-	if not passed:
+	if not passed or not await _check_document_refresh(latex, mermaid):
 		get_tree().quit(1)
 		return
-	print("DocRender editor source resource references passed.")
+	var merman_status: String = "passed" if MermaidRender.is_available() else "unavailable"
+	print("DocRender editor source resource references passed. Merman rendering: %s." % merman_status)
 	get_tree().quit()
+
+
+func _check_document_refresh(latex: LatexLabel, mermaid: MermaidLabel) -> bool:
+	var latex_document: LatexDocument = latex.document
+	var mermaid_document: MermaidDocument = mermaid.document
+	var has_merman: bool = MermaidRender.is_available()
+	var initial_width: float = latex.get_minimum_size().x
+	if initial_width <= 0.0 or not latex.get_render_error().is_empty():
+		push_error("The imported LaTeX expression did not render")
+		return false
+	if has_merman and not await _wait_for_diagram(mermaid):
+		return false
+
+	latex_document.set(&"text", "")
+	mermaid_document.set(&"text", "")
+	await get_tree().process_frame
+	var empty_width: float = latex.get_minimum_size().x
+	if empty_width >= initial_width or mermaid.get_texture() != null or not mermaid.get_render_error().is_empty():
+		push_error("The labels did not refresh when the document resources changed")
+		return false
+
+	var edited_formula: String = "x + y + z + 1234567890\\n"
+	var edited_diagram: String = "flowchart LR\\n  A[Reimported] --> B[Diagram]\\n"
+	var latex_path: String = latex_document.resource_path
+	var mermaid_path: String = mermaid_document.resource_path
+	var formula_file: FileAccess = FileAccess.open(latex_path, FileAccess.WRITE)
+	var diagram_file: FileAccess = FileAccess.open(mermaid_path, FileAccess.WRITE)
+	if formula_file == null or diagram_file == null \\
+			or not formula_file.store_string(edited_formula) or not diagram_file.store_string(edited_diagram):
+		push_error("Could not update the source files for reimport")
+		return false
+	formula_file.close()
+	diagram_file.close()
+	EditorInterface.get_resource_filesystem().reimport_files(PackedStringArray([latex_path, mermaid_path]))
+	await get_tree().process_frame
+	if latex.document != latex_document or latex_document.get_text() != edited_formula \\
+			or mermaid.document != mermaid_document or mermaid_document.get_text() != edited_diagram:
+		push_error("Reimport did not update the same document resources")
+		return false
+	var reimported_width: float = latex.get_minimum_size().x
+	if reimported_width <= initial_width or not latex.get_render_error().is_empty():
+		push_error("The reimported LaTeX expression did not render")
+		return false
+	if has_merman and not await _wait_for_diagram(mermaid):
+		return false
+
+	var previous_diagram: Texture2D = mermaid.get_texture()
+	latex.document = null
+	mermaid.document = null
+	var fallback_width: float = latex.get_minimum_size().x
+	if latex.text != "z" or mermaid.text != "flowchart LR; A[Fallback]" \\
+			or fallback_width <= empty_width or fallback_width >= reimported_width:
+		push_error("Clearing the document did not restore the local text")
+		return false
+	if has_merman and (not await _wait_for_diagram(mermaid) or mermaid.get_texture() == previous_diagram):
+		push_error("Clearing the Mermaid document did not render the local diagram")
+		return false
+	return true
+
+
+func _wait_for_diagram(label: MermaidLabel) -> bool:
+	var deadline: int = Time.get_ticks_msec() + 5000
+	while label.get_texture() == null and label.get_render_error().is_empty() and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	if label.get_texture() == null:
+		push_error("The Mermaid diagram did not render: %s" % label.get_render_error())
+		return false
+	return true
 '''
 
 
@@ -122,8 +193,6 @@ def main():
         write("other.mermaid", "%% Mermaid long extension reference\ngraph TD\n  C --> D\n")
         write("document_references.gd", '''extends Control
 
-@export var latex_document: LatexDocument
-@export var mermaid_document: MermaidDocument
 @export var other_document: MermaidDocument
 ''')
         env = {**os.environ, "APPDATA": str(profile), "DOCRENDER_REFERENCE_PROBE": "0"}
@@ -147,8 +216,6 @@ text = "Embedded document"
 
 [node name="Root" type="Control"]
 script = ExtResource("2_script")
-latex_document = ExtResource("3_latex")
-mermaid_document = ExtResource("4_mermaid")
 other_document = ExtResource("5_other")
 
 [node name="First" type="HTMLLabel" parent="."]
@@ -159,6 +226,14 @@ document = ExtResource("1_external")
 
 [node name="Embedded" type="HTMLLabel" parent="."]
 document = SubResource("HTMLDocument_embedded")
+
+[node name="Formula" type="LatexLabel" parent="."]
+text = "z"
+document = ExtResource("3_latex")
+
+[node name="Diagram" type="MermaidLabel" parent="."]
+text = "flowchart LR; A[Fallback]"
+document = ExtResource("4_mermaid")
 ''')
         write(".godot/editor/editor_layout.cfg", '[EditorNode]\nopen_scenes=PackedStringArray("res://main.tscn")\n'
               'current_scene="res://main.tscn"\n[ScriptEditor]\n'
@@ -167,11 +242,12 @@ document = SubResource("HTMLDocument_embedded")
         result = subprocess.run([*command, "--editor", "--quit-after", "600"],
                                 env={**env, "DOCRENDER_REFERENCE_PROBE": "1"}, cwd=project,
                                 timeout=60, capture_output=True)
-        passed = b"DocRender editor source resource references passed." in result.stdout
-        if result.returncode or not passed:
-            print(result.stdout.decode(errors="replace"), result.stderr.decode(errors="replace"))
+        output = result.stdout.decode(errors="replace")
+        summary = next((line for line in output.splitlines() if "DocRender editor source resource references passed." in line), None)
+        if result.returncode or summary is None:
+            print(output, result.stderr.decode(errors="replace"))
             return result.returncode or 1
-        print("DocRender editor source resource references passed.")
+        print(summary)
         return 0
 
 

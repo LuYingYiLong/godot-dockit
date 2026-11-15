@@ -764,7 +764,7 @@ void HTMLLabel::set_document(const Ref<HTMLDocument>& p_document) {
 	}
 	document = p_document;
 	if (document.is_valid()) {
-		DocRenderSourceEditorPlugin::observe_html_document(document);
+		DocRenderSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	source_changed();

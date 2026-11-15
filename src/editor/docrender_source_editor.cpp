@@ -152,12 +152,15 @@ namespace godot {
 
 	HashMap<uint64_t, String> DocRenderSourceEditorPlugin::source_tabs;
 
-	void DocRenderSourceEditorPlugin::observe_html_document(const Ref<Resource>& p_document) {
-		if (p_document.is_null() || !Engine::get_singleton()->is_editor_hint()) return;
+	void DocRenderSourceEditorPlugin::observe_source_document(const Ref<Resource>& p_document) {
+		if (p_document.is_null() || !Engine::get_singleton()->is_editor_hint()) {
+			return;
+		}
 		const String path = p_document->get_path();
-		const String extension = path.get_extension().to_lower();
-		if (!path.begins_with("res://") || (extension != "html" && extension != "htm") ||
-			ResourceLoader::get_singleton()->get_cached_ref(path) != p_document) return;
+		if (!path.begins_with("res://") || get_document_type(path) != p_document->get_class() ||
+			ResourceLoader::get_singleton()->get_cached_ref(path) != p_document) {
+			return;
+		}
 		observe_document(path, p_document);
 	}
 
