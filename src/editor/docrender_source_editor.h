@@ -49,6 +49,7 @@ namespace godot {
 
 		void install_importers();
 		void import_existing_sources();
+		void observe_restored_scene_sources(Node* p_scene);
 		void attach_source_editor();
 		void detach_source_editor();
 		void activate_tree_item();
