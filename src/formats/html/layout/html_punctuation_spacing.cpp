@@ -2,7 +2,7 @@
 
 #include "html_line_break.h"
 #include "html_text_autospace.h"
-#include "formats/html/css/css_relational_selector.h"
+#include "formats/html/css/css_litehtml_dom.h"
 
 #include <litehtml/document_container.h>
 #include <litehtml/el_text.h>

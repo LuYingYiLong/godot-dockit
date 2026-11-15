@@ -141,7 +141,7 @@ bool css::apply_import(const syntax::StylesheetImport& rule, const string& baseu
 
 bool css::parse_style_rule(const raw_rule& rule, const string& baseurl, document::ptr doc,
 	media_query_list_list::ptr media, size_t layer_id) {
-	auto selectors = parse_selector_list(rule.prelude, strict_mode, doc->mode());
+	auto selectors = parse_selector_list(rule.prelude, syntax::strict_mode, doc->mode());
 	if (selectors.empty()) {
 		css_parse_error("invalid selector");
 		return false;

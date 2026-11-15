@@ -2,7 +2,7 @@
 #include "html_inline_text_fragment.h"
 #include "html_punctuation_spacing.h"
 
-#include "formats/html/css/css_relational_selector.h"
+#include "formats/html/css/css_litehtml_dom.h"
 #include "formats/html/litehtml_container.h"
 
 #include <godot_cpp/classes/text_server.hpp>

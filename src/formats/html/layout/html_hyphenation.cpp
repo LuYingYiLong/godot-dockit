@@ -3,7 +3,7 @@
 #include "html_hyphenation_dictionary.h"
 #include "html_line_break.h"
 
-#include "formats/html/css/css_relational_selector.h"
+#include "formats/html/css/css_litehtml_dom.h"
 
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>

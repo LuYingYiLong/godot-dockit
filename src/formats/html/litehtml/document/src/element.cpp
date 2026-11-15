@@ -424,11 +424,6 @@ elements_list element::select_all(const css_selector& /*selector*/)					LITEHTML
 elements_list element::select_all(const string& /*selector*/)						LITEHTML_RETURN_FUNC(elements_list())
 element::ptr element::select_one( const css_selector& /*selector*/ )				LITEHTML_RETURN_FUNC(nullptr)
 element::ptr element::select_one( const string& /*selector*/ )						LITEHTML_RETURN_FUNC(nullptr)
-element::ptr element::find_adjacent_sibling(const element::ptr& /*el*/, const css_selector& /*selector*/, bool /*apply_pseudo*/ /*= true*/, bool* /*is_pseudo*/ /*= 0*/) LITEHTML_RETURN_FUNC(nullptr)
-element::ptr element::find_sibling(const element::ptr& /*el*/, const css_selector& /*selector*/, bool /*apply_pseudo*/ /*= true*/, bool* /*is_pseudo*/ /*= 0*/) LITEHTML_RETURN_FUNC(nullptr)
-bool element::is_nth_last_child(const element::ptr& /*el*/, int /*num*/, int /*off*/, bool /*of_type*/, const css_selector::vector& /*selector_list*/) const LITEHTML_RETURN_FUNC(false)
-bool element::is_nth_child(const element::ptr&, int /*num*/, int /*off*/, bool /*of_type*/, const css_selector::vector& /*selector_list*/) const LITEHTML_RETURN_FUNC(false)
-bool element::is_only_child(const element::ptr& /*el*/, bool /*of_type*/) const		LITEHTML_RETURN_FUNC(false)
 void element::get_content_size( size& /*sz*/, pixel_t /*max_width*/ )				LITEHTML_EMPTY_FUNC
 bool element::appendChild(const ptr &/*el*/)										LITEHTML_RETURN_FUNC(false)
 bool element::removeChild(const ptr &/*el*/)										LITEHTML_RETURN_FUNC(false)
@@ -465,7 +460,5 @@ void element::parse_attributes()													LITEHTML_EMPTY_FUNC
 int	element::select(const css_selector::vector& /*selector_list*/, bool /*apply_pseudo*/) LITEHTML_RETURN_FUNC(select_no_match)
 int element::select(const string& /*selector*/)										LITEHTML_RETURN_FUNC(select_no_match)
 int element::select(const css_selector& /*selector*/, bool /*apply_pseudo*/)		LITEHTML_RETURN_FUNC(select_no_match)
-int element::select(const css_element_selector& /*selector*/, bool /*apply_pseudo*/) LITEHTML_RETURN_FUNC(select_no_match)
-element::ptr element::find_ancestor(const css_selector& /*selector*/, bool /*apply_pseudo*/, bool* /*is_pseudo*/) LITEHTML_RETURN_FUNC(nullptr)
 
 } // namespace litehtml

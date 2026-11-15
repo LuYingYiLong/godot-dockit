@@ -5,7 +5,7 @@
 #include "el_image.h"
 #include "el_space.h"
 #include "el_text.h"
-#include "formats/html/css/css_relational_selector.h"
+#include "formats/html/css/css_litehtml_dom.h"
 #include "formats/html/litehtml_document_adapter.h"
 
 namespace litehtml

@@ -24,14 +24,15 @@ namespace litehtml {
 			p_element.set_pseudo_class(_id("enabled"), button && !disabled);
 		}
 
-		bool selector_uses_hover(const css_selector::ptr& p_selector) {
-			if (p_selector->m_left && selector_uses_hover(p_selector->m_left)) {
+		bool selector_uses_hover(const docrender::css::Selector& p_selector) {
+			if (p_selector.m_left && selector_uses_hover(*p_selector.m_left)) {
 				return true;
 			}
-			return std::any_of(p_selector->m_right.m_attrs.begin(), p_selector->m_right.m_attrs.end(),
-				[](const css_attribute_selector& p_attribute) {
-					return (p_attribute.type == select_pseudo_class && p_attribute.name == _hover_) ||
-						std::any_of(p_attribute.selector_list.begin(), p_attribute.selector_list.end(), selector_uses_hover);
+			return std::any_of(p_selector.m_right.m_attrs.begin(), p_selector.m_right.m_attrs.end(),
+				[](const docrender::css::AttributeSelector& p_attribute) {
+					return (p_attribute.type == docrender::css::select_pseudo_class && p_attribute.name == "hover") ||
+						std::any_of(p_attribute.selector_list.begin(), p_attribute.selector_list.end(),
+							[](const auto& p_nested) { return selector_uses_hover(*p_nested); });
 				});
 		}
 	}
@@ -163,7 +164,9 @@ namespace litehtml {
 	bool docrender_editor::has_hover_styles(const document& p_document) {
 		for (const css* sheet : { &p_document.m_master_css, &p_document.m_styles }) {
 			const auto& selectors = sheet->selectors();
-			if (std::any_of(selectors.begin(), selectors.end(), selector_uses_hover)) {
+			if (std::any_of(selectors.begin(), selectors.end(), [](const auto& p_rule) {
+				return selector_uses_hover(*p_rule->m_syntax);
+			})) {
 				return true;
 			}
 		}

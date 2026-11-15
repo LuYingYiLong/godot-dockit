@@ -1,7 +1,6 @@
 #include "html_layout.h"
 
-#include "css/css_relational_selector.h"
-#include "css/css_selectors.h"
+#include "css/css_litehtml_dom.h"
 #include "html_canvas_renderer.h"
 #include "html_markup.h"
 #include "layout/html_geometry.h"
@@ -745,17 +744,19 @@ TypedArray<HTMLElement> HTMLLayout::select_elements(const String& p_selector, Se
 	const CharString utf8 = p_selector.utf8();
 	const auto tokens = litehtml::tokenize(std::string(utf8.get_data(), utf8.length()));
 	ERR_FAIL_COND_V_MSG(!docrender::css::has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
-	const auto selectors = litehtml::parse_selector_list(litehtml::normalize(tokens, litehtml::f_componentize),
-		litehtml::strict_mode | litehtml::forbid_pseudo_elements,
-		state->document ? state->document->mode() : litehtml::no_quirks_mode);
+	namespace syntax = docrender::css;
+	const auto selectors = syntax::parse_selector_list(syntax::normalize(tokens, syntax::f_componentize),
+		syntax::strict_mode | syntax::forbid_pseudo_elements,
+		litehtml::selector_mode(state->document ? state->document->mode() : litehtml::no_quirks_mode));
 	ERR_FAIL_COND_V_MSG(selectors.empty(), matches, "Invalid or unsupported HTML selector: " + p_selector);
 	if (!state->document) {
 		return matches;
 	}
 	const auto root = p_scope ? p_scope : state->document->root();
-	const litehtml::selector_scope scope(root.get());
+	const syntax::MatchContext context{root.get()};
+	const auto& dom = litehtml::selector_dom_view();
 	const auto collect = [&](const litehtml::element::ptr& p_element) {
-		if (p_element->select(selectors) == litehtml::select_no_match) {
+		if (syntax::match_selector_list(dom, p_element.get(), selectors, context) == syntax::match_none) {
 			return false;
 		}
 		matches.append(make_element(p_element));

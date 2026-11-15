@@ -672,6 +672,13 @@ func _check_selector_semantics() -> void:
 	_check(languages.query_selector(":scope > :lang(en-us)") == latin, "Element query uses its own scope")
 	_check(languages.query_selector("html:scope #latin") == null, "Element query has exactly one scope root")
 	_check(latin.closest(":scope") == latin and layout.query_selector(":scope") == root_element, "Queries restore the previous scope")
+	var detached: HTMLElement = layout.create_element("section")
+	var detached_child: HTMLElement = layout.create_element("span")
+	_check(detached.append_child(detached_child) == OK, "Build a detached subtree")
+	_check(detached.matches(":scope:only-child") and detached.query_selector(":scope > span") == detached_child,
+		"Detached nodes use the explicit query scope")
+	_check(languages.append_child(detached) == OK and detached_child.closest("#languages :scope") == detached_child,
+		"Moving an element preserves the handle and lets closest inspect ancestors outside the scope")
 	_check(unknown.matches(':lang("")') and not unknown.matches(':lang("*")'), "An empty language stops inheritance")
 	_check(root_element.matches(r":lang(\65 n)"), "Escapes in language ranges are decoded by the tokenizer")
 	_check(layout.query_selector(r"#list > :nth-child(2\6e +1)") == layout.get_element_by_id("first"), "An+B accepts escaped units")
@@ -684,6 +691,13 @@ func _check_selector_semantics() -> void:
 	_check(languages.set_attribute("lang", "ja-JP") == OK and latin.matches(":lang(ja)"), "Language mutation is inherited immediately")
 	_check(layout.layout(Vector2i(220, 380)) == OK and is_equal_approx(_rect(layout, "latin").size.x, 220.0),
 		"Language mutation also invalidates the stylesheet match")
+	var quirks: HTMLLayout = HTMLLayout.new()
+	_check(quirks.parse('<div id="Mixed" class="Case" data-empty=""></div>') == OK, "Parse selector attributes in quirks mode")
+	var mixed: HTMLElement = quirks.query_selector("#mixed.case")
+	_check(mixed != null and mixed.matches('[id="Mixed"][class="Case"][data-empty=""]'),
+		"Quirks selectors fold ID and class while preserving raw attribute values")
+	_check(mixed != null and not mixed.matches('[id="mixed"], [class="case"], [data-missing=""]'),
+		"Attribute matching distinguishes original case, missing attributes and empty values")
 
 
 func _check_layers() -> void:
@@ -5836,8 +5850,9 @@ func _check_author_hover() -> void:
 	label.size = Vector2(240.0, 160.0)
 	label.text = """<style>
 		body { margin: 0; }
-		#hover_card { display: block; width: 80px; height: 40px; }
-	</style><div id="hover_card" class="card"></div>"""
+		.card { display: block; width: 80px; height: 40px; }
+	</style><div id="hover_card" class="card"></div><div style="height: 200px"></div>
+	<div id="hover_second" class="card"></div><div style="height: 160px"></div>"""
 	label.stylesheet = ".card:hover { width: 110px; } #hover_card:is(:hover) { width: 130px; }"
 	viewport.add_child(label)
 	await process_frame
@@ -5853,6 +5868,13 @@ func _check_author_hover() -> void:
 	await process_frame
 	_check(card.matches(":hover"), "The control updates the real element's hover state")
 	_check(is_equal_approx(card.get_bounding_rect().size.x, 130.0), "Additional rules trigger hover restyling and share specificity")
+	label.set_scroll_offset(Vector2i(0, 240))
+	await process_frame
+	await process_frame
+	await process_frame
+	var second: HTMLElement = label.get_element_by_id("hover_second")
+	_check(not card.matches(":hover") and second.matches(":hover"), "Scrolling updates the hover match under a stationary pointer")
+	_check(is_equal_approx(second.get_bounding_rect().size.x, 110.0), "Scrolling activates the newly hovered rule")
 	viewport.queue_free()
 
 
@@ -5867,13 +5889,16 @@ func _check_focus_within() -> void:
 	body { margin: 0; }
 	.panel { width: 80px; }
 	.panel:focus-within { width: 130px; }
+	.panel:has(> button:focus)::before { content: attr(data-focus-label); }
 	</style>
-	<div class="panel" id="first_panel"><button type="button" id="first_button">First</button></div>
-	<div class="panel" id="second_panel"><button type="button" id="second_button">Second</button></div>"""
+	<div class="panel" id="first_panel" data-focus-label="FIRST-FOCUSED"><button type="button" id="first_button">First</button></div>
+	<div class="panel" id="second_panel" data-focus-label="SECOND-FOCUSED"><button type="button" id="second_button">Second</button></div>"""
 	viewport.add_child(label)
 	await process_frame
 	await process_frame
 	_check(label.query_selector(".panel:focus-within") == null, "No HTML element is focused initially")
+	label.select_all()
+	_check("FOCUSED" not in label.get_selected_text(), "The relational pseudo-element starts inactive")
 	label.grab_focus()
 	var tab: InputEventKey = InputEventKey.new()
 	tab.keycode = KEY_TAB
@@ -5885,18 +5910,40 @@ func _check_focus_within() -> void:
 	var second: HTMLElement = label.get_element_by_id("second_panel")
 	var button: HTMLElement = label.get_element_by_id("first_button")
 	_check(button.matches(":focus:focus-within"), "The focused button itself matches :focus-within")
+	_check(button.matches(":enabled:not(:disabled)"), "An enabled button exposes its interaction state")
 	_check(first.matches(":focus-within") and not second.matches(":focus-within"), "Only ancestors of the focused button match")
 	_check(is_equal_approx(first.get_bounding_rect().size.x, 130.0), "Focus-within restyles the matching ancestor")
+	label.select_all()
+	_check("FIRST-FOCUSED" in label.get_selected_text(), "Focus activates a relational generated-content rule")
+	var space: InputEventKey = InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.pressed = true
+	viewport.push_input(space)
+	await process_frame
+	_check(button.matches(":active") and first.matches(":has(> button:active)"), "Pressing Space activates the focused button")
+	space.pressed = false
+	viewport.push_input(space)
+	await process_frame
+	_check(not button.matches(":active"), "Releasing Space clears the active match")
 	viewport.push_input(tab)
 	await process_frame
 	await process_frame
 	_check(not first.matches(":focus-within") and second.matches(":focus-within"), "Tab updates focus ancestry")
 	_check(is_equal_approx(first.get_bounding_rect().size.x, 80.0) and is_equal_approx(second.get_bounding_rect().size.x, 130.0),
 		"Moving focus refreshes both ancestor styles")
+	label.select_all()
+	_check("FIRST-FOCUSED" not in label.get_selected_text() and "SECOND-FOCUSED" in label.get_selected_text(),
+		"Moving focus replaces the generated content")
 	label.release_focus()
 	await process_frame
 	await process_frame
 	_check(label.query_selector(".panel:focus-within") == null, "Releasing focus clears the match")
+	label.select_all()
+	_check("FOCUSED" not in label.get_selected_text(), "Releasing focus removes the relational generated content")
+	_check(button.set_attribute("disabled", "") == OK, "Disable the first button")
+	await process_frame
+	await process_frame
+	_check(button.matches(":disabled:not(:enabled)"), "Disabling a button updates selector state")
 	viewport.queue_free()
 
 

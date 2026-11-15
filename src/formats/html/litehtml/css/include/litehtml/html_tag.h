@@ -15,6 +15,7 @@ namespace litehtml
 	class html_tag : public element
 	{
 		friend struct docrender_editor;
+		friend struct selector_dom;
 		friend class document;
 		friend class elements_iterator;
 		friend class el_table;
@@ -81,9 +82,6 @@ namespace litehtml
 		int					select(const css_selector::vector& selector_list, bool apply_pseudo = true) override;
 		int					select(const string& selector) override;
 		int					select(const css_selector& selector, bool apply_pseudo = true) override;
-		int					select(const css_element_selector& selector, bool apply_pseudo = true) override;
-		int					select_pseudoclass(const css_attribute_selector& sel);
-		int					select_attribute(const css_attribute_selector& sel);
 
 		elements_list		select_all(const string& selector) override;
 		elements_list		select_all(const css_selector& selector) override;
@@ -91,18 +89,12 @@ namespace litehtml
 		element::ptr		select_one(const string& selector) override;
 		element::ptr		select_one(const css_selector& selector) override;
 
-		element::ptr		find_ancestor(const css_selector& selector, bool apply_pseudo = true, bool* is_pseudo = nullptr) override;
-		element::ptr		find_adjacent_sibling(const element::ptr& el, const css_selector& selector, bool apply_pseudo = true, bool* is_pseudo = nullptr) override;
-		element::ptr		find_sibling(const element::ptr& el, const css_selector& selector, bool apply_pseudo = true, bool* is_pseudo = nullptr) override;
 		void				get_text(string& text) const override;
 		void				parse_attributes() override;
 
 		void				get_content_size(size& sz, pixel_t max_width) override;
 		void				add_style(const style& style) override;
 
-		bool				is_nth_child(const element::ptr& el, int num, int off, bool of_type, const css_selector::vector& selector_list) const override;
-		bool				is_nth_last_child(const element::ptr& el, int num, int off, bool of_type, const css_selector::vector& selector_list) const override;
-		bool				is_only_child(const element::ptr& el, bool of_type) const override;
 		const background*	get_background(bool own_only = false) override;
 
 		string				dump_get_name() override;

@@ -156,7 +156,8 @@
     <ClCompile Include="src\formats\html\css\css_font_face.cpp" />
     <ClCompile Include="src\formats\html\css\css_font_feature_values.cpp" />
     <ClCompile Include="src\formats\html\css\css_declarations.cpp" />
-    <ClCompile Include="src\formats\html\css\css_relational_selector.cpp" />
+    <ClCompile Include="src\formats\html\css\css_litehtml_dom.cpp" />
+    <ClCompile Include="src\formats\html\css\css_selector_matcher.cpp" />
     <ClCompile Include="src\formats\html\css\css_supports.cpp" />
     <ClCompile Include="src\formats\html\css\css_image_value.cpp" />
     <ClCompile Include="src\formats\html\css\css_position_values.cpp" />
@@ -275,7 +276,8 @@
     <ClInclude Include="src\formats\html\css\css_font_face.h" />
     <ClInclude Include="src\formats\html\css\css_font_feature_values.h" />
     <ClInclude Include="src\formats\html\css\css_declarations.h" />
-    <ClInclude Include="src\formats\html\css\css_relational_selector.h" />
+    <ClInclude Include="src\formats\html\css\css_litehtml_dom.h" />
+    <ClInclude Include="src\formats\html\css\css_selector_matcher.h" />
     <ClInclude Include="src\formats\html\css\css_supports.h" />
     <ClInclude Include="src\formats\html\css\css_image_value.h" />
     <ClInclude Include="src\formats\html\css\css_position_values.h" />

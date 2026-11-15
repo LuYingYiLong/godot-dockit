@@ -179,7 +179,10 @@
     <ClCompile Include="src\formats\html\css\css_declarations.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\css\css_relational_selector.cpp">
+    <ClCompile Include="src\formats\html\css\css_litehtml_dom.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_selector_matcher.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_supports.cpp">
@@ -565,7 +568,10 @@
     <ClInclude Include="src\formats\html\css\css_declarations.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\css\css_relational_selector.h">
+    <ClInclude Include="src\formats\html\css\css_litehtml_dom.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_selector_matcher.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_supports.h">
