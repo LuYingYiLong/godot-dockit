@@ -8,6 +8,8 @@
 #include <optional>
 #include <vector>
 
+namespace litehtml { class html_tag; }
+
 namespace docrender {
 	class LiteHTMLContainer;
 	namespace css { class ComputedStyle; }
@@ -66,7 +68,7 @@ namespace docrender {
 		void hit_single(float p_x, bool p_extend);
 		void move_single(int p_direction, bool p_extend);
 		void layout_lines(LiteHTMLContainer& p_container, const css::ComputedStyle& p_style,
-			const godot::String& p_text, float p_width, float p_line_height);
+			const godot::String& p_text, uintptr_t p_font, float p_width, float p_line_height);
 		godot::Rect2 scrollbar_thumb(const godot::Rect2& p_track, bool p_vertical) const;
 
 	public:
@@ -98,8 +100,8 @@ namespace docrender {
 		void drag_scrollbar(bool p_vertical, const godot::Vector2& p_point, float p_grab_offset);
 		float scrollbar_grab_offset(bool p_vertical, const godot::Vector2& p_point) const;
 		void paint_single(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
-			const css::ComputedStyle& p_style, const godot::String& p_placeholder, bool p_focused);
+			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused);
 		void paint_multiline(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
-			const css::ComputedStyle& p_style, const godot::String& p_placeholder, bool p_focused, bool p_resize_handle);
+			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused, bool p_resize_handle);
 	};
 }

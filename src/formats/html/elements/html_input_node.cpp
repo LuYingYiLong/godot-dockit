@@ -114,12 +114,19 @@ namespace docrender {
 				if (mark.is_valid()) {
 					const Vector2 origin(p_box.get_center().x - mark.width() * 0.5f,
 						p_box.get_center().y + (mark.line_ascent() - mark.line_descent()) * 0.5f);
-					p_container.draw_input(p_box, mark, origin, color, {}, {}, {});
+					auto ink = color;
+					if (!has_author_property(litehtml::_color_) && !has_author_property(litehtml::_background_color_) &&
+						!has_pseudo_class(litehtml::_id("disabled"))) {
+						const auto accent = css().get_accent_color().to_srgb(color);
+						const float lightness = (accent.red * 0.2126f + accent.green * 0.7152f + accent.blue * 0.0722f) / 255;
+						ink = lightness > 0.55f ? litehtml::web_color::black : litehtml::web_color::white;
+					}
+					p_container.draw_input(p_box, mark, origin, ink, {}, {}, {});
 				}
 			}
 			return;
 		}
 
-		editor.paint_single(p_container, p_box, css(), String::utf8(get_attr("placeholder", "")), focused);
+		editor.paint_single(p_container, p_box, *this, String::utf8(get_attr("placeholder", "")), focused);
 	}
 }

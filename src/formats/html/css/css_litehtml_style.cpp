@@ -100,11 +100,11 @@ const css_token_vector* style::get_custom_property(string_id name, bool& local) 
 	return cascade.get_custom_property(name, local);
 }
 
-void style::resolve_cascade(const html_tag& element)
+void style::resolve_cascade(const html_tag& element, bool use_element_variables)
 {
 	const auto doc = element.get_document();
 	const auto parent = element.parent();
-	const auto* parent_tag = dynamic_cast<const html_tag*>(parent.get());
+	const auto* parent_tag = use_element_variables ? &element : dynamic_cast<const html_tag*>(parent.get());
 	cascade.resolve(doc->has_author_layers(), [&](string_id name, css_token_vector& tokens) {
 		return parent_tag && parent_tag->get_custom_property(name, tokens);
 	}, [&](const auto& declaration, const auto& tokens, bool important) {

@@ -29,6 +29,13 @@ namespace litehtml
 		string_vector			m_str_classes;
 		vector<string_id>		m_classes;
 		style					m_style;
+		struct field_pseudo_styles {
+			std::unique_ptr<style> placeholder;
+			std::unique_ptr<style> selection;
+			std::unique_ptr<css_properties> placeholder_css;
+		};
+		std::unique_ptr<field_pseudo_styles> m_field_pseudos;
+		bool apply_field_pseudo(int match, const css_selector& selector);
 		string_map				m_attrs;
 		vector<string_id>		m_pseudo_classes;
 
@@ -73,6 +80,14 @@ namespace litehtml
 		void				draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip,
 									const std::shared_ptr<render_item> &ri) override;
 
+		const css_properties* get_placeholder_style() const;
+		bool has_placeholder_color() const;
+		std::optional<web_color> get_selection_color(string_id name) const;
+		bool has_author_selection_style() const;
+		bool has_author_property(string_id name) const;
+		bool has_pseudo_class(string_id name) const {
+			return std::find(m_pseudo_classes.begin(), m_pseudo_classes.end(), name) != m_pseudo_classes.end();
+		}
 		const property_value& get_cascaded_property(string_id name) const { return m_style.get_property(name); }
 		bool				get_custom_property(string_id name, css_token_vector& result) const;
 

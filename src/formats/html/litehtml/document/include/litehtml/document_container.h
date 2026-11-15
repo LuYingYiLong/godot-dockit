@@ -70,7 +70,7 @@ namespace litehtml
 		virtual void draw_styled_text(uint_ptr hdc, const char* text, uint_ptr font, web_color color,
 			const position& pos, const element&, text_justify_adjustment, punctuation_trim = punctuation_trim::none)
 		{ draw_text(hdc, text, font, color, pos); }
-		virtual bool begin_render_item(const render_item&, const position*&) { return true; }
+		virtual bool begin_render_item(const render_item&, const position*&, bool = false) { return true; }
 		virtual void end_render_item() {}
 		virtual void begin_paint_group() {}
 		virtual void end_paint_group() {}

@@ -44,6 +44,8 @@ enum MatchFlag : unsigned {
 	match_before = 1 << 2,
 	match_after = 1 << 3,
 	match_marker = 1 << 4,
+	match_placeholder = 1 << 5,
+	match_selection = 1 << 6,
 };
 
 unsigned match_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,

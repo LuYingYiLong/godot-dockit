@@ -7,6 +7,7 @@
 namespace litehtml
 {
 	class html_tag;
+	class style;
 
 	using docrender::css::css_line_height_t;
 
@@ -14,6 +15,7 @@ namespace litehtml
 	{
 	public:
 		void compute(const html_tag* element, const std::shared_ptr<document>& doc);
+		void compute_placeholder(const html_tag& element, const style& declarations, document& doc);
 	};
 }
 

@@ -146,6 +146,7 @@
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_elements.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_table_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_state.cpp" />
     <ClCompile Include="src\formats\html\elements\html_select_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_text_editor.cpp" />
@@ -235,6 +236,7 @@
     <ClCompile Include="src\formats\html\css\css_string_id.cpp" />
     <ClCompile Include="src\formats\html\css\css_units.cpp" />
     <ClCompile Include="src\formats\html\litehtml\document\src\document.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\document\src\el_table.cpp" />
     <ClCompile Include="src\formats\html\litehtml\document\src\document_container.cpp" />
     <ClCompile Include="src\formats\html\litehtml\document\src\element.cpp" />
     <ClCompile Include="src\formats\html\litehtml\flex\src\flex_item.cpp" />
@@ -247,6 +249,7 @@
     <ClCompile Include="src\formats\html\litehtml\layout\src\render_image.cpp" />
     <ClCompile Include="src\formats\html\litehtml\layout\src\render_inline_context.cpp" />
     <ClCompile Include="src\formats\html\litehtml\layout\src\render_table.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\table.cpp" />
     <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_space.cpp" />
     <ClCompile Include="src\formats\html\litehtml\render_tree\src\el_text.cpp" />
     <ClCompile Include="src\formats\html\litehtml\render_tree\src\render_item.cpp" />
@@ -294,6 +297,8 @@
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />
     <ClInclude Include="src\formats\html\elements\html_input_node.h" />
     <ClInclude Include="src\formats\html\elements\html_form_elements.h" />
+    <ClInclude Include="src\formats\html\elements\html_table_attributes.h" />
+    <ClInclude Include="src\formats\html\elements\html_table_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_form_state.h" />
     <ClInclude Include="src\formats\html\elements\html_select_node.h" />
     <ClInclude Include="src\formats\html\elements\html_node_copy_state.h" />
@@ -421,6 +426,7 @@
     <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_block_context.h" />
     <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_inline_context.h" />
     <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\render_table.h" />
+    <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\table.h" />
     <ClInclude Include="src\formats\html\litehtml\layout\include\litehtml\types.h" />
     <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_space.h" />
     <ClInclude Include="src\formats\html\litehtml\render_tree\include\litehtml\el_text.h" />

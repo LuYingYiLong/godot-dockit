@@ -542,7 +542,7 @@ bool is_supported_simple_pseudo_element(const string& name)
 		// Highlight Pseudo-elements  https://www.w3.org/TR/css-pseudo-4/#highlight-pseudos
 		//"selection",
 		// Tree-Abiding Pseudo-elements  https://www.w3.org/TR/css-pseudo-4/#treelike
-		"before", "after", "marker"
+		"before", "after", "marker", "placeholder", "selection"
 	);
 }
 

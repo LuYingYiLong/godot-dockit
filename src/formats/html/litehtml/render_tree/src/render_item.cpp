@@ -181,6 +181,7 @@ void litehtml::render_item::calc_outlines( pixel_t parent_width )
 
     m_borders.left	= m_element->css().get_borders().left.width.calc_percent(parent_width);
     m_borders.right	= m_element->css().get_borders().right.width.calc_percent(parent_width);
+    if (m_shared_table_borders) m_borders = *m_shared_table_borders;
 
     m_margins.left	= m_element->css().get_margins().left.calc_percent(parent_width);
     m_margins.right	= m_element->css().get_margins().right.calc_percent(parent_width);
@@ -927,6 +928,7 @@ void litehtml::render_item::get_redraw_box(litehtml::position& pos, pixel_t x /*
 
 void litehtml::render_item::calc_document_size(litehtml::size& sz, pixel_t x /*= 0*/, pixel_t y /*= 0*/)
 {
+	if (collapsed_table_track()) return;
 	if(css().get_display() != display_inline && css().get_display() != display_table_row)
 	{
 		if(is_visible())
@@ -937,6 +939,14 @@ void litehtml::render_item::calc_document_size(litehtml::size& sz, pixel_t x /*=
 				sz.height = std::max(sz.height, y + bottom());
 			}
 
+			if (has_table_cell_clip() && css().get_overflow() == overflow_visible) return;
+			if (!is_viewport_fixed() && css().get_display() == display_table && css().get_overflow() == overflow_visible)
+			{
+				const auto extent = layout_overflow();
+				sz.width = std::max(sz.width, x + m_pos.x + extent.width);
+				sz.height = std::max(sz.height, y + m_pos.y + extent.height);
+				return;
+			}
 			if(is_one_of(src_el()->css().get_overflow(), overflow_scroll, overflow_auto, overflow_hidden))
 			{
 				size child_size;
@@ -1166,7 +1176,11 @@ std::shared_ptr<litehtml::element>  litehtml::render_item::get_child_by_point(pi
     {
         const auto& el = *i;
 
-        if(el->is_visible() && el->src_el()->css().get_display() != display_inline_text)
+        const auto display = el->css().get_display();
+        const bool row_wrapper = is_one_of(display, display_table_row, display_table_row_group,
+            display_table_header_group, display_table_footer_group);
+        if((el->is_visible() || (row_wrapper && el->css().get_visibility() == visibility_collapse)) &&
+            display != display_inline_text)
         {
         	bool process = true;
             switch(flag)
@@ -1187,7 +1201,7 @@ std::shared_ptr<litehtml::element>  litehtml::render_item::get_child_by_point(pi
                         } else
                         {
                             ret = el->get_element_by_point(el_pos.x, el_pos.y, client_x, client_y, check);
-                            if(!ret && el->is_point_inside(el_pos.x, el_pos.y))
+                            if(!ret && el->is_visible() && el->is_point_inside(el_pos.x, el_pos.y))
                             {
 								if (!check || check(el))
 								{
@@ -1203,7 +1217,7 @@ std::shared_ptr<litehtml::element>  litehtml::render_item::get_child_by_point(pi
                     {
                         ret = el->get_child_by_point(el_pos.x, el_pos.y, client_x, client_y, flag, zindex, check);
 
-                    	if(!ret && el->is_point_inside(el_pos.x, el_pos.y))
+                        if(!ret && el->is_visible() && el->is_point_inside(el_pos.x, el_pos.y))
                         {
 							if (!check || check(el))
 							{
@@ -1218,7 +1232,7 @@ std::shared_ptr<litehtml::element>  litehtml::render_item::get_child_by_point(pi
                     {
                         ret = el->get_element_by_point(el_pos.x, el_pos.y, client_x, client_y, check);
 
-                        if(!ret && el->is_point_inside(el_pos.x, el_pos.y))
+                        if(!ret && el->is_visible() && el->is_point_inside(el_pos.x, el_pos.y))
                         {
                             ret = el->src_el();
                         }
@@ -1236,7 +1250,7 @@ std::shared_ptr<litehtml::element>  litehtml::render_item::get_child_by_point(pi
                             ret = el->get_element_by_point(el_pos.x, el_pos.y, client_x, client_y, check);
                             process = false;
                         }
-                        if(!ret && el->is_point_inside(el_pos.x, el_pos.y))
+                        if(!ret && el->is_visible() && el->is_point_inside(el_pos.x, el_pos.y))
                         {
                         	if (!check || check(el))
                         	{

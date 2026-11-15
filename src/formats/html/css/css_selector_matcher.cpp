@@ -269,6 +269,8 @@ unsigned match_compound(const SelectorDOM& dom, SelectorNode node, const Compoun
 				if (attribute.name == "before") result |= match_before;
 				else if (attribute.name == "after") result |= match_after;
 				else if (attribute.name == "marker") result |= match_marker;
+				else if (attribute.name == "placeholder") result |= match_placeholder;
+				else if (attribute.name == "selection") result |= match_selection;
 				else return match_none;
 				break;
 			case select_pseudo_class:

@@ -398,6 +398,10 @@ func _run() -> void:
 	await _check_controls()
 	await _check_element_activation()
 	await _check_forms()
+	_check_table_elements()
+	await _check_table_layout()
+	await _check_table_css()
+	await _check_form_css()
 	_check_image_element()
 	await _check_responsive_images()
 	await _check_image_alt_text()
@@ -7367,6 +7371,352 @@ func _drag_pointer(viewport: SubViewport, from: Vector2, to: Vector2) -> void:
 	click.position = to
 	click.pressed = false
 	viewport.push_input(click)
+
+
+func _check_table_elements() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("<table id='table'><!--title--></table>") == OK, "Parse an empty HTML table")
+	var table: HTMLTableElement = layout.get_element_by_id("table") as HTMLTableElement
+	if table == null:
+		_check(false, "Parsed table uses the specialized handle")
+		return
+	_check(table.insert_row(-2) == null and table.insert_row(1) == null and table.delete_row(-1) == OK and
+		table.get_t_bodies().is_empty(), "Invalid empty-table insertion leaves the tree untouched")
+	var body_row: HTMLTableRowElement = table.insert_row()
+	var caption: HTMLTableCaptionElement = table.create_caption()
+	var head: HTMLTableSectionElement = table.create_t_head()
+	var foot: HTMLTableSectionElement = table.create_t_foot()
+	var head_row: HTMLTableRowElement = head.insert_row()
+	var foot_row: HTMLTableRowElement = foot.insert_row()
+	var body: HTMLTableSectionElement = table.get_t_bodies()[0]
+	var second: HTMLTableSectionElement = table.create_t_body()
+	var group: HTMLTableColElement = layout.create_element("colgroup") as HTMLTableColElement
+	var column: HTMLTableColElement = layout.create_element("col") as HTMLTableColElement
+	group.append_child(column)
+	table.insert_before(group, head)
+	_check(body_row.get_parent() == body and table.create_caption() == caption and table.create_t_head() == head and
+		table.create_t_foot() == foot and table.get_inner_html().begins_with("<caption>") and
+		table.get_t_bodies() == [body, second], "Create the specialized table parts in their DOM positions")
+	var rows: Array[HTMLTableRowElement] = table.get_rows()
+	_check(rows == [head_row, body_row, foot_row] and foot_row.row_index == 2 and foot_row.section_row_index == 0,
+		"Table rows group head, body and foot while section indices use the immediate parent")
+	var hidden: HTMLTableRowElement = layout.create_element("tr") as HTMLTableRowElement
+	hidden.set_attribute("style", "display: none")
+	table.insert_before(hidden, foot)
+	_check(rows.size() == 3 and table.get_rows() == [head_row, body_row, hidden, foot_row] and hidden.section_row_index == 2,
+		"Table snapshots exclude no hidden rows and direct row indices use the table")
+	var last: HTMLTableRowElement = table.insert_row()
+	var before: HTMLTableRowElement = table.insert_row(1)
+	_check(last.get_parent() == foot and before.get_parent() == body and before.section_row_index == 0,
+		"Table insertion uses the targeted row's actual parent")
+	var th: HTMLTableCellElement = layout.create_element("th") as HTMLTableCellElement
+	th.scope = "CoL"
+	th.abbr = "Short"
+	head_row.append_child(th)
+	var td: HTMLTableCellElement = head_row.insert_cell(0)
+	td.headers = "a b"
+	td.col_span = 1500
+	td.row_span = 0
+	column.span = 2
+	group.set_attribute("span", "garbage")
+	_check(td.get_tag_name() == "td" and td.cell_index == 0 and th.cell_index == 1 and head_row.get_cells() == [td, th] and
+		td.col_span == 1000 and td.get_attribute("colspan") == "1500" and td.row_span == 0 and td.headers == "a b" and
+		th.scope == "col" and th.abbr == "Short" and column.span == 2 and group.span == 1,
+		"Cell and column properties reflect source attributes and keep stable typed handles")
+	td.set_inner_html("<table><tbody><tr><td>Nested</td></tr></tbody></table>")
+	_check(table.get_rows().size() == 6 and head_row.get_cells().size() == 2,
+		"Table and cell collections exclude nested tables")
+	_check(table.set_t_head(second) == ERR_INVALID_PARAMETER and table.t_head == head and
+		table.delete_row(6) == ERR_INVALID_PARAMETER and head_row.delete_cell(2) == ERR_INVALID_PARAMETER,
+		"Invalid setters and indexes leave the DOM untouched")
+	var other: HTMLLayout = HTMLLayout.new()
+	other.parse("<table><thead></thead></table>")
+	var foreign_head: HTMLTableSectionElement = other.query_selector("thead") as HTMLTableSectionElement
+	_check(table.set_t_head(foreign_head) == ERR_INVALID_PARAMETER and table.t_head == head,
+		"Table part setters reject a handle from another layout")
+	_check(head_row.delete_cell(0) == OK and td.is_valid() and td.cell_index == -1 and head_row.append_child(td) == OK and
+		head_row.get_cells()[1] == td and table.delete_caption() == OK and caption.is_valid() and not caption.is_connected(),
+		"Table deletion detaches elements and allows reinsertion with their existing handles")
+	_check(table.set_caption(caption) == OK and table.caption == caption and table.delete_row(-1) == OK and
+		last.is_valid() and not last.is_connected() and last.row_index == -1,
+		"A detached caption can be restored and deleting the last row preserves its handle")
+	_check(table.set_t_foot(null) == OK and table.t_foot == null and foot.is_valid() and foot_row.get_parent() == foot,
+		"Clearing a table section detaches its subtree with its existing handles")
+	layout.clear()
+	_check(not table.is_valid() and not foot.is_valid() and table.get_rows().is_empty() and foot_row.row_index == -1,
+		"Clearing the layout invalidates typed table handles")
+
+
+func _check_colliding_table_spans() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var markup: String = """<table style="border-spacing: 0; width: 240px">
+		<colgroup span="2" style="width: 100px"></colgroup>
+		<tbody><tr><td style="width: 35px; height: 20px"></td><td id="occupied" rowspan="2" style="width: 40px"></td></tr>
+		<tr><td id="collision" colspan="2" style="height: 20px"></td></tr></tbody>
+		<tbody><tr><td id="huge" rowspan="9999999999999999" colspan="9999999999999999" style="height: 16px"></td></tr></tbody>
+	</table>"""
+	_check(layout.parse(markup) == OK and layout.layout(Vector2i(500, 200)) == OK,
+		"Lay out intersecting spans and saturate oversized markup attributes")
+	var occupied: Rect2 = _rect(layout, "occupied")
+	var cell: Rect2 = _rect(layout, "collision")
+	var huge: HTMLTableCellElement = layout.get_element_by_id("huge") as HTMLTableCellElement
+	_check(cell.has_area() and cell.position.x >= occupied.end.x - 0.01,
+		"A colspan skips an occupied interval even when its first column was free")
+	_check(huge.col_span == 1000 and huge.row_span == 65534 and huge.get_bounding_rect().size.y < 30.0,
+		"Oversized spans are bounded and stay in their row group")
+	var sized: String = """<style>body { margin: 0 } td { padding: 0 }</style>
+		<table style="width: 50%; border-spacing: 0"><colgroup><col style="width: 40%"><col></colgroup>
+		<tr style="height: 42px"><td id="height" rowspan="2" style="height: 60px"></td><td>Head</td></tr>
+		<tr><td style="height: 12px"></td></tr></table>"""
+	_check(layout.parse(sized) == OK and layout.layout(Vector2i(400, 200)) == OK,
+		"Lay out a spanning cell with a specified row height and percentage column width")
+	var initial: Rect2 = _rect(layout, "height")
+	_check(is_equal_approx(initial.size.y, 60.0) and initial.size.x >= 80.0,
+		"Spanning cell height credits existing row heights and the column meets its percentage minimum: %s" % initial.size)
+	_check(layout.layout(Vector2i(800, 200)) == OK and _rect(layout, "height").size.x >= 160.0,
+		"Percentage column widths resolve against the resized table")
+
+
+func _check_table_layout() -> void:
+	_check_colliding_table_spans()
+	var markup: String = """<table id="table" style="border-spacing: 4px; background: black">
+		<caption id="caption" style="caption-side: bottom">Caption</caption>
+		<colgroup id="columns" style="width: 170px; background: red"><col style="width: 80px; background: lime"><col span="2"></colgroup>
+		<tfoot><tr><td id="foot" colspan="3" style="height: 24px">Foot</td></tr></tfoot>
+		<tbody><tr><td id="first" style="height: 28px"></td><td id="span" rowspan="0" colspan="2"></td></tr>
+		<tr><td id="next" style="height: 28px"></td></tr></tbody>
+		<thead><tr><th id="head" colspan="3" style="height: 24px"><a id="link" href="#foot">Picker</a></th></tr></thead>
+		<tbody><tr><td id="second" style="height: 24px; background: blue"></td><td id="after" rowspan="99999999" colspan="0"></td></tr></tbody>
+	</table>"""
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(640, 240)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(320.0, 240.0)
+	label.text = markup
+	viewport.add_child(label)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2(320.0, 0.0)
+	markdown.size = Vector2(320.0, 240.0)
+	markdown.parse_html = true
+	markdown.text = markup
+	var icon_texture: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, icon_texture)
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var head: Rect2 = _label_rect(label, "head")
+	var first: Rect2 = _label_rect(label, "first")
+	var next: Rect2 = _label_rect(label, "next")
+	var span: Rect2 = _label_rect(label, "span")
+	var second: Rect2 = _label_rect(label, "second")
+	var after: Rect2 = _label_rect(label, "after")
+	var foot: Rect2 = _label_rect(label, "foot")
+	var caption: Rect2 = _label_rect(label, "caption")
+	_check(head.position.y < first.position.y and first.position.y < second.position.y and second.position.y < foot.position.y and
+		foot.position.y < caption.position.y, "Header, body, footer and bottom caption use visual table order")
+	_check(is_equal_approx(first.position.x, next.position.x) and span.position.x > first.end.x and
+		is_equal_approx(span.end.y, next.end.y) and is_equal_approx(second.position.x, first.position.x) and
+		is_equal_approx(after.end.y, second.end.y), "Combined spans occupy full ranges and stop at their row group")
+	_check(first.size.x >= 80.0 and head.size.x >= 170.0, "Column and column group width hints contribute to table sizing")
+	_check(label.get_element_by_id("columns").get_client_rects().is_empty(), "Column styling has no hit-test box of its own")
+	var painted: Image = viewport.get_texture().get_image()
+	_check_pixel(painted, first.get_center(), Color.LIME, "Column color paints behind a transparent cell")
+	_check_pixel(painted, span.get_center(), Color.RED, "Column group color covers the originating spanning cell")
+	_check_pixel(painted, second.get_center(), Color.BLUE, "Cell color paints on top of its column layers")
+	_check(_color_bounds(painted, Rect2i(320, 0, 320, 240), Color.LIME).has_area(), "Markdown HTML paints column styles")
+	var link: HTMLElement = label.get_element_by_id("link")
+	var activated: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: activated.append(uri))
+	var link_point: Vector2 = link.get_bounding_rect().get_center()
+	_drag_pointer(viewport, link_point, link_point)
+	label.select_all()
+	_check(activated == ["#foot"] and "Picker" in label.get_selected_text(), "Reordered table cells remain clickable and selectable")
+	var table: HTMLTableElement = label.get_element_by_id("table") as HTMLTableElement
+	var section: HTMLTableSectionElement = table.get_t_bodies()[0]
+	var updates: Array[bool] = []
+	label.layout_changed.connect(func() -> void: updates.append(true))
+	var added: HTMLTableRowElement = section.insert_row()
+	var added_cell: HTMLTableCellElement = added.insert_cell()
+	added_cell.set_text_content("Added")
+	await process_frame
+	await process_frame
+	_check(updates.size() == 1 and added_cell.get_bounding_rect().has_area() and _label_rect(label, "foot").position.y > foot.position.y,
+		"Connected DOM insertion updates spanning cells and later groups in one reflow")
+	viewport.queue_free()
+
+
+func _check_table_css() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(760, 500)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(380.0, 500.0)
+	label.text = """<style>
+		body { margin: 0; background: white }
+		table { margin-bottom: 12px }
+		#fixed { width: 300px; table-layout: var(--layout); --layout: fixed; border-spacing: 0 }
+		#fixed td { height: 16px; padding: 0 }
+		#empty { border-spacing: 4px; empty-cells: hide; background: white }
+		#empty td { width: 40px; height: 20px; background: red }
+		#shared { width: 150px; table-layout: fixed; border-collapse: collapse }
+		#shared td { height: 20px; background: white }
+		#left { border-right: 6px solid blue }
+		#right { border-left: 4px double red }
+		#no_edge { border-right: hidden }
+		#ignored { border-left: 8px solid red }
+		#tracks { width: 140px; table-layout: fixed; border-spacing: 0 }
+		#tracks td { height: 12px }
+	</style>
+	<table id="fixed"><col style="width: 20%"><col><col>
+		<tr><td id="fraction"></td><td id="second_width" style="width: 90px"></td><td id="third_width"></td></tr>
+		<tr><td style="width: 500px; overflow: hidden">This later row must leave the widths alone.</td><td></td><td></td></tr>
+	</table>
+	<table id="empty"><tr id="empty_row"><td>   </td><td><!-- comment --></td></tr>
+		<tr><td id="empty_cell"></td><td id="shown_cell"><em></em></td></tr>
+	</table>
+	<table id="shared"><tr><td id="left"></td><td id="right"></td></tr>
+		<tr><td id="no_edge"></td><td id="ignored"></td></tr>
+	</table>
+	<table id="tracks"><col id="first_track" style="width: 40px"><col id="second_track" style="width: 100px">
+		<tr><td id="gone"><a href="#kept">Hidden</a></td><td id="kept">Keep</td></tr>
+		<tr id="row_to_fold" style="height: 25px"><td id="spanning" rowspan="2" colspan="2" style="visibility: visible">Spanning</td></tr><tr></tr>
+	</table>"""
+	viewport.add_child(label)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2(380.0, 0.0)
+	markdown.size = Vector2(380.0, 500.0)
+	markdown.parse_html = true
+	markdown.text = """<table style="width: 220px; table-layout: fixed; border-collapse: collapse">
+	<tr><td style="width: 100px; border-right: 8px solid blue">Left</td><td style="border-left: 4px solid red">Right</td></tr>
+	</table>"""
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon_name: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon_name, icon)
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(is_equal_approx(_label_rect(label, "fraction").size.x, 60.0) and
+		is_equal_approx(_label_rect(label, "second_width").size.x, 90.0) and
+		is_equal_approx(_label_rect(label, "third_width").size.x, 150.0),
+		"Fixed table widths use columns and the first visual row")
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, _label_rect(label, "empty_cell").get_center(), Color.WHITE, "A hidden empty cell leaves its table background")
+	_check_pixel(image, _label_rect(label, "shown_cell").get_center(), Color.RED, "An in-flow empty element counts as cell content")
+	_check(_label_rect(label, "empty_row").size.y == 0.0, "A row of hidden empty cells has zero height")
+	_check(_color_bounds(image, Rect2i(380, 0, 380, 200), Color.BLUE).has_area() and
+		not _color_bounds(image, Rect2i(380, 0, 380, 200), Color.RED).has_area(),
+		"Markdown HTML blocks use the same collapsed border resolver")
+	var left: Rect2 = _label_rect(label, "left")
+	_check_pixel(image, Vector2(left.end.x - 2.0, left.get_center().y), Color.BLUE, "Wider collapsed borders win once across the shared line")
+	var ignored: Rect2 = _label_rect(label, "ignored")
+	_check_pixel(image, Vector2(ignored.position.x + 1.0, ignored.get_center().y), Color.WHITE, "A hidden shared edge defeats a wider visible border")
+	var gone: HTMLElement = label.get_element_by_id("gone")
+	var kept: HTMLElement = label.get_element_by_id("kept")
+	var table_before: Rect2 = _label_rect(label, "tracks")
+	label.get_element_by_id("first_track").set_attribute("style", "width: 40px; visibility: collapse")
+	label.get_element_by_id("row_to_fold").set_attribute("style", "height: 25px; visibility: collapse")
+	await process_frame
+	await process_frame
+	var table_after: Rect2 = _label_rect(label, "tracks")
+	_check(gone.is_valid() and gone.get_client_rects().is_empty() and kept.get_bounding_rect().position.x < table_before.position.x + 40.0 and
+		is_equal_approx(table_before.size.x - table_after.size.x, 40.0) and table_after.size.y < table_before.size.y,
+		"Collapsing tracks compresses the table while the DOM handles remain valid")
+	_check(label.get_element_at(kept.get_bounding_rect().get_center()) == kept,
+		"Hit testing uses the compressed cell position")
+	var standalone: HTMLLayout = HTMLLayout.new()
+	_check(standalone.parse("""<body style="margin: 0"><table style="width: 120px; table-layout: fixed">
+	<tr><td>Short</td></tr><tr><td id="overflowing"><div style="width: 250px">Wide</div></td></tr>
+	</table></body>""") == OK and standalone.layout(Vector2i(160, 70)) == OK,
+		"Measure a fixed table with later cell overflow outside HTMLLabel")
+	_check(_rect(standalone, "overflowing").size.x < 130.0 and standalone.get_content_size().x >= 250,
+		"Later cell overflow extends the scrollable document without widening tracks")
+	viewport.queue_free()
+
+
+func _check_form_css() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(340, 230)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(340.0, 230.0)
+	label.text = """<style>
+		body { margin: 0; background: white; --accent: #00ee44; accent-color: var(--accent); }
+		@layer placeholders {
+			#area::placeholder { color: var(--placeholder-tone); opacity: 100%; font-size: 18px }
+		}
+		@layer field {
+			#text::placeholder { color: red !important; opacity: 100%; font-size: 20px }
+			#text:focus::placeholder { color: #cc0000 !important }
+			section::selection { color: white; background-color: #ff00ff }
+			#area::placeholder { color: var(--placeholder-rollback, revert-layer) }
+			#area { --placeholder-tone: #aa00aa; }
+		}
+		#text { width: 180px; height: 32px; appearance: none; border: 2px solid blue; caret-color: #ee8800 }
+		#text::placeholder { color: green }
+		#area { display: block; width: 140px; height: 70px; caret-color: transparent }
+		#check, #radio { width: 24px; height: 24px }
+		#plain { appearance: none; width: 24px; height: 24px; border: 2px solid black }
+	</style>
+	<section><input id="text" placeholder="Hello placeholder"><br>
+	<input id="check" type="checkbox" checked><input id="radio" type="radio" checked>
+	<input id="plain" type="checkbox" checked>
+	<textarea id="area" placeholder="Textarea placeholder text wraps"></textarea></section>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var field: HTMLInputElement = label.get_element_by_id("text") as HTMLInputElement
+	var plain: HTMLInputElement = label.get_element_by_id("plain") as HTMLInputElement
+	var area: HTMLElement = label.get_element_by_id("area")
+	var field_box: Rect2 = field.get_bounding_rect()
+	var plain_box: Rect2 = plain.get_bounding_rect()
+	_check(_color_bounds(image, Rect2i(area.get_bounding_rect()), Color("#aa00aa")).size.y > 18,
+		"The multiline placeholder wraps with its pseudo-element font and color restored by a variable rollback")
+	_check(_color_bounds(image, Rect2i(field_box), Color.RED).has_area(), "Layered placeholder color is painted")
+	_check(_color_bounds(image, Rect2i(_label_rect(label, "check")), Color("#00ee44")).has_area() and
+		_color_bounds(image, Rect2i(_label_rect(label, "radio")), Color("#00ee44")).has_area(),
+		"An inherited variable colors checked checkbox and radio chrome")
+	_check_pixel(image, plain_box.get_center(), Color.WHITE, "Appearance none leaves a checkbox without built-in decoration")
+	_check_pixel(image, plain_box.position + Vector2(1.0, 10.0), Color.BLACK, "Appearance none preserves the author's border")
+	_check(label.focus_element(plain), "An unstyled checkbox can still take DOM focus")
+	_send_dom_key(viewport, KEY_SPACE)
+	_send_dom_key(viewport, KEY_SPACE, 0, false, false)
+	_check(not plain.checked, "Keyboard toggle works with appearance none")
+	await process_frame
+	await process_frame
+	_check(label.focus_element(field), "An unstyled text field can still take DOM focus")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(_color_bounds(viewport.get_texture().get_image(), Rect2i(field_box), Color("#cc0000")).has_area(),
+		"Focus updates the styled placeholder")
+	field.value = "A中 אב"
+	field.set_selection_range(0, field.value.length())
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check(_color_bounds(image, Rect2i(field_box), Color.MAGENTA).has_area(), "The editable field inherits ancestor selection styling")
+	_check(_color_bounds(image, Rect2i(field_box), Color("#ee8800")).has_area(), "The editable field paints its CSS caret color")
+	_check(not _color_bounds(image, Rect2i(field_box), Color("#cc0000")).has_area(), "A value replaces the placeholder")
+	var diagnostics: HTMLLayout = HTMLLayout.new()
+	diagnostics.css_diagnostics_enabled = true
+	_check(diagnostics.parse("""<style>input::placeholder { opacity: 50% }</style>
+		<input id="diagnosed" placeholder="Valid" style="caret-color: bogus; appearance: auto">
+		<div id="opacity_gap" style="opacity: 0.6"></div><table style="table-layout: bogus"></table>""") == OK and
+		diagnostics.layout(Vector2i(250, 100)) == OK, "Lay out the CSS diagnostic fixture")
+	_check(_has_diagnostic(diagnostics, "caret-color", "bogus", "inline_style") and
+		_has_diagnostic(diagnostics, "table-layout", "bogus", "inline_style"), "Invalid new property values retain diagnostics")
+	_check(diagnostics.get_element_by_id("diagnosed").get_css_diagnostics().size() == 1 and
+		diagnostics.get_element_by_id("opacity_gap").get_css_diagnostics().size() == 1,
+		"Placeholder opacity is painted and regular element opacity retains its rendering diagnostic")
+	viewport.queue_free()
 
 
 func _check_textarea() -> void:

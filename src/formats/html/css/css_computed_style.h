@@ -63,6 +63,11 @@ namespace docrender::css {
 		style_display			m_display;
 		visibility				m_visibility;
 		appearance				m_appearance;
+		bool m_fixed_table_layout = false;
+		bool m_hide_empty_cells = false;
+		web_color m_accent_color{37, 99, 235};
+		web_color m_caret_color;
+		double m_opacity = 1.0;
 		box_sizing				m_box_sizing;
 		css_length				m_z_index;
 		vertical_align			m_vertical_align;
@@ -268,6 +273,12 @@ namespace docrender::css {
 		void set_visibility(visibility mVisibility);
 
 		appearance get_appearance() const;
+		bool uses_fixed_table_layout() const { return m_fixed_table_layout; }
+		bool hides_empty_cells() const { return m_hide_empty_cells; }
+		bool is_right_to_left() const { return m_bg.m_direction == static_cast<int>(css_direction::rtl); }
+		const web_color& get_accent_color() const { return m_accent_color; }
+		const web_color& get_caret_color() const { return m_caret_color; }
+		double get_opacity() const { return m_opacity; }
 		void set_appearance(appearance mAppearance);
 
 		box_sizing get_box_sizing() const;

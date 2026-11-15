@@ -73,7 +73,8 @@ namespace docrender {
 		void retain_detached_subtree(const litehtml::element::ptr& p_root);
 		void release_detached_root(const std::shared_ptr<HTMLElement::DetachedTree>& p_tree, const litehtml::element::ptr& p_node);
 		godot::Error place_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
-			const litehtml::element::ptr& p_reference, bool p_replace_reference);
+			const litehtml::element::ptr& p_reference, bool p_replace_reference, bool p_notify = true, bool* r_changed = nullptr);
+		godot::Error detach_child(const litehtml::element::ptr& p_element, bool p_notify);
 		void forget_subtree(const litehtml::element& p_element);
 		godot::Ref<HTMLElement> find_element_handle(const litehtml::element& p_element) const;
 		godot::Ref<HTMLElement> make_detached_element(const litehtml::element::ptr& p_element);
@@ -133,6 +134,8 @@ namespace docrender {
 		godot::Error replace_children(const litehtml::element::ptr& p_element, const godot::String& p_content, bool p_parse_html);
 		godot::Error insert_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
 			const litehtml::element::ptr& p_reference);
+		godot::Error set_table_child(const litehtml::element::ptr& p_table, const litehtml::element::ptr& p_new_child,
+			const litehtml::element::ptr& p_old_child, const litehtml::element::ptr& p_reference);
 		godot::Error insert_fragment(const litehtml::element::ptr& p_parent, const HTMLDocumentFragment& p_fragment,
 			const litehtml::element::ptr& p_reference);
 		godot::Error replace_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_new_child,

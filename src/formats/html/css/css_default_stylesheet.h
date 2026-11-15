@@ -187,9 +187,13 @@ table {
 }
 
 tbody, tfoot, thead {
-	display:table-row-group;
 	vertical-align:middle;
 }
+tbody { display: table-row-group; }
+thead { display: table-header-group; }
+tfoot { display: table-footer-group; }
+col { display: table-column; }
+colgroup { display: table-column-group; }
 
 tr {
 	display: table-row;
@@ -340,6 +344,7 @@ legend { display: block; font-weight: bold; }
 label { cursor: pointer; }
 
 input, textarea, keygen, select, button, isindex {
+	appearance: auto;
 	margin: 0em;
 	color: initial;
 	line-height: normal;
@@ -356,10 +361,10 @@ input:not([type]), input[type="text" i], input[type="" i] {
 	width: 12em; height: 1.75em; padding: 0 0.4em; cursor: text;
 }
 input[type="checkbox" i], input[type="radio" i] {
-	appearance: checkbox; width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
+	width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
 }
 input[type="radio" i] { border-radius: 50%; }
-input[type="checkbox" i]:checked, input[type="radio" i]:checked { background-color: #2563eb; color: #ffffff; }
+input[type="checkbox" i]:checked, input[type="radio" i]:checked { color: #ffffff; }
 select { width: 12em; height: 1.75em; padding: 0 0.4em; cursor: pointer; }
 select:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
 select:focus-visible { outline: 2px solid #2563eb; }

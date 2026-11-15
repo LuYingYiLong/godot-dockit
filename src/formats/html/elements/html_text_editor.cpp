@@ -4,6 +4,7 @@
 
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <litehtml/document.h>
+#include <litehtml/html_tag.h>
 #include "formats/html/css/css_computed_style.h"
 
 #include <algorithm>
@@ -245,15 +246,33 @@ namespace docrender {
 	}
 
 
+	namespace {
+		HTMLInputPaintColors input_paint_colors(const litehtml::html_tag& host) {
+			auto foreground = host.get_selection_color(litehtml::_color_);
+			auto background = host.get_selection_color(litehtml::_background_color_);
+			if (!background && (foreground || host.has_author_selection_style())) background = litehtml::web_color::transparent;
+			return {foreground, background, host.css().get_caret_color().resolve(host.css().get_color())};
+		}
+
+		litehtml::web_color placeholder_ink(const litehtml::html_tag& host, const css::ComputedStyle* style) {
+			auto color = (style ? style->get_color() : host.css().get_color()).to_srgb();
+			const double opacity = (style ? style->get_opacity() : 1.0) * (host.has_placeholder_color() ? 1.0 : 0.5);
+			color.alpha = static_cast<litehtml::byte>(std::lround(color.alpha * opacity));
+			return color;
+		}
+	}
+
 	void HTMLTextEditor::paint_single(LiteHTMLContainer& p_container, const Rect2& p_box,
-		const css::ComputedStyle& p_style, const String& p_placeholder, bool p_focused) {
+		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused) {
+		const auto& p_style = p_host.css();
 		const auto color = p_style.get_color();
 		const auto from = selection_start();
 		const auto to = selection_end();
 		showing_placeholder = value.is_empty() && preedit.is_empty();
 		const String display = showing_placeholder ? p_placeholder :
 			has_preedit() ? value.substr(0, from) + preedit + value.substr(to) : value;
-		shaped = p_container.shape_input(p_style.get_font(), display);
+		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
+		shaped = p_container.shape_input(placeholder_style ? placeholder_style->get_font() : p_style.get_font(), display);
 		const int64_t display_caret = has_preedit() ?
 			from + std::clamp<int64_t>(preedit_selection.x, 0, preedit.length()) : caret;
 		const float x = caret_x(display_caret);
@@ -273,7 +292,7 @@ namespace docrender {
 		const float baseline = p_box.get_center().y + (ascent - descent) * 0.5f;
 		text_origin = Vector2(p_box.position.x + align - horizontal_scroll, baseline);
 		caret_rect = Rect2(text_origin.x + x, baseline - ascent, 1.0f, ascent + descent);
-		const auto ink = showing_placeholder ? litehtml::web_color(color.red, color.green, color.blue, color.alpha / 2) : color;
+		const auto ink = showing_placeholder ? placeholder_ink(p_host, placeholder_style) : color;
 		const auto server = text_server();
 		PackedVector2Array selected;
 		PackedVector2Array composition;
@@ -288,7 +307,7 @@ namespace docrender {
 			}
 		}
 		p_container.draw_input(p_box, shaped, text_origin, ink, selected, composition,
-			p_focused ? caret_rect : Rect2(), ascent, descent);
+			p_focused ? caret_rect : Rect2(), ascent, descent, input_paint_colors(p_host));
 	}
 
 	namespace {
@@ -431,7 +450,7 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::layout_lines(LiteHTMLContainer& p_container, const css::ComputedStyle& p_style,
-		const String& p_text, float p_width, float p_line_height) {
+		const String& p_text, uintptr_t p_font, float p_width, float p_line_height) {
 		lines.clear();
 		full_size = {};
 		const auto server = text_server();
@@ -453,7 +472,7 @@ namespace docrender {
 		for (int64_t start = 0; start <= p_text.length();) {
 			const auto newline = p_text.find("\n", start);
 			const auto end = newline < 0 ? p_text.length() : newline;
-			const auto paragraph = p_container.shape_input(p_style.get_font(), p_text.substr(start, end - start));
+			const auto paragraph = p_container.shape_input(p_font, p_text.substr(start, end - start));
 			if (paragraph.is_valid() && p_style.get_text_wrap_mode() == litehtml::text_wrap_wrap && paragraph.width() > p_width) {
 				const auto ranges = server->shaped_text_get_line_breaks(paragraph.get_rid(), std::max(1.0f, p_width), 0,
 					TextServer::BREAK_MANDATORY | TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE);
@@ -514,7 +533,8 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::paint_multiline(LiteHTMLContainer& p_container, const Rect2& p_box,
-		const css::ComputedStyle& p_style, const String& p_placeholder, bool p_focused, bool p_resize_handle) {
+		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused, bool p_resize_handle) {
+		const auto& p_style = p_host.css();
 		const int64_t from = selection_start();
 		const int64_t to = selection_end();
 		const bool composing = has_preedit();
@@ -523,18 +543,20 @@ namespace docrender {
 		showing_placeholder = value.is_empty() && !composing;
 		const String display = showing_placeholder ? normalize(p_placeholder) :
 			composing ? value.substr(0, from) + preedit + value.substr(to) : value;
-		const float height = std::max(1.0f, p_style.line_height().computed_value);
+		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
+		const css::ComputedStyle& text_style = placeholder_style ? *placeholder_style : p_style;
+		const float height = std::max(1.0f, text_style.line_height().computed_value);
 		const auto overflow = p_style.get_overflow();
 		const auto wrap = p_style.get_text_wrap_mode();
 		const auto align = p_style.get_text_align();
 		const float bar_width = std::min(SCROLLBAR_WIDTH, p_box.size.x);
 		const float bar_height = std::min(SCROLLBAR_WIDTH, p_box.size.y);
-		if (layout_size != p_box.size || layout_font != p_style.get_font() || laid_out_text != display ||
+		if (layout_size != p_box.size || layout_font != text_style.get_font() || laid_out_text != display ||
 			layout_line_height != height || layout_wrap != wrap || layout_overflow != overflow ||
 			layout_align != align || layout_resize != p_resize_handle) {
 			laid_out_text = display;
 			layout_size = p_box.size;
-			layout_font = p_style.get_font();
+			layout_font = text_style.get_font();
 			layout_line_height = height;
 			layout_wrap = wrap;
 			layout_overflow = overflow;
@@ -545,7 +567,7 @@ namespace docrender {
 			for (int pass = 0; pass < 3; ++pass) {
 				const float width = p_box.size.x - (vertical_scrollbar ? bar_width : 0);
 				const float box_height = p_box.size.y - (horizontal_scrollbar ? bar_height : 0);
-				layout_lines(p_container, p_style, display, width, height);
+				layout_lines(p_container, p_style, display, layout_font, width, height);
 				const bool need_vertical = vertical_scrollbar || (overflow == litehtml::overflow_auto && full_size.y > box_height);
 				const bool need_horizontal = horizontal_scrollbar || (overflow == litehtml::overflow_auto && full_size.x > width);
 				if (need_vertical == vertical_scrollbar && need_horizontal == horizontal_scrollbar) break;
@@ -581,9 +603,10 @@ namespace docrender {
 		const Vector2 origin = viewport.position - scroll;
 		caret_rect = Rect2(origin + Vector2(x, current.bottom - height), Vector2(1, height));
 		const auto color = p_style.get_color();
-		const auto ink = showing_placeholder ? litehtml::web_color(color.red, color.green, color.blue, color.alpha / 2) : color;
+		const auto ink = showing_placeholder ? placeholder_ink(p_host, placeholder_style) : color;
 		const auto server = text_server();
 		const float last_y = scroll.y + viewport.size.y;
+		const auto colors = input_paint_colors(p_host);
 		for (size_t index = line_at_y(scroll.y); index < lines.size(); ++index) {
 			const auto& line = lines[index];
 			if (line.bottom - height >= last_y) break;
@@ -604,7 +627,7 @@ namespace docrender {
 			}
 			p_container.draw_input(viewport, line.shaped, origin + line.baseline, ink, selected,
 				composing ? geometry(from, from + preedit.length()) : PackedVector2Array{},
-				p_focused && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent);
+				p_focused && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent, colors);
 		}
 		for (const bool axis : {false, true}) {
 			const Rect2& track = axis ? vertical_track : horizontal_track;

@@ -49,8 +49,8 @@ namespace docrender {
 		}
 		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
 			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
-			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent = 0, float p_descent = 0) {
-			paint.draw_input(p_box, p_text, p_origin, p_color, p_selection, p_preedit, p_caret, p_ascent, p_descent);
+			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent = 0, float p_descent = 0, const HTMLInputPaintColors& p_colors = {}) {
+			paint.draw_input(p_box, p_text, p_origin, p_color, p_selection, p_preedit, p_caret, p_ascent, p_descent, p_colors);
 		}
 		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color) {
 			paint.draw_input_chrome(p_clip, p_rect, p_color);
@@ -138,7 +138,7 @@ namespace docrender {
 		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses&) override;
 		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
 			const litehtml::render_item& p_item) override;
-		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip) override;
+		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration) override;
 		void end_render_item() override;
 		void begin_paint_group() override;
 		void end_paint_group() override;

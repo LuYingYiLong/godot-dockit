@@ -122,11 +122,15 @@ void Cascade::resolve(bool has_author_layers, const litehtml::css_inherited_vari
 				const auto& properties = evaluate(*effective);
 				const auto found = properties.find(name);
 				if (found == properties.end()) {
-					computed.insert_or_assign(name, Value{});
+					Value unset;
+					unset.priority = effective->priority;
+					computed.insert_or_assign(name, std::move(unset));
 					break;
 				}
 				if (!is_rollback(found->second)) {
-					computed.insert_or_assign(name, found->second);
+					auto resolved = found->second;
+					resolved.priority = effective->priority;
+					computed.insert_or_assign(name, std::move(resolved));
 					break;
 				}
 				effective = &restore(name, find_rollback(name, effective->priority.layer, found->second.is<revert_layer_value>()));
@@ -139,7 +143,7 @@ void Cascade::resolve(bool has_author_layers, const litehtml::css_inherited_vari
 	for (const auto& [name, winner] : winners) {
 		const auto found = computed.find(name);
 		const auto& value = found == computed.end() ? winner : found->second;
-		if (value.origin) {
+		if (value.origin && name != _id("opacity")) {
 			diagnostics.push_back({css_diagnostic_kind::not_rendered, _s(value.origin->name),
 				value.origin->value, value.origin->source});
 		}

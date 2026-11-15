@@ -492,8 +492,8 @@ namespace docrender {
 		paint.set_render_item_clip(p_position, p_radii, p_item);
 	}
 
-	bool LiteHTMLContainer::begin_render_item(const render_item& p_item, const litehtml::position*& r_clip) {
-		return paint.begin_render_item(p_item, r_clip);
+	bool LiteHTMLContainer::begin_render_item(const render_item& p_item, const litehtml::position*& r_clip, bool p_decoration) {
+		return paint.begin_render_item(p_item, r_clip, p_decoration);
 	}
 
 	void LiteHTMLContainer::end_render_item() {

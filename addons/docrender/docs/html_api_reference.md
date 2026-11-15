@@ -56,3 +56,9 @@ The form, label, fieldset, legend, select, option, and optgroup elements expose 
 Text inputs, checkboxes, radios, hidden inputs, textareas, and single-select dropdowns are supported. Dropdowns use a CSS-styled trigger and a label-local custom menu. Use `select_changed` for user selections. Form transport, browser validation UI, multiple selection, and list boxes are outside the current API.
 
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)
+
+## Tables
+
+`HTMLTableElement`, `HTMLTableSectionElement`, `HTMLTableRowElement`, `HTMLTableCellElement`, `HTMLTableColElement`, and `HTMLTableCaptionElement` are typed element handles. The table exposes `caption`, `t_head`, `t_foot`, `get_t_bodies()`, and `get_rows()`. Sections expose `get_rows()`, and rows expose `get_cells()`. These methods return typed array snapshots. Table rows are ordered by head, body and direct rows, then foot. Hidden DOM elements count toward indices. Nested table rows and anonymous layout boxes are outside the collection. [WHATWG table elements](https://html.spec.whatwg.org/multipage/tables.html#the-table-element)
+
+Use `insert_row()` and `insert_cell()` to create a row or a data cell. An empty table uses its last body or creates one. Insert a `th` using `create_element("th")` and `insert_before()` or `append_child()`. Deletion detaches the row or cell and retains its handle. Index `-1` appends on insertion and removes the last item on deletion. Deleting the last item of an empty collection returns `OK`. Invalid insertion returns `null` and invalid deletion returns `ERR_INVALID_PARAMETER`. A table part setter accepts a matching handle from the same layout or `null`. [WHATWG row and cell operations](https://html.spec.whatwg.org/multipage/tables.html#the-tr-element)

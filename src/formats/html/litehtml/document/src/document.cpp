@@ -950,20 +950,19 @@ void document::fix_table_children(const std::shared_ptr<render_item>& el_ptr, st
 
 	while (cur_iter != el_ptr->children().end())
 	{
-		if ((*cur_iter)->src_el()->css().get_display() != disp)
+		const auto child_display = (*cur_iter)->src_el()->css().get_display();
+		const bool proper_table_child = disp == display_table_row_group &&
+			(child_display == display_table_row || child_display == display_table_header_group ||
+			 child_display == display_table_footer_group || child_display == display_table_caption ||
+			 child_display == display_table_column || child_display == display_table_column_group);
+		if (child_display != disp && !proper_table_child)
 		{
-			if (!(*cur_iter)->src_el()->is_table_skip() || ((*cur_iter)->src_el()->is_table_skip() && !tmp.empty()))
+			if (!(*cur_iter)->src_el()->is_table_skip() || !tmp.empty())
 			{
-				if (disp != display_table_row_group || (*cur_iter)->src_el()->css().get_display() != display_table_caption)
-				{
-					if (tmp.empty())
-					{
-						first_iter = cur_iter;
-					}
-					tmp.push_back((*cur_iter));
-				}
+				if (tmp.empty()) first_iter = cur_iter;
+				tmp.push_back(*cur_iter);
 			}
-			cur_iter++;
+			++cur_iter;
 		}
 		else if (!tmp.empty())
 		{
@@ -983,6 +982,11 @@ void document::fix_table_children(const std::shared_ptr<render_item>& el_ptr, st
 void document::fix_table_parent(const std::shared_ptr<render_item>& el_ptr, style_display disp, const char* disp_str)
 {
 	auto parent = el_ptr->parent();
+	if (!parent) return;
+	const auto parent_display = parent->css().get_display();
+	if (disp == display_table_row_group &&
+		(parent_display == display_table_header_group || parent_display == display_table_footer_group ||
+		 parent_display == display_table || parent_display == display_inline_table)) return;
 
 	if (parent->src_el()->css().get_display() != disp)
 	{

@@ -10,7 +10,7 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | --- | --- |
 | Basic selectors | Type, class, ID, attribute, selector lists, descendant, child, and sibling combinators |
 | Pseudo-classes | `:root`, `:scope`, `:empty`, `:is()`, `:where()`, `:not()`, `:has()`, `:nth-child()` and related structural selectors, `:lang()`, `:link`, and `:any-link`. `HTMLLabel` supplies `:hover`, `:focus`, `:focus-visible`, and `:focus-within`, plus `:active` for buttons, checkboxes, and radios. Form controls expose `:enabled` and `:disabled`. Checkboxes, radios, and dropdown options expose `:checked`. |
-| Pseudo-elements | `::before`, `::after`, and `::marker` with generated content in the final compound selector. The legacy `:before` and `:after` spellings are equivalent. Sub-pseudo-elements, `::first-line`, and `::first-letter` are unsupported. |
+| Pseudo-elements | `::before`, `::after`, and `::marker` with generated content in the final compound selector. The legacy `:before` and `:after` spellings are equivalent. Fields support `::placeholder` and `::selection` through the stylesheet cascade. Sub-pseudo-elements, `::first-line`, and `::first-letter` are unsupported. |
 | Cascade | Named and anonymous layers, specificity, source order, `!important`, custom properties, and `var()`. Supported declarations share the CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, and `revert-layer`. |
 | Style sources | Inline `style`, `<style>`, the extra `stylesheet` string, and local project stylesheets loaded through `<link>` or `@import`. |
 | At-rules | `@media` supports viewport conditions such as width, height, and orientation. `@supports` tests declarations and selectors. `@layer` supports ordering statements and nested blocks. `@import` accepts local paths with optional layer, `supports(…)`, and media clauses. `@counter-style` defines document-local counter styles. `@font-face` loads project fonts. `@font-feature-values` names font-specific glyph alternates. `@keyframes` is unsupported. |
@@ -20,6 +20,8 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Area | Support |
 | --- | --- |
 | Layout | Block and inline layout, lists, tables, Flexbox, block and inline Grid, dimensions, margins, padding, and static, relative, absolute, and fixed positioning. The `inset` shorthand sets `top`, `right`, `bottom`, and `left`. Sticky positioning is unsupported. |
+| Tables | Automatic and fixed column sizing, header and footer ordering, top and bottom captions, and row and column spans. Separated borders support `border-spacing` and `empty-cells`. Collapsed borders are resolved per grid-line segment. `visibility: collapse` removes row and column tracks and clips cells spanning the remaining tracks. Column and row groups support solid backgrounds. [CSS table model](https://www.w3.org/TR/CSS22/tables.html) |
+| Form controls | `appearance: auto\|none` controls default decoration for buttons, text fields, checkboxes, radios, and selects. `accent-color` sets default checked colors on checkboxes and radios. Text inputs and textareas support `caret-color`, `::placeholder` color, opacity and font properties, and `::selection` foreground and background colors. [CSS user interface](https://www.w3.org/TR/css-ui-4/) · [CSS pseudo-elements](https://www.w3.org/TR/css-pseudo-4/) |
 | Box sizing | `width`, `min-width`, and `max-width` accept `min-content`, `max-content`, `fit-content`, `stretch`, `fit-content()`, and `stretch()`. `aspect-ratio` sets a preferred width-to-height ratio. Logical size properties map to the horizontal writing mode. |
 | 2D transforms | `transform` accepts `none` and lists of `matrix()`, `translate()`, `translateX()`, `translateY()`, `rotate()`, `scale()`, `scaleX()`, `scaleY()`, `skew()`, `skewX()`, and `skewY()`. `transform-origin` supports one or two position components. See the 2D transforms section below. |
 | Grid | Track lists support intrinsic sizes, named lines, and `repeat()`, including `auto-fill` and `auto-fit`. Grid items support placement by name, line number, or span. Grid supports automatic placement, patterned implicit tracks, item alignment, and track distribution. |
@@ -78,6 +80,12 @@ Use `@layer base, theme;` to establish order before appending rules with `@layer
 The pre-author baseline contains litehtml defaults, control and theme defaults, and HTML presentational hints. Author declarations take precedence over this baseline. In a document without author layers, both `revert` and `revert-layer` restore the baseline for each affected longhand. When the document uses layers, `revert-layer` first looks in earlier layers in normal layer order, or in the author stylesheets when used in a `style` attribute. If no eligible declaration remains, it restores the baseline. A restored declaration can still use `var()`. [CSS Cascade](https://www.w3.org/TR/css-cascade-5/#cascade-sort)
 
 If a custom property resolves to a CSS-wide keyword, DocRender applies it before substituting values that reference the property. For example, `--card-width: var(--missing, revert)` restores the baseline for `--card-width`, so `width: var(--card-width, 12rem)` sees the restored or inherited value and uses `12rem` if neither is available. [CSS Variables](https://www.w3.org/TR/css-variables-1/#using-variables)
+
+## Tables and form controls
+
+Fixed tables use a resolved table width, column declarations, and the first visual row to size tracks. Later cells can overflow their assigned tracks. In the separated border model, hidden empty cells leave the table background visible. Collapsed row and column tracks retain their DOM handles, while spanning cells are clipped to the remaining tracks.
+
+Form decoration uses DocRender's painted controls. Use `appearance: none` to keep the control's interactions and author styling with custom chrome. `::placeholder` accepts color, opacity as a number or percentage, and font properties. `::selection` paints text fields and textareas. Element-wide opacity still produces a drawing diagnostic.
 
 ## Box sizes
 

@@ -295,6 +295,7 @@ namespace docrender {
 		const Transform2D& p_parent_matrix, bool p_viewport_fixed_subtree) {
 		const auto& css = p_item->css();
 		const auto display = css.get_display();
+		if (display == display_table_column || display == display_table_column_group || p_item->collapsed_table_track()) return;
 		const bool fixed = p_item->is_viewport_fixed();
 		const bool fixed_subtree = p_viewport_fixed_subtree || fixed;
 		Transform2D matrix = fixed ? Transform2D() : p_parent_matrix;
@@ -341,6 +342,14 @@ namespace docrender {
 					entry.anchor_fallback = fallback;
 				}
 			}
+		}
+
+		if (inverse && p_item->has_table_cell_clip()) {
+			position box = p_item->get_placement();
+			box += p_item->get_paddings();
+			box += p_item->get_borders();
+			clips.push_back({ RoundedRect(to_rect(box), {}), matrix, *inverse, p_item.get(), p_overflow });
+			p_overflow = &clips.back();
 		}
 
 		// An overflow clip applies to descendants, while a fragment's own

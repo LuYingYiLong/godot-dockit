@@ -3668,3 +3668,164 @@ msgstr ""
 "查询和 [method HTMLLayout.create_element] 会为 [code]<input>[/code] 返回此类型。[HTMLLabel] "
 "支持文本框、复选框、单选按钮和隐藏字段。脚本赋值时不发出用户编辑信号。\n"
 "文本框的当前值与 [code]value[/code] 属性分开。复选框和单选按钮具有当前勾选状态，其值来自源属性，默认是 [code]on[/code]。隐藏字段的值保存在属性中并参与表单数据。"
+
+#. doc_classes/HTMLTableSectionElement.xml
+msgid "A row group in an HTML table."
+msgstr "HTML 表格的行组。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "A row in an HTML table."
+msgstr "HTML 表格的一行。"
+
+#. doc_classes/HTMLTableColElement.xml
+msgid "An HTML table column or column group."
+msgstr "HTML 表格的列或列组。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "An HTML table data cell or header cell."
+msgstr "HTML 表格的数据单元格或表头单元格。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "An HTML table with row and section editing."
+msgstr "支持编辑行和行组的 HTML 表格。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Cell queries use the immediate children and return stable element handles."
+msgstr "单元格查询使用直属子元素并返回稳定的元素句柄。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Create tables with [method HTMLLayout.create_element] or query them by selector. Table edits operate on the current layout. Collections are typed array snapshots. Removed sections and rows retain their handles."
+msgstr "使用 [method HTMLLayout.create_element] 创建表格，或通过选择器查询。表格编辑作用于当前布局。集合以类型化数组快照返回。移出的行组和行保留原有句柄。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Creates a table body after the last existing body, or appends it if there are no bodies."
+msgstr "在最后一个表体之后创建新表体。没有表体时追加到末尾。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Detaches a cell and keeps its handle valid. Pass [code]-1[/code] to detach the last cell. Returns [constant ERR_INVALID_PARAMETER] for an invalid index."
+msgstr "分离单元格并保留句柄。[code]-1[/code] 表示分离最后一个单元格。索引无效时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Detaches the first direct caption, if present."
+msgstr "存在直属标题时分离第一个。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Detaches the first direct table foot, if present."
+msgstr "存在直属表尾时分离第一个。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Detaches the first direct table head, if present."
+msgstr "存在直属表头时分离第一个。"
+
+#. doc_classes/HTMLTableElement.xml
+#. doc_classes/HTMLTableSectionElement.xml
+msgid "Detaches the row at the given index and preserves its handle. Pass [code]-1[/code] to detach the last row. Returns [constant OK] if the list is empty and the index is [code]-1[/code]."
+msgstr "分离指定索引的行并保留其句柄。[code]-1[/code] 表示分离最后一行。当列表为空且索引为 [code]-1[/code] 时返回 [constant OK]。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Inserts a data cell at the given index. Pass [code]-1[/code] to append. Returns [code]null[/code] for an invalid index."
+msgstr "在给定索引插入数据单元格。[code]-1[/code] 表示追加。索引无效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLTableSectionElement.xml
+msgid "Inserts a row at the given index. Pass [code]-1[/code] to append. Returns [code]null[/code] for an invalid index."
+msgstr "在给定索引插入一行。[code]-1[/code] 表示追加。索引无效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Inserts a row in the target row's parent. An empty table uses its last body or creates one. Pass [code]-1[/code] to append. Returns [code]null[/code] for an invalid index."
+msgstr "在目标行的父元素中插入新行。空表使用最后一个表体，或新建表体。[code]-1[/code] 表示追加。索引无效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLTableColElement.xml
+msgid "Represents a [code]<col>[/code] or [code]<colgroup>[/code] element."
+msgstr "表示 [code]<col>[/code] 或 [code]<colgroup>[/code] 元素。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "Represents a [code]<td>[/code] or [code]<th>[/code] element."
+msgstr "表示 [code]<td>[/code] 或 [code]<th>[/code] 元素。"
+
+#. doc_classes/HTMLTableSectionElement.xml
+msgid "Represents the table head, a table body, or the table foot. Row operations address immediate child rows."
+msgstr "表示表头、表体或表尾。行操作以直属行作为对象。"
+
+#. doc_classes/HTMLTableSectionElement.xml
+msgid "Returns a snapshot of the rows."
+msgstr "返回行数组的快照。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Returns a snapshot with head rows first, followed by body and direct rows, then foot rows."
+msgstr "返回行数组快照，先列出表头行，再列出表体行与直属行，最后列出表尾行。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Returns a tree-order snapshot of the immediate header and data cells."
+msgstr "按树顺序返回直属表头单元格和数据单元格的快照。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Returns a tree-order snapshot of the immediate table bodies."
+msgstr "按树顺序返回直属表体的快照。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Returns the existing caption or creates it."
+msgstr "返回现有标题，缺少时创建。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Returns the existing table foot or creates it."
+msgstr "返回现有表尾，缺少时创建。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "Returns the existing table head or creates it."
+msgstr "返回现有表头，缺少时创建。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "The canonical header scope keyword. Missing and unknown values read as an empty string."
+msgstr "规范化的表头作用范围关键字。未设置或未知时返回空字符串。"
+
+#. doc_classes/HTMLTableCaptionElement.xml
+msgid "The caption of an HTML table."
+msgstr "HTML 表格的标题。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "The first direct caption. Setting this to [code]null[/code] detaches it."
+msgstr "第一个直属标题。设为 [code]null[/code] 会将其分离。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "The first direct table foot. Assign a [code]<tfoot>[/code] handle from the same layout or [code]null[/code]."
+msgstr "第一个直属表尾。可赋值同一布局的 [code]<tfoot>[/code] 句柄或 [code]null[/code]。"
+
+#. doc_classes/HTMLTableElement.xml
+msgid "The first direct table head. Assign a [code]<thead>[/code] handle from the same layout or [code]null[/code]."
+msgstr "第一个直属表头。可赋值同一布局的 [code]<thead>[/code] 句柄或 [code]null[/code]。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "The reflected column span. Reads are limited to 1 through 1000."
+msgstr "反射跨列属性，读取范围为 1 到 1000。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "The reflected row span. Reads are limited to 0 through 65534. Zero spans the remaining rows in the row group."
+msgstr "反射跨行属性，读取范围为 0 到 65534。零表示跨到当前行组的最后一行。"
+
+#. doc_classes/HTMLTableColElement.xml
+msgid "The reflected span. Reads are limited to 1 through 1000."
+msgstr "反射跨度属性，读取范围为 1 到 1000。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "The short label of a header cell."
+msgstr "表头单元格的简称。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "The source attribute listing header IDs."
+msgstr "列出表头 ID 的源属性。"
+
+#. doc_classes/HTMLTableCaptionElement.xml
+msgid "Use the inherited element methods to edit the caption contents."
+msgstr "使用继承的元素方法编辑表格标题内容。"
+
+#. doc_classes/HTMLTableCellElement.xml
+msgid "Zero-based position in the parent row or [code]-1[/code] without a row parent."
+msgstr "在父行中的零基索引。没有行父元素时为 [code]-1[/code]。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Zero-based position in the parent section or table. Returns [code]-1[/code] without either parent."
+msgstr "在父行组或父表格中的零基索引。没有对应父元素时返回 [code]-1[/code]。"
+
+#. doc_classes/HTMLTableRowElement.xml
+msgid "Zero-based position in the table or [code]-1[/code] when outside a table."
+msgstr "在表格中的零基索引。没有所属表格时为 [code]-1[/code]。"

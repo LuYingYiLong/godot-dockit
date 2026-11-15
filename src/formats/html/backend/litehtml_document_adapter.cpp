@@ -181,6 +181,7 @@ namespace litehtml {
 			});
 		if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
 			tag->m_style.clear();
+			tag->m_field_pseudos.reset();
 		}
 		for (const auto& child : p_element.children()) {
 			reset_tree(*child);

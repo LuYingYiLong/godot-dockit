@@ -112,7 +112,7 @@ namespace docrender {
 		border_extras = border_size - box.size;
 		const bool resizable = resize_axes() != Vector2i() && border_box.has_area();
 		auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
-		editor.paint_multiline(*container, box, css(), String::utf8(get_attr("placeholder", "")), focused, resizable);
+		editor.paint_multiline(*container, box, *this, String::utf8(get_attr("placeholder", "")), focused, resizable);
 
 		resize_handle = {};
 		if (resizable) {

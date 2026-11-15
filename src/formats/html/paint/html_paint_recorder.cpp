@@ -731,6 +731,10 @@ void fragment() {
 			return;
 		}
 		const auto display = p_element->css().get_display();
+		if (display == display_table_cell) {
+			const auto item = p_element->get_render_item();
+			if (item && item->collapsed_table_track()) return;
+		}
 		const bool visible = p_element->css().get_visibility() == visibility_visible;
 		if (p_element->is_break()) {
 			// A trimmed source line feed stays in the DOM but has no render item.
@@ -1066,20 +1070,47 @@ void fragment() {
 
 	void HTMLPaintRecorder::draw_input(const Rect2& p_box, const HTMLTextLayout& p_text, const Vector2& p_origin,
 		const web_color& p_color, const PackedVector2Array& p_selection, const PackedVector2Array& p_preedit,
-		const Rect2& p_caret, float p_ascent, float p_descent) {
+		const Rect2& p_caret, float p_ascent, float p_descent, const HTMLInputPaintColors& p_colors) {
 		if (!push_content_clip(p_box)) return;
 		const Color color = to_color(p_color);
+		const Color selection_background = p_colors.selection_background ? to_color(*p_colors.selection_background, p_color) :
+			Color(0.25f, 0.55f, 0.95f, 0.5f);
 		for (const Vector2 range : p_selection) {
 			fill_rect(Rect2(p_origin.x + range.x, p_origin.y - p_ascent, range.y - range.x, p_ascent + p_descent),
-				Color(0.25f, 0.55f, 0.95f, 0.5f));
+				selection_background);
 		}
 		if (p_text.is_valid()) {
-			add_command(Text{p_text, p_origin - Vector2(0, p_text.line_ascent()), color});
+			const Vector2 top_left = p_origin - Vector2(0, p_text.line_ascent());
+			if (p_colors.selection_foreground && !p_selection.is_empty()) {
+				std::vector<Vector2> ranges;
+				for (const Vector2 range : p_selection)
+					ranges.emplace_back(std::max(p_box.position.x, p_origin.x + range.x),
+						std::min(p_box.get_end().x, p_origin.x + range.y));
+				std::sort(ranges.begin(), ranges.end(), [](Vector2 a, Vector2 b) { return a.x < b.x; });
+				const auto matrix = active_geometry ? active_geometry->matrix : Transform2D();
+				const auto paint_slice = [&](real_t begin, real_t end, const Color& ink) {
+					if (end <= begin || ink.a <= 0) return;
+					push_clip(RoundedRect(Rect2(begin, p_box.position.y, end - begin, p_box.size.y), {}), matrix);
+					add_command(Text{p_text, top_left, ink});
+					del_clip();
+				};
+				const Color selection_ink = to_color(*p_colors.selection_foreground, p_color);
+				real_t left = p_box.position.x;
+				for (const Vector2 range : ranges) {
+					if (range.x >= range.y || range.y <= left) continue;
+					paint_slice(left, range.x, color);
+					paint_slice(std::max(left, range.x), range.y, selection_ink);
+					left = range.y;
+				}
+				paint_slice(left, p_box.get_end().x, color);
+			} else {
+				add_command(Text{p_text, top_left, color});
+			}
 		}
 		for (const Vector2 range : p_preedit) {
 			fill_rect(Rect2(p_origin.x + range.x, p_origin.y + 1.0f, range.y - range.x, 1.0f), color);
 		}
-		fill_rect(p_caret, color);
+		fill_rect(p_caret, p_colors.caret ? to_color(*p_colors.caret, p_color) : color);
 		del_clip();
 	}
 
@@ -1550,11 +1581,14 @@ void fragment() {
 		push_clip(RoundedRect(to_rect(p_position), p_radii), geometry && geometry->inverse ? geometry->matrix : Transform2D());
 	}
 
-	bool HTMLPaintRecorder::begin_render_item(const render_item& p_item, const litehtml::position*& r_clip) {
+	bool HTMLPaintRecorder::begin_render_item(const render_item& p_item, const litehtml::position*& r_clip, bool p_decoration) {
+		active_geometry = nullptr;
+		active_decoration = p_decoration;
+		if (p_item.collapsed_table_track()) return false;
 		active_geometry = recording_geometry ? recording_geometry->find_renderer(&p_item) : nullptr;
 		if (!active_geometry) return true;
 		if (!active_geometry->inverse) return false;
-		if (recording_geometry->has_transforms() && !active_geometry->fragments.empty()) {
+		if (!active_decoration && recording_geometry->has_transforms() && !active_geometry->fragments.empty()) {
 			painted_elements.push_back(active_geometry);
 		}
 		if (p_item.parent() && active_geometry->matrix != Transform2D()) r_clip = nullptr;
@@ -1562,7 +1596,7 @@ void fragment() {
 	}
 
 	void HTMLPaintRecorder::end_render_item() {
-		record_outline();
+		if (!active_decoration) record_outline();
 		active_geometry = nullptr;
 	}
 

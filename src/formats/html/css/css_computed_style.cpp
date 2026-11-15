@@ -61,6 +61,15 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_float			 = (element_float)		read_property<int>(context,  _float_,			false,	float_none,				 (parent ? &parent->m_float : nullptr));
 	m_clear			 = (element_clear)		read_property<int>(context,  _clear_,			false,	clear_none,				 (parent ? &parent->m_clear : nullptr));
 	m_appearance	 = (appearance)			read_property<int>(context,  _appearance_,		false,	appearance_none,			 (parent ? &parent->m_appearance : nullptr));
+	m_fixed_table_layout = read_property<int>(context, _id("table-layout"), false, 0,
+		parent ? &parent->m_fixed_table_layout : nullptr) == 1;
+	m_hide_empty_cells = read_property<int>(context, _id("empty-cells"), true, 0,
+		parent ? &parent->m_hide_empty_cells : nullptr) == 1;
+	m_accent_color = read_property(context, _id("accent-color"), true, web_color(37, 99, 235),
+		parent ? &parent->m_accent_color : nullptr);
+	m_caret_color = read_property(context, _id("caret-color"), true, web_color::current_color,
+		parent ? &parent->m_caret_color : nullptr);
+	m_opacity = read_property(context, _id("opacity"), false, 1.0f, parent ? &parent->m_opacity : nullptr);
 	m_box_sizing	 = (box_sizing)			read_property<int>(context,  _box_sizing_,		false,	box_sizing_content_box,	 (parent ? &parent->m_box_sizing : nullptr));
 	m_overflow		 = (overflow)			read_property<int>(context,  _overflow_,		false,	overflow_visible,		 (parent ? &parent->m_overflow : nullptr));
 	m_resize = static_cast<resize_mode>(read_property<int>(context, _id("resize"), false, resize_none,

@@ -37,6 +37,10 @@ namespace litehtml
         margins						                m_borders;
         position					                m_pos;
         bool                                        m_skip;
+        bool m_empty_table_cell = false;
+        bool m_collapsed_table_track = false;
+        bool m_clipped_table_cell = false;
+        std::optional<margins> m_shared_table_borders;
         text_justify_adjustment                     m_justification;
         punctuation_trim m_punctuation_trim = punctuation_trim::none;
         std::vector<std::shared_ptr<render_item>>   m_positioned;
@@ -448,9 +452,21 @@ namespace litehtml
                    !is_one_of(css().get_overflow(), overflow_hidden, overflow_scroll, overflow_auto);
         }
 
+        bool empty_table_cell() const { return m_empty_table_cell; }
+        void set_empty_table_cell(bool value) { m_empty_table_cell = value; }
+        bool collapsed_table_track() const { return m_collapsed_table_track; }
+        void set_table_track_geometry(bool collapsed, bool clipped = false)
+        {
+            m_collapsed_table_track = collapsed;
+            m_clipped_table_cell = clipped;
+        }
+        bool has_table_cell_clip() const { return m_clipped_table_cell; }
+        bool shares_table_borders() const { return m_shared_table_borders.has_value(); }
+        void set_shared_table_borders(margins value) { m_shared_table_borders = m_borders = value; }
+
         bool is_visible() const
         {
-            return !(m_skip || src_el()->css().get_display() == display_none || src_el()->css().get_visibility() != visibility_visible);
+            return !(m_skip || m_collapsed_table_track || src_el()->css().get_display() == display_none || src_el()->css().get_visibility() != visibility_visible);
         }
 
 		void paint(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip);

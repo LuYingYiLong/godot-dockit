@@ -38,7 +38,7 @@ namespace litehtml {
 		const std::vector<css_diagnostic>* get_diagnostics() const { return diagnostics.get(); }
 		const std::vector<css_diagnostic>& get_computed_diagnostics() const { return cascade.get_diagnostics(); }
 		void snapshot_defaults();
-		void resolve_cascade(const html_tag& element);
+		void resolve_cascade(const html_tag& element, bool use_element_variables = false);
 
 	private:
 

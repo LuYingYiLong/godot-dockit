@@ -142,6 +142,20 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 	}
 	const css_token val = value.size() == 1 ? value[0] : css_token();
 	const auto ident = val.ident();
+	if (name == _id("accent-color") || name == _id("caret-color")) {
+		if (ident == "auto") add_parsed_property(name, property_value(initial_value{}, important));
+		else {
+			web_color color;
+			if (parse_color(val, color, container)) add_parsed_property(name, property_value(color, important));
+		}
+		return;
+	}
+	if (name == _id("opacity")) {
+		if ((val.type == NUMBER || val.type == PERCENTAGE) && std::isfinite(val.n.number))
+			add_parsed_property(name, property_value(static_cast<float>(std::clamp(
+				val.n.number / (val.type == PERCENTAGE ? 100.0 : 1.0), 0.0, 1.0)), important));
+		return;
+	}
 	web_color clr[4];
 	css_length len[4];
 	int idx[4];

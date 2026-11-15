@@ -10,6 +10,7 @@
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_form_state.h"
 #include "formats/html/elements/html_select_node.h"
+#include "formats/html/elements/html_table_elements.h"
 #include "formats/html/elements/html_image_element.h"
 #include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_template_element.h"
@@ -147,6 +148,16 @@ namespace {
 			case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
 			case litehtml::_template_: return instantiate_element_handle<HTMLTemplateElement>();
 			case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
+			case litehtml::_table_: return instantiate_element_handle<HTMLTableElement>();
+			case litehtml::_caption_: return instantiate_element_handle<HTMLTableCaptionElement>();
+			case litehtml::_col_:
+			case litehtml::_colgroup_: return instantiate_element_handle<HTMLTableColElement>();
+			case litehtml::_thead_:
+			case litehtml::_tbody_:
+			case litehtml::_tfoot_: return instantiate_element_handle<HTMLTableSectionElement>();
+			case litehtml::_tr_: return instantiate_element_handle<HTMLTableRowElement>();
+			case litehtml::_td_:
+			case litehtml::_th_: return instantiate_element_handle<HTMLTableCellElement>();
 			default: return instantiate_element_handle<HTMLElement>();
 		}
 	}
@@ -757,7 +768,7 @@ Error HTMLDOM::replace_child(const litehtml::element::ptr& p_parent, const liteh
 }
 
 Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
-	const litehtml::element::ptr& p_reference, bool p_replace_reference) {
+	const litehtml::element::ptr& p_reference, bool p_replace_reference, bool p_notify, bool* r_changed) {
 	if (!can_contain_elements(*p_parent) || (p_replace_reference && !p_reference) ||
 		(p_reference && p_reference->parent() != p_parent)) {
 		return ERR_INVALID_PARAMETER;
@@ -777,6 +788,7 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	if (result != EditResult::changed) {
 		return result == EditResult::unchanged ? OK : ERR_INVALID_PARAMETER;
 	}
+	if (r_changed) *r_changed = true;
 	if (source_tree != target_tree) {
 		release_detached_root(source_tree, p_child);
 		update_detached_handles(p_child, target_tree);
@@ -787,9 +799,31 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	}
 	docrender::forms::synchronize(p_parent, p_child);
 	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) docrender::forms::synchronize(old_parent);
-	if (!source_tree || !target_tree) {
+	if (p_notify && (!source_tree || !target_tree)) {
 		on_change();
 	}
+	return OK;
+}
+
+Error HTMLDOM::set_table_child(const litehtml::element::ptr& p_table, const litehtml::element::ptr& p_new_child,
+	const litehtml::element::ptr& p_old_child, const litehtml::element::ptr& p_reference) {
+	if ((p_old_child && p_old_child->parent() != p_table) || (p_reference && p_reference->parent() != p_table)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (!p_new_child && !p_old_child) return OK;
+	const bool connected = is_element_connected(*p_table) || (p_new_child && is_element_connected(*p_new_child));
+	bool changed = false;
+	// Insertion does all hierarchy validation before the old child is removed.
+	if (p_new_child) {
+		const Error error = place_child(p_table, p_new_child, p_reference, false, false, &changed);
+		if (error != OK) return error;
+	}
+	if (p_old_child && p_new_child != p_old_child) {
+		const Error error = detach_child(p_old_child, false);
+		if (error != OK) return error;
+		changed = true;
+	}
+	if (connected && changed) on_change();
 	return OK;
 }
 
@@ -798,6 +832,10 @@ Error HTMLDOM::remove_child(const litehtml::element::ptr& p_parent, const liteht
 }
 
 Error HTMLDOM::detach_element(const litehtml::element::ptr& p_element) {
+	return detach_child(p_element, true);
+}
+
+Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_notify) {
 	const auto parent = p_element->parent();
 	const auto old_tree = get_detached_tree(*p_element);
 	if (!parent) {
@@ -809,7 +847,7 @@ Error HTMLDOM::detach_element(const litehtml::element::ptr& p_element) {
 	retain_detached_subtree(p_element);
 	docrender::forms::synchronize(parent);
 	docrender::forms::synchronize(p_element);
-	if (!old_tree) {
+	if (!old_tree && p_notify) {
 		on_change();
 	}
 	return OK;

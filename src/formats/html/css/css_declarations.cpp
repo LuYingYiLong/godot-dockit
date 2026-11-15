@@ -53,6 +53,11 @@ namespace {
 			{ _margin_, { property_family::box, { _margin_top_, _margin_right_, _margin_bottom_, _margin_left_ } } },
 			{ _padding_, { property_family::box, { _padding_top_, _padding_right_, _padding_bottom_, _padding_left_ } } },
 			{ _color_, { property_family::background } },
+			{ _id("accent-color"), { property_family::background } },
+			{ _id("caret-color"), { property_family::background } },
+			{ _id("table-layout"), { property_family::keyword, {}, "auto;fixed" } },
+			{ _id("empty-cells"), { property_family::keyword, {}, "show;hide" } },
+			{ _id("opacity"), { property_family::background } },
 			{ _background_color_, { property_family::background } },
 			{ _border_top_color_, { property_family::background } },
 			{ _border_bottom_color_, { property_family::background } },
@@ -375,7 +380,7 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		std::shared_ptr<const property_value::declaration_origin> origin;
 		for (auto& [longhand, value] : properties)
 		{
-			if (!has_drawing_gap(longhand, value)) continue;
+			if (longhand != _id("opacity") && !has_drawing_gap(longhand, value)) continue;
 			if (!origin) origin = std::make_shared<property_value::declaration_origin>(
 				property_value::declaration_origin{ original_name, get_repr(original_tokens, 0, -1, true), source });
 			value.origin = origin;

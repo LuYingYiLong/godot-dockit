@@ -19,6 +19,11 @@ namespace litehtml {
 }
 
 namespace docrender {
+	struct HTMLInputPaintColors {
+		std::optional<litehtml::web_color> selection_foreground;
+		std::optional<litehtml::web_color> selection_background;
+		std::optional<litehtml::web_color> caret;
+	};
 	class HTMLPaintRecorder {
 		struct Clip {
 			godot::Rect2 bounds;
@@ -54,6 +59,7 @@ namespace docrender {
 		godot::Transform2D clip_material_matrix;
 		const HTMLGeometryIndex* recording_geometry = nullptr;
 		const RenderGeometry* active_geometry = nullptr;
+		bool active_decoration = false;
 		std::vector<const RenderGeometry*> painted_elements;
 		godot::String plain_text;
 		std::vector<TextRun> text_runs;
@@ -97,7 +103,7 @@ namespace docrender {
 			const litehtml::css_underline& p_underline);
 		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
 			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
-			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent, float p_descent);
+			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent, float p_descent, const HTMLInputPaintColors& p_colors);
 		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
 		void draw_image_alt(const godot::Rect2& p_box, const std::vector<HTMLTextLayout>& p_lines,
 			float p_line_height, litehtml::web_color p_color, litehtml::text_align p_align);
@@ -117,7 +123,7 @@ namespace docrender {
 		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii);
 		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
 			const litehtml::render_item& p_item);
-		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip);
+		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration);
 		void end_render_item();
 		void begin_paint_group();
 		void end_paint_group();
