@@ -170,7 +170,7 @@
 			The time in seconds between changes in caret visibility when [member caret_blink] is enabled.
 		</member>
 		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="true">
-			Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. Readonly fields offer Copy and Select All. Keyboard editing shortcuts remain available when the menu is disabled.
+			Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. Opening the menu commits any pending IME text as one undoable edit. Readonly fields offer Copy and Select All. Keyboard editing shortcuts remain available when the menu is disabled.
 		</member>
 		<member name="css_diagnostics_enabled" type="bool" setter="set_css_diagnostics_enabled" getter="is_css_diagnostics_enabled" default="false">
 			Outlines visible elements with CSS declaration diagnostics. Hover over an outlined element to read its diagnostics in an HTML tooltip. Disabling this clears the outlines and results.

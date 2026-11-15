@@ -132,6 +132,7 @@ namespace docrender {
 		bool cancel_preedit();
 		void update_preedit(const godot::String& p_text, const godot::Vector2i& p_selection, uint64_t p_frame);
 		bool has_preedit() const { return !preedit.is_empty(); }
+		const godot::String& get_preedit() const { return preedit; }
 		bool take_user_change();
 		godot::Rect2 get_caret_rect() const { return caret_rect; }
 		bool is_caret_visible() const { return caret_visible; }

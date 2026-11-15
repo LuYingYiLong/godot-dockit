@@ -2716,10 +2716,11 @@ msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态�
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. "
-"Readonly fields offer Copy and Select All. Keyboard editing shortcuts remain available when the menu is disabled."
+"Opening the menu commits any pending IME text as one undoable edit. Readonly fields offer Copy and Select All. "
+"Keyboard editing shortcuts remain available when the menu is disabled."
 msgstr ""
 "右键点击文本框和多行文本框，或触发 [code]ui_menu[/code] 输入动作时，显示编辑菜单。"
-"只读字段提供复制和全选。关闭菜单后，仍可使用键盘编辑快捷键。"
+"打开菜单会提交当前输入法预编辑文字，整段文字可以一次撤销。只读字段提供复制和全选。关闭菜单后，仍可使用键盘编辑快捷键。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Enables text selection. Disabling it clears the current selection."

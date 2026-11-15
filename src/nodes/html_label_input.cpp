@@ -263,8 +263,19 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 	if (!visible.has_area()) return false;
 
 	cancel_press();
+	const Ref<HTMLElement> active_element = focused_element;
+	if (const auto active = label->layout->text_control(active_element);
+		active && active->is_editable() && active->editor.has_preedit() && label->layout->is_element_connected(active_element)) {
+		// Keep the marked text before closing the native composition, as LineEdit does.
+		const String marked = active->editor.get_preedit();
+		close_ime();
+		if (active->editor.insert(marked, active->get_attr("maxlength", ""))) change_input(active_element);
+	}
+
 	label->grab_focus();
-	if (!label->layout->is_element_connected(p_element)) return false;
+	if (!label->context_menu_enabled || !label->layout->is_element_connected(p_element) ||
+		label->layout->text_control(p_element) != input || !input->is_text_control() ||
+		docrender::forms::is_disabled(*input) || input->get_attr("hidden")) return false;
 	if (focused_element != p_element) set_focused_element(p_element);
 	auto& editor = input->editor;
 	const bool has_selection = editor.selection_start() != editor.selection_end();
