@@ -1,8 +1,12 @@
 #include "html_button_element.h"
+#include "html_form_elements.h"
 
 using namespace godot;
 
+Ref<HTMLFormElement> HTMLButtonElement::get_form() const { return get_form_owner(); }
+
 void HTMLButtonElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLButtonElement::get_form);
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLButtonElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "disabled"), &HTMLButtonElement::set_disabled);
 	ClassDB::bind_method(D_METHOD("get_type"), &HTMLButtonElement::get_type);

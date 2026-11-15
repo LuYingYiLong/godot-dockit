@@ -4,10 +4,16 @@
 		A handle to an HTML input element.
 	</brief_description>
 	<description>
-		Returned by element queries and by [method HTMLLayout.create_element] for [code]&lt;input&gt;[/code]. [HTMLLabel] supports single-line text and checkboxes. The value and checked state apply to the current layout. Changing them from script emits no user editing signals.
-		Text inputs keep their current value separate from the [code]value[/code] attribute. A checkbox has a separate checked state and uses the [code]value[/code] attribute for its value, with [code]on[/code] as the default.
+		Returned by queries and [method HTMLLayout.create_element] for [code]&lt;input&gt;[/code]. [HTMLLabel] supports text, checkbox, radio, and hidden inputs. Script assignments emit no user editing signals.
+		Text inputs track a current value separately from the [code]value[/code] attribute. Checkboxes and radios have a current checked state and use the value attribute with [code]on[/code] as the default. Hidden inputs store their value in the attribute and participate in form data.
 	</description>
 	<methods>
+		<method name="get_form" qualifiers="const">
+			<return type="HTMLFormElement" />
+			<description>
+				Returns the associated form or [code]null[/code].
+			</description>
+		</method>
 		<method name="get_selection_end" qualifiers="const">
 			<return type="int" />
 			<description>

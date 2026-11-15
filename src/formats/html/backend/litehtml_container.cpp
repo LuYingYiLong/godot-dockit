@@ -1,4 +1,5 @@
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_textarea_node.h"
 #include "litehtml_container.h"
 
@@ -134,6 +135,8 @@ namespace docrender {
 		}
 		const std::string_view tag(p_tag);
 		if (tag == "template") return dom.create_template_node(p_document);
+		if (tag == "select") return std::make_shared<HTMLSelectNode>(p_document);
+		if (tag == "option") return std::make_shared<HTMLOptionNode>(p_document);
 		if (tag == "textarea") return std::make_shared<HTMLTextAreaNode>(p_document);
 		if (tag == "input") {
 			return std::make_shared<HTMLInputNode>(p_document);

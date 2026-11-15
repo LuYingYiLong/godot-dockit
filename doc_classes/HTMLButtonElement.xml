@@ -4,8 +4,16 @@
 		A handle to an HTML button element.
 	</brief_description>
 	<description>
-		Returned by queries and [method HTMLLayout.create_element] for [code]&lt;button&gt;[/code]. [HTMLLabel] can activate enabled buttons with [code]type="button"[/code].
+		Returned by queries and [method HTMLLayout.create_element] for [code]&lt;button&gt;[/code]. In [HTMLLabel], an enabled button can run a command, submit its associated form, or reset it according to its type.
 	</description>
+	<methods>
+		<method name="get_form" qualifiers="const">
+			<return type="HTMLFormElement" />
+			<description>
+				Returns the associated form or [code]null[/code].
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="disabled" type="bool" setter="set_disabled" getter="is_disabled">
 			Whether the [code]disabled[/code] attribute is present. Setting this to [code]false[/code] removes the attribute.

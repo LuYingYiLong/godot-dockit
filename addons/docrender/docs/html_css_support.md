@@ -9,7 +9,7 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Feature | Support |
 | --- | --- |
 | Basic selectors | Type, class, ID, attribute, selector lists, descendant, child, and sibling combinators |
-| Pseudo-classes | `:root`, `:scope`, `:empty`, `:is()`, `:where()`, `:not()`, `:has()`, `:nth-child()` and related structural selectors, `:lang()`, `:link`, and `:any-link`. `HTMLLabel` supplies `:hover`. Its `<button type="button">` elements also support `:active`, `:focus`, `:focus-visible`, `:enabled`, and `:disabled`. The focused button and its ancestors match `:focus-within`. |
+| Pseudo-classes | `:root`, `:scope`, `:empty`, `:is()`, `:where()`, `:not()`, `:has()`, `:nth-child()` and related structural selectors, `:lang()`, `:link`, and `:any-link`. `HTMLLabel` supplies `:hover`, `:focus`, `:focus-visible`, and `:focus-within`, plus `:active` for buttons, checkboxes, and radios. Form controls expose `:enabled` and `:disabled`. Checkboxes, radios, and dropdown options expose `:checked`. |
 | Pseudo-elements | `::before`, `::after`, and `::marker` with generated content in the final compound selector. The legacy `:before` and `:after` spellings are equivalent. Sub-pseudo-elements, `::first-line`, and `::first-letter` are unsupported. |
 | Cascade | Named and anonymous layers, specificity, source order, `!important`, custom properties, and `var()`. Supported declarations share the CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, and `revert-layer`. |
 | Style sources | Inline `style`, `<style>`, the extra `stylesheet` string, and local project stylesheets loaded through `<link>` or `@import`. |

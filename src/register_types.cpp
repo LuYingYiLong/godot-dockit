@@ -13,6 +13,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
+#include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_image_element.h"
 #include "formats/html/elements/html_template_element.h"
 #include "formats/html/paint/html_canvas_renderer.h"
@@ -59,6 +60,13 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnchorElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLButtonElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLFormElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLLabelElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLFieldSetElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLLegendElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLSelectElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLOptionElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLOptGroupElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDivElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHeadingElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLImageElement);

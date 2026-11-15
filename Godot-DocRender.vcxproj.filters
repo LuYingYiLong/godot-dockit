@@ -154,6 +154,15 @@
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_form_elements.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_form_state.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_select_node.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_text_editor.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -544,6 +553,9 @@
     <ClCompile Include="src\nodes\html_label_input.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_forms.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\docrender_editor_translations.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
@@ -619,6 +631,15 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_form_elements.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_form_state.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_select_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_node_copy_state.h">

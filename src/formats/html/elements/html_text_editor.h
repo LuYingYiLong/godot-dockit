@@ -27,6 +27,7 @@ namespace docrender {
 		godot::Vector2i preedit_selection;
 		bool dirty_value = false;
 		bool user_changed = false;
+		uint64_t reset_version = 0;
 		int64_t anchor = 0;
 		int64_t caret = 0;
 		bool trailing_affinity = false;
@@ -74,6 +75,8 @@ namespace docrender {
 		const godot::String& get_value() const { return value; }
 		void use_default(const godot::String& p_value);
 		bool set_value(const godot::String& p_value);
+		void reset_value(const godot::String& p_value);
+		uint64_t get_reset_version() const { return reset_version; }
 		void copy_value_state(const HTMLTextEditor& p_source, bool p_preserve_selection);
 		int64_t selection_start() const;
 		int64_t selection_end() const;

@@ -19,6 +19,7 @@ namespace godot {
 
 	public:
 		static void prepare_registration();
+		static void observe_html_document(const Ref<Resource>& p_document);
 		static String get_source_path(uint64_t p_tab_id);
 		void _enter_tree() override;
 		void _exit_tree() override;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "formats/html/html_document.h"
+#include "formats/html/elements/html_form_elements.h"
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -14,6 +15,10 @@ namespace godot {
 }
 
 class HTMLLabel;
+class HTMLButtonElement;
+class HTMLFormElement;
+class HTMLLabelElement;
+class HTMLSelectElement;
 
 class HTMLLabelCanvas : public godot::Control {
 	GDCLASS(HTMLLabelCanvas, godot::Control)
@@ -24,6 +29,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Vector2 pressed_position;
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
+	godot::Ref<HTMLElement> pressed_form_target;
 	godot::Ref<HTMLElement> dragging_input;
 	struct TextareaDrag {
 		godot::Ref<HTMLElement> element;
@@ -42,6 +48,7 @@ class HTMLLabelCanvas : public godot::Control {
 	std::optional<int32_t> ime_window;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
+	uint64_t focused_reset_version = 0;
 	std::vector<godot::Ref<HTMLElement>> tab_elements;
 	godot::Key activation_key = godot::KEY_NONE;
 	std::optional<bool> tab_entry_backward;
@@ -61,6 +68,8 @@ class HTMLLabelCanvas : public godot::Control {
 	bool handle_dom_key(const godot::InputEventKey& p_key);
 	void handle_selection_key(const godot::InputEventKey& p_key);
 	void toggle_checkbox(const godot::Ref<HTMLInputElement>& p_input);
+	bool move_radio(const godot::Ref<HTMLInputElement>& p_input, int p_direction);
+	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;
 	bool handle_input_key(const godot::InputEventKey& p_key);
 	void change_input(const godot::Ref<HTMLElement>& p_input);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
@@ -102,6 +111,14 @@ class HTMLLabel : public godot::Control {
 	godot::Ref<HTMLLayout> layout;
 	godot::ScrollContainer* scroll_container = nullptr;
 	HTMLLabelCanvas* canvas = nullptr;
+	godot::Control* select_menu = nullptr;
+	godot::Ref<HTMLSelectElement> open_select;
+	std::vector<docrender::HTMLSelectMenuRow> select_rows;
+	int select_highlight = -1;
+	int select_pressed = -1;
+	int select_scroll = 0;
+	int select_visible_rows = 0;
+	float select_row_height = 0.0f;
 	godot::String text;
 	godot::String base_dir = "res://";
 	godot::String stylesheet;
@@ -147,6 +164,16 @@ class HTMLLabel : public godot::Control {
 	void queue_interaction();
 	void update_interaction();
 	void activate_link(const godot::String& p_uri);
+	bool activate_form_control(const godot::Ref<HTMLElement>& p_element);
+	void submit_from_text(const godot::Ref<HTMLElement>& p_element);
+	bool open_select_menu(const godot::Ref<HTMLSelectElement>& p_element);
+	void close_select_menu();
+	void update_select_menu();
+	void draw_select_menu();
+	void select_menu_input(const godot::Ref<godot::InputEvent>& p_event);
+	bool handle_select_key(const godot::InputEventKey& p_key);
+	void highlight_select_row(int p_row);
+	void commit_select_row(int p_row);
 
 protected:
 	static void _bind_methods();
@@ -185,7 +212,9 @@ public:
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 将控件局部坐标换算为文档坐标并命中可见元素
 	godot::Ref<HTMLElement> get_focused_element() const; // 返回当前聚焦的 DOM 元素
 	bool focus_element(const godot::Ref<HTMLElement>& p_element); // 将有效元素设为 DOM 焦点
-	bool activate_element(const godot::Ref<HTMLElement>& p_element); // 激活当前控件中可用的链接或按钮
+	bool activate_element(const godot::Ref<HTMLElement>& p_element); // 激活当前控件中可用的链接或表单控件
+	godot::Error submit_form(const godot::Ref<HTMLFormElement>& p_form,
+		const godot::Ref<HTMLButtonElement>& p_submitter = {}); // 校验并发出有序的表单数据
 	bool scroll_to_element(
 		const godot::Ref<HTMLElement>& p_element,
 		float p_align = 0.0f

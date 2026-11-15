@@ -3,6 +3,8 @@
 #include "formats/html/css/css_shadows.h"
 #include "litehtml_container.h"
 
+#include "formats/html/elements/html_form_state.h"
+
 #include <gumbo.h>
 #include <litehtml/css_selector.h>
 #include <litehtml/el_space.h>
@@ -26,13 +28,6 @@ namespace litehtml {
 				return std::prev(p_children.end());
 			}
 			return p_children.end();
-		}
-
-		void update_button_pseudo_classes(element& p_element) {
-			const bool button = docrender_editor::is_command_button(p_element);
-			const bool disabled = button && p_element.get_attr("disabled");
-			p_element.set_pseudo_class(_id("disabled"), disabled);
-			p_element.set_pseudo_class(_id("enabled"), button && !disabled);
 		}
 
 		bool selector_uses_hover(const docrender::css::Selector& p_selector) {
@@ -186,9 +181,6 @@ namespace litehtml {
 			});
 		if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
 			tag->m_style.clear();
-			if (tag->tag() == _button_) {
-				update_button_pseudo_classes(*tag);
-			}
 		}
 		for (const auto& child : p_element.children()) {
 			reset_tree(*child);
@@ -223,8 +215,7 @@ namespace litehtml {
 	}
 
 	bool docrender_editor::is_command_button(const element& p_element) {
-		const char* type = p_element.tag() == _button_ ? p_element.get_attr("type") : nullptr;
-		return type && lowcase(type) == "button";
+		return docrender::forms::button_action(p_element) != docrender::forms::ButtonAction::NONE;
 	}
 
 	const std::vector<box_shadow>* docrender_editor::get_box_shadows(const html_tag& p_element) {
@@ -266,6 +257,7 @@ namespace litehtml {
 		doc.m_fixed_boxes.clear();
 		doc.m_size = {};
 		reset_tree(*root);
+		docrender::forms::synchronize(root);
 		doc.m_css.clear();
 		doc.m_media_lists.clear();
 		doc.m_master_css = {};
@@ -329,9 +321,6 @@ namespace litehtml {
 		}
 		else {
 			remove_attribute(*tag, p_name);
-		}
-		if (tag->tag() == _button_ && (std::string_view(p_name) == "disabled" || std::string_view(p_name) == "type")) {
-			update_button_pseudo_classes(*tag);
 		}
 		return true;
 	}

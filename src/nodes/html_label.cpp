@@ -1,5 +1,6 @@
 #include "html_label.h"
 
+#include "editor/docrender_source_editor.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/elements/html_input_node.h"
 
@@ -32,7 +33,7 @@ namespace {
 	constexpr int DRAG_DEADZONE = 6;
 	constexpr int HOVER_PASSES = 2;
 	constexpr const char* BUTTON_STYLES = R"CSS(
-button[type="button" i] {
+button {
 	color: #1f2937;
 	background-color: #f3f4f6;
 	border: 1px solid #64748b;
@@ -40,15 +41,15 @@ button[type="button" i] {
 	padding: 4px 10px;
 	cursor: pointer;
 }
-button[type="button" i]:active { background-color: #cbd5e1; }
-button[type="button" i]:focus-visible { box-shadow: inset 0 0 0 2px #2563eb; }
-button[type="button" i]:disabled {
+button:active { background-color: #cbd5e1; }
+button:focus-visible { box-shadow: inset 0 0 0 2px #2563eb; }
+button:disabled {
 	color: #4b5563;
 	background-color: #e5e7eb;
 	border-color: #9ca3af;
 	cursor: default;
 }
-button[type="button" i][hidden] { display: none; }
+button[hidden] { display: none; }
 )CSS";
 
 	std::optional<bool> tab_direction(const InputEventKey& p_key) {
@@ -238,6 +239,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
 		? label->layout->find_link_at(point, &element) : HTMLLayout::LinkHit{};
 	const Ref<HTMLElement> target_button = label->layout->get_button_ancestor(element);
+	const Ref<HTMLElement> form_target = hit.id == 0 ? get_form_click_target(element) : Ref<HTMLElement>();
 	const Ref<HTMLInputElement> target_input = element;
 	if (!button->is_pressed() && dragging_input.is_valid()) {
 		if (!button->is_canceled() && point != pressed_position + visible_rect.position) set_input_caret(dragging_input, point, true);
@@ -256,6 +258,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		pressed_position = point - visible_rect.position;
 		pressed_link = hit.id;
 		pressed_element = element;
+		pressed_form_target = form_target;
 		selecting = label->selection_enabled && visible_rect.has_point(point);
 		selection_dragged = false;
 		const Ref<HTMLElement> target_focus = label->layout->get_focus_ancestor(element);
@@ -272,7 +275,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 					set_input_caret(element, point, button->is_shift_pressed());
 					if (control->editor.is_multiline()) set_process_internal(true);
 				}
-				else if (target_input.is_valid() && target_input->get_input()->type() == HTMLInputNode::Type::CHECKBOX) {
+				else if (target_input.is_valid() && target_input->get_input()->is_toggle()) {
 					pressed_checkbox = target_input;
 					set_element_pseudo(pressed_checkbox, "active", true);
 				}
@@ -291,7 +294,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			}
 			queue_redraw();
 		}
-		if (selecting || target_button.is_valid()) {
+		if (selecting || target_button.is_valid() || form_target.is_valid()) {
 			accept_event();
 		}
 		return;
@@ -313,13 +316,14 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const uint64_t click_version = element_clicked ? element->adoption_version : 0;
 	const bool button_clicked = !selection_dragged && !button->is_canceled() &&
 		pressed_button == target_button && label->layout->is_enabled_button(target_button);
+	const bool form_clicked = clicked && form_target.is_valid() && pressed_form_target == form_target;
 	if (selecting) {
 		if (selection_dragged && !button->is_canceled()) {
 			selection_caret = label->layout->hit_test_text(point.clamp(visible_rect.position, visible_rect.get_end()));
 			queue_redraw();
 		}
 	}
-	if (selecting || pressed_button.is_valid()) {
+	if (selecting || pressed_button.is_valid() || form_clicked) {
 		accept_event();
 	}
 	const bool was_dragging = selection_dragged;
@@ -336,6 +340,9 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			target->activate_element(target_button);
 		}
 	}
+	else if (form_clicked) {
+		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) target->activate_element(form_target);
+	}
 	if (element_clicked && element->is_valid() && element->adoption_version == click_version) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);
@@ -344,6 +351,14 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
+	if (open_select.is_valid()) {
+		const Ref<InputEventMouseButton> button = p_event;
+		if (button.is_valid() && button->is_pressed() && button->get_button_index() == MOUSE_BUTTON_LEFT &&
+			!Rect2(Vector2(), select_menu->get_size()).has_point(select_menu->get_global_transform_with_canvas().affine_inverse().xform(button->get_position()))) {
+			const auto point = get_global_transform_with_canvas().affine_inverse().xform(button->get_position());
+			if (get_element_at(point) != open_select) close_select_menu();
+		}
+	}
 	if (!canvas || has_focus() || canvas->tab_elements.empty() || !is_visible_in_tree()) {
 		return;
 	}
@@ -393,6 +408,7 @@ void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
 
 bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 	if (const auto direction = tab_direction(p_key); direction && !tab_elements.empty()) {
+		label->close_select_menu();
 		const bool backwards = *direction;
 		auto button = std::find(tab_elements.begin(), tab_elements.end(), focused_element);
 		if (button != tab_elements.end()) {
@@ -418,7 +434,7 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 		return true;
 	}
 
-		if (handle_input_key(p_key)) return true;
+	if (label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && p_key.is_pressed() && !p_key.is_echo() &&
 		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed()) {
@@ -465,6 +481,7 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 
 void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_keyboard) {
 	if (focused_element != p_element) {
+		label->close_select_menu();
 		const auto previous = focused_element;
 		close_ime();
 		commit_input(previous, true);
@@ -473,6 +490,8 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		set_element_pseudo(focused_element, "focus", false);
 		set_element_pseudo(focused_element, "focus-visible", false);
 		focused_element = p_element;
+		const auto input = label->layout->text_control(focused_element);
+		focused_reset_version = input ? input->editor.get_reset_version() : 0;
 		set_element_pseudo(focused_element, "focus", true);
 		label->layout->repaint_input();
 		update_ime();
@@ -556,6 +575,7 @@ void HTMLLabelCanvas::cancel_click() {
 	}
 	pressed_link = 0;
 	pressed_element.unref();
+	pressed_form_target.unref();
 	cancel_button_press();
 }
 
@@ -624,6 +644,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_focused_element"), &HTMLLabel::get_focused_element);
 	ClassDB::bind_method(D_METHOD("focus_element", "element"), &HTMLLabel::focus_element);
 	ClassDB::bind_method(D_METHOD("activate_element", "element"), &HTMLLabel::activate_element);
+	ClassDB::bind_method(D_METHOD("submit_form", "form", "submitter"), &HTMLLabel::submit_form, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
@@ -652,6 +673,14 @@ void HTMLLabel::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("button_pressed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
 		String(), PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("layout_changed"));
+	const PropertyInfo form_info(Variant::OBJECT, "form", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLFormElement::get_class_static());
+	ADD_SIGNAL(MethodInfo("form_submitted", form_info, PropertyInfo(Variant::ARRAY, "entries"),
+		PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLButtonElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("form_validation_failed", form_info,
+		PropertyInfo(Variant::OBJECT, "control", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
+	ADD_SIGNAL(MethodInfo("form_reset", form_info));
+	ADD_SIGNAL(MethodInfo("select_changed",
+		PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLSelectElement::get_class_static())));
 }
 
 void HTMLLabel::_notification(int p_what) {
@@ -707,6 +736,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE:
+		close_select_menu();
 		layout->update_hover(std::nullopt);
 		hover_passes_remaining = 0;
 		hover_reflow = false;
@@ -716,6 +746,7 @@ void HTMLLabel::_notification(int p_what) {
 		reveal_focused_element = false;
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		close_select_menu();
 		if (canvas) {
 			canvas->cancel_press();
 			canvas->close_ime();
@@ -733,6 +764,7 @@ void HTMLLabel::set_document(const Ref<HTMLDocument>& p_document) {
 	}
 	document = p_document;
 	if (document.is_valid()) {
+		DocRenderSourceEditorPlugin::observe_html_document(document);
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	source_changed();
@@ -881,9 +913,7 @@ bool HTMLLabel::activate_element(const Ref<HTMLElement>& p_element) {
 		activate_link(uri);
 		return true;
 	}
-	if (!layout->is_enabled_button(p_element)) return false;
-	emit_signal("button_pressed", p_element);
-	return true;
+	return activate_form_control(p_element);
 }
 
 void HTMLLabel::activate_link(const String& p_uri) {
@@ -1006,6 +1036,7 @@ void HTMLLabel::queue_interaction_style_refresh() {
 }
 
 void HTMLLabel::source_changed() {
+	close_select_menu();
 	source_dirty = true;
 	layout->clear();
 	pending_scroll_offset = Vector2i();
@@ -1044,12 +1075,19 @@ void HTMLLabel::parse_pending_source() {
 }
 
 void HTMLLabel::on_layout_edited() {
+	close_select_menu();
 	layout_updated = true;
 	if (canvas) {
 		canvas->cancel_press();
 		clear_selection();
 		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
 			canvas->set_focused_element({});
+		}
+		else if (const auto input = layout->text_control(canvas->focused_element);
+			input && input->editor.get_reset_version() != canvas->focused_reset_version) {
+			canvas->focused_reset_version = input->editor.get_reset_version();
+			canvas->close_ime();
+			canvas->update_ime();
 		}
 		auto& tabs = canvas->tab_elements;
 		tabs.erase(std::remove_if(tabs.begin(), tabs.end(),
@@ -1232,6 +1270,7 @@ void HTMLLabel::update_interaction() {
 	if (!is_inside_tree() || refresh_queued || view_update_pending || scroll_sort_pending) {
 		return;
 	}
+	update_select_menu();
 
 	if (std::exchange(reveal_focused_element, false)) {
 		if (const auto bounds = layout->get_element_scroll_bounds(canvas->focused_element)) {

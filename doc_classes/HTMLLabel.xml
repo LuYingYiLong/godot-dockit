@@ -19,7 +19,7 @@
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
 			<description>
-				Activates a visible link with a nonempty [code]href[/code] or an enabled [code]type="button"[/code] button in this label. A fragment link scrolls to its target before emitting [signal link_pressed]. A button emits [signal button_pressed]. Returns [code]true[/code] when activation is dispatched and [code]false[/code] when the element cannot be activated.
+				Activates a visible link or a form control in this label. A fragment link scrolls before emitting [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if activation was dispatched.
 			</description>
 		</method>
 		<method name="focus_element">
@@ -149,6 +149,14 @@
 				Sets the horizontal and vertical scroll offset in pixels, clamped to the scrollable range. If a layout is pending, the offset is applied after that layout.
 			</description>
 		</method>
+		<method name="submit_form">
+			<return type="int" enum="Error" />
+			<param index="0" name="form" type="HTMLFormElement" />
+			<param index="1" name="submitter" type="HTMLButtonElement" default="null" />
+			<description>
+				Submits a connected form in this label and emits [signal form_submitted] on success. An optional submitter must be an enabled submit button associated with the form. Returns [constant ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid argument.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
@@ -183,16 +191,37 @@
 				Emitted when a left mouse press and release hit the same visible HTML element without dragging or scrolling. Use [method HTMLElement.closest] to find an ancestor with an action attribute. For a link, the built-in anchor scroll and [signal link_pressed] run first. The element signal is emitted if the target still belongs to the current document.
 			</description>
 		</signal>
+		<signal name="form_reset">
+			<param index="0" name="form" type="HTMLFormElement" />
+			<description>
+				Emitted after a reset button restores the form's default values.
+			</description>
+		</signal>
+		<signal name="form_submitted">
+			<param index="0" name="form" type="HTMLFormElement" />
+			<param index="1" name="entries" type="Dictionary[]" />
+			<param index="2" name="submitter" type="HTMLButtonElement" />
+			<description>
+				Emitted with the ordered entry dictionaries and the submit button, which may be [code]null[/code]. The game decides how to use the data.
+			</description>
+		</signal>
+		<signal name="form_validation_failed">
+			<param index="0" name="form" type="HTMLFormElement" />
+			<param index="1" name="control" type="HTMLElement" />
+			<description>
+				Emitted with the first control that fails required validation.
+			</description>
+		</signal>
 		<signal name="input_changed">
 			<param index="0" name="element" type="HTMLInputElement" />
 			<description>
-				Emitted when the user edits a text input or toggles a checkbox. Read the new value from the element.
+				Emitted when the user edits a text input, changes a checkbox, or selects a radio button. Read the new state from the element.
 			</description>
 		</signal>
 		<signal name="input_committed">
 			<param index="0" name="element" type="HTMLInputElement" />
 			<description>
-				Emitted after a user edit is committed with Enter or by moving focus away. A checkbox toggle commits immediately after [signal input_changed].
+				Emitted after a user edit is committed with Enter or by moving focus away. Checkboxes and radio buttons commit immediately after [signal input_changed].
 			</description>
 		</signal>
 		<signal name="layout_changed">
@@ -204,6 +233,12 @@
 			<param index="0" name="uri" type="String" />
 			<description>
 				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling, when Enter activates a focused link, or when [method activate_element] activates a link. [param uri] is the link's original nonempty [code]href[/code].
+			</description>
+		</signal>
+		<signal name="select_changed">
+			<param index="0" name="element" type="HTMLSelectElement" />
+			<description>
+				Emitted when a user selects a different option in a dropdown.
 			</description>
 		</signal>
 		<signal name="textarea_changed">

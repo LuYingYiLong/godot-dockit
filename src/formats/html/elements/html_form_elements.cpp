@@ -1,0 +1,268 @@
+#include "html_form_elements.h"
+
+#include "html_form_state.h"
+#include "html_input_node.h"
+#include "html_select_node.h"
+#include "html_textarea_node.h"
+#include "formats/html/dom/html_dom.h"
+
+#include <algorithm>
+#include <iterator>
+
+using namespace godot;
+namespace forms = docrender::forms;
+using docrender::HTMLInputNode;
+using docrender::HTMLOptionNode;
+using docrender::HTMLSelectNode;
+using docrender::HTMLTextAreaNode;
+
+void HTMLFormElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_controls"), &HTMLFormElement::get_controls);
+	ClassDB::bind_method(D_METHOD("get_form_data", "submitter"), &HTMLFormElement::get_form_data, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("reset"), &HTMLFormElement::reset);
+}
+
+void HTMLLabelElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_control"), &HTMLLabelElement::get_control);
+	ClassDB::bind_method(D_METHOD("get_html_for"), &HTMLLabelElement::get_html_for);
+	ClassDB::bind_method(D_METHOD("set_html_for", "value"), &HTMLLabelElement::set_html_for);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "html_for"), "set_html_for", "get_html_for");
+}
+
+String HTMLLabelElement::get_html_for() const { return get_attribute("for"); }
+void HTMLLabelElement::set_html_for(const String& p_value) {
+	set_attribute("for", p_value);
+}
+
+void HTMLFieldSetElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLFieldSetElement::get_form);
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLFieldSetElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLFieldSetElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+}
+
+bool HTMLFieldSetElement::is_disabled() const { return has_attribute("disabled"); }
+void HTMLFieldSetElement::set_disabled(bool p_value) {
+	if (p_value) set_attribute("disabled", "");
+	else remove_attribute("disabled");
+}
+
+void HTMLLegendElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLLegendElement::get_form);
+}
+
+void HTMLSelectElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_options"), &HTMLSelectElement::get_options);
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLSelectElement::get_form);
+	ClassDB::bind_method(D_METHOD("get_name"), &HTMLSelectElement::get_name);
+	ClassDB::bind_method(D_METHOD("set_name", "value"), &HTMLSelectElement::set_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLSelectElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLSelectElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	ClassDB::bind_method(D_METHOD("is_required"), &HTMLSelectElement::is_required);
+	ClassDB::bind_method(D_METHOD("set_required", "value"), &HTMLSelectElement::set_required);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "required"), "set_required", "is_required");
+	ClassDB::bind_method(D_METHOD("get_value"), &HTMLSelectElement::get_value);
+	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLSelectElement::set_value);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	ClassDB::bind_method(D_METHOD("get_selected_index"), &HTMLSelectElement::get_selected_index);
+	ClassDB::bind_method(D_METHOD("set_selected_index", "value"), &HTMLSelectElement::set_selected_index);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "selected_index"), "set_selected_index", "get_selected_index");
+}
+
+String HTMLSelectElement::get_name() const { return get_attribute("name"); }
+void HTMLSelectElement::set_name(const String& p_value) {
+	set_attribute("name", p_value);
+}
+
+bool HTMLSelectElement::is_disabled() const { return has_attribute("disabled"); }
+void HTMLSelectElement::set_disabled(bool p_value) {
+	if (p_value) set_attribute("disabled", "");
+	else remove_attribute("disabled");
+}
+
+bool HTMLSelectElement::is_required() const { return has_attribute("required"); }
+void HTMLSelectElement::set_required(bool p_value) {
+	if (p_value) set_attribute("required", "");
+	else remove_attribute("required");
+}
+
+void HTMLOptionElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_value"), &HTMLOptionElement::get_value);
+	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLOptionElement::set_value);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	ClassDB::bind_method(D_METHOD("get_label"), &HTMLOptionElement::get_label);
+	ClassDB::bind_method(D_METHOD("set_label", "value"), &HTMLOptionElement::set_label);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "label"), "set_label", "get_label");
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLOptionElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLOptionElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	ClassDB::bind_method(D_METHOD("is_selected"), &HTMLOptionElement::is_selected);
+	ClassDB::bind_method(D_METHOD("set_selected", "value"), &HTMLOptionElement::set_selected);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selected"), "set_selected", "is_selected");
+	ClassDB::bind_method(D_METHOD("is_default_selected"), &HTMLOptionElement::is_default_selected);
+	ClassDB::bind_method(D_METHOD("set_default_selected", "value"), &HTMLOptionElement::set_default_selected);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "default_selected"), "set_default_selected", "is_default_selected");
+}
+
+bool HTMLOptionElement::is_disabled() const { return has_attribute("disabled"); }
+void HTMLOptionElement::set_disabled(bool p_value) {
+	if (p_value) set_attribute("disabled", "");
+	else remove_attribute("disabled");
+}
+
+bool HTMLOptionElement::is_default_selected() const { return has_attribute("selected"); }
+void HTMLOptionElement::set_default_selected(bool p_value) {
+	if (p_value) set_attribute("selected", "");
+	else remove_attribute("selected");
+}
+
+void HTMLOptGroupElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_label"), &HTMLOptGroupElement::get_label);
+	ClassDB::bind_method(D_METHOD("set_label", "value"), &HTMLOptGroupElement::set_label);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "label"), "set_label", "get_label");
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLOptGroupElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLOptGroupElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+}
+
+String HTMLOptGroupElement::get_label() const { return get_attribute("label"); }
+void HTMLOptGroupElement::set_label(const String& p_value) {
+	set_attribute("label", p_value);
+}
+
+bool HTMLOptGroupElement::is_disabled() const { return has_attribute("disabled"); }
+void HTMLOptGroupElement::set_disabled(bool p_value) {
+	if (p_value) set_attribute("disabled", "");
+	else remove_attribute("disabled");
+}
+
+TypedArray<HTMLElement> HTMLFormElement::get_controls() const {
+	TypedArray<HTMLElement> result;
+	if (const auto form = lock_element()) {
+		for (const auto& control : forms::controls(*form)) result.append(get_dom().make_element(control));
+	}
+	return result;
+}
+
+TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLButtonElement>& p_submitter) const {
+	TypedArray<Dictionary> result;
+	const auto form = lock_element();
+	if (!form) return result;
+	const auto submitter = lock_related_element(p_submitter);
+	if (p_submitter.is_valid() && (!submitter || forms::button_action(*submitter) != forms::ButtonAction::SUBMIT ||
+		forms::owner(*submitter) != form || forms::is_disabled(*submitter))) return result;
+	for (const auto& control : forms::controls(*form)) {
+		const auto* name = control->get_attr("name");
+		if (!name || !*name || forms::is_disabled(*control)) continue;
+		String value;
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(control.get())) {
+			if (input->type() == HTMLInputNode::Type::OTHER || (input->is_toggle() && !input->is_checked())) continue;
+			value = input->get_value();
+		} else if (const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(control.get())) {
+			value = textarea->editor.get_value();
+		} else if (const auto* select = dynamic_cast<const HTMLSelectNode*>(control.get())) {
+			const auto options = select->get_options();
+			const auto index = select->selected_index(options);
+			if (index < 0 || forms::is_disabled(*options[index])) continue;
+			value = options[index]->get_value();
+		} else if (control == submitter) {
+			value = String::utf8(control->get_attr("value", ""));
+		} else {
+			continue;
+		}
+		Dictionary entry;
+		entry["name"] = String::utf8(name);
+		entry["value"] = value;
+		result.append(entry);
+	}
+	return result;
+}
+
+Error HTMLFormElement::reset() {
+	const auto form = lock_element();
+	if (!form) return ERR_INVALID_PARAMETER;
+	for (const auto& node : forms::controls(*form)) {
+		if (auto* input = dynamic_cast<HTMLInputNode*>(node.get())) input->reset();
+		else if (auto* area = dynamic_cast<HTMLTextAreaNode*>(node.get())) area->editor.reset_value(area->get_default_value());
+		else if (auto* select = dynamic_cast<HTMLSelectNode*>(node.get())) select->reset();
+	}
+	get_dom().form_state_changed(form);
+	return OK;
+}
+
+Ref<HTMLElement> HTMLLabelElement::get_control() const {
+	const auto label = lock_element();
+	return label ? get_dom().make_element(forms::labeled_control(*label)) : Ref<HTMLElement>();
+}
+
+Ref<HTMLFormElement> HTMLFieldSetElement::get_form() const { return get_form_owner(); }
+Ref<HTMLFormElement> HTMLLegendElement::get_form() const { return get_form_owner(); }
+Ref<HTMLFormElement> HTMLSelectElement::get_form() const { return get_form_owner(); }
+
+TypedArray<HTMLElement> HTMLSelectElement::get_options() const {
+	TypedArray<HTMLElement> result;
+	if (const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element())) {
+		for (const auto& option : select->get_options()) result.append(get_dom().make_element(option));
+	}
+	return result;
+}
+
+int64_t HTMLSelectElement::get_selected_index() const {
+	const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element());
+	return select ? select->selected_index(select->get_options()) : -1;
+}
+
+void HTMLSelectElement::set_selected_index(int64_t p_value) {
+	if (const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element())) {
+		select->set_selected_index(select->get_options(), p_value);
+		get_dom().form_state_changed(select);
+	}
+}
+
+String HTMLSelectElement::get_value() const {
+	const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element());
+	if (!select) return {};
+	const auto options = select->get_options();
+	const auto index = select->selected_index(options);
+	return index >= 0 ? options[index]->get_value() : String();
+}
+
+void HTMLSelectElement::set_value(const String& p_value) {
+	if (const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element())) {
+		const auto options = select->get_options();
+		const auto match = std::find_if(options.begin(), options.end(), [&](const auto& p_option) {
+			return p_option->get_value() == p_value;
+		});
+		set_selected_index(std::distance(options.begin(), match));
+	}
+}
+
+String HTMLOptionElement::get_value() const {
+	const auto option = std::dynamic_pointer_cast<HTMLOptionNode>(lock_element());
+	return option ? option->get_value() : String();
+}
+
+void HTMLOptionElement::set_value(const String& p_value) { set_attribute("value", p_value); }
+
+String HTMLOptionElement::get_label() const {
+	const auto option = std::dynamic_pointer_cast<HTMLOptionNode>(lock_element());
+	if (!option) return {};
+	if (const auto* label = option->get_attr("label")) return String::utf8(label);
+	return option->get_label();
+}
+
+void HTMLOptionElement::set_label(const String& p_value) { set_attribute("label", p_value); }
+
+bool HTMLOptionElement::is_selected() const {
+	const auto option = std::dynamic_pointer_cast<HTMLOptionNode>(lock_element());
+	return option && option->is_selected();
+}
+
+void HTMLOptionElement::set_selected(bool p_value) {
+	if (const auto option = std::dynamic_pointer_cast<HTMLOptionNode>(lock_element())) {
+		option->set_selected(p_value);
+		get_dom().form_state_changed(option);
+	}
+}

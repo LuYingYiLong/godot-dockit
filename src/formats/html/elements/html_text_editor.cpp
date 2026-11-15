@@ -97,6 +97,17 @@ namespace docrender {
 		set_selection(p_preserve_selection ? p_source.anchor : 0, p_preserve_selection ? p_source.caret : 0);
 	}
 
+	void HTMLTextEditor::reset_value(const String& p_value) {
+		++reset_version;
+		dirty_value = false;
+		user_changed = false;
+		value = normalize(p_value);
+		set_preedit({}, {});
+		set_selection(0, 0);
+		horizontal_scroll = 0;
+		scroll = {};
+	}
+
 	int64_t HTMLTextEditor::selection_start() const { return std::min(anchor, caret); }
 	int64_t HTMLTextEditor::selection_end() const { return std::max(anchor, caret); }
 

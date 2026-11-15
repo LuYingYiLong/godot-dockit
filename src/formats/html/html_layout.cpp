@@ -1,6 +1,7 @@
 #include "html_layout.h"
 
 #include "elements/html_input_node.h"
+#include "elements/html_select_node.h"
 #include "elements/html_textarea_node.h"
 
 #include "formats/html/paint/html_canvas_renderer.h"
@@ -733,8 +734,37 @@ bool HTMLLayout::is_enabled_button(const Ref<HTMLElement>& p_element) const {
 		return false;
 	}
 	const auto element = p_element->element.lock();
-	return element && DocumentAdapter::is_command_button(*element) && !element->get_attr("disabled") &&
+	return element && DocumentAdapter::is_command_button(*element) && !docrender::forms::is_disabled(*element) &&
 		get_element_scroll_bounds(p_element).has_value();
+}
+
+std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
+	std::vector<docrender::HTMLSelectMenuRow> result;
+	if (!is_focusable(p_element) || !state->container) return result;
+	const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element());
+	if (!select) return result;
+	const auto to_color = [](const litehtml::web_color& p_color) {
+		return Color(p_color.red / 255.0f, p_color.green / 255.0f, p_color.blue / 255.0f, p_color.alpha / 255.0f);
+	};
+	const auto make_row = [&](const litehtml::element& p_node, const String& p_text, int64_t p_index, bool p_enabled) {
+		const auto& style = p_node.css();
+		const auto font = style.get_font() ? style.get_font() : select->css().get_font();
+		const auto& bg = style.get_bg().m_color;
+		result.push_back({state->container->shape_input(font, p_text), to_color(style.get_color()),
+			to_color(bg.alpha ? bg : select->css().get_bg().m_color), p_index, p_enabled});
+	};
+	litehtml::element::ptr previous_group;
+	int64_t index = 0;
+	for (const auto& option : select->get_options()) {
+		const int64_t option_index = index++;
+		const auto parent = option->parent();
+		const auto group = parent.get() != select.get() ? parent : nullptr;
+		if (option->get_attr("hidden") || (group && group->get_attr("hidden"))) continue;
+		if (group && group != previous_group) make_row(*group, String::utf8(group->get_attr("label", "")), -1, false);
+		previous_group = group;
+		make_row(*option, option->get_label(), option_index, !docrender::forms::is_disabled(*option));
+	}
+	return result;
 }
 
 Vector2 HTMLLayout::get_image_intrinsic_size(const HTMLElement& p_element) const {
@@ -762,12 +792,12 @@ namespace {
 	bool can_focus_node(const litehtml::element& p_node) {
 		const auto tag = p_node.tag();
 		if (p_node.get_attr("hidden")) return false;
-		if (tag == litehtml::_textarea_) return !p_node.get_attr("disabled");
+		if (docrender::forms::is_listed(p_node) && docrender::forms::is_disabled(p_node)) return false;
+		if (tag == litehtml::_textarea_ || tag == litehtml::_select_) return true;
 		if (tag == litehtml::_input_) {
 			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
-			return input && input->type() != HTMLInputNode::Type::OTHER && !p_node.get_attr("disabled");
+			return input && input->type() != HTMLInputNode::Type::OTHER && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
-		if (tag == litehtml::_button_ && p_node.get_attr("disabled")) return false;
 		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
 			(tag == litehtml::_a_ && p_node.get_attr("href"));
 	}
@@ -811,6 +841,19 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 			if (get_element_scroll_bounds(handle)) {
 				r_has_focusable_elements = true;
 				const int64_t index = explicit_tab_index(*p_element).value_or(0);
+				if (const auto* radio = dynamic_cast<const HTMLInputNode*>(p_element.get()); radio && radio->type() == HTMLInputNode::Type::RADIO) {
+					litehtml::element::ptr tab_stop;
+					for (const auto& peer : docrender::forms::radio_group(*radio)) {
+						if (!can_focus_node(*peer) || explicit_tab_index(*peer).value_or(0) < 0 ||
+							!get_element_scroll_bounds(state->dom->make_element(peer))) continue;
+						if (!tab_stop) tab_stop = peer;
+						if (static_cast<const HTMLInputNode&>(*peer).is_checked()) {
+							tab_stop = peer;
+							break;
+						}
+					}
+					if (tab_stop != p_element) return false;
+				}
 				if (index >= 0) elements.push_back({handle, index});
 			}
 			return false;

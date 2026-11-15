@@ -331,9 +331,13 @@ form {
 	margin-top: 0em;
 }
 
-option {
+option, optgroup {
 	display: none;
 }
+
+fieldset { display: block; border: 1px solid #64748b; padding: 0.5em 0.75em; margin: 0.5em 0; }
+legend { display: block; font-weight: bold; }
+label { cursor: pointer; }
 
 input, textarea, keygen, select, button, isindex {
 	margin: 0em;
@@ -344,17 +348,21 @@ input, textarea, keygen, select, button, isindex {
 	text-shadow: none;
 	display: inline-block;
 }
-input:not([type]), input[type="text" i], input[type="" i], input[type="checkbox" i] {
+input:not([type]), input[type="text" i], input[type="" i], input[type="checkbox" i], input[type="radio" i], select {
 	display: inline-block; box-sizing: border-box; font: inherit;
 	background-color: #ffffff; color: #182230; border: 1px solid #64748b; border-radius: 4px;
 }
 input:not([type]), input[type="text" i], input[type="" i] {
 	width: 12em; height: 1.75em; padding: 0 0.4em; cursor: text;
 }
-input[type="checkbox" i] {
+input[type="checkbox" i], input[type="radio" i] {
 	appearance: checkbox; width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
 }
-input[type="checkbox" i]:checked { background-color: #2563eb; color: #ffffff; }
+input[type="radio" i] { border-radius: 50%; }
+input[type="checkbox" i]:checked, input[type="radio" i]:checked { background-color: #2563eb; color: #ffffff; }
+select { width: 12em; height: 1.75em; padding: 0 0.4em; cursor: pointer; }
+select:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
+select:focus-visible { outline: 2px solid #2563eb; }
 input:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
 textarea {
 	font: inherit;
@@ -369,11 +377,11 @@ textarea {
 	cursor: text;
 }
 textarea:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
-textarea[hidden], input[hidden] { display: none; }
+textarea[hidden], input[hidden], select[hidden] { display: none; }
 textarea:focus-visible { outline: 2px solid #2563eb; }
 input:focus-visible, a[href]:focus-visible, [tabindex]:focus-visible { outline: 2px solid #2563eb; }
-input[type="hidden"] {
-	display: none;
+input[type="hidden" i] {
+	display: none !important;
 }
 
 

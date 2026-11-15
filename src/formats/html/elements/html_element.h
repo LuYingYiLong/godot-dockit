@@ -18,6 +18,7 @@ namespace docrender { class HTMLDOM; }
 
 class HTMLLayout;
 class HTMLInputElement;
+class HTMLFormElement;
 class HTMLDocumentFragment;
 
 class HTMLElement : public godot::RefCounted {
@@ -30,6 +31,7 @@ class HTMLElement : public godot::RefCounted {
 	friend class HTMLTextAreaElement;
 	friend class HTMLTemplateElement;
 	friend class HTMLLabelCanvas;
+	friend class HTMLLabel;
 	friend class HTMLDocumentFragment;
 
 	struct DetachedTree;
@@ -40,12 +42,13 @@ class HTMLElement : public godot::RefCounted {
 	std::shared_ptr<DetachedTree> detached_tree;
 
 	HTMLLayout* get_owner() const;
-	docrender::HTMLDOM& get_dom() const;
-	std::shared_ptr<litehtml::element> lock_element() const;
-	std::shared_ptr<litehtml::element> lock_related_element(const godot::Ref<HTMLElement>& p_element) const;
 
 protected:
 	static void _bind_methods();
+	docrender::HTMLDOM& get_dom() const;
+	std::shared_ptr<litehtml::element> lock_element() const;
+	std::shared_ptr<litehtml::element> lock_related_element(const godot::Ref<HTMLElement>& p_element) const;
+	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
 	bool is_valid() const;															// 检查句柄是否仍指向所属布局中的元素

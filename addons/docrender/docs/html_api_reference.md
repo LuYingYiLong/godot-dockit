@@ -49,4 +49,10 @@ An element query searches its descendants. `:scope` refers to the element that s
 
 DOM queries reflect successful edits immediately. Geometry requires layout. After changing a standalone document, call `layout(viewport_size)` to measure immediately. Layouts with a previous viewport can also reflow on a deferred call. For `HTMLLabel`, wait for `layout_changed` before reading geometry or scrolling to a newly inserted element. The label batches connected tree edits, including insertion of a nonempty fragment, into a layout update. [CSSOM View element geometry and scrolling](https://www.w3.org/TR/cssom-view-1/#extensions-to-the-element-interface) · [HTML text control selections](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#textFieldSelection)
 
+## Forms
+
+The form, label, fieldset, legend, select, option, and optgroup elements expose typed handles. Forms expose `get_controls()`, `get_form_data()`, and `reset()`. For a connected form, `HTMLLabel.submit_form()` checks `required` and emits either `form_submitted` with an ordered array of name and value dictionaries or `form_validation_failed` with the first invalid control. The game handles submission. Reset buttons emit `form_reset`. [WHATWG form control infrastructure](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html)
+
+Text inputs, checkboxes, radios, hidden inputs, textareas, and single-select dropdowns are supported. Dropdowns use a CSS-styled trigger and a label-local custom menu. Use `select_changed` for user selections. Form transport, browser validation UI, multiple selection, and list boxes are outside the current API.
+
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)

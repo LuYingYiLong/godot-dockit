@@ -2,6 +2,7 @@
 
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/elements/html_textarea_node.h"
+#include "formats/html/dom/html_dom.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
@@ -39,12 +40,14 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 	const StringName signal = input->editor.is_multiline() ? "textarea_committed" : "input_committed";
 	if (p_deferred) {
 		const ObjectID id(label->get_instance_id());
-		callable_mp_static(+[](uint64_t p_id, const Ref<HTMLElement>& element, uint64_t p_adoption_version, const StringName& p_signal) {
+		callable_mp_static(+[](uint64_t p_id, const Ref<HTMLElement>& element, uint64_t p_adoption_version,
+			uint64_t p_reset_version, const StringName& p_signal) {
 			auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(p_id)));
-			if (owner && element->adoption_version == p_adoption_version && owner->layout->text_control(element)) {
-				owner->emit_signal(p_signal, element);
+			if (owner && element->adoption_version == p_adoption_version) {
+				const auto input = owner->layout->text_control(element);
+				if (input && input->editor.get_reset_version() == p_reset_version) owner->emit_signal(p_signal, element);
 			}
-		}).call_deferred(uint64_t(id), p_input, p_input->adoption_version, signal);
+		}).call_deferred(uint64_t(id), p_input, p_input->adoption_version, input->editor.get_reset_version(), signal);
 	} else {
 		label->emit_signal(signal, p_input);
 	}
@@ -52,13 +55,32 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 
 void HTMLLabelCanvas::toggle_checkbox(const Ref<HTMLInputElement>& p_input) {
 	const auto input = p_input.is_valid() ? p_input->get_input() : nullptr;
-	if (!input || input->type() != HTMLInputNode::Type::CHECKBOX || input->get_attr("disabled") ||
-		!input->set_checked(!input->is_checked())) return;
+	if (!input || !input->is_toggle() || docrender::forms::is_disabled(*input) ||
+		!input->set_checked(input->type() == HTMLInputNode::Type::RADIO || !input->is_checked())) return;
 	const ObjectID id(label->get_instance_id());
+	const uint64_t reset_version = input->editor.get_reset_version();
 	change_input(p_input);
-	if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id)); owner && owner->layout->text_control(p_input) == input) {
+	if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id)); owner && owner->layout->text_control(p_input) == input &&
+		input->editor.get_reset_version() == reset_version) {
 		owner->emit_signal("input_committed", p_input);
 	}
+}
+
+bool HTMLLabelCanvas::move_radio(const Ref<HTMLInputElement>& p_input, int p_direction) {
+	const auto input = p_input->get_input();
+	if (!input) return false;
+	std::vector<Ref<HTMLInputElement>> available;
+	for (const auto& node : docrender::forms::radio_group(*input)) {
+		const Ref<HTMLInputElement> peer = label->layout->get_dom().make_element(node);
+		if (label->layout->is_focusable(peer)) available.push_back(peer);
+	}
+	const auto current = std::find(available.begin(), available.end(), p_input);
+	if (current == available.end()) return false;
+	const auto count = static_cast<ptrdiff_t>(available.size());
+	const Ref<HTMLInputElement> next = available[(std::distance(available.begin(), current) + count + p_direction) % count];
+	set_focused_element(next, true);
+	toggle_checkbox(next);
+	return true;
 }
 
 bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
@@ -66,7 +88,13 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const auto input = label->layout->text_control(handle);
 	if (!input || !label->layout->is_focusable(handle)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
-	if (const auto* checkbox = dynamic_cast<const HTMLInputNode*>(input.get()); checkbox && checkbox->type() == HTMLInputNode::Type::CHECKBOX) {
+	if (const auto* toggle = dynamic_cast<const HTMLInputNode*>(input.get()); toggle && toggle->is_toggle()) {
+		if (p_key.is_pressed() && toggle->type() == HTMLInputNode::Type::RADIO && !p_key.is_alt_pressed() &&
+			!p_key.is_meta_pressed() && !p_key.is_ctrl_pressed() &&
+			(key == KEY_LEFT || key == KEY_UP || key == KEY_RIGHT || key == KEY_DOWN)) {
+			label->accept_event();
+			return move_radio(handle, key == KEY_LEFT || key == KEY_UP ? -1 : 1);
+		}
 		if (key != KEY_SPACE || p_key.is_alt_pressed() || p_key.is_meta_pressed() || p_key.is_ctrl_pressed()) return false;
 		label->accept_event();
 		if (p_key.is_echo()) return true;
@@ -109,7 +137,11 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const char* maxlength = input->get_attr("maxlength", "");
 	if (enter && !editor.is_multiline()) {
 		label->accept_event();
-		if (!p_key.is_echo()) commit_input(handle);
+		if (!p_key.is_echo()) {
+			const ObjectID id(label->get_instance_id());
+			commit_input(handle);
+			if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) owner->submit_from_text(handle);
+		}
 		return true;
 	}
 	if (p_key.is_action("ui_text_select_all", true)) {
@@ -250,7 +282,7 @@ void HTMLLabelCanvas::move_textarea_drag(const Vector2& p_point) {
 	const auto& drag = *textarea_drag;
 	const auto node = label->layout->text_control(drag.element);
 	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-	if (!textarea || textarea->get_attr("disabled")) {
+	if (!textarea || docrender::forms::is_disabled(*textarea)) {
 		textarea_drag.reset();
 		resize_pending.reset();
 		return;

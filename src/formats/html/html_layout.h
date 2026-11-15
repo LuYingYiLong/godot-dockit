@@ -4,6 +4,7 @@
 #include "elements/html_input_element.h"
 #include "elements/html_textarea_element.h"
 #include "formats/html/text/html_font_config.h"
+#include "formats/html/text/html_text_layout.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -29,6 +30,13 @@ namespace godot {
 namespace docrender {
 	class HTMLDOM;
 	class HTMLTextControlNode;
+	struct HTMLSelectMenuRow {
+		HTMLTextLayout text;
+		godot::Color color;
+		godot::Color background;
+		int64_t option_index;
+		bool enabled;
+	};
 }
 
 class HTMLLayout : public godot::RefCounted {
@@ -61,6 +69,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;
+	std::vector<docrender::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;
 	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;

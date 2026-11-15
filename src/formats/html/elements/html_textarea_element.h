@@ -13,6 +13,7 @@ protected:
 	static void _bind_methods();
 
 public:
+	godot::Ref<HTMLFormElement> get_form() const; // 返回所属表单
 	godot::String get_value() const; // 返回多行字段的当前值
 	void set_value(const godot::String& p_value); // 设置多行字段的当前值且不触发用户编辑信号
 	godot::String get_default_value() const; // 返回来自子文本的默认值

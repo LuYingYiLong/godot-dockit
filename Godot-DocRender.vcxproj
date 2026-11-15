@@ -133,6 +133,7 @@
     <ClCompile Include="src\nodes\mermaid_label.cpp" />
     <ClCompile Include="src\nodes\html_label.cpp" />
     <ClCompile Include="src\nodes\html_label_input.cpp" />
+    <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_html.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_render.cpp" />
@@ -144,6 +145,9 @@
     <ClCompile Include="src\formats\html\elements\html_heading_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_form_elements.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_form_state.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_select_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_text_editor.cpp" />
     <ClCompile Include="src\formats\html\elements\html_textarea_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_textarea_node.cpp" />
@@ -289,6 +293,9 @@
     <ClInclude Include="src\formats\html\elements\html_heading_element.h" />
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />
     <ClInclude Include="src\formats\html\elements\html_input_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_form_elements.h" />
+    <ClInclude Include="src\formats\html\elements\html_form_state.h" />
+    <ClInclude Include="src\formats\html\elements\html_select_node.h" />
     <ClInclude Include="src\formats\html\elements\html_node_copy_state.h" />
     <ClInclude Include="src\formats\html\elements\html_text_control_node.h" />
     <ClInclude Include="src\formats\html\elements\html_text_editor.h" />

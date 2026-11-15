@@ -989,19 +989,6 @@ msgstr ""
 
 #. doc_classes/HTMLInputElement.xml
 msgid ""
-"Returned by element queries and by [method HTMLLayout.create_element] for [code]<input>[/code]. "
-"[HTMLLabel] supports single-line text and checkboxes. The value and checked state apply to the "
-"current layout. Changing them from script emits no user editing signals.\n"
-"Text inputs keep their current value separate from the [code]value[/code] attribute. A checkbox "
-"has a separate checked state and uses the [code]value[/code] attribute for its value, with "
-"[code]on[/code] as the default."
-msgstr ""
-"查询元素或通过 [method HTMLLayout.create_element] 创建 [code]<input>[/code] 时返回此句柄。[HTMLLabel] "
-"支持单行文本框和复选框。当前值和勾选状态属于当前布局。通过脚本修改时不发出用户编辑信号。\n"
-"文本框的当前值与 [code]value[/code] 属性分开保存。复选框单独保存勾选状态，值来自 [code]value[/code] 属性，默认为 [code]on[/code]。"
-
-#. doc_classes/HTMLInputElement.xml
-msgid ""
 "Returns the end of the single-line text selection. Other input types and invalid handles return "
 "[code]-1[/code]."
 msgstr "返回单行文本选区的终点。其他输入类型和无效句柄返回 [code]-1[/code]。"
@@ -1044,24 +1031,12 @@ msgstr "聚焦此控件中可见且已启用的元素并将其滚入视口。元
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
-"Emitted when the user edits a text input or toggles a checkbox. Read the new value from the "
-"element."
-msgstr "用户编辑文本框或切换复选框时发出。可从元素读取新值。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
 "Emitted when the left mouse button is pressed and released over the same visible link without "
 "dragging or scrolling, when Enter activates a focused link, or when [method activate_element] "
 "activates a link. [param uri] is the link's original nonempty [code]href[/code]."
 msgstr ""
 "左键在同一可见链接上按下和松开且期间没有拖动或滚动、按 Enter 激活已聚焦的链接，或通过 [method activate_element] "
 "激活链接时发出。[param uri] 为链接原始的非空 [code]href[/code]。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Emitted after a user edit is committed with Enter or by moving focus away. A checkbox toggle "
-"commits immediately after [signal input_changed]."
-msgstr "用户按 Enter 或移走焦点提交修改时发出。切换复选框会在 [signal input_changed] 之后立即提交。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -3169,14 +3144,6 @@ msgstr "HTML 按钮元素的句柄。"
 
 #. doc_classes/HTMLButtonElement.xml
 msgid ""
-"Returned by queries and [method HTMLLayout.create_element] for [code]<button>[/code]. [HTMLLabel]"
-" can activate enabled buttons with [code]type=\"button\"[/code]."
-msgstr ""
-"查询 [code]<button>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。[HTMLLabel] 可以激活已启用的 "
-"[code]type=\"button\"[/code] 按钮。"
-
-#. doc_classes/HTMLButtonElement.xml
-msgid ""
 "Whether the [code]disabled[/code] attribute is present. Setting this to [code]false[/code] "
 "removes the attribute."
 msgstr "是否存在 [code]disabled[/code] 属性。设为 [code]false[/code] 时移除此属性。"
@@ -3225,17 +3192,6 @@ msgid ""
 "The nonnegative integer pixel hint from the HTML [code]width[/code] attribute, or [code]0[/code] "
 "if it is absent or invalid as an integer. CSS can override the hint."
 msgstr "HTML [code]width[/code] 属性中的非负整数像素提示。属性缺失或值无效时返回 [code]0[/code]。CSS 可以覆盖该提示。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Activates a visible link with a nonempty [code]href[/code] or an enabled "
-"[code]type=\"button\"[/code] button in this label. A fragment link scrolls to its target before "
-"emitting [signal link_pressed]. A button emits [signal button_pressed]. Returns [code]true[/code]"
-" when activation is dispatched and [code]false[/code] when the element cannot be activated."
-msgstr ""
-"激活此控件中 [code]href[/code] 非空的可见链接或已启用的 [code]type=\"button\"[/code] 按钮。片段链接先滚动到目标，再发出 [signal "
-"link_pressed]。按钮发出 [signal button_pressed]。成功分发激活时返回 [code]true[/code]，元素无法激活时返回 "
-"[code]false[/code]。"
 
 #. doc_classes/HTMLImageElement.xml
 msgid ""
@@ -3476,3 +3432,222 @@ msgstr ""
 "[code]:scope[/code] 时返回空数组，因为片段根没有元素句柄。\n"
 "嵌套模板元素可以匹配。通过它的 [member HTMLTemplateElement.content] 单独查询其内容。无效或不支持的选择器会报告 Godot "
 "错误。片段无效或没有匹配项时返回空数组。支持的语法见 [method HTMLLayout.query_selector_all]。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid "An HTML form with ordered form data."
+msgstr "提供有序表单数据的 HTML 表单。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid ""
+"Use [method get_controls] to inspect associations and [method HTMLLabel.submit_form] to validate "
+"and submit through Godot signals."
+msgstr "使用 [method get_controls] 查看关联关系，使用 [method HTMLLabel.submit_form] 校验并通过 Godot 信号提交。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid "Returns a tree-order snapshot of the associated controls."
+msgstr "按树顺序返回关联控件的快照。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid ""
+"Returns ordered dictionaries with [code]name[/code] and [code]value[/code] keys. Repeated names "
+"remain separate. The optional submitter must be enabled and associated with this form."
+msgstr "按顺序返回包含 [code]name[/code] 和 [code]value[/code] 键的字典。同名项分别保留。可选的提交按钮必须可用并关联到当前表单。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid ""
+"Restores all associated controls to their markup defaults, clears edit state, and schedules one "
+"layout update when connected."
+msgstr "将所有关联控件恢复到标记中的默认值，清除编辑状态，并在表单已连接时调度一次布局更新。"
+
+#. doc_classes/HTMLLabelElement.xml
+msgid "An HTML label for a form control."
+msgstr "为表单控件提供标签的 HTML 元素。"
+
+#. doc_classes/HTMLLabelElement.xml
+msgid ""
+"An explicit [code]for[/code] ID is resolved in the label's tree. An implicit label uses the first"
+" labelable descendant."
+msgstr "在标签所在的树中解析显式 [code]for[/code] ID。隐式标签使用第一个可标记后代。"
+
+#. doc_classes/HTMLLabelElement.xml
+msgid "Returns the labeled control or [code]null[/code]."
+msgstr "返回关联的控件或 [code]null[/code]。"
+
+#. doc_classes/HTMLLabelElement.xml
+msgid "The raw [code]for[/code] attribute."
+msgstr "原始的 [code]for[/code] 属性。"
+
+#. doc_classes/HTMLFieldSetElement.xml
+msgid "A group of HTML form controls."
+msgstr "一组 HTML 表单控件。"
+
+#. doc_classes/HTMLFieldSetElement.xml
+msgid ""
+"When disabled, the fieldset disables its controls except those inside its first direct "
+"[HTMLLegendElement]."
+msgstr "禁用分组时，分组中的控件也会禁用，但第一个直接 [HTMLLegendElement] 内的控件除外。"
+
+#. doc_classes/HTMLButtonElement.xml
+#. doc_classes/HTMLFieldSetElement.xml
+#. doc_classes/HTMLInputElement.xml
+#. doc_classes/HTMLSelectElement.xml
+#. doc_classes/HTMLTextAreaElement.xml
+msgid "Returns the associated form or [code]null[/code]."
+msgstr "返回所属表单或 [code]null[/code]。"
+
+#. doc_classes/HTMLFieldSetElement.xml
+#. doc_classes/HTMLOptGroupElement.xml
+#. doc_classes/HTMLOptionElement.xml
+#. doc_classes/HTMLSelectElement.xml
+msgid "Reflects the disabled attribute."
+msgstr "反映源标记中的禁用属性。"
+
+#. doc_classes/HTMLLegendElement.xml
+msgid "The caption of an HTML fieldset."
+msgstr "HTML 表单分组的标题。"
+
+#. doc_classes/HTMLLegendElement.xml
+msgid "The first direct legend in a fieldset defines the disabled-control exception."
+msgstr "表单分组的第一个直接标题定义禁用例外。"
+
+#. doc_classes/HTMLLegendElement.xml
+msgid "Returns the enclosing fieldset's form or [code]null[/code]."
+msgstr "返回所在分组的表单或 [code]null[/code]。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "An HTML single-select dropdown."
+msgstr "HTML 单选下拉框。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid ""
+"[HTMLLabel] draws the dropdown and emits [signal HTMLLabel.select_changed] for user changes. "
+"Script assignments update selection silently."
+msgstr "[HTMLLabel] 绘制下拉框，并在用户更改选项时发出 [signal HTMLLabel.select_changed]。脚本赋值时不发出该信号。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "Returns the options as a tree-order snapshot of [HTMLOptionElement] handles."
+msgstr "按树顺序返回 [HTMLOptionElement] 选项句柄的快照。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "The name used for the form entry."
+msgstr "表单条目使用的名称。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "Whether submission requires a selection other than the placeholder."
+msgstr "是否必须选择占位项以外的选项才能提交。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "The selected option value. An unmatched assignment clears the selection."
+msgstr "所选选项的值。赋值无匹配项时清空选择。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "Zero-based selected index. [code]-1[/code] means no selection."
+msgstr "从零开始的选中索引。[code]-1[/code] 表示未选择。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "An option in an HTML dropdown."
+msgstr "HTML 下拉框中的选项。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "The current selection is independent of the default selection attribute."
+msgstr "当前选中状态与默认选中属性独立。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "The value attribute, falling back to normalized option text."
+msgstr "值属性，缺省时使用规范化后的选项文本。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "The display label, falling back to normalized option text."
+msgstr "显示标签，缺省时使用规范化后的选项文本。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "The current selected state."
+msgstr "当前选中状态。"
+
+#. doc_classes/HTMLOptionElement.xml
+msgid "Reflects the selected attribute used when resetting the form."
+msgstr "反映重置表单时使用的默认选中属性。"
+
+#. doc_classes/HTMLOptGroupElement.xml
+msgid "A labeled group of HTML dropdown options."
+msgstr "带标题的 HTML 下拉选项组。"
+
+#. doc_classes/HTMLOptGroupElement.xml
+msgid "Disabling the group prevents users from selecting its options."
+msgstr "禁用分组后，用户无法选择其中的选项。"
+
+#. doc_classes/HTMLOptGroupElement.xml
+msgid "The heading shown for the option group."
+msgstr "选项分组显示的标题。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Submits a connected form in this label and emits [signal form_submitted] on success. An optional "
+"submitter must be an enabled submit button associated with the form. Returns [constant "
+"ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid "
+"argument."
+msgstr ""
+"提交此控件中已连接的表单，成功时发出 [signal form_submitted]。可选的提交按钮必须可用并关联到该表单。校验失败时返回 [constant "
+"ERR_INVALID_DATA]，参数无效时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted after a reset button restores the form's default values."
+msgstr "重置按钮恢复表单默认值后发出。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted with the ordered entry dictionaries and the submit button, which may be "
+"[code]null[/code]. The game decides how to use the data."
+msgstr "发出有序的条目字典及提交按钮。按钮可能为 [code]null[/code]。游戏决定如何使用这些数据。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted with the first control that fails required validation."
+msgstr "发出第一个未通过必填校验的控件。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when a user selects a different option in a dropdown."
+msgstr "用户在下拉框中选择其他选项时发出。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Activates a visible link or a form control in this label. A fragment link scrolls before emitting"
+" [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, "
+"toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if "
+"activation was dispatched."
+msgstr ""
+"激活此控件内可见的链接或表单控件。片段链接先滚动再发出 [signal link_pressed]。命令按钮发出 [signal "
+"button_pressed]。表单按钮、标签、开关和下拉框执行各自的操作。已派发激活时返回 [code]true[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted when the user edits a text input, changes a checkbox, or selects a radio button. Read the"
+" new state from the element."
+msgstr "用户编辑文本框、更改复选框或选中单选按钮时发出。通过元素读取新状态。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Emitted after a user edit is committed with Enter or by moving focus away. Checkboxes and radio "
+"buttons commit immediately after [signal input_changed]."
+msgstr "用户按 Enter 或移开焦点提交编辑时发出。复选框和单选按钮在 [signal input_changed] 后立即提交。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<button>[/code]. In "
+"[HTMLLabel], an enabled button can run a command, submit its associated form, or reset it "
+"according to its type."
+msgstr ""
+"查询和 [method HTMLLayout.create_element] 会为 [code]<button>[/code] 返回此类型。在 [HTMLLabel] "
+"中，可用的按钮根据类型运行命令、提交所属表单或重置表单。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<input>[/code]. [HTMLLabel] "
+"supports text, checkbox, radio, and hidden inputs. Script assignments emit no user editing "
+"signals.\n"
+"Text inputs track a current value separately from the [code]value[/code] attribute. Checkboxes "
+"and radios have a current checked state and use the value attribute with [code]on[/code] as the "
+"default. Hidden inputs store their value in the attribute and participate in form data."
+msgstr ""
+"查询和 [method HTMLLayout.create_element] 会为 [code]<input>[/code] 返回此类型。[HTMLLabel] "
+"支持文本框、复选框、单选按钮和隐藏字段。脚本赋值时不发出用户编辑信号。\n"
+"文本框的当前值与 [code]value[/code] 属性分开。复选框和单选按钮具有当前勾选状态，其值来自源属性，默认是 [code]on[/code]。隐藏字段的值保存在属性中并参与表单数据。"

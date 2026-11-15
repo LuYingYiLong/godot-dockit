@@ -7,6 +7,9 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
+#include "formats/html/elements/html_form_elements.h"
+#include "formats/html/elements/html_form_state.h"
+#include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_image_element.h"
 #include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_template_element.h"
@@ -124,6 +127,13 @@ namespace {
 		switch (p_tag) {
 			case litehtml::_a_: return instantiate_element_handle<HTMLAnchorElement>();
 			case litehtml::_button_: return instantiate_element_handle<HTMLButtonElement>();
+			case litehtml::_form_: return instantiate_element_handle<HTMLFormElement>();
+			case litehtml::_label_: return instantiate_element_handle<HTMLLabelElement>();
+			case litehtml::_fieldset_: return instantiate_element_handle<HTMLFieldSetElement>();
+			case litehtml::_legend_: return instantiate_element_handle<HTMLLegendElement>();
+			case litehtml::_select_: return instantiate_element_handle<HTMLSelectElement>();
+			case litehtml::_option_: return instantiate_element_handle<HTMLOptionElement>();
+			case litehtml::_optgroup_: return instantiate_element_handle<HTMLOptGroupElement>();
 			case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
 			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
 			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
@@ -164,6 +174,14 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	document = std::move(p_document);
 	owner_id = p_owner_id;
 	generation = p_generation;
+	for (const auto& entry : detached_trees) {
+		if (const auto tree = entry.value.lock()) docrender::forms::synchronize(tree->root);
+	}
+}
+
+void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
+	docrender::forms::synchronize(p_node);
+	if (is_element_connected(*p_node)) on_change();
 }
 
 void HTMLDOM::clear() {
@@ -297,6 +315,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::copy_fragment(const litehtml::element& p_root
 	if (p_deep && !clone_children(*this, p_root, *fragment->tree->root)) {
 		return {};
 	}
+	docrender::forms::synchronize(fragment->tree->root);
 	return fragment;
 }
 
@@ -309,7 +328,9 @@ Ref<HTMLElement> HTMLDOM::make_detached_element(const litehtml::element::ptr& p_
 }
 
 Ref<HTMLElement> HTMLDOM::copy_node(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep) {
-	return make_detached_element(clone_subtree(p_source_dom, p_source, p_deep));
+	const auto copy = clone_subtree(p_source_dom, p_source, p_deep);
+	docrender::forms::synchronize(copy);
+	return make_detached_element(copy);
 }
 
 bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_source) {
@@ -347,6 +368,8 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 		entry.source->tree = std::move(entry.target->content->tree);
 		entry.target->content = entry.source;
 	}
+	docrender::forms::synchronize(copy, copy);
+	docrender::forms::synchronize(parent);
 	if (source_connected) {
 		p_source_dom.on_change();
 	}
@@ -595,6 +618,13 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	} else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->update_pseudos();
 	}
+	const std::string_view name(p_name);
+	if (name == "selected") {
+		if (auto* option = dynamic_cast<docrender::HTMLOptionNode*>(p_element.get())) option->attribute_changed();
+	}
+	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected") {
+		docrender::forms::synchronize(p_element, p_element);
+	}
 	if (is_element_connected(*p_element)) {
 		on_change();
 	}
@@ -676,6 +706,7 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->sync_default_value();
 	}
+	docrender::forms::synchronize(target, target);
 	if (!node && is_element_connected(*p_element)) {
 		on_change();
 	}
@@ -713,6 +744,7 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 	for (size_t i = 0; i < count; ++i, ++child) {
 		update_detached_handles(*child, target_tree);
 	}
+	docrender::forms::synchronize(p_parent, p_parent);
 	if (!target_tree) {
 		on_change();
 	}
@@ -735,6 +767,7 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	}
 
 	const auto source_tree = get_detached_tree(*p_child);
+	const auto old_parent = p_child->parent();
 	if (!source_tree && !p_child->parent()) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -750,7 +783,10 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	}
 	if (p_replace_reference) {
 		retain_detached_subtree(p_reference);
+		docrender::forms::synchronize(p_reference);
 	}
+	docrender::forms::synchronize(p_parent, p_child);
+	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) docrender::forms::synchronize(old_parent);
 	if (!source_tree || !target_tree) {
 		on_change();
 	}
@@ -771,6 +807,8 @@ Error HTMLDOM::detach_element(const litehtml::element::ptr& p_element) {
 		return ERR_INVALID_PARAMETER;
 	}
 	retain_detached_subtree(p_element);
+	docrender::forms::synchronize(parent);
+	docrender::forms::synchronize(p_element);
 	if (!old_tree) {
 		on_change();
 	}
@@ -787,6 +825,7 @@ Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
 		return ERR_INVALID_PARAMETER;
 	}
 	forget_subtree(*p_element);
+	docrender::forms::synchronize(parent);
 	if (!old_tree) {
 		on_change();
 	}

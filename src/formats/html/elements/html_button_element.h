@@ -9,6 +9,7 @@ protected:
 	static void _bind_methods();
 
 public:
+	godot::Ref<HTMLFormElement> get_form() const; // 返回所属表单
 	bool is_disabled() const; // 判断是否存在 disabled 属性
 	void set_disabled(bool p_disabled); // 添加或移除 disabled 属性
 	godot::String get_type() const; // 返回按钮的源 type 属性

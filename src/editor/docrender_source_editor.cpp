@@ -22,6 +22,10 @@
 #include <godot_cpp/classes/tab_container.hpp>
 #include <godot_cpp/classes/tree.hpp>
 #include <godot_cpp/classes/tree_item.hpp>
+#include <godot_cpp/classes/weak_ref.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+
+#include <mutex>
 
 namespace godot {
 	namespace {
@@ -29,6 +33,8 @@ namespace godot {
 		Ref<LatexDocumentImporter> startup_latex_importer;
 		Ref<MermaidDocumentImporter> startup_mermaid_importer;
 		Ref<PDFTextureImporter> startup_pdf_importer;
+		std::mutex observed_documents_lock;
+		HashMap<String, Ref<WeakRef>> observed_html_documents;
 
 		StringName get_document_type(const String& p_path) {
 			const String extension = p_path.get_extension().to_lower();
@@ -55,15 +61,28 @@ namespace godot {
 			return p_tab == nullptr ? nullptr : Object::cast_to<CodeEdit>(p_tab->get_base_editor());
 		}
 
+		Ref<Resource> get_displaced_html_document(const String& p_path) {
+		const std::lock_guard lock(observed_documents_lock);
+		const auto* weak_document = observed_html_documents.getptr(p_path);
+		if (weak_document == nullptr) return {};
+		const Ref<Resource> document = (*weak_document)->get_ref();
+		if (document.is_null() || (!document->get_path().is_empty() && document->get_path() != p_path)) {
+			observed_html_documents.erase(p_path);
+			return {};
+		}
+		return document;
+		}
+
 		void restore_source_cache(const String& p_path, const Ref<Resource>& p_imported = {}) {
 			const Ref<Resource> cached = ResourceLoader::get_singleton()->get_cached_ref(p_path);
 			if (cached.is_valid() && cached->is_class("TextFile")) {
+				const Ref<Resource> document = p_imported.is_valid() ? p_imported : get_displaced_html_document(p_path);
 				// Keep the path on the editing buffer for native save/reload, without
 				// registering it under the same key as the imported resource.
 				cached->set_path("");
 				cached->set_path_cache(p_path);
-				if (p_imported.is_valid()) {
-					p_imported->take_over_path(p_path);
+				if (document.is_valid()) {
+					document->take_over_path(p_path);
 				}
 			}
 		}
@@ -103,6 +122,19 @@ namespace godot {
 	} // namespace
 
 	HashMap<uint64_t, String> DocRenderSourceEditorPlugin::source_tabs;
+
+	void DocRenderSourceEditorPlugin::observe_html_document(const Ref<Resource>& p_document) {
+		if (p_document.is_null() || !Engine::get_singleton()->is_editor_hint()) return;
+		const String path = p_document->get_path();
+		const String extension = path.get_extension().to_lower();
+		if (!path.begins_with("res://") || (extension != "html" && extension != "htm") ||
+			ResourceLoader::get_singleton()->get_cached_ref(path) != p_document) return;
+		// Scenes are restored before ScriptEditor. Keep a weak reference to the
+		// resource they already use, since native TextFile loading clears its path.
+		const std::lock_guard lock(observed_documents_lock);
+		const Ref<WeakRef> document = UtilityFunctions::weakref(p_document);
+		observed_html_documents.insert(path, document);
+	}
 
 	String DocRenderSourceEditorPlugin::get_source_path(uint64_t p_tab_id) {
 		const String* path = source_tabs.getptr(p_tab_id);
@@ -189,6 +221,10 @@ namespace godot {
 
 	void DocRenderSourceEditorPlugin::_exit_tree() {
 		detach_source_editor();
+		{
+			const std::lock_guard lock(observed_documents_lock);
+			observed_html_documents.clear();
+		}
 		remove_import_plugin(html_importer);
 		html_importer.unref();
 		if (pdf_importer.is_valid()) {

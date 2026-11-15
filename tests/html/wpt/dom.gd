@@ -13,6 +13,7 @@ func _initialize() -> void:
 	_test_template_instantiation()
 	_test_template_inner_html()
 	_test_nested_template_adoption()
+	_test_form_dom_associations()
 	_test_selector_snapshot()
 	_test_relational_selectors()
 	if _failures == 0:
@@ -322,6 +323,45 @@ func _test_nested_template_adoption() -> void:
 	_check(wrapper.remove() == OK and not child.is_valid() and not input.is_valid()
 			and outer_content.clone_node() == null and inner_content.clone_node() == null,
 			"removing the host invalidates both hosted fragment trees")
+
+
+func _test_form_dom_associations() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var other: HTMLLayout = HTMLLayout.new()
+	var html: String = ('<form id="first"><input id="field" name="item" value="original"></form>'
+			+ '<form id="second"></form><div id="target"></div>'
+			+ '<template><form id="draft"><label>Size<select name="size"><option value="a">A</option>'
+			+ '<option value="b" selected>B</option></select></label></form></template>')
+	if not _check(layout.parse(html) == OK and other.parse("<main></main>") == OK, "parse form association fixtures"):
+		return
+	var first: HTMLFormElement = layout.get_element_by_id("first") as HTMLFormElement
+	var second: HTMLFormElement = layout.get_element_by_id("second") as HTMLFormElement
+	var field: HTMLInputElement = layout.get_element_by_id("field") as HTMLInputElement
+	var target: HTMLElement = layout.get_element_by_id("target")
+	var template: HTMLTemplateElement = layout.query_selector("template") as HTMLTemplateElement
+	if not _check(first != null and second != null and field != null and target != null and template != null,
+			"retrieve typed form controls"):
+		return
+	_check(field.get_form() == first and field.set_attribute("form", "second") == OK and field.get_form() == second
+			and first.get_controls().is_empty() and second.get_controls() == [field], "reassociate a connected form field")
+	_check(second.set_attribute("id", "updated") == OK and field.get_form() == null, "changing the form ID clears the explicit association")
+	_check(field.remove_attribute("form") == OK and field.get_form() == first, "removing the explicit association restores ancestor lookup")
+	var fragment: HTMLDocumentFragment = template.content.clone_node(true)
+	var form: HTMLFormElement = fragment.get_element_by_id("draft") as HTMLFormElement if fragment != null else null
+	var select: HTMLSelectElement = fragment.query_selector("select") as HTMLSelectElement if fragment != null else null
+	if not _check(form != null and select != null and select.value == "b", "clone the form and select inside a template"):
+		return
+	_check(select.get_form() == form and target.append_fragment(fragment) == OK and select.get_form() == form,
+			"template insertion keeps form associations and handles")
+	select.value = "a"
+	var chosen: HTMLElement = select.query_selector("option:checked")
+	var clone: HTMLSelectElement = select.clone_node(true) as HTMLSelectElement
+	_check(chosen != null and clone != null and clone.value == "a" and clone.query_selector("option:checked") != null,
+			"cloning preserves the current selection and its selector state")
+	_check(other.adopt_node(form) == form and select.get_form() == form and select.query_selector("option:checked") == chosen,
+			"adoption preserves option handles and effective state")
+	layout.clear()
+	_check(select.value == "a" and form.reset() == OK and select.value == "b", "the adopted form can restore the select default")
 
 
 # https://github.com/web-platform-tests/wpt/blob/master/dom/nodes/ParentNode-querySelector-All.js

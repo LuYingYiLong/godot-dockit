@@ -29,7 +29,7 @@ namespace litehtml {
 		);																			// 在原有元素树上重算样式并重建渲染树
 		static bool has_hover_styles(const document& p_document);					// 检查已解析的样式表是否引用悬停伪类
 		static void set_hover(element& p_element, bool p_hovered);					// 更新元素的悬停伪类状态
-		static bool is_command_button(const element& p_element);					// 判断元素是否为显式声明的普通按钮
+		static bool is_command_button(const element& p_element);					// 判断元素是否有按钮激活行为
 		static const std::vector<box_shadow>* get_box_shadows(
 			const html_tag& p_element
 		);																			// 读取层叠后的阴影列表

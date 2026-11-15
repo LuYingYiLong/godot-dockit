@@ -397,6 +397,7 @@ func _run() -> void:
 	await _check_automatic_hyphenation()
 	await _check_controls()
 	await _check_element_activation()
+	await _check_forms()
 	_check_image_element()
 	await _check_responsive_images()
 	await _check_image_alt_text()
@@ -7033,6 +7034,154 @@ func _send_dom_key(viewport: SubViewport, key: Key, unicode: int = 0, shift: boo
 	event.shift_pressed = shift
 	event.pressed = pressed
 	viewport.push_input(event)
+
+
+func _check_forms() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(400, 320)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(400.0, 320.0)
+	label.text = """<!doctype html><style>body { margin: 8px; } select { display: block; }</style>
+		<input form="order" id="external" name="entry" value="outside">
+		<form id="order">
+		<label id="explicit" for="text"><span id="caption">Name</span></label>
+		<input id="text" name="entry" required><input id="hidden" type="hidden" style="display:block" name="token" value="42">
+		<fieldset id="group" disabled><legend id="legend"><input name="allowed" value="yes"></legend>
+		<input id="disabled" name="filtered" value="no"></fieldset>
+		<label id="implicit"><input id="check" type="checkbox" name="confirm" required>Confirm</label>
+		<input id="first" type="radio" name="choice" value="one" checked required>
+		<input id="second" type="radio" name="choice" value="two">
+		<select id="select" name="size" required><option value="">Choose</option>
+		<optgroup id="unavailable" label="Unavailable" disabled><option value="disabled">Disabled</option></optgroup>
+		<optgroup id="available" label="Sizes"><option id="medium" value="m">Medium</option><option value="l">Large</option></optgroup></select>
+		<textarea id="notes" name="notes">Default</textarea>
+		<button id="submit" name="task" value="save">Save</button>
+		<button id="skip" type="submit" formnovalidate>Skip validation</button>
+		<button id="reset" type="reset">Reset</button></form><div style="height:420px"></div>"""
+	viewport.add_child(label)
+	var submitted: Array[Array] = []
+	var invalid: Array[HTMLElement] = []
+	var resets: Array[HTMLFormElement] = []
+	var changes: Array[HTMLSelectElement] = []
+	label.form_submitted.connect(func(form: HTMLFormElement, entries: Array[Dictionary], button: HTMLButtonElement) -> void:
+		submitted.append([form, entries, button])
+	)
+	label.form_validation_failed.connect(func(_form: HTMLFormElement, control: HTMLElement) -> void: invalid.append(control))
+	label.form_reset.connect(func(form: HTMLFormElement) -> void: resets.append(form))
+	label.select_changed.connect(func(select: HTMLSelectElement) -> void: changes.append(select))
+	await process_frame
+	await process_frame
+	var form: HTMLFormElement = label.get_element_by_id("order") as HTMLFormElement
+	var text: HTMLInputElement = label.get_element_by_id("text") as HTMLInputElement
+	var hidden: HTMLInputElement = label.get_element_by_id("hidden") as HTMLInputElement
+	var explicit_label: HTMLLabelElement = label.get_element_by_id("explicit") as HTMLLabelElement
+	var implicit_label: HTMLLabelElement = label.get_element_by_id("implicit") as HTMLLabelElement
+	var fieldset: HTMLFieldSetElement = label.get_element_by_id("group") as HTMLFieldSetElement
+	var legend: HTMLLegendElement = label.get_element_by_id("legend") as HTMLLegendElement
+	var disabled: HTMLElement = label.get_element_by_id("disabled")
+	var check: HTMLInputElement = label.get_element_by_id("check") as HTMLInputElement
+	var first: HTMLInputElement = label.get_element_by_id("first") as HTMLInputElement
+	var second: HTMLInputElement = label.get_element_by_id("second") as HTMLInputElement
+	var select: HTMLSelectElement = label.get_element_by_id("select") as HTMLSelectElement
+	var medium: HTMLOptionElement = label.get_element_by_id("medium") as HTMLOptionElement
+	var optgroup: HTMLOptGroupElement = label.get_element_by_id("available") as HTMLOptGroupElement
+	var notes: HTMLTextAreaElement = label.get_element_by_id("notes") as HTMLTextAreaElement
+	var submit: HTMLButtonElement = label.get_element_by_id("submit") as HTMLButtonElement
+	var reset: HTMLButtonElement = label.get_element_by_id("reset") as HTMLButtonElement
+	if [form, text, hidden, explicit_label, implicit_label, fieldset, legend, disabled, check, first, second, select,
+			medium, optgroup, notes, submit, reset,].has(null):
+		_check(false, "Create typed handles for the form and its controls")
+		viewport.queue_free()
+		return
+	_check(explicit_label.html_for == "text" and explicit_label.get_control() == text and implicit_label.get_control() == check,
+		"Explicit and implicit labels point to their controls")
+	_check(fieldset.get_form() == form and legend.get_form() == form and optgroup.label == "Sizes"
+		and select.get_options().size() == 4 and select.get_form() == form, "Forms expose the group and select relationships")
+	_check(disabled.matches(":disabled") and legend.query_selector("input:enabled") != null and not label.focus_element(disabled),
+		"Only the first legend exempts its controls from fieldset disability")
+	_check(hidden.value == "42" and hidden.get_client_rects().is_empty() and not label.focus_element(hidden),
+		"Hidden fields have a value but no geometry or focus")
+	_check(label.submit_form(form) == ERR_INVALID_DATA and invalid == [text], "Report the first required text field")
+	var caption: Vector2 = _label_rect(label, "caption").get_center()
+	_drag_pointer(viewport, caption, caption)
+	_check(label.get_focused_element() == text, "Clicking a label descendant focuses the associated field")
+	text.value = "inside"
+	_check(label.activate_element(implicit_label) and check.checked, "Activating an implicit label toggles the checkbox")
+	_check(label.submit_form(form) == ERR_INVALID_DATA and invalid == [text, select], "Required select rejects its placeholder")
+	await process_frame
+	await process_frame
+	_check(label.activate_element(label.get_element_by_id("skip")) and submitted.size() == 1,
+		"The submit button can skip validation")
+	_check(label.focus_element(first), "Focus the checked radio")
+	_send_dom_key(viewport, KEY_RIGHT)
+	_check(second.checked and not first.checked and label.get_focused_element() == second,
+		"Arrow keys move focus and selection together")
+	await process_frame
+	await process_frame
+	_check(label.focus_element(select), "Focus the HTML select")
+	_send_dom_key(viewport, KEY_SPACE)
+	_send_dom_key(viewport, KEY_DOWN)
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(medium.selected and select.selected_index == 2 and select.value == "m" and changes == [select],
+		"Keyboard selection skips a disabled option group and emits once")
+	await process_frame
+	await process_frame
+	_check(label.activate_element(select), "Open the self-drawn menu for a pointer selection")
+	_send_dom_key(viewport, KEY_END)
+	var menu: Control = label.get_node_or_null("_HTMLSelectMenu") as Control
+	await process_frame
+	if menu != null and menu.is_visible_in_tree():
+		var last_row: Vector2 = menu.position + Vector2(menu.size.x / 2.0, menu.size.y * 0.9)
+		_drag_pointer(viewport, last_row, last_row)
+	_check(select.value == "l" and changes == [select, select],
+		"The self-drawn menu accepts a pointer selection (value %s, changes %d)" % [select.value, changes.size()])
+	select.value = "m"
+	_check(changes.size() == 2, "Selecting by script keeps the user signal quiet")
+	await process_frame
+	await process_frame
+	_check(label.focus_element(text), "Focus the text input before implicit submit")
+	_send_dom_key(viewport, KEY_ENTER)
+	var expected: Array[Dictionary] = [
+		{"name": "entry", "value": "outside"},
+		{"name": "entry", "value": "inside"},
+		{"name": "token", "value": "42"},
+		{"name": "allowed", "value": "yes"},
+		{"name": "confirm", "value": "on"},
+		{"name": "choice", "value": "two"},
+		{"name": "size", "value": "m"},
+		{"name": "notes", "value": "Default"},
+		{"name": "task", "value": "save"},
+	]
+	_check(submitted.size() == 2 and submitted.back() == [form, expected, submit],
+		"Enter submits ordered entries, duplicate names, and only the active submit button")
+	submit.disabled = true
+	await process_frame
+	await process_frame
+	_check(label.focus_element(text), "Refocus the text field with a disabled default submitter")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(submitted.size() == 2, "Enter stops at the disabled default submitter")
+	submit.disabled = false
+	await process_frame
+	await process_frame
+	_check(label.activate_element(select), "Open the select before scrolling its label")
+	if menu != null:
+		var menu_y: float = menu.position.y
+		label.set_scroll_offset(Vector2i(0, 20))
+		await process_frame
+		await process_frame
+		_check(menu.is_visible_in_tree() and is_equal_approx(menu_y - menu.position.y, 20.0),
+			"The open menu follows its trigger when the label scrolls")
+	notes.value = "Edited"
+	await process_frame
+	await process_frame
+	_check(label.activate_element(reset) and resets == [form] and notes.value == "Default" and text.value.is_empty()
+		and first.checked and not second.checked and not check.checked and select.selected_index == 0,
+		"The reset button restores all default states and emits once")
+	_check(text.set_attribute("value", "New default") == OK and text.value == "New default",
+		"Reset clears the text field's dirty state")
+	viewport.queue_free()
 
 
 func _check_dom_input() -> void:

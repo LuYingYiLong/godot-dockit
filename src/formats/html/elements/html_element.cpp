@@ -3,6 +3,8 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/html_layout.h"
+#include "html_form_elements.h"
+#include "html_form_state.h"
 
 #include <godot_cpp/templates/hash_set.hpp>
 #include <litehtml/element.h>
@@ -10,6 +12,11 @@
 #include <string_view>
 
 using namespace godot;
+
+Ref<HTMLFormElement> HTMLElement::get_form_owner() const {
+	if (const auto node = lock_element()) return get_dom().make_element(docrender::forms::owner(*node));
+	return {};
+}
 
 namespace {
 	void append_text(const litehtml::element& p_element, litehtml::string& r_text) {

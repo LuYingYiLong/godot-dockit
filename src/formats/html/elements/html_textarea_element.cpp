@@ -1,4 +1,5 @@
 #include "html_textarea_element.h"
+#include "html_form_elements.h"
 
 #include "html_textarea_node.h"
 #include "formats/html/html_layout.h"
@@ -6,9 +7,12 @@
 #include <algorithm>
 
 using namespace godot;
+
+Ref<HTMLFormElement> HTMLTextAreaElement::get_form() const { return get_form_owner(); }
 using docrender::HTMLTextAreaNode;
 
 void HTMLTextAreaElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLTextAreaElement::get_form);
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLTextAreaElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLTextAreaElement::set_value);
 	ClassDB::bind_method(D_METHOD("get_default_value"), &HTMLTextAreaElement::get_default_value);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "html_text_editor.h"
+#include "html_form_state.h"
 
 #include <litehtml/html_tag.h>
 
@@ -16,7 +17,7 @@ namespace docrender {
 
 		virtual bool is_text_control() const = 0;
 		virtual bool update_pseudos() = 0;
-		bool is_editable() const { return is_text_control() && !get_attr("disabled") && !get_attr("readonly"); }
+		bool is_editable() const { return is_text_control() && !forms::is_disabled(*this) && !get_attr("readonly"); }
 		void set_focus_style(bool p_focused) { focused = p_focused; }
 	};
 }

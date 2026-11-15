@@ -48,7 +48,7 @@ namespace docrender {
 	}
 
 	bool HTMLTextAreaNode::update_pseudos() {
-		const bool disabled = get_attr("disabled") != nullptr;
+		const bool disabled = forms::is_disabled(*this);
 		bool changed = set_pseudo_class(litehtml::_id("disabled"), disabled);
 		changed |= set_pseudo_class(litehtml::_id("enabled"), !disabled);
 		changed |= set_pseudo_class(litehtml::_id("placeholder-shown"), editor.get_value().is_empty() && get_attr("placeholder"));
@@ -87,7 +87,7 @@ namespace docrender {
 
 	Vector2i HTMLTextAreaNode::resize_axes() const {
 		const auto overflow = css().get_overflow();
-		if (get_attr("disabled") || (overflow != litehtml::overflow_hidden && overflow != litehtml::overflow_auto &&
+		if (forms::is_disabled(*this) || (overflow != litehtml::overflow_hidden && overflow != litehtml::overflow_auto &&
 			overflow != litehtml::overflow_scroll)) return {};
 		switch (css().get_resize()) {
 			case litehtml::resize_both: return {1, 1};

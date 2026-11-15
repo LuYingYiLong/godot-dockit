@@ -91,6 +91,7 @@ namespace docrender {
 		void set_document(std::shared_ptr<litehtml::document> p_document, godot::ObjectID p_owner_id, uint64_t p_generation);
 		const std::shared_ptr<litehtml::document>& get_document() const { return document; }
 		void clear();
+		void form_state_changed(const litehtml::element::ptr& p_node);
 
 		static godot::CharString normalize_tag_name(const godot::String& p_tag_name);
 		static bool is_element(const litehtml::element& p_element);

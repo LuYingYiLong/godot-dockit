@@ -1,12 +1,16 @@
 #include "html_input_element.h"
+#include "html_form_elements.h"
 
 #include "html_input_node.h"
 #include "formats/html/html_layout.h"
 
 using namespace godot;
+
+Ref<HTMLFormElement> HTMLInputElement::get_form() const { return get_form_owner(); }
 using docrender::HTMLInputNode;
 
 void HTMLInputElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLInputElement::get_form);
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLInputElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLInputElement::set_value);
 	ClassDB::bind_method(D_METHOD("is_checked"), &HTMLInputElement::is_checked);
@@ -29,7 +33,7 @@ String HTMLInputElement::get_value() const {
 
 void HTMLInputElement::set_value(const String& p_value) {
 	if (const auto input = get_input()) {
-		if (input->type() == HTMLInputNode::Type::CHECKBOX) {
+		if (input->is_toggle() || input->type() == HTMLInputNode::Type::HIDDEN) {
 			set_attribute("value", p_value);
 		} else if (input->editor.set_value(p_value)) {
 			get_owner()->update_input(*input);

@@ -8,6 +8,12 @@
 		The default size uses [code]rows[/code] and [code]cols[/code]. CSS can override the size, wrapping and [code]resize[/code] behavior. In [HTMLLabel], Enter inserts a newline and Tab moves to the next focusable element. Drag the bottom-right handle to resize a field that allows it.
 	</description>
 	<methods>
+		<method name="get_form" qualifiers="const">
+			<return type="HTMLFormElement" />
+			<description>
+				Returns the associated form or [code]null[/code].
+			</description>
+		</method>
 		<method name="get_selection_start" qualifiers="const">
 			<return type="int" />
 			<description>

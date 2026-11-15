@@ -15,7 +15,10 @@ namespace docrender {
 	HTMLInputNode::Type HTMLInputNode::type() const {
 		const String name = String::utf8(get_attr("type", "")).to_lower();
 		if (name.is_empty() || name == "text") return Type::TEXT;
-		return name == "checkbox" ? Type::CHECKBOX : Type::OTHER;
+		if (name == "checkbox") return Type::CHECKBOX;
+		if (name == "radio") return Type::RADIO;
+		if (name == "hidden") return Type::HIDDEN;
+		return Type::OTHER;
 	}
 
 	void HTMLInputNode::set_attr(const char* p_name, const char* p_value) {
@@ -34,24 +37,46 @@ namespace docrender {
 	bool HTMLInputNode::update_pseudos() {
 		const Type kind = type();
 		const bool supported = kind != Type::OTHER;
-		const bool disabled = supported && get_attr("disabled");
+		const bool disabled = supported && forms::is_disabled(*this);
 		bool changed = set_pseudo_class(litehtml::_id("disabled"), disabled);
 		changed |= set_pseudo_class(litehtml::_id("enabled"), supported && !disabled);
-		changed |= set_pseudo_class(litehtml::_id("checked"), kind == Type::CHECKBOX && checked);
+		changed |= set_pseudo_class(litehtml::_id("checked"), is_toggle() && checked);
 		changed |= set_pseudo_class(litehtml::_id("placeholder-shown"),
 			kind == Type::TEXT && editor.get_value().is_empty() && get_attr("placeholder"));
 		return changed;
 	}
 
 	String HTMLInputNode::get_value() const {
-		return type() == Type::CHECKBOX ? String::utf8(get_attr("value", "on")) : editor.get_value();
+		if (is_toggle()) return String::utf8(get_attr("value", "on"));
+		if (type() == Type::HIDDEN) return String::utf8(get_attr("value", ""));
+		return editor.get_value();
 	}
 
 	bool HTMLInputNode::set_checked(bool p_checked) {
 		dirty_checked = true;
-		if (checked == p_checked) return false;
+		bool changed = checked != p_checked;
 		checked = p_checked;
-		return true;
+		if (p_checked && type() == Type::RADIO) {
+			for (const auto& peer : forms::radio_group(*this)) {
+				auto* input = static_cast<HTMLInputNode*>(peer.get());
+				if (input != this && input->checked) {
+					input->clear_group_checked();
+					changed = true;
+				}
+			}
+		}
+		return changed;
+	}
+
+	void HTMLInputNode::clear_group_checked() {
+		checked = false;
+		update_pseudos();
+	}
+
+	void HTMLInputNode::reset() {
+		editor.reset_value(String::utf8(get_attr("value", "")));
+		dirty_checked = false;
+		checked = get_attr("checked") != nullptr;
 	}
 
 	bool HTMLInputNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const {
@@ -74,13 +99,18 @@ namespace docrender {
 		paint_contents(*container, Rect2(pos.x + p_x, pos.y + p_y, pos.width, pos.height));
 	}
 
+	std::shared_ptr<litehtml::render_item> HTMLInputNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
+		if (type() == Type::HIDDEN) return {};
+		return html_tag::create_render_item(p_parent);
+	}
+
 	void HTMLInputNode::paint_contents(LiteHTMLContainer& p_container, const Rect2& p_box) {
 		const auto kind = type();
-		if (kind == Type::OTHER || !p_box.has_area()) return;
+		if (kind == Type::OTHER || kind == Type::HIDDEN || !p_box.has_area()) return;
 		const auto color = css().get_color();
-		if (kind == Type::CHECKBOX) {
+		if (is_toggle()) {
 			if (checked && css().get_appearance() != litehtml::appearance_none) {
-				auto mark = p_container.shape_input(css().get_font(), String::chr(0x2713));
+				auto mark = p_container.shape_input(css().get_font(), String::chr(kind == Type::RADIO ? 0x25cf : 0x2713));
 				if (mark.is_valid()) {
 					const Vector2 origin(p_box.get_center().x - mark.width() * 0.5f,
 						p_box.get_center().y + (mark.line_ascent() - mark.line_descent()) * 0.5f);

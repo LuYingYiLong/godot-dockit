@@ -16,6 +16,7 @@ protected:
 	static void _bind_methods();
 
 public:
+	godot::Ref<HTMLFormElement> get_form() const; // 返回所属表单
 	godot::String get_value() const; // 返回输入框的当前值
 	void set_value(const godot::String& p_value); // 设置当前值且不发出用户编辑信号
 	bool is_checked() const; // 返回复选框的当前选中状态
