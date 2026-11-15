@@ -1,7 +1,7 @@
-#include "litehtml_css_math.h"
+#include "formats/html/css/css_math.h"
 
-#include <litehtml/document.h>
-#include <litehtml/html.h>
+#include "css_syntax_util.h"
+#include "css_token_compat.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,6 +9,8 @@
 #include <string_view>
 
 namespace litehtml {
+	using docrender::css::detail::index_value;
+	using docrender::css::detail::lowcase;
 	namespace {
 		enum class MathOp {
 			LITERAL, ADD, SUBTRACT, MULTIPLY, DIVIDE,
@@ -324,16 +326,15 @@ namespace litehtml {
 			return 0.0;
 		}
 
-		css_math_node_ptr compute_node(const css_math_node_ptr& p_node, const document& p_document,
-			const font_metrics& p_metrics, css_length_context p_context) {
+		css_math_node_ptr compute_node(const css_math_node_ptr& p_node, const std::function<pixel_t(const css_length&)>& p_resolve_length) {
 			if (p_node->op == MathOp::LITERAL) {
 				if (p_node->type != LENGTH_TYPE || p_node->unit == css_units_px) return p_node;
 				const css_length length(static_cast<float>(p_node->number), p_node->unit);
-				return literal(p_document.to_pixels(length, p_metrics, 0, p_context), css_units_px);
+				return literal(p_resolve_length(length), css_units_px);
 			}
 			css_math_node computed = *p_node;
 			for (auto& arg : computed.args) {
-				if (arg) arg = compute_node(arg, p_document, p_metrics, p_context);
+				if (arg) arg = compute_node(arg, p_resolve_length);
 			}
 			return std::make_shared<css_math_node>(std::move(computed));
 		}
@@ -448,9 +449,9 @@ namespace litehtml {
 	}
 
 	std::shared_ptr<const css_math_expression> compute_css_math(const css_math_expression& p_value,
-		const document& p_document, const font_metrics& p_metrics, css_length_context p_context) {
+		const std::function<pixel_t(const css_length&)>& p_resolve_length) {
 		return std::make_shared<css_math_expression>(css_math_expression{
-			compute_node(p_value.root, p_document, p_metrics, p_context), p_value.has_percentage, p_value.non_negative, p_value.is_number,
+			compute_node(p_value.root, p_resolve_length), p_value.has_percentage, p_value.non_negative, p_value.is_number,
 		});
 	}
 

@@ -1,10 +1,21 @@
-#include "html.h"
-#include "formats/html/litehtml_css_math.h"
+// Portions adapted from litehtml.
+// Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+
 #include "css_length.h"
+#include "css_math.h"
+#include "css_syntax_util.h"
+#include "css_token_compat.h"
 #include <cmath>
 
 namespace litehtml
 {
+
+using docrender::css::detail::index_value;
+using docrender::css::detail::is_one_of;
+using docrender::css::detail::lowcase;
+using docrender::css::detail::value_index;
 
 void css_length::set_expression(std::shared_ptr<const css_math_expression> p_expression)
 {

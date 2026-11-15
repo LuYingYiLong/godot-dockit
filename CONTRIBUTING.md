@@ -15,7 +15,7 @@ The submodules provide godot-cpp, MicroTeX and its fonts, TinyXML-2, and litehtm
 
 DocRender maintains its litehtml replacements as C++ sources and headers in `src/formats/html/litehtml/`. Each group mirrors paths relative to the pinned litehtml submodule. Edit these files directly. SCons compiles the replacement sources in place, compiles the remaining sources from the submodule, and stages the combined headers in `src/gen/html/include/`. When updating the litehtml submodule, reconcile each replacement with its matching upstream file. The replacements retain the [litehtml BSD 3-Clause license](addons/docrender/LiteHTML-LICENSES/litehtml.txt).
 
-Edit CSS tokenization, grammar, stylesheet rules, and selector parsing and matching in `src/formats/html/css/`. The selector matcher takes a read-only DOM view. The litehtml adapter supplies that view and applies the match results to styles and generated content. Material migrated from litehtml retains its BSD 3-Clause license.
+Edit CSS tokenization, grammar, stylesheet rules, matching, the cascade, value types, default stylesheet, and computed styles in `src/formats/html/css/`. The litehtml adapter supplies a read-only DOM view, cascaded declarations, parent styles, and document-specific font and image queries. Layout reads the resulting `ComputedStyle`, resolves box-dependent values, and positions Grid items. The renderer turns resolved background layers into draw commands. CSS compatibility headers under `src/formats/html/litehtml/` forward to the canonical definitions. Material migrated from litehtml retains its BSD 3-Clause license.
 
 ## Install optional SDKs
 

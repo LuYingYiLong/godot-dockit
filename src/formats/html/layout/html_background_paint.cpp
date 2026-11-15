@@ -1,11 +1,16 @@
+// Portions adapted from litehtml.
+// Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+
 #include <cmath>
 #include <limits>
 
-#include "background.h"
+#include <litehtml/background.h>
 #include "formats/html/css/css_image_value.h"
-#include "render_item.h"
-#include "document.h"
-#include "document_container.h"
+#include <litehtml/render_item.h>
+#include <litehtml/document.h>
+#include <litehtml/document_container.h>
 
 #ifndef M_PI
 #       define M_PI    3.14159265358979323846

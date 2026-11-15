@@ -1,12 +1,12 @@
 #pragma once
 
-#include "css/css_counter_style.h"
-#include "css/css_font_face.h"
-#include "css/css_font_feature_values.h"
+#include "css_counter_style.h"
+#include "css_font_face.h"
+#include "css_font_feature_values.h"
 
-#include <litehtml/css_length.h>
-#include <litehtml/string_id.h>
-#include <litehtml/web_color.h>
+#include "css_length.h"
+#include "css_string_id.h"
+#include "css_web_color.h"
 #include <optional>
 
 namespace litehtml {

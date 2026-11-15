@@ -3,7 +3,7 @@
 #include "html_paint_run.h"
 #include "html_shaped_text.h"
 #include "html_border_image.h"
-#include "litehtml_box_shadow.h"
+#include "formats/html/css/css_shadows.h"
 
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/vector2i.hpp>

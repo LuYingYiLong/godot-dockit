@@ -1,7 +1,7 @@
 #pragma once
 
-#include <litehtml/css_length.h>
-#include <litehtml/web_color.h>
+#include "css_length.h"
+#include "css_web_color.h"
 
 #include <vector>
 

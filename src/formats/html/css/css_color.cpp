@@ -1,9 +1,9 @@
 #include "css_color.h"
-#include "formats/html/litehtml_css_math.h"
+#include "formats/html/css/css_math.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/html.h>
-#include <litehtml/web_color.h>
+#include "css_web_color.h"
 
 #include <algorithm>
 #include <cmath>

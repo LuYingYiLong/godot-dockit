@@ -4,6 +4,7 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_value_parser.h"
+#include <litehtml/html.h>
 
 #include <litehtml/css_parser.h>
 

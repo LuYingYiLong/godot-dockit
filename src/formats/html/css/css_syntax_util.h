@@ -7,9 +7,32 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace docrender::css::detail {
+
+inline int value_index(std::string_view value, std::string_view keywords, int fallback = -1) {
+	if (value.empty()) return fallback;
+	for (int index = 0; !keywords.empty(); ++index) {
+		const auto end = keywords.find(';');
+		if (keywords.substr(0, end) == value) return index;
+		if (end == std::string_view::npos) break;
+		keywords.remove_prefix(end + 1);
+	}
+	return fallback;
+}
+
+inline std::string index_value(int index, std::string_view keywords) {
+	const int original = index;
+	while (index >= 0 && !keywords.empty()) {
+		const auto end = keywords.find(';');
+		if (end != 0 && index-- == 0) return std::string(keywords.substr(0, end));
+		if (end == std::string_view::npos) break;
+		keywords.remove_prefix(end + 1);
+	}
+	return std::to_string(original);
+}
 
 template<typename T, typename... Options>
 bool is_one_of(const T& value, const Options&... options) {

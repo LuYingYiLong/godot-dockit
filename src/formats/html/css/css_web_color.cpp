@@ -1,10 +1,15 @@
-#include "html.h"
-#include "web_color.h"
+// Portions adapted from litehtml.
+// Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+
+#include <litehtml/html.h>
+#include "css_web_color.h"
 #include "formats/html/css/css_color.h"
 #include <cmath>
-#include "css_parser.h"
-#include "os_types.h"
-#include "document_container.h"
+#include <litehtml/css_parser.h>
+#include <litehtml/os_types.h>
+#include <litehtml/document_container.h>
 
 namespace litehtml
 {

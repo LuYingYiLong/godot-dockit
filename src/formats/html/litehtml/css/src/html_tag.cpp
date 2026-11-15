@@ -220,7 +220,7 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 					else if (apply & select_match_with_before)
 						el = get_element_before(*sel->m_style, true);
 
-					if (el) static_cast<html_tag&>(*el).m_style.combine(*sel->m_style, sel->m_layer);
+					if (el) static_cast<html_tag&>(*el).m_style.combine(*sel->m_style, sel->cascade_priority());
 					us->m_used = true;
 				};
 
@@ -233,7 +233,7 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 							apply_generated();
 						} else
 						{
-							m_style.combine(*sel->m_style, sel->m_layer);
+							m_style.combine(*sel->m_style, sel->cascade_priority());
 							us->m_used = true;
 						}
 					}
@@ -242,7 +242,7 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 					apply_generated();
 				} else
 				{
-					m_style.combine(*sel->m_style, sel->m_layer);
+					m_style.combine(*sel->m_style, sel->cascade_priority());
 					us->m_used = true;
 				}
 			}
@@ -305,7 +305,7 @@ void html_tag::apply_inline_style()
 void litehtml::html_tag::compute_styles(bool recursive)
 {
 	document::ptr doc = get_document();
-	m_style.subst_vars(this);
+	m_style.resolve_cascade(*this);
 
 	if (const auto* diagnostics = m_style.get_diagnostics())
 	{
@@ -873,9 +873,9 @@ void litehtml::html_tag::refresh_styles()
 			else if (apply & select_match_with_before)
 				generated = get_element_before(*selector.m_style, false);
 			if (generated)
-				static_cast<html_tag&>(*generated).m_style.combine(*selector.m_style, selector.m_layer);
+				static_cast<html_tag&>(*generated).m_style.combine(*selector.m_style, selector.cascade_priority());
 			else if (!(apply & select_match_with_generated))
-				m_style.combine(*selector.m_style, selector.m_layer);
+				m_style.combine(*selector.m_style, selector.cascade_priority());
 			usel->m_used = true;
 		}
 	}

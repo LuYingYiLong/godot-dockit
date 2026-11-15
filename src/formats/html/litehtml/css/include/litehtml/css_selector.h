@@ -26,6 +26,12 @@ namespace litehtml
 	public:
 		bool parse(const string& text, document_mode mode);
 		bool is_media_valid() const;
+		docrender::css::CascadePriority cascade_priority() const
+		{
+			// Baseline rules and HTML hints share the established application order.
+			if (m_layer == css_default_layer) return {};
+			return {m_layer, m_syntax->m_specificity, m_order};
+		}
 	};
 
 	inline bool css_selector::is_media_valid() const

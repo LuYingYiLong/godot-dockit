@@ -3,7 +3,7 @@
 
 #include "html_paint_recorder.h"
 #include "html_resources.h"
-#include "litehtml_css.h"
+#include "formats/html/css/css_values.h"
 #include "litehtml_fonts.h"
 
 #include <godot_cpp/templates/hash_map.hpp>

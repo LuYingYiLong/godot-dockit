@@ -1,7 +1,7 @@
 #pragma once
 
-#include <litehtml/html.h>
-#include <litehtml/style.h>
+#include "css_property_value.h"
+#include "css_value_helpers.h"
 
 namespace litehtml {
 	const char* css_keywords(string_id name);

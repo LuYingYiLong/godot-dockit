@@ -1,12 +1,12 @@
 #pragma once
 
-#include <litehtml/css_length.h>
+#include "css_length.h"
 
+#include <functional>
 #include <memory>
 #include <optional>
 
 namespace litehtml {
-	class document;
 	struct css_math_node;
 	using css_math_node_ptr = std::shared_ptr<const css_math_node>;
 
@@ -31,5 +31,5 @@ namespace litehtml {
 	// Parse a nonnegative resolution in canonical dppx units.
 	std::optional<double> parse_css_resolution(const css_token& p_token);
 	std::shared_ptr<const css_math_expression> compute_css_math(const css_math_expression& p_value,
-		const document& p_document, const font_metrics& p_metrics, css_length_context p_context = {});
+		const std::function<pixel_t(const css_length&)>& p_resolve_length);
 }

@@ -4,13 +4,11 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_declarations.h"
+#include "css_variables.h"
 #include "css_value_parser.h"
 
-#include <litehtml/document.h>
-#include <litehtml/document_container.h>
-#include <litehtml/html_tag.h>
-
 #include <litehtml/css_parser.h>
+#include <litehtml/html.h>
 
 #include <algorithm>
 
@@ -391,6 +389,12 @@ css_parsed_declaration parse_css_declaration(string_id name, const css_token_vec
 	return parse_declaration(name, tokens, baseurl, important, container, source, tokens);
 }
 
+css_parsed_declaration reparse_css_declaration(const property_value::deferred_declaration& declaration,
+	const css_token_vector& tokens, bool important, document_container* container)
+{
+	return parse_declaration(declaration.name, tokens, declaration.baseurl, important, container, declaration.source, declaration.tokens);
+}
+
 bool supports_css_declaration(const css_token_vector& tokens)
 {
 	int index = 0;
@@ -410,140 +414,6 @@ bool supports_css_declaration(const css_token_vector& tokens)
 		std::none_of(result.properties.begin(), result.properties.end(), [](const auto& entry) {
 			return has_drawing_gap(entry.first, entry.second);
 		});
-}
-
-static bool is_rollback(const property_value& value)
-{
-	return value.is<revert_value>() || value.is<revert_layer_value>();
-}
-
-static const property_value& rollback_declaration(string_id name, int layer, bool layer_only,
-	const props_map& defaults, const css_layer_candidates& layers, bool has_author_layers)
-{
-	if (has_author_layers && layer_only)
-	{
-		if (const auto it = layers.find(name); it != layers.end())
-		{
-			const property_value* best = nullptr;
-			for (const auto& [rank, candidate] : it->second)
-			{
-				if (rank >= layer) break;
-				if (!best || takes_cascade_precedence(candidate, *best))
-					best = &candidate;
-			}
-			if (best) return *best;
-		}
-	}
-	// A rollback in the baseline itself has nowhere further to go.
-	if (layer != css_default_layer)
-	{
-		if (const auto it = defaults.find(name); it != defaults.end())
-			return it->second;
-	}
-	static const property_value unset;
-	return unset;
-}
-
-void resolve_css_declarations(const props_map& specified, const props_map& defaults,
-	const css_layer_candidates& layers, const html_tag& element, css_computed_variables& computed_variables,
-	props_map& computed, std::vector<css_diagnostic>& diagnostics)
-{
-	computed.clear();
-	computed_variables.clear();
-	diagnostics.clear();
-	const auto doc = element.get_document();
-	const bool has_author_layers = doc->has_author_layers();
-	const auto rollback = [&](string_id name, int layer, bool layer_only) -> const property_value& {
-		return rollback_declaration(name, layer, layer_only, defaults, layers, has_author_layers);
-	};
-	const auto restore = [&](string_id name, const property_value& value) -> const property_value& {
-		const auto* effective = &value;
-		while (is_rollback(*effective))
-			effective = &rollback(name, effective->m_layer, effective->is<revert_layer_value>());
-		return *effective;
-	};
-
-	css_custom_properties local_variables;
-	std::vector<std::pair<string_id, const property_value*>> deferred_winners;
-	for (const auto& [name, value] : specified)
-	{
-		const auto& effective = restore(name, value);
-		if (effective.deferred)
-			deferred_winners.emplace_back(name, &effective);
-		else if (is_rollback(value))
-			computed.emplace(name, effective);
-		// Only custom declarations carry raw CSS token lists.
-		if (effective.is<css_token_vector>() || (effective.is<initial_value>() && _s(name).compare(0, 2, "--") == 0))
-			local_variables.emplace(name, &effective);
-	}
-
-	if (!local_variables.empty() || !deferred_winners.empty())
-	{
-		const auto parent = element.parent();
-		const css_custom_rollback restore_custom = [&](string_id name, const property_value& value,
-			css_wide_keyword keyword) -> const property_value& {
-			return restore(name, rollback(name, value.m_layer, keyword == css_wide_keyword::revert_layer));
-		};
-		css_variable_resolver resolver(dynamic_cast<const html_tag*>(parent.get()), std::move(local_variables), restore_custom);
-		auto* container = doc->container();
-		std::map<const property_value::deferred_declaration*, props_map> parsed;
-		const auto evaluate = [&](const property_value& value) -> const props_map& {
-			const auto& declaration = *value.deferred;
-			auto [it, inserted] = parsed.try_emplace(&declaration);
-			if (!inserted) return it->second;
-			if (const auto tokens = resolver.substitute(declaration.tokens))
-			{
-				auto result = parse_declaration(declaration.name, *tokens, declaration.baseurl,
-					value.m_important, container, declaration.source, declaration.tokens);
-				if (result.status == css_declaration_status::parsed)
-				{
-					it->second = std::move(result.properties);
-					return it->second;
-				}
-			}
-			if (auto diagnostic = check_css_declaration(css_declaration_status::invalid, declaration.name,
-				declaration.tokens, declaration.source))
-				diagnostics.push_back(std::move(*diagnostic));
-			return it->second;
-		};
-
-		for (const auto& [name, winner] : deferred_winners)
-		{
-			const auto* effective = winner;
-			for (;;)
-			{
-				if (!effective->deferred)
-				{
-					computed.insert_or_assign(name, *effective);
-					break;
-				}
-				const auto& properties = evaluate(*effective);
-				const auto it = properties.find(name);
-				if (it == properties.end())
-				{
-					computed.insert_or_assign(name, property_value{});
-					break;
-				}
-				if (!is_rollback(it->second))
-				{
-					computed.insert_or_assign(name, it->second);
-					break;
-				}
-				// A substituted rollback uses the original declaration's layer.
-				effective = &restore(name, rollback(name, effective->m_layer, it->second.is<revert_layer_value>()));
-			}
-		}
-		computed_variables = resolver.take_computed();
-	}
-
-	for (const auto& [name, value] : specified)
-	{
-		const auto it = computed.find(name);
-		const auto& effective = it == computed.end() ? value : it->second;
-		if (effective.origin)
-			diagnostics.push_back({ css_diagnostic_kind::not_rendered, _s(effective.origin->name),
-				effective.origin->value, effective.origin->source });
-	}
 }
 
 } // namespace litehtml

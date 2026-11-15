@@ -73,8 +73,7 @@ namespace litehtml
 		void				draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip,
 									const std::shared_ptr<render_item> &ri) override;
 
-		template<class Type>
-		const Type&			get_property(string_id name, bool inherited, const Type& default_value, uint_ptr css_properties_member_offset) const;
+		const property_value& get_cascaded_property(string_id name) const { return m_style.get_property(name); }
 		bool				get_custom_property(string_id name, css_token_vector& result) const;
 
 		elements_list&	children();
@@ -124,25 +123,6 @@ namespace litehtml
 		return m_children;
 	}
 
-	template<class Type>
-	const Type& html_tag::get_property(string_id name, bool inherited, const Type& default_value, uint_ptr css_properties_member_offset) const
-	{
-		const property_value& value = m_style.get_property(name);
-
-		if (value.is<Type>())
-		{
-			return value.get<Type>();
-		}
-		else if ((inherited && !value.is<initial_value>()) || value.is<inherit>())
-		{
-			if (auto _parent = parent())
-			{
-				return *(Type*)((byte*)&_parent->css() + css_properties_member_offset);
-			}
-			return default_value;
-		}
-		return default_value;
-	}
 
 }
 

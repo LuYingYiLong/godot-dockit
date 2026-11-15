@@ -1,5 +1,5 @@
 #include "html.h"
-#include "formats/html/litehtml_css_math.h"
+#include "formats/html/css/css_units.h"
 #include "formats/html/litehtml_document_adapter.h"
 #include "document.h"
 #include "stylesheet.h"
@@ -519,82 +519,25 @@ font_metrics document::initial_font_metrics()
 	return metrics;
 }
 
+namespace {
+	pixel_t css_points_to_pixels(const void* host, float points)
+	{
+		return static_cast<const document_container*>(host)->pt_to_px(points);
+	}
+}
+
 pixel_t document::to_pixels(const css_length& val, const font_metrics& metrics, pixel_t size,
 	css_length_context context) const
 {
-	if (val.is_predefined())
-		return 0;
-	if (const auto& expression = val.expression())
-		return static_cast<pixel_t>(compute_css_math(*expression, *this, metrics, context)->evaluate(size));
-
 	const auto& viewport = context.viewport ? *context.viewport : m_media;
 	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
-	const float amount = val.val();
-	switch (val.units())
-	{
-	case css_units_percentage: return val.calc_percent(size);
-	case css_units_em: return amount * metrics.font_size;
-	case css_units_ex: return amount * metrics.x_height;
-	case css_units_cap: return amount * metrics.cap_height;
-	case css_units_ch: return amount * metrics.ch_width;
-	case css_units_ic: return amount * metrics.ic_width;
-	case css_units_lh: return amount * metrics.line_height;
-	case css_units_rem: return amount * root.font_size;
-	case css_units_rex: return amount * root.x_height;
-	case css_units_rcap: return amount * root.cap_height;
-	case css_units_rch: return amount * root.ch_width;
-	case css_units_ric: return amount * root.ic_width;
-	case css_units_rlh: return amount * root.line_height;
-
-	// https://drafts.csswg.org/css-values-4/#absolute-lengths
-	case css_units_pt: return m_container->pt_to_px(amount);
-	case css_units_pc: return m_container->pt_to_px(amount * 12);
-	case css_units_in: return m_container->pt_to_px(amount * 72);
-	case css_units_cm: return m_container->pt_to_px(amount * 72 / 2.54f);
-	case css_units_mm: return m_container->pt_to_px(amount * 72 / 25.4f);
-	case css_units_q: return m_container->pt_to_px(amount * 72 / 101.6f);
-
-	// The embedded viewport has one size and uses horizontal writing mode.
-	case css_units_vw: case css_units_vi:
-	case css_units_svw: case css_units_svi:
-	case css_units_lvw: case css_units_lvi:
-	case css_units_dvw: case css_units_dvi:
-		return static_cast<pixel_t>(viewport.width * (amount / 100.0));
-	case css_units_vh: case css_units_vb:
-	case css_units_svh: case css_units_svb:
-	case css_units_lvh: case css_units_lvb:
-	case css_units_dvh: case css_units_dvb:
-		return static_cast<pixel_t>(viewport.height * (amount / 100.0));
-	case css_units_vmin: case css_units_svmin: case css_units_lvmin: case css_units_dvmin:
-		return static_cast<pixel_t>(std::min(viewport.width, viewport.height) * (amount / 100.0));
-	case css_units_vmax: case css_units_svmax: case css_units_lvmax: case css_units_dvmax:
-		return static_cast<pixel_t>(std::max(viewport.width, viewport.height) * (amount / 100.0));
-	default: return amount;
-	}
+	return docrender::css::length_to_pixels(val, metrics, size, {viewport, root, m_container, css_points_to_pixels});
 }
 
 void document::cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const
 {
-	const auto intrinsic = val.intrinsic_size();
-	if (is_one_of(intrinsic, css_intrinsic_size::fit_content_limit, css_intrinsic_size::stretch_limit))
-	{
-		auto limit = val.intrinsic_size_limit();
-		cvt_units(limit, metrics, size);
-		limit.set_intrinsic_size(intrinsic);
-		val = std::move(limit);
-		return;
-	}
-	if (const auto& expression = val.expression())
-	{
-		auto computed = compute_css_math(*expression, *this, metrics);
-		if (computed->has_percentage)
-			val.set_expression(std::move(computed));
-		else
-			val.set_value(static_cast<float>(computed->evaluate(0)), css_units_px);
-		return;
-	}
-	if (!val.is_predefined() && val.units() != css_units_percentage)
-		val.set_value(to_pixels(val, metrics, size), css_units_px);
+	const auto& root = m_root ? m_root->css().get_font_metrics() : metrics;
+	docrender::css::compute_length(val, metrics, size, {m_media, root, m_container, css_points_to_pixels});
 }
 
 pixel_t document::width() const

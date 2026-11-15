@@ -152,8 +152,8 @@
     <ClCompile Include="src\formats\html\html_markup.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_box_shadow.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\css\css_shadows.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_text_mask.cpp">
       <Filter>Source Files\formats\html</Filter>
@@ -230,14 +230,14 @@
     <ClCompile Include="src\formats\html\css\css_values_text.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_css.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\css\css_values.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_css_math.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\css\css_math.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_css_transform.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\css\css_transform.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\layout\html_geometry.cpp">
       <Filter>Source Files\formats\html\layout</Filter>
@@ -281,8 +281,8 @@
     <ClCompile Include="src\formats\html\layout\grid\litehtml_render_grid.cpp">
       <Filter>Source Files\formats\html\layout\grid</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_css_variables.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\css\css_variables.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml_container.cpp">
       <Filter>Source Files\formats\html</Filter>
@@ -293,14 +293,14 @@
     <ClCompile Include="src\formats\html\litehtml_document_adapter.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\background.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\layout\html_background_paint.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\css_length.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\css\css_length.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\css_properties.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\css\css_litehtml_properties.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml\css\src\el_anchor.cpp">
       <Filter>Source Files\formats\html\litehtml\css</Filter>
@@ -314,14 +314,38 @@
     <ClCompile Include="src\formats\html\litehtml\css\src\html_tag.cpp">
       <Filter>Source Files\formats\html\litehtml\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\media_query.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\css\css_media_query.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\style.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\css\css_litehtml_style.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml\css\src\web_color.cpp">
-      <Filter>Source Files\formats\html\litehtml\css</Filter>
+    <ClCompile Include="src\formats\html\css\css_web_color.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_borders.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_cascade.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_cascade_order.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_computed_style.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_gradient.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_grid_values.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_string_id.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_units.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml\document\src\document.cpp">
       <Filter>Source Files\formats\html\litehtml\document</Filter>
@@ -547,8 +571,8 @@
     <ClInclude Include="src\formats\html\html_text_layout.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_box_shadow.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\css\css_shadows.h">
+      <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_text_mask.h">
       <Filter>Header Files\formats\html</Filter>
@@ -604,14 +628,14 @@
     <ClInclude Include="src\formats\html\css\css_value_parser.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_css.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\css\css_values.h">
+      <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_css_math.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\css\css_math.h">
+      <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_css_transform.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\css\css_transform.h">
+      <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\layout\html_geometry.h">
       <Filter>Header Files\formats\html\layout</Filter>
@@ -661,8 +685,89 @@
     <ClInclude Include="src\formats\html\layout\grid\litehtml_render_grid.h">
       <Filter>Header Files\formats\html\layout\grid</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_css_variables.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\css\css_variables.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_background.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_borders.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_cascade.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_cascade_order.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_compute_context.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_computed_style.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_default_stylesheet.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_font_description.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_gradient.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_grid_lines.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_grid_values.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_length.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_margins.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_media_query.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_offsets.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_position.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_property_value.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_string_id.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_token_compat.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_types.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_units.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_value_helpers.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_web_color.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\borders.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_margins.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\css_offsets.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\master_css.h">
+      <Filter>Header Files\formats\html\litehtml\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\unicode_case_folding.inc">
       <Filter>Header Files\formats\html</Filter>

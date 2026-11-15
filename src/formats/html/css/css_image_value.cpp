@@ -1,6 +1,6 @@
 #include "css_image_value.h"
 
-#include "../litehtml_css_math.h"
+#include "formats/html/css/css_math.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/document.h>

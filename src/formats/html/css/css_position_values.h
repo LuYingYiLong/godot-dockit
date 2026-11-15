@@ -1,7 +1,7 @@
 #pragma once
 
-#include <litehtml/css_position.h>
-#include <litehtml/css_tokenizer.h>
+#include "css_position.h"
+#include "css_token_compat.h"
 
 namespace litehtml {
 	// Consume the longest valid <position> prefix, with the background-only three-component form if requested.

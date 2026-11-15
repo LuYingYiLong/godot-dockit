@@ -1,6 +1,6 @@
-#include "litehtml_css_variables.h"
+#include "css_variables.h"
 
-#include <litehtml/html_tag.h>
+#include "css_property_value.h"
 #include <litehtml/html.h>
 
 #include <algorithm>
@@ -70,8 +70,8 @@ namespace litehtml {
 		return css_wide_keyword::none;
 	}
 
-	css_variable_resolver::css_variable_resolver(const html_tag* p_parent, css_custom_properties p_declarations,
-		const css_custom_rollback& p_rollback) : parent(p_parent), declarations(std::move(p_declarations)), rollback(p_rollback) {
+	css_variable_resolver::css_variable_resolver(const css_inherited_variable& p_inherited, css_custom_properties p_declarations,
+		const css_custom_rollback& p_rollback) : inherited(p_inherited), declarations(std::move(p_declarations)), rollback(p_rollback) {
 		do {
 			dependencies_changed = false;
 			computed.clear();
@@ -203,8 +203,8 @@ namespace litehtml {
 			}
 		}
 		if (!value || value->is<inherit>() || value->is<invalid>()) {
-			css_token_vector inherited;
-			if (parent && parent->get_custom_property(p_name, inherited)) entry->second = std::move(inherited);
+			css_token_vector value_from_parent;
+			if (inherited(p_name, value_from_parent)) entry->second = std::move(value_from_parent);
 		}
 		return entry->second;
 	}

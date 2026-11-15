@@ -1,4 +1,4 @@
-#include "litehtml_box_shadow.h"
+#include "formats/html/css/css_shadows.h"
 
 #include <litehtml/html.h>
 

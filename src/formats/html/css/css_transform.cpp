@@ -1,5 +1,5 @@
-#include "litehtml_css_transform.h"
-#include "litehtml_css_math.h"
+#include "formats/html/css/css_transform.h"
+#include "formats/html/css/css_math.h"
 
 #include <litehtml/html.h>
 

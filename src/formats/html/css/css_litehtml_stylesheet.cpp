@@ -15,26 +15,6 @@ namespace litehtml {
 
 namespace syntax = docrender::css;
 
-size_t css::register_layer(size_t parent, const string_vector& names)
-{
-	const auto append_child = [&](size_t index) {
-		const size_t child = m_layers.size();
-		m_layers[index].children.push_back(child);
-		m_layers.emplace_back();
-		return child;
-	};
-	if (names.empty()) return append_child(parent);
-
-	for (const auto& name : names)
-	{
-		const auto [entry, inserted] = m_layers[parent].named_children.try_emplace(name, m_layers.size());
-		const auto child = entry->second;
-		if (inserted) append_child(parent);
-		parent = child;
-	}
-	return parent;
-}
-
 static bool media_matches(document& doc, const media_query_list_list::ptr& media)
 {
 	if (!media) return true;
@@ -61,13 +41,13 @@ void css::parse_css_stylesheet(const Input& input, string baseurl, document::ptr
 				return apply_import(*rule.import, baseurl, doc, media, layer_id);
 			case Kind::layer_block:
 				if (media_matches(*doc, media)) {
-					const auto child = register_layer(layer_id, rule.layers.front());
+					const auto child = cascade_layers.register_layer(layer_id, rule.layers.front());
 					parse_css_stylesheet(rule.syntax.block.value, baseurl, doc, media, false, child);
 				}
 				return true;
 			case Kind::layer_order:
 				if (media_matches(*doc, media)) {
-					for (const auto& names : rule.layers) register_layer(layer_id, names);
+					for (const auto& names : rule.layers) cascade_layers.register_layer(layer_id, names);
 				}
 				return true;
 			case Kind::media: {
@@ -129,7 +109,7 @@ bool css::apply_import(const syntax::StylesheetImport& rule, const string& baseu
 	if (rule.layered) {
 		if (new_media) doc->add_media_list(new_media);
 		if (!media_matches(*doc, new_media)) return true;
-		layer_id = register_layer(layer_id, rule.layer);
+		layer_id = cascade_layers.register_layer(layer_id, rule.layer);
 	}
 
 	string css_text;
@@ -160,24 +140,12 @@ bool css::parse_style_rule(const raw_rule& rule, const string& baseurl, document
 
 void css::sort_selectors(bool author)
 {
-	if (author)
-	{
-		// Visit layers in reverse cascade order, with the parent before its children.
-		std::vector<size_t> pending = m_layers[0].children;
-		int rank = static_cast<int>(m_layers.size()) - 1;
-		while (!pending.empty())
-		{
-			auto& layer = m_layers[pending.back()];
-			pending.pop_back();
-			layer.rank = --rank;
-			pending.insert(pending.end(), layer.children.begin(), layer.children.end());
-		}
-	}
+	if (author) cascade_layers.assign_ranks();
 	m_font_faces.clear();
 	if (author)
 	{
 		const auto by_layer = [&](const auto& left, const auto& right) {
-			return m_layers[left.layer_id].rank < m_layers[right.layer_id].rank;
+			return cascade_layers.rank(left.layer_id) < cascade_layers.rank(right.layer_id);
 		};
 		std::stable_sort(m_font_face_rules.begin(), m_font_face_rules.end(), by_layer);
 		std::stable_sort(m_font_feature_values_rules.begin(), m_font_feature_values_rules.end(), by_layer);
@@ -190,13 +158,13 @@ void css::sort_selectors(bool author)
 	m_counter_styles.clear();
 	for (auto& rule : m_counter_style_rules)
 	{
-		const int rank = author ? m_layers[rule.layer_id].rank : css_default_layer;
+		const int rank = author ? cascade_layers.rank(rule.layer_id) : css_default_layer;
 		const auto found = m_counter_styles.find(rule.name);
 		if (found == m_counter_styles.end() || found->second.first <= rank)
 			m_counter_styles.insert_or_assign(rule.name, std::make_pair(rank, rule.style));
 	}
 	for (const auto& selector : m_selectors)
-		selector->m_layer = author ? m_layers[selector->m_layer_id].rank : css_default_layer;
+		selector->m_layer = author ? cascade_layers.rank(selector->m_layer_id) : css_default_layer;
 
 	std::sort(m_selectors.begin(), m_selectors.end(),
 		 [](const css_selector::ptr& v1, const css_selector::ptr& v2)

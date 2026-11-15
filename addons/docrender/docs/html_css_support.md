@@ -1,6 +1,6 @@
 # HTML CSS support
 
-DocRender maintains CSS tokenization, stylesheet syntax, rule parsing, selector parsing and matching, and declaration parsing in its C++ CSS modules. The matcher reads the DOM through a read-only interface. The litehtml v0.10 integration (`9bc84b8`) applies the matched rules, manages the cascade and generated content, and supplies basic layout. This reference applies to `HTMLLayout`, `HTMLLabel`, and HTML blocks in `MarkdownLabel`.
+DocRender maintains CSS syntax, selectors, declarations, the cascade, value types, the default stylesheet, and computed styles in its C++ CSS modules. The litehtml v0.10 integration (`9bc84b8`) supplies DOM, viewport, font, and resource data and consumes the resulting computed style. Box-dependent percentages, intrinsic sizes, and transform origins are resolved during layout. This reference applies to `HTMLLayout`, `HTMLLabel`, and HTML blocks in `MarkdownLabel`.
 
 ## Selectors and rules
 

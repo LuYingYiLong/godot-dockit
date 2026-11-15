@@ -1,9 +1,15 @@
-#include "html.h"
-#include "style.h"
-#include "css_parser.h"
-#include "document_container.h"
-#include "html_tag.h"
+// Portions adapted from litehtml.
+// Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+
+#include <litehtml/html.h>
+#include <litehtml/style.h>
+#include <litehtml/css_parser.h>
+#include <litehtml/document_container.h>
+#include <litehtml/html_tag.h>
 #include "formats/html/css/css_declarations.h"
+#include <litehtml/document.h>
 
 namespace litehtml
 {
@@ -53,8 +59,8 @@ void style::add_declaration(string_id name, const css_token_vector& tokens, cons
 	}
 	for (auto& entry : result.properties)
 	{
-		if (element) entry.second.m_layer = css_inline_layer;
-		add_parsed_property(entry.first, std::move(entry.second));
+		cascade.add(entry.first, std::move(entry.second),
+			{element ? css_inline_layer : css_default_layer, {}, 0});
 	}
 }
 
@@ -69,61 +75,41 @@ void style::remember_diagnostic(const css_diagnostic& diagnostic)
 		diagnostics->push_back(diagnostic);
 }
 
-void style::add_parsed_property(string_id name, property_value value)
-{
-	if (value.m_layer >= 0 && value.m_layer != css_inline_layer)
-	{
-		auto& candidates = layer_candidates[name];
-		auto [entry, inserted] = candidates.try_emplace(value.m_layer, value);
-		if (!inserted && takes_cascade_precedence(value, entry->second))
-			entry->second = value;
-	}
-	auto [entry, inserted] = m_properties.try_emplace(name, std::move(value));
-	if (!inserted && takes_cascade_precedence(value, entry->second))
-		entry->second = std::move(value);
-}
-
-void style::combine(const style& src, int layer)
+void style::combine(const style& src, docrender::css::CascadePriority priority)
 {
 	if (src.diagnostics)
 	{
 		for (const auto& diagnostic : *src.diagnostics)
 			remember_diagnostic(diagnostic);
 	}
-	for (const auto& [name, property] : src.m_properties)
-	{
-		auto value = property;
-		value.m_layer = layer;
-		add_parsed_property(name, std::move(value));
-	}
+	cascade.merge(src.cascade, priority);
 }
 
 void style::snapshot_defaults()
 {
-	default_properties = m_properties;
+	cascade.snapshot_defaults();
 }
 
 const property_value& style::get_property(string_id name) const
 {
-	if (const auto it = computed_declarations.find(name); it != computed_declarations.end())
-		return it->second;
-	if (const auto it = m_properties.find(name); it != m_properties.end())
-		return it->second;
-	static const property_value unset;
-	return unset;
+	return cascade.get(name);
 }
 
 const css_token_vector* style::get_custom_property(string_id name, bool& local) const
 {
-	const auto it = computed_variables.find(name);
-	local = it != computed_variables.end();
-	return local && it->second ? &*it->second : nullptr;
+	return cascade.get_custom_property(name, local);
 }
 
-void style::subst_vars(const html_tag* element)
+void style::resolve_cascade(const html_tag& element)
 {
-	resolve_css_declarations(m_properties, default_properties, layer_candidates, *element, computed_variables,
-		computed_declarations, computed_diagnostics);
+	const auto doc = element.get_document();
+	const auto parent = element.parent();
+	const auto* parent_tag = dynamic_cast<const html_tag*>(parent.get());
+	cascade.resolve(doc->has_author_layers(), [&](string_id name, css_token_vector& tokens) {
+		return parent_tag && parent_tag->get_custom_property(name, tokens);
+	}, [&](const auto& declaration, const auto& tokens, bool important) {
+		return reparse_css_declaration(declaration, tokens, important, doc->container());
+	});
 }
 
 } // namespace litehtml

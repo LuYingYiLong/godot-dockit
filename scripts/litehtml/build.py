@@ -5,10 +5,19 @@ from SCons.Errors import UserError
 
 # These implementations are built with the DocRender HTML sources.
 MIGRATED_CSS_SOURCES = {
+    "src/background.cpp",
+    "src/css_borders.cpp",
+    "src/css_length.cpp",
     "src/css_parser.cpp",
+    "src/css_properties.cpp",
     "src/css_selector.cpp",
     "src/css_tokenizer.cpp",
+    "src/gradient.cpp",
+    "src/media_query.cpp",
+    "src/string_id.cpp",
+    "src/style.cpp",
     "src/stylesheet.cpp",
+    "src/web_color.cpp",
 }
 
 

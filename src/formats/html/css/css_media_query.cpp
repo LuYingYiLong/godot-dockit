@@ -1,11 +1,16 @@
-#include "html.h"
-#include "formats/html/litehtml_css_math.h"
-#include "media_query.h"
-#include "css_parser.h"
+// Portions adapted from litehtml.
+// Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+
+#include <litehtml/html.h>
+#include "formats/html/css/css_math.h"
+#include <litehtml/media_query.h>
+#include <litehtml/css_parser.h>
 #include <cassert>
 #include <cmath>
-#include "document.h"
-#include "document_container.h"
+#include <litehtml/document.h>
+#include <litehtml/document_container.h>
 
 
 namespace litehtml

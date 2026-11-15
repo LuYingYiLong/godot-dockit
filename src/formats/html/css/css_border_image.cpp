@@ -2,7 +2,8 @@
 
 #include "css_image_value.h"
 #include "css_value_parser.h"
-#include "formats/html/litehtml_css_math.h"
+#include <litehtml/html.h>
+#include "formats/html/css/css_math.h"
 
 using namespace litehtml;
 

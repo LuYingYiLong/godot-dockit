@@ -1,10 +1,12 @@
 #pragma once
 
-#include <litehtml/gradient.h>
+#include "css_gradient.h"
 
 #include <optional>
 
 namespace litehtml {
+	class document;
+
 	struct css_cross_fade {
 		struct Layer {
 			image value;

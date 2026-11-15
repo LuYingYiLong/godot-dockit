@@ -1,6 +1,6 @@
 #include "litehtml_document_adapter.h"
 
-#include "litehtml_box_shadow.h"
+#include "formats/html/css/css_shadows.h"
 #include "litehtml_container.h"
 
 #include <gumbo.h>

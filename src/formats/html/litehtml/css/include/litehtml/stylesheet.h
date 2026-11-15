@@ -16,13 +16,7 @@ using docrender::css::raw_declaration;
 class css
 {
 	css_selector::vector m_selectors;
-	struct layer
-	{
-		std::vector<size_t> children;
-		std::map<string, size_t> named_children;
-		int rank = css_unlayered;
-	};
-	std::vector<layer> m_layers{ layer{} };
+	docrender::css::CascadeLayers cascade_layers;
 	std::map<string, std::pair<int, css_counter_style>> m_counter_styles;
 	struct counter_style_rule
 	{
@@ -63,12 +57,11 @@ public:
 	}
 	const std::vector<css_font_face>& font_faces() const { return m_font_faces; }
 	const std::vector<css_font_feature_values_rule>& font_feature_values() const { return m_font_feature_values; }
-	bool	has_layers() const { return m_layers.size() > 1; }
+	bool	has_layers() const { return cascade_layers.has_layers(); }
 
 private:
 	bool	parse_style_rule(const raw_rule& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
 	bool	apply_import(const docrender::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
-	size_t register_layer(size_t parent, const string_vector& names);
 	void	add_selector(const css_selector::ptr& selector);
 };
 

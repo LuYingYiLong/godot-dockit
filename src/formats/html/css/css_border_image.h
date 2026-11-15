@@ -1,6 +1,6 @@
 #pragma once
 
-#include <litehtml/gradient.h>
+#include "css_gradient.h"
 
 #include <array>
 

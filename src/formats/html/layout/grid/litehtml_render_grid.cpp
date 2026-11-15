@@ -1,6 +1,7 @@
 #include "litehtml_render_grid.h"
 
 #include "litehtml_grid_placement.h"
+#include "litehtml_grid_tracks.h"
 
 #include <litehtml/html_tag.h>
 

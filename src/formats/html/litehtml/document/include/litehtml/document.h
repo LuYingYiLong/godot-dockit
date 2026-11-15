@@ -117,6 +117,7 @@ namespace litehtml
 		void							add_fixed_box(const position& pos);
 		void							add_media_list(media_query_list_list::ptr list);
 		bool							media_changed();
+		const media_features& get_media_features() const { return m_media; }
 		bool							lang_changed();
 		bool							match_lang(const string& lang);
 		void							add_tabular(const std::shared_ptr<render_item>& el);
