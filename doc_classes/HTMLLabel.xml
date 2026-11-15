@@ -162,6 +162,12 @@
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
 			Project resource directory used to resolve relative image paths for [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
 		</member>
+		<member name="caret_blink" type="bool" setter="set_caret_blink_enabled" getter="is_caret_blink_enabled" default="true">
+			If [code]true[/code], the caret in a focused text field blinks. If [code]false[/code], it stays visible while the field is focused.
+		</member>
+		<member name="caret_blink_interval" type="float" setter="set_caret_blink_interval" getter="get_caret_blink_interval" default="0.65">
+			The time in seconds between changes in caret visibility when [member caret_blink] is enabled.
+		</member>
 		<member name="css_diagnostics_enabled" type="bool" setter="set_css_diagnostics_enabled" getter="is_css_diagnostics_enabled" default="false">
 			Outlines visible elements with CSS declaration diagnostics. Hover over an outlined element to read its diagnostics in an HTML tooltip. Disabling this clears the outlines and results.
 		</member>

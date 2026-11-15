@@ -2701,6 +2701,14 @@ msgid "Returns the selected plain text, or an empty string if nothing is selecte
 msgstr "返回选中的纯文本。没有选区时返回空字符串。"
 
 #. doc_classes/HTMLLabel.xml
+msgid "If [code]true[/code], the caret in a focused text field blinks. If [code]false[/code], it stays visible while the field is focused."
+msgstr "如果为 [code]true[/code]，聚焦的文本字段会显示闪烁的插入光标。如果为 [code]false[/code]，聚焦时插入光标常亮。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "The time in seconds between changes in caret visibility when [member caret_blink] is enabled."
+msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态的间隔，单位为秒。"
+
+#. doc_classes/HTMLLabel.xml
 msgid "Enables text selection. Disabling it clears the current selection."
 msgstr "启用文本选择。关闭时清除当前选区。"
 

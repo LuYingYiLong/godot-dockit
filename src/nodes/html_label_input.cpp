@@ -18,8 +18,6 @@ using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
 
 namespace {
-	constexpr double CARET_BLINK_INTERVAL = 0.65;
-
 	Window* find_native_ime_window(Viewport* p_viewport) {
 		while (p_viewport) {
 			if (auto* window = Object::cast_to<Window>(p_viewport)) {
@@ -220,17 +218,21 @@ void HTMLLabelCanvas::set_input_caret_visible(docrender::HTMLTextEditor& p_edito
 
 void HTMLLabelCanvas::restart_caret_blink() {
 	const auto input = label->layout->text_control(focused_element);
-	if (!input || !input->is_text_control() || !is_inside_tree()) return;
+	if (!input || !input->is_text_control() || !is_inside_tree() || !caret_window_active || !label->has_focus()) return;
+
+	set_input_caret_visible(input->editor, true);
+	if (!label->caret_blink) {
+		if (caret_blink_timer) caret_blink_timer->stop();
+		return;
+	}
 
 	if (!caret_blink_timer) {
 		caret_blink_timer = memnew(Timer);
-		caret_blink_timer->set_wait_time(CARET_BLINK_INTERVAL);
 		caret_blink_timer->set_ignore_time_scale(true);
 		caret_blink_timer->connect("timeout", callable_mp(this, &HTMLLabelCanvas::blink_caret));
 		add_child(caret_blink_timer, false, INTERNAL_MODE_BACK);
 	}
-	set_input_caret_visible(input->editor, true);
-	caret_blink_timer->start();
+	caret_blink_timer->start(label->caret_blink_interval);
 }
 
 void HTMLLabelCanvas::stop_caret_blink() {

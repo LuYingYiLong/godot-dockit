@@ -54,6 +54,7 @@ class HTMLLabelCanvas : public godot::Control {
 	std::optional<int32_t> ime_window;
 	std::optional<godot::Vector2i> ime_position;
 	godot::Timer* caret_blink_timer = nullptr;
+	bool caret_window_active = true;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
 	uint64_t focused_reset_version = 0;
@@ -145,6 +146,8 @@ class HTMLLabel : public godot::Control {
 	bool layout_updated = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
+	bool caret_blink = true;
+	double caret_blink_interval = 0.65;
 	bool view_update_pending = false;
 	bool scroll_sort_pending = false;
 	bool interaction_queued = false;
@@ -189,6 +192,7 @@ class HTMLLabel : public godot::Control {
 
 protected:
 	static void _bind_methods();
+	void _validate_property(godot::PropertyInfo& p_property) const;
 	void _notification(int p_what);
 
 public:
@@ -233,6 +237,10 @@ public:
 	);																				// 将当前控件的目标元素滚到视口内的对齐位置
 	void set_selection_enabled(bool p_enabled);										// 设置是否允许选择文本
 	bool is_selection_enabled() const;												// 返回是否允许选择文本
+	void set_caret_blink_enabled(bool p_enabled); // 设置聚焦文本字段的插入光标是否闪烁
+	bool is_caret_blink_enabled() const; // 返回插入光标是否闪烁
+	void set_caret_blink_interval(double p_interval); // 设置插入光标切换显示状态的间隔，单位为秒
+	double get_caret_blink_interval() const; // 返回插入光标切换显示状态的间隔
 	void select_all();																// 选中全部可复制文本
 	void clear_selection();															// 清除当前文本选区
 	godot::String get_selected_text() const;										// 返回当前选中的文本

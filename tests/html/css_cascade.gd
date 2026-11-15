@@ -7792,6 +7792,12 @@ func _check_caret_blink() -> void:
 	var layout_updates: Array[bool] = []
 	label.layout_changed.connect(func() -> void: layout_updates.append(true))
 
+	var caret_group_found: bool
+	for property: Dictionary in label.get_property_list():
+		if property.name == &"Caret":
+			caret_group_found = (int(property.usage) & PROPERTY_USAGE_GROUP) != 0
+	_check(caret_group_found and label.caret_blink and is_equal_approx(label.caret_blink_interval, 0.65),
+		"The Caret inspector group exposes the default blink settings")
 	_check(label.focus_element(single), "Focus the input to start caret blinking")
 	await RenderingServer.frame_post_draw
 	_check(caret_is_visible.call(single), "The caret starts visible")
@@ -7818,6 +7824,34 @@ func _check_caret_blink() -> void:
 	await create_timer(0.72).timeout
 	await RenderingServer.frame_post_draw
 	_check(not caret_is_visible.call(multi), "The textarea uses the same blink interval")
+
+	label.caret_blink = false
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(multi), "Disabling blink reveals the focused caret immediately")
+	var interval_usage: int
+	for property: Dictionary in label.get_property_list():
+		if property.name == &"caret_blink_interval":
+			interval_usage = int(property.usage)
+	_check((interval_usage & PROPERTY_USAGE_EDITOR) == 0 and (interval_usage & PROPERTY_USAGE_STORAGE) != 0,
+		"Disabling blink hides the Inspector interval and keeps it serializable")
+	await create_timer(0.72).timeout
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(multi), "The focused caret stays visible with blinking disabled")
+
+	label.caret_blink_interval = 0.24
+	label.caret_blink = true
+	await create_timer(0.32).timeout
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(multi), "Reenabling blink uses the interval set while disabled")
+	label.caret_blink_interval = 0.52
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(multi), "Changing the active interval restarts at the visible phase")
+	await create_timer(0.33).timeout
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(multi), "The new longer interval replaces the previous timer")
+	await create_timer(0.25).timeout
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(multi), "The caret switches off at the updated interval")
 	viewport.queue_free()
 
 

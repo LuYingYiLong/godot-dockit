@@ -532,6 +532,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	else if (p_what == NOTIFICATION_EXIT_TREE) {
 		cancel_press();
 		set_focused_element({});
+		caret_window_active = true;
 		tab_elements.clear();
 		has_focusable_elements = false;
 		clear_tab_entry();
@@ -650,6 +651,10 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_caret_blink_enabled", "enabled"), &HTMLLabel::set_caret_blink_enabled);
+	ClassDB::bind_method(D_METHOD("is_caret_blink_enabled"), &HTMLLabel::is_caret_blink_enabled);
+	ClassDB::bind_method(D_METHOD("set_caret_blink_interval", "interval"), &HTMLLabel::set_caret_blink_interval);
+	ClassDB::bind_method(D_METHOD("get_caret_blink_interval"), &HTMLLabel::get_caret_blink_interval);
 	ClassDB::bind_method(D_METHOD("select_all"), &HTMLLabel::select_all);
 	ClassDB::bind_method(D_METHOD("clear_selection"), &HTMLLabel::clear_selection);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &HTMLLabel::get_selected_text);
@@ -659,6 +664,10 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
+	ADD_GROUP("Caret", "caret_");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_interval", PROPERTY_HINT_RANGE, "0.1,10,0.01,suffix:s"),
+		"set_caret_blink_interval", "get_caret_blink_interval");
 	ADD_GROUP("Debug", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "css_diagnostics_enabled"), "set_css_diagnostics_enabled", "is_css_diagnostics_enabled");
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
@@ -685,6 +694,12 @@ void HTMLLabel::_bind_methods() {
 		PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLSelectElement::get_class_static())));
 }
 
+void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
+	if (!caret_blink && p_property.name == StringName("caret_blink_interval")) {
+		p_property.usage &= ~PROPERTY_USAGE_EDITOR;
+	}
+}
+
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
 	case NOTIFICATION_POST_ENTER_TREE:
@@ -705,6 +720,7 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_IN:
 		if (canvas) {
+			canvas->caret_window_active = true;
 			canvas->restart_caret_blink();
 			canvas->update_ime();
 		}
@@ -757,6 +773,7 @@ void HTMLLabel::_notification(int p_what) {
 		close_select_menu();
 		if (canvas) {
 			canvas->cancel_press();
+			canvas->caret_window_active = false;
 			canvas->stop_caret_blink();
 			canvas->close_ime();
 		}
@@ -966,6 +983,28 @@ void HTMLLabel::set_selection_enabled(bool p_enabled) {
 
 bool HTMLLabel::is_selection_enabled() const {
 	return selection_enabled;
+}
+
+void HTMLLabel::set_caret_blink_enabled(bool p_enabled) {
+	if (caret_blink == p_enabled) return;
+	caret_blink = p_enabled;
+	if (canvas) canvas->restart_caret_blink();
+	notify_property_list_changed();
+}
+
+bool HTMLLabel::is_caret_blink_enabled() const {
+	return caret_blink;
+}
+
+void HTMLLabel::set_caret_blink_interval(double p_interval) {
+	ERR_FAIL_COND_MSG(!std::isfinite(p_interval) || p_interval <= 0.0, "Caret blink interval must be a finite positive number.");
+	if (caret_blink_interval == p_interval) return;
+	caret_blink_interval = p_interval;
+	if (canvas && caret_blink) canvas->restart_caret_blink();
+}
+
+double HTMLLabel::get_caret_blink_interval() const {
+	return caret_blink_interval;
 }
 
 void HTMLLabel::select_all() {
