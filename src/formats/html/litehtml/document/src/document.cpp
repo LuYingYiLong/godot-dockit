@@ -243,6 +243,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 	auto* node = (GumboNode*)gnode;
 	switch (node->type)
 	{
+	case GUMBO_NODE_TEMPLATE:
 	case GUMBO_NODE_ELEMENT:
 	{
 		if(process_root)

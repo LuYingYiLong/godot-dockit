@@ -79,6 +79,7 @@ struct CompoundSelector {
 	string m_prefix;
 	string m_tag;
 	vector<AttributeSelector> m_attrs;
+	bool m_has_type_selector = false;
 };
 
 enum css_combinator

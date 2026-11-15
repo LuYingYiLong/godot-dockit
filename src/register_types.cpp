@@ -14,6 +14,7 @@
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_image_element.h"
+#include "formats/html/elements/html_template_element.h"
 #include "formats/html/paint/html_canvas_renderer.h"
 #include "formats/html/html_document.h"
 #include "formats/html/dom/html_document_fragment.h"
@@ -66,6 +67,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLSpanElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTextAreaElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDocumentFragment);
+		GDREGISTER_ABSTRACT_CLASS(HTMLTemplateElement);
 		GDREGISTER_INTERNAL_CLASS(docrender::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
 		GDREGISTER_CLASS(HTMLDocument);

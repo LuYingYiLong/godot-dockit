@@ -340,6 +340,7 @@ func _run() -> void:
 	await _check_disconnected_input_focus()
 	_check_document_fragments()
 	await _check_fragment_reflow()
+	await _check_imported_template()
 	await _check_markdown_markup_resources()
 	_check_layers()
 	_check_box_and_transform_functions()
@@ -1378,6 +1379,53 @@ func _check_fragment_reflow() -> void:
 	children.append(reference)
 	_check(updates.size() == 1 and target.get_children() == children and children[0].get_bounding_rect().has_area(),
 		"A nonempty batch triggers exactly one layout update and the empty batch triggers none")
+	viewport.queue_free()
+
+
+func _check_imported_template() -> void:
+	var document: HTMLDocument = ResourceLoader.load("{IMAGE_TEMPLATE_UID}") as HTMLDocument
+	_check(document != null, "Load a template document with an imported image dependency")
+	if document == null:
+		return
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(64, 48)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var template: HTMLTemplateElement = label.get_element_by_id("icon") as HTMLTemplateElement
+	var target: HTMLElement = label.get_element_by_id("target")
+	_check(template != null and target != null, "The imported template and its target are visible to queries")
+	if template == null or target == null:
+		viewport.queue_free()
+		return
+	_check(label.query_selector("img") == null, "The imported template image stays out of document queries")
+	_check_pixel(viewport.get_texture().get_image(), Vector2(3.0, 3.0), Color.BLACK, "The template has no visible pixels")
+	var updates: Array[bool] = []
+	label.layout_changed.connect(func() -> void: updates.append(true))
+	var content: HTMLDocumentFragment = template.content
+	_check(template.set_inner_html('<img src="template-icon.png" alt="Icon">') == OK,
+		"Edit template markup in a connected HTMLLabel")
+	await process_frame
+	await process_frame
+	_check(updates.is_empty(), "Editing template content does not relayout HTMLLabel")
+	var instance: HTMLDocumentFragment = content.clone_node(true)
+	_check(instance != null and target.append_fragment(instance) == OK, "Insert a copy of the imported template")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: HTMLImageElement = label.query_selector("img") as HTMLImageElement
+	_check(updates.size() == 1 and image != null and image.get_intrinsic_size() == Vector2(8.0, 8.0)
+		and image.get_bounding_rect().has_area(),
+		"A template instance reflows once and resolves an embedded image after the source is removed")
+	if image != null and image.get_bounding_rect().has_area():
+		_check_pixel(viewport.get_texture().get_image(), image.get_bounding_rect().get_center(), Color.LIME,
+			"The template's embedded image is painted after insertion")
 	viewport.queue_free()
 
 

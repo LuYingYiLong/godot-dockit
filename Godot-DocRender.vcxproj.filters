@@ -166,6 +166,12 @@
     <ClCompile Include="src\formats\html\elements\html_input_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_template_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_template_node.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\dom\html_dom.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
@@ -631,6 +637,12 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_template_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_template_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\text\html_font_config.h">

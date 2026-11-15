@@ -2,6 +2,8 @@
 
 DocRender maintains CSS syntax, selectors, declarations, the cascade, value types, the default stylesheet, and computed styles in its C++ CSS modules. The litehtml v0.10 integration (`9bc84b8`) supplies DOM, viewport, font, and resource data and consumes the resulting computed style. Box-dependent percentages, intrinsic sizes, and transform origins are resolved during layout. This reference applies to `HTMLLayout`, `HTMLLabel`, and HTML blocks in `MarkdownLabel`.
 
+For GDScript queries, element handles, and geometry, see [HTML API and Web standards](html_api_reference.md).
+
 ## Selectors and rules
 
 | Feature | Support |

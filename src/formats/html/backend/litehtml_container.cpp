@@ -133,6 +133,7 @@ namespace docrender {
 			return element;
 		}
 		const std::string_view tag(p_tag);
+		if (tag == "template") return dom.create_template_node(p_document);
 		if (tag == "textarea") return std::make_shared<HTMLTextAreaNode>(p_document);
 		if (tag == "input") {
 			return std::make_shared<HTMLInputNode>(p_document);

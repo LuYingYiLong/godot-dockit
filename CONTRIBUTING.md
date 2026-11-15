@@ -45,7 +45,7 @@ SCons writes the libraries to `addons/docrender/bin/` and copies `pdfium.dll` th
 
 When changing editor text or class documentation, update and check the translation catalogs. [Localization tools](tools/README.md)
 
-After building Windows x64 `template_debug`, run the CSS cascade regression checks with Godot 4.7.2. The runner tests both Compatibility and Forward+ in a temporary project. Use `--renderer gl_compatibility` or `--renderer forward_plus` to select one.
+After building Windows x64 `template_debug`, run the HTML regression suite with Godot 4.7.2. The runner checks the GDScript DOM ports of Web Platform Tests headlessly, then runs the CSS and rendering regressions in both Compatibility and Forward+ in a temporary project. Use `--renderer gl_compatibility` or `--renderer forward_plus` to select a single renderer. [HTML API and Web standards](addons/docrender/docs/html_api_reference.md) · [WPT ports](tests/html/wpt/dom.gd)
 
 ```powershell
 python tests/html/run_css_cascade.py "C:/path/to/Godot_v4.7.2-stable_win64_console.exe"

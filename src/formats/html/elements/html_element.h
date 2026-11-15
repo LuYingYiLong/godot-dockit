@@ -28,6 +28,7 @@ class HTMLElement : public godot::RefCounted {
 	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
+	friend class HTMLTemplateElement;
 	friend class HTMLLabelCanvas;
 	friend class HTMLDocumentFragment;
 

@@ -230,9 +230,30 @@ bool match_pseudo_class(const SelectorDOM& dom, SelectorNode node, const Attribu
 	return dom.has_pseudo_class(node, name);
 }
 
+bool can_match_virtual_scope(const CompoundSelector& selector) {
+	if (selector.m_has_type_selector) return false;
+	bool allows_scope = false;
+	for (const auto& attribute : selector.m_attrs) {
+		if (attribute.type != select_pseudo_class) return false;
+		const auto& name = attribute.name;
+		// A relational selector can test the root when the compound also targets :scope.
+		if (name == "has") continue;
+		if (name != "scope" && (!detail::is_one_of(name, "is", "where", "not") ||
+			std::none_of(attribute.selector_list.begin(), attribute.selector_list.end(),
+				[](const auto& argument) { return can_match_virtual_scope(argument->m_right); }))) {
+			return false;
+		}
+		allows_scope = true;
+	}
+	return allows_scope;
+}
+
 unsigned match_compound(const SelectorDOM& dom, SelectorNode node, const CompoundSelector& selector,
 	const MatchContext& context) {
 	if (!node || !dom.is_matchable(node) || (selector.m_tag != "*" && selector.m_tag != dom.tag(node))) {
+		return match_none;
+	}
+	if (context.virtual_scope && node == context.scope && !can_match_virtual_scope(selector)) {
 		return match_none;
 	}
 	unsigned result = match_element;

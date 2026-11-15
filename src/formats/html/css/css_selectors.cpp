@@ -592,6 +592,7 @@ CompoundSelector::ptr parse_compound_selector(const css_token_vector& tokens, in
 	wq_name wq_name = parse_type_selector(tokens, index);
 	selector->m_prefix = wq_name.prefix;
 	selector->m_tag    = wq_name.name;
+	selector->m_has_type_selector = !wq_name.name.empty();
 
 	// <subclass-selector>*
 	while (AttributeSelector sel = parse_subclass_selector(tokens, index, mode, options))

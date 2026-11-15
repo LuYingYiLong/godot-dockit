@@ -32,7 +32,7 @@ style {
 	display: none
 }
 
-script {
+script, template {
 	display: none
 }
 

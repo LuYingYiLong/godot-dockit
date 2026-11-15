@@ -1,4 +1,4 @@
-"""Run the HTML cascade checks with the Windows x64 debug extension."""
+"""Run the DOM and HTML cascade checks with the Windows x64 debug extension."""
 
 import argparse
 from pathlib import Path
@@ -6,6 +6,7 @@ import os
 import shutil
 import struct
 import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import zlib
 
@@ -88,7 +89,9 @@ def main():
             '\n[rendering]\nshader_compiler/shader_cache/enabled=false\n',
             encoding="utf-8", newline="\n",
         )
-        shutil.copyfile(Path(__file__).with_name("css_cascade.gd"), project / "css_cascade.gd")
+        tests = Path(__file__).resolve().parent
+        shutil.copyfile(tests / "css_cascade.gd", project / "css_cascade.gd")
+        shutil.copyfile(tests / "wpt/dom.gd", project / "dom_wpt.gd")
         styles = project / "styles"
         (styles / "nested").mkdir(parents=True)
         (styles / "sheet.css").write_text(
@@ -189,6 +192,12 @@ def main():
             '<!doctype html><img id="imported_density" src="density-import.png" style="image-resolution: from-image">\n',
             encoding="utf-8", newline="\n",
         )
+        write_rgba_png(project / "template-icon.png", 8, 8, (b"\0" + b"\0\xff\0\xff" * 8) * 8)
+        (project / "image_template.html").write_text(
+            '<!doctype html><style>html, body { margin: 0; background: black; } img { display: block; }</style>'
+            '<main id="target"></main><template id="icon"><img src="template-icon.png"></template>',
+            encoding="utf-8", newline="\n",
+        )
         responsive_assets = project / "responsive"
         responsive_assets.mkdir()
         for name, width, height, color in (
@@ -279,6 +288,15 @@ def main():
         )
         # Keep the test process's logs and shader cache in its temporary project.
         environment = {**os.environ, "APPDATA": str(project)}
+        dom = subprocess.run(
+            [str(args.godot.resolve()), "--headless", "--path", str(project), "--script", "dom_wpt.gd"],
+            env=environment, cwd=project, timeout=30, check=False, capture_output=True, text=True, encoding="utf-8",
+            errors="replace",
+        )
+        print(dom.stdout, end="", flush=True)
+        print(dom.stderr, end="", file=sys.stderr, flush=True)
+        if dom.returncode != 0 or "DocRender DOM WPT ports passed." not in dom.stdout or "ERROR:" in dom.stderr:
+            return dom.returncode or 1
         imported = subprocess.run(
             [str(args.godot.resolve()), "--headless", "--path", str(project), "--import"],
             env=environment, cwd=project, timeout=60, check=False, capture_output=True,
@@ -289,6 +307,7 @@ def main():
             "IMAGE_FUNCTION_UID": project / "image_function.html.import",
             "IMAGE_RESOLUTION_UID": project / "image_resolution.html.import",
             "IMAGE_ORIENTATION_UID": project / "image_orientation.html.import",
+            "IMAGE_TEMPLATE_UID": project / "image_template.html.import",
             "RESPONSIVE_PICTURE_UID": project / "responsive_picture.html.import",
             "BORDER_IMAGE_UID": project / "border_image.html.import",
         }
@@ -306,6 +325,7 @@ def main():
         (project / "density-import.png").unlink()
         (project / "orientation-import.png").unlink()
         (project / "border-import.png").unlink()
+        (project / "template-icon.png").unlink()
         for image in responsive_assets.glob("*.png"):
             image.unlink()
         test = project / "css_cascade.gd"

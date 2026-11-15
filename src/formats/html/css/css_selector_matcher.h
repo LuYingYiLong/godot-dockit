@@ -34,6 +34,7 @@ enum class MatchMode { candidate, complete };
 struct MatchContext {
 	SelectorNode scope = nullptr;
 	MatchMode mode = MatchMode::complete;
+	bool virtual_scope = false;
 };
 
 enum MatchFlag : unsigned {

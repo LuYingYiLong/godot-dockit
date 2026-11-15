@@ -148,6 +148,8 @@
     <ClCompile Include="src\formats\html\elements\html_textarea_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_textarea_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_element.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_template_element.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_template_node.cpp" />
     <ClCompile Include="src\formats\html\dom\html_dom.cpp" />
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
@@ -293,6 +295,8 @@
     <ClInclude Include="src\formats\html\elements\html_textarea_element.h" />
     <ClInclude Include="src\formats\html\elements\html_textarea_node.h" />
     <ClInclude Include="src\formats\html\elements\html_input_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_template_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_template_node.h" />
     <ClInclude Include="src\formats\html\text\html_font_config.h" />
     <ClInclude Include="src\formats\html\dom\html_dom.h" />
     <ClInclude Include="src\formats\html\dom\html_document_fragment.h" />

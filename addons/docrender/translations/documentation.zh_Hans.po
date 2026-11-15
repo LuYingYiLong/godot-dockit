@@ -3414,3 +3414,65 @@ msgstr ""
 "如果 [param reference] 为 [code]null[/code]，则追加到末尾。片段必须属于当前布局。\n"
 "成功后清空片段并保留所有移出的句柄。将非空片段插入文档会调度一次布局更新。"
 "参数无效时两棵树保持原状，并返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLTemplateElement.xml
+msgid "An HTML template that holds reusable content in a detached fragment."
+msgstr "在分离片段中保存可复用内容的 HTML 模板。"
+
+#. doc_classes/HTMLTemplateElement.xml
+msgid ""
+"Query a [code]<template>[/code] element or create one with [method HTMLLayout.create_element]. "
+"Its content stays outside document queries and layout until inserted. To reuse a template, call "
+"[method HTMLDocumentFragment.clone_node] with [code]true[/code] on [member content] and pass the "
+"result to [method HTMLElement.append_fragment]. Each insertion empties the supplied fragment.\n"
+"Use [method HTMLElement.get_inner_html] and [method HTMLElement.set_inner_html] to read or "
+"replace the fragment's markup. Use [member content] for tree edits. The template itself accepts "
+"no direct children. A shallow copy of the template has empty content. A deep copy includes its "
+"content and any nested templates.\n"
+"[method HTMLLayout.adopt_node] transfers the content fragment and its existing handles with the "
+"template. Like the template, the fragment follows the lifetime of its owning layout."
+msgstr "查询 [code]<template>[/code] 元素，或使用 [method HTMLLayout.create_element] 创建。插入前，模板内容不参与文档查询和布局。要复用模板，请在 [member content] 上以 [code]true[/code] 调用 [method HTMLDocumentFragment.clone_node]，再将返回的片段传给 [method HTMLElement.append_fragment]。每次插入都会清空传入的片段。\n使用 [method HTMLElement.get_inner_html] 和 [method HTMLElement.set_inner_html] 读取或替换片段标记。通过 [member content] 编辑元素树。模板元素本身不接受直接子节点。浅拷贝的模板内容为空，深拷贝包含内容及嵌套模板。\n[method HTMLLayout.adopt_node] 会连同片段及其已有句柄一起迁移模板。片段与模板都遵循所属布局的生命周期。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Returns a new detached fragment in the same layout. A deep copy includes all content in order, "
+"including text and comments from a template. A shallow copy is empty. Returns [code]null[/code] "
+"if this fragment is invalid."
+msgstr "返回同一布局中的新分离片段。深拷贝按顺序复制全部内容，包括模板中的文本和注释。浅拷贝为空。片段无效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLTemplateElement.xml
+msgid ""
+"The template's persistent content fragment. Returns [code]null[/code] if the template handle is "
+"invalid."
+msgstr "模板持有的内容片段。模板句柄无效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Returns the first element in tree order with the given case-sensitive HTML ID. Supply the raw ID "
+"without [code]#[/code]. Returns [code]null[/code] if the ID is absent, the ID is empty, or the "
+"fragment is invalid. Nested template contents are searched through their own fragments."
+msgstr ""
+"按树顺序返回第一个具有指定 HTML ID 的元素，区分大小写。传入原始 ID，不带 [code]#[/code]。ID 缺失、为空或片段无效时返回 "
+"[code]null[/code]。通过嵌套模板自己的片段查询其内容。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Returns the first matching element in tree order, or [code]null[/code] when nothing matches or "
+"the fragment is invalid. See [method query_selector_all] for selector scope and syntax."
+msgstr "按树顺序返回第一个匹配的元素。无匹配项或片段无效时返回 [code]null[/code]。选择器的作用域和语法见 [method query_selector_all]。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid ""
+"Returns a snapshot of matching elements in tree order, with each element included once. "
+"[code]:scope > .row[/code] selects direct children with the [code]row[/code] class. A query for "
+"[code]:scope[/code] alone returns an empty array because the fragment root has no element handle."
+"\n"
+"A nested template can match as an element. Query its [member HTMLTemplateElement.content] "
+"separately to find its contents. Invalid or unsupported selectors report a Godot error. An "
+"invalid fragment or a selector with no matches returns an empty array. See [method "
+"HTMLLayout.query_selector_all] for supported syntax."
+msgstr ""
+"按树顺序返回匹配元素的快照，每个元素只出现一次。[code]:scope > .row[/code] 选择具有 [code]row[/code] 类的直接子元素。单独查询 "
+"[code]:scope[/code] 时返回空数组，因为片段根没有元素句柄。\n"
+"嵌套模板元素可以匹配。通过它的 [member HTMLTemplateElement.content] 单独查询其内容。无效或不支持的选择器会报告 Godot "
+"错误。片段无效或没有匹配项时返回空数组。支持的语法见 [method HTMLLayout.query_selector_all]。"
