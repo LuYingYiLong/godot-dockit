@@ -1,7 +1,7 @@
 #include "html_line_break.h"
 #include "html_punctuation_spacing.h"
 #include "html_text_autospace.h"
-#include "formats/html/html_shaped_text.h"
+#include "formats/html/text/html_shaped_text.h"
 
 #include <litehtml/document_container.h>
 #include <litehtml/el_text.h>

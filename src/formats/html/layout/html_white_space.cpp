@@ -1,4 +1,4 @@
-#include "formats/html/litehtml_document_adapter.h"
+#include "formats/html/backend/litehtml_document_adapter.h"
 
 #include <litehtml/el_text.h>
 #include <litehtml/render_item.h>

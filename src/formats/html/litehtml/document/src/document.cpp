@@ -1,6 +1,6 @@
 #include "html.h"
 #include "formats/html/css/css_units.h"
-#include "formats/html/litehtml_document_adapter.h"
+#include "formats/html/backend/litehtml_document_adapter.h"
 #include "document.h"
 #include "stylesheet.h"
 #include "html_tag.h"

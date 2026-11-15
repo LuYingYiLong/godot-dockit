@@ -1,6 +1,6 @@
 #include "html_element.h"
 
-#include "formats/html/html_dom.h"
+#include "formats/html/dom/html_dom.h"
 #include "formats/html/html_layout.h"
 
 #include <godot_cpp/templates/hash_set.hpp>

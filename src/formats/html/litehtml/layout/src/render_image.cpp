@@ -1,4 +1,4 @@
-#include "formats/html/html_image_alt_text.h"
+#include "formats/html/text/html_image_alt_text.h"
 #include "formats/html/layout/grid/litehtml_render_grid.h"
 #include "render_image.h"
 #include "document.h"

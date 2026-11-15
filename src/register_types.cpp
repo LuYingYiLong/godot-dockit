@@ -14,7 +14,7 @@
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_image_element.h"
-#include "formats/html/html_canvas_renderer.h"
+#include "formats/html/paint/html_canvas_renderer.h"
 #include "formats/html/html_document.h"
 #include "formats/latex/latex_document.h"
 #include "formats/latex/latex_document_loader.h"

@@ -1,6 +1,6 @@
 #include "html_textarea_node.h"
 
-#include "formats/html/litehtml_container.h"
+#include "formats/html/backend/litehtml_container.h"
 
 #include <litehtml/document.h>
 #include <litehtml/render_item.h>

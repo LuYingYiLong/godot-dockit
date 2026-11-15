@@ -1,17 +1,17 @@
 #include "html_dom.h"
 
-#include "css/css_litehtml_dom.h"
+#include "formats/html/css/css_litehtml_dom.h"
 
-#include "elements/html_anchor_element.h"
-#include "elements/html_button_element.h"
-#include "elements/html_element_types.h"
-#include "elements/html_heading_element.h"
-#include "elements/html_image_element.h"
-#include "elements/html_input_element.h"
-#include "elements/html_textarea_element.h"
-#include "elements/html_input_node.h"
-#include "elements/html_textarea_node.h"
-#include "litehtml_document_adapter.h"
+#include "formats/html/elements/html_anchor_element.h"
+#include "formats/html/elements/html_button_element.h"
+#include "formats/html/elements/html_element_types.h"
+#include "formats/html/elements/html_heading_element.h"
+#include "formats/html/elements/html_image_element.h"
+#include "formats/html/elements/html_input_element.h"
+#include "formats/html/elements/html_textarea_element.h"
+#include "formats/html/elements/html_input_node.h"
+#include "formats/html/elements/html_textarea_node.h"
+#include "formats/html/backend/litehtml_document_adapter.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/css_selector.h>

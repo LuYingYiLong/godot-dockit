@@ -4,7 +4,7 @@
 #include "html_tag.h"
 #include "document.h"
 #include "types.h"
-#include "formats/html/html_image_sources.h"
+#include "formats/html/resources/html_image_sources.h"
 
 namespace docrender { class HTMLImageAltText; }
 

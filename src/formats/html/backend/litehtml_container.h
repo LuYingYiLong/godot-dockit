@@ -1,10 +1,10 @@
 #ifndef DOCRENDER_LITEHTML_CONTAINER_H
 #define DOCRENDER_LITEHTML_CONTAINER_H
 
-#include "html_paint_recorder.h"
-#include "html_resources.h"
+#include "formats/html/paint/html_paint_recorder.h"
+#include "formats/html/resources/html_resources.h"
 #include "formats/html/css/css_values.h"
-#include "litehtml_fonts.h"
+#include "formats/html/text/litehtml_fonts.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/dictionary.hpp>

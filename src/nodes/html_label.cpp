@@ -2,7 +2,7 @@
 
 #include "formats/html/elements/html_input_node.h"
 
-#include "formats/html/html_markup.h"
+#include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/h_scroll_bar.hpp>

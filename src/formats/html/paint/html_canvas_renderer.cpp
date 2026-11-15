@@ -1,5 +1,5 @@
 #include "html_canvas_renderer.h"
-#include "html_shaped_text.h"
+#include "formats/html/text/html_shaped_text.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>

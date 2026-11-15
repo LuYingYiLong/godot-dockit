@@ -1,7 +1,7 @@
 #include "markdown_parser.h"
 #include "markdown_html.h"
 
-#include "formats/html/html_markup.h"
+#include "formats/html/markup/html_markup.h"
 
 #include <algorithm>
 #include <climits>

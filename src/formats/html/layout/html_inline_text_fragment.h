@@ -1,6 +1,6 @@
 #pragma once
 
-#include "formats/html/html_text_layout.h"
+#include "formats/html/text/html_text_layout.h"
 
 #include <litehtml/el_text.h>
 

@@ -3,13 +3,13 @@
 #include "elements/html_input_node.h"
 #include "elements/html_textarea_node.h"
 
-#include "html_canvas_renderer.h"
-#include "html_dom.h"
-#include "html_image_sources.h"
-#include "html_markup.h"
+#include "formats/html/paint/html_canvas_renderer.h"
+#include "formats/html/dom/html_dom.h"
+#include "formats/html/resources/html_image_sources.h"
+#include "formats/html/markup/html_markup.h"
 #include "layout/html_geometry.h"
-#include "litehtml_container.h"
-#include "litehtml_document_adapter.h"
+#include "formats/html/backend/litehtml_container.h"
+#include "formats/html/backend/litehtml_document_adapter.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>

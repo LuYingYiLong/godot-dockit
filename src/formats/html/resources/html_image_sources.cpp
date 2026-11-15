@@ -1,8 +1,8 @@
 #include "html_image_sources.h"
 
-#include "css/css_image_value.h"
-#include "css/css_math.h"
-#include "litehtml_container.h"
+#include "formats/html/css/css_image_value.h"
+#include "formats/html/css/css_math.h"
+#include "formats/html/backend/litehtml_container.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/document.h>

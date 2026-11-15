@@ -1,7 +1,7 @@
 #include "html_image_blend.h"
 
-#include "css/css_image_value.h"
-#include "html_resources.h"
+#include "formats/html/css/css_image_value.h"
+#include "formats/html/resources/html_resources.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>

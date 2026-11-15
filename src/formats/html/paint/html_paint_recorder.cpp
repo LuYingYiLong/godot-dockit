@@ -1,8 +1,8 @@
 #include "html_paint_recorder.h"
 
 #include "html_text_mask.h"
-#include "layout/html_line_break.h"
-#include "layout/html_inline_text_fragment.h"
+#include "formats/html/layout/html_line_break.h"
+#include "formats/html/layout/html_inline_text_fragment.h"
 
 #include <godot_cpp/classes/atlas_texture.hpp>
 #include <godot_cpp/classes/display_server.hpp>

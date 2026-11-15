@@ -4,7 +4,7 @@
 #include "html_line_break.h"
 #include "html_punctuation_spacing.h"
 #include "html_text_autospace.h"
-#include "formats/html/litehtml_container.h"
+#include "formats/html/backend/litehtml_container.h"
 
 #include <litehtml/iterators.h>
 #include <litehtml/render_inline.h>

@@ -1,7 +1,7 @@
 #include "html_markup.h"
-#include "css/css_stylesheet_rules.h"
-#include "html_image_metadata.h"
-#include "html_image_sources.h"
+#include "formats/html/css/css_stylesheet_rules.h"
+#include "formats/html/resources/html_image_metadata.h"
+#include "formats/html/resources/html_image_sources.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/font_file.hpp>

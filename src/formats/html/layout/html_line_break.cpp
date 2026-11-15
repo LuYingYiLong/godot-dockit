@@ -3,7 +3,7 @@
 #include "html_punctuation_spacing.h"
 
 #include "formats/html/css/css_litehtml_dom.h"
-#include "formats/html/litehtml_container.h"
+#include "formats/html/backend/litehtml_container.h"
 
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>

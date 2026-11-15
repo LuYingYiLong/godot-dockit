@@ -23,6 +23,12 @@
       <UniqueIdentifier>{85908c06-a8d2-5e29-96b8-294f478ca0ca}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\formats\html\css" />
+    <Filter Include="Header Files\formats\html\backend" />
+    <Filter Include="Header Files\formats\html\dom" />
+    <Filter Include="Header Files\formats\html\markup" />
+    <Filter Include="Header Files\formats\html\paint" />
+    <Filter Include="Header Files\formats\html\resources" />
+    <Filter Include="Header Files\formats\html\text" />
     <Filter Include="Header Files\formats\html\elements" />
     <Filter Include="Header Files\formats\html">
       <UniqueIdentifier>{458d247b-1727-407d-8723-386218d28393}</UniqueIdentifier>
@@ -67,6 +73,12 @@
       <UniqueIdentifier>{3073cf9d-b70f-5475-a972-e4b25d2d9632}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\formats\html\css" />
+    <Filter Include="Source Files\formats\html\backend" />
+    <Filter Include="Source Files\formats\html\dom" />
+    <Filter Include="Source Files\formats\html\markup" />
+    <Filter Include="Source Files\formats\html\paint" />
+    <Filter Include="Source Files\formats\html\resources" />
+    <Filter Include="Source Files\formats\html\text" />
     <Filter Include="Source Files\formats\html\elements" />
     <Filter Include="Source Files\formats\html">
       <UniqueIdentifier>{ce13e574-6124-4bc6-bca6-240a08c6d482}</UniqueIdentifier>
@@ -118,8 +130,8 @@
     <ClCompile Include="src\formats\docrender_source.cpp">
       <Filter>Source Files\formats</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_canvas_renderer.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_document.cpp">
       <Filter>Source Files\formats\html</Filter>
@@ -154,53 +166,53 @@
     <ClCompile Include="src\formats\html\elements\html_input_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_dom.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\dom\html_dom.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_layout.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_paint_recorder.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_resources.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\resources\html_resources.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_image_alt_text.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\html_image_alt_text.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_image_blend.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\paint\html_image_blend.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_border_image.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\paint\html_border_image.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_image_metadata.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\resources\html_image_metadata.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_image_sources.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\resources\html_image_sources.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_system_fonts.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\html_system_fonts.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_text_layout.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\html_text_layout.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_markup.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\markup\html_markup.cpp">
+      <Filter>Source Files\formats\html\markup</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_shadows.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_text_mask.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\paint\html_text_mask.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_text_spacing.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\html_text_spacing.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\html_text_transform.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\html_text_transform.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_color.cpp">
       <Filter>Source Files\formats\html\css</Filter>
@@ -322,17 +334,17 @@
     <ClCompile Include="src\formats\html\css\css_variables.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_container.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\backend\litehtml_container.cpp">
+      <Filter>Source Files\formats\html\backend</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_fonts.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\text\litehtml_fonts.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\litehtml_document_adapter.cpp">
-      <Filter>Source Files\formats\html</Filter>
+    <ClCompile Include="src\formats\html\backend\litehtml_document_adapter.cpp">
+      <Filter>Source Files\formats\html\backend</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\html\layout\html_background_paint.cpp">
-      <Filter>Source Files\formats\html\layout</Filter>
+    <ClCompile Include="src\formats\html\paint\html_background_paint.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_length.cpp">
       <Filter>Source Files\formats\html\css</Filter>
@@ -567,8 +579,8 @@
     <ClInclude Include="src\formats\mermaid\mermaid_render.h">
       <Filter>Header Files\formats\mermaid</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_canvas_renderer.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_canvas_renderer.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_document.h">
       <Filter>Header Files\formats\html</Filter>
@@ -609,56 +621,56 @@
     <ClInclude Include="src\formats\html\elements\html_input_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_font_config.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\html_font_config.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_dom.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\dom\html_dom.h">
+      <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_layout.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_markup.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\markup\html_markup.h">
+      <Filter>Header Files\formats\html\markup</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_paint_run.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_paint_run.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_paint_recorder.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_paint_recorder.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_resources.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\resources\html_resources.h">
+      <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_image_alt_text.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\html_image_alt_text.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_image_blend.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_image_blend.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_border_image.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_border_image.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_image_metadata.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\resources\html_image_metadata.h">
+      <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_image_sources.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\resources\html_image_sources.h">
+      <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_system_fonts.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\html_system_fonts.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_shaped_text.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\html_shaped_text.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_text_layout.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\html_text_layout.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_shadows.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\html_text_mask.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\paint\html_text_mask.h">
+      <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_color.h">
       <Filter>Header Files\formats\html\css</Filter>
@@ -852,20 +864,20 @@
     <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\master_css.h">
       <Filter>Header Files\formats\html\litehtml\css</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\unicode_case_folding.inc">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\unicode_case_folding.inc">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\unicode_emphasis_skip.inc">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\unicode_emphasis_skip.inc">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_container.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\backend\litehtml_container.h">
+      <Filter>Header Files\formats\html\backend</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_fonts.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\text\litehtml_fonts.h">
+      <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\litehtml_document_adapter.h">
-      <Filter>Header Files\formats\html</Filter>
+    <ClInclude Include="src\formats\html\backend\litehtml_document_adapter.h">
+      <Filter>Header Files\formats\html\backend</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\litehtml\css\include\litehtml\background.h">
       <Filter>Header Files\formats\html\litehtml\css</Filter>

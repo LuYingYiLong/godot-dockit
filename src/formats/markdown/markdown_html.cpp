@@ -1,6 +1,6 @@
 #include "markdown_html.h"
 
-#include "formats/html/html_markup.h"
+#include "formats/html/markup/html_markup.h"
 
 #include <cstdint>
 #include <string_view>

@@ -1,6 +1,6 @@
 #include "html_resources.h"
 
-#include "html_markup.h"
+#include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>

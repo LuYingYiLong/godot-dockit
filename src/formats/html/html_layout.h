@@ -3,7 +3,7 @@
 
 #include "elements/html_input_element.h"
 #include "elements/html_textarea_element.h"
-#include "html_font_config.h"
+#include "formats/html/text/html_font_config.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/templates/hash_map.hpp>

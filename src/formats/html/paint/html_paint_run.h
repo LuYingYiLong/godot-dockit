@@ -1,7 +1,7 @@
 #pragma once
 
-#include "html_text_layout.h"
-#include "layout/html_geometry.h"
+#include "formats/html/text/html_text_layout.h"
+#include "formats/html/layout/html_geometry.h"
 
 #include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/classes/text_line.hpp>

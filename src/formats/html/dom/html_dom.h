@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elements/html_element.h"
+#include "formats/html/elements/html_element.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
 #include <litehtml/element.h>

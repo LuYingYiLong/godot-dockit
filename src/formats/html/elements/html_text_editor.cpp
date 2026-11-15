@@ -1,6 +1,6 @@
 #include "html_text_editor.h"
 
-#include "formats/html/litehtml_container.h"
+#include "formats/html/backend/litehtml_container.h"
 
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <litehtml/document.h>

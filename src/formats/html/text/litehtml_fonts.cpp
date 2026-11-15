@@ -1,6 +1,6 @@
 #include "litehtml_fonts.h"
 
-#include "html_resources.h"
+#include "formats/html/resources/html_resources.h"
 #include "html_system_fonts.h"
 
 #include <godot_cpp/classes/font_variation.hpp>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "html_paint_run.h"
-#include "html_shaped_text.h"
+#include "formats/html/text/html_shaped_text.h"
 #include "html_border_image.h"
 #include "formats/html/css/css_shadows.h"
 

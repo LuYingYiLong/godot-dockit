@@ -1,6 +1,6 @@
 #pragma once
 
-#include "css/css_border_image.h"
+#include "formats/html/css/css_border_image.h"
 
 #include <godot_cpp/variant/rect2.hpp>
 #include <litehtml/borders.h>

@@ -1,5 +1,5 @@
 #include "html_text_mask.h"
-#include "html_shaped_text.h"
+#include "formats/html/text/html_shaped_text.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
