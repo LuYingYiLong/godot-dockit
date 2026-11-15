@@ -16,6 +16,8 @@ using namespace godot;
 
 namespace docrender {
 	namespace {
+		constexpr size_t MAX_UNDO_EDITS = 100;
+
 		Ref<TextServer> text_server() {
 			return TextServerManager::get_singleton()->get_primary_interface();
 		}
@@ -85,6 +87,7 @@ namespace docrender {
 		dirty_value = true;
 		const String clean = normalize(p_value);
 		if (clean == value) return false;
+		clear_history();
 		value = clean;
 		set_preedit({}, {});
 		set_selection(value.length(), value.length());
@@ -93,13 +96,19 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::copy_value_state(const HTMLTextEditor& p_source, bool p_preserve_selection) {
+		clear_history();
 		value = p_source.value;
 		dirty_value = p_source.dirty_value;
 		set_selection(p_preserve_selection ? p_source.anchor : 0, p_preserve_selection ? p_source.caret : 0);
+		if (p_preserve_selection) {
+			history = p_source.history;
+			history_position = p_source.history_position;
+		}
 	}
 
 	void HTMLTextEditor::reset_value(const String& p_value) {
 		++reset_version;
+		clear_history();
 		dirty_value = false;
 		user_changed = false;
 		value = normalize(p_value);
@@ -116,6 +125,7 @@ namespace docrender {
 		const int64_t start = nearest_boundary(value, p_anchor);
 		const int64_t end = p_anchor == p_caret ? start : nearest_boundary(value, p_caret);
 		if (start == anchor && end == caret) return false;
+		finish_ime_edit();
 		anchor = start;
 		caret = end;
 		preferred_x.reset();
@@ -194,11 +204,29 @@ namespace docrender {
 
 	bool HTMLTextEditor::erase(int p_direction) {
 		if (has_preedit()) return false;
+		finish_ime_edit();
+		const auto before = selection();
 		if (anchor == caret) set_selection(caret, step_boundary(value, caret, p_direction));
-		return insert({});
+		return replace_selection({}, "", before, false);
 	}
 
 	bool HTMLTextEditor::insert(const String& p_text, const char* p_maxlength) {
+		finish_ime_edit();
+		return replace_selection(p_text, p_maxlength, selection(), false);
+	}
+
+	bool HTMLTextEditor::insert_character(char32_t p_character, const char* p_maxlength, uint64_t p_frame, bool p_ime_event) {
+		// Godot sends each character in an IME result as a key event in the same input frame.
+		auto batch = ime_edit && ime_edit->frame == p_frame ? ime_edit : std::nullopt;
+		if (!batch && (p_ime_event || has_preedit())) batch = ImeEdit{p_frame, selection()};
+		const bool changed = replace_selection(String::chr(p_character), p_maxlength,
+			batch ? batch->before : selection(), batch && batch->recorded);
+		if (batch) batch->recorded |= changed;
+		ime_edit = batch;
+		return changed;
+	}
+
+	bool HTMLTextEditor::replace_selection(const String& p_text, const char* p_maxlength, const Selection& p_before, bool p_merge) {
 		String text = normalize(p_text);
 		set_preedit({}, {});
 		if (text.is_empty() && !p_text.is_empty()) return false;
@@ -222,13 +250,86 @@ namespace docrender {
 				text = text.substr(0, length);
 			}
 		}
-		const String next = prefix + text + suffix;
-		if (next == value) return false;
-		value = next;
+		const String removed = value.substr(from, to - from);
+		if (removed == text) {
+			set_selection(to, to);
+			return false;
+		}
+		value = prefix + text + suffix;
 		dirty_value = true;
 		user_changed = true;
 		set_selection(from + text.length(), from + text.length());
+
+		if (!p_merge || history_position == 0 || history_position != history.size()) {
+			history.erase(history.begin() + history_position, history.end());
+			if (history.size() == MAX_UNDO_EDITS) history.erase(history.begin());
+			history.push_back({p_before, selection(), {}});
+			history_position = history.size();
+		}
+		auto& edit = history.back();
+		edit.after = selection();
+		edit.replacements.push_back({from, removed, text});
 		return true;
+	}
+
+	void HTMLTextEditor::clear_history() {
+		history.clear();
+		history_position = 0;
+		finish_ime_edit();
+	}
+
+	void HTMLTextEditor::restore_selection(const Selection& p_selection) {
+		anchor = p_selection.anchor;
+		caret = p_selection.caret;
+		trailing_affinity = p_selection.trailing_affinity;
+		preferred_x.reset();
+		caret_line_hint.reset();
+		set_preedit({}, {});
+		dirty_value = true;
+		user_changed = true;
+	}
+
+	bool HTMLTextEditor::undo() {
+		finish_ime_edit();
+		if (!can_undo()) return false;
+		const auto& edit = history[--history_position];
+		for (auto step = edit.replacements.rbegin(); step != edit.replacements.rend(); ++step) {
+			value = value.substr(0, step->offset) + step->removed + value.substr(step->offset + step->inserted.length());
+		}
+		restore_selection(edit.before);
+		return true;
+	}
+
+	bool HTMLTextEditor::redo() {
+		finish_ime_edit();
+		if (!can_redo()) return false;
+		const auto& edit = history[history_position++];
+		for (const auto& step : edit.replacements) {
+			value = value.substr(0, step.offset) + step.inserted + value.substr(step.offset + step.removed.length());
+		}
+		restore_selection(edit.after);
+		return true;
+	}
+
+	void HTMLTextEditor::finish_ime_edit() {
+		ime_edit.reset();
+	}
+
+	bool HTMLTextEditor::cancel_preedit() {
+		finish_ime_edit();
+		if (!has_preedit()) return false;
+		set_preedit({}, {});
+		return true;
+	}
+
+	void HTMLTextEditor::update_preedit(const String& p_text, const Vector2i& p_selection, uint64_t p_frame) {
+		if (!p_text.is_empty()) {
+			finish_ime_edit();
+		} else if (has_preedit()) {
+			// Some backends clear the marked text before handing off the result.
+			ime_edit = ImeEdit{p_frame, selection()};
+		}
+		set_preedit(p_text, p_selection);
 	}
 
 	void HTMLTextEditor::set_preedit(const String& p_text, const Vector2i& p_selection) {

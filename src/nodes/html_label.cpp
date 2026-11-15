@@ -213,6 +213,11 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventMouseButton> button = p_event;
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
+	if (button->get_button_index() == MOUSE_BUTTON_RIGHT && button->is_pressed() && label->context_menu_enabled &&
+		visible_rect.has_point(point) && open_input_menu(label->layout->get_element_at(point), point, true)) {
+		accept_event();
+		return;
+	}
 	if (button->get_button_index() != MOUSE_BUTTON_LEFT) {
 		const Vector2 delta = HTMLLayout::wheel_delta(*button.ptr());
 		const Vector2 consumed = visible_rect.has_point(point) ? label->layout->scroll_overflow(point, delta) : Vector2();
@@ -481,6 +486,7 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 
 void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_keyboard) {
 	if (focused_element != p_element) {
+		close_input_menu();
 		label->close_select_menu();
 		const auto previous = focused_element;
 		stop_caret_blink();
@@ -651,6 +657,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &HTMLLabel::set_context_menu_enabled);
+	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &HTMLLabel::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_enabled", "enabled"), &HTMLLabel::set_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("is_caret_blink_enabled"), &HTMLLabel::is_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_interval", "interval"), &HTMLLabel::set_caret_blink_interval);
@@ -664,6 +672,7 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_GROUP("Caret", "caret_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_interval", PROPERTY_HINT_RANGE, "0.1,10,0.01,suffix:s"),
@@ -985,6 +994,15 @@ bool HTMLLabel::is_selection_enabled() const {
 	return selection_enabled;
 }
 
+void HTMLLabel::set_context_menu_enabled(bool p_enabled) {
+	context_menu_enabled = p_enabled;
+	if (!p_enabled && canvas) canvas->close_input_menu();
+}
+
+bool HTMLLabel::is_context_menu_enabled() const {
+	return context_menu_enabled;
+}
+
 void HTMLLabel::set_caret_blink_enabled(bool p_enabled) {
 	if (caret_blink == p_enabled) return;
 	caret_blink = p_enabled;
@@ -1126,6 +1144,7 @@ void HTMLLabel::on_layout_edited() {
 	close_select_menu();
 	layout_updated = true;
 	if (canvas) {
+		canvas->close_input_menu();
 		// Writing the size during a resize schedules reflow while the handle is held.
 		if (!canvas->applying_textarea_resize) {
 			canvas->cancel_press();

@@ -410,6 +410,8 @@ func _run() -> void:
 	await _check_focus_within()
 	await _check_dom_input()
 	await _check_text_input_batch()
+	await _check_text_undo()
+	await _check_input_context_menu()
 	await _check_textarea()
 	await _check_text_emphasis()
 	await _check_underline_position()
@@ -7764,6 +7766,160 @@ func _check_text_input_batch() -> void:
 	_send_dom_key(viewport, KEY_KP_ENTER, "b".unicode_at(0))
 	_check(single.value == "ab" and committed == ["hello world"],
 		"Committed characters with Enter metadata stay in the field without submitting")
+	viewport.queue_free()
+
+
+func _send_text_history_key(viewport: SubViewport, key: Key, shifted: bool = false) -> void:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = key
+	event.physical_keycode = key
+	event.ctrl_pressed = true
+	event.shift_pressed = shifted
+	event.pressed = true
+	viewport.push_input(event)
+
+
+func _check_text_undo() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 160)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(300.0, 160.0)
+	label.text = "<input id='single' value='h suffix'><textarea id='multi'>pre OLD\nend</textarea>"
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var single: HTMLInputElement = label.get_element_by_id("single") as HTMLInputElement
+	var multi: HTMLTextAreaElement = label.get_element_by_id("multi") as HTMLTextAreaElement
+	var input_changes: Array[String] = []
+	label.input_changed.connect(func(element: HTMLInputElement) -> void: input_changes.append(element.value))
+
+	_check(label.focus_element(single), "Focus the input for history shortcuts")
+	single.set_selection_range(0, 1)
+	var result: String = "hello 世界😀"
+	_send_dom_key(viewport, KEY_ENTER, result.unicode_at(0))
+	for index: int in range(1, result.length()):
+		_send_dom_key(viewport, KEY_NONE, result.unicode_at(index))
+	_check(single.value == result + " suffix", "The IME result replaces a selection that matches its first character")
+
+	await process_frame
+	_send_dom_key(viewport, KEY_X, "x".unicode_at(0))
+	_send_text_history_key(viewport, KEY_Z)
+	_check(single.value == result + " suffix", "Typing after a result creates a separate history entry")
+	var before_undo: int = input_changes.size()
+	_send_text_history_key(viewport, KEY_Z)
+	_check(single.value == "h suffix" and single.get_selection_start() == 0 and single.get_selection_end() == 1,
+		"One undo restores the text and selection before the entire IME commit")
+	_check(input_changes.size() == before_undo + 1, "Undoing a grouped result emits one input change")
+	_send_text_history_key(viewport, KEY_Z, true)
+	_check(single.value == result + " suffix" and single.get_selection_start() == result.length() and
+		single.get_selection_end() == result.length(), "Shift+Ctrl+Z restores the complete result and insertion point")
+	_send_text_history_key(viewport, KEY_Y)
+	_check(single.value == result + "x suffix", "Ctrl+Y redoes the next history entry")
+	_send_text_history_key(viewport, KEY_Z)
+	_send_dom_key(viewport, KEY_Q, "q".unicode_at(0))
+	_send_text_history_key(viewport, KEY_Y)
+	_check(single.value == result + "q suffix", "A new edit discards the redo branch")
+
+	_check(label.focus_element(multi), "Focus the textarea for multiline history shortcuts")
+	multi.set_selection_range(4, 7)
+	var composition: String = "日本語"
+	for index: int in range(composition.length()):
+		_send_dom_key(viewport, KEY_NONE, composition.unicode_at(index))
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(multi.value == "pre 日本語\n\nend", "The textarea handles a result and a separate newline edit")
+	_send_text_history_key(viewport, KEY_Z)
+	_check(multi.value == "pre 日本語\nend", "Undo first removes the added newline")
+	_send_text_history_key(viewport, KEY_Z)
+	_check(multi.value == "pre OLD\nend" and multi.get_selection_start() == 4 and multi.get_selection_end() == 7,
+		"One undo restores the original multiline selection")
+	_send_text_history_key(viewport, KEY_Y)
+	multi.set_attribute("readonly", "")
+	_send_text_history_key(viewport, KEY_Z)
+	_check(multi.value == "pre 日本語\nend", "Readonly fields ignore history shortcuts")
+	multi.remove_attribute("readonly")
+	multi.value = "scripted"
+	_send_text_history_key(viewport, KEY_Z)
+	_check(multi.value == "scripted", "A value assigned from script starts a fresh history")
+	viewport.queue_free()
+
+
+func _right_click_field(viewport: SubViewport, field: HTMLElement) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_RIGHT
+	event.position = field.get_bounding_rect().get_center()
+	event.pressed = true
+	viewport.push_input(event)
+	event.pressed = false
+	viewport.push_input(event)
+
+
+func _check_input_context_menu() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(400, 310)
+	viewport.gui_embed_subwindows = true
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(400.0, 310.0)
+	label.text = """
+		<input id="single" value="alpha"><br>
+		<textarea id="multi" readonly>second field</textarea><br>
+		<input id="disabled" value="disabled" disabled>
+	"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var single: HTMLInputElement = label.get_element_by_id("single") as HTMLInputElement
+	var multi: HTMLTextAreaElement = label.get_element_by_id("multi") as HTMLTextAreaElement
+	var disabled: HTMLElement = label.get_element_by_id("disabled")
+	_check(label.context_menu_enabled, "The input context menu is enabled by default")
+	single.set_selection_range(1, 3)
+
+	_right_click_field(viewport, single)
+	var menu: PopupMenu = label.get_node_or_null("_HTMLScroll/_HTMLCanvas/_HTMLInputMenu") as PopupMenu
+	_check(menu != null and menu.visible and label.get_focused_element() == single,
+		"Right-click opens the popup and focuses the input")
+	if menu == null or not menu.visible:
+		viewport.queue_free()
+		return
+	_check(menu.item_count == 8 and not menu.is_item_disabled(4) and menu.is_item_disabled(0) and menu.is_item_disabled(1),
+		"The menu offers selection commands and disables empty history")
+	_check(menu.get_item_accelerator(4) != KEY_NONE, "Menu accelerators use the Godot Input Map")
+	_check(single.get_selection_start() == 1 and single.get_selection_end() == 3, "Right-click preserves the field selection")
+	menu.emit_signal("id_pressed", menu.get_item_id(7))
+	_check(not menu.visible and single.get_selection_start() == 0 and single.get_selection_end() == 5,
+		"Select All acts on the field and closes the menu")
+
+	_send_dom_key(viewport, KEY_X, "x".unicode_at(0))
+	await process_frame
+	_right_click_field(viewport, single)
+	_check(menu.visible and not menu.is_item_disabled(0), "An edited input offers Undo in its menu")
+	menu.emit_signal("id_pressed", menu.get_item_id(0))
+	_check(single.value == "alpha" and single.get_selection_end() == 5, "Menu Undo restores text and selection")
+	_right_click_field(viewport, single)
+	_check(menu.visible and not menu.is_item_disabled(1), "Undo makes Redo available in the menu")
+	menu.emit_signal("id_pressed", menu.get_item_id(1))
+	_check(single.value == "x", "Menu Redo reapplies the edit")
+
+	multi.set_selection_range(1, 4)
+	_right_click_field(viewport, multi)
+	_check(menu.visible and label.get_focused_element() == multi and menu.is_item_disabled(3) and
+		menu.is_item_disabled(5) and not menu.is_item_disabled(4) and not menu.is_item_disabled(7),
+		"Readonly textareas allow Copy and Select All and disable editing")
+	label.context_menu_enabled = false
+	_check(not menu.visible, "Disabling the context menu closes the popup")
+	_right_click_field(viewport, multi)
+	_check(not menu.visible, "Right-click cannot open a disabled context menu")
+	label.context_menu_enabled = true
+	_right_click_field(viewport, disabled)
+	_check(not menu.visible, "Disabled fields do not open a context menu")
+	await process_frame
+	var menu_key: InputEventKey = InputMap.action_get_events(&"ui_menu")[0].duplicate() as InputEventKey
+	menu_key.pressed = true
+	viewport.push_input(menu_key)
+	_check(menu.visible and label.get_focused_element() == multi, "The ui_menu input action opens the focused textarea menu")
+	multi.remove()
+	_check(not menu.visible, "Removing the menu target closes the popup")
 	viewport.queue_free()
 
 

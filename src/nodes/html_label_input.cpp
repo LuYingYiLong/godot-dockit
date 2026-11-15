@@ -5,12 +5,16 @@
 #include "formats/html/dom/html_dom.h"
 
 #include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/input_map.hpp>
+#include <godot_cpp/classes/popup_menu.hpp>
 #include <godot_cpp/classes/sub_viewport_container.hpp>
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/window.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 
 using namespace godot;
@@ -18,6 +22,40 @@ using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
 
 namespace {
+	enum InputCommand {
+		INPUT_UNDO,
+		INPUT_REDO,
+		INPUT_CUT,
+		INPUT_COPY,
+		INPUT_PASTE,
+		INPUT_SELECT_ALL,
+	};
+
+	struct InputMenuItem {
+		const char* label;
+		const char* action;
+	};
+
+	constexpr InputMenuItem INPUT_MENU_ITEMS[] = {
+		{"Undo", "ui_undo"},
+		{"Redo", "ui_redo"},
+		{"Cut", "ui_cut"},
+		{"Copy", "ui_copy"},
+		{"Paste", "ui_paste"},
+		{"Select All", "ui_text_select_all"},
+	};
+
+	Key input_menu_accelerator(const StringName& p_action) {
+		for (const Ref<InputEvent>& event : InputMap::get_singleton()->action_get_events(p_action)) {
+			const Ref<InputEventKey> key = event;
+			if (key.is_valid()) {
+				return key->get_physical_keycode() != KEY_NONE ?
+					key->get_physical_keycode_with_modifiers() : key->get_keycode_with_modifiers();
+			}
+		}
+		return KEY_NONE;
+	}
+
 	Window* find_native_ime_window(Viewport* p_viewport) {
 		while (p_viewport) {
 			if (auto* window = Object::cast_to<Window>(p_viewport)) {
@@ -140,6 +178,14 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	label->layout->flush_input_paint();
 	auto& editor = input->editor;
 
+	if (label->context_menu_enabled && !p_key.is_echo() && p_key.is_action("ui_menu", true)) {
+		const auto caret = label->layout->input_caret_point(*handle.ptr());
+		if (open_input_menu(handle, caret.value_or(label->get_visible_rect().position), false)) {
+			label->accept_event();
+			return true;
+		}
+	}
+
 	const bool enter = key == KEY_ENTER || key == KEY_KP_ENTER;
 	const bool editable = input->is_editable();
 	const char32_t unicode = p_key.get_unicode();
@@ -161,6 +207,8 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		}
 	}
 
+	if (!inserts_text) editor.finish_ime_edit();
+
 	bool changed = false;
 	const bool extend = p_key.is_shift_pressed();
 	const char* maxlength = input->get_attr("maxlength", "");
@@ -173,20 +221,19 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		}
 		return true;
 	}
-	// IME character events can retain the key code of the confirmation key.
-	if (inserts_text) {
-		if (editable) changed = editor.insert(String::chr(unicode), maxlength);
-	} else if (p_key.is_action("ui_text_select_all", true)) {
-		input->editor.set_selection(0, input->editor.get_value().length());
-	} else if (p_key.is_action("ui_copy", true) || p_key.is_action("ui_cut", true)) {
-		const int64_t start = input->editor.selection_start();
-		const int64_t length = input->editor.selection_end() - start;
-		if (length) {
-			DisplayServer::get_singleton()->clipboard_set(input->editor.get_value().substr(start, length));
-			if (editable && p_key.is_action("ui_cut", true)) changed = input->editor.insert({});
+	for (int command = 0; command < static_cast<int>(std::size(INPUT_MENU_ITEMS)); ++command) {
+		if (p_key.is_action(INPUT_MENU_ITEMS[command].action, true)) {
+			label->accept_event();
+			run_input_command(handle, command);
+			return true;
 		}
-	} else if (p_key.is_action("ui_paste", true)) {
-		if (editable) changed = input->editor.insert(DisplayServer::get_singleton()->clipboard_get(), maxlength);
+	}
+	if (inserts_text) {
+		// IME character events can retain the key code of the confirmation key.
+		if (editable) {
+			changed = editor.insert_character(unicode, maxlength, Engine::get_singleton()->get_process_frames(),
+				key == KEY_NONE || enter);
+		}
 	} else if (key == KEY_LEFT || key == KEY_RIGHT) {
 		input->editor.move_caret(key == KEY_LEFT ? -1 : 1, extend);
 	} else if (key == KEY_HOME || key == KEY_END) {
@@ -207,6 +254,117 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		queue_redraw();
 	}
 	return true;
+}
+
+bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const Vector2& p_position, bool p_pointer) {
+	const auto input = label->layout->text_control(p_element);
+	if (!input || !input->is_text_control() || !label->layout->is_focusable(p_element)) return false;
+	const Rect2 visible = label->get_visible_rect();
+	if (!visible.has_area()) return false;
+
+	cancel_press();
+	label->grab_focus();
+	if (!label->layout->is_element_connected(p_element)) return false;
+	if (focused_element != p_element) set_focused_element(p_element);
+	auto& editor = input->editor;
+	const bool has_selection = editor.selection_start() != editor.selection_end();
+	if (p_pointer && !has_selection && input->is_editable()) set_input_caret(p_element, p_position, false);
+
+	if (!input_menu) {
+		input_menu = memnew(PopupMenu);
+		input_menu->set_name("_HTMLInputMenu");
+		input_menu->set_hide_on_item_selection(false);
+		input_menu->connect("id_pressed", callable_mp(this, &HTMLLabelCanvas::on_input_menu_selected));
+		input_menu->connect("popup_hide", callable_mp(this, &HTMLLabelCanvas::on_input_menu_hidden));
+		add_child(input_menu, false, INTERNAL_MODE_BACK);
+	}
+
+	input_menu->clear();
+	const bool editable = input->is_editable();
+	const bool disabled[] = {
+		!editable || !editor.can_undo(),
+		!editable || !editor.can_redo(),
+		!editable || !has_selection,
+		!has_selection,
+		!editable || DisplayServer::get_singleton()->clipboard_get().is_empty(),
+		editor.get_value().is_empty(),
+	};
+	for (int command = 0; command < static_cast<int>(std::size(INPUT_MENU_ITEMS)); ++command) {
+		if (command == INPUT_CUT || command == INPUT_SELECT_ALL) input_menu->add_separator();
+		const auto& item = INPUT_MENU_ITEMS[command];
+		input_menu->add_item(tr(item.label), command, input_menu_accelerator(item.action));
+		input_menu->set_item_disabled(input_menu->get_item_index(command), disabled[command]);
+	}
+
+	input_menu_target = p_element;
+	close_ime();
+	input_menu->set_position(get_screen_transform().xform(p_position.clamp(visible.position, visible.get_end())));
+	input_menu->reset_size();
+	input_menu->popup();
+	if (input_menu->is_visible()) return true;
+	on_input_menu_hidden();
+	return false;
+}
+
+void HTMLLabelCanvas::close_input_menu() {
+	if (input_menu && input_menu->is_visible()) input_menu->hide();
+}
+
+void HTMLLabelCanvas::on_input_menu_hidden() {
+	input_menu_target.unref();
+	callable_mp(this, &HTMLLabelCanvas::update_ime).call_deferred();
+}
+
+void HTMLLabelCanvas::on_input_menu_selected(int p_command) {
+	const Ref<HTMLElement> target = input_menu_target;
+	close_input_menu();
+	if (target.is_valid() && focused_element == target) run_input_command(target, p_command);
+}
+
+void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p_command) {
+	const auto input = label->layout->text_control(p_element);
+	if (!input || !input->is_text_control() || !label->layout->is_element_connected(p_element) ||
+		docrender::forms::is_disabled(*input) || input->get_attr("hidden")) return;
+
+	auto& editor = input->editor;
+	const bool editable = input->is_editable() && !editor.has_preedit();
+	const char* maxlength = input->get_attr("maxlength", "");
+	bool changed = false;
+	switch (p_command) {
+		case INPUT_UNDO:
+			if (editable) changed = editor.undo();
+			break;
+		case INPUT_REDO:
+			if (editable) changed = editor.redo();
+			break;
+		case INPUT_CUT:
+		case INPUT_COPY: {
+			const int64_t start = editor.selection_start();
+			const int64_t length = editor.selection_end() - start;
+			if (length > 0 && (p_command == INPUT_COPY || editable)) {
+				DisplayServer::get_singleton()->clipboard_set(editor.get_value().substr(start, length));
+				if (p_command == INPUT_CUT) changed = editor.insert({});
+			}
+			break;
+		}
+		case INPUT_PASTE:
+			if (editable) {
+				const String clipboard = DisplayServer::get_singleton()->clipboard_get();
+				if (!clipboard.is_empty()) changed = editor.insert(clipboard, maxlength);
+			}
+			break;
+		case INPUT_SELECT_ALL:
+			editor.set_selection(0, editor.get_value().length());
+			break;
+		default:
+			return;
+	}
+	restart_caret_blink();
+	if (changed) change_input(p_element);
+	else {
+		label->layout->repaint_input();
+		queue_redraw();
+	}
 }
 
 void HTMLLabelCanvas::set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible) {
@@ -262,14 +420,15 @@ void HTMLLabelCanvas::close_ime() {
 		display->window_set_ime_active(false, window);
 	}
 	const auto handle = focused_element;
-	if (const auto input = label->layout->text_control(handle); input && input->editor.has_preedit()) {
-		input->editor.set_preedit({}, {});
+	if (const auto input = label->layout->text_control(handle); input && input->editor.cancel_preedit()) {
 		label->layout->repaint_input();
 		queue_redraw();
 	}
 }
 
 void HTMLLabelCanvas::update_ime() {
+	if (input_menu_target.is_valid()) return;
+
 	const auto handle = focused_element;
 	if (!label->layout->is_element_connected(handle)) {
 		close_ime();
@@ -324,7 +483,8 @@ void HTMLLabelCanvas::on_ime_update() {
 	const auto input = label->layout->text_control(handle);
 	if (!input || !input->is_editable()) return;
 	auto* display = DisplayServer::get_singleton();
-	input->editor.set_preedit(display->ime_get_text(), display->ime_get_selection());
+	input->editor.update_preedit(display->ime_get_text(), display->ime_get_selection(),
+		Engine::get_singleton()->get_process_frames());
 	restart_caret_blink();
 	label->layout->repaint_input();
 	queue_redraw();

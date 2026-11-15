@@ -1069,7 +1069,10 @@ msgid ""
 "another Godot control when one is available.\n"
 "Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles "
 "text editing, its own selection, and system IME composition. A focused checkbox can be toggled "
-"with Space."
+"with Space.\n"
+"Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo "
+"and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new "
+"value from script or resetting the form clears the field's edit history."
 msgstr ""
 "使用 [HTMLLayout] 显示 [member document] 或内联的 [member text]。通过锚点、偏移或父级 [Container] "
 "为控件分配尺寸。文档按可用宽度换行，滚动条按需出现，以便查看溢出的内容。\n"
@@ -1088,7 +1091,9 @@ msgstr ""
 "\n"
 "Tab 和 Shift+Tab 遍历可见且已启用的输入框、按钮、带 [code]href[/code] 的链接以及设置了有效 [code]tabindex[/code] "
 "的元素。正值按升序优先访问。负值允许直接聚焦。到达任一边界时，若有其他 Godot 控件可用，就把焦点交给该控件。\n"
-"文本框和复选框由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。"
+"文本框和复选框由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。\n"
+"聚焦的文本字段支持 [code]ui_undo[/code] 和 [code]ui_redo[/code] 输入动作。撤销和重做时也会恢复选区。"
+"每次输入法提交算作一次编辑。通过脚本赋予新值或重置表单时，会清空字段的编辑历史。"
 
 #. doc_classes/HTMLLabel.xml doc_classes/MarkdownLabel.xml
 msgid "Selects all text in the document."
@@ -2707,6 +2712,14 @@ msgstr "如果为 [code]true[/code]，聚焦的文本字段会显示闪烁的插
 #. doc_classes/HTMLLabel.xml
 msgid "The time in seconds between changes in caret visibility when [member caret_blink] is enabled."
 msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态的间隔，单位为秒。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. "
+"Readonly fields offer Copy and Select All. Keyboard editing shortcuts remain available when the menu is disabled."
+msgstr ""
+"右键点击文本框和多行文本框，或触发 [code]ui_menu[/code] 输入动作时，显示编辑菜单。"
+"只读字段提供复制和全选。关闭菜单后，仍可使用键盘编辑快捷键。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Enables text selection. Disabling it clears the current selection."

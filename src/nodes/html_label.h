@@ -11,6 +11,7 @@
 
 namespace godot {
 	class InputEventKey;
+	class PopupMenu;
 	class ScrollContainer;
 	class Timer;
 }
@@ -55,6 +56,8 @@ class HTMLLabelCanvas : public godot::Control {
 	std::optional<godot::Vector2i> ime_position;
 	godot::Timer* caret_blink_timer = nullptr;
 	bool caret_window_active = true;
+	godot::PopupMenu* input_menu = nullptr;
+	godot::Ref<HTMLElement> input_menu_target;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
 	uint64_t focused_reset_version = 0;
@@ -80,6 +83,11 @@ class HTMLLabelCanvas : public godot::Control {
 	bool move_radio(const godot::Ref<HTMLInputElement>& p_input, int p_direction);
 	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;
 	bool handle_input_key(const godot::InputEventKey& p_key);
+	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
+	void close_input_menu();
+	void on_input_menu_hidden();
+	void on_input_menu_selected(int p_command);
+	void run_input_command(const godot::Ref<HTMLElement>& p_element, int p_command);
 	void change_input(const godot::Ref<HTMLElement>& p_input);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
 	void set_input_caret(const godot::Ref<HTMLElement>& p_input, const godot::Vector2& p_point, bool p_extend);
@@ -146,6 +154,7 @@ class HTMLLabel : public godot::Control {
 	bool layout_updated = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
+	bool context_menu_enabled = true;
 	bool caret_blink = true;
 	double caret_blink_interval = 0.65;
 	bool view_update_pending = false;
@@ -237,6 +246,8 @@ public:
 	);																				// 将当前控件的目标元素滚到视口内的对齐位置
 	void set_selection_enabled(bool p_enabled);										// 设置是否允许选择文本
 	bool is_selection_enabled() const;												// 返回是否允许选择文本
+	void set_context_menu_enabled(bool p_enabled); // 设置文本字段是否显示编辑菜单
+	bool is_context_menu_enabled() const; // 返回文本字段是否显示编辑菜单
 	void set_caret_blink_enabled(bool p_enabled); // 设置聚焦文本字段的插入光标是否闪烁
 	bool is_caret_blink_enabled() const; // 返回插入光标是否闪烁
 	void set_caret_blink_interval(double p_interval); // 设置插入光标切换显示状态的间隔，单位为秒

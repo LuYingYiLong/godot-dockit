@@ -13,6 +13,7 @@
 		Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code] or [code]data-*[/code] attributes to identify the command.
 		Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order before the default stops. A negative value allows direct focus. At either end, focus passes to another Godot control when one is available.
 		Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space.
+		Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new value from script or resetting the form clears the field's edit history.
 	</description>
 	<methods>
 		<method name="activate_element">
@@ -167,6 +168,9 @@
 		</member>
 		<member name="caret_blink_interval" type="float" setter="set_caret_blink_interval" getter="get_caret_blink_interval" default="0.65">
 			The time in seconds between changes in caret visibility when [member caret_blink] is enabled.
+		</member>
+		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="true">
+			Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. Readonly fields offer Copy and Select All. Keyboard editing shortcuts remain available when the menu is disabled.
 		</member>
 		<member name="css_diagnostics_enabled" type="bool" setter="set_css_diagnostics_enabled" getter="is_css_diagnostics_enabled" default="false">
 			Outlines visible elements with CSS declaration diagnostics. Hover over an outlined element to read its diagnostics in an HTML tooltip. Disabling this clears the outlines and results.

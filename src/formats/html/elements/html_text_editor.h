@@ -23,10 +23,37 @@ namespace docrender {
 			float bottom;
 		};
 
+		struct Selection {
+			int64_t anchor;
+			int64_t caret;
+			bool trailing_affinity;
+		};
+
+		struct Replacement {
+			int64_t offset;
+			godot::String removed;
+			godot::String inserted;
+		};
+
+		struct Edit {
+			Selection before;
+			Selection after;
+			std::vector<Replacement> replacements;
+		};
+
+		struct ImeEdit {
+			uint64_t frame;
+			Selection before;
+			bool recorded = false;
+		};
+
 		const bool multiline;
 		godot::String value;
 		godot::String preedit;
 		godot::Vector2i preedit_selection;
+		std::vector<Edit> history;
+		size_t history_position = 0;
+		std::optional<ImeEdit> ime_edit;
 		bool dirty_value = false;
 		bool user_changed = false;
 		uint64_t reset_version = 0;
@@ -61,6 +88,11 @@ namespace docrender {
 		bool layout_resize = false;
 		uintptr_t layout_font = 0;
 
+		Selection selection() const { return {anchor, caret, trailing_affinity}; }
+		void clear_history();
+		void restore_selection(const Selection& p_selection);
+		bool replace_selection(const godot::String& p_text, const char* p_maxlength, const Selection& p_before, bool p_merge);
+		void set_preedit(const godot::String& p_text, const godot::Vector2i& p_selection);
 		godot::String normalize(const godot::String& p_value) const;
 		float caret_x(int64_t p_offset, float p_near = 0.0f, bool p_nearest = false) const;
 		float line_caret_x(const Line& p_line, int64_t p_offset, std::optional<float> p_near = {}) const;
@@ -91,7 +123,14 @@ namespace docrender {
 		void move_to_edge(bool p_end, bool p_document, bool p_extend);
 		bool erase(int p_direction);
 		bool insert(const godot::String& p_text, const char* p_maxlength = "");
-		void set_preedit(const godot::String& p_text, const godot::Vector2i& p_selection);
+		bool insert_character(char32_t p_character, const char* p_maxlength, uint64_t p_frame, bool p_ime_event);
+		bool can_undo() const { return history_position > 0; }
+		bool can_redo() const { return history_position < history.size(); }
+		bool undo();
+		bool redo();
+		void finish_ime_edit();
+		bool cancel_preedit();
+		void update_preedit(const godot::String& p_text, const godot::Vector2i& p_selection, uint64_t p_frame);
 		bool has_preedit() const { return !preedit.is_empty(); }
 		bool take_user_change();
 		godot::Rect2 get_caret_rect() const { return caret_rect; }
