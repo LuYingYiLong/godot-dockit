@@ -157,6 +157,10 @@ Use `image-set("icon.png" 1x, url("icon-2x.png") 2x)` in a background layer. Omi
 
 The HTML importer embeds local URL and string candidates from each collected stylesheet, including direct string fallbacks in `var()`. Relative paths use the stylesheet's directory.
 
+Content images support `srcset` width and pixel-density descriptors, `sizes` media conditions and length math, and `<picture>` sources with `media` and `type`. They use the current layout viewport and the same `1dppx` output density. Width candidates use the first matching source size, with `100vw` as the default. The selected source's dimensions become HTML sizing hints when provided. The importer records local candidates across media branches as texture dependencies. [HTML responsive images](https://html.spec.whatwg.org/multipage/images.html)
+
+If the selected texture is unavailable, an image with nonempty `alt` draws the alternative text inside its existing box. The text uses the computed font, color, line height, alignment, and wrapping mode. It provides automatic box dimensions and follows the content clip and rounded corners. The intrinsic image size stays zero until a usable texture is selected. [HTML alternative text](https://html.spec.whatwg.org/multipage/embedded-content.html#the-img-element)
+
 ## Image fallbacks and fragments
 
 Use `image("sprite.png", currentColor)` to paint a solid color if the source cannot load. Use `image(rgb(0 0 255 / 50%))` as an independent solid-color layer. Both forms use the background layer's size, position, clip, and repeat. A successfully loaded transparent image retains its transparency. [CSS image()](https://www.w3.org/TR/css-images-4/#image-notation)

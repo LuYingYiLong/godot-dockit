@@ -4,10 +4,30 @@
 #include "document_container.h"
 #include "html_microsyntaxes.h"
 
+#include <utility>
+
 litehtml::el_image::el_image(const document::ptr& doc, const string& baseurl, bool decorative) :
 	html_tag(doc), m_baseurl(baseurl), m_decorative(decorative)
 {
 	m_css.set_display(display_inline_block);
+}
+
+bool litehtml::el_image::select_source(docrender::HTMLImageSelection p_selection)
+{
+	const bool dimensions_changed = m_selection ?
+		!(m_selection->dimensions == p_selection.dimensions) : p_selection.dimensions.has_value();
+	m_selection = std::move(p_selection);
+	return dimensions_changed;
+}
+
+void litehtml::el_image::commit_source()
+{
+	if (m_selection) m_current_src = m_selection->resolved_source;
+}
+
+const litehtml::string& litehtml::el_image::image_source() const
+{
+	return m_selection ? m_selection->source : m_src;
 }
 
 litehtml::css_image_orientation litehtml::el_image::image_orientation() const
@@ -19,8 +39,10 @@ litehtml::css_image_orientation litehtml::el_image::image_orientation() const
 void litehtml::el_image::get_content_size( size& sz, pixel_t /*max_width*/ )
 {
 	auto* container = get_document()->container();
-	const double density = resolve_image_dppx(m_src, m_baseurl, *container, css().get_image_resolution());
-	container->get_css_image_size(m_src.c_str(), m_baseurl.c_str(), density, sz, image_orientation());
+	const auto& source = image_source();
+	const auto source_density = m_selection ? m_selection->density : std::nullopt;
+	const double density = resolve_image_dppx(source, m_baseurl, *container, css().get_image_resolution(), false, source_density);
+	container->get_css_image_size(source.c_str(), m_baseurl.c_str(), density, sz, image_orientation());
 }
 
 bool litehtml::el_image::is_replaced() const
@@ -30,11 +52,17 @@ bool litehtml::el_image::is_replaced() const
 
 void litehtml::el_image::parse_attributes()
 {
-	m_src = get_attr("src", "");
+	if (!m_selection) {
+		const auto image_parent = parent();
+		if (!get_attr("srcset") && (!image_parent || image_parent->tag() != _picture_)) {
+			m_src = get_attr("src", "");
+		}
+	}
 
 	// https://html.spec.whatwg.org/multipage/rendering.html#attributes-for-embedded-content-and-images:the-img-element-5
-	const char* width = get_attr("width");
-	const char* height = get_attr("height");
+	const auto* dimensions = m_selection && m_selection->dimensions ? &*m_selection->dimensions : nullptr;
+	const char* width = dimensions ? dimensions->width.c_str() : get_attr("width");
+	const char* height = dimensions ? dimensions->height.c_str() : get_attr("height");
 	if (width) map_to_dimension_property(_width_, width);
 	if (height) map_to_dimension_property(_height_, height);
 
@@ -75,6 +103,12 @@ void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 	position pos = ri->pos();
 	pos.x += x;
 	pos.y += y;
+	if (m_alt_text)
+	{
+		if (pos.width > 0 && pos.height > 0 && pos.does_intersect(clip))
+			get_document()->container()->draw_image_alt(*m_alt_text, pos, *this);
+		return;
+	}
 	pos.round();
 
 	// Reuse the image crop path with the element content box as its clip.
@@ -103,7 +137,7 @@ void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 			layer.border_box += ri->get_borders();
 			layer.repeat = { background_repeat::no_repeat, background_repeat::no_repeat };
 			layer.border_radius = css().get_borders().radius.calc_percents(layer.border_box.width, layer.border_box.height);
-			get_document()->container()->draw_image(hdc, layer, m_src, m_baseurl);
+			get_document()->container()->draw_image(hdc, layer, image_source(), m_baseurl);
 		}
 	}
 }
@@ -112,21 +146,31 @@ void litehtml::el_image::compute_styles(bool recursive)
 {
 	html_tag::compute_styles(recursive);
 
-	if(!m_src.empty())
+	const auto& source = image_source();
+	auto* container = get_document()->container();
+	const auto orientation = image_orientation();
+	m_alt_text.reset();
+	const char* alt = get_attr("alt", "");
+	if (*alt)
+	{
+		if (source.empty() || !container->is_image_available(source.c_str(), m_baseurl.c_str(), orientation))
+			m_alt_text = container->shape_image_alt(alt, *this);
+	}
+	else if(!source.empty())
 	{
 		if(!css().get_height().is_predefined() && !css().get_width().is_predefined())
 		{
-			get_document()->container()->load_image(m_src.c_str(), m_baseurl.c_str(), true, image_orientation());
+			container->load_image(source.c_str(), m_baseurl.c_str(), true, orientation);
 		} else
 		{
-			get_document()->container()->load_image(m_src.c_str(), m_baseurl.c_str(), false, image_orientation());
+			container->load_image(source.c_str(), m_baseurl.c_str(), false, orientation);
 		}
 	}
 }
 
 litehtml::string litehtml::el_image::dump_get_name()
 {
-	return "img src=\"" + m_src + "\"";
+	return "img src=\"" + image_source() + "\"";
 }
 
 std::shared_ptr<litehtml::render_item> litehtml::el_image::create_render_item(const std::shared_ptr<render_item>& parent_ri)

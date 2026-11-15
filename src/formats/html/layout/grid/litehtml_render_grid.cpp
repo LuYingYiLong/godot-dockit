@@ -368,10 +368,11 @@ namespace litehtml {
 		return shared_from_this();
 	}
 
-	size size_grid_image(const render_item& item, const context& self, const size& intrinsic) {
+	size size_grid_image(const render_item& item, const context& self, const size& intrinsic, bool use_intrinsic_ratio) {
 		const bool width_auto = !is_definite(self.width);
 		const bool height_auto = !is_definite(self.height);
-		const double natural_ratio = intrinsic.height > 0 ? static_cast<double>(intrinsic.width) / intrinsic.height : 0;
+		const double natural_ratio = use_intrinsic_ratio && intrinsic.height > 0 ?
+			static_cast<double>(intrinsic.width) / intrinsic.height : 0;
 		const auto specified = item.css().get_aspect_ratio();
 		const auto ratio = specified.value > 0 && (!specified.prefer_natural || natural_ratio == 0) ?
 			specified : css_aspect_ratio{ natural_ratio, true };

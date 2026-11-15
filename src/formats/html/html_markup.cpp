@@ -1,6 +1,7 @@
 #include "html_markup.h"
 #include "css/css_stylesheet_rules.h"
 #include "html_image_metadata.h"
+#include "html_image_sources.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/font_file.hpp>
@@ -349,6 +350,15 @@ namespace docrender {
 			if (element.tag == GUMBO_TAG_IMG) {
 				if (const GumboAttribute* src = gumbo_get_attribute(&element.attributes, "src")) {
 					add_image_path(assets.images, src->value, p_base_dir);
+				}
+			}
+			if (element.tag == GUMBO_TAG_IMG || (element.tag == GUMBO_TAG_SOURCE &&
+				node->parent && node->parent->type == GUMBO_NODE_ELEMENT &&
+				node->parent->v.element.tag == GUMBO_TAG_PICTURE)) {
+				if (const auto* srcset = gumbo_get_attribute(&element.attributes, "srcset")) {
+					for (const auto& candidate : parse_html_srcset(srcset->value)) {
+						add_image_path(assets.images, candidate.url.c_str(), p_base_dir);
+					}
 				}
 			}
 			if (element.tag == GUMBO_TAG_LINK) {

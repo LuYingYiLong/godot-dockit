@@ -4,7 +4,8 @@
 
 namespace litehtml {
 
-	size size_grid_image(const render_item& item, const containing_block_context& self, const size& intrinsic);
+	size size_grid_image(const render_item& item, const containing_block_context& self, const size& intrinsic,
+		bool use_intrinsic_ratio = true);
 
 	class render_item_grid : public render_item_block {
 		size track_extent;

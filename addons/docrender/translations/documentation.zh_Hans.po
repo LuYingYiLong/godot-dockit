@@ -1047,9 +1047,11 @@ msgstr "用户编辑文本框或切换复选框时发出。可从元素读取新
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Emitted when the left mouse button is pressed and released over the same visible link without "
-"dragging or scrolling, or when Enter activates a focused link. [param uri] is the link's original"
-" [code]href[/code]."
-msgstr "左键在同一可见链接上按下和松开且期间没有拖动或滚动，或者按 Enter 激活已聚焦的链接时发出。[param uri] 为链接原始的 [code]href[/code]。"
+"dragging or scrolling, when Enter activates a focused link, or when [method activate_element] "
+"activates a link. [param uri] is the link's original nonempty [code]href[/code]."
+msgstr ""
+"左键在同一可见链接上按下和松开且期间没有拖动或滚动、按 Enter 激活已聚焦的链接，或通过 [method activate_element] "
+"激活链接时发出。[param uri] 为链接原始的非空 [code]href[/code]。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -2688,11 +2690,11 @@ msgstr "此文档的附加 CSS。它与文档样式表同属作者来源，源�
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Emitted when an enabled [code]<button type=\"button\">[/code] is activated by a mouse click, "
-"Enter, or Space. Pressing and releasing over different descendants of the same button can "
-"activate it. The signal passes the button element."
+"Enter, Space, or [method activate_element]. Pressing and releasing over different descendants of "
+"the same button can activate it. The signal passes an [HTMLButtonElement] handle."
 msgstr ""
-"已启用的 [code]<button type=\"button\">[/code] 通过鼠标点击、Enter 或空格键激活时发出。"
-"在同一个按钮的不同后代上按下和松开也可以激活按钮。信号传入按钮元素。"
+"已启用的 [code]<button type=\"button\">[/code] 通过鼠标点击、Enter、空格键或 [method activate_element] "
+"激活时发出。在同一个按钮的不同后代上按下和松开也可以激活按钮。信号传入 [HTMLButtonElement] 句柄。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Clears the text selection."
@@ -3135,3 +3137,146 @@ msgid ""
 "Returns the heading level from [code]1[/code] through [code]6[/code], or [code]0[/code] if the "
 "handle is invalid."
 msgstr "返回 [code]1[/code] 到 [code]6[/code] 之间的标题级别，句柄失效时返回 [code]0[/code]。"
+
+#. doc_classes/HTMLAnchorElement.xml
+msgid "A handle to an HTML anchor element."
+msgstr "HTML 链接元素的句柄。"
+
+#. doc_classes/HTMLAnchorElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<a>[/code]. Use [method "
+"HTMLLabel.activate_element] to activate a link from script."
+msgstr ""
+"查询 [code]<a>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。使用 [method "
+"HTMLLabel.activate_element] 从脚本激活链接。"
+
+#. doc_classes/HTMLAnchorElement.xml
+msgid "The original [code]href[/code] attribute. An empty or missing value cannot be activated."
+msgstr "原始 [code]href[/code] 属性。值为空或缺失时无法激活链接。"
+
+#. doc_classes/HTMLAnchorElement.xml
+msgid "The descendant text content. Assigning a value replaces the children with plain text."
+msgstr "后代文本内容。赋值时用纯文本替换所有子节点。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid "A handle to an HTML button element."
+msgstr "HTML 按钮元素的句柄。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<button>[/code]. [HTMLLabel]"
+" can activate enabled buttons with [code]type=\"button\"[/code]."
+msgstr ""
+"查询 [code]<button>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。[HTMLLabel] 可以激活已启用的 "
+"[code]type=\"button\"[/code] 按钮。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid ""
+"Whether the [code]disabled[/code] attribute is present. Setting this to [code]false[/code] "
+"removes the attribute."
+msgstr "是否存在 [code]disabled[/code] 属性。设为 [code]false[/code] 时移除此属性。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid "The button's source [code]name[/code] attribute."
+msgstr "按钮的源 [code]name[/code] 属性。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid "The button's source [code]type[/code] attribute. An absent attribute returns an empty string."
+msgstr "按钮的源 [code]type[/code] 属性。属性缺失时返回空字符串。"
+
+#. doc_classes/HTMLButtonElement.xml
+msgid "The button's source [code]value[/code] attribute."
+msgstr "按钮的源 [code]value[/code] 属性。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid "A handle to an HTML image element."
+msgstr "HTML 图片元素的句柄。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"Returns the intrinsic size in CSS pixels used by the current layout, including the effects of "
+"image orientation, resolution, and source fragments. Returns [constant Vector2.ZERO] if layout is"
+" pending, the handle is invalid or detached, or the image is unavailable."
+msgstr "返回当前排版采用的固有尺寸，以 CSS 像素计，包含图片方向、分辨率与源片段的影响。排版尚未就绪、句柄失效、元素未插入或图片不可用时返回 [constant Vector2.ZERO]。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The source [code]alt[/code] attribute. If the selected texture is unavailable, nonempty "
+"alternative text is drawn inside the image box. Text can wrap and determine automatic dimensions."
+msgstr "源 [code]alt[/code] 属性。选中的纹理不可用时，非空替代文字会绘制在图片盒内。文字可以换行并决定自动尺寸。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The nonnegative integer pixel hint from the HTML [code]height[/code] attribute, or [code]0[/code]"
+" if it is absent or invalid as an integer. CSS can override the hint."
+msgstr "HTML [code]height[/code] 属性中的非负整数像素提示。属性缺失或值无效时返回 [code]0[/code]。CSS 可以覆盖该提示。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid "The original [code]src[/code] attribute. Relative paths use the document's resource directory."
+msgstr "原始 [code]src[/code] 属性。相对路径基于文档的资源目录解析。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The nonnegative integer pixel hint from the HTML [code]width[/code] attribute, or [code]0[/code] "
+"if it is absent or invalid as an integer. CSS can override the hint."
+msgstr "HTML [code]width[/code] 属性中的非负整数像素提示。属性缺失或值无效时返回 [code]0[/code]。CSS 可以覆盖该提示。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Activates a visible link with a nonempty [code]href[/code] or an enabled "
+"[code]type=\"button\"[/code] button in this label. A fragment link scrolls to its target before "
+"emitting [signal link_pressed]. A button emits [signal button_pressed]. Returns [code]true[/code]"
+" when activation is dispatched and [code]false[/code] when the element cannot be activated."
+msgstr ""
+"激活此控件中 [code]href[/code] 非空的可见链接或已启用的 [code]type=\"button\"[/code] 按钮。片段链接先滚动到目标，再发出 [signal "
+"link_pressed]。按钮发出 [signal button_pressed]。成功分发激活时返回 [code]true[/code]，元素无法激活时返回 "
+"[code]false[/code]。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"Returned by queries and [method HTMLLayout.create_element] for [code]<img>[/code]. Use [method "
+"get_intrinsic_size] for the image's intrinsic dimensions and [method "
+"HTMLElement.get_bounding_rect] for its visual rectangle.\n"
+"Responsive images support [member srcset], [member sizes], and preceding [code]<source>[/code] "
+"elements in a [code]<picture>[/code]. Selections use the layout viewport and the renderer's "
+"[code]1x[/code] output density."
+msgstr ""
+"查询 [code]<img>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。用 [method "
+"get_intrinsic_size] 获取图片的固有尺寸，用 [method HTMLElement.get_bounding_rect] 获取视觉矩形。\n"
+"响应式图片支持 [member srcset]、[member sizes]，以及 [code]<picture>[/code] 中位于图片之前的 [code]<source>[/code] "
+"元素。选图使用排版视口和渲染器的 [code]1x[/code] 输出密度。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The selected [code]res://[/code] path, including any fragment, from the last successful layout. "
+"Empty before the first selection, when no source is selected, or for invalid or detached handles."
+" A selected path can point to an unavailable image."
+msgstr "最近一次成功排版选中的 [code]res://[/code] 路径，包含图片片段。首次选图前、未选中来源、句柄失效或元素未插入时返回空字符串。选中的路径也可能指向不可用的图片。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The source [code]sizes[/code] attribute used to evaluate width descriptors. Uses the first "
+"matching source size and defaults to [code]100vw[/code]. An [code]auto[/code] entry is skipped."
+msgstr "用于求值宽度描述符的源 [code]sizes[/code] 属性。采用第一条匹配的来源尺寸，默认值为 [code]100vw[/code]，并跳过 [code]auto[/code] 项。"
+
+#. doc_classes/HTMLImageElement.xml
+msgid ""
+"The source [code]srcset[/code] attribute. Candidates accept width or pixel-density descriptors. "
+"URLs use the same local resource rules as [member src]."
+msgstr "源 [code]srcset[/code] 属性。候选支持宽度或像素密度描述符。URL 沿用 [member src] 的本地资源规则。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Detaches this element from its parent and preserves existing handles to the whole subtree. Any "
+"one of those handles keeps the detached subtree available for editing and reinsertion in the same"
+" layout. Returns [constant OK] if already detached with no parent, or [constant "
+"ERR_INVALID_PARAMETER] for the document root or an invalid handle."
+msgstr ""
+"将此元素从父元素分离，并保留整棵子树的已有句柄。持有其中任意一个句柄，即可继续在同一布局中编辑和重新插入该子树。元素已分离且没有父元素时返回 [constant OK]，文档根元素或无效句柄返回"
+" [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Returns whether the element belongs to the current document tree. A detached or invalid element "
+"returns [code]false[/code]. The result updates immediately when the tree changes."
+msgstr "返回元素是否属于当前文档树。已分离或无效的元素返回 [code]false[/code]。树发生变化时立即更新结果。"

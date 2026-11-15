@@ -20,6 +20,11 @@ namespace litehtml {
 		std::vector<Option> options;
 	};
 
+	bool supports_image_mime(const string& p_type) {
+		const string mime = lowcase(trim(p_type.substr(0, p_type.find(';'))));
+		return is_one_of(mime, "image/png", "image/jpeg", "image/webp", "image/svg+xml");
+	}
+
 	namespace {
 		std::optional<image> parse_image(const css_token& p_token, document_container* p_container, bool p_allow_set, int p_depth);
 
@@ -65,11 +70,6 @@ namespace litehtml {
 				return std::nullopt;
 			}
 			return value;
-		}
-
-		bool supports_image_mime(const string& p_type) {
-			const string mime = lowcase(trim(p_type.substr(0, p_type.find(';'))));
-			return is_one_of(mime, "image/png", "image/jpeg", "image/webp", "image/svg+xml");
 		}
 
 		std::optional<image> parse_image_set(const css_token& p_token, document_container* p_container, int p_depth) {

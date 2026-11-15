@@ -1,5 +1,6 @@
 #include "html_element.h"
 
+#include "formats/html/html_dom.h"
 #include "formats/html/html_layout.h"
 
 #include <godot_cpp/templates/hash_set.hpp>
@@ -86,6 +87,7 @@ namespace {
 
 void HTMLElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLElement::is_valid);
+	ClassDB::bind_method(D_METHOD("is_connected"), &HTMLElement::is_connected);
 	ClassDB::bind_method(D_METHOD("get_tag_name"), &HTMLElement::get_tag_name);
 	ClassDB::bind_method(D_METHOD("has_attribute", "name"), &HTMLElement::has_attribute);
 	ClassDB::bind_method(D_METHOD("get_attribute", "name", "default_value"), &HTMLElement::get_attribute, DEFVAL(String()));
@@ -112,12 +114,17 @@ void HTMLElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_inner_html"), &HTMLElement::get_inner_html);
 	ClassDB::bind_method(D_METHOD("set_inner_html", "html"), &HTMLElement::set_inner_html);
 	ClassDB::bind_method(D_METHOD("append_child", "child"), &HTMLElement::append_child);
+	ClassDB::bind_method(D_METHOD("detach"), &HTMLElement::detach);
 	ClassDB::bind_method(D_METHOD("remove"), &HTMLElement::remove);
 }
 
 HTMLLayout* HTMLElement::get_owner() const {
 	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(layout_id));
 	return layout && layout->parse_version == parse_version ? layout : nullptr;
+}
+
+docrender::HTMLDOM& HTMLElement::get_dom() const {
+	return get_owner()->get_dom();
 }
 
 std::shared_ptr<litehtml::element> HTMLElement::lock_element() const {
@@ -128,6 +135,11 @@ bool HTMLElement::is_valid() const {
 	return get_owner() && !element.expired();
 }
 
+bool HTMLElement::is_connected() const {
+	const auto node = lock_element();
+	return node && get_dom().is_element_connected(*node);
+}
+
 String HTMLElement::get_tag_name() const {
 	const auto node = lock_element();
 	return node ? String::utf8(node->get_tagName()) : String();
@@ -136,13 +148,13 @@ String HTMLElement::get_tag_name() const {
 bool HTMLElement::has_attribute(const String& p_name) const {
 	const auto node = lock_element();
 	const CharString name = normalize_attribute_name(p_name);
-	return node && name.length() > 0 && get_owner()->get_element_attribute(*node, name.get_data());
+	return node && name.length() > 0 && get_dom().get_element_attribute(*node, name.get_data());
 }
 
 String HTMLElement::get_attribute(const String& p_name, const String& p_default_value) const {
 	const auto node = lock_element();
 	const CharString name = normalize_attribute_name(p_name);
-	const char* value = node && name.length() > 0 ? get_owner()->get_element_attribute(*node, name.get_data()) : nullptr;
+	const char* value = node && name.length() > 0 ? get_dom().get_element_attribute(*node, name.get_data()) : nullptr;
 	return value ? String::utf8(value) : p_default_value;
 }
 
@@ -158,7 +170,7 @@ String HTMLElement::get_text_content() const {
 
 Ref<HTMLElement> HTMLElement::get_parent() const {
 	if (const auto node = lock_element()) {
-		return get_owner()->make_element(node->parent());
+		return get_dom().make_element(node->parent());
 	}
 	return {};
 }
@@ -166,9 +178,9 @@ Ref<HTMLElement> HTMLElement::get_parent() const {
 TypedArray<HTMLElement> HTMLElement::get_children() const {
 	TypedArray<HTMLElement> children;
 	if (const auto node = lock_element()) {
-		HTMLLayout* layout = get_owner();
+		auto& dom = get_dom();
 		for (const auto& child : node->children()) {
-			const Ref<HTMLElement> wrapped = layout->make_element(child);
+			const Ref<HTMLElement> wrapped = dom.make_element(child);
 			if (wrapped.is_valid()) {
 				children.append(wrapped);
 			}
@@ -205,35 +217,33 @@ TypedArray<Dictionary> HTMLElement::get_css_diagnostics() const {
 
 Ref<HTMLElement> HTMLElement::query_selector(const String& p_selector) const {
 	if (const auto node = lock_element()) {
-		const auto matches = get_owner()->select_elements(p_selector, HTMLLayout::SelectorQuery::FIRST, node);
-		return matches.is_empty() ? Ref<HTMLElement>() : Ref<HTMLElement>(matches[0]);
+		return get_dom().query_selector(p_selector, node);
 	}
 	return {};
 }
 
 TypedArray<HTMLElement> HTMLElement::query_selector_all(const String& p_selector) const {
 	if (const auto node = lock_element()) {
-		return get_owner()->select_elements(p_selector, HTMLLayout::SelectorQuery::ALL, node);
+		return get_dom().query_selector_all(p_selector, node);
 	}
 	return {};
 }
 
 bool HTMLElement::matches(const String& p_selector) const {
 	const auto node = lock_element();
-	return node && !get_owner()->select_elements(p_selector, HTMLLayout::SelectorQuery::SELF, node).is_empty();
+	return node && get_dom().matches(p_selector, node);
 }
 
 Ref<HTMLElement> HTMLElement::closest(const String& p_selector) const {
 	if (const auto node = lock_element()) {
-		const auto matches = get_owner()->select_elements(p_selector, HTMLLayout::SelectorQuery::CLOSEST, node);
-		return matches.is_empty() ? Ref<HTMLElement>() : Ref<HTMLElement>(matches[0]);
+		return get_dom().closest(p_selector, node);
 	}
 	return {};
 }
 
 Dictionary HTMLElement::get_attributes() const {
 	if (const auto node = lock_element()) {
-		return get_owner()->get_element_attributes(*node);
+		return get_dom().get_element_attributes(*node);
 	}
 	return {};
 }
@@ -278,7 +288,7 @@ bool HTMLElement::has_class(const String& p_class_name) const {
 
 Error HTMLElement::set_text_content(const String& p_text) {
 	const auto node = lock_element();
-	return node ? get_owner()->replace_children(node, p_text, false) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().replace_children(node, p_text, false) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::set_attribute(const String& p_name, const String& p_value) {
@@ -289,14 +299,14 @@ Error HTMLElement::set_attribute(const String& p_name, const String& p_value) {
 		std::string_view(value.get_data(), value.length()).find('\0') != std::string_view::npos) {
 		return ERR_INVALID_PARAMETER;
 	}
-	return get_owner()->edit_attribute(node, name.get_data(), value.get_data());
+	return get_dom().edit_attribute(node, name.get_data(), value.get_data());
 }
 
 Error HTMLElement::remove_attribute(const String& p_name) {
 	const auto node = lock_element();
 	const CharString name = normalize_attribute_name(p_name);
 	return node && is_valid_attribute_name(name) ?
-		get_owner()->edit_attribute(node, name.get_data(), nullptr) : ERR_INVALID_PARAMETER;
+		get_dom().edit_attribute(node, name.get_data(), nullptr) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::add_class(const String& p_class_name) {
@@ -330,12 +340,12 @@ Error HTMLElement::toggle_class(const String& p_class_name, const Variant& p_for
 
 String HTMLElement::get_inner_html() const {
 	const auto node = lock_element();
-	return node ? get_owner()->serialize_children(*node) : String();
+	return node ? get_dom().serialize_children(*node) : String();
 }
 
 Error HTMLElement::set_inner_html(const String& p_html) {
 	const auto node = lock_element();
-	return node ? get_owner()->replace_children(node, p_html, true) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().replace_children(node, p_html, true) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::append_child(const Ref<HTMLElement>& p_child) {
@@ -345,10 +355,15 @@ Error HTMLElement::append_child(const Ref<HTMLElement>& p_child) {
 	if (!parent || !child || p_child->get_owner() != owner) {
 		return ERR_INVALID_PARAMETER;
 	}
-	return owner->move_element(child, parent);
+	return get_dom().move_element(child, parent);
+}
+
+Error HTMLElement::detach() {
+	const auto node = lock_element();
+	return node ? get_dom().detach_element(node) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::remove() {
 	const auto node = lock_element();
-	return node ? get_owner()->move_element(node, {}) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().move_element(node, {}) : ERR_INVALID_PARAMETER;
 }

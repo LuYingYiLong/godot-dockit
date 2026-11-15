@@ -15,6 +15,13 @@
 		Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space.
 	</description>
 	<methods>
+		<method name="activate_element">
+			<return type="bool" />
+			<param index="0" name="element" type="HTMLElement" />
+			<description>
+				Activates a visible link with a nonempty [code]href[/code] or an enabled [code]type="button"[/code] button in this label. A fragment link scrolls to its target before emitting [signal link_pressed]. A button emits [signal button_pressed]. Returns [code]true[/code] when activation is dispatched and [code]false[/code] when the element cannot be activated.
+			</description>
+		</method>
 		<method name="focus_element">
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
@@ -161,7 +168,7 @@
 		<signal name="button_pressed">
 			<param index="0" name="element" type="HTMLElement" />
 			<description>
-				Emitted when an enabled [code]&lt;button type="button"&gt;[/code] is activated by a mouse click, Enter, or Space. Pressing and releasing over different descendants of the same button can activate it. The signal passes the button element.
+				Emitted when an enabled [code]&lt;button type="button"&gt;[/code] is activated by a mouse click, Enter, Space, or [method activate_element]. Pressing and releasing over different descendants of the same button can activate it. The signal passes an [HTMLButtonElement] handle.
 			</description>
 		</signal>
 		<signal name="element_clicked">
@@ -190,7 +197,7 @@
 		<signal name="link_pressed">
 			<param index="0" name="uri" type="String" />
 			<description>
-				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling, or when Enter activates a focused link. [param uri] is the link's original [code]href[/code].
+				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling, when Enter activates a focused link, or when [method activate_element] activates a link. [param uri] is the link's original nonempty [code]href[/code].
 			</description>
 		</signal>
 		<signal name="textarea_changed">

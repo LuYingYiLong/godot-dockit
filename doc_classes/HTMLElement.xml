@@ -30,6 +30,12 @@
 				Returns the closest matching ancestor, starting with this element. [code]:scope[/code] refers to this element. Returns [code]null[/code] if nothing matches.
 			</description>
 		</method>
+		<method name="detach">
+			<return type="int" enum="Error" />
+			<description>
+				Detaches this element from its parent and preserves existing handles to the whole subtree. Any one of those handles keeps the detached subtree available for editing and reinsertion in the same layout. Returns [constant OK] if already detached with no parent, or [constant ERR_INVALID_PARAMETER] for the document root or an invalid handle.
+			</description>
+		</method>
 		<method name="get_attribute" qualifiers="const">
 			<return type="String" />
 			<param index="0" name="name" type="String" />
@@ -116,6 +122,12 @@
 			<param index="0" name="class_name" type="String" />
 			<description>
 				Returns whether the element has the given case-sensitive class name.
+			</description>
+		</method>
+		<method name="is_connected" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether the element belongs to the current document tree. A detached or invalid element returns [code]false[/code]. The result updates immediately when the tree changes.
 			</description>
 		</method>
 		<method name="is_valid" qualifiers="const">

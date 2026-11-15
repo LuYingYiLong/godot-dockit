@@ -327,31 +327,17 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	const ObjectID label_id(label->get_instance_id());
 	if (link_clicked) {
-		activate_link(hit.uri);
+		label->activate_link(hit.uri);
 	}
 	if (button_clicked) {
-		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id));
-			target && target->canvas) {
-			target->canvas->activate_button(target_button);
+		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
+			target->activate_element(target_button);
 		}
 	}
 	if (element_clicked && element->is_valid()) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);
 		}
-	}
-}
-
-void HTMLLabelCanvas::activate_link(const String& p_uri) {
-	if (p_uri.begins_with("#")) {
-		label->scroll_to_anchor(docrender::decode_html_fragment(p_uri.substr(1)));
-	}
-	label->emit_signal("link_pressed", p_uri);
-}
-
-void HTMLLabelCanvas::activate_button(const Ref<HTMLElement>& p_button) {
-	if (label->is_visible_in_tree() && label->layout->is_enabled_button(p_button)) {
-		label->emit_signal("button_pressed", p_button);
 	}
 }
 
@@ -433,11 +419,13 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 		if (handle_input_key(p_key)) return true;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && p_key.is_pressed() && !p_key.is_echo() &&
-		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() &&
-		focused_element.is_valid() && focused_element->get_tag_name() == "a" && focused_element->has_attribute("href")) {
-		label->accept_event();
-		activate_link(focused_element->get_attribute("href"));
-		return true;
+		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed()) {
+		const String uri = label->layout->get_activatable_link_uri(focused_element);
+		if (!uri.is_empty()) {
+			label->accept_event();
+			label->activate_link(uri);
+			return true;
+		}
 	}
 	if (key != KEY_ENTER && key != KEY_KP_ENTER && key != KEY_SPACE) {
 		return false;
@@ -460,14 +448,14 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 		set_element_pseudo(focused_element, "active", true);
 		if (key != KEY_SPACE) {
 			const Ref<HTMLElement> target = focused_element;
-			activate_button(target);
+			label->activate_element(target);
 		}
 	}
 	else if (!p_key.is_pressed() && activation_key == key) {
 		const Ref<HTMLElement> target = focused_element;
 		cancel_key_press();
 		if (key == KEY_SPACE && !p_key.is_canceled()) {
-			activate_button(target);
+			label->activate_element(target);
 		}
 	}
 	return true;
@@ -632,6 +620,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_element_at", "position"), &HTMLLabel::get_element_at);
 	ClassDB::bind_method(D_METHOD("get_focused_element"), &HTMLLabel::get_focused_element);
 	ClassDB::bind_method(D_METHOD("focus_element", "element"), &HTMLLabel::focus_element);
+	ClassDB::bind_method(D_METHOD("activate_element", "element"), &HTMLLabel::activate_element);
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
@@ -875,6 +864,25 @@ bool HTMLLabel::focus_element(const Ref<HTMLElement>& p_element) {
 	if (!has_focus()) return false;
 	canvas->set_focused_element(p_element, true);
 	return true;
+}
+
+bool HTMLLabel::activate_element(const Ref<HTMLElement>& p_element) {
+	if (source_dirty || !is_visible_in_tree()) return false;
+	const String uri = layout->get_activatable_link_uri(p_element);
+	if (!uri.is_empty()) {
+		activate_link(uri);
+		return true;
+	}
+	if (!layout->is_enabled_button(p_element)) return false;
+	emit_signal("button_pressed", p_element);
+	return true;
+}
+
+void HTMLLabel::activate_link(const String& p_uri) {
+	if (p_uri.begins_with("#")) {
+		scroll_to_anchor(docrender::decode_html_fragment(p_uri.substr(1)));
+	}
+	emit_signal("link_pressed", p_uri);
 }
 
 bool HTMLLabel::scroll_to_element(const Ref<HTMLElement>& p_element, float p_align) {

@@ -14,6 +14,8 @@ namespace litehtml {
 	class element;
 }
 
+namespace docrender { class HTMLDOM; }
+
 class HTMLLayout;
 class HTMLInputElement;
 
@@ -21,6 +23,8 @@ class HTMLElement : public godot::RefCounted {
 	GDCLASS(HTMLElement, godot::RefCounted)
 
 	friend class HTMLLayout;
+	friend class docrender::HTMLDOM;
+	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 
@@ -31,6 +35,7 @@ class HTMLElement : public godot::RefCounted {
 	std::shared_ptr<DetachedTree> detached_tree;
 
 	HTMLLayout* get_owner() const;
+	docrender::HTMLDOM& get_dom() const;
 	std::shared_ptr<litehtml::element> lock_element() const;
 
 protected:
@@ -38,6 +43,7 @@ protected:
 
 public:
 	bool is_valid() const;															// 检查句柄是否仍指向原布局中的元素
+	bool is_connected() const;														// 检查有效元素是否连接到当前文档树
 	godot::String get_tag_name() const;												// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;							// 检查指定属性是否存在，空属性也视为存在
 	godot::String get_attribute(
@@ -81,5 +87,6 @@ public:
 	godot::String get_inner_html() const;											// 将当前元素的子内容序列化为 HTML 片段
 	godot::Error set_inner_html(const godot::String& p_html);						// 将 HTML 片段解析为新的子内容并使原有子元素的句柄失效
 	godot::Error append_child(const godot::Ref<HTMLElement>& p_child);				// 将同一布局中的新元素或已有元素追加到当前元素的子元素末尾
+	godot::Error detach();															// 从父元素分离当前子树并保留已有句柄
 	godot::Error remove();															// 从父元素中移除当前元素，使该元素及其后代的句柄失效
 };

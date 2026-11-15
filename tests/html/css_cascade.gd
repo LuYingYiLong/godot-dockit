@@ -329,6 +329,8 @@ func _run() -> void:
 	_check_css_features()
 	_check_selector_semantics()
 	_check_element_subclasses()
+	_check_detached_subtrees()
+	await _check_dom_layout_isolation()
 	_check_layers()
 	_check_box_and_transform_functions()
 	_check_math_functions()
@@ -383,6 +385,10 @@ func _run() -> void:
 	_check_hyphenation_last_line()
 	await _check_automatic_hyphenation()
 	await _check_controls()
+	await _check_element_activation()
+	_check_image_element()
+	await _check_responsive_images()
+	await _check_image_alt_text()
 	await _check_author_hover()
 	await _check_focus_within()
 	await _check_dom_input()
@@ -748,6 +754,118 @@ func _check_element_subclasses() -> void:
 		"Hit testing after reflow returns the same typed heading handle")
 	_check(layout.parse("<h3>Replacement</h3>") == OK and not heading.is_valid() and heading.get_level() == 0 and
 		layout.query_selector("h3") != heading, "Reparsing invalidates the old heading handle")
+
+
+func _check_detached_subtrees() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><body><div id="panel" data-mode="original"><p id="row">
+		<span id="leaf">Before</span></p></div><div id="target"></div></body>""") == OK,
+		"Parse the detached subtree fixture")
+	var document_root: HTMLElement = layout.query_selector("html")
+	var panel: HTMLElement = layout.get_element_by_id("panel")
+	var row: HTMLElement = layout.get_element_by_id("row")
+	var leaf: HTMLElement = layout.get_element_by_id("leaf")
+	var target: HTMLElement = layout.get_element_by_id("target")
+	if document_root == null or panel == null or row == null or leaf == null or target == null:
+		_check(false, "Query the detached subtree fixture")
+		return
+	_check(document_root.is_connected() and leaf.is_connected() and document_root.detach() == ERR_INVALID_PARAMETER,
+		"Connection reflects the parsed tree before layout, and the document root cannot be detached")
+	var fresh: HTMLElement = layout.create_element("span")
+	_check(fresh != null and fresh.is_valid() and not fresh.is_connected() and fresh.detach() == OK,
+		"A freshly created element has a valid detached handle")
+	_check(layout.layout(Vector2i(300, 150)) == OK and leaf.get_bounding_rect().has_area(), "Lay out the connected subtree")
+	_check(panel.detach() == OK and panel.detach() == OK and panel.get_parent() == null and
+		not panel.is_connected() and not row.is_connected() and not leaf.is_connected() and
+		layout.get_element_by_id("leaf") == null, "Detach updates tree membership immediately and can be repeated")
+	_check(panel.query_selector("#leaf") == leaf and panel.query_selector("p") == row and leaf.get_parent() == row,
+		"Detached subtree queries reuse the existing descendant handles")
+	_check(panel.set_attribute("data-mode", "edited") == OK and leaf.set_text_content("After") == OK and
+		layout.layout(Vector2i(300, 150)) == OK and not leaf.get_bounding_rect().has_area(),
+		"Edit detached content while its geometry stays out of the layout")
+	_check(row.detach() == OK and panel.query_selector("#leaf") == null and row.query_selector("#leaf") == leaf and
+		panel.append_child(row) == OK and panel.query_selector("p") == row and not leaf.is_connected(),
+		"Splitting and merging detached trees preserves descendant identity")
+	_check(target.append_child(panel) == OK and layout.get_element_by_id("panel") == panel and
+		layout.get_element_by_id("row") == row and layout.get_element_by_id("leaf") == leaf,
+		"The original root and all live descendant handles survive reinsertion")
+	_check(panel.detach() == OK, "Detach the same tree again")
+
+	panel = null
+	row = null
+	var recovered_row: HTMLElement = leaf.get_parent()
+	var recovered_panel: HTMLElement = recovered_row.get_parent() if recovered_row != null else null
+	_check(recovered_panel != null and recovered_panel.get_attribute("data-mode") == "edited" and
+		leaf.get_text_content() == "After", "A descendant handle alone retains the detached root and its edits")
+	if recovered_panel == null:
+		return
+	_check(target.append_child(recovered_panel) == OK and recovered_panel.is_connected() and
+		recovered_row.is_connected() and leaf.is_connected() and layout.get_element_by_id("panel") == recovered_panel and
+		layout.get_element_by_id("row") == recovered_row and layout.get_element_by_id("leaf") == leaf and
+		layout.layout(Vector2i(300, 150)) == OK and leaf.get_bounding_rect().has_area(),
+		"Reinsertion keeps the live handles and restores geometry")
+	_check(recovered_panel.remove() == OK and not recovered_panel.is_valid() and not recovered_row.is_valid() and
+		not leaf.is_valid() and not leaf.is_connected() and leaf.detach() == ERR_INVALID_PARAMETER,
+		"Legacy remove still invalidates the subtree and invalid handles reject detach")
+	layout.clear()
+	_check(not fresh.is_valid() and not fresh.is_connected(), "Clearing the layout invalidates detached handles too")
+
+
+func _check_dom_layout_isolation() -> void:
+	var document: HTMLDocument = HTMLDocument.new()
+	document.text = """<!doctype html><body><div style="height:1px"></div>
+		<div id="shared" style="width:40px;height:10px"><span id="leaf">Original</span></div></body>"""
+	var first: HTMLLayout = document.create_layout()
+	var second: HTMLLayout = document.create_layout()
+	var viewport_size: Vector2i = Vector2i(250, 100)
+	_check(first.layout(viewport_size) == OK and second.layout(viewport_size) == OK, "Lay out two views of one HTMLDocument")
+	var first_body: HTMLElement = first.query_selector("body")
+	var first_node: HTMLElement = first.get_element_by_id("shared")
+	var first_leaf: HTMLElement = first.get_element_by_id("leaf")
+	var second_body: HTMLElement = second.query_selector("body")
+	var second_node: HTMLElement = second.get_element_by_id("shared")
+	if first_body == null or first_node == null or first_leaf == null or second_body == null or second_node == null:
+		_check(false, "Query both views of the shared document")
+		return
+	_check(first_node != second_node and first_node.detach() == OK and first.layout(viewport_size) == OK,
+		"Detach an element in one view and settle its layout")
+	_check(first_node.set_attribute("style", "width:60px;height:10px") == OK and
+		first_leaf.set_text_content("Edited") == OK and first_body.get_bounding_rect().has_area(),
+		"Detached-only edits keep the connected layout current")
+	_check(second_body.append_child(first_node) == ERR_INVALID_PARAMETER and
+		second_node.get_text_content() == "Original" and is_equal_approx(second_node.get_bounding_rect().size.x, 40.0),
+		"Cross-layout moves are rejected and the other view retains its content and geometry")
+	_check(first_body.append_child(first_node) == OK and first.get_element_by_id("shared") == first_node and
+		first.get_element_by_id("leaf") == first_leaf, "Reinsertion reuses the original handles")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(first_node.get_bounding_rect().size.x, 60.0) and first_leaf.get_text_content() == "Edited" and
+		"Original" in document.text, "The DOM edit schedules reflow for its layout and preserves the resource text")
+	_check(first_body.append_child(first_node) == OK and first_node.get_bounding_rect().has_area(),
+		"Appending the already last child keeps the current geometry")
+
+	var detached: HTMLElement = first.create_element("span")
+	_check(first_node.set_attribute("style", "width:65px;height:10px") == OK, "Queue reflow for the old document")
+	_check(first.parse('<!doctype html><div id="replacement" style="width:70px;height:10px"></div>') == OK and
+		first.layout(viewport_size) == OK, "Replace the document before its queued reflow runs")
+	var replacement: HTMLElement = first.get_element_by_id("replacement")
+	_check(not first_node.is_valid() and not first_leaf.is_valid() and detached != null and not detached.is_valid(),
+		"Reparsing invalidates the old connected and detached handles")
+	if replacement == null:
+		_check(false, "Query the replacement document")
+		return
+	var observed_unlaid: Array[bool] = []
+	var observe_layout: Callable = func() -> void:
+		observed_unlaid.append(not replacement.get_bounding_rect().has_area())
+	observe_layout.call_deferred()
+	_check(replacement.set_attribute("style", "width:90px;height:10px") == OK, "Queue reflow for the replacement document")
+	await process_frame
+	await process_frame
+	_check(observed_unlaid.size() == 1 and observed_unlaid[0],
+		"The old deferred callback leaves the new document pending until its own callback")
+	_check(is_equal_approx(replacement.get_bounding_rect().size.x, 90.0) and
+		is_equal_approx(second_node.get_bounding_rect().size.x, 40.0),
+		"The replacement reflows independently and the shared view stays current")
 
 
 func _check_layers() -> void:
@@ -5894,6 +6012,316 @@ func _check_controls() -> void:
 	viewport.queue_free()
 
 
+func _check_element_activation() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 180)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(320.0, 180.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		a, button { display: block; }
+		#command span { display: inline-block; width: 20px; }
+	</style><a id="anchor" href="#end%2Dpoint"><span id="old_child">Go</span></a>
+	<a id="empty" href="">Empty</a><a id="hidden" href="#end-point" style="display: none">Hidden</a>
+	<button id="command" type="BUTTON"><span id="left">Left</span><span id="right">Right</span></button>
+	<button id="submit" type="submit">Submit</button>
+	<div id="end-point" style="margin-top: 420px; height: 200px"></div>"""
+	viewport.add_child(label)
+	var uris: Array[String] = []
+	var offsets: Array[int] = []
+	var commands: Array[HTMLElement] = []
+	var clicks: Array[HTMLElement] = []
+	label.link_pressed.connect(func(uri: String) -> void:
+		uris.append(uri)
+		offsets.append(label.get_scroll_offset().y)
+	)
+	label.button_pressed.connect(func(element: HTMLElement) -> void: commands.append(element))
+	label.element_clicked.connect(func(element: HTMLElement) -> void: clicks.append(element))
+	await process_frame
+	await process_frame
+
+	var anchor: HTMLAnchorElement = label.get_element_by_id("anchor") as HTMLAnchorElement
+	var empty: HTMLAnchorElement = label.get_element_by_id("empty") as HTMLAnchorElement
+	var button: HTMLButtonElement = label.get_element_by_id("command") as HTMLButtonElement
+	var submit: HTMLButtonElement = label.get_element_by_id("submit") as HTMLButtonElement
+	_check(anchor != null and empty != null and button != null and submit != null, "Queries return typed anchors and buttons")
+	if anchor == null or empty == null or button == null or submit == null:
+		viewport.queue_free()
+		return
+	var old_child: HTMLElement = anchor.get_children()[0]
+	_check(anchor.text == "Go" and anchor.href == "#end%2Dpoint", "Anchor properties read its text and raw URI")
+	anchor.text = "Updated"
+	button.name = "action"
+	button.value = "open"
+	await process_frame
+	await process_frame
+	_check(anchor.text == "Updated" and not old_child.is_valid() and button.type == "BUTTON" and
+		button.get_attribute("name") == "action" and button.get_attribute("value") == "open",
+		"Typed setters share the existing DOM mutation path")
+	_check(label.activate_element(anchor) and uris == ["#end%2Dpoint"] and offsets.size() == 1 and offsets[0] > 0,
+		"Script activation scrolls to the decoded fragment before emitting the original URI")
+	_check(label.activate_element(button) and commands == [button] and clicks.is_empty(),
+		"Script activation emits the existing typed button instance and leaves pointer clicks alone")
+	label.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	await process_frame
+
+	var hidden: HTMLElement = label.get_element_by_id("hidden")
+	var detached: HTMLAnchorElement = label.create_element("a") as HTMLAnchorElement
+	if detached != null:
+		detached.href = "#end-point"
+	var foreign: HTMLLayout = HTMLLayout.new()
+	foreign.parse('<a href="foreign">Foreign</a>')
+	foreign.layout(Vector2i(120, 100))
+	_check(detached != null and not label.activate_element(detached) and not label.activate_element(hidden) and
+		not label.activate_element(submit) and not label.activate_element(foreign.query_selector("a")),
+		"Activation rejects detached, hidden, unsupported and foreign elements")
+	_check(not label.activate_element(empty) and label.focus_element(empty), "An empty href can receive focus but cannot activate")
+	_send_dom_key(viewport, KEY_ENTER)
+	var empty_center: Vector2 = empty.get_bounding_rect().get_center()
+	_drag_pointer(viewport, empty_center, empty_center)
+	_check(uris == ["#end%2Dpoint"], "Keyboard and mouse also skip empty href")
+
+	empty.href = "guide.html"
+	await process_frame
+	await process_frame
+	_check(label.focus_element(empty), "A link with a relative URI retains its focus behavior")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(uris == ["#end%2Dpoint", "guide.html"], "Enter emits the raw relative URI")
+	empty.remove_attribute("href")
+	button.disabled = true
+	_check(button.is_disabled() and button.has_attribute("disabled") and not label.activate_element(button),
+		"An explicitly disabled button cannot activate")
+	await process_frame
+	await process_frame
+	_check(button.matches(":disabled") and not label.focus_element(button), "The typed disabled setter updates pseudo-classes and focus")
+	button.disabled = false
+	await process_frame
+	await process_frame
+	_check(not button.has_attribute("disabled") and button.matches(":enabled") and label.focus_element(button),
+		"Enabling through the typed property restores the current button")
+	_send_dom_key(viewport, KEY_SPACE)
+	_send_dom_key(viewport, KEY_SPACE, 0, false, false)
+	var left: Rect2 = _label_rect(label, "left")
+	var right: Rect2 = _label_rect(label, "right")
+	_drag_pointer(viewport, Vector2(left.end.x - 1.0, left.get_center().y), Vector2(right.position.x + 1.0, right.get_center().y))
+	_check(commands == [button, button, button], "Space and a click across button descendants each activate the same button once")
+	viewport.queue_free()
+
+
+func _check_image_element() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><img id="sample" src="orientation-6.png" alt="Example" width="80" height="30"
+		style="width: 50px; height: 40px; image-resolution: 2dppx">"""
+	_check(layout.parse(source) == OK, "Parse the typed image fixture")
+	var image: HTMLImageElement = layout.get_element_by_id("sample") as HTMLImageElement
+	_check(image != null, "Image queries return the specialized handle")
+	if image == null:
+		return
+	_check(image.src == "orientation-6.png" and image.alt == "Example" and image.width_hint == 80 and image.height_hint == 30,
+		"Image properties read the original source and dimension hints")
+	_check(image.get_intrinsic_size() == Vector2.ZERO and layout.layout(Vector2i(200, 100)) == OK and
+		image.get_intrinsic_size().is_equal_approx(Vector2(10.0, 16.0)) and
+		image.get_bounding_rect().size.is_equal_approx(Vector2(50.0, 40.0)),
+		"Image intrinsic size honors orientation and density while CSS controls the visual size")
+	image.src = "density-live.png#xywh=0,0,20,8"
+	image.alt = "Changed"
+	image.width_hint = 25
+	image.height_hint = 15
+	_check(image.get_intrinsic_size() == Vector2.ZERO and layout.layout(Vector2i(200, 100)) == OK and
+		image.get_intrinsic_size().is_equal_approx(Vector2(10.0, 4.0)) and layout.query_selector("img") == image and
+		image.get_attribute("alt") == "Changed" and image.get_attribute("width") == "25" and image.get_attribute("height") == "15",
+		"Changing source and hints keeps the same handle and reports the cropped image after layout")
+	var detached: HTMLImageElement = layout.create_element("img") as HTMLImageElement
+	_check(detached != null and detached.get_intrinsic_size() == Vector2.ZERO, "Detached images also have typed handles")
+	image.src = "missing-image.png"
+	_check(layout.layout(Vector2i(200, 100)) == OK and image.get_intrinsic_size() == Vector2.ZERO,
+		"A missing image returns zero intrinsic size")
+	layout.clear()
+	_check(not image.is_valid() and image.get_intrinsic_size() == Vector2.ZERO, "An invalidated image handle returns zero size")
+
+
+func _check_responsive_images() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>body { margin: 0; }</style>
+		<img id="width" src="sampling.svg" srcset="orientation-1.png 32w, density-live.png 48w"
+			sizes="(width <= 32px) calc(100vw - 4px), 100vw">
+		<img id="density" src="orientation-1.png" srcset="density-live.png 2x">
+		<img id="fragment" srcset="orientation-1.png#xywh=0,0,12,8, density-live.png 2x">"""
+	_check(layout.parse(html) == OK, "Parse responsive image markup")
+	var width_image: HTMLImageElement = layout.get_element_by_id("width") as HTMLImageElement
+	var density_image: HTMLImageElement = layout.get_element_by_id("density") as HTMLImageElement
+	var fragment: HTMLImageElement = layout.get_element_by_id("fragment") as HTMLImageElement
+	if width_image == null or density_image == null or fragment == null:
+		_check(false, "Responsive images use the specialized handles")
+		return
+	_check(width_image.current_src == "" and "32w" in width_image.srcset and "calc(" in width_image.sizes,
+		"Responsive properties are readable before the first layout")
+	_check(layout.layout(Vector2i(24, 200)) == OK and width_image.current_src == "res://orientation-1.png" and
+		width_image.get_intrinsic_size().is_equal_approx(Vector2(20.0, 12.5)),
+		"Media size and viewport math determine the width descriptor density")
+	_check(layout.layout(Vector2i(28, 200)) == OK and width_image.current_src == "res://orientation-1.png" and
+		width_image.get_intrinsic_size().is_equal_approx(Vector2(24.0, 15.0)),
+		"The same URL reports a new intrinsic size as its size-dependent density changes")
+	_check(layout.layout(Vector2i(40, 200)) == OK and width_image.current_src == "res://density-live.png" and
+		width_image.get_intrinsic_size().is_equal_approx(Vector2(40.0, 20.0)),
+		"Crossing a candidate boundary selects the next width and preserves the image handle")
+	_check(density_image.current_src == "res://orientation-1.png" and
+		density_image.get_intrinsic_size().is_equal_approx(Vector2(32.0, 20.0)),
+		"The src attribute supplies the implicit 1x candidate")
+	_check(fragment.current_src == "res://orientation-1.png#xywh=0,0,12,8" and
+		fragment.get_intrinsic_size().is_equal_approx(Vector2(12.0, 8.0)),
+		"Commas in image fragments survive srcset parsing and current_src")
+	density_image.srcset = "sampling.svg 1e999x, orientation-1.png 1x 2x, density-live.png 2x, orientation-1.png 2x"
+	density_image.remove_attribute("src")
+	width_image.sizes = "auto, 80%, 24px"
+	_check(layout.layout(Vector2i(40, 200)) == OK and density_image.current_src == "res://density-live.png" and
+		density_image.get_intrinsic_size().is_equal_approx(Vector2(24.0, 12.0)) and
+		width_image.current_src == "res://orientation-1.png" and is_equal_approx(width_image.get_intrinsic_size().x, 24.0),
+		"Invalid candidates and sizes recover, with the first equal-density source winning")
+	density_image.srcset = "missing-responsive.png 1x"
+	_check(density_image.current_src == "res://density-live.png", "Pending edits retain the last committed source")
+	_check(layout.layout(Vector2i(40, 200)) == OK and density_image.current_src == "res://missing-responsive.png" and
+		density_image.get_intrinsic_size() == Vector2.ZERO, "A selected missing image retains its URL with zero intrinsic size")
+
+	var document: HTMLDocument = ResourceLoader.load("{RESPONSIVE_PICTURE_UID}") as HTMLDocument
+	_check(document != null and not FileAccess.file_exists("res://responsive/wide.png"),
+		"Load imported responsive HTML without its original image files")
+	if document == null:
+		return
+	var path: String = ResourceUID.get_id_path(ResourceUID.text_to_id("{RESPONSIVE_PICTURE_UID}"))
+	var dependencies: PackedStringArray = ResourceLoader.get_dependencies(path)
+	for name: String in ["small", "medium", "wide"]:
+		_check("res://responsive/%s.png" % name in "\n".join(dependencies), "Imported HTML includes the %s texture dependency" % name)
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(180, 100)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(60.0, 100.0)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var imported: HTMLImageElement = label.get_element_by_id("imported_responsive") as HTMLImageElement
+	_check(imported != null and imported.current_src == "res://responsive/small.png",
+		"Small view uses the img srcset after skipping unsuitable sources")
+	if imported != null:
+		_check_pixel(viewport.get_texture().get_image(), Vector2(3.0, 3.0), Color.RED, "Small imported candidate is painted")
+		label.size.x = 90.0
+		await process_frame
+		await process_frame
+		_check(imported.current_src == "res://responsive/medium.png", "Growing within a media branch selects another width candidate")
+		label.size.x = 140.0
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		_check(imported.current_src == "res://responsive/wide.png" and imported.get_bounding_rect().size == Vector2(60.0, 27.0) and
+			imported.get_intrinsic_size() == Vector2(80.0, 40.0), "Picture media change applies the selected source dimensions")
+		_check_pixel(viewport.get_texture().get_image(), Vector2(3.0, 3.0), Color.BLUE, "Wide imported candidate replaces the drawn texture")
+		var source: HTMLElement = label.query_selector('source[type="image/png"]')
+		_check(source != null and not source.get_bounding_rect().has_area() and
+			source.set_attribute("media", "(min-width: 200px)") == OK, "The picture source is queryable and has no layout box")
+		await process_frame
+		await process_frame
+		_check(imported.current_src == "res://responsive/medium.png" and imported.get_bounding_rect().size.is_equal_approx(Vector2(70.0, 35.0)) and
+			label.get_element_by_id("imported_responsive") == imported, "Editing source media restores the img hints and keeps its handle")
+	viewport.queue_free()
+
+
+func _check_image_alt_text() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 320)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(260.0, 320.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		img { display: block; color: lime; font: 18px/24px monospace; }
+		#swap { width: 104px; }
+		.clip { width: 96px; height: 29px; font-size: 22px; line-height: 27px; }
+		#round { border-radius: 20px; }
+		#zero { width: 48px; height: 24px; }
+	</style>
+	<picture>
+		<source media="(min-width: 280px)" type="image/png" srcset="density-live.png">
+		<img id="swap" src="missing-alt.png" alt="English 中文 words 更多文字 here">
+	</picture>
+	<img id="auto" src="density-live.png#xywh=1000,1000,10,10" alt="Missing 图">
+	<img id="empty" src="missing-alt.png" alt="">
+	<img id="missing" src="missing-alt.png">
+	<img id="square" class="clip" src="missing-alt.png" alt="████████████">
+	<img id="round" class="clip" src="missing-alt.png" alt="████████████">
+	<img id="zero" srcset="density-live.png 48w" sizes="0px" alt="Wrong fallback">"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var swap: HTMLImageElement = label.get_element_by_id("swap") as HTMLImageElement
+	if swap == null:
+		_check(false, "Query the picture fallback handle")
+		viewport.queue_free()
+		return
+	var fallback_box: Rect2 = swap.get_bounding_rect()
+	var image: Image = viewport.get_texture().get_image()
+	_check(swap.get_intrinsic_size() == Vector2.ZERO and swap.current_src == "res://missing-alt.png" and
+		fallback_box.size.x == 104.0 and fallback_box.size.y >= 48.0,
+		"The failed candidate keeps its URL and uses wrapped text for auto height")
+	var ink: Rect2i = _color_bounds(image, Rect2i(fallback_box), Color.LIME)
+	_check(ink.has_area() and ink.size.y > 24, "Mixed English and Chinese alt text is drawn on multiple lines")
+	var auto_box: Rect2 = _label_rect(label, "auto")
+	_check(auto_box.size.x > 24.0 and auto_box.size.y == 24.0 and
+		_color_bounds(image, Rect2i(auto_box), Color.LIME).has_area(),
+		"An invalid crop uses the fallback text for both automatic axes")
+	_check(not _label_rect(label, "empty").has_area() and not _label_rect(label, "missing").has_area(),
+		"Empty and missing alt omit the text fallback")
+	var square: Rect2i = Rect2i(_label_rect(label, "square"))
+	var rounded: Rect2i = Rect2i(_label_rect(label, "round"))
+	var radius: float = float(rounded.size.y) * 0.5
+	var square_corner_ink: int = 0
+	var rounded_corner_ink: int = 0
+	for y: int in range(floori(radius)):
+		for x: int in range(floori(radius)):
+			var point: Vector2i = Vector2i(x, y)
+			if (Vector2(point) + Vector2(0.5, 0.5)).distance_to(Vector2(radius, radius)) <= radius + 1.0:
+				continue
+			if _same_color(image.get_pixelv(square.position + point), Color.LIME):
+				square_corner_ink += 1
+			if _same_color(image.get_pixelv(rounded.position + point), Color.LIME):
+				rounded_corner_ink += 1
+	_check(square.size == Vector2i(96, 29) and rounded.size == square.size and
+		square_corner_ink > 0 and rounded_corner_ink == 0 and _color_bounds(image, rounded, Color.LIME).has_area(),
+		"Fixed-size fallback text obeys the rounded clip (square=%s, rounded=%s, corner ink=%s / %s)" %
+			[square, rounded, square_corner_ink, rounded_corner_ink])
+	_check_pixel(image, _label_rect(label, "zero").get_center(), Color.RED,
+		"A valid zero-slot image with a fixed CSS box still paints its texture")
+
+	label.size.x = 310.0
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var restored_box: Rect2 = swap.get_bounding_rect()
+	image = viewport.get_texture().get_image()
+	_check(label.get_element_by_id("swap") == swap and swap.current_src == "res://density-live.png" and
+		swap.get_intrinsic_size() == Vector2(48.0, 24.0) and restored_box.size == Vector2(104.0, 52.0),
+		"Selecting a usable candidate keeps the handle and restores natural image sizing")
+	_check_pixel(image, restored_box.get_center(), Color.RED, "The valid image replaces the alternative text")
+	_check(not _color_bounds(image, Rect2i(restored_box), Color.LIME).has_area(), "The old alternative text is cleared")
+
+	label.size.x = 260.0
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check(swap.is_valid() and swap.get_intrinsic_size() == Vector2.ZERO and swap.get_bounding_rect() == fallback_box and
+		_color_bounds(image, Rect2i(fallback_box), Color.LIME).has_area(),
+		"Switching back to a failed candidate restores the fallback geometry and text")
+	viewport.queue_free()
+
+
 func _check_author_hover() -> void:
 	var viewport: SubViewport = SubViewport.new()
 	viewport.size = Vector2i(240, 160)
@@ -6177,7 +6605,7 @@ func _check_dom_input() -> void:
 	viewport.queue_free()
 
 
-func _drag_textarea(viewport: SubViewport, from: Vector2, to: Vector2) -> void:
+func _drag_pointer(viewport: SubViewport, from: Vector2, to: Vector2) -> void:
 	var click: InputEventMouseButton = InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.position = from
@@ -6249,7 +6677,7 @@ First &amp; line
 
 	var box: Rect2 = field.get_bounding_rect()
 	var handle: Vector2 = box.end - Vector2(5, 5)
-	_drag_textarea(viewport, handle, handle + Vector2(95, 25))
+	_drag_pointer(viewport, handle, handle + Vector2(95, 25))
 	await process_frame
 	await process_frame
 	_check(is_equal_approx(field.get_bounding_rect().size.x, 160.0) and is_equal_approx(field.get_bounding_rect().size.y, box.size.y),
@@ -6283,7 +6711,7 @@ First &amp; line
 	await process_frame
 	await process_frame
 	var text_point: Vector2 = field.get_bounding_rect().position + Vector2(5, 10)
-	_drag_textarea(viewport, text_point, text_point)
+	_drag_pointer(viewport, text_point, text_point)
 	_check(field.get_selection_start() <= 1, "The top of an unscrolled textarea hits the first line")
 	var wheel: InputEventMouseButton = InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
@@ -6291,7 +6719,7 @@ First &amp; line
 	wheel.factor = 1.0
 	wheel.pressed = true
 	viewport.push_input(wheel)
-	_drag_textarea(viewport, text_point, text_point)
+	_drag_pointer(viewport, text_point, text_point)
 	_check(field.get_selection_start() >= 2 and label.get_scroll_offset() == Vector2i.ZERO,
 		"Wheel scrolling moves the text hit position inside the textarea")
 
@@ -6301,7 +6729,7 @@ First &amp; line
 	var angle: float = deg_to_rad(5.0)
 	box = field.get_bounding_rect()
 	handle = field.get_bounding_rect().get_center() + Vector2(51, 27).rotated(angle)
-	_drag_textarea(viewport, handle, handle + Vector2(18, 20).rotated(angle))
+	_drag_pointer(viewport, handle, handle + Vector2(18, 20).rotated(angle))
 	await process_frame
 	await process_frame
 	var expected_height_gain: float = 20.0 * cos(angle)

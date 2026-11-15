@@ -124,10 +124,19 @@
     <ClCompile Include="src\formats\html\html_document.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_button_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_heading_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_image_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp">
@@ -145,6 +154,9 @@
     <ClCompile Include="src\formats\html\elements\html_input_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_dom.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_layout.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
@@ -154,6 +166,9 @@
     <ClCompile Include="src\formats\html\html_resources.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_image_alt_text.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_image_blend.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
@@ -161,6 +176,9 @@
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_image_metadata.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_image_sources.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_system_fonts.cpp">
@@ -555,7 +573,13 @@
     <ClInclude Include="src\formats\html\html_document.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\html\elements\html_div_element.h">
+    <ClInclude Include="src\formats\html\elements\html_anchor_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_button_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_element_types.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_element.h">
@@ -564,13 +588,10 @@
     <ClInclude Include="src\formats\html\elements\html_heading_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_image_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
-      <Filter>Header Files\formats\html\elements</Filter>
-    </ClInclude>
-    <ClInclude Include="src\formats\html\elements\html_paragraph_element.h">
-      <Filter>Header Files\formats\html\elements</Filter>
-    </ClInclude>
-    <ClInclude Include="src\formats\html\elements\html_span_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_text_control_node.h">
@@ -591,6 +612,9 @@
     <ClInclude Include="src\formats\html\html_font_config.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\html_dom.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\html_layout.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
@@ -606,6 +630,9 @@
     <ClInclude Include="src\formats\html\html_resources.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\html_image_alt_text.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\html_image_blend.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
@@ -613,6 +640,9 @@
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_image_metadata.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_image_sources.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_system_fonts.h">

@@ -17,9 +17,12 @@
 #include <vector>
 
 namespace docrender {
+	class HTMLDOM;
+
 	class LiteHTMLContainer final : public litehtml::document_container {
 	public:
 		LiteHTMLContainer(
+			HTMLDOM& p_dom,
 			const godot::String& p_base_dir,
 			const godot::Dictionary& p_textures,
 			bool p_fit_images,
@@ -33,6 +36,9 @@ namespace docrender {
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);		// 更新文档的字体声明和命名特性并报告是否变化
 		void set_viewport(const godot::Vector2i& p_size);							// 更新排版和媒体查询使用的视口尺寸
+		godot::String resolve_image_source(std::string_view p_source) const {
+			return resources.resolve_image_source(p_source);
+		}
 		void record(
 			litehtml::document& p_document,
 			const godot::Vector2i& p_content_size,
@@ -54,15 +60,6 @@ namespace docrender {
 		void record_css_diagnostic(const RenderGeometry& p_geometry, const godot::Rect2& p_box) {
 			paint.record_css_diagnostic(p_geometry, p_box);
 		}
-		const litehtml::string_map* get_source_attributes(
-			const litehtml::element& p_element
-		) const;																	// 查找元素的原始属性表
-		void set_source_attribute(
-			const litehtml::element::ptr& p_element,
-			const char* p_name,
-			const char* p_value
-		);																			// 更新记录的元素属性，传入空指针时移除该属性
-		void forget_source_attributes(const litehtml::element& p_element);			// 删除指定元素的属性记录
 		void reset_stylesheet_reads();												// 重置本轮外部样式表的读取计数
 		void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
 		void begin_css_diagnostics();												// 清空上一轮样式诊断
@@ -80,11 +77,7 @@ namespace docrender {
 		void draw_automatic_hyphen(const litehtml::position& p_position, const litehtml::element& p_element,
 			litehtml::text_justify_adjustment p_justification);
 	private:
-		struct SourceAttributes {
-			std::weak_ptr<litehtml::element> element;
-			litehtml::string_map values;
-		};
-
+		HTMLDOM& dom;
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;
 		litehtml::css_source_kind css_source_kind = litehtml::css_source_kind::none;
@@ -94,10 +87,12 @@ namespace docrender {
 		bool fit_images;
 		LiteHTMLFonts fonts;
 		godot::Vector2i viewport_size;
-		godot::HashMap<const litehtml::element*, SourceAttributes> source_attributes;
 		HTMLPaintRecorder paint;
 
 		litehtml::css_source get_css_source(const litehtml::string& p_base, bool p_inline) const override;
+		bool is_image_available(const char* p_source, const char* p_base, litehtml::css_image_orientation p_orientation) override;
+		std::shared_ptr<HTMLImageAltText> shape_image_alt(const char* p_alt, const litehtml::html_tag& p_image) override;
+		void draw_image_alt(HTMLImageAltText& p_text, const litehtml::position& p_box, const litehtml::html_tag& p_image) override;
 		void report_css_diagnostic(const litehtml::css_diagnostic& p_diagnostic, const litehtml::html_tag* p_element) override;
 		litehtml::uint_ptr create_font(const litehtml::font_description& p_description, const litehtml::document*,
 			litehtml::font_metrics* r_metrics) override;

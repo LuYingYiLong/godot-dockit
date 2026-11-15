@@ -2,6 +2,9 @@
 #include "elements/html_textarea_node.h"
 #include "litehtml_container.h"
 
+#include "html_dom.h"
+
+#include "html_image_alt_text.h"
 #include "html_image_blend.h"
 #include "css/css_image_value.h"
 #include "html_markup.h"
@@ -58,12 +61,21 @@ namespace docrender {
 			}
 		};
 
+		class ImageSourceElement final : public html_tag {
+		public:
+			using html_tag::html_tag;
+
+			void compute_styles(bool) override {
+				css_w().set_display(display_none);
+			}
+		};
+
 		class FittedImageRenderItem : public render_item_image {
 		protected:
 			rendered_width _render(pixel_t p_x, pixel_t p_y, const containing_block_context& p_block,
 				formatting_context* p_context, bool p_second_pass) override {
 				const rendered_width rendered = render_item_image::_render(p_x, p_y, p_block, p_context, p_second_pass);
-				if (m_pos.width <= 0.0f || m_pos.height <= 0.0f) {
+				if (m_pos.width <= 0.0f || m_pos.height <= 0.0f || static_cast<const el_image&>(*src_el()).get_alt_text()) {
 					return rendered;
 				}
 				position viewport;
@@ -99,10 +111,10 @@ namespace docrender {
 
 	} // namespace
 
-	LiteHTMLContainer::LiteHTMLContainer(const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
+	LiteHTMLContainer::LiteHTMLContainer(HTMLDOM& p_dom, const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
 		const HTMLFontConfig& p_fonts, const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts,
 		const Dictionary& p_image_dpi, const Dictionary& p_image_orientations) :
-		resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations),
+		dom(p_dom), resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations),
 		fit_images(p_fit_images), fonts(p_fonts, resources) {
 	}
 
@@ -117,7 +129,7 @@ namespace docrender {
 			// The inner call selects litehtml's normal element type. The outer call applies the attributes.
 			const auto element = p_document->create_element(p_tag, {});
 			if (element) {
-				source_attributes.insert(element.get(), SourceAttributes{ element, p_attributes });
+				dom.remember_source_attributes(element, p_attributes);
 			}
 			return element;
 		}
@@ -132,30 +144,8 @@ namespace docrender {
 		if (tag == "link") {
 			return std::make_shared<StylesheetLinkElement>(p_document);
 		}
+		if (tag == "source") return std::make_shared<ImageSourceElement>(p_document);
 		return fit_images && tag == "img" ? std::make_shared<FittedImageElement>(p_document) : nullptr;
-	}
-
-	const litehtml::string_map* LiteHTMLContainer::get_source_attributes(const litehtml::element& p_element) const {
-		const auto* source = source_attributes.getptr(&p_element);
-		return source && !source->element.expired() ? &source->values : nullptr;
-	}
-
-	void LiteHTMLContainer::set_source_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value) {
-		auto* source = source_attributes.getptr(p_element.get());
-		if (p_value) {
-			if (!source || source->element.expired()) {
-				source_attributes.insert(p_element.get(), SourceAttributes{ p_element, {} });
-				source = source_attributes.getptr(p_element.get());
-			}
-			source->values[p_name] = p_value;
-		}
-		else if (source) {
-			source->values.erase(p_name);
-		}
-	}
-
-	void LiteHTMLContainer::forget_source_attributes(const litehtml::element& p_element) {
-		source_attributes.erase(&p_element);
 	}
 
 	void LiteHTMLContainer::reset_stylesheet_reads() {
@@ -359,6 +349,37 @@ namespace docrender {
 
 	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool, css_image_orientation p_orientation) {
 		resources.load_texture(p_src, p_css_base, p_orientation);
+	}
+
+	bool LiteHTMLContainer::is_image_available(const char* p_source, const char* p_base, css_image_orientation p_orientation) {
+		return resources.load_texture(p_source, p_base, p_orientation).is_valid();
+	}
+
+	std::shared_ptr<HTMLImageAltText> LiteHTMLContainer::shape_image_alt(const char* p_alt, const html_tag& p_image) {
+		const auto& style = p_image.css();
+		if (!style.get_font()) return {};
+		std::string text;
+		bool space = false;
+		for (const char ch : std::string_view(p_alt)) {
+			if (std::string_view(" \t\r\n\f").find(ch) != std::string_view::npos) {
+				space = !text.empty();
+				continue;
+			}
+			if (space) text += ' ';
+			space = false;
+			text += ch;
+		}
+		if (text.empty()) return {};
+		auto shaped = fonts.shape_text(style.get_font(), String::utf8(text.c_str()));
+		if (!shaped.is_valid()) return {};
+		return std::make_shared<HTMLImageAltText>(std::move(shaped), style.line_height().computed_value,
+			style.get_text_wrap_mode() == text_wrap_wrap);
+	}
+
+	void LiteHTMLContainer::draw_image_alt(HTMLImageAltText& p_text, const position& p_box, const html_tag& p_image) {
+		const auto& style = p_image.css();
+		paint.draw_image_alt(Rect2(p_box.x, p_box.y, p_box.width, p_box.height), p_text.layout(p_box.width),
+			p_text.get_line_height(), style.get_color(), style.get_text_align());
 	}
 
 	void LiteHTMLContainer::get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size,

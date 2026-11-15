@@ -1,6 +1,8 @@
+#include "formats/html/html_image_alt_text.h"
 #include "formats/html/layout/grid/litehtml_render_grid.h"
 #include "render_image.h"
 #include "document.h"
+#include "el_image.h"
 #include "types.h"
 
 litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t y,
@@ -11,6 +13,23 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
 	containing_block_context self_size = calculate_containing_block_context(containing_block_size);
 
     m_pos.move_to(x, y);
+
+	if (auto* alt = static_cast<const el_image&>(*src_el()).get_alt_text())
+	{
+		pixel_t measure_width = alt->get_width();
+		if (!(containing_block_size.size_mode & (containing_block_context::size_mode_intrinsic_inline_probe |
+			containing_block_context::size_mode_grid_measure_width)))
+		{
+			const auto available = std::max<pixel_t>(0, parent_width - content_offset_width());
+			measure_width = std::min(measure_width, available);
+		}
+		const auto width = size_grid_image(*this, self_size, {measure_width, 0}, false).width;
+		const auto height = alt->layout(width).size() * alt->get_line_height();
+		m_pos = size_grid_image(*this, self_size, {measure_width, height}, false);
+		m_pos.move_to(x + content_offset_left(), y + content_offset_top());
+		src_el()->css_w().line_height_w().computed_value = this->height();
+		return {this->width(), this->width()};
+	}
 
     document::ptr doc = src_el()->get_document();
 

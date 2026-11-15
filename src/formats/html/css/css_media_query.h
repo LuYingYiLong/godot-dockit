@@ -106,6 +106,7 @@ namespace litehtml
 	};
 	media_query_list parse_media_query_list(const css_token_vector& tokens, shared_ptr<document> doc);
 	media_query_list parse_media_query_list(const string& str, shared_ptr<document> doc);
+	bool matches_media_condition(const css_token_vector& tokens, const shared_ptr<document>& doc, const media_features& features);
 
 
 	class media_query_list_list

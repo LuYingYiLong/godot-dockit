@@ -9,10 +9,11 @@
 #include "editor/markdown_preview_editor_plugin.h"
 #include "editor/mermaid_preview_editor_plugin.h"
 #include "editor/script_editor_preview_plugin.h"
-#include "formats/html/elements/html_div_element.h"
+#include "formats/html/elements/html_anchor_element.h"
+#include "formats/html/elements/html_button_element.h"
+#include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
-#include "formats/html/elements/html_paragraph_element.h"
-#include "formats/html/elements/html_span_element.h"
+#include "formats/html/elements/html_image_element.h"
 #include "formats/html/html_canvas_renderer.h"
 #include "formats/html/html_document.h"
 #include "formats/latex/latex_document.h"
@@ -54,8 +55,11 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(DocRenderTexLoader);
 		GDREGISTER_CLASS(MarkdownLabel);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLAnchorElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLButtonElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDivElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHeadingElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLImageElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLInputElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLParagraphElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLSpanElement);

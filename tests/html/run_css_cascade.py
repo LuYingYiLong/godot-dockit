@@ -183,6 +183,22 @@ def main():
             '<!doctype html><img id="imported_density" src="density-import.png" style="image-resolution: from-image">\n',
             encoding="utf-8", newline="\n",
         )
+        responsive_assets = project / "responsive"
+        responsive_assets.mkdir()
+        for name, width, height, color in (
+            ("small", 32, 16, b"\xff\0\0\xff"),
+            ("medium", 64, 32, b"\0\xff\0\xff"),
+            ("wide", 80, 40, b"\0\0\xff\xff"),
+        ):
+            write_rgba_png(responsive_assets / (name + ".png"), width, height, (b"\0" + color * width) * height)
+        (project / "responsive_picture.html").write_text(
+            '<!doctype html><style>body { margin: 0; } img { display:block; }</style><picture>'
+            '<source type="image/avif" srcset="responsive/small.png">'
+            '<source type="image/png" media="(min-width: 100px)" srcset="responsive/wide.png" width="60" height="27">'
+            '<img id="imported_responsive" srcset="responsive/small.png 32w, responsive/medium.png 64w" sizes="50vw">'
+            '<source srcset="responsive/small.png"></picture>\n',
+            encoding="utf-8", newline="\n",
+        )
         (styles / "image-function.css").write_text(
             'body { margin: 0; } #imported_image { width: 8px; height: 8px; '
             'background: image(ltr "../sampling.svg#xywh=1,0,1,1", red) no-repeat; }\n',
@@ -267,6 +283,7 @@ def main():
             "IMAGE_FUNCTION_UID": project / "image_function.html.import",
             "IMAGE_RESOLUTION_UID": project / "image_resolution.html.import",
             "IMAGE_ORIENTATION_UID": project / "image_orientation.html.import",
+            "RESPONSIVE_PICTURE_UID": project / "responsive_picture.html.import",
             "BORDER_IMAGE_UID": project / "border_image.html.import",
         }
         if imported.returncode != 0 or not all(path.is_file() for path in document_fixtures.values()):
@@ -283,6 +300,8 @@ def main():
         (project / "density-import.png").unlink()
         (project / "orientation-import.png").unlink()
         (project / "border-import.png").unlink()
+        for image in responsive_assets.glob("*.png"):
+            image.unlink()
         test = project / "css_cascade.gd"
         script = test.read_text(encoding="utf-8")
         for key, path in document_fixtures.items():

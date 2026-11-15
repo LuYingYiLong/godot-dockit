@@ -197,14 +197,19 @@ bool media_query_list_list::apply_media_features(const media_features& features)
 
 bool parse_media_query(const css_token_vector& tokens, media_query& mquery, document::ptr doc);
 
-// https://drafts.csswg.org/mediaqueries-5/#typedef-media-query-list
-media_query_list parse_media_query_list(const css_token_vector& _tokens, document::ptr doc)
+static css_token_vector normalize_media_tokens(const css_token_vector& tokens)
 {
 	auto keep_whitespace = [](auto left_token, auto right_token)
 	{
 		return is_one_of(left_token.ch, '<', '>') && right_token.ch == '=';
 	};
-	css_token_vector tokens = normalize(_tokens, f_componentize | f_remove_whitespace, keep_whitespace);
+	return normalize(tokens, f_componentize | f_remove_whitespace, keep_whitespace);
+}
+
+// https://drafts.csswg.org/mediaqueries-5/#typedef-media-query-list
+media_query_list parse_media_query_list(const css_token_vector& _tokens, document::ptr doc)
+{
+	const auto tokens = normalize_media_tokens(_tokens);
 	// this needs special treatment because empty media query list evaluates to true
 	if (tokens.empty()) return {};
 
@@ -308,6 +313,15 @@ bool parse_media_condition(const css_token_vector& tokens, int& index, bool _or_
 }
 
 bool parse_media_feature(const css_token& token, media_feature& media_feature, document::ptr doc);
+
+bool matches_media_condition(const css_token_vector& tokens, const document::ptr& doc, const media_features& features)
+{
+	const auto normalized = normalize_media_tokens(tokens);
+	int index = 0;
+	media_condition condition;
+	return parse_media_condition(normalized, index, true, condition, doc) &&
+		index == static_cast<int>(normalized.size()) && condition.check(features) == True;
+}
 
 // https://drafts.csswg.org/mediaqueries-5/#typedef-media-in-parens
 // <media-in-parens> = ( <media-condition> ) | <media-feature> | <general-enclosed>

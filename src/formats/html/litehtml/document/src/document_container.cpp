@@ -2,6 +2,13 @@
 #include "document_container.h"
 #include <cmath>
 
+bool litehtml::document_container::is_image_available(const char* src, const char* baseurl, css_image_orientation orientation)
+{
+	litehtml::size extent{};
+	get_image_size(src, baseurl, extent, orientation);
+	return extent.width > 0 && extent.height > 0;
+}
+
 void litehtml::document_container::get_css_image_size(const char* src, const char* baseurl, double density, litehtml::size& sz, css_image_orientation orientation)
 {
 	sz = {};

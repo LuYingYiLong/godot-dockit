@@ -60,8 +60,6 @@ class HTMLLabelCanvas : public godot::Control {
 	void cancel_key_press();
 	bool handle_dom_key(const godot::InputEventKey& p_key);
 	void handle_selection_key(const godot::InputEventKey& p_key);
-	void activate_button(const godot::Ref<HTMLElement>& p_button);
-	void activate_link(const godot::String& p_uri);
 	void toggle_checkbox(const godot::Ref<HTMLInputElement>& p_input);
 	bool handle_input_key(const godot::InputEventKey& p_key);
 	void change_input(const godot::Ref<HTMLElement>& p_input);
@@ -148,6 +146,7 @@ class HTMLLabel : public godot::Control {
 	void request_hover_check();
 	void queue_interaction();
 	void update_interaction();
+	void activate_link(const godot::String& p_uri);
 
 protected:
 	static void _bind_methods();
@@ -185,6 +184,7 @@ public:
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 将控件局部坐标换算为文档坐标并命中可见元素
 	godot::Ref<HTMLElement> get_focused_element() const; // 返回当前聚焦的 DOM 元素
 	bool focus_element(const godot::Ref<HTMLElement>& p_element); // 将有效元素设为 DOM 焦点
+	bool activate_element(const godot::Ref<HTMLElement>& p_element); // 激活当前控件中可用的链接或按钮
 	bool scroll_to_element(
 		const godot::Ref<HTMLElement>& p_element,
 		float p_align = 0.0f

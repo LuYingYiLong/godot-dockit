@@ -26,12 +26,16 @@ namespace godot {
 	class StyleBox;
 }
 
-namespace docrender { class HTMLTextControlNode; }
+namespace docrender {
+	class HTMLDOM;
+	class HTMLTextControlNode;
+}
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
 
 	friend class HTMLElement;
+	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
@@ -41,27 +45,10 @@ class HTMLLayout : public godot::RefCounted {
 	std::unique_ptr<State> state;
 	uint64_t parse_version = 0;
 
-	enum class SelectorQuery {
-		FIRST,
-		ALL,
-		SELF,
-		CLOSEST
-	};
-
 	bool initialize_document(const godot::CharString& p_html);
+	docrender::HTMLDOM& get_dom() const;
 	godot::Error reflow(const godot::Vector2i& p_viewport_size);
 	void record_paint();
-	godot::Ref<HTMLElement> make_element(const std::shared_ptr<litehtml::element>& p_element) const;
-	std::shared_ptr<HTMLElement::DetachedTree> get_detached_tree(const litehtml::element& p_element) const;
-	godot::TypedArray<HTMLElement> select_elements(const godot::String& p_selector, SelectorQuery p_query,
-		const std::shared_ptr<litehtml::element>& p_scope = {}) const;
-	godot::Dictionary get_element_attributes(const litehtml::element& p_element) const;
-	const char* get_element_attribute(const litehtml::element& p_element, const char* p_name) const;
-	godot::String serialize_children(const litehtml::element& p_element) const;
-	godot::Error edit_attribute(const std::shared_ptr<litehtml::element>& p_element, const char* p_name, const char* p_value);
-	godot::Error replace_children(const std::shared_ptr<litehtml::element>& p_element, const godot::String& p_content, bool p_parse_html);
-	godot::Error move_element(const std::shared_ptr<litehtml::element>& p_element, const std::shared_ptr<litehtml::element>& p_parent);
-	void forget_subtree(const litehtml::element& p_element);
 	void invalidate_styles();
 	void queue_reflow();
 	static void reflow_after_edit(uint64_t p_id, uint64_t p_version);
@@ -70,8 +57,11 @@ class HTMLLayout : public godot::RefCounted {
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position) const;
 	godot::Ref<HTMLElement> wrap_hit_element(std::shared_ptr<litehtml::element> p_element) const;
 	bool update_hover(const std::optional<godot::Vector2>& p_position);
+	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;
+	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
+	godot::String get_image_current_src(const HTMLElement& p_element) const;
 	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_focus_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	std::vector<godot::Ref<HTMLElement>> get_tab_elements(bool& r_has_focusable_elements) const;

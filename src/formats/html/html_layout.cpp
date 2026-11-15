@@ -1,14 +1,11 @@
 #include "html_layout.h"
 
-#include "elements/html_div_element.h"
-#include "elements/html_heading_element.h"
 #include "elements/html_input_node.h"
-#include "elements/html_paragraph_element.h"
-#include "elements/html_span_element.h"
 #include "elements/html_textarea_node.h"
 
-#include "css/css_litehtml_dom.h"
 #include "html_canvas_renderer.h"
+#include "html_dom.h"
+#include "html_image_sources.h"
 #include "html_markup.h"
 #include "layout/html_geometry.h"
 #include "litehtml_container.h"
@@ -19,7 +16,7 @@
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <litehtml/css_parser.h>
-#include <litehtml/css_selector.h>
+#include <litehtml/el_image.h>
 #include <litehtml/render_item.h>
 
 #include <algorithm>
@@ -34,127 +31,32 @@ using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
 using docrender::HTMLTextControlNode;
 using docrender::HTMLCanvasRenderer;
+using docrender::HTMLDOM;
 using docrender::HTMLGeometryIndex;
 using docrender::HTMLHighlight;
 using docrender::LiteHTMLContainer;
 using DocumentAdapter = litehtml::docrender_editor;
 
 namespace {
-	bool is_valid_tag_name(std::string_view p_name) {
-		const auto is_letter = [](unsigned char p_byte) {
-			return (p_byte >= 'A' && p_byte <= 'Z') || (p_byte >= 'a' && p_byte <= 'z');
-		};
-		if (p_name.empty() || !is_letter(p_name.front())) {
-			return false;
-		}
-		return std::all_of(p_name.begin(), p_name.end(), [&](unsigned char p_byte) {
-			return is_letter(p_byte) || (p_byte >= '0' && p_byte <= '9') ||
-				p_byte == '-' || p_byte == '_' || p_byte == '.' || p_byte == ':' || p_byte >= 0x80;
-		});
-	}
-
-	const litehtml::element* tree_root(const litehtml::element& p_element) {
-		const litehtml::element* root = &p_element;
-		for (auto parent = root->parent(); parent; parent = parent->parent()) {
-			root = parent.get();
-		}
-		return root;
-	}
-
-	bool is_void_element(const litehtml::element& p_element) {
-		const std::string_view tag = p_element.get_tagName();
-		static constexpr std::string_view void_tags[] = {
-			"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
-			"source", "track", "wbr", "basefont", "bgsound", "frame", "keygen",
-		};
-		return std::find(std::begin(void_tags), std::end(void_tags), tag) != std::end(void_tags);
-	}
-
-	bool can_contain_elements(const litehtml::element& p_element) {
-		const std::string_view tag = p_element.get_tagName();
-		return !is_void_element(p_element) && tag != "style" && tag != "script" &&
-			tag != "title" && tag != "textarea" && tag != "xmp" && tag != "iframe" &&
-			tag != "noembed" && tag != "noframes" && tag != "plaintext";
-	}
-
-	bool has_raw_text(const litehtml::element& p_element) {
-		const std::string_view tag = p_element.get_tagName();
-		return tag == "style" || tag == "script" || tag == "xmp" || tag == "iframe" ||
-			tag == "noembed" || tag == "noframes" || tag == "plaintext";
-	}
-
-	void append_escaped(std::string& r_html, std::string_view p_value, bool p_attribute) {
-		for (const char byte : p_value) {
-			switch (byte) {
-			case '&': r_html += "&amp;"; break;
-			case '<': r_html += "&lt;"; break;
-			case '>': r_html += "&gt;"; break;
-			case '"': r_html += p_attribute ? "&quot;" : "\""; break;
-			default: r_html += byte; break;
-			}
-		}
-	}
-
-	bool is_html_element(const litehtml::element& p_element) {
-		const auto tag = p_element.tag();
-		return tag != litehtml::empty_id && !litehtml::is_generated_tag(tag) && *p_element.get_tagName();
-	}
-
-	template <typename Element>
-	Ref<HTMLElement> instantiate_element_handle() {
-		Ref<Element> handle;
-		handle.instantiate();
-		return handle;
-	}
-
-	Ref<HTMLElement> create_element_handle(litehtml::string_id p_tag) {
-		switch (p_tag) {
-			case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
-			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
-			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
-			case litehtml::_h1_:
-			case litehtml::_h2_:
-			case litehtml::_h3_:
-			case litehtml::_h4_:
-			case litehtml::_h5_:
-			case litehtml::_h6_: return instantiate_element_handle<HTMLHeadingElement>();
-			case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
-			case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
-			default: return instantiate_element_handle<HTMLElement>();
-		}
-	}
-
 	litehtml::element::ptr find_html_ancestor(litehtml::element::ptr p_element) {
-		while (p_element && !is_html_element(*p_element)) {
+		while (p_element && !HTMLDOM::is_element(*p_element)) {
 			p_element = p_element->parent();
 		}
 		return p_element;
 	}
 
+	const char* get_link_href(const litehtml::element& p_element) {
+		const char* href = p_element.tag() == litehtml::_a_ ? p_element.get_attr("href") : nullptr;
+		return href && *href ? href : nullptr;
+	}
+
 	litehtml::element::ptr find_link_element(litehtml::element::ptr p_element) {
 		for (auto element = std::move(p_element); element; element = element->parent()) {
 			if (element->tag() == litehtml::_a_) {
-				const char* href = element->get_attr("href");
-				return href && *href ? element : nullptr;
+				return get_link_href(*element) ? element : nullptr;
 			}
 		}
 		return {};
-	}
-
-	template <typename Visitor>
-	bool visit_elements(const litehtml::element::ptr& p_node, const Visitor& p_visit) {
-		if (!p_node || litehtml::is_generated_tag(p_node->tag())) {
-			return false;
-		}
-		if (is_html_element(*p_node) && p_visit(p_node)) {
-			return true;
-		}
-		for (const auto& child : p_node->children()) {
-			if (visit_elements(child, p_visit)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	void collect_anchors(const litehtml::element& p_element, const HTMLGeometryIndex& p_geometry, HashMap<String, Rect2>& r_anchors) {
@@ -193,27 +95,14 @@ namespace {
 
 } // namespace
 
-struct HTMLElement::DetachedTree {
-	ObjectID owner;
-	uint64_t version;
-	litehtml::element::ptr root;
-
-	DetachedTree(ObjectID p_owner, uint64_t p_version, const litehtml::element::ptr& p_root) :
-		owner(p_owner), version(p_version), root(p_root) {}
-
-	~DetachedTree();
-};
-
 struct HTMLLayout::State {
 	enum class Update { NONE, LAYOUT, STYLE };
 
 	// Render items are cleared before the document releases its fonts through the container.
+	std::shared_ptr<HTMLDOM> dom;
 	std::unique_ptr<LiteHTMLContainer> container;
-	litehtml::document::ptr document;
 	Ref<HTMLCanvasRenderer> canvas_renderer;
 	HTMLGeometryIndex geometry;
-	HashMap<const litehtml::element*, ObjectID> element_handles;
-	HashMap<const litehtml::element*, std::weak_ptr<HTMLElement::DetachedTree>> detached_trees;
 	HashMap<String, Rect2> anchors;
 	std::vector<std::weak_ptr<litehtml::element>> hovered_elements;
 	Vector2i viewport_size;
@@ -234,19 +123,6 @@ struct HTMLLayout::State {
 		return pending_update == Update::NONE && viewport_size.x > 0;
 	}
 };
-
-HTMLElement::DetachedTree::~DetachedTree() {
-	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(owner));
-	if (root && layout && layout->parse_version == version) {
-		auto& current = *layout->state;
-		current.detached_trees.erase(root.get());
-		visit_elements(root, [&](const litehtml::element::ptr& p_element) {
-			current.element_handles.erase(p_element.get());
-			current.container->forget_source_attributes(*p_element);
-			return false;
-		});
-	}
-}
 
 void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("parse", "html", "base_dir", "stylesheet"), &HTMLLayout::parse,
@@ -275,6 +151,11 @@ void HTMLLayout::_bind_methods() {
 
 HTMLLayout::HTMLLayout() :
 	state(std::make_unique<State>()) {
+	state->dom = std::make_shared<HTMLDOM>([this] { invalidate_styles(); });
+}
+
+HTMLDOM& HTMLLayout::get_dom() const {
+	return *state->dom;
 }
 
 HTMLLayout::~HTMLLayout() {
@@ -296,7 +177,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
 	try {
-		state->container = std::make_unique<LiteHTMLContainer>(*base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
+		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->master_styles = litehtml::master_css;
@@ -321,9 +202,10 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 }
 
 bool HTMLLayout::initialize_document(const CharString& p_html) {
-	state->document = DocumentAdapter::parse(p_html, *state->container, state->master_styles, state->user_styles);
-	state->has_hover_styles = state->document && DocumentAdapter::has_hover_styles(*state->document);
-	return bool(state->document);
+	state->dom->set_document(DocumentAdapter::parse(p_html, *state->container, state->master_styles, state->user_styles),
+		ObjectID(get_instance_id()), parse_version);
+	state->has_hover_styles = state->dom->get_document() && DocumentAdapter::has_hover_styles(*state->dom->get_document());
+	return bool(state->dom->get_document());
 }
 
 Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
@@ -346,7 +228,7 @@ Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
 	if (state->pending_update == Update::NONE) {
 		state->pending_update = Update::LAYOUT;
 	}
-	if (state->document && !state->implicit_empty_document) {
+	if (state->dom->get_document() && !state->implicit_empty_document) {
 		try {
 			const Error result = reflow(p_viewport_size);
 			if (result != OK) {
@@ -368,9 +250,20 @@ Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
 
 Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	using Update = State::Update;
-	const auto& document = state->document;
+	const auto& document = state->dom->get_document();
+	state->container->set_viewport(p_viewport_size);
+	litehtml::media_features image_media;
+	document->container()->get_media_features(image_media);
+	std::vector<litehtml::el_image*> images;
+	bool image_hints_changed = false;
 	std::vector<std::pair<litehtml::element::ptr, Vector2>> scroll_offsets;
-	visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
+	HTMLDOM::visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
+		if (p_element->tag() == litehtml::_img_) {
+			if (auto* image = dynamic_cast<litehtml::el_image*>(p_element.get())) {
+				image_hints_changed |= image->select_source(docrender::select_html_image(*image, *state->container, image_media));
+				images.push_back(image);
+			}
+		}
 		if (const auto* renderers = state->geometry.find_element(p_element.get())) {
 			for (const auto* renderer : *renderers) {
 				const auto& item = renderer->item;
@@ -386,8 +279,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	state->anchors.clear();
 	state->container->clear_recording();
 	state->geometry.clear();
-	state->container->set_viewport(p_viewport_size);
-	if (state->pending_update == Update::STYLE || DocumentAdapter::media_changed(*document)) {
+	if (state->pending_update == Update::STYLE || image_hints_changed || DocumentAdapter::media_changed(*document)) {
 		state->pending_update = Update::STYLE;
 		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
 		state->has_hover_styles = DocumentAdapter::has_hover_styles(*document);
@@ -426,14 +318,15 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size) {
 	const Vector2i size(static_cast<int32_t>(std::max(0.0, width)), static_cast<int32_t>(std::max(0.0, height)));
 	state->content_size = size;
 	record_paint();
+	for (auto* image : images) image->commit_source();
 	return OK;
 }
 
 void HTMLLayout::record_paint() {
 	state->input_paint_pending = false;
 	state->anchors.clear();
-	collect_anchors(*state->document->root(), state->geometry, state->anchors);
-	state->container->record(*state->document, state->content_size, state->geometry);
+	collect_anchors(*state->dom->get_document()->root(), state->geometry, state->anchors);
+	state->container->record(*state->dom->get_document(), state->content_size, state->geometry);
 	record_css_diagnostics();
 }
 
@@ -497,244 +390,24 @@ const HashMap<String, Rect2>& HTMLLayout::get_anchor_rects() const {
 }
 
 Ref<HTMLElement> HTMLLayout::create_element(const String& p_tag_name) {
-	CharString tag = p_tag_name.utf8();
-	if (!state->container || state->parse_error != OK || !is_valid_tag_name(std::string_view(tag.get_data(), tag.length()))) {
+	if (!state->container || state->parse_error != OK) {
 		return {};
 	}
-	for (char* byte = tag.ptrw(); *byte; ++byte) {
-		if (*byte >= 'A' && *byte <= 'Z') {
-			*byte += 'a' - 'A';
-		}
+	const CharString tag = HTMLDOM::normalize_tag_name(p_tag_name);
+	if (tag.length() == 0) {
+		return {};
 	}
 	try {
-		if (!state->document) {
+		if (!state->dom->get_document()) {
 			if (!initialize_document(String("<!doctype html>").utf8())) {
 				return {};
 			}
 			state->implicit_empty_document = true;
 		}
-		const auto node = state->document->create_element(tag.get_data(), {});
-		Ref<HTMLElement> handle = make_element(node);
-		if (handle.is_valid()) {
-			auto tree = std::make_shared<HTMLElement::DetachedTree>(ObjectID(get_instance_id()), parse_version, node);
-			state->detached_trees.insert(node.get(), tree);
-			handle->detached_tree = std::move(tree);
-		}
-		return handle;
+		return state->dom->create_element(tag);
 	}
 	catch (const std::exception&) {
 		return {};
-	}
-}
-
-std::shared_ptr<HTMLElement::DetachedTree> HTMLLayout::get_detached_tree(const litehtml::element& p_element) const {
-	const auto* tree = state->detached_trees.getptr(tree_root(p_element));
-	return tree ? tree->lock() : nullptr;
-}
-
-Ref<HTMLElement> HTMLLayout::make_element(const litehtml::element::ptr& p_element) const {
-	if (!p_element || !is_html_element(*p_element)) {
-		return {};
-	}
-	if (const ObjectID* id = state->element_handles.getptr(p_element.get())) {
-		auto* existing = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id));
-		if (existing && existing->element.lock() == p_element) {
-			return Ref<HTMLElement>(existing);
-		}
-	}
-	Ref<HTMLElement> handle = create_element_handle(p_element->tag());
-	handle->layout_id = ObjectID(get_instance_id());
-	handle->parse_version = parse_version;
-	handle->element = p_element;
-	handle->detached_tree = get_detached_tree(*p_element);
-	state->element_handles.insert(p_element.get(), ObjectID(handle->get_instance_id()));
-	return handle;
-}
-
-Dictionary HTMLLayout::get_element_attributes(const litehtml::element& p_element) const {
-	Dictionary result;
-	if (const auto* attributes = state->container->get_source_attributes(p_element)) {
-		for (const auto& [name, value] : *attributes) {
-			result[String::utf8(name.c_str())] = String::utf8(value.c_str());
-		}
-	}
-	return result;
-}
-
-const char* HTMLLayout::get_element_attribute(const litehtml::element& p_element, const char* p_name) const {
-	if (const auto* attributes = state->container->get_source_attributes(p_element)) {
-		const auto found = attributes->find(p_name);
-		if (found != attributes->end()) {
-			return found->second.c_str();
-		}
-	}
-	return p_element.get_attr(p_name);
-}
-
-Error HTMLLayout::edit_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value) {
-	const auto* source = state->container->get_source_attributes(*p_element);
-	const char* previous = nullptr;
-	if (source) {
-		const auto found = source->find(p_name);
-		if (found != source->end()) {
-			previous = found->second.c_str();
-		}
-	}
-	if ((!previous && !p_value) || (previous && p_value && std::string_view(previous) == p_value)) {
-		return OK;
-	}
-	if (!DocumentAdapter::set_attribute(*p_element, p_name, p_value)) {
-		return ERR_UNAVAILABLE;
-	}
-		state->container->set_source_attribute(p_element, p_name, p_value);
-	if (auto* input = dynamic_cast<HTMLInputNode*>(p_element.get())) {
-		input->attribute_changed(p_name);
-	} else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
-		textarea->update_pseudos();
-	}
-	if (!get_detached_tree(*p_element)) {
-		invalidate_styles();
-	}
-	return OK;
-}
-
-String HTMLLayout::serialize_children(const litehtml::element& p_element) const {
-	std::string html;
-	const auto append_children = [&](const auto& p_append_children, const litehtml::element& p_parent) -> void {
-		for (const auto& child : p_parent.children()) {
-			if (litehtml::is_generated_tag(child->tag())) {
-				continue;
-			}
-			if (is_html_element(*child)) {
-				const char* tag = child->get_tagName();
-				html += '<';
-				html += tag;
-				if (const auto* attributes = state->container->get_source_attributes(*child)) {
-					for (const auto& [name, value] : *attributes) {
-						html += ' ';
-						html += name;
-						html += "=\"";
-						append_escaped(html, value, true);
-						html += '"';
-					}
-				}
-				html += '>';
-				if (!is_void_element(*child)) {
-					p_append_children(p_append_children, *child);
-					html += "</";
-					html += tag;
-					html += '>';
-				}
-			}
-			else {
-				std::string text;
-				child->get_text(text);
-				if (child->is_comment()) {
-					html += "<!--" + text + "-->";
-				}
-				else if (has_raw_text(p_parent)) {
-					html += text;
-				}
-				else {
-					append_escaped(html, text, false);
-				}
-			}
-		}
-	};
-	append_children(append_children, p_element);
-	return String::utf8(html.data(), html.size());
-}
-
-Error HTMLLayout::replace_children(const litehtml::element::ptr& p_element, const String& p_content, bool p_parse_html) {
-	if (is_void_element(*p_element)) {
-		return p_content.is_empty() ? OK : ERR_INVALID_PARAMETER;
-	}
-	const CharString content = p_content.utf8();
-	if (std::string_view(content.get_data(), content.length()).find('\0') != std::string_view::npos) {
-		return ERR_INVALID_PARAMETER;
-	}
-	litehtml::elements_list children;
-	try {
-		const bool split = p_element->tag() != litehtml::_textarea_ && !has_raw_text(*p_element);
-		children = p_parse_html ? DocumentAdapter::parse_fragment(*state->document, *p_element, content) :
-			DocumentAdapter::create_text(state->document, content.get_data(), split);
-	}
-	catch (const std::exception&) {
-		return ERR_PARSE_ERROR;
-	}
-	for (const auto& child : p_element->children()) {
-		forget_subtree(*child);
-	}
-	DocumentAdapter::replace_children(*p_element, std::move(children));
-	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) textarea->sync_default_value();
-	if (!get_detached_tree(*p_element)) {
-		invalidate_styles();
-	}
-	return OK;
-}
-
-Error HTMLLayout::move_element(const litehtml::element::ptr& p_element, const litehtml::element::ptr& p_parent) {
-	const auto old_parent = p_element->parent();
-	const auto old_tree = get_detached_tree(*p_element);
-	if (!old_parent && !old_tree) {
-		return ERR_INVALID_PARAMETER;
-	}
-	bool needs_layout = !old_tree;
-	if (p_parent) {
-		if (!can_contain_elements(*p_parent)) {
-			return ERR_INVALID_PARAMETER;
-		}
-		for (auto ancestor = p_parent; ancestor; ancestor = ancestor->parent()) {
-			if (ancestor == p_element) {
-				return ERR_INVALID_PARAMETER;
-			}
-		}
-		const auto new_tree = get_detached_tree(*p_parent);
-		if (!DocumentAdapter::move_child(p_element, *p_parent)) {
-			return ERR_INVALID_PARAMETER;
-		}
-		if (old_tree != new_tree) {
-			if (old_tree && old_tree->root == p_element) {
-				state->detached_trees.erase(p_element.get());
-				old_tree->root.reset();
-			}
-			visit_elements(p_element, [&](const litehtml::element::ptr& p_child) {
-				if (const ObjectID* id = state->element_handles.getptr(p_child.get())) {
-					if (auto* handle = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id))) {
-						handle->detached_tree = new_tree;
-					}
-				}
-				return false;
-			});
-		}
-		needs_layout |= !new_tree;
-	}
-	else {
-		if (!old_parent) {
-			return OK;
-		}
-		if (!old_parent->removeChild(p_element)) {
-			return ERR_INVALID_PARAMETER;
-		}
-		forget_subtree(*p_element);
-	}
-	if (needs_layout) {
-		invalidate_styles();
-	}
-	return OK;
-}
-
-void HTMLLayout::forget_subtree(const litehtml::element& p_element) {
-	if (const ObjectID* id = state->element_handles.getptr(&p_element)) {
-		if (auto* handle = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id))) {
-			handle->element.reset();
-			handle->detached_tree.reset();
-		}
-		state->element_handles.erase(&p_element);
-	}
-	state->container->forget_source_attributes(p_element);
-	for (const auto& child : p_element.children()) {
-		forget_subtree(*child);
 	}
 }
 
@@ -780,74 +453,16 @@ void HTMLLayout::reflow_after_edit(uint64_t p_id, uint64_t p_version) {
 	}
 }
 
-TypedArray<HTMLElement> HTMLLayout::select_elements(const String& p_selector, SelectorQuery p_query,
-	const litehtml::element::ptr& p_scope) const {
-	TypedArray<HTMLElement> matches;
-	const CharString utf8 = p_selector.utf8();
-	const auto tokens = litehtml::tokenize(std::string(utf8.get_data(), utf8.length()));
-	ERR_FAIL_COND_V_MSG(!docrender::css::has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
-	namespace syntax = docrender::css;
-	const auto selectors = syntax::parse_selector_list(syntax::normalize(tokens, syntax::f_componentize),
-		syntax::strict_mode | syntax::forbid_pseudo_elements,
-		litehtml::selector_mode(state->document ? state->document->mode() : litehtml::no_quirks_mode));
-	ERR_FAIL_COND_V_MSG(selectors.empty(), matches, "Invalid or unsupported HTML selector: " + p_selector);
-	if (!state->document) {
-		return matches;
-	}
-	const auto root = p_scope ? p_scope : state->document->root();
-	const syntax::MatchContext context{root.get()};
-	const auto& dom = litehtml::selector_dom_view();
-	const auto collect = [&](const litehtml::element::ptr& p_element) {
-		if (syntax::match_selector_list(dom, p_element.get(), selectors, context) == syntax::match_none) {
-			return false;
-		}
-		matches.append(make_element(p_element));
-		return p_query != SelectorQuery::ALL;
-	};
-
-	if (p_query == SelectorQuery::SELF || p_query == SelectorQuery::CLOSEST) {
-		for (auto element = root; element; element = element->parent()) {
-			if ((is_html_element(*element) && collect(element)) || p_query == SelectorQuery::SELF) {
-				break;
-			}
-		}
-	}
-	else if (p_scope) {
-		for (const auto& child : p_scope->children()) {
-			if (visit_elements(child, collect)) {
-				break;
-			}
-		}
-	}
-	else {
-		visit_elements(root, collect);
-	}
-	return matches;
-}
-
 Ref<HTMLElement> HTMLLayout::query_selector(const String& p_selector) const {
-	const auto matches = select_elements(p_selector, SelectorQuery::FIRST);
-	return matches.is_empty() ? Ref<HTMLElement>() : Ref<HTMLElement>(matches[0]);
+	return state->dom->query_selector(p_selector);
 }
 
 TypedArray<HTMLElement> HTMLLayout::query_selector_all(const String& p_selector) const {
-	return select_elements(p_selector, SelectorQuery::ALL);
+	return state->dom->query_selector_all(p_selector);
 }
 
 Ref<HTMLElement> HTMLLayout::get_element_by_id(const String& p_id) const {
-	if (!state->document || p_id.is_empty()) {
-		return {};
-	}
-	const CharString id = p_id.utf8();
-	litehtml::element::ptr match;
-	visit_elements(state->document->root(), [&](const litehtml::element::ptr& p_element) {
-		const char* candidate = get_element_attribute(*p_element, "id");
-		if (candidate && std::string_view(candidate) == std::string_view(id.get_data(), id.length())) {
-			match = p_element;
-		}
-		return match != nullptr;
-	});
-	return make_element(match);
+	return state->dom->get_element_by_id(p_id);
 }
 
 TypedArray<Rect2> HTMLLayout::get_element_rects(const litehtml::element::ptr& p_element) const {
@@ -874,15 +489,15 @@ Ref<HTMLElement> HTMLLayout::wrap_hit_element(litehtml::element::ptr p_element) 
 			p_element = ancestor->parent();
 		}
 	}
-	return make_element(find_html_ancestor(std::move(p_element)));
+	return state->dom->make_element(find_html_ancestor(std::move(p_element)));
 }
 
 litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position) const {
 	const Rect2 bounds(Vector2(), Vector2(state->content_size.max(state->viewport_size)));
-	if (!state->has_layout() || !state->document || !p_position.is_finite() || !bounds.has_point(p_position)) {
+	if (!state->has_layout() || !state->dom->get_document() || !p_position.is_finite() || !bounds.has_point(p_position)) {
 		return {};
 	}
-	const auto root = state->document->root_render();
+	const auto root = state->dom->get_document()->root_render();
 	if (!root) {
 		return {};
 	}
@@ -986,7 +601,7 @@ Vector2 HTMLLayout::scroll_overflow(const Vector2& p_position, const Vector2& p_
 		if (item->is_v_scrollable(remaining.y)) remaining.y -= item->v_scroll(remaining.y);
 	}
 	if (remaining == p_delta) return {};
-	if (remaining != after_field) state->geometry.rebuild(state->document->root_render());
+	if (remaining != after_field) state->geometry.rebuild(state->dom->get_document()->root_render());
 	record_paint();
 	if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
 	return p_delta - remaining;
@@ -1025,6 +640,13 @@ HTMLLayout::LinkHit HTMLLayout::find_link_at(const Vector2& p_position, Ref<HTML
 	return {};
 }
 
+String HTMLLayout::get_activatable_link_uri(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null() || p_element->get_owner() != this) return {};
+	const auto link = p_element->lock_element();
+	const char* href = link ? get_link_href(*link) : nullptr;
+	return href && get_element_scroll_bounds(p_element) ? String::utf8(href) : String();
+}
+
 std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_over_link) const {
 	const auto element = find_html_ancestor(hit_test_element(p_position));
 	r_over_link = bool(find_link_element(element));
@@ -1035,7 +657,7 @@ Ref<HTMLElement> HTMLLayout::get_button_ancestor(const Ref<HTMLElement>& p_eleme
 	if (p_element.is_valid() && p_element->get_owner() == this) {
 		for (auto element = p_element->element.lock(); element; element = element->parent()) {
 			if (DocumentAdapter::is_command_button(*element)) {
-				return make_element(element);
+				return state->dom->make_element(element);
 			}
 		}
 	}
@@ -1049,6 +671,22 @@ bool HTMLLayout::is_enabled_button(const Ref<HTMLElement>& p_element) const {
 	const auto element = p_element->element.lock();
 	return element && DocumentAdapter::is_command_button(*element) && !element->get_attr("disabled") &&
 		get_element_scroll_bounds(p_element).has_value();
+}
+
+Vector2 HTMLLayout::get_image_intrinsic_size(const HTMLElement& p_element) const {
+	if (!state->has_layout()) return {};
+	const auto element = p_element.lock_element();
+	auto* image = dynamic_cast<litehtml::el_image*>(element.get());
+	if (!image || !state->dom->is_element_connected(*image)) return {};
+	litehtml::size size{};
+	image->get_content_size(size, 0);
+	return Vector2(size.width, size.height);
+}
+
+String HTMLLayout::get_image_current_src(const HTMLElement& p_element) const {
+	const auto element = p_element.lock_element();
+	const auto* image = dynamic_cast<const litehtml::el_image*>(element.get());
+	return image && state->dom->is_element_connected(*image) ? String::utf8(image->get_current_src().c_str()) : String();
 }
 
 namespace {
@@ -1081,7 +719,7 @@ Ref<HTMLElement> HTMLLayout::get_focus_ancestor(const Ref<HTMLElement>& p_elemen
 	if (!p_element.is_valid() || p_element->get_owner() != this) return {};
 	for (auto node = p_element->element.lock(); node; node = node->parent()) {
 		if (!can_focus_node(*node)) continue;
-		const auto handle = make_element(node);
+		const auto handle = state->dom->make_element(node);
 		if (get_element_scroll_bounds(handle)) return handle;
 	}
 	return {};
@@ -1094,10 +732,10 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 	};
 	std::vector<TabElement> elements;
 	r_has_focusable_elements = false;
-	if (state->has_layout() && state->document) {
-		visit_elements(state->document->root(), [&](const litehtml::element::ptr& p_element) {
+	if (state->has_layout() && state->dom->get_document()) {
+		HTMLDOM::visit_elements(state->dom->get_document()->root(), [&](const litehtml::element::ptr& p_element) {
 			if (!can_focus_node(*p_element)) return false;
-			const auto handle = make_element(p_element);
+			const auto handle = state->dom->make_element(p_element);
 			if (get_element_scroll_bounds(handle)) {
 				r_has_focusable_elements = true;
 				const int64_t index = explicit_tab_index(*p_element).value_or(0);
@@ -1171,7 +809,7 @@ bool HTMLLayout::resize_textarea(const Ref<HTMLElement>& p_element, const Vector
 	}
 	if (p_axes.x) style += "width: " + std::to_string(std::max(0.0f, p_size.x)) + "px; ";
 	if (p_axes.y) style += "height: " + std::to_string(std::max(0.0f, p_size.y)) + "px;";
-	return edit_attribute(node, "style", style.c_str()) == OK;
+	return state->dom->edit_attribute(node, "style", style.c_str()) == OK;
 }
 
 void HTMLLayout::repaint_input() {
@@ -1181,7 +819,7 @@ void HTMLLayout::repaint_input() {
 
 void HTMLLayout::update_input(HTMLTextControlNode& p_input) {
 	const bool style_changed = p_input.update_pseudos();
-	if (get_detached_tree(p_input)) return;
+	if (!state->dom->is_element_connected(p_input)) return;
 	if (style_changed) invalidate_styles();
 	else repaint_input();
 }
@@ -1244,7 +882,7 @@ void HTMLLayout::set_css_diagnostics_enabled(bool p_enabled) {
 		return;
 	}
 	state->container->set_css_diagnostics_enabled(p_enabled);
-	if (p_enabled && state->document) {
+	if (p_enabled && state->dom->get_document()) {
 		state->pending_update = State::Update::STYLE;
 		if (!state->edit_callback.is_valid()) {
 			queue_reflow();
@@ -1279,7 +917,7 @@ void HTMLLayout::record_css_diagnostics() {
 	if (!state->css_diagnostics_enabled) {
 		return;
 	}
-	visit_elements(state->document->root(), [&](const litehtml::element::ptr& p_element) {
+	HTMLDOM::visit_elements(state->dom->get_document()->root(), [&](const litehtml::element::ptr& p_element) {
 		const auto* renderers = state->geometry.find_element(p_element.get());
 		if (renderers && state->container->get_element_diagnostics(*p_element)) {
 			for (const auto* renderer : *renderers) {
@@ -1307,7 +945,7 @@ String HTMLLayout::get_css_diagnostic_tooltip(const Vector2& p_position) const {
 			continue;
 		}
 		String element = String::utf8(node->get_tagName());
-		if (const char* id = get_element_attribute(*node, "id"); id && *id) {
+		if (const char* id = state->dom->get_element_attribute(*node, "id"); id && *id) {
 			element += "#" + String::utf8(id);
 		}
 		String html = "<div class='element'>" + element.xml_escape() + "</div>";
@@ -1334,16 +972,9 @@ void HTMLLayout::clear() {
 		state->container->clear_recording();
 	}
 	state->geometry.clear();
-	state->element_handles.clear();
-	for (const auto& entry : state->detached_trees) {
-		if (const auto tree = entry.value.lock()) {
-			tree->root.reset();
-		}
-	}
-	state->detached_trees.clear();
+	state->dom->clear();
 	state->hovered_elements.clear();
 	state->has_hover_styles = false;
-	state->document.reset();
 	state->container.reset();
 	state->anchors.clear();
 	state->viewport_size = Vector2i();

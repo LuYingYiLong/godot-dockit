@@ -164,6 +164,13 @@ namespace docrender {
 		r_text = file->utf8().get_data();
 	}
 
+	String HTMLResources::resolve_image_source(std::string_view p_source) const {
+		const String source = String::utf8(p_source.data(), p_source.size()).strip_edges();
+		const String path = resolve_html_image_path(source, base_dir);
+		const int64_t fragment = source.find("#");
+		return !path.is_empty() && fragment >= 0 ? path + source.substr(fragment) : path;
+	}
+
 	bool HTMLResources::is_vector_image(const char* p_src, const char* p_css_base) const {
 		const String path = resolve_html_image_path(String::utf8(p_src), get_url_dir(p_css_base));
 		return path.get_extension().nocasecmp_to("svg") == 0;

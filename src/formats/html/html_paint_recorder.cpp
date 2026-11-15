@@ -1035,10 +1035,31 @@ void fragment() {
 		add_command(Fill{ p_rect.grow_side(SIDE_TOP, margin).grow_side(SIDE_BOTTOM, margin), p_color }, material);
 	}
 
-	void HTMLPaintRecorder::draw_input_chrome(const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
-		if (!active_geometry || !active_geometry->inverse) return;
+	bool HTMLPaintRecorder::push_content_clip(const Rect2& p_box) {
+		if (!active_geometry || !active_geometry->inverse) return false;
 		const auto& boxes = active_geometry->fragments;
-		push_clip(boxes.size() == 1 ? boxes.front().inset(p_clip) : RoundedRect(p_clip, {}), active_geometry->matrix);
+		push_clip(boxes.size() == 1 ? boxes.front().inset(p_box) : RoundedRect(p_box, {}), active_geometry->matrix);
+		return true;
+	}
+
+	void HTMLPaintRecorder::draw_image_alt(const Rect2& p_box, const std::vector<HTMLTextLayout>& p_lines,
+		float p_line_height, web_color p_color, text_align p_align) {
+		if (!push_content_clip(p_box)) return;
+		const Color color = to_color(p_color);
+		float top = 0;
+		for (const auto& line : p_lines) {
+			if (top >= p_box.size.y) break;
+			const float free = std::max(0.0f, float(p_box.size.x) - line.width());
+			const float x = p_align == text_align_center ? free * 0.5f : p_align == text_align_right ? free : 0.0f;
+			const float leading = (p_line_height - line.line_ascent() - line.line_descent()) * 0.5f;
+			add_command(Text{line, p_box.position + Vector2(x, top + leading), color});
+			top += p_line_height;
+		}
+		del_clip();
+	}
+
+	void HTMLPaintRecorder::draw_input_chrome(const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
+		if (!push_content_clip(p_clip)) return;
 		fill_rect(p_rect, p_color);
 		del_clip();
 	}
@@ -1046,10 +1067,7 @@ void fragment() {
 	void HTMLPaintRecorder::draw_input(const Rect2& p_box, const HTMLTextLayout& p_text, const Vector2& p_origin,
 		const web_color& p_color, const PackedVector2Array& p_selection, const PackedVector2Array& p_preedit,
 		const Rect2& p_caret, float p_ascent, float p_descent) {
-		if (!active_geometry || !active_geometry->inverse) return;
-		const auto& fragments = active_geometry->fragments;
-		const RoundedRect clip = fragments.size() == 1 ? fragments.front().inset(p_box) : RoundedRect(p_box, {});
-		push_clip(clip, active_geometry->matrix);
+		if (!push_content_clip(p_box)) return;
 		const Color color = to_color(p_color);
 		for (const Vector2 range : p_selection) {
 			fill_rect(Rect2(p_origin.x + range.x, p_origin.y - p_ascent, range.y - range.x, p_ascent + p_descent),
