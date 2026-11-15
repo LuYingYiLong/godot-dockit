@@ -483,6 +483,7 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 	if (focused_element != p_element) {
 		label->close_select_menu();
 		const auto previous = focused_element;
+		stop_caret_blink();
 		close_ime();
 		commit_input(previous, true);
 		dragging_input.unref();
@@ -493,6 +494,7 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		const auto input = label->layout->text_control(focused_element);
 		focused_reset_version = input ? input->editor.get_reset_version() : 0;
 		set_element_pseudo(focused_element, "focus", true);
+		restart_caret_blink();
 		label->layout->repaint_input();
 		update_ime();
 	}
@@ -702,6 +704,11 @@ void HTMLLabel::_notification(int p_what) {
 		if (canvas) canvas->on_ime_update();
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		if (canvas) {
+			canvas->restart_caret_blink();
+			canvas->update_ime();
+		}
+		break;
 	case NOTIFICATION_INTERNAL_PROCESS:
 		if (canvas) canvas->update_ime();
 		break;
@@ -750,6 +757,7 @@ void HTMLLabel::_notification(int p_what) {
 		close_select_menu();
 		if (canvas) {
 			canvas->cancel_press();
+			canvas->stop_caret_blink();
 			canvas->close_ime();
 		}
 		break;

@@ -12,6 +12,11 @@
 namespace godot {
 	class InputEventKey;
 	class ScrollContainer;
+	class Timer;
+}
+
+namespace docrender {
+	class HTMLTextEditor;
 }
 
 class HTMLLabel;
@@ -48,6 +53,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLInputElement> pressed_checkbox;
 	std::optional<int32_t> ime_window;
 	std::optional<godot::Vector2i> ime_position;
+	godot::Timer* caret_blink_timer = nullptr;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
 	uint64_t focused_reset_version = 0;
@@ -81,6 +87,10 @@ class HTMLLabelCanvas : public godot::Control {
 	void flush_textarea_resize();
 	void update_input_autoscroll();
 	std::optional<CursorShape> textarea_resize_cursor(const godot::Vector2& p_point) const;
+	void set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible);
+	void restart_caret_blink();
+	void stop_caret_blink();
+	void blink_caret();
 	void update_ime();
 	void close_ime();
 	void on_ime_update();

@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/sub_viewport_container.hpp>
+#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/window.hpp>
 
 #include <algorithm>
@@ -17,6 +18,8 @@ using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
 
 namespace {
+	constexpr double CARET_BLINK_INTERVAL = 0.65;
+
 	Window* find_native_ime_window(Viewport* p_viewport) {
 		while (p_viewport) {
 			if (auto* window = Object::cast_to<Window>(p_viewport)) {
@@ -43,6 +46,7 @@ void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vec
 	const auto local = label->layout->input_local_point(*p_input.ptr(), p_point);
 	if (input && local) {
 		input->editor.hit_caret(*local, p_extend);
+		restart_caret_blink();
 		label->layout->repaint_input();
 		queue_redraw();
 	}
@@ -108,9 +112,10 @@ bool HTMLLabelCanvas::move_radio(const Ref<HTMLInputElement>& p_input, int p_dir
 bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const Ref<HTMLElement> handle = focused_element;
 	const auto input = label->layout->text_control(handle);
-	if (!input || !label->layout->is_focusable(handle)) return false;
+	if (!input || !label->layout->is_element_connected(handle)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if (const auto* toggle = dynamic_cast<const HTMLInputNode*>(input.get()); toggle && toggle->is_toggle()) {
+		if (!label->layout->is_focusable(handle)) return false;
 		if (p_key.is_pressed() && toggle->type() == HTMLInputNode::Type::RADIO && !p_key.is_alt_pressed() &&
 			!p_key.is_meta_pressed() && !p_key.is_ctrl_pressed() &&
 			(key == KEY_LEFT || key == KEY_UP || key == KEY_RIGHT || key == KEY_DOWN)) {
@@ -129,7 +134,11 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		}
 		return true;
 	}
-	if (!input->is_text_control() || !p_key.is_pressed()) return false;
+	// One IME result can arrive as several key events. The first character can
+	// invalidate the layout through :placeholder-shown while the field still has focus.
+	if (!input->is_text_control() || !p_key.is_pressed() || docrender::forms::is_disabled(*input) ||
+		input->get_attr("hidden")) return false;
+	restart_caret_blink();
 	label->layout->flush_input_paint();
 	auto& editor = input->editor;
 
@@ -157,7 +166,7 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	bool changed = false;
 	const bool extend = p_key.is_shift_pressed();
 	const char* maxlength = input->get_attr("maxlength", "");
-	if (enter && !editor.is_multiline()) {
+	if (enter && !inserts_text && !editor.is_multiline()) {
 		label->accept_event();
 		if (!p_key.is_echo()) {
 			const ObjectID id(label->get_instance_id());
@@ -166,7 +175,10 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		}
 		return true;
 	}
-	if (p_key.is_action("ui_text_select_all", true)) {
+	// IME character events can retain the key code of the confirmation key.
+	if (inserts_text) {
+		if (editable) changed = editor.insert(String::chr(unicode), maxlength);
+	} else if (p_key.is_action("ui_text_select_all", true)) {
 		input->editor.set_selection(0, input->editor.get_value().length());
 	} else if (p_key.is_action("ui_copy", true) || p_key.is_action("ui_cut", true)) {
 		const int64_t start = input->editor.selection_start();
@@ -187,8 +199,6 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		if (editable) changed = editor.insert("\n", maxlength);
 	} else if (key == KEY_BACKSPACE || key == KEY_DELETE) {
 		if (editable) changed = input->editor.erase(key == KEY_BACKSPACE ? -1 : 1);
-	} else if (inserts_text) {
-		if (editable) changed = input->editor.insert(String::chr(unicode), maxlength);
 	} else {
 		return false;
 	}
@@ -199,6 +209,44 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		queue_redraw();
 	}
 	return true;
+}
+
+void HTMLLabelCanvas::set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible) {
+	if (p_editor.set_caret_visible(p_visible)) {
+		label->layout->repaint_input();
+		queue_redraw();
+	}
+}
+
+void HTMLLabelCanvas::restart_caret_blink() {
+	const auto input = label->layout->text_control(focused_element);
+	if (!input || !input->is_text_control() || !is_inside_tree()) return;
+
+	if (!caret_blink_timer) {
+		caret_blink_timer = memnew(Timer);
+		caret_blink_timer->set_wait_time(CARET_BLINK_INTERVAL);
+		caret_blink_timer->set_ignore_time_scale(true);
+		caret_blink_timer->connect("timeout", callable_mp(this, &HTMLLabelCanvas::blink_caret));
+		add_child(caret_blink_timer, false, INTERNAL_MODE_BACK);
+	}
+	set_input_caret_visible(input->editor, true);
+	caret_blink_timer->start();
+}
+
+void HTMLLabelCanvas::stop_caret_blink() {
+	if (caret_blink_timer) caret_blink_timer->stop();
+	if (const auto input = label->layout->text_control(focused_element)) {
+		set_input_caret_visible(input->editor, false);
+	}
+}
+
+void HTMLLabelCanvas::blink_caret() {
+	const auto input = label->layout->text_control(focused_element);
+	if (!input || !input->is_text_control() || !label->layout->is_element_connected(focused_element)) {
+		stop_caret_blink();
+		return;
+	}
+	set_input_caret_visible(input->editor, !input->editor.is_caret_visible());
 }
 
 void HTMLLabelCanvas::close_ime() {
@@ -275,6 +323,7 @@ void HTMLLabelCanvas::on_ime_update() {
 	if (!input || !input->is_editable()) return;
 	auto* display = DisplayServer::get_singleton();
 	input->editor.set_preedit(display->ime_get_text(), display->ime_get_selection());
+	restart_caret_blink();
 	label->layout->repaint_input();
 	queue_redraw();
 }

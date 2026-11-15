@@ -38,6 +38,7 @@ namespace docrender {
 		godot::Vector2 text_origin;
 		godot::Rect2 caret_rect;
 		bool showing_placeholder = false;
+		bool caret_visible = true;
 
 		std::vector<Line> lines;
 		godot::String laid_out_text;
@@ -94,6 +95,12 @@ namespace docrender {
 		bool has_preedit() const { return !preedit.is_empty(); }
 		bool take_user_change();
 		godot::Rect2 get_caret_rect() const { return caret_rect; }
+		bool is_caret_visible() const { return caret_visible; }
+		bool set_caret_visible(bool p_visible) {
+			if (caret_visible == p_visible) return false;
+			caret_visible = p_visible;
+			return true;
+		}
 		godot::Rect2 get_viewport() const { return viewport; }
 		godot::Vector2 scroll_by(const godot::Vector2& p_delta);
 		std::optional<bool> scrollbar_at(const godot::Vector2& p_point) const;

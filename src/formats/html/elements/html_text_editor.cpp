@@ -308,7 +308,7 @@ namespace docrender {
 			}
 		}
 		p_container.draw_input(p_box, shaped, text_origin, ink, selected, composition,
-			p_focused ? caret_rect : Rect2(), ascent, descent, input_paint_colors(p_host));
+			p_focused && caret_visible ? caret_rect : Rect2(), ascent, descent, input_paint_colors(p_host));
 	}
 
 	namespace {
@@ -628,7 +628,7 @@ namespace docrender {
 			}
 			p_container.draw_input(viewport, line.shaped, origin + line.baseline, ink, selected,
 				composing ? geometry(from, from + preedit.length()) : PackedVector2Array{},
-				p_focused && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent, colors);
+				p_focused && caret_visible && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent, colors);
 		}
 		for (const bool axis : {false, true}) {
 			const Rect2& track = axis ? vertical_track : horizontal_track;

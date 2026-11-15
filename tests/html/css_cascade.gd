@@ -402,12 +402,14 @@ func _run() -> void:
 	await _check_table_layout()
 	await _check_table_css()
 	await _check_form_css()
+	await _check_caret_blink()
 	_check_image_element()
 	await _check_responsive_images()
 	await _check_image_alt_text()
 	await _check_author_hover()
 	await _check_focus_within()
 	await _check_dom_input()
+	await _check_text_input_batch()
 	await _check_textarea()
 	await _check_text_emphasis()
 	await _check_underline_position()
@@ -7716,6 +7718,106 @@ func _check_form_css() -> void:
 	_check(diagnostics.get_element_by_id("diagnosed").get_css_diagnostics().size() == 1 and
 		diagnostics.get_element_by_id("opacity_gap").get_css_diagnostics().size() == 1,
 		"Placeholder opacity is painted and regular element opacity retains its rendering diagnostic")
+	viewport.queue_free()
+
+
+func _check_text_input_batch() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(330, 160)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(330.0, 160.0)
+	label.text = """
+		<style>:placeholder-shown { background: silver }</style>
+		<input id="single" placeholder="Type here">
+		<textarea id="multi" placeholder="Type here"></textarea>
+	"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var single: HTMLInputElement = label.get_element_by_id("single") as HTMLInputElement
+	var multi: HTMLTextAreaElement = label.get_element_by_id("multi") as HTMLTextAreaElement
+	var committed: Array[String] = []
+	label.input_committed.connect(func(element: HTMLInputElement) -> void: committed.append(element.value))
+
+	_check(label.focus_element(single), "Focus the empty input before delivering a batched IME result")
+	for index: int in range("hello world".length()):
+		_send_dom_key(viewport, KEY_NONE, "hello world".unicode_at(index))
+	_check(single.value == "hello world", "The input receives all characters while placeholder styles are pending")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(committed == ["hello world"], "A following Enter submits the complete input value")
+
+	await process_frame
+	await process_frame
+	_check(label.focus_element(multi), "Focus the empty textarea before delivering a batched IME result")
+	for index: int in range("こんにちは😀".length()):
+		_send_dom_key(viewport, KEY_NONE, "こんにちは😀".unicode_at(index))
+	_check(multi.value == "こんにちは😀", "The textarea receives a complete Unicode result in one input batch")
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(multi.value == "こんにちは😀\n", "A following Enter still inserts a newline in the textarea")
+
+	single.value = ""
+	await process_frame
+	await process_frame
+	_check(label.focus_element(single), "Focus the input for a Unicode event carrying an Enter key code")
+	_send_dom_key(viewport, KEY_ENTER, "a".unicode_at(0))
+	_send_dom_key(viewport, KEY_KP_ENTER, "b".unicode_at(0))
+	_check(single.value == "ab" and committed == ["hello world"],
+		"Committed characters with Enter metadata stay in the field without submitting")
+	viewport.queue_free()
+
+
+func _check_caret_blink() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 150)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(240.0, 150.0)
+	label.text = """
+		<style>
+			input, textarea { display: block; caret-color: magenta; }
+		</style>
+		<input id="single" value="text">
+		<textarea id="multi">text</textarea>
+	"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var single: HTMLElement = label.get_element_by_id("single")
+	var multi: HTMLElement = label.get_element_by_id("multi")
+	var caret_is_visible: Callable = func(element: HTMLElement) -> bool:
+		var image: Image = viewport.get_texture().get_image()
+		return _color_bounds(image, Rect2i(element.get_bounding_rect()), Color.MAGENTA).has_area()
+	var layout_updates: Array[bool] = []
+	label.layout_changed.connect(func() -> void: layout_updates.append(true))
+
+	_check(label.focus_element(single), "Focus the input to start caret blinking")
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(single), "The caret starts visible")
+	await create_timer(0.72).timeout
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(single), "The caret is hidden after the first blink interval")
+	await create_timer(0.65).timeout
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(single), "The caret appears again after the second interval")
+	var layout_count: int = layout_updates.size()
+	await create_timer(0.65).timeout
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(single) and layout_updates.size() == layout_count,
+		"Blinking updates the caret without reflow")
+	_send_dom_key(viewport, KEY_END)
+	await RenderingServer.frame_post_draw
+	_check(caret_is_visible.call(single), "Keyboard movement reveals a hidden caret immediately")
+
+	_check(label.focus_element(multi), "Move focus to the textarea")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(single) and caret_is_visible.call(multi),
+		"Focus change hides the old caret and reveals the new one")
+	await create_timer(0.72).timeout
+	await RenderingServer.frame_post_draw
+	_check(not caret_is_visible.call(multi), "The textarea uses the same blink interval")
 	viewport.queue_free()
 
 
