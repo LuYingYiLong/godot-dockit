@@ -10,6 +10,7 @@
 #include <litehtml/render_item.h>
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 #include <string_view>
 
@@ -106,26 +107,48 @@ namespace litehtml {
 		p_parent.m_children.swap(p_children);
 	}
 
-	bool docrender_editor::move_child(const element::ptr& p_child, element& p_parent) {
+	docrender_editor::child_edit_result docrender_editor::place_child(const element::ptr& p_child, element& p_parent,
+		const element::ptr& p_reference, bool p_replace_reference) {
 		auto* to = dynamic_cast<html_tag*>(&p_parent);
-		if (!to) {
-			return false;
+		if (!to || (p_replace_reference && !p_reference)) {
+			return child_edit_result::invalid;
 		}
+		auto& target_children = to->m_children;
+		auto position = target_children.end();
+		if (p_reference) {
+			position = std::find(target_children.begin(), target_children.end(), p_reference);
+			if (position == target_children.end()) {
+				return child_edit_result::invalid;
+			}
+		}
+		else if (!target_children.empty() && target_children.back()->tag() == __tag_after_) {
+			position = std::prev(position);
+		}
+
 		const auto old_parent = p_child->parent();
-		if (!old_parent) {
-			return to->appendChild(p_child);
+		if (old_parent) {
+			auto* from = dynamic_cast<html_tag*>(old_parent.get());
+			if (!from) {
+				return child_edit_result::invalid;
+			}
+			const auto child = std::find(from->m_children.begin(), from->m_children.end(), p_child);
+			if (child == from->m_children.end()) {
+				return child_edit_result::invalid;
+			}
+			if (from == to && (child == position || (!p_replace_reference && std::next(child) == position))) {
+				return child_edit_result::unchanged;
+			}
+			target_children.splice(position, from->m_children, child);
 		}
-		auto* from = dynamic_cast<html_tag*>(old_parent.get());
-		if (!from) {
-			return false;
+		else {
+			target_children.insert(position, p_child);
 		}
-		const auto child = std::find(from->m_children.begin(), from->m_children.end(), p_child);
-		if (child == from->m_children.end()) {
-			return false;
-		}
-		to->m_children.splice(to->m_children.end(), from->m_children, child);
 		p_child->parent(to->shared_from_this());
-		return true;
+		if (p_replace_reference) {
+			p_reference->parent(nullptr);
+			target_children.erase(position);
+		}
+		return child_edit_result::changed;
 	}
 
 	void docrender_editor::reset_tree(element& p_element) {

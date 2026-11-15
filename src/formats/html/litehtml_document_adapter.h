@@ -50,7 +50,9 @@ namespace litehtml {
 			bool p_split
 		);																			// 创建纯文本节点，可按排版需要拆分文本
 		static void replace_children(element& p_parent, elements_list p_children);	// 替换父元素的子节点
-		static bool move_child(const element::ptr& p_child, element& p_parent);		// 将节点追加到父元素末尾并保留节点身份
+		enum class child_edit_result { invalid, unchanged, changed };
+		static child_edit_result place_child(const element::ptr& p_child, element& p_parent,
+			const element::ptr& p_reference, bool p_replace_reference);			// 插入或替换子节点，保留节点身份并报告是否改变顺序
 
 	private:
 		static document::ptr parse_tree(const godot::CharString& p_html, document_container& p_container);

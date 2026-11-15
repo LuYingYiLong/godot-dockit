@@ -37,6 +37,7 @@ class HTMLElement : public godot::RefCounted {
 	HTMLLayout* get_owner() const;
 	docrender::HTMLDOM& get_dom() const;
 	std::shared_ptr<litehtml::element> lock_element() const;
+	std::shared_ptr<litehtml::element> lock_related_element(const godot::Ref<HTMLElement>& p_element) const;
 
 protected:
 	static void _bind_methods();
@@ -87,6 +88,12 @@ public:
 	godot::String get_inner_html() const;											// 将当前元素的子内容序列化为 HTML 片段
 	godot::Error set_inner_html(const godot::String& p_html);						// 将 HTML 片段解析为新的子内容并使原有子元素的句柄失效
 	godot::Error append_child(const godot::Ref<HTMLElement>& p_child);				// 将同一布局中的新元素或已有元素追加到当前元素的子元素末尾
+	godot::Error insert_before(const godot::Ref<HTMLElement>& p_child,
+		const godot::Ref<HTMLElement>& p_reference = {});							// 将元素插到指定直接子元素前，省略参照元素时追加到末尾
+	godot::Error replace_child(const godot::Ref<HTMLElement>& p_new_child,
+		const godot::Ref<HTMLElement>& p_old_child);								// 将新元素移到原子元素的位置并保留移出子树的句柄
+	godot::Error remove_child(const godot::Ref<HTMLElement>& p_child);				// 分离指定直接子元素并保留其子树句柄
+	godot::Ref<HTMLElement> clone_node(bool p_deep = false) const;					// 创建同一布局中的分离副本，可选复制后代
 	godot::Error detach();															// 从父元素分离当前子树并保留已有句柄
 	godot::Error remove();															// 从父元素中移除当前元素，使该元素及其后代的句柄失效
 };

@@ -114,6 +114,10 @@ void HTMLElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_inner_html"), &HTMLElement::get_inner_html);
 	ClassDB::bind_method(D_METHOD("set_inner_html", "html"), &HTMLElement::set_inner_html);
 	ClassDB::bind_method(D_METHOD("append_child", "child"), &HTMLElement::append_child);
+	ClassDB::bind_method(D_METHOD("insert_before", "child", "reference"), &HTMLElement::insert_before, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("replace_child", "new_child", "old_child"), &HTMLElement::replace_child);
+	ClassDB::bind_method(D_METHOD("remove_child", "child"), &HTMLElement::remove_child);
+	ClassDB::bind_method(D_METHOD("clone_node", "deep"), &HTMLElement::clone_node, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("detach"), &HTMLElement::detach);
 	ClassDB::bind_method(D_METHOD("remove"), &HTMLElement::remove);
 }
@@ -129,6 +133,10 @@ docrender::HTMLDOM& HTMLElement::get_dom() const {
 
 std::shared_ptr<litehtml::element> HTMLElement::lock_element() const {
 	return get_owner() ? element.lock() : nullptr;
+}
+
+std::shared_ptr<litehtml::element> HTMLElement::lock_related_element(const Ref<HTMLElement>& p_element) const {
+	return p_element.is_valid() && p_element->get_owner() == get_owner() ? p_element->lock_element() : nullptr;
 }
 
 bool HTMLElement::is_valid() const {
@@ -349,13 +357,35 @@ Error HTMLElement::set_inner_html(const String& p_html) {
 }
 
 Error HTMLElement::append_child(const Ref<HTMLElement>& p_child) {
-	HTMLLayout* owner = get_owner();
+	return insert_before(p_child);
+}
+
+Error HTMLElement::insert_before(const Ref<HTMLElement>& p_child, const Ref<HTMLElement>& p_reference) {
 	const auto parent = lock_element();
-	const auto child = p_child.is_valid() ? p_child->lock_element() : nullptr;
-	if (!parent || !child || p_child->get_owner() != owner) {
+	const auto child = lock_related_element(p_child);
+	const auto reference = lock_related_element(p_reference);
+	if (!parent || !child || (p_reference.is_valid() && !reference)) {
 		return ERR_INVALID_PARAMETER;
 	}
-	return get_dom().move_element(child, parent);
+	return get_dom().insert_child(parent, child, reference);
+}
+
+Error HTMLElement::replace_child(const Ref<HTMLElement>& p_new_child, const Ref<HTMLElement>& p_old_child) {
+	const auto parent = lock_element();
+	const auto new_child = lock_related_element(p_new_child);
+	const auto old_child = lock_related_element(p_old_child);
+	return parent && new_child && old_child ? get_dom().replace_child(parent, new_child, old_child) : ERR_INVALID_PARAMETER;
+}
+
+Error HTMLElement::remove_child(const Ref<HTMLElement>& p_child) {
+	const auto parent = lock_element();
+	const auto child = lock_related_element(p_child);
+	return parent && child ? get_dom().remove_child(parent, child) : ERR_INVALID_PARAMETER;
+}
+
+Ref<HTMLElement> HTMLElement::clone_node(bool p_deep) const {
+	const auto node = lock_element();
+	return node ? get_dom().clone_node(*node, p_deep) : Ref<HTMLElement>();
 }
 
 Error HTMLElement::detach() {
@@ -365,5 +395,5 @@ Error HTMLElement::detach() {
 
 Error HTMLElement::remove() {
 	const auto node = lock_element();
-	return node ? get_dom().move_element(node, {}) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().remove_element(node) : ERR_INVALID_PARAMETER;
 }

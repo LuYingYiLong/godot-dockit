@@ -42,8 +42,13 @@ namespace docrender {
 		std::shared_ptr<HTMLElement::DetachedTree> register_detached_tree(const litehtml::element::ptr& p_root);
 		void update_detached_handles(const litehtml::element::ptr& p_root,
 			const std::shared_ptr<HTMLElement::DetachedTree>& p_tree);
+		void retain_detached_subtree(const litehtml::element::ptr& p_root);
 		void release_detached_root(const std::shared_ptr<HTMLElement::DetachedTree>& p_tree, const litehtml::element::ptr& p_node);
+		godot::Error place_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
+			const litehtml::element::ptr& p_reference, bool p_replace_reference);
 		void forget_subtree(const litehtml::element& p_element);
+		godot::Ref<HTMLElement> make_detached_element(const litehtml::element::ptr& p_element);
+		litehtml::element::ptr clone_subtree(const litehtml::element& p_source, bool p_deep);
 		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const;
 		void set_source_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		void forget_source_attributes(const litehtml::element& p_element);
@@ -75,6 +80,7 @@ namespace docrender {
 
 		godot::Ref<HTMLElement> make_element(const litehtml::element::ptr& p_element) const;
 		godot::Ref<HTMLElement> create_element(const godot::CharString& p_tag);
+		godot::Ref<HTMLElement> clone_node(const litehtml::element& p_source, bool p_deep);
 		godot::Ref<HTMLElement> query_selector(const godot::String& p_selector, const litehtml::element::ptr& p_scope = {}) const;
 		godot::TypedArray<HTMLElement> query_selector_all(const godot::String& p_selector, const litehtml::element::ptr& p_scope = {}) const;
 		bool matches(const godot::String& p_selector, const litehtml::element::ptr& p_scope) const;
@@ -87,7 +93,12 @@ namespace docrender {
 		godot::String serialize_children(const litehtml::element& p_element) const;
 		godot::Error edit_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		godot::Error replace_children(const litehtml::element::ptr& p_element, const godot::String& p_content, bool p_parse_html);
-		godot::Error move_element(const litehtml::element::ptr& p_element, const litehtml::element::ptr& p_parent);
+		godot::Error insert_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
+			const litehtml::element::ptr& p_reference);
+		godot::Error replace_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_new_child,
+			const litehtml::element::ptr& p_old_child);
+		godot::Error remove_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child);
 		godot::Error detach_element(const litehtml::element::ptr& p_element);
+		godot::Error remove_element(const litehtml::element::ptr& p_element);
 	};
 }

@@ -54,6 +54,13 @@ namespace docrender {
 		return true;
 	}
 
+	void HTMLInputNode::copy_state_for_clone(const HTMLInputNode& p_source) {
+		editor.copy_value_for_clone(p_source.editor);
+		checked = p_source.checked;
+		dirty_checked = p_source.dirty_checked;
+		update_pseudos();
+	}
+
 	void HTMLInputNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,
 		const litehtml::position* p_clip, const std::shared_ptr<litehtml::render_item>& p_item) {
 		html_tag::draw(p_hdc, p_x, p_y, p_clip, p_item);

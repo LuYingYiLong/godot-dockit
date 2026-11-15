@@ -25,6 +25,7 @@ namespace litehtml
 				css().get_white_space_collapse() == white_space_break_spaces);
 		}
 		const string& get_source_text() const { return m_text; }
+		bool is_whole_text_node() const { return m_whole_text_node; }
 		const string& get_rendered_text() const { return m_use_transformed ? m_transformed_text : m_text; }
 		bool allows_hyphenation() const { return m_hyphenation_allowed; }
 		void set_hyphenation_allowed(bool allowed) { m_hyphenation_allowed = allowed; }

@@ -74,6 +74,7 @@ namespace docrender {
 		const godot::String& get_value() const { return value; }
 		void use_default(const godot::String& p_value);
 		bool set_value(const godot::String& p_value);
+		void copy_value_for_clone(const HTMLTextEditor& p_source);
 		int64_t selection_start() const;
 		int64_t selection_end() const;
 		int64_t caret_offset() const { return caret; }

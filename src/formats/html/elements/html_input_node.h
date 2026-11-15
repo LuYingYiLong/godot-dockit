@@ -25,5 +25,6 @@ namespace docrender {
 		godot::String get_value() const;
 		bool is_checked() const { return checked; }
 		bool set_checked(bool p_checked);
+		void copy_state_for_clone(const HTMLInputNode& p_source);
 	};
 }

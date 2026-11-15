@@ -3280,3 +3280,43 @@ msgid ""
 "Returns whether the element belongs to the current document tree. A detached or invalid element "
 "returns [code]false[/code]. The result updates immediately when the tree changes."
 msgstr "返回元素是否属于当前文档树。已分离或无效的元素返回 [code]false[/code]。树发生变化时立即更新结果。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Moves [param child] before the direct child [param reference]. If [param reference] is [code]null[/code], "
+"appends the child. The moved subtree keeps its handles. See [method append_child] for insertion constraints."
+msgstr ""
+"将 [param child] 移到直接子元素 [param reference] 前面。如果 [param reference] 为 [code]null[/code]，"
+"则追加到末尾。移动的子树保留其句柄。插入约束见 [method append_child]。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Detaches the direct child [param child] while preserving the subtree's handles. See [method detach] "
+"for the lifetime of a detached subtree."
+msgstr ""
+"分离直接子元素 [param child] 并保留其子树的句柄。分离子树的生命周期见 [method detach]。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Moves [param new_child] into the position of the direct child [param old_child], then detaches the remaining "
+"subtree of [param old_child]. Both subtrees keep their handles. Passing the same element for both arguments "
+"leaves the tree unchanged."
+msgstr ""
+"将 [param new_child] 移到直接子元素 [param old_child] 的位置，再分离 [param old_child] 的剩余子树。"
+"两棵子树均保留原有句柄。两个参数为同一元素时保持原有树结构。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"Returns a detached copy in the same layout with a new handle. Attributes are copied as written, "
+"including IDs. If [param deep] is [code]true[/code], copies descendants, including text and comments, "
+"in their original order. Style and geometry are computed when the copy is inserted and laid out.\n"
+"Inputs and text areas keep their current values and whether those values have been edited. Checkboxes "
+"also keep their checked state and whether it has been edited. Text selection starts at offset zero. "
+"A shallow text area copy retains its current value with empty default text.\n"
+"Returns [code]null[/code] for an invalid handle."
+msgstr ""
+"返回同一布局中的分离副本，该副本拥有新句柄。属性按原样复制，包括 ID。如果 [param deep] 为 "
+"[code]true[/code]，则按原顺序复制后代、文本和注释。副本插入并排版时会计算样式和几何信息。\n"
+"输入框和文本区保留当前值及其修改标记。复选框也保留当前勾选状态及其修改标记。文本选区从偏移零开始。"
+"文本区的浅拷贝保留当前值，且默认文本为空。\n"
+"句柄无效时返回 [code]null[/code]。"

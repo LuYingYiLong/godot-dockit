@@ -23,6 +23,15 @@
 				Appends [param child] to the end of this element's children and preserves the subtree's handles. Accepts both unattached elements from [method HTMLLayout.create_element] and existing elements from the same layout. Cycles, moving the document root, and inserting elements into tags that cannot contain them are rejected.
 			</description>
 		</method>
+		<method name="clone_node" qualifiers="const">
+			<return type="HTMLElement" />
+			<param index="0" name="deep" type="bool" default="false" />
+			<description>
+				Returns a detached copy in the same layout with a new handle. Attributes are copied as written, including IDs. If [param deep] is [code]true[/code], copies descendants, including text and comments, in their original order. Style and geometry are computed when the copy is inserted and laid out.
+				Inputs and text areas keep their current values and whether those values have been edited. Checkboxes also keep their checked state and whether it has been edited. Text selection starts at offset zero. A shallow text area copy retains its current value with empty default text.
+				Returns [code]null[/code] for an invalid handle.
+			</description>
+		</method>
 		<method name="closest" qualifiers="const">
 			<return type="HTMLElement" />
 			<param index="0" name="selector" type="String" />
@@ -124,6 +133,14 @@
 				Returns whether the element has the given case-sensitive class name.
 			</description>
 		</method>
+		<method name="insert_before">
+			<return type="int" enum="Error" />
+			<param index="0" name="child" type="HTMLElement" />
+			<param index="1" name="reference" type="HTMLElement" default="null" />
+			<description>
+				Moves [param child] before the direct child [param reference]. If [param reference] is [code]null[/code], appends the child. The moved subtree keeps its handles. See [method append_child] for insertion constraints.
+			</description>
+		</method>
 		<method name="is_connected" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -175,6 +192,21 @@
 			<param index="0" name="class_name" type="String" />
 			<description>
 				Removes the given class name if present. See [method add_class] for the name rules.
+			</description>
+		</method>
+		<method name="remove_child">
+			<return type="int" enum="Error" />
+			<param index="0" name="child" type="HTMLElement" />
+			<description>
+				Detaches the direct child [param child] while preserving the subtree's handles. See [method detach] for the lifetime of a detached subtree.
+			</description>
+		</method>
+		<method name="replace_child">
+			<return type="int" enum="Error" />
+			<param index="0" name="new_child" type="HTMLElement" />
+			<param index="1" name="old_child" type="HTMLElement" />
+			<description>
+				Moves [param new_child] into the position of the direct child [param old_child], then detaches the remaining subtree of [param old_child]. Both subtrees keep their handles. Passing the same element for both arguments leaves the tree unchanged.
 			</description>
 		</method>
 		<method name="set_attribute">

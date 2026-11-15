@@ -331,6 +331,9 @@ func _run() -> void:
 	_check_element_subclasses()
 	_check_detached_subtrees()
 	await _check_dom_layout_isolation()
+	await _check_dom_child_edits()
+	await _check_dom_clone()
+	await _check_form_clone()
 	_check_layers()
 	_check_box_and_transform_functions()
 	_check_math_functions()
@@ -866,6 +869,184 @@ func _check_dom_layout_isolation() -> void:
 	_check(is_equal_approx(replacement.get_bounding_rect().size.x, 90.0) and
 		is_equal_approx(second_node.get_bounding_rect().size.x, 40.0),
 		"The replacement reflows independently and the shared view stays current")
+
+
+func _check_dom_child_edits() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		#parent > div { height: 20px; }
+		#parent > :nth-child(1) { width: 31px; }
+		#parent > :nth-child(2) { width: 52px; }
+		#parent > :nth-child(3) { width: 73px; }
+		#parent::after { content: '!'; }
+		</style><div id="parent"><div id="a"><div id="leaf">Leaf</div><span id="keep">Keep</span></div><!--mark--><div id="b">B</div><div id="c">C</div>Tail</div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(250, 150)) == OK, "Lay out the DOM child edit fixture")
+	var parent: HTMLElement = layout.get_element_by_id("parent")
+	var a: HTMLElement = layout.get_element_by_id("a")
+	var b: HTMLElement = layout.get_element_by_id("b")
+	var c: HTMLElement = layout.get_element_by_id("c")
+	var leaf: HTMLElement = layout.get_element_by_id("leaf")
+	var keep: HTMLElement = layout.get_element_by_id("keep")
+	var document_root: HTMLElement = layout.query_selector("html")
+	if parent == null or a == null or b == null or c == null or leaf == null or keep == null or document_root == null:
+		_check(false, "Query all child edit fixture elements")
+		return
+	_check(parent.insert_before(b, a) == OK and parent.get_children() == [b, a, c] and
+		"<!--mark-->" in parent.get_inner_html(), "Moving a sibling before another preserves text and comments")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(b.get_bounding_rect().size.x, 31.0) and is_equal_approx(a.get_bounding_rect().size.x, 52.0),
+		"Deferred layout resolves structural styles in the new sibling order")
+	_check(parent.insert_before(b, b) == OK and parent.insert_before(b, a) == OK and
+		parent.replace_child(a, a) == OK and a.get_bounding_rect().has_area(),
+		"Self edits and insertion at an existing position keep current geometry")
+	_check(parent.insert_before(c, leaf) == ERR_INVALID_PARAMETER and
+		parent.replace_child(c, leaf) == ERR_INVALID_PARAMETER and parent.remove_child(leaf) == ERR_INVALID_PARAMETER and
+		a.insert_before(parent, leaf) == ERR_INVALID_PARAMETER and parent.get_children() == [b, a, c] and
+		leaf.get_parent() == a and a.get_bounding_rect().has_area(),
+		"Invalid references and ancestor cycles leave both trees and layout untouched")
+
+	_check(parent.replace_child(leaf, a) == OK and parent.get_children() == [b, leaf, c] and
+		leaf.is_connected() and layout.get_element_by_id("leaf") == leaf and
+		a.is_valid() and not a.is_connected() and a.get_parent() == null and keep.get_parent() == a and a.get_children() == [keep],
+		"Replacing a child with its descendant detaches only the remaining subtree")
+	a = null
+	var detached: HTMLElement = keep.get_parent()
+	if detached == null:
+		_check(false, "A descendant handle retains the replaced subtree")
+		return
+	_check(parent.remove_child(c) == OK and c.is_valid() and not c.is_connected() and
+		layout.get_element_by_id("c") == null and parent.get_children() == [b, leaf],
+		"Removing a direct child preserves its handle and removes it from document queries")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(leaf.get_bounding_rect().size.x, 52.0), "The replacement takes the removed child's layout position")
+	_check(detached.insert_before(document_root) == ERR_INVALID_PARAMETER and
+		detached.replace_child(document_root, keep) == ERR_INVALID_PARAMETER and document_root.is_connected(),
+		"A detached destination cannot move the document root")
+	_check(detached.insert_before(c, keep) == OK and detached.get_children() == [c, keep] and
+		detached.replace_child(keep, c) == OK and detached.get_children() == [keep] and
+		detached.remove_child(keep) == OK and detached.get_children().is_empty() and
+		c.is_valid() and keep.is_valid() and not keep.is_connected() and leaf.get_bounding_rect().has_area(),
+		"Edits between detached trees keep their handles and leave document geometry current")
+
+	_check(parent.insert_before(c) == OK and parent.append_child(c) == OK and
+		parent.get_children() == [b, leaf, c] and parent.get_text_content().ends_with("TailC") and c.is_connected() and
+		layout.get_element_by_id("c") == c, "Omitting the reference appends the same handle after real text and before generated content")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(c.get_bounding_rect().size.x, 73.0) and layout.get_plain_text().strip_edges().ends_with("!"),
+		"Reinsertion reflows and preserves the trailing pseudo-element")
+	_check(c.remove() == OK and not c.is_valid(), "Legacy remove still invalidates the handle")
+
+
+func _check_dom_clone() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>#source::before { content: 'Generated'; }</style>
+		<div id="source" data-empty="" style="width:80px"><span>One</span>  <!--mark--><b>Two</b> tail</div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(300, 100)) == OK, "Lay out the DOM clone fixture")
+	var source: HTMLDivElement = layout.get_element_by_id("source") as HTMLDivElement
+	var body: HTMLElement = layout.query_selector("body")
+	if source == null or body == null:
+		_check(false, "Query the DOM clone fixture")
+		return
+	var shallow: HTMLDivElement = source.clone_node() as HTMLDivElement
+	var deep: HTMLDivElement = source.clone_node(true) as HTMLDivElement
+	if shallow == null or deep == null:
+		_check(false, "Cloning returns the correct element type")
+		return
+	_check(shallow != source and shallow.get_attributes() == source.get_attributes() and shallow.get_inner_html().is_empty() and
+		shallow.get_parent() == null and not shallow.is_connected(), "A shallow clone has its own handle and copies only source attributes")
+	_check(deep != source and deep != shallow and deep.get_inner_html() == source.get_inner_html() and
+		"<!--mark-->" in deep.get_inner_html() and "Generated" not in deep.get_text_content(),
+		"A deep clone preserves text, whitespace, comments and child order")
+	var child: HTMLElement = deep.query_selector("span")
+	if child == null:
+		_check(false, "Query the clone descendant")
+		return
+	_check(child != source.query_selector("span") and child.set_text_content("Edited") == OK and
+		source.get_text_content() == "One  Two tail" and source.get_bounding_rect().has_area(),
+		"Editing a detached clone leaves the source text and layout current")
+	deep = null
+	var retained: HTMLElement = child.get_parent()
+	if retained == null:
+		_check(false, "A descendant handle keeps the detached clone alive")
+		return
+	_check(retained.set_attribute("id", "copy") == OK and body.append_child(retained) == OK and
+		layout.get_element_by_id("copy") == retained and retained.query_selector("span") == child,
+		"Reinserting a clone preserves its root and descendant handles")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(retained.get_bounding_rect().size.x, 80.0), "The clone acquires geometry after reflow")
+	layout.clear()
+	_check(retained.clone_node() == null and not child.is_valid() and not shallow.is_valid(),
+		"Clearing a layout invalidates connected and detached clones")
+
+
+func _check_form_clone() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><body><textarea id="clean">Initial
+Value</textarea><div id="fields"><input id="text" value="Default">
+		<input id="check" type="checkbox" checked><textarea id="dirty">Default area</textarea></div></body>"""
+	_check(layout.parse(html) == OK, "Parse the form clone fixture")
+	var clean: HTMLTextAreaElement = layout.get_element_by_id("clean") as HTMLTextAreaElement
+	var fields: HTMLElement = layout.get_element_by_id("fields")
+	var text: HTMLInputElement = layout.get_element_by_id("text") as HTMLInputElement
+	var checkbox: HTMLInputElement = layout.get_element_by_id("check") as HTMLInputElement
+	var dirty: HTMLTextAreaElement = layout.get_element_by_id("dirty") as HTMLTextAreaElement
+	var body: HTMLElement = layout.query_selector("body")
+	if clean == null or fields == null or text == null or checkbox == null or dirty == null or body == null:
+		_check(false, "Query the form clone fixture")
+		return
+	_check(clean.value == "Initial\nValue", "A parsed textarea exposes its current value before layout")
+	clean.set_selection_range(1, 6)
+	var shallow: HTMLTextAreaElement = clean.clone_node() as HTMLTextAreaElement
+	if shallow == null:
+		_check(false, "Clone a clean textarea without its child text")
+		return
+	_check(shallow.default_value.is_empty() and shallow.value == clean.value and
+		shallow.get_selection_start() == 0 and shallow.get_selection_end() == 0 and clean.get_selection_end() == 6,
+		"A shallow textarea clone has no default text and starts with a fresh caret and the source live value")
+	_check(layout.layout(Vector2i(320, 240)) == OK and body.append_child(shallow) == OK, "Insert the shallow textarea clone")
+	await process_frame
+	await process_frame
+	_check(shallow.value == "Initial\nValue" and shallow.default_value.is_empty() and shallow.get_bounding_rect().has_area(),
+		"The unedited shallow textarea keeps its current value after deferred reflow")
+	_check(shallow.set_attribute("rows", "3") == OK and layout.layout(Vector2i(290, 240)) == OK and
+		shallow.value == "Initial\nValue", "Restyling the clone preserves its current value")
+	shallow.default_value = "New default"
+	_check(shallow.value == "New default" and clean.value == "Initial\nValue", "Changing the clone's child text follows its clean value flag")
+
+	var clean_text: HTMLInputElement = text.clone_node() as HTMLInputElement
+	_check(clean_text != null and clean_text.set_attribute("value", "Other default") == OK and
+		clean_text.value == "Other default" and text.value == "Default", "A clean input clone still follows its value attribute")
+	text.value = "Current text"
+	text.set_selection_range(2, 6)
+	checkbox.checked = false
+	dirty.value = "Current area"
+	dirty.set_selection_range(2, 7)
+	var deep: HTMLElement = fields.clone_node(true)
+	if deep == null:
+		_check(false, "Clone the form subtree")
+		return
+	var cloned_text: HTMLInputElement = deep.query_selector("#text") as HTMLInputElement
+	var cloned_check: HTMLInputElement = deep.query_selector("#check") as HTMLInputElement
+	var cloned_area: HTMLTextAreaElement = deep.query_selector("#dirty") as HTMLTextAreaElement
+	if cloned_text == null or cloned_check == null or cloned_area == null:
+		_check(false, "Deep clones preserve specialized form element types")
+		return
+	_check(cloned_text.set_attribute("value", "Changed default") == OK and cloned_text.value == "Current text" and
+		cloned_text.get_selection_start() == 0 and cloned_text.get_selection_end() == 0,
+		"A dirty input clone keeps the live value and resets the selection")
+	_check(not cloned_check.checked and cloned_check.has_attribute("checked") and
+		cloned_check.remove_attribute("checked") == OK and cloned_check.set_attribute("checked", "") == OK and
+		not cloned_check.checked, "A checkbox clone preserves checkedness separately from the checked attribute")
+	_check(cloned_area.default_value == "Default area" and cloned_area.value == "Current area" and
+		cloned_area.get_selection_start() == 0 and cloned_area.get_selection_end() == 0,
+		"A deep textarea clone retains both the default text and live value and resets the selection")
+	cloned_area.default_value = "Changed default"
+	_check(cloned_area.value == "Current area" and dirty.default_value == "Default area",
+		"Changing the cloned textarea default preserves its dirty value and leaves the source unchanged")
 
 
 func _check_layers() -> void:

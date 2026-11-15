@@ -91,6 +91,12 @@ namespace docrender {
 		return true;
 	}
 
+	void HTMLTextEditor::copy_value_for_clone(const HTMLTextEditor& p_source) {
+		value = p_source.value;
+		dirty_value = p_source.dirty_value;
+		set_selection(0, 0);
+	}
+
 	int64_t HTMLTextEditor::selection_start() const { return std::min(anchor, caret); }
 	int64_t HTMLTextEditor::selection_end() const { return std::max(anchor, caret); }
 

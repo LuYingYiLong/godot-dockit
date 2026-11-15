@@ -37,6 +37,16 @@ namespace docrender {
 		update_pseudos();
 	}
 
+	bool HTMLTextAreaNode::appendChild(const litehtml::element::ptr& p_child) {
+		if (!html_tag::appendChild(p_child)) {
+			return false;
+		}
+		if (p_child->is_text()) {
+			sync_default_value();
+		}
+		return true;
+	}
+
 	bool HTMLTextAreaNode::update_pseudos() {
 		const bool disabled = get_attr("disabled") != nullptr;
 		bool changed = set_pseudo_class(litehtml::_id("disabled"), disabled);
@@ -47,7 +57,7 @@ namespace docrender {
 
 	void HTMLTextAreaNode::parse_attributes() {
 		html_tag::parse_attributes();
-		sync_default_value();
+		update_pseudos();
 		m_style.add_property(litehtml::_width_, std::to_string(dimension_hint(get_attr("cols", ""), 20)) + "ch");
 		m_style.add_property(litehtml::_height_, std::to_string(dimension_hint(get_attr("rows", ""), 2)) + "lh");
 		if (String::utf8(get_attr("wrap", "")).to_lower() == "off") {

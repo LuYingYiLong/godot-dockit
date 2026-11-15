@@ -13,6 +13,7 @@ namespace docrender {
 		bool is_text_control() const override { return true; }
 		bool is_replaced() const override { return true; }
 		bool update_pseudos() override;
+		bool appendChild(const litehtml::element::ptr& p_child) override;
 		void parse_attributes() override;
 		godot::String get_default_value() const;
 		void sync_default_value();
