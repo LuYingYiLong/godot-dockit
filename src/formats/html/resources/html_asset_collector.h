@@ -10,6 +10,7 @@ namespace docrender {
 		godot::Dictionary fonts;
 		godot::Dictionary image_dpi;
 		godot::Dictionary image_orientations;
+		godot::Dictionary svg_clip_sources;
 	};
 
 	HTMLAssets collect_html_assets(

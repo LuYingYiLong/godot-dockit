@@ -27,10 +27,11 @@ litehtml::rendered_width litehtml::render_item_block::place_float(const std::sha
 	el_pos.el_pos		   += el->get_paddings();
 	el_pos.el_pos		   += el->get_borders();
 	el_pos.container_width	= self_size.render_width;
-	if(el->src_el()->css().get_float() == float_left)
+	const auto side = el->get_used_float();
+	if(side == float_left)
 	{
 		new_pos = fmt_ctx->place_to_left(el_pos);
-	} else if(el->src_el()->css().get_float() == float_right)
+	} else if(side == float_right)
 	{
 		el->pos().x		= self_size.render_width - el_pos.el_pos.width + el->content_offset_left();
 		el_pos.el_pos.x = self_size.render_width - el_pos.el_pos.width;
@@ -44,7 +45,7 @@ litehtml::rendered_width litehtml::render_item_block::place_float(const std::sha
 	}
 	nv.natural_width = self_size.render_width - new_pos.width + nv.natural_width;
 	fmt_ctx->add_float(el, nv.min_width, self_size.context_idx);
-	fix_line_width(el->src_el()->css().get_float(), self_size, fmt_ctx);
+	fix_line_width(side, self_size, fmt_ctx);
 
 	return nv;
 }
@@ -186,11 +187,38 @@ litehtml::rendered_width litehtml::render_item_block::_render(pixel_t x, pixel_t
 {
 	containing_block_context self_size = calculate_containing_block_context(containing_block_size);
 	self_size.measuring_inline_size = (containing_block_size.size_mode & containing_block_context::size_mode_content) != 0;
+	using context = containing_block_context;
+	const auto constrain = [](pixel_t value, context::typed_pixel lower, context::typed_pixel upper) {
+		if (upper.type != context::cbc_value_type_none) value = std::min(value, upper.value);
+		if (lower.type != context::cbc_value_type_none) value = std::max(value, lower.value);
+		return std::max<pixel_t>(0, value);
+	};
+	std::optional<pixel_t> contained_width;
+	if (css().has_inline_size_containment())
+	{
+		const bool auto_width = self_size.width.type == context::cbc_value_type_auto;
+		contained_width = constrain(auto_width ? css().get_contain_intrinsic_width().value_or(0) : self_size.render_width.value,
+			self_size.min_width, self_size.max_width);
+		if (auto_width && (self_size.measuring_inline_size ||
+			(!is_flex_item() && !is_grid_item() && (src_el()->is_inline_box() || src_el()->is_float() || !src_el()->in_normal_flow()))))
+		{
+			self_size.width = *contained_width + box_sizing_width();
+			self_size.render_width = *contained_width;
+		}
+	}
+	const bool contain_height = css().has_block_size_containment();
+	if (contain_height && self_size.height.type == context::cbc_value_type_auto && !self_size.ratio_height)
+	{
+		self_size.contained_auto_block_size = constrain(css().get_contain_intrinsic_height().value_or(0),
+			self_size.min_height, self_size.max_height);
+		self_size.height = 0;
+	}
 
     //*****************************************
     // Render content
     //*****************************************
 	auto [ret_width, ret_min_width] = _render_content(x, y, second_pass, self_size, fmt_ctx);
+	if (contained_width) ret_width = ret_min_width = *contained_width;
 	//*****************************************
 
 	if (src_el()->css().get_display() == display_list_item)
@@ -247,7 +275,7 @@ litehtml::rendered_width litehtml::render_item_block::_render(pixel_t x, pixel_t
 		m_pos.width = 0;
 	}
 
-	if (self_size.ratio_width && src_el()->in_normal_flow() && css().get_overflow() == overflow_visible && css().get_min_width().is_predefined() &&
+	if (self_size.ratio_width && src_el()->in_normal_flow() && !is_scrollable_overflow(css().get_overflow_x()) && css().get_min_width().is_predefined() &&
 		css().get_min_width().intrinsic_size() == css_intrinsic_size::none)
 	{
 		const auto minimum = self_size.max_width.type == containing_block_context::cbc_value_type_none ?
@@ -278,15 +306,19 @@ litehtml::rendered_width litehtml::render_item_block::_render(pixel_t x, pixel_t
 	if (self_size.ratio_height)
 	{
 		m_pos.height = size_from_aspect_ratio(m_pos.width, css().get_aspect_ratio(), false);
-		if (src_el()->in_normal_flow() && css().get_min_height().is_predefined() && css().get_overflow() == overflow_visible)
+		if (!contain_height && src_el()->in_normal_flow() && css().get_min_height().is_predefined() && !is_scrollable_overflow(css().get_overflow_y()))
 		{
 			m_pos.height = std::max(m_pos.height, baseline_content_height());
 			if (src_el()->is_block_formatting_context())
 				m_pos.height = std::max(m_pos.height, fmt_ctx->get_floats_height());
 		}
 	}
+	else if (self_size.contained_auto_block_size)
+	{
+		m_pos.height = *self_size.contained_auto_block_size;
+	}
 	else if (self_size.height.type != containing_block_context::cbc_value_type_auto &&
-	    !(containing_block_size.size_mode & containing_block_context::size_mode_content))
+	    (contain_height || !(containing_block_size.size_mode & containing_block_context::size_mode_content)))
 	{
 		// TODO: Something wrong here
 		// Percentage height from undefined containing block height is usually <= 0
@@ -362,7 +394,8 @@ litehtml::rendered_width litehtml::render_item_block::_render(pixel_t x, pixel_t
 		width.width.type = containing_block_context::cbc_value_type_auto;
 		width.height.type = containing_block_context::cbc_value_type_auto;
 		marker->render(0, 0, width, nullptr);
-		const pixel_t first_baseline = layout_baseline(false).value_or(content_offset_top() +
+		const auto baseline = css().has_layout_containment() ? find_layout_baseline(false) : layout_baseline(false);
+		const pixel_t first_baseline = baseline.value_or(content_offset_top() +
 			(css().line_height().computed_value - css().get_font_metrics().height) / 2 + css().get_font_metrics().ascent);
 		const pixel_t gap = css().get_font() ? src_el()->get_document()->container()->text_width(" ", css().get_font()) : 0;
 		marker->pos().x = -marker->width() - content_offset_left() - gap;
@@ -375,7 +408,7 @@ litehtml::rendered_width litehtml::render_item_block::_render(pixel_t x, pixel_t
 
 	rendered_width ret;
 	ret.natural_width = ret_width + content_offset_width();
-	if(!intrinsic_probe && !intrinsic.preferred && css().get_overflow() > overflow_visible && css().get_width().is_predefined() &&
+	if(!intrinsic_probe && !intrinsic.preferred && css().is_scroll_container() && css().get_width().is_predefined() &&
 	   css().get_display() != display_table_cell)
 	{
 		ret.min_width = content_offset_left() + content_offset_right();

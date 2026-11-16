@@ -138,6 +138,17 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 		auto_margin_cross_end = true;
 	}
 	const auto intrinsic = el->resolve_intrinsic_inline_sizes(self_size);
+	std::optional<rendered_width> contained_measurement;
+	const auto measure_contained_width = [&]() -> const rendered_width& {
+		if (!contained_measurement)
+		{
+			using mode = containing_block_context;
+			contained_measurement = el->render(0, 0, self_size.new_width(self_size.render_width,
+				mode::size_mode_content | mode::size_mode_grid_measure_width | mode::size_mode_intrinsic_inline_probe), fmt_ctx);
+		}
+		return *contained_measurement;
+	};
+	const bool contains_inline_size = el->css().has_inline_size_containment();
 	def_value<pixel_t> content_size(0);
 	if (intrinsic.content) content_size = intrinsic.content->min_width + el->content_offset_width();
 	const bool auto_minimum = el->css().get_min_width().is_predefined() && !intrinsic.minimum;
@@ -147,7 +158,12 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 	}
 	else if (auto_minimum && intrinsic.content)
 	{
-		min_size = el->css().get_overflow() == overflow_visible ? static_cast<pixel_t>(content_size) : el->content_offset_width();
+		min_size = !el->css().is_scroll_container() ? static_cast<pixel_t>(content_size) : el->content_offset_width();
+	}
+	else if (auto_minimum && contains_inline_size)
+	{
+		content_size = measure_contained_width().min_width;
+		min_size = el->css().is_scroll_container() ? el->content_offset_width() : static_cast<pixel_t>(content_size);
 	}
 	else if (auto_minimum)
 	{
@@ -162,6 +178,14 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 		min_size = el->css().get_min_width().calc_percent(self_size.render_width) +
 				   el->render_offset_width();
 	}
+	if (auto_minimum && contains_inline_size)
+	{
+		const auto& width = el->css().get_width();
+		if (intrinsic.preferred)
+			min_size = std::min<pixel_t>(min_size, *intrinsic.preferred + el->content_offset_width());
+		else if (!width.is_predefined())
+			min_size = std::min<pixel_t>(min_size, width.calc_percent(self_size.render_width) + el->render_offset_width());
+	}
 	if (intrinsic.maximum)
 	{
 		max_size = *intrinsic.maximum + el->content_offset_width();
@@ -173,7 +197,7 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 	}
 	if (!max_size.is_default())
 	{
-		if (auto_minimum && intrinsic.content)
+		if (auto_minimum && (intrinsic.content || contains_inline_size))
 			min_size = std::min(min_size, static_cast<pixel_t>(max_size));
 		else if (intrinsic.minimum || intrinsic.maximum)
 			max_size = std::max(min_size, static_cast<pixel_t>(max_size));
@@ -216,6 +240,13 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 						containing_block_context::size_mode_content | containing_block_context::size_mode_grid_measure_width), fmt_ctx).natural_width;
 					break;
 				}
+				if (contains_inline_size)
+				{
+					const auto& measured = measure_contained_width();
+					base_size = predef == flex_basis_fit_content ?
+						std::clamp(self_size.render_width.value, measured.min_width, measured.natural_width) : measured.natural_width;
+					break;
+				}
 				base_size = el->render(0, 0,
 									   self_size.new_width(self_size.render_width + el->content_offset_width(),
 														   containing_block_context::size_mode_content |
@@ -224,6 +255,11 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 								.natural_width;
 				break;
 			case flex_basis_min_content:
+				if (contains_inline_size)
+				{
+					base_size = measure_contained_width().min_width;
+					break;
+				}
 				if(content_size.is_default())
 				{
 					content_size = el->render(0, 0,
@@ -238,6 +274,10 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 				if (intrinsic.content)
 				{
 					base_size = intrinsic.content->natural_width + el->content_offset_width();
+				}
+				else if (contains_inline_size)
+				{
+					base_size = measure_contained_width().natural_width;
 				}
 				else
 				{

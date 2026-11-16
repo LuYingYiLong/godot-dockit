@@ -47,7 +47,7 @@ namespace litehtml {
 					if (function == "font-tech") return supports_font_tech(argument.ident());
 					if (function == "font-format") return supports_font_format(argument.ident());
 					return argument.type == AT_KEYWORD && is_one_of(lowcase(argument.name), "font-face",
-						"font-feature-values", "counter-style", "supports", "media", "import", "layer");
+						"font-feature-values", "counter-style", "supports", "media", "import", "layer", "scope", "container");
 				}
 				return false;
 			}

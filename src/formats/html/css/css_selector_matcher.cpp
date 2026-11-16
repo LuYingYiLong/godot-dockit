@@ -8,9 +8,14 @@
 #include "css_syntax_util.h"
 
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace docrender::css {
+
+struct NestingMatchCache {
+	std::unordered_map<const NestingSelectorList*, std::unordered_map<SelectorNode, unsigned>> matches;
+};
 
 namespace {
 
@@ -234,6 +239,10 @@ bool can_match_virtual_scope(const CompoundSelector& selector) {
 	if (selector.m_has_type_selector) return false;
 	bool allows_scope = false;
 	for (const auto& attribute : selector.m_attrs) {
+		if (attribute.type == select_nesting && !attribute.nesting) {
+			allows_scope = true;
+			continue;
+		}
 		if (attribute.type != select_pseudo_class) return false;
 		const auto& name = attribute.name;
 		// A relational selector can test the root when the compound also targets :scope.
@@ -246,6 +255,22 @@ bool can_match_virtual_scope(const CompoundSelector& selector) {
 		allows_scope = true;
 	}
 	return allows_scope;
+}
+
+unsigned match_nesting_parent(const SelectorDOM& dom, SelectorNode node, const NestingSelectorList& parent,
+	const MatchContext& context) {
+	if (!context.nesting_cache) {
+		NestingMatchCache cache;
+		auto nested = context;
+		nested.nesting_cache = &cache;
+		return match_nesting_parent(dom, node, parent, nested);
+	}
+	// Repeated ampersands can refer to the same parent and node across several levels.
+	auto& matches = context.nesting_cache->matches[&parent];
+	if (const auto found = matches.find(node); found != matches.end()) return found->second;
+	const auto result = match_selector_list(dom, node, parent.element_selectors, context);
+	matches.emplace(node, result);
+	return result;
 }
 
 unsigned match_compound(const SelectorDOM& dom, SelectorNode node, const CompoundSelector& selector,
@@ -276,6 +301,15 @@ unsigned match_compound(const SelectorDOM& dom, SelectorNode node, const Compoun
 			case select_pseudo_class:
 				if (context.mode == MatchMode::candidate) result |= match_deferred_pseudo_class;
 				else if (!match_pseudo_class(dom, node, attribute, context)) return match_none;
+				break;
+			case select_nesting:
+				if (attribute.nesting) {
+					const auto matched = match_nesting_parent(dom, node, *attribute.nesting, context);
+					if (!matched) return match_none;
+					result |= matched & match_deferred_pseudo_class;
+				} else if (context.scope ? node != context.scope : dom.parent(node) != nullptr) {
+					return match_none;
+				}
 				break;
 			case select_attr:
 				if (!match_attribute(dom, node, attribute)) return match_none;
@@ -347,6 +381,68 @@ unsigned match_selector_list(const SelectorDOM& dom, SelectorNode node, const Se
 		if (const auto result = match_selector(dom, node, *selector, context)) return result;
 	}
 	return match_none;
+}
+
+namespace {
+
+struct ScopeRoot {
+	SelectorNode node;
+	int distance;
+};
+
+bool inside_scope_limit(const SelectorDOM& dom, SelectorNode subject, SelectorNode root,
+	const Selector::vector& limits) {
+	if (limits.empty()) return false;
+	const MatchContext context{root};
+	for (auto node = subject; node != root; node = dom.parent(node)) {
+		if (match_selector_list(dom, node, limits, context)) return true;
+	}
+	return false;
+}
+
+vector<ScopeRoot> find_scope_roots(const SelectorDOM& dom, SelectorNode subject, const ScopeRule& scope,
+	MatchMode mode) {
+	const auto outer = scope.parent ? find_scope_roots(dom, subject, *scope.parent, mode) :
+		vector<ScopeRoot>{{nullptr, std::numeric_limits<int>::max()}};
+	if (outer.empty()) return {};
+
+	vector<ScopeRoot> roots;
+	int distance = 0;
+	for (auto node = subject; node && distance <= outer.back().distance; node = dom.parent(node), ++distance) {
+		if (dom.kind(node) != SelectorNodeKind::element) continue;
+		const bool matches = scope.start.empty() ? node == scope.implicit_root :
+			std::any_of(outer.begin(), outer.end(), [&](const ScopeRoot& bound) {
+				if (bound.distance < distance) return false;
+				NestingMatchCache cache;
+				return match_selector_list(dom, node, scope.start, {bound.node, mode, false, &cache}) != match_none;
+			});
+		if (matches && (mode == MatchMode::candidate || !inside_scope_limit(dom, subject, node, scope.end))) {
+			roots.push_back({node, distance});
+		}
+	}
+	return roots;
+}
+
+} // namespace
+
+unsigned ScopeRule::state_dependencies() const {
+	unsigned dependencies = parent ? parent->state_dependencies() : 0;
+	for (const auto& selector : start) dependencies |= selector->state_dependencies();
+	for (const auto& selector : end) dependencies |= selector->state_dependencies();
+	return dependencies;
+}
+
+SelectorMatch match_scoped_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,
+	const ScopeRule& scope, MatchMode mode) {
+	for (const auto& root : find_scope_roots(dom, node, scope, mode)) {
+		NestingMatchCache cache;
+		auto flags = match_selector(dom, node, selector, {root.node, mode, false, &cache});
+		if (flags == match_none) continue;
+		// Candidate traversal defers dynamic roots and limits to the complete match.
+		if (mode == MatchMode::candidate) flags |= match_deferred_pseudo_class;
+		return {flags, root.distance};
+	}
+	return {};
 }
 
 } // namespace docrender::css

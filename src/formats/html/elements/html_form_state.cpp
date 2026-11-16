@@ -8,7 +8,9 @@
 #include <litehtml/document.h>
 
 #include <algorithm>
+#include <optional>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace docrender::forms {
@@ -37,11 +39,79 @@ namespace {
 		}
 		return p_node.tag() == _textarea_ || p_node.tag() == _select_ || p_node.tag() == _button_;
 	}
+
+	bool is_submit_button(const element& p_node) {
+		const auto type = godot::String::utf8(p_node.get_attr("type", "")).to_lower();
+		const auto parent = p_node.parent();
+		return type == "submit" || (type != "reset" && type != "button" && !p_node.get_attr("command") &&
+			!p_node.get_attr("commandfor") && (!parent || parent->tag() != _select_));
+	}
+
+	bool is_validation_candidate(const element& p_node) {
+		if (!supports_required(p_node) && !(p_node.tag() == _button_ && is_submit_button(p_node))) return false;
+		if (is_disabled(p_node)) return false;
+		if (const auto* editor = dynamic_cast<const HTMLTextControlNode*>(&p_node);
+			editor && editor->is_text_control() && p_node.get_attr("readonly")) return false;
+		for (auto parent = p_node.parent(); parent; parent = parent->parent()) {
+			if (parent->tag() == _datalist_) return false;
+		}
+		return true;
+	}
+
+	bool radio_value_missing(const std::vector<element::ptr>& p_group) {
+		bool required = false;
+		for (const auto& peer : p_group) {
+			if (static_cast<const HTMLInputNode&>(*peer).is_checked()) return false;
+			required |= peer->get_attr("required") != nullptr;
+		}
+		return required;
+	}
+
+	std::optional<bool> control_validity(const element& p_node, std::optional<bool> p_radio_missing = {}) {
+		if (!is_validation_candidate(p_node)) return {};
+		const bool required = p_node.get_attr("required");
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node); input && input->is_toggle()) {
+			if (input->type() == HTMLInputNode::Type::CHECKBOX) return !required || input->is_checked();
+			return p_radio_missing ? !*p_radio_missing : !radio_value_missing(radio_group(p_node));
+		}
+		if (const auto* text = dynamic_cast<const HTMLTextControlNode*>(&p_node)) {
+			return !(required && text->editor.get_value().is_empty()) &&
+				!text->editor.has_length_violation(p_node.get_attr("minlength"), p_node.get_attr("maxlength"));
+		}
+		if (const auto* select = dynamic_cast<const HTMLSelectNode*>(&p_node)) return !required || !select->is_missing();
+		return true;
+	}
+
+	bool set_validity(element& p_node, std::optional<bool> p_validity) {
+		static const auto valid = _id("valid");
+		static const auto invalid = _id("invalid");
+		bool changed = p_node.set_pseudo_class(valid, p_validity.value_or(false));
+		changed |= p_node.set_pseudo_class(invalid, !p_validity.value_or(true));
+		return changed;
+	}
+
+	template<class Visit>
+	void visit_validation_containers(const element& p_control, const Visit& p_visit) {
+		if (const auto form = owner(p_control)) p_visit(form);
+		for (auto parent = p_control.parent(); parent; parent = parent->parent()) {
+			if (parent->tag() == _fieldset_) p_visit(parent);
+		}
+	}
 }
 
 bool is_listed(const element& p_node) {
 	const auto tag = p_node.tag();
 	return tag == _input_ || tag == _textarea_ || tag == _button_ || tag == _select_ || tag == _fieldset_;
+}
+
+bool supports_required(const element& p_node) {
+	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) return input->is_text_control() || input->is_toggle();
+	return p_node.tag() == _select_ || p_node.tag() == _textarea_;
+}
+
+bool is_read_write(const element& p_node) {
+	const auto* editor = dynamic_cast<const HTMLTextControlNode*>(&p_node);
+	return editor && editor->is_editable();
 }
 
 bool is_disabled(const element& p_node) {
@@ -129,25 +199,39 @@ std::vector<element::ptr> radio_group(const element& p_radio) {
 
 element::ptr first_invalid(const element& p_form) {
 	for (const auto& node : controls(p_form)) {
-		if (is_disabled(*node)) continue;
-		const bool required = node->get_attr("required");
-		if (const auto* input = dynamic_cast<const HTMLInputNode*>(node.get())) {
-			if (input->type() == HTMLInputNode::Type::RADIO) {
-				bool group_required = false;
-				bool checked = false;
-				for (const auto& peer : radio_group(*node)) {
-					group_required |= peer->get_attr("required") != nullptr;
-					checked |= static_cast<const HTMLInputNode&>(*peer).is_checked();
-				}
-				if (group_required && !checked) return node;
-			} else if (required && ((input->type() == HTMLInputNode::Type::TEXT && !node->get_attr("readonly") && input->get_value().is_empty()) ||
-				(input->type() == HTMLInputNode::Type::CHECKBOX && !input->is_checked()))) return node;
-		} else if (required) {
-			if (const auto* area = dynamic_cast<const HTMLTextAreaNode*>(node.get()); area && !node->get_attr("readonly") && area->editor.get_value().is_empty()) return node;
-			if (const auto* select = dynamic_cast<const HTMLSelectNode*>(node.get()); select && select->is_missing()) return node;
-		}
+		if (!control_validity(*node).value_or(true)) return node;
 	}
 	return {};
+}
+
+bool update_validity(element& p_control) {
+	std::unordered_map<const element*, element::ptr> containers;
+	bool changed = false;
+	const auto update_control = [&](element& p_node, std::optional<bool> p_radio_missing = {}) {
+		if (!set_validity(p_node, control_validity(p_node, p_radio_missing))) return;
+		changed = true;
+		visit_validation_containers(p_node, [&](const auto& p_container) { containers.emplace(p_container.get(), p_container); });
+	};
+	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_control); input && input->type() == HTMLInputNode::Type::RADIO) {
+		const auto group = radio_group(p_control);
+		const bool missing = radio_value_missing(group);
+		for (const auto& peer : group) update_control(*peer, missing);
+	} else {
+		update_control(p_control);
+	}
+	for (const auto& [_, container] : containers) {
+		if (container->tag() == _form_) {
+			changed |= set_validity(*container, !first_invalid(*container));
+		} else {
+			bool valid = true;
+			HTMLDOM::visit_elements(container, [&](const element::ptr& p_node) {
+				valid = control_validity(*p_node).value_or(true);
+				return !valid;
+			});
+			changed |= set_validity(*container, valid);
+		}
+	}
+	return changed;
 }
 
 void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
@@ -159,6 +243,7 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 		return false;
 	});
 	std::unordered_set<const element*> handled_radios;
+	std::unordered_set<const element*> missing_radios;
 	const auto reconcile = [&](const element::ptr& p_node) {
 		auto* radio = dynamic_cast<HTMLInputNode*>(p_node.get());
 		if (!radio || radio->type() != HTMLInputNode::Type::RADIO || handled_radios.count(radio)) return false;
@@ -173,12 +258,15 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 			auto* candidate = static_cast<HTMLInputNode*>(peer.get());
 			if (candidate != checked) candidate->clear_group_checked();
 		}
+		if (radio_value_missing(peers)) for (const auto& peer : peers) missing_radios.insert(peer.get());
 		return false;
 	};
 	if (!p_tree) return;
 	const auto root = root_of(*p_tree);
 	// Checked nodes moved into a group take precedence over its old selection.
 	HTMLDOM::visit_elements(root, reconcile);
+	std::vector<element::ptr> containers;
+	std::unordered_set<const element*> invalid_containers;
 	HTMLDOM::visit_elements(root, [&](const element::ptr& p_node) {
 		if (auto* input = dynamic_cast<HTMLTextControlNode*>(p_node.get())) input->update_pseudos();
 		else if (is_listed(*p_node) || p_node->tag() == _option_ || p_node->tag() == _optgroup_) {
@@ -194,7 +282,16 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 		if (const auto* option = dynamic_cast<const HTMLOptionNode*>(p_node.get()); option && !option->select()) {
 			p_node->set_pseudo_class(_id("checked"), option->is_selected());
 		}
+		if (p_node->tag() == _form_ || p_node->tag() == _fieldset_) containers.push_back(p_node);
+		else if (is_listed(*p_node)) {
+			const auto validity = control_validity(*p_node, missing_radios.count(p_node.get()) != 0);
+			set_validity(*p_node, validity);
+			if (!validity.value_or(true)) {
+				visit_validation_containers(*p_node, [&](const auto& p_container) { invalid_containers.insert(p_container.get()); });
+			}
+		}
 		return false;
 	});
+	for (const auto& container : containers) set_validity(*container, !invalid_containers.count(container.get()));
 }
 }

@@ -2,8 +2,10 @@
 
 #include "formats/html/html_document.h"
 #include "formats/html/elements/html_form_elements.h"
+#include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
 #include <optional>
@@ -40,13 +42,14 @@ class HTMLLabelCanvas : public godot::Control {
 	struct TextareaDrag {
 		godot::Ref<HTMLElement> element;
 		godot::Vector2i axes;
-		godot::Transform2D inverse;
+		docrender::HTMLPlaneTransform inverse;
 		godot::Vector2 start_point;
 		godot::Vector2 start_size;
 		float scrollbar_grab = 0;
 		bool vertical_scrollbar = false;
 	};
 	std::optional<TextareaDrag> textarea_drag;
+	std::optional<docrender::HTMLScrollbarDrag> scrollbar_drag;
 	std::optional<godot::Vector2> resize_pending;
 	bool resize_queued = false;
 	bool dragged_resize = false;
@@ -67,6 +70,7 @@ class HTMLLabelCanvas : public godot::Control {
 	uintptr_t pressed_link = 0;
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
+	docrender::HTMLSelectionPoint selection_origin;
 	bool selecting = false;
 	bool selection_dragged = false;
 	bool has_focusable_elements = false;
@@ -74,6 +78,7 @@ class HTMLLabelCanvas : public godot::Control {
 	mutable godot::String diagnostic_panel_text;
 
 	void cancel_press();
+	void extend_document_selection(const godot::Vector2& p_point);
 	void cancel_click();
 	void cancel_button_press();
 	void cancel_key_press();
@@ -131,6 +136,7 @@ class HTMLLabel : public godot::Control {
 	godot::Ref<HTMLDocument> document;
 	godot::Ref<HTMLLayout> layout;
 	godot::ScrollContainer* scroll_container = nullptr;
+	godot::Control* scroll_content = nullptr;
 	HTMLLabelCanvas* canvas = nullptr;
 	godot::Control* select_menu = nullptr;
 	godot::Ref<HTMLSelectElement> open_select;
@@ -146,8 +152,16 @@ class HTMLLabel : public godot::Control {
 	godot::Vector2i viewport_size;
 	godot::Vector2i content_size;
 	godot::Vector2i sorted_scroll_offset;
+	godot::Vector2i viewport_input_axes{1, 1};
+	godot::Vector2i hidden_scroll_offset;
 	godot::String render_error;
 	std::optional<godot::Vector2i> pending_scroll_offset;
+	bool pending_scroll_requested = false;
+	godot::Ref<godot::Tween> viewport_scroll_tween;
+	bool applying_scroll_tween = false;
+	godot::Vector2i dragging_viewport_scrollbar;
+	godot::Ref<godot::Tween> viewport_pan_snap_timer;
+	godot::Vector2i viewport_pan_axes;
 	bool source_dirty = true;
 	bool parsed = false;
 	bool refresh_queued = false;
@@ -166,23 +180,42 @@ class HTMLLabel : public godot::Control {
 	bool interaction_styles_dirty = false;
 	bool reveal_focused_element = false;
 	int hover_passes_remaining = 0;
+	docrender::HTMLScrollbarAppearance viewport_scrollbar_style;
+	bool viewport_scrollbar_theme_dirty = false;
+	godot::Ref<godot::StyleBox> viewport_panel;
+	godot::Vector2 viewport_panel_gutters;
+	godot::Vector2 viewport_painted_gutters;
 
 	void ensure_controls();
 	void queue_refresh();
 	void queue_interaction_style_refresh();
+	void on_auto_content_update();
+	void on_transition_frame(bool p_size_changed);
+	godot::Vector2i get_content_selection_range() const;
 	void source_changed();
 	void document_changed(uint64_t p_document_id);
 	void parse_pending_source();
 	void on_layout_edited();
 	void refresh();
+	void update_viewport_scrollbar_style(const docrender::HTMLScrollbarAppearance& p_style);
+	void update_viewport_gutters(const godot::Vector2& p_gutters);
+	void draw_viewport_gutters();
 	void update_view(const godot::Vector2i& p_viewport, const godot::Vector2i& p_content,
-		bool p_scroll_horizontal, bool p_scroll_vertical, bool p_layout_changed, const godot::String& p_error = {});
+		const godot::Vector2i& p_visible_bars, const godot::Vector2i& p_input_axes, bool p_layout_changed,
+		const godot::String& p_error = {}, const godot::Vector2& p_gutters = {}, const godot::Vector2& p_painted_gutters = {});
 	godot::Rect2 get_visible_rect() const;
-	bool scroll_to_rect(const godot::Rect2& p_target, float p_align);
-	void reveal_element(const godot::Rect2& p_target);
+	void apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align);
+	void advance_viewport_scroll(double p_fraction, godot::Vector2 p_from, godot::Vector2 p_to);
+	void cancel_viewport_scroll();
+	void on_nested_scroll_advanced();
 	void apply_scroll_offset(const godot::Vector2i& p_offset);
 	void apply_pending_scroll();
 	void on_scroll_changed(double p_value);
+	void on_viewport_gui_input(const godot::Ref<godot::InputEvent>& p_event);
+	void on_viewport_scrollbar_input(const godot::Ref<godot::InputEvent>& p_event, int p_axis);
+	void settle_viewport_snap(const godot::Vector2i& p_axes);
+	void settle_viewport_pan();
+	void cancel_viewport_pan_snap();
 	void on_content_sorted();
 	void request_hover_check();
 	void queue_interaction();

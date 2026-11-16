@@ -36,6 +36,10 @@ script, template {
 	display: none
 }
 
+svg defs, svg clippath, svg mask {
+	display: none
+}
+
 body {
 	display:block; 
 	margin:8px; 
@@ -343,6 +347,9 @@ fieldset { display: block; border: 1px solid #64748b; padding: 0.5em 0.75em; mar
 legend { display: block; font-weight: bold; }
 label { cursor: pointer; }
 
+button, meter, progress, select, input[type=reset], input[type=button], input[type=submit], input[type=checkbox], input[type=radio] {
+	user-select: none;
+}
 input, textarea, keygen, select, button, isindex {
 	appearance: auto;
 	margin: 0em;

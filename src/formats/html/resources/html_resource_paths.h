@@ -20,4 +20,7 @@ namespace docrender {
 		const godot::String& p_src,
 		const godot::String& p_base_dir
 	);																				// 解析项目内的动态字体路径
+	godot::String resolve_html_svg_clip_path(
+		const godot::String& p_url, const godot::String& p_base_dir
+	);																				// 解析带非空片段的本地 SVG 文件路径
 }

@@ -29,13 +29,22 @@ namespace litehtml
 		string_vector			m_str_classes;
 		vector<string_id>		m_classes;
 		style					m_style;
-		struct field_pseudo_styles {
+		struct auxiliary_pseudo_styles {
 			std::unique_ptr<style> placeholder;
 			std::unique_ptr<style> selection;
 			std::unique_ptr<css_properties> placeholder_css;
 		};
-		std::unique_ptr<field_pseudo_styles> m_field_pseudos;
-		bool apply_field_pseudo(int match, const css_selector& selector);
+		std::unique_ptr<auxiliary_pseudo_styles> m_auxiliary_pseudos;
+		struct cascaded_selection_colors {
+			std::optional<web_color> foreground;
+			std::optional<web_color> background;
+			bool author = false;
+		};
+		std::shared_ptr<const cascaded_selection_colors> m_selection_colors;
+		int match_style_selector(const css_selector& selector, bool apply_pseudo, int& proximity);
+		void apply_matched_style(int match, const css_selector& selector, int proximity, bool create_generated);
+		bool apply_auxiliary_pseudo(int match, const css_selector& selector, const docrender::css::CascadePriority& priority);
+		void compute_selection_colors();
 		string_map				m_attrs;
 		vector<string_id>		m_pseudo_classes;
 
@@ -82,8 +91,11 @@ namespace litehtml
 
 		const css_properties* get_placeholder_style() const;
 		bool has_placeholder_color() const;
-		std::optional<web_color> get_selection_color(string_id name) const;
-		bool has_author_selection_style() const;
+		struct selection_colors {
+			std::optional<web_color> foreground;
+			std::optional<web_color> background;
+		};
+		selection_colors get_selection_colors(const web_color& text_color) const;
 		bool has_author_property(string_id name) const;
 		bool has_pseudo_class(string_id name) const {
 			return std::find(m_pseudo_classes.begin(), m_pseudo_classes.end(), name) != m_pseudo_classes.end();

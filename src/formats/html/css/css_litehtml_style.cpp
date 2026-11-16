@@ -26,14 +26,20 @@ void style::add(const css_token_vector& tokens, const string& baseurl, document_
 	css_parser(tokens).consume_style_block_contents(declarations, rules);
 	if (!rules.empty())
 		css_parse_error("rule inside a style block");
+	add_declarations(declarations, baseurl, container, element);
+}
 
+void style::add_declarations(const raw_declaration::vector& declarations, const string& baseurl,
+	document_container* container, const html_tag* element)
+{
 	const auto source = container ? container->get_css_source(baseurl, element != nullptr) : css_source{};
-	for (auto& declaration : declarations)
+	for (const auto& declaration : declarations)
 	{
-		remove_whitespace(declaration.value);
+		auto value = declaration.value;
+		remove_whitespace(value);
 		const auto& name = declaration.name;
 		const auto id = _id(name.compare(0, 2, "--") == 0 ? name : lowcase(name));
-		add_declaration(id, declaration.value, baseurl, declaration.important, container, source, element);
+		add_declaration(id, value, baseurl, declaration.important, container, source, element);
 	}
 }
 
@@ -105,7 +111,8 @@ void style::resolve_cascade(const html_tag& element, bool use_element_variables)
 	const auto doc = element.get_document();
 	const auto parent = element.parent();
 	const auto* parent_tag = use_element_variables ? &element : dynamic_cast<const html_tag*>(parent.get());
-	cascade.resolve(doc->has_author_layers(), [&](string_id name, css_token_vector& tokens) {
+	cascade.resolve(doc->has_author_layers(), parent_tag && parent_tag->css().is_right_to_left(),
+		[&](string_id name, css_token_vector& tokens) {
 		return parent_tag && parent_tag->get_custom_property(name, tokens);
 	}, [&](const auto& declaration, const auto& tokens, bool important) {
 		return reparse_css_declaration(declaration, tokens, important, doc->container());

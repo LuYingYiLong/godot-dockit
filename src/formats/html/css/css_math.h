@@ -25,11 +25,12 @@ namespace litehtml {
 	// Evaluate a context-free calculation. Angles are returned in radians.
 	std::optional<double> evaluate_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
 		double p_percentage_basis = 1.0);
-	// Parse an angle in radians and normalize it to a signed half turn.
-	std::optional<double> parse_css_angle(const css_token& p_token, bool p_allow_unitless_zero = false);
+	// Parse an angle in radians, optionally normalizing it to a signed half turn.
+	std::optional<double> parse_css_angle(const css_token& p_token, bool p_allow_unitless_zero = false, bool p_normalize = true);
 	inline constexpr double CSS_DPI_PER_DPPX = 96.0;
 	// Parse a nonnegative resolution in canonical dppx units.
 	std::optional<double> parse_css_resolution(const css_token& p_token);
 	std::shared_ptr<const css_math_expression> compute_css_math(const css_math_expression& p_value,
 		const std::function<pixel_t(const css_length&)>& p_resolve_length);
+	css_length interpolate_css_length(const css_length& from, const css_length& to, double progress, bool non_negative = false);
 }

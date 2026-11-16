@@ -27,6 +27,8 @@ namespace litehtml
             rendered_width content;
         };
         std::unique_ptr<inline_measurement> m_inline_measurement;
+        bool fetch_positioned(render_item& stacking_context);
+        std::vector<int> m_stacking_levels;
 
     protected:
         std::shared_ptr<element>                    m_element;
@@ -45,11 +47,13 @@ namespace litehtml
         punctuation_trim m_punctuation_trim = punctuation_trim::none;
         std::vector<std::shared_ptr<render_item>>   m_positioned;
     	std::shared_ptr<scroll_view>				m_scroll_view;
+		std::optional<position> m_sticky_grid_area;
 
 		containing_block_context calculate_containing_block_context(const containing_block_context& cb_context);
 		void calc_cb_length(const css_length& len, containing_block_context::typed_pixel percent_base, containing_block_context::typed_pixel& out_value) const;
 		virtual std::optional<pixel_t> find_layout_baseline(bool) const { return std::nullopt; }
 		virtual size layout_overflow() const { return {}; }
+		void paint_positioned_child(render_item& child, uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, int level);
 		virtual rendered_width	 _render(pixel_t /*x*/, pixel_t /*y*/,
 										 const containing_block_context& /*containing_block_size*/,
 										 formatting_context* /*fmt_ctx*/, bool /*second_pass = false*/)
@@ -98,13 +102,17 @@ namespace litehtml
 
 		bool is_h_scrollable(const pixel_t dx) const
 		{
-			return m_scroll_view && css().get_overflow() != overflow_hidden && m_scroll_view->is_h_scrollable(dx);
+			return m_scroll_view && css().get_visibility() == visibility_visible &&
+				is_interactive_overflow(css().get_overflow_x()) && m_scroll_view->is_h_scrollable(dx);
 		}
 
 		bool is_v_scrollable(const pixel_t dy) const
 		{
-			return m_scroll_view && css().get_overflow() != overflow_hidden && m_scroll_view->is_v_scrollable(dy);
+			return m_scroll_view && css().get_visibility() == visibility_visible &&
+				is_interactive_overflow(css().get_overflow_y()) && m_scroll_view->is_v_scrollable(dy);
 		}
+
+        const std::list<std::shared_ptr<render_item>>& children() const { return m_children; }
 
         std::list<std::shared_ptr<render_item>>& children()
         {
@@ -435,7 +443,8 @@ namespace litehtml
                    m_margins.top >= 0 &&
 				   !is_flex_item() &&
                    !is_root() &&
-                   !is_one_of(css().get_overflow(), overflow_hidden, overflow_scroll, overflow_auto);
+                   !css().is_flow_root() && !css().is_scroll_container() && !css().has_box_containment() &&
+                   !css().establishes_query_container_context();
         }
 
         bool collapse_bottom_margin() const
@@ -443,14 +452,24 @@ namespace litehtml
             return m_borders.bottom == 0 &&
                    m_padding.bottom == 0 &&
                    !has_preferred_aspect_ratio() &&
+                   !css().has_block_size_containment() &&
                    m_element->in_normal_flow() &&
                    m_element->css().get_float() == float_none &&
                    !is_grid_display(css().get_display()) &&
                    !is_grid_item() &&
                    m_margins.bottom >= 0 &&
                    !is_root() &&
-                   !is_one_of(css().get_overflow(), overflow_hidden, overflow_scroll, overflow_auto);
+                   !css().is_flow_root() && !css().is_scroll_container() && !css().has_box_containment() &&
+                   !css().establishes_query_container_context();
         }
+
+		bool clips_overflow() const
+		{
+			const auto display = css().get_display();
+			return css().clips_overflow() && display != display_inline && display != display_inline_text;
+		}
+
+		position overflow_clip_box(const position& content_box) const;
 
         bool empty_table_cell() const { return m_empty_table_cell; }
         void set_empty_table_cell(bool value) { m_empty_table_cell = value; }
@@ -471,13 +490,42 @@ namespace litehtml
 
 		void paint(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip);
 		void paint_group(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, bool with_positioned);
-		bool establishes_positioned_containing_block() const { return src_el()->is_positioned() || css().has_transform(); }
-		bool establishes_grid_stacking_context() const { return is_grid_item() && css().has_z_index(); }
-		bool establishes_paint_context() const { return establishes_positioned_containing_block() || establishes_grid_stacking_context(); }
-		int paint_z_index() const { return src_el()->is_positioned() || establishes_grid_stacking_context() ? css().get_z_index() : 0; }
+		bool establishes_effect_containing_block() const {
+			if (css().has_transform() || css().has_perspective() || css().specifies_preserve_3d() ||
+				css().has_box_containment() || css().anticipates_transform() ||
+				(css().allows_box_containment() && css().has_will_change(will_change_containment)) ||
+				(css().allows_size_containment() && css().has_will_change(will_change_content_visibility)) ||
+				(!is_root() && (css().has_filters() || css().has_backdrop_filters() ||
+					css().has_will_change(will_change_filter)))) return true;
+			if (!css().is_transformable() || (!css().hides_backface() && !css().has_will_change(will_change_backface))) return false;
+			const auto containing = parent();
+			return containing && containing->css().preserves_3d();
+		}
+		bool establishes_positioned_containing_block() const {
+			return src_el()->is_positioned() || css().has_will_change(will_change_position) ||
+				establishes_effect_containing_block();
+		}
+		bool establishes_item_stacking_context() const {
+			return css().has_z_index() && (is_grid_item() || (src_el()->in_normal_flow() && is_flex_item()));
+		}
+		bool establishes_stacking_context() const {
+			const auto position = css().get_position();
+			const bool z_hint = css().has_will_change(will_change_z_index) &&
+				(src_el()->is_positioned() || is_grid_item() || (src_el()->in_normal_flow() && is_flex_item()));
+			return is_root() || establishes_effect_containing_block() || establishes_item_stacking_context() ||
+				css().has_group_effects() || position == element_position_fixed || position == element_position_sticky ||
+				(src_el()->is_positioned() && css().has_z_index()) || z_hint || css().has_will_change(will_change_position) ||
+				css().has_will_change(will_change_isolation) || css().has_will_change(will_change_backdrop);
+		}
+		bool establishes_paint_context() const { return src_el()->is_positioned() || establishes_stacking_context(); }
+		int paint_z_index() const { return src_el()->is_positioned() || establishes_item_stacking_context() ? css().get_z_index() : 0; }
 		std::shared_ptr<render_item> fixed_containing_block() const;
+		element_float get_used_float() const;
+		element_clear get_used_clear() const;
 		bool is_viewport_fixed() const;
 		void extend_scroll_size(const size& extent);
+		void set_sticky_grid_area(const position& area) { m_sticky_grid_area = area; }
+		const std::optional<position>& sticky_grid_area() const { return m_sticky_grid_area; }
 		size used_layout_overflow() const { return layout_overflow(); }
 
 		bool is_grid_item() const
@@ -511,8 +559,9 @@ namespace litehtml
 		// Layout baselines use the top of the margin box as their origin.
 		std::optional<pixel_t> layout_baseline(bool last) const
 		{
+			if (css().has_layout_containment()) return std::nullopt;
 			auto baseline = find_layout_baseline(last);
-			if (baseline && is_one_of(css().get_overflow(), overflow_hidden, overflow_auto, overflow_scroll))
+			if (baseline && css().is_scroll_container())
 				*baseline = std::clamp(*baseline, margin_top(), std::max(margin_top(), height() - margin_bottom()));
 			return baseline;
 		}
@@ -521,7 +570,7 @@ namespace litehtml
 			return layout_baseline(last).value_or(height() - margin_bottom());
 		}
 		virtual pixel_t baseline_content_height() const { return m_pos.height; }
-		virtual pixel_t get_inline_baseline() { return get_last_baseline(); }
+		virtual pixel_t get_inline_baseline() { return css().has_layout_containment() ? height() : get_last_baseline(); }
 
 		/**
 		 * Get first baseline position. Default position is element bottom without bottom margin.
@@ -560,7 +609,7 @@ namespace litehtml
         virtual std::shared_ptr<element> get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex,
         	const std::function<bool(const std::shared_ptr<render_item>&)>& check);
         std::shared_ptr<element> get_element_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y,
-        	const std::function<bool(const std::shared_ptr<render_item>&)>& check);
+            const std::function<bool(const std::shared_ptr<render_item>&)>& check, bool with_positioned = true);
         bool is_point_inside( pixel_t x, pixel_t y ) const;
         void dump(litehtml::dumper& cout);
 		position get_placement() const;

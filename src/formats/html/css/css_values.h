@@ -10,7 +10,51 @@
 #include <optional>
 
 namespace litehtml {
+	enum class css_user_select { automatic, text, none, all };
+	enum css_will_change_hint {
+		will_change_transform = 1 << 0,
+		will_change_backface = 1 << 1,
+		will_change_containment = 1 << 2,
+		will_change_filter = 1 << 3,
+		will_change_backdrop = 1 << 4,
+		will_change_isolation = 1 << 5,
+		will_change_position = 1 << 6,
+		will_change_z_index = 1 << 7,
+		will_change_content_visibility = 1 << 8,
+	};
+
 	inline constexpr int outline_style_auto = -1;
+
+	enum class scrollbar_width { automatic, thin, none };
+
+	struct css_scrollbar_colors {
+		web_color thumb;
+		web_color track;
+	};
+
+	enum class css_filter_type {
+		grayscale = 1, sepia, saturate, hue_rotate, invert, opacity, brightness, contrast, blur, drop_shadow,
+	};
+
+	struct css_filter {
+		css_filter_type type;
+		double amount = 1.0;
+		css_length x;
+		css_length y;
+		css_length blur;
+		web_color color = web_color::current_color;
+	};
+	using css_filter_list = std::vector<css_filter>;
+
+	struct css_clip_margin {
+		background_box box = background_box_padding;
+		css_length offset;
+	};
+
+	struct css_contain_intrinsic_size {
+		std::optional<css_length> length;
+		bool remember = false;
+	};
 
 	struct css_outline {
 		css_length width = border_width_medium_value;

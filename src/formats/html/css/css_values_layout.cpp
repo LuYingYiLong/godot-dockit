@@ -4,6 +4,7 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_value_parser.h"
+#include "css_position_values.h"
 #include <litehtml/html.h>
 
 #include <litehtml/css_parser.h>
@@ -14,6 +15,31 @@
 namespace litehtml {
 
 namespace {
+	std::optional<style_display> parse_display(const css_token_vector& tokens) {
+		if (tokens.size() == 1 && tokens.front().type == IDENT) {
+			const auto& name = tokens.front().ident();
+			if (name == "flow") return display_block;
+			const int index = value_index(name, style_display_strings, -1);
+			if (index >= 0 && index != display_inline_text) return static_cast<style_display>(index);
+			return std::nullopt;
+		}
+		if (tokens.size() != 2) return std::nullopt;
+		const auto outside = [](const css_token& token) {
+			return token.type == IDENT && is_one_of(token.ident(), "block", "inline");
+		};
+		const bool first_outside = outside(tokens.front());
+		if (first_outside == outside(tokens.back())) return std::nullopt;
+		const bool inline_level = (first_outside ? tokens.front() : tokens.back()).ident() == "inline";
+		const auto& inside = (first_outside ? tokens.back() : tokens.front()).ident();
+		if (inside == "flow") return inline_level ? display_inline : display_block;
+		if (inside == "flow-root") return inline_level ? display_inline_block : display_flow_root;
+		if (inside == "flex") return inline_level ? display_inline_flex : display_flex;
+		if (inside == "grid") return inline_level ? display_inline_grid : display_grid;
+		if (inside == "table") return inline_level ? display_inline_table : display_table;
+		if (inside == "list-item" && !inline_level) return display_list_item;
+		return std::nullopt;
+	}
+
 	bool is_counter_name(const css_token& token) {
 		return token.type == IDENT &&
 			!is_one_of(token.ident(), "none", "inherit", "initial", "unset", "revert", "revert-layer", "default");
@@ -129,6 +155,66 @@ namespace {
 
 void css_value_parser::parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important)
 {
+	static const auto perspective = _id("perspective");
+	static const auto perspective_origin = _id("perspective-origin");
+	if (name == perspective) {
+		if (value.size() == 1)
+			add_length_property(name, value.front(), "none", f_length | f_positive | f_math, important);
+		return;
+	}
+	if (name == perspective_origin) {
+		css_image_position origin;
+		int index = 0;
+		if (parse_image_position(value, index, origin, true) && index == static_cast<int>(value.size()))
+			add_parsed_property(name, property_value(origin, important));
+		return;
+	}
+	static const auto translate = _id("translate");
+	static const auto rotate = _id("rotate");
+	static const auto scale = _id("scale");
+	if (is_one_of(name, translate, rotate, scale)) {
+		using Kind = css_transform_function::kind;
+		const auto kind = name == translate ? Kind::translate : name == rotate ? Kind::rotate : Kind::scale;
+		css_individual_transform transform;
+		if (parse_css_individual_transform(kind, value, transform))
+			add_parsed_property(name, property_value(std::move(transform), important));
+		return;
+	}
+	static const auto offset = _id("offset");
+	static const auto offset_position = _id("offset-position");
+	static const auto offset_path = _id("offset-path");
+	static const auto offset_distance = _id("offset-distance");
+	static const auto offset_rotate = _id("offset-rotate");
+	static const auto offset_anchor = _id("offset-anchor");
+	if (name == offset) {
+		if (const auto motion = parse_motion_shorthand(value, baseurl)) {
+			add_parsed_property(offset_position, property_value(motion->position, important));
+			add_parsed_property(offset_path, property_value(motion->path, important));
+			add_parsed_property(offset_distance, property_value(motion->distance, important));
+			add_parsed_property(offset_rotate, property_value(motion->rotation, important));
+			add_parsed_property(offset_anchor, property_value(motion->anchor, important));
+		}
+		return;
+	}
+	if (name == offset_path) {
+		if (const auto path = parse_offset_path(value, baseurl)) add_parsed_property(name, property_value(*path, important));
+		return;
+	}
+	if (name == offset_distance) {
+		css_length distance;
+		if (value.size() == 1 && distance.from_token(value.front(), f_length_percentage | f_math))
+			add_parsed_property(name, property_value(distance, important));
+		return;
+	}
+	if (name == offset_rotate) {
+		if (const auto rotation = parse_offset_rotation(value)) add_parsed_property(name, property_value(*rotation, important));
+		return;
+	}
+	if (is_one_of(name, offset_position, offset_anchor)) {
+		if (const auto position = parse_offset_position(value, name == offset_position))
+			add_parsed_property(name, property_value(*position, important));
+		return;
+	}
 	if (is_one_of(name, _gap_, _row_gap_, _column_gap_)) {
 		parse_gap(name, value, important);
 		return;
@@ -148,6 +234,11 @@ void css_value_parser::parse_layout(string_id name, const css_token_vector& valu
 	const css_token val = value.size() == 1 ? value.front() : css_token();
 	switch (name)
 	{
+	case _display_:
+		if (const auto display = parse_display(value))
+			add_parsed_property(name, property_value(static_cast<int>(*display), important));
+		break;
+
 	case _flex_:
 		parse_flex(value, important);
 		break;

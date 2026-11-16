@@ -15,10 +15,17 @@ namespace litehtml
 {
 	struct css_math_expression;
 
+	struct css_container_units
+	{
+		const void* subject = nullptr;
+		std::optional<pixel_t> (*read_axis)(const void*, bool block_axis) = nullptr;
+	};
+
 	struct css_length_context
 	{
 		const font_metrics* root_font = nullptr;
 		const media_features* viewport = nullptr;
+		css_container_units container_units = {};
 	};
 
 	// from_token options (flags)

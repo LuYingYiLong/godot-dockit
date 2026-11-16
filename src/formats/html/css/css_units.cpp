@@ -58,6 +58,26 @@ pixel_t length_to_pixels(const css_length& val, const font_metrics& metrics, pix
 		return static_cast<pixel_t>(std::min(viewport.width, viewport.height) * (amount / 100.0));
 	case css_units_vmax: case css_units_svmax: case css_units_lvmax: case css_units_dvmax:
 		return static_cast<pixel_t>(std::max(viewport.width, viewport.height) * (amount / 100.0));
+
+	case css_units_cqw: case css_units_cqi:
+	case css_units_cqh: case css_units_cqb:
+	case css_units_cqmin: case css_units_cqmax: {
+		const auto dimension = [&](bool block_axis) {
+			const auto& resolver = context.container_units;
+			const auto axis = resolver.read_axis ? resolver.read_axis(resolver.subject, block_axis) : std::nullopt;
+			return axis.value_or(block_axis ? viewport.height : viewport.width);
+		};
+		const auto units = val.units();
+		pixel_t basis;
+		if (is_one_of(units, css_units_cqw, css_units_cqi)) basis = dimension(false);
+		else if (is_one_of(units, css_units_cqh, css_units_cqb)) basis = dimension(true);
+		else {
+			const auto inline_size = dimension(false);
+			const auto block_size = dimension(true);
+			basis = units == css_units_cqmin ? std::min(inline_size, block_size) : std::max(inline_size, block_size);
+		}
+		return static_cast<pixel_t>(basis * (amount / 100.0));
+	}
 	default: return amount;
 	}
 }

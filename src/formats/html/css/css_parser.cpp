@@ -465,62 +465,75 @@ raw_declaration css_parser::consume_declaration()
 	return decl;
 }
 
-// https://www.w3.org/TR/css-syntax-3/#consume-style-block
-void css_parser::consume_style_block_contents(/*out*/ raw_declaration::vector& decls, /*out*/ raw_rule::vector& rules)
+// https://www.w3.org/TR/css-syntax-3/#consume-block-contents
+raw_rule::vector css_parser::consume_block_contents()
 {
-	while (true)
-	{
-		// Repeatedly consume the next input token:
-		css_token token = next_token();
-
-		switch (token.type)
-		{
-		case WHITESPACE:
-		case ';':
-			break; // Do nothing.
-
-		case EOF:
-			// "Extend decls with rules, then return decls."
-			// NOTE: I just return decls and rules separately
-			return;
-
-		case AT_KEYWORD: {
-			// Reconsume the current input token. Consume an at-rule, and append the result to rules.
-			m_index--;
-			auto rule = consume_at_rule();
-			if (rule) rules.push_back(rule);
-			break;
+	raw_rule::vector rules;
+	const auto type_at = [&](int index) {
+		return index < static_cast<int>(m_tokens.size()) ? m_tokens[index].type : css_token_type(EOF);
+	};
+	while (true) {
+		const auto type = type_at(m_index);
+		if (type == EOF) return rules;
+		if (type == WHITESPACE || type == ';') {
+			++m_index;
+			continue;
 		}
-		case IDENT: {
-			// Initialize a temporary list initially filled with the current input token.
-			css_token_vector temp = { token };
-			// As long as the next input token is anything other than a <semicolon-token> or <EOF-token>,
-			// consume a component value and append it to the temporary list.
-			while (!is_one_of(peek_token().type, ';', EOF))
-				temp.push_back(consume_component_value());
+		if (type == AT_KEYWORD) {
+			if (auto rule = consume_at_rule()) rules.push_back(std::move(rule));
+			continue;
+		}
 
-			css_parser parser(temp);
-			// Consume a declaration from the temporary list.
-			auto decl = parser.consume_declaration();
-			// If anything was returned, append it to decls.
-			if (decl) decls.push_back(decl);
-			break;
+		int colon = m_index + 1;
+		skip_whitespace(m_tokens, colon);
+		const bool declaration = type == IDENT && type_at(colon) == ':';
+		const bool custom = declaration && m_tokens[m_index].name.compare(0, 2, "--") == 0;
+		css_token_vector prefix;
+		raw_rule::ptr qualified;
+		while (!is_one_of(type_at(m_index), ';', EOF)) {
+			const int index = m_index;
+			auto component = consume_component_value();
+			if (component.type == CURLY_BLOCK && !custom) {
+				// An isolated block value can still be diagnosed as an unsupported declaration.
+				int value = colon + 1;
+				skip_whitespace(m_tokens, value);
+				int end = m_index;
+				skip_whitespace(m_tokens, end);
+				if (type_at(end) == '!') {
+					skip_whitespace(m_tokens, ++end);
+					if (at(m_tokens, end).ident() == "important") skip_whitespace(m_tokens, ++end);
+				}
+				if (!declaration || value != index || !is_one_of(type_at(end), ';', EOF)) {
+					qualified = make_shared<raw_rule>(raw_rule::qualified);
+					qualified->prelude = std::move(prefix);
+					qualified->block = std::move(component);
+					break;
+				}
+			}
+			prefix.push_back(std::move(component));
 		}
-		case '&': {
-			// Reconsume the current input token. Consume a qualified rule. If anything was returned, append it to rules.
-			m_index--;
-			auto rule = consume_qualified_rule();
-			if (rule) rules.push_back(rule);
-			break;
-		}
-		default:
-			// This is a parse error. Reconsume the current input token. As long as the next input token is
-			// anything other than a <;> or <EOF>, consume a component value and throw away the returned value.
+		if (qualified) {
+			rules.push_back(std::move(qualified));
+		} else if (declaration) {
+			if (auto item = css_parser(prefix).consume_declaration()) {
+				if (rules.empty() || rules.back()->type != raw_rule::declaration_list) {
+					rules.push_back(make_shared<raw_rule>(raw_rule::declaration_list));
+				}
+				rules.back()->declarations.push_back(std::move(item));
+			}
+		} else {
 			css_parse_error("unexpected token in a style block");
-			m_index--;
-			while (!is_one_of(peek_token().type, ';', EOF))
-				consume_component_value();
-			break;
+		}
+	}
+}
+
+void css_parser::consume_style_block_contents(raw_declaration::vector& decls, raw_rule::vector& rules)
+{
+	for (auto& item : consume_block_contents()) {
+		if (item->type == raw_rule::declaration_list) {
+			for (auto& declaration : item->declarations) decls.push_back(std::move(declaration));
+		} else {
+			rules.push_back(std::move(item));
 		}
 	}
 }

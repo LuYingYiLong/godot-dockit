@@ -183,6 +183,65 @@ def main():
             '<!doctype html><link rel="stylesheet" href="styles/border-image.css"><div id="imported_border"></div>',
             encoding="utf-8", newline="\n",
         )
+        shutil.copyfile(project / "border-image.png", project / "mask-import.png")
+        (styles / "mask.css").write_text(
+            '@import "nested/mask.css";', encoding="utf-8", newline="\n",
+        )
+        (styles / "nested/mask.css").write_text(
+            'html { background: blue; } body { margin: 0; } div { width: 40px; height: 30px;'
+            'background: red; --image: url(../../mask-import.png); mask: var(--image) 0 0 / 20px 30px no-repeat; }',
+            encoding="utf-8", newline="\n",
+        )
+        (project / "mask_image.html").write_text(
+            '<!doctype html><link rel="stylesheet" href="styles/mask.css"><div></div>',
+            encoding="utf-8", newline="\n",
+        )
+        (project / "svg-mask-import.svg").write_text(
+            '<s:svg xmlns:s="http://www.w3.org/2000/svg" xmlns:l="http://www.w3.org/1999/xlink">'
+            '<s:defs><s:rect id="cut-shape" width=".5" height="1" fill="black"/>'
+            '<s:mask id="mask-center" maskContentUnits="objectBoundingBox" style="mask-type: alpha">'
+            '<s:use l:href="#cut-shape"/></s:mask></s:defs></s:svg>',
+            encoding="utf-8", newline="\n",
+        )
+        (styles / "nested/svg-mask.css").write_text(
+            'html { background: blue; } body { margin: 0; } div { width: 40px; height: 30px;'
+            'background: red; mask: url(../../svg-mask-import.svg#mask-center) 100% / 1px no-repeat; }',
+            encoding="utf-8", newline="\n",
+        )
+        (project / "svg_mask.html").write_text(
+            '<!doctype html><link rel="stylesheet" href="styles/nested/svg-mask.css"><div></div>',
+            encoding="utf-8", newline="\n",
+        )
+        clip_assets = project / "clip-assets"
+        clip_assets.mkdir()
+        svg_clip = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<s:svg xmlns:s="http://www.w3.org/2000/svg" xmlns:l="http://www.w3.org/1999/xlink">'
+            '<s:style><![CDATA[.ring { clip-rule: evenodd; } .hidden { display: none; }]]></s:style>'
+            '<s:defs><s:path id="outline" class="ring" d="M0 0H60V60H0Z M18 18H42V42H18Z"/>'
+            '<s:clipPath id="use-ring" clip-path="url(#limit)">'
+            '<s:use l:href="#outline"/><s:rect class="hidden" width="60" height="60"/></s:clipPath>'
+            '<s:clipPath id="limit"><s:rect width="50" height="60"/></s:clipPath>'
+            '<s:clipPath id="letter"><s:text x="48" y="58" font-size="52" text-anchor="middle">O</s:text></s:clipPath>'
+            '<s:line id="guide" x1="10" y1="58" x2="90" y2="58"/>'
+            '<s:clipPath id="path-letter"><s:text font-size="48" text-anchor="middle">'
+            '<s:textPath l:href="#guide" startOffset="50%">O</s:textPath></s:text></s:clipPath>'
+            '<s:clipPath id="source-empty"/></s:defs></s:svg>'
+        )
+        (clip_assets / "local.svg").write_text(svg_clip, encoding="utf-8", newline="\n")
+        (clip_assets / "import.svg").write_text(svg_clip, encoding="utf-8", newline="\n")
+        (styles / "clip-path.css").write_text(
+            '@import "nested/clip-path.css";', encoding="utf-8", newline="\n",
+        )
+        (styles / "nested/clip-path.css").write_text(
+            'body { margin: 0; background: black; } #external { width: 60px; height: 60px;'
+            'background: cyan; --clip: url(../../clip-assets/import.svg#use-ring); clip-path: var(--clip); }',
+            encoding="utf-8", newline="\n",
+        )
+        (project / "external_clip.html").write_text(
+            '<!doctype html><link rel="stylesheet" href="styles/clip-path.css"><div id="external"></div>',
+            encoding="utf-8", newline="\n",
+        )
         (project / "image_orientation.html").write_text(
             '<!doctype html><style>body { margin: 0; }</style>'
             '<img id="imported_orientation" src="orientation-import.png" style="display: block">\n',
@@ -223,8 +282,8 @@ def main():
             '@import "nested/candidates.css";\n', encoding="utf-8", newline="\n",
         )
         (styles / "nested/candidates.css").write_text(
-            'body { margin: 0; } #imported_set { width: 28px; height: 20px; background: '
-            'image-set("../set-low.svg", var(--missing, "set-high.svg") 2dppx) no-repeat; }\n',
+            'body { margin: 0; #imported_set { width: 28px; height: 20px; background: '
+            'image-set("../set-low.svg", var(--missing, "set-high.svg") 2dppx) no-repeat; } }\n',
             encoding="utf-8", newline="\n",
         )
         for path, width, height, color in (
@@ -310,6 +369,9 @@ def main():
             "IMAGE_TEMPLATE_UID": project / "image_template.html.import",
             "RESPONSIVE_PICTURE_UID": project / "responsive_picture.html.import",
             "BORDER_IMAGE_UID": project / "border_image.html.import",
+            "MASK_IMAGE_UID": project / "mask_image.html.import",
+            "SVG_MASK_UID": project / "svg_mask.html.import",
+            "EXTERNAL_CLIP_UID": project / "external_clip.html.import",
         }
         if imported.returncode != 0 or not all(path.is_file() for path in document_fixtures.values()):
             print(imported.stdout.decode(errors="replace"))
@@ -320,11 +382,17 @@ def main():
             styles / "font-faces.css", styles / "nested/font-regular.css",
             styles / "image-set.css", styles / "nested/candidates.css",
             styles / "image-function.css", styles / "border-image.css",
+            styles / "mask.css", styles / "nested/mask.css",
+            styles / "nested/svg-mask.css",
+            styles / "clip-path.css", styles / "nested/clip-path.css",
         ):
             stylesheet.unlink()
         (project / "density-import.png").unlink()
         (project / "orientation-import.png").unlink()
         (project / "border-import.png").unlink()
+        (project / "mask-import.png").unlink()
+        (project / "svg-mask-import.svg").unlink()
+        (clip_assets / "import.svg").unlink()
         (project / "template-icon.png").unlink()
         for image in responsive_assets.glob("*.png"):
             image.unlink()

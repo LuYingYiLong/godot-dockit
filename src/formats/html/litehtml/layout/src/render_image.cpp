@@ -11,6 +11,13 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
 {
     pixel_t parent_width = containing_block_size.width;
 	containing_block_context self_size = calculate_containing_block_context(containing_block_size);
+	const bool contain_width = css().has_inline_size_containment();
+	const bool contain_height = css().has_block_size_containment();
+	const auto use_contained_size = [&](litehtml::size natural) {
+		if (contain_width) natural.width = css().get_contain_intrinsic_width().value_or(0);
+		if (contain_height) natural.height = css().get_contain_intrinsic_height().value_or(0);
+		return natural;
+	};
 
     m_pos.move_to(x, y);
 
@@ -23,9 +30,9 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
 			const auto available = std::max<pixel_t>(0, parent_width - content_offset_width());
 			measure_width = std::min(measure_width, available);
 		}
-		const auto width = size_grid_image(*this, self_size, {measure_width, 0}, false).width;
+		const auto width = size_grid_image(*this, self_size, use_contained_size({measure_width, 0}), false).width;
 		const auto height = alt->layout(width).size() * alt->get_line_height();
-		m_pos = size_grid_image(*this, self_size, {measure_width, height}, false);
+		m_pos = size_grid_image(*this, self_size, use_contained_size({measure_width, height}), false);
 		m_pos.move_to(x + content_offset_left(), y + content_offset_top());
 		src_el()->css_w().line_height_w().computed_value = this->height();
 		return {this->width(), this->width()};
@@ -34,13 +41,15 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
     document::ptr doc = src_el()->get_document();
 
     litehtml::size sz;
-    src_el()->get_content_size(sz, containing_block_size.width);
+	if (!css().skips_contents()) src_el()->get_content_size(sz, containing_block_size.width);
+	sz = use_contained_size(sz);
 
-	if (has_preferred_aspect_ratio() || is_grid_item() || (containing_block_size.size_mode & containing_block_context::size_mode_intrinsic_inline_probe) ||
+	if (contain_width || has_preferred_aspect_ratio() || is_grid_item() ||
+		(containing_block_size.size_mode & containing_block_context::size_mode_intrinsic_inline_probe) ||
 		containing_block_size.intrinsic_inline.preferred || containing_block_size.intrinsic_inline.minimum ||
 		containing_block_size.intrinsic_inline.maximum || css().get_width().intrinsic_size() != css_intrinsic_size::none)
 	{
-		const auto used = size_grid_image(*this, self_size, sz);
+		const auto used = size_grid_image(*this, self_size, sz, !contain_width);
 		m_pos.width = used.width;
 		m_pos.height = used.height;
 		m_pos.move_to(x + content_offset_left(), y + content_offset_top());

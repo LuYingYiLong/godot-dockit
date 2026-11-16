@@ -1,5 +1,7 @@
 #pragma once
 
+#include "formats/html/layout/html_geometry.h"
+#include "formats/html/text/html_text_selection.h"
 #include "formats/markdown/markdown_parser.h"
 #include "formats/mermaid/mermaid_render.h"
 
@@ -135,6 +137,7 @@ private:
 	PopupMenu* menu = nullptr;
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
+	docrender::HTMLSelectionPoint selection_origin;
 	int64_t search_match_start = -1;
 	int64_t search_match_end = -1;
 	Vector2 press_position;
@@ -143,9 +146,20 @@ private:
 	float layout_width = 0.0f;
 	int32_t layout_height = 0;
 	int32_t layout_html_height = 0;
+	struct HTMLScrollbarGesture {
+		Ref<HTMLLayout> layout;
+		docrender::HTMLScrollbarDrag drag;
+		Vector2 origin;
+	};
+	std::optional<HTMLScrollbarGesture> html_scrollbar_drag;
 	Ref<HTMLLayout> pressed_html_layout;
 	uintptr_t pressed_html_link = 0;
 	Dictionary anchor_offsets;
+	struct HTMLAnchorSource {
+		Ref<HTMLLayout> layout;
+		float top;
+	};
+	HashMap<String, HTMLAnchorSource> html_anchor_sources;
 	HashMap<String, float> footnote_reference_offsets;
 	HashMap<String, float> footnote_definition_offsets;
 
@@ -183,7 +197,10 @@ private:
 	Rect2 get_visible_content_rect() const;
 	Rect2 get_html_visible_rect() const;
 	bool is_rect_visible(const Rect2& p_rect, const Rect2& p_visible_rect) const;
-	Ref<HTMLLayout> html_at_position(const Vector2& p_position, Vector2& r_local_position) const;
+	Ref<HTMLLayout> html_at_position(const Vector2& p_position, Vector2& r_local_position, int64_t* r_offset = nullptr) const;
+	docrender::HTMLSelectionPoint selection_point_at(const Vector2& p_position) const;
+	void extend_document_selection(const Vector2& p_position);
+	void scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event);
 	int64_t hit_test_document(const Vector2& p_position) const;
 	String link_uri_at_position(const Vector2& p_position) const;
 	String link_uri_at_character(int64_t p_character) const;
@@ -241,6 +258,7 @@ public:
 	bool has_anchor(const String& p_anchor) const;
 	PackedStringArray get_anchors() const;
 	float get_anchor_offset(const String& p_anchor) const;
+	std::optional<float> scroll_to_html_anchor(const String& p_anchor, float p_align);
 	float get_search_result_y() const;
 	float get_bottom_position() const;
 	PopupMenu* get_menu();

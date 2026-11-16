@@ -74,6 +74,7 @@ namespace litehtml
 		{
 			return std::make_shared<render_item_table_part>(src_el());
 		}
+		void get_inline_boxes(position::vector& boxes) const override;
 	};
 
 	class render_item_table_row : public render_item

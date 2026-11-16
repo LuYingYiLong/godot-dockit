@@ -11,8 +11,10 @@ bool takes_cascade_precedence(const CascadePriority& candidate, bool candidate_i
 		return candidate_important;
 	}
 	if (candidate.layer == current.layer) {
-		if (candidate.specificity == current.specificity) return candidate.source_order >= current.source_order;
-		return candidate.specificity > current.specificity;
+		if (!(candidate.specificity == current.specificity)) return candidate.specificity > current.specificity;
+		if (candidate.proximity != current.proximity) return candidate.proximity < current.proximity;
+		if (candidate.source_order != current.source_order) return candidate.source_order > current.source_order;
+		return candidate.declaration_order >= current.declaration_order;
 	}
 	if (current.layer == css_inline_layer) return false;
 	if (candidate.layer == css_inline_layer) return true;

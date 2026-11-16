@@ -13,11 +13,14 @@ namespace docrender::css {
 
 enum class StylesheetRuleKind {
 	style,
+	declarations,
 	layer_block,
 	layer_order,
 	import,
 	media,
+	container,
 	supports,
+	scope,
 	font_face,
 	font_feature_values,
 	counter_style,

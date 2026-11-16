@@ -1,8 +1,11 @@
 #include "html_paint_recorder.h"
+#include "html_depth_sort.h"
+#include "html_svg_mask.h"
 
 #include "html_text_mask.h"
 #include "formats/html/layout/html_line_break.h"
 #include "formats/html/layout/html_inline_text_fragment.h"
+#include "formats/html/layout/html_polygon_clip.h"
 
 #include <godot_cpp/classes/atlas_texture.hpp>
 #include <godot_cpp/classes/display_server.hpp>
@@ -11,6 +14,7 @@
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector4_array.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
@@ -34,17 +38,30 @@ using namespace litehtml;
 namespace docrender {
 	namespace {
 		Ref<Shader> paint_shader;
+		Ref<Shader> composite_clip_shader;
 
 		const char* PAINT_SHADER_CODE = R"SHADER(
 shader_type canvas_item;
+#ifdef HTML_COMPOSITE_CLIP
+render_mode blend_premul_alpha, unshaded;
+uniform vec4 shape_basis = vec4(1.0, 0.0, 0.0, 1.0);
+uniform vec2 shape_offset;
+uniform vec3 shape_divisor = vec3(0.0, 0.0, 1.0);
+uniform vec4 shape_polygon;
+#endif
 
 uniform int clip_count;
 uniform vec4 clip_boxes[16];
+uniform int clip_axes[16];
 uniform vec4 clip_radii_x[16];
 uniform vec4 clip_radii_y[16];
 uniform vec4 clip_bases[16];
 uniform vec2 clip_offsets[16];
-uniform bool affine_clips;
+uniform vec4 clip_divisors[16];
+uniform bool transformed_clips;
+uniform sampler2D clip_edges : filter_nearest, repeat_disable;
+uniform bool has_clip_polygons;
+uniform vec4 clip_polygons[16];
 
 uniform bool has_shape;
 uniform vec4 shape_box;
@@ -93,6 +110,12 @@ uniform int decoration_pattern;
 uniform float decoration_thickness;
 uniform float decoration_center;
 
+uniform int selection_span_count;
+uniform vec2 selection_first_span;
+uniform sampler2D selection_spans : filter_nearest, repeat_disable;
+uniform vec4 selection_ink;
+uniform vec4 ordinary_ink;
+
 uniform int gradient_type;
 uniform int stop_count;
 uniform sampler2D gradient_stops : filter_nearest, repeat_disable;
@@ -102,6 +125,7 @@ uniform vec4 tile;
 uniform vec2 tile_period;
 uniform ivec2 tile_repeat_axes;
 instance uniform vec2 scroll_origin;
+instance uniform bool hdr_output;
 uniform bool tiled_fill;
 uniform bool tiled_image;
 uniform bool tile_flip_image_x;
@@ -347,6 +371,29 @@ vec4 sample_gradient(float t) {
 	return color;
 }
 
+vec4 canvas_color(vec4 c) {
+	if (hdr_output) {
+		c.rgb = mix(c.rgb / 12.92, pow(max((c.rgb + 0.055) / 1.055, vec3(0.0)), vec3(2.4)),
+			greaterThan(c.rgb, vec3(0.04045)));
+	}
+	return c;
+}
+
+bool selected_text_pixel(float x) {
+	if (selection_span_count == 1) return x >= selection_first_span.x && x < selection_first_span.y;
+	int columns = textureSize(selection_spans, 0).x;
+	int start = 0;
+	int end = selection_span_count;
+	while (start < end) {
+		int midpoint = (start + end) / 2;
+		vec2 span = texelFetch(selection_spans, ivec2(midpoint % columns, midpoint / columns), 0).rg;
+		if (x < span.x) end = midpoint;
+		else if (x >= span.y) start = midpoint + 1;
+		else return true;
+	}
+	return false;
+}
+
 vec2 pixelated_uv(vec2 texel, vec2 dx, vec2 dy, vec4 source, ivec2 repeats) {
 	vec2 texels_per_pixel = vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y)));
 	vec2 copies = max(floor(1.0 / max(texels_per_pixel, vec2(0.000001)) + 0.500001), vec2(1.0));
@@ -374,24 +421,99 @@ vec2 tile_coordinates(vec2 point) {
 	return local;
 }
 
+float polygon_coverage(vec2 point, vec2 dx, vec2 dy, vec4 polygon) {
+	int index = int(polygon.x);
+	int end = index + int(polygon.y);
+	int columns = textureSize(clip_edges, 0).x;
+	vec2 diagonal = (dx + dy) * 0.25;
+	vec2 anti_diagonal = (dx - dy) * 0.25;
+	vec4 xs = vec4(point.x) + vec4(diagonal.x, anti_diagonal.x, -anti_diagonal.x, -diagonal.x);
+	vec4 ys = vec4(point.y) + vec4(diagonal.y, anti_diagonal.y, -anti_diagonal.y, -diagonal.y);
+	// Postfix program. All four subsamples participate in each boolean operation.
+	vec4 fills[64];
+	int depth = 0;
+	while (index < end) {
+		vec4 header = texelFetch(clip_edges, ivec2(index % columns, index / columns), 0);
+		index++;
+		if (header.z != 0.0) {
+			depth--;
+			fills[depth - 1] = header.z == 1.0 ? max(fills[depth - 1], fills[depth]) : min(fills[depth - 1], fills[depth]);
+			continue;
+		}
+		vec4 winding = vec4(0.0);
+		for (int i = 0; i < int(header.x); i++) {
+			vec4 edge = texelFetch(clip_edges, ivec2(index % columns, index / columns), 0);
+			index++;
+			vec2 a = edge.xy;
+			vec2 b = edge.zw;
+			if (a.y != b.y) {
+				vec4 cross_x = vec4(a.x) + (ys - a.y) * ((b.x - a.x) / (b.y - a.y));
+				vec4 within_y = step(min(a.y, b.y), ys) - step(max(a.y, b.y), ys);
+				winding += sign(b.y - a.y) * within_y * (1.0 - step(cross_x, xs));
+			}
+		}
+		vec4 inside = abs(winding);
+		if (header.y != 0.0) inside = mod(inside, 2.0);
+		fills[depth] = step(vec4(0.5), inside);
+		depth++;
+	}
+	return dot(fills[0], vec4(0.25));
+}
+
+bool map_clip_point(mat2 basis, vec2 offset, vec3 divisor, inout vec2 point, inout vec2 dx, inout vec2 dy) {
+	float w = dot(divisor, vec3(point, 1.0));
+	if (w <= 0.0) return false;
+	point = (basis * point + offset) / w;
+	dx = (basis * dx - point * dot(divisor.xy, dx)) / w;
+	dy = (basis * dy - point * dot(divisor.xy, dy)) / w;
+	return true;
+}
+
 void fragment() {
 	// Take derivatives before the corner and paint branches diverge.
 	vec2 pixel_x = dFdx(document_point);
 	vec2 pixel_y = dFdy(document_point);
 	float coverage = 1.0;
 	for (int i = 0; i < clip_count; i++) {
+		int axis = clip_axes[i];
+		if (axis == 3) {
+			if (transformed_clips && dot(clip_divisors[i].xyz, vec3(document_point, 1.0)) <= 0.0) discard;
+			continue;
+		}
 		vec2 point = document_point;
 		vec2 dx = pixel_x;
 		vec2 dy = pixel_y;
-		if (affine_clips) {
+		if (transformed_clips) {
 			vec4 basis = clip_bases[i];
-			mat2 relative = mat2(basis.xy, basis.zw);
-			point = relative * point + clip_offsets[i];
-			dx = relative * dx;
-			dy = relative * dy;
+			if (!map_clip_point(mat2(basis.xy, basis.zw), clip_offsets[i], clip_divisors[i].xyz, point, dx, dy)) {
+				discard;
+			}
 		}
-		coverage = min(coverage, box_coverage(point, clip_boxes[i], clip_radii_x[i], clip_radii_y[i], dx, dy));
+		vec4 box = clip_boxes[i];
+		if (has_clip_polygons && clip_polygons[i].y > 0.0) {
+			coverage = min(coverage, polygon_coverage(point, dx, dy, clip_polygons[i]));
+		} else if (axis == 0) {
+			coverage = min(coverage, box_coverage(point, box, clip_radii_x[i], clip_radii_y[i], dx, dy));
+		} else {
+			int coordinate = axis - 1;
+			float distance_to_edge = min(point[coordinate] - box[coordinate],
+				box[coordinate + 2] - point[coordinate]);
+			float aa = max(abs(dx[coordinate]) + abs(dy[coordinate]), 0.001);
+			coverage = min(coverage, clamp(distance_to_edge / aa + 0.5, 0.0, 1.0));
+		}
 	}
+#ifdef HTML_COMPOSITE_CLIP
+	if (has_shape) {
+		vec2 point = document_point;
+		vec2 dx = pixel_x;
+		vec2 dy = pixel_y;
+		if (!map_clip_point(mat2(shape_basis.xy, shape_basis.zw), shape_offset, shape_divisor, point, dx, dy)) discard;
+		float mask = shape_polygon.y > 0.0 ? polygon_coverage(point, dx, dy, shape_polygon) :
+			box_coverage(point, shape_box, shape_radii_x, shape_radii_y, dx, dy);
+		coverage = min(coverage, mask);
+	}
+	COLOR = texture(TEXTURE, UV) * vec4(paint_modulate.rgb, 1.0) * (paint_modulate.a * coverage);
+#else
 	if (has_shape) {
 		coverage = min(coverage, box_coverage(document_point, shape_box, shape_radii_x, shape_radii_y, pixel_x, pixel_y));
 	}
@@ -479,7 +601,7 @@ void fragment() {
 			float inner_band = box_coverage(document_point, border_middle_box, border_middle_rx, border_middle_ry, pixel_x, pixel_y);
 			border_color = mix(border_color, border_inner_colors[side], inner_band);
 		}
-		COLOR *= border_color;
+		COLOR *= canvas_color(border_color);
 	} else if (gradient_type > 0 || tiled_fill) {
 		vec2 local = tile_coordinates(document_point);
 		if (any(lessThan(local, vec2(0.0))) || any(greaterThanEqual(local, tile.zw))) {
@@ -495,7 +617,7 @@ void fragment() {
 			} else {
 				t = fract(atan(delta.x, -delta.y) / TAU - gradient_parameters.x);
 			}
-			COLOR *= sample_gradient(t);
+			COLOR *= canvas_color(sample_gradient(t));
 		}
 	} else if (tiled_image) {
 		vec2 local = tile_coordinates(document_point);
@@ -525,7 +647,11 @@ void fragment() {
 		vec2 point = pixelated_uv(texel, dFdx(texel), dFdy(texel), pixelated_source, pixelated_repeat);
 		COLOR = paint_modulate * textureLod(TEXTURE, point * TEXTURE_PIXEL_SIZE, 0.0);
 	}
+	if (selection_span_count > 0) {
+		COLOR *= canvas_color(selected_text_pixel(document_point.x) ? selection_ink : ordinary_ink);
+	}
 	COLOR.a *= coverage;
+#endif
 }
 )SHADER";
 
@@ -627,20 +753,53 @@ void fragment() {
 		active_geometry = nullptr;
 		clips.clear();
 		clip_material.unref();
-		painted_elements.clear();
+		pointer_targets.clear();
+		scrollbar_bounds = Rect2();
 		painted_text.clear();
 		painted_text_by_renderer.clear();
 		painted_text_by_source.clear();
 		paint_runs.clear();
-		outline_groups.clear();
+		viewport_background_runs.clear();
+		viewport_background_groups.clear();
+		open_groups.clear();
+		paint_groups.clear();
+		filter_depth = 0;
+		separate_run = false;
+		has_depth_scene = false;
 		diagnostic_runs.clear();
 		plain_text = String();
+		excluded_selection.clear();
+		selection_scopes.clear();
+		selection_scope_starts.clear();
+		separator_selectable.reset();
+		auto_content_text.clear();
 		text_runs.clear();
+		ellipses.clear();
+		ellipses_by_context.clear();
+		overflow_paint.clear();
+		elided_text_offsets.clear();
+		text_overflow_clip_active = false;
 	}
 
-	void HTMLPaintRecorder::begin(const HTMLGeometryIndex& p_geometry) {
+	void HTMLPaintRecorder::begin(const HTMLGeometryIndex& p_geometry, const render_item* p_root, const OverflowTextShaper& p_shaper) {
 		clear();
 		recording_geometry = &p_geometry;
+		if (p_root) prepare_text_overflow(*p_root, p_shaper);
+	}
+
+	void HTMLPaintRecorder::record_viewport_background(const render_item& p_root, const std::function<void()>& p_draw) {
+		// Record only the canvas background with the root's regular transform and paint effects.
+		paint_runs.swap(viewport_background_runs);
+		paint_groups.swap(viewport_background_groups);
+		const bool previous_boundary = separate_run;
+		active_geometry = recording_geometry->find_renderer(&p_root);
+		begin_paint_group(p_root);
+		p_draw();
+		end_paint_group();
+		active_geometry = nullptr;
+		separate_run = previous_boundary;
+		paint_runs.swap(viewport_background_runs);
+		paint_groups.swap(viewport_background_groups);
 	}
 
 	void HTMLPaintRecorder::finish(const element::ptr& p_root, const TextShaper& p_shape_text) {
@@ -673,28 +832,125 @@ void fragment() {
 		painted_text.clear();
 		painted_text_by_renderer.clear();
 		painted_text_by_source.clear();
-		for (const HTMLPaintRun& run : paint_runs) {
-			for (const Command& command : run.commands) {
-				if (const Text* text = std::get_if<Text>(&command); text && text->offset >= 0) {
+		for (HTMLPaintRun& run : paint_runs) {
+			for (Command& command : run.commands) {
+				auto* text = std::get_if<Text>(&command);
+				if (!text) continue;
+				int8_t ellipsis_direction = 0;
+				if (text->ellipsis >= 0) {
+					const auto& mark = ellipses[text->ellipsis];
+					int64_t first = std::numeric_limits<int64_t>::max();
+					int64_t last = -1;
+					for (const auto& source : mark.sources) {
+						const auto& [offset, length] = elided_text_offsets.at(source.element);
+						if (offset >= 0 && source.from < length) {
+							first = std::min(first, offset + source.from);
+							last = std::max(last, offset + std::min(length, source.to));
+						}
+					}
+					if (first < last) {
+						text->offset = first;
+						text->length = last - first;
+						text->selectable = has_selectable_text(first, last);
+						ellipsis_direction = mark.rtl ? -1 : 1;
+					}
+				}
+				if (text->offset >= 0) {
 					const Rect2 rect(text->position, text->layout.size());
 					const Rect2 visible = run.clips.empty() && run.clip ? run.matrix.xform(rect).intersection(*run.clip) :
 						clipped_visual_bounds(rect, run.matrix, run.clips);
 					text_runs.push_back({ text->layout, rect, visible, text->offset, text->length,
-						run.matrix, run.matrix.affine_inverse(), run.clips });
+						run.matrix, run.matrix.inverse(), run.clips, ellipsis_direction });
 				}
 			}
 		}
 		recording_geometry = nullptr;
 	}
 
-	std::shared_ptr<litehtml::element> HTMLPaintRecorder::hit_test_element(const Vector2& p_point) const {
-		for (auto it = painted_elements.rbegin(); it != painted_elements.rend(); ++it) {
-			const auto* geometry = *it;
-			if (geometry->item->is_visible() && geometry->contains_visible_point(p_point)) {
-				return geometry->item->src_el();
+	void HTMLPaintRecorder::visit_pointer_targets(const Vector2& p_point, const std::function<bool(const PointerTarget&)>& p_visit) const {
+		if (!has_depth_scene) {
+			for (auto it = pointer_targets.rbegin(); it != pointer_targets.rend(); ++it) {
+				if (p_visit(*it)) break;
 			}
+			return;
 		}
-		return {};
+		struct Candidate {
+			std::size_t index;
+			bool group;
+			real_t depth;
+		};
+		const auto depth_at_pointer = [&](const std::optional<Vector3>& p_plane) {
+			return p_plane ? html_depth_at(*p_plane, p_point) : real_t(0);
+		};
+		const auto visit = [&](auto&& self, std::size_t p_first, std::size_t p_last, std::size_t p_child,
+			std::size_t p_after, bool p_sort) -> bool {
+			std::vector<Candidate> candidates;
+			const auto include_targets = [&](std::size_t p_end) {
+				for (; p_first < p_end; ++p_first) {
+					const auto& target = pointer_targets[p_first];
+					if (!target.geometry->contains_visible_point(p_point)) continue;
+					candidates.push_back({p_first, false, p_sort ? depth_at_pointer(target.geometry->depth_plane) : real_t(0)});
+				}
+			};
+			for (auto child = p_child; child < p_after; child = paint_groups[child].after_group) {
+				const auto& group = paint_groups[child];
+				include_targets(group.first_pointer);
+				if (group.first_pointer < group.last_pointer)
+					candidates.push_back({child, true, p_sort ? depth_at_pointer(group.depth_plane) : real_t(0)});
+				p_first = group.last_pointer;
+			}
+			include_targets(p_last);
+			if (p_sort) {
+				std::stable_sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
+					return a.depth < b.depth;
+				});
+			}
+			for (auto it = candidates.rbegin(); it != candidates.rend(); ++it) {
+				if (!it->group) {
+					if (p_visit(pointer_targets[it->index])) return true;
+					continue;
+				}
+				const auto& group = paint_groups[it->index];
+				if (self(self, group.first_pointer, group.last_pointer, it->index + 1, group.after_group, group.sorts_depth))
+					return true;
+			}
+			return false;
+		};
+		visit(visit, 0, pointer_targets.size(), 0, paint_groups.size(), false);
+	}
+
+	std::shared_ptr<litehtml::element> HTMLPaintRecorder::hit_test_element(const Vector2& p_point, bool p_text_selection) const {
+		std::shared_ptr<litehtml::element> element;
+		visit_pointer_targets(p_point, [&](const PointerTarget& p_target) {
+			if (p_target.axis >= 0) return false;
+			const auto* geometry = p_target.geometry;
+			if (geometry->item->is_visible() && (p_text_selection || geometry->item->css().accepts_pointer_events()) &&
+				geometry->contains_visible_point(p_point)) {
+				element = geometry->item->src_el();
+				return true;
+			}
+			return false;
+		});
+		return element;
+	}
+
+	std::optional<HTMLScrollbarDrag> HTMLPaintRecorder::scrollbar_at(const Vector2& p_point) const {
+		if (!scrollbar_bounds.has_point(p_point)) return {};
+		std::optional<HTMLScrollbarDrag> result;
+		visit_pointer_targets(p_point, [&](const PointerTarget& p_target) {
+			const auto& geometry = *p_target.geometry;
+			if (!geometry.item->is_visible() || !geometry.item->css().accepts_pointer_events() ||
+				!geometry.contains_visible_point(p_point)) return false;
+			if (p_target.axis < 0) return true;
+			const Vector2 local = geometry.inverse->xform(p_point);
+			if (!p_target.track.has_point(local) || !geometry.child_overflow->contains_point(p_point, true)) return false;
+			const auto bar = geometry.scrollbars()[p_target.axis];
+			const real_t fraction = bar.thumb.has_point(local)
+				? (local[p_target.axis] - bar.thumb.position[p_target.axis]) / bar.thumb.size[p_target.axis] : 0.5;
+			result = HTMLScrollbarDrag{ geometry.item->src_el(), p_target.axis, fraction };
+			return true;
+		});
+		return result;
 	}
 
 	void HTMLPaintRecorder::record_css_diagnostic(const RenderGeometry& p_geometry, const Rect2& p_box) {
@@ -705,7 +961,7 @@ void fragment() {
 			overflow.push_back(clip);
 		}
 		for (auto it = overflow.rbegin(); it != overflow.rend(); ++it) {
-			push_clip((*it)->shape, (*it)->matrix);
+			push_clip(**it);
 		}
 
 		const Color color(1.0f, 0.56f, 0.10f, 0.95f);
@@ -726,11 +982,40 @@ void fragment() {
 		active_geometry = nullptr;
 	}
 
-	void HTMLPaintRecorder::index_text(const element::ptr& p_element, const TextShaper& p_shape_text, String& r_separator) {
-		if (!p_element || p_element->tag() == litehtml::_textarea_ || p_element->css().get_display() == display_none) {
+	void HTMLPaintRecorder::exclude_from_selection(int64_t p_from, int64_t p_to) {
+		if (p_from >= p_to) return;
+		if (!excluded_selection.empty() && excluded_selection.back().y == p_from) {
+			excluded_selection.back().y = static_cast<int32_t>(p_to);
+		} else {
+			excluded_selection.emplace_back(static_cast<int32_t>(p_from), static_cast<int32_t>(p_to));
+		}
+	}
+
+	int64_t HTMLPaintRecorder::index_source_text(const String& p_text, String& r_separator, bool p_selectable) {
+		const int64_t separator_start = plain_text.length();
+		plain_text += r_separator;
+		r_separator = String();
+		const int64_t start = plain_text.length();
+		plain_text += p_text;
+		if (!separator_selectable.value_or(p_selectable)) exclude_from_selection(separator_start, start);
+		separator_selectable.reset();
+		if (p_text.is_empty()) return start;
+		for (auto scope = selection_scope_starts.rbegin(); scope != selection_scope_starts.rend() && *scope < 0; ++scope) {
+			*scope = start;
+		}
+		if (!p_selectable) exclude_from_selection(start, plain_text.length());
+		return start;
+	}
+
+	void HTMLPaintRecorder::index_text(const element::ptr& p_element, const TextShaper& p_shape_text,
+		String& r_separator, bool p_unlaid, bool p_selectable) {
+		if (!p_element || p_element->tag() == litehtml::_textarea_ || p_element->css().get_display() == display_none ||
+			p_element->css().hides_contents()) {
 			return;
 		}
 		const auto display = p_element->css().get_display();
+		const auto selection = p_element->css().get_user_select();
+		const bool selectable = selection == css_user_select::automatic ? p_selectable : selection != css_user_select::none;
 		if (display == display_table_cell) {
 			const auto item = p_element->get_render_item();
 			if (item && item->collapsed_table_track()) return;
@@ -738,23 +1023,43 @@ void fragment() {
 		const bool visible = p_element->css().get_visibility() == visibility_visible;
 		if (p_element->is_break()) {
 			// A trimmed source line feed stays in the DOM but has no render item.
-			if (visible && !plain_text.is_empty() && (!p_element->is_text() || p_element->get_render_item())) {
+			if (visible && !plain_text.is_empty() && (p_unlaid || !p_element->is_text() || p_element->get_render_item())) {
 				if (r_separator == " " || r_separator == "\t") {
 					r_separator = String();
 				}
 				r_separator += "\n";
+				separator_selectable = selectable;
 			}
 			return;
 		}
 		if (display == display_inline_text) {
+			const auto elided = elided_text_offsets.find(p_element.get());
+			const auto append = [&](const String& p_source) {
+				const int64_t start = index_source_text(p_source, r_separator, p_selectable);
+				if (elided != elided_text_offsets.end()) elided->second = { start, p_source.length() };
+				return start;
+			};
+			const auto append_unpainted = [&](const el_text& p_text) {
+				const auto whitespace = p_text.css().get_white_space_collapse();
+				if (p_text.is_white_space() && whitespace == white_space_discard) return;
+				if (p_text.is_white_space() && litehtml::is_one_of(whitespace, white_space_collapse_spaces, white_space_preserve_breaks)) {
+					if (r_separator.is_empty() && !plain_text.is_empty()) r_separator = " ";
+					if (r_separator == " " && !separator_selectable.has_value()) separator_selectable = p_selectable;
+				}
+				else {
+					const auto& source = p_text.get_source_text();
+					append(source == "\r" || (whitespace == white_space_preserve_spaces && (source == "\t" || source == "\n")) ?
+						String(" ") : String::utf8(source.c_str()));
+				}
+			};
 			if (visible) {
 				if (const auto* fragments = painted_text_by_source.getptr(p_element.get())) {
-					plain_text += r_separator;
-					r_separator = String();
-					const int64_t start = plain_text.length();
 					const auto& text = static_cast<const el_text&>(*p_element);
-					plain_text += String::utf8(text.get_source_text().c_str());
-					for (const auto& [draw, offset] : *fragments) draw->offset = start + offset;
+					const int64_t start = append(String::utf8(text.get_source_text().c_str()));
+					for (const auto& [draw, offset] : *fragments) {
+						draw->offset = start + offset;
+						draw->selectable = p_selectable;
+					}
 					return;
 				}
 			}
@@ -763,7 +1068,12 @@ void fragment() {
 				item = p_item;
 				return false;
 			});
-			if (!visible || !item) {
+			if (!visible) return;
+			const auto* node = dynamic_cast<const el_text*>(p_element.get());
+			if (!node) return;
+			if (!item) {
+				if (elided != elided_text_offsets.end()) append(String::utf8(node->get_source_text().c_str()));
+				else if (p_unlaid) append_unpainted(*node);
 				return;
 			}
 			if (p_element->is_white_space()) {
@@ -772,30 +1082,32 @@ void fragment() {
 				if (!replaced || item->skip() || item->width() <= 0) {
 					if (r_separator.is_empty() && !plain_text.is_empty() && (!replaced || !plain_text.ends_with(" "))) {
 						r_separator = " ";
+						separator_selectable = p_selectable;
 					}
 					return;
 				}
 			}
-			if (item->skip() || !p_element->parent()) {
+			if (!p_element->parent()) return;
+			if (item->skip()) {
+				if (elided != elided_text_offsets.end()) append(String::utf8(node->get_source_text().c_str()));
 				return;
 			}
-			const auto* node = dynamic_cast<const el_text*>(p_element.get());
-			if (!node) return;
 			if (litehtml::is_explicit_wrap_point(*node) || litehtml::is_soft_hyphen(*node)) {
-				plain_text += r_separator + String::utf8(node->get_source_text().c_str());
-				r_separator = String();
+				index_source_text(String::utf8(node->get_source_text().c_str()), r_separator, p_selectable);
 				return;
 			}
 			if (node->is_preserved_tab() && item->pos().width <= 0) {
-				plain_text += r_separator + "\t";
-				r_separator = String();
+				index_source_text("\t", r_separator, p_selectable);
 				return;
 			}
 			auto* candidates = painted_text_by_renderer.getptr(item.get());
 			RID expected_layout;
 			if (!candidates) {
 				const auto shaped = p_shape_text(*p_element, String::utf8(node->get_rendered_text().c_str()));
-				if (!shaped.is_valid()) return;
+				if (!shaped.is_valid()) {
+					if (p_unlaid) append_unpainted(*node);
+					return;
+				}
 				expected_layout = shaped.get_rid();
 				const position placement = item->get_placement();
 				const Vector2 point(placement.x, std::round(placement.y) + shaped.ascent - shaped.line_ascent());
@@ -804,39 +1116,54 @@ void fragment() {
 			if (candidates) {
 				for (Text* text : *candidates) {
 					if (text->offset < 0 && (!expected_layout.is_valid() || text->layout.get_rid() == expected_layout)) {
-						plain_text += r_separator;
-						r_separator = String();
-						text->offset = plain_text.length();
 						// Text transforms preserve code point counts, so the shaped offsets also address the source.
 						const auto& source = node->get_source_text();
 						const bool replaced = source == "\r" || (node->css().get_white_space_collapse() == white_space_preserve_spaces &&
 							(source == "\t" || source == "\n"));
-						plain_text += replaced ? String(" ") : String::utf8(source.c_str());
-						break;
+						text->offset = append(replaced ? String(" ") : String::utf8(source.c_str()));
+						text->selectable = p_selectable;
+						return;
 					}
 				}
 			}
+			if (elided != elided_text_offsets.end()) append(String::utf8(node->get_source_text().c_str()));
+			else if (p_unlaid) append_unpainted(*node);
 			return;
 		}
 		const bool block = !litehtml::is_one_of(display, display_inline, display_inline_block, display_inline_flex,
 			display_inline_grid, display_inline_table, display_table_cell);
 		const int64_t start = plain_text.length();
 		const String preceding_separator = r_separator;
+		const auto preceding_separator_selection = separator_selectable;
 		if (block && start > 0 && !r_separator.begins_with("\n")) {
 			r_separator = "\n";
+			separator_selectable.reset();
 		}
+		const bool has_scope = selection == css_user_select::none || selection == css_user_select::all;
+		if (has_scope) selection_scope_starts.push_back(-1);
 		for (const auto& child : p_element->children()) {
-			index_text(child, p_shape_text, r_separator);
+			index_text(child, p_shape_text, r_separator, p_unlaid || p_element->css().has_auto_content_visibility(), selectable);
+		}
+		if (has_scope) {
+			const int64_t scope_start = selection_scope_starts.back();
+			selection_scope_starts.pop_back();
+			if (scope_start >= 0) selection_scopes.emplace(p_element.get(), Vector2i(scope_start, plain_text.length()));
 		}
 		if (plain_text.length() > start) {
+			if (p_element->css().has_auto_content_visibility()) {
+				auto_content_text.emplace_back(p_element.get(), Vector2i(start, plain_text.length()));
+			}
 			if (block && !r_separator.begins_with("\n")) {
 				r_separator = "\n";
+				separator_selectable.reset();
 			}
 			else if (display == display_table_cell && !r_separator.begins_with("\n")) {
 				r_separator = "\t";
+				separator_selectable.reset();
 			}
 		} else if (block) {
 			r_separator = preceding_separator;
+			separator_selectable = preceding_separator_selection;
 		}
 	}
 
@@ -846,6 +1173,54 @@ void fragment() {
 
 	const String& HTMLPaintRecorder::get_plain_text() const {
 		return plain_text;
+	}
+
+	String HTMLPaintRecorder::get_copyable_text(int64_t p_from, int64_t p_to) const {
+		const int64_t end = CLAMP(p_to, int64_t(0), plain_text.length());
+		int64_t offset = CLAMP(p_from, int64_t(0), end);
+		String text;
+		for (const Vector2i& range : excluded_selection) {
+			if (range.y <= offset) continue;
+			if (range.x >= end) break;
+			if (range.x > offset) text += plain_text.substr(offset, range.x - offset);
+			offset = std::min<int64_t>(end, range.y);
+		}
+		if (offset < end) text += plain_text.substr(offset, end - offset);
+		return text;
+	}
+
+	bool HTMLPaintRecorder::has_selectable_text(int64_t p_from, int64_t p_to) const {
+		if (p_from >= p_to) return false;
+		const auto excluded = std::partition_point(excluded_selection.begin(), excluded_selection.end(),
+			[p_from](const Vector2i& p_range) { return p_range.y <= p_from; });
+		return excluded == excluded_selection.end() || excluded->x > p_from || excluded->y < p_to;
+	}
+
+	HTMLSelectionPoint HTMLPaintRecorder::selection_point_at(const Vector2& p_point, element::ptr p_target) const {
+		HTMLSelectionPoint result{ hit_test_text(p_point) };
+		const auto scope_at = [&](const element& p_element) {
+			const auto found = selection_scopes.find(&p_element);
+			return found == selection_scopes.end() ? Vector2i() : found->second;
+		};
+		css_user_select used = css_user_select::automatic;
+		bool crossed_override = false;
+		for (auto node = std::move(p_target); node; node = node->parent()) {
+			if (node->is_text()) continue;
+			const auto specified = node->css().get_user_select();
+			if (specified == css_user_select::automatic) continue;
+			if (used == css_user_select::automatic) used = specified;
+			if (specified != used) crossed_override = true;
+			if (specified == css_user_select::all && crossed_override) {
+				result.enclosing_all = scope_at(*node);
+			} else if (!crossed_override && specified != css_user_select::text) {
+				result.scope = scope_at(*node);
+			}
+		}
+		result.excluded = used == css_user_select::none;
+		if (result.scope.x < result.scope.y) {
+			result.offset = CLAMP(result.offset, int64_t(result.scope.x), int64_t(result.scope.y));
+		}
+		return result;
 	}
 
 	int64_t HTMLPaintRecorder::hit_test_text(const Vector2& p_point) const {
@@ -864,15 +1239,18 @@ void fragment() {
 			real_t dx = std::max({ rect.position.x - p_point.x, real_t(0), p_point.x - end.x });
 			if ((run.matrix != Transform2D() || !run.clips.empty()) && run.visible_rect.has_point(p_point)) {
 				const Vector2 local = run.inverse.xform(p_point);
+				if (!local.is_finite()) continue;
 				if (!run.rect.has_point(local)) {
 					const Vector2 edge = local.clamp(run.rect.position, run.rect.get_end());
 					const Vector2 delta = (run.matrix.xform(edge) - p_point).abs();
-					dx = delta.x;
-					dy = delta.y;
+					if (delta.is_finite()) {
+						dx = delta.x;
+						dy = delta.y;
+					}
 				}
 				int remaining = MAX_ROUNDED_CLIPS;
 				for (auto clip = run.clips.rbegin(); clip != run.clips.rend(); ++clip) {
-					if (!clip->contains_point(p_point, use_precise_clip(clip->shape, clip->matrix, remaining))) {
+					if (!clip->contains_point(p_point, use_precise_clip(*clip, remaining))) {
 						dy = std::max(dy, real_t(0.01));
 					}
 				}
@@ -892,6 +1270,13 @@ void fragment() {
 		const real_t x = CLAMP(p_point.x, closest->visible_rect.position.x, closest->visible_rect.get_end().x);
 		const Vector2 point(x, CLAMP(p_point.y, closest->visible_rect.position.y, closest->visible_rect.get_end().y));
 		const Vector2 local = to_local_point(closest->inverse.xform(point), closest->rect.position);
+		if (!local.is_finite()) {
+			return closest->offset + (x >= closest->visible_rect.get_center().x ? closest->length : 0);
+		}
+		if (closest->ellipsis_direction != 0) {
+			const bool trailing = (local.x >= closest->rect.size.x * 0.5) == (closest->ellipsis_direction > 0);
+			return closest->offset + (trailing ? closest->length : 0);
+		}
 		return closest->offset + CLAMP(closest->layout.hit_test(local.x), int64_t(0), closest->length);
 	}
 
@@ -904,10 +1289,8 @@ void fragment() {
 		for (const TextRun& run : text_runs) {
 			const int64_t from = std::max<int64_t>(0, p_from - run.offset);
 			const int64_t to = std::min(run.length, p_to - run.offset);
-			if (from >= to) {
-				continue;
-			}
-			for (const Vector2& range : run.layout.selection(*text_server.ptr(), from, to)) {
+			if (from >= to || (run.ellipsis_direction != 0 && (from != 0 || to != run.length))) continue;
+			for (const Vector2& range : run.layout.selection(*text_server.ptr(), from, run.ellipsis_direction ? 1 : to)) {
 				const Rect2 rect = translate_rect(Rect2(range.x, 0, range.y - range.x, run.rect.size.y), run.rect.position);
 				const Rect2 visible = run.clips.empty() ? run.matrix.xform(rect).intersection(run.visible_rect) :
 					clipped_visual_bounds(rect, run.matrix, run.clips);
@@ -919,34 +1302,64 @@ void fragment() {
 		return result;
 	}
 
-	Ref<ShaderMaterial> HTMLPaintRecorder::create_material(const RoundedRect* p_shape) {
-		if (paint_shader.is_null()) {
-			paint_shader.instantiate();
-			paint_shader->set_code(PAINT_SHADER_CODE);
-		}
-		Ref<ShaderMaterial> material;
-		material.instantiate();
-		material->set_shader(paint_shader);
+	Ref<ShaderMaterial> HTMLPaintRecorder::create_material(const RoundedRect* p_shape, bool p_composite,
+		const TransformedClip* p_path, bool p_include_clips) {
+		auto material = make_html_paint_material(p_composite);
 		PackedVector4Array boxes;
 		PackedVector4Array radii_x;
 		PackedVector4Array radii_y;
 		PackedVector4Array bases;
 		PackedVector2Array offsets;
-		const Transform2D matrix = active_geometry ? active_geometry->matrix : Transform2D();
-		bool affine = false;
-		const auto append = [&](const RoundedRect& p_clip, const Transform2D& p_clip_matrix) {
-			boxes.push_back(box_uniform(p_clip.rect));
-			radii_x.push_back(p_clip.radii_x);
-			radii_y.push_back(p_clip.radii_y);
-			const Transform2D relative = p_clip_matrix == matrix ? Transform2D() : p_clip_matrix.affine_inverse() * matrix;
-			affine |= relative != Transform2D();
-			bases.push_back(Vector4(relative[0].x, relative[0].y, relative[1].x, relative[1].y));
-			offsets.push_back(relative[2]);
+		PackedVector4Array divisors;
+		PackedInt32Array axes;
+		PackedVector4Array polygons;
+		std::vector<Vector4> edges;
+		const auto append_polygon = [&](const std::shared_ptr<const HTMLClipPolygon>& p_polygon) {
+			if (!p_polygon) return Vector4();
+			const auto first = edges.size();
+			const auto append_area = [&](const auto& self, const HTMLClipPolygon& area) -> void {
+				// An empty fill also pushes a value, so intersections with empty areas evaluate to zero.
+				if (area.outlines.empty()) edges.emplace_back();
+				for (const auto& outline : area.outlines) {
+					const auto header = edges.size();
+					edges.emplace_back();
+					outline.for_each_edge([&](const Vector2& a, const Vector2& b) {
+						edges.emplace_back(a.x, a.y, b.x, b.y);
+					});
+					edges[header] = Vector4(edges.size() - header - 1, outline.even_odd ? 1.0 : 0.0, 0, 0);
+					for (const auto& clip : outline.clips) {
+						self(self, clip);
+						edges.emplace_back(0.0f, 0.0f, 2.0f, 0.0f); // Intersection
+					}
+					if (&outline != &area.outlines.front()) edges.emplace_back(0.0f, 0.0f, 1.0f, 0.0f); // Union
+				}
+				for (const auto& clip : area.clips) {
+					self(self, clip);
+					edges.emplace_back(0.0f, 0.0f, 2.0f, 0.0f);
+				}
+			};
+			append_area(append_area, *p_polygon);
+			return Vector4(first, edges.size() - first, 0, 0);
+		};
+		const auto matrix = !p_composite && active_geometry ? active_geometry->matrix : HTMLPlaneTransform();
+		bool transformed = false;
+		const auto append = [&](const TransformedClip& p_clip) {
+			boxes.push_back(box_uniform(p_clip.shape.rect));
+			radii_x.push_back(p_clip.shape.radii_x);
+			radii_y.push_back(p_clip.shape.radii_y);
+			axes.push_back(static_cast<int>(p_clip.axes));
+			polygons.push_back(append_polygon(p_clip.polygon));
+			const auto relative = p_clip.matrix == matrix ? HTMLPlaneTransform() : p_clip.matrix.inverse() * matrix;
+			transformed |= relative != HTMLPlaneTransform();
+			bases.push_back(Vector4(relative.row(0).x, relative.row(1).x, relative.row(0).y, relative.row(1).y));
+			offsets.push_back(Vector2(relative.row(0).z, relative.row(1).z));
+			const auto& w = relative.row(2);
+			divisors.push_back(Vector4(w.x, w.y, w.z, 0));
 		};
 		int remaining = MAX_ROUNDED_CLIPS;
-		for (auto clip = clips.rbegin(); clip != clips.rend() && remaining > 0; ++clip) {
-			if (use_precise_clip(clip->shape, clip->matrix, remaining)) {
-				append(clip->shape, clip->matrix);
+		for (auto clip = clips.rbegin(); p_include_clips && clip != clips.rend() && boxes.size() < MAX_ROUNDED_CLIPS; ++clip) {
+			if (use_precise_clip(*clip, remaining)) {
+				append(*clip);
 			}
 		}
 		if (p_shape) {
@@ -954,21 +1367,49 @@ void fragment() {
 			material->set_shader_parameter("shape_box", box_uniform(p_shape->rect));
 			material->set_shader_parameter("shape_radii_x", p_shape->radii_x);
 			material->set_shader_parameter("shape_radii_y", p_shape->radii_y);
+			if (p_path) {
+				const auto relative = p_path->matrix.inverse();
+				material->set_shader_parameter("shape_basis",
+					Vector4(relative.row(0).x, relative.row(1).x, relative.row(0).y, relative.row(1).y));
+				material->set_shader_parameter("shape_offset", Vector2(relative.row(0).z, relative.row(1).z));
+				material->set_shader_parameter("shape_divisor", relative.row(2));
+				if (p_path->polygon) material->set_shader_parameter("shape_polygon", append_polygon(p_path->polygon));
+			}
+		}
+		if (!edges.empty()) {
+			constexpr int columns = 1024;
+			const int width = static_cast<int>(std::min<size_t>(edges.size(), columns));
+			const int height = static_cast<int>((edges.size() + width - 1) / width);
+			auto data = godot::Image::create_empty(width, height, false, godot::Image::FORMAT_RGBAF);
+			for (size_t index = 0; index < edges.size(); ++index) {
+				const auto& edge = edges[index];
+				data->set_pixel(index % width, index / width, Color(edge.x, edge.y, edge.z, edge.w));
+			}
+			material->set_shader_parameter("clip_edges", ImageTexture::create_from_image(data));
+			if (!polygons.is_empty()) {
+				polygons.resize(MAX_ROUNDED_CLIPS);
+				material->set_shader_parameter("has_clip_polygons", true);
+				material->set_shader_parameter("clip_polygons", polygons);
+			}
 		}
 		material->set_shader_parameter("clip_count", boxes.size());
 		if (!boxes.is_empty()) {
 			boxes.resize(MAX_ROUNDED_CLIPS);
+			axes.resize(MAX_ROUNDED_CLIPS);
+			material->set_shader_parameter("clip_axes", axes);
 			radii_x.resize(MAX_ROUNDED_CLIPS);
 			radii_y.resize(MAX_ROUNDED_CLIPS);
 			material->set_shader_parameter("clip_boxes", boxes);
 			material->set_shader_parameter("clip_radii_x", radii_x);
 			material->set_shader_parameter("clip_radii_y", radii_y);
-			if (affine) {
+			if (transformed) {
 				bases.resize(MAX_ROUNDED_CLIPS);
 				offsets.resize(MAX_ROUNDED_CLIPS);
-				material->set_shader_parameter("affine_clips", true);
+				divisors.resize(MAX_ROUNDED_CLIPS);
+				material->set_shader_parameter("transformed_clips", true);
 				material->set_shader_parameter("clip_bases", bases);
 				material->set_shader_parameter("clip_offsets", offsets);
+				material->set_shader_parameter("clip_divisors", divisors);
 			}
 		}
 		return material;
@@ -979,16 +1420,35 @@ void fragment() {
 		add_command_to(paint_runs, std::move(p_command), std::move(p_material), p_sampling, p_fixed_background);
 	}
 
+	void HTMLPaintRecorder::add_indexed_text(Text p_text, const element* p_source, const web_color& p_color) {
+		const auto* fragment = dynamic_cast<const HTMLInlineTextFragment*>(p_source);
+		if (fragment) p_source = fragment->original_renderer()->src_el().get();
+		const auto parent = p_source && p_source->is_text() ? p_source->parent() : nullptr;
+		const auto* tag = dynamic_cast<const html_tag*>(parent ? parent.get() : p_source);
+		if (tag) {
+			const auto colors = tag->get_selection_colors(p_color);
+			if (colors.background) p_text.selection_background = to_color(*colors.background);
+			if (colors.foreground) {
+				const Color ink = to_color(*colors.foreground);
+				if (ink != p_text.color) p_text.selection_foreground = ink;
+			}
+		}
+		// A partial highlight can give its glyphs their own material at submission time.
+		const bool isolates_ink = p_text.selection_foreground.has_value();
+		if (isolates_ink) separate_run = true;
+		add_command(std::move(p_text));
+		if (isolates_ink) separate_run = true;
+	}
+
 	void HTMLPaintRecorder::add_command_to(std::vector<HTMLPaintRun>& r_runs, Command p_command, Ref<ShaderMaterial> p_material,
 		HTMLTextureSampling p_sampling, bool p_fixed_background) {
 		if (active_geometry && !active_geometry->inverse) return;
-		const Transform2D matrix = active_geometry ? active_geometry->matrix : Transform2D();
+		const auto matrix = active_geometry ? active_geometry->matrix : HTMLPlaneTransform();
+		const auto depth = active_geometry ? active_geometry->depth_plane : std::nullopt;
 		std::optional<Rect2> clip;
 		if (!clips.empty()) {
-			if (!clips.back().bounds.has_area()) {
-				return;
-			}
 			clip = clips.back().bounds;
+			if (clip && !clip->has_area()) return;
 			if (p_material.is_null()) {
 				if (clips.back().has_precise_clip) {
 					if (clip_material.is_null() || clip_material_matrix != matrix) {
@@ -999,11 +1459,22 @@ void fragment() {
 				}
 			}
 		}
-		if (r_runs.empty() || r_runs.back().clip != clip || r_runs.back().matrix != matrix || r_runs.back().material != p_material ||
-			r_runs.back().sampling != p_sampling || r_runs.back().fixed_background != p_fixed_background) {
-			r_runs.push_back({ clip, matrix, {}, p_material, {}, p_sampling, p_fixed_background });
-			if (matrix != Transform2D() || (!clips.empty() && clips.back().has_precise_clip)) {
-				for (const auto& entry : clips) r_runs.back().clips.push_back({ entry.shape, entry.matrix });
+		const bool boundary = &r_runs == &paint_runs && std::exchange(separate_run, false);
+		if (boundary || r_runs.empty() || r_runs.back().clip != clip || r_runs.back().matrix != matrix || r_runs.back().material != p_material ||
+			r_runs.back().sampling != p_sampling || r_runs.back().fixed_background != p_fixed_background || r_runs.back().depth_plane != depth) {
+			r_runs.push_back({ clip, matrix, {}, p_material, {}, p_sampling, p_fixed_background, depth });
+			if (filter_depth > 0) {
+				for (const auto& group : open_groups) {
+					if (group.enclosing_clips) for (const auto& entry : *group.enclosing_clips) r_runs.back().clips.push_back(entry);
+				}
+			}
+			const bool has_path = std::any_of(open_groups.begin(), open_groups.end(),
+				[](const OpenPaintGroup& group) { return group.path_clip != nullptr; });
+			if (has_path || filter_depth > 0 || matrix != Transform2D() || (!clips.empty() && clips.back().has_precise_clip)) {
+				for (const auto& entry : clips) r_runs.back().clips.push_back(entry);
+			}
+			for (const auto& group : open_groups) {
+				if (group.path_clip) r_runs.back().clips.push_back(*group.path_clip);
 			}
 		}
 		r_runs.back().commands.push_back(std::move(p_command));
@@ -1119,12 +1590,13 @@ void fragment() {
 		const auto& layout = p_shaped.layout;
 		const Vector2 top_left(p_position.x, p_position.y + layout.ascent - layout.line_ascent());
 		const Color color = to_color(p_color);
-		const Text text{ layout, top_left, color, -1, p_length,
+		Text text{ layout, top_left, color, -1, p_length,
 			active_geometry && active_geometry->item->css().get_display() == display_inline_text ? active_geometry->item.get() : nullptr };
+		const element* source = text.renderer ? text.renderer->src_el().get() : nullptr;
 
 		const int decoration = p_shaped.decoration_line;
 		if (decoration == text_decoration_line_none && p_shadows.empty() && !p_shaped.emphasis_centers) {
-			add_command(text);
+			add_indexed_text(std::move(text), source, p_color);
 			return;
 		}
 		const float thickness = p_shaped.decoration_thickness;
@@ -1190,9 +1662,9 @@ void fragment() {
 			if (!destination.is_finite()) {
 				continue;
 			}
-			if (!clips.empty()) {
-				const Transform2D inverse = active_geometry && active_geometry->inverse ? *active_geometry->inverse : Transform2D();
-				destination = destination.intersection(inverse.xform(clips.back().bounds));
+			if (!clips.empty() && clips.back().bounds) {
+				const auto inverse = active_geometry && active_geometry->inverse ? *active_geometry->inverse : HTMLPlaneTransform();
+				destination = destination.intersection(inverse.xform(*clips.back().bounds));
 			}
 			if (!destination.has_area()) {
 				continue;
@@ -1204,7 +1676,7 @@ void fragment() {
 			material->set_shader_parameter("text_shadow_box", Vector4(box.position.x, box.position.y, box.size.x, box.size.y));
 			add_command(Fill{ destination, shadow_color }, material);
 		}
-		add_command(text);
+		add_indexed_text(std::move(text), source, p_color);
 		for (const auto& line_decoration : decorations) {
 			draw_decoration(line_decoration.rect, line_decoration.style, decoration_color);
 		}
@@ -1395,9 +1867,9 @@ void fragment() {
 			if (color.a <= 0.0f || !shape.rect.is_finite() || !destination.is_finite() || (!p_inset && !shape.rect.has_area())) {
 				continue;
 			}
-			if (!clips.empty()) {
-				const Transform2D inverse = active_geometry && active_geometry->inverse ? *active_geometry->inverse : Transform2D();
-				destination = destination.intersection(inverse.xform(clips.back().bounds));
+			if (!clips.empty() && clips.back().bounds) {
+				const auto inverse = active_geometry && active_geometry->inverse ? *active_geometry->inverse : HTMLPlaneTransform();
+				destination = destination.intersection(inverse.xform(*clips.back().bounds));
 			}
 			if (!destination.has_area()) {
 				continue;
@@ -1422,7 +1894,7 @@ void fragment() {
 		for (const auto& patch : p_patches) {
 			const Rect2 destination = patch.destination.intersection(p_visible);
 			if (!destination.has_area() || !patch.destination.is_finite() || !patch.tile.is_finite() || !patch.period.is_finite() ||
-				(!clips.empty() && !clips.back().bounds.intersects(
+				(!clips.empty() && clips.back().bounds && !clips.back().bounds->intersects(
 					active_geometry ? active_geometry->matrix.xform(destination) : destination))) continue;
 			const auto material = create_material();
 			material->set_shader_parameter("tiled_image", true);
@@ -1575,6 +2047,12 @@ void fragment() {
 		push_clip(RoundedRect(to_rect(p_position), p_radii), active_geometry ? active_geometry->matrix : Transform2D());
 	}
 
+	void HTMLPaintRecorder::set_overflow_clip(const render_item& p_item) {
+		const auto* geometry = recording_geometry ? recording_geometry->find_renderer(&p_item) : nullptr;
+		if (geometry && geometry->child_overflow) push_clip(*geometry->child_overflow);
+		else push_clip(RoundedRect(Rect2(), {}), Transform2D());
+	}
+
 	void HTMLPaintRecorder::set_render_item_clip(const litehtml::position& p_position, const border_radiuses& p_radii,
 		const render_item& p_item) {
 		const auto* geometry = recording_geometry ? recording_geometry->find_renderer(&p_item) : nullptr;
@@ -1588,26 +2066,278 @@ void fragment() {
 		active_geometry = recording_geometry ? recording_geometry->find_renderer(&p_item) : nullptr;
 		if (!active_geometry) return true;
 		if (!active_geometry->inverse) return false;
-		if (!active_decoration && recording_geometry->has_transforms() && !active_geometry->fragments.empty()) {
-			painted_elements.push_back(active_geometry);
+		if (!active_decoration && (recording_geometry->uses_visual_hit_order() || recording_geometry->has_scrollbars()) &&
+			!active_geometry->fragments.empty()) {
+			pointer_targets.push_back({ active_geometry });
 		}
-		if (p_item.parent() && active_geometry->matrix != Transform2D()) r_clip = nullptr;
+		if (has_elided_ancestor(p_item)) {
+			active_geometry = nullptr;
+			return false;
+		}
+		for (auto* clip = active_geometry->overflow; clip; clip = clip->parent) {
+			if (clip->axes != ClipAxes::horizon || clip->matrix == active_geometry->matrix) continue;
+			push_clip(*clip);
+			++horizon_clip_count;
+		}
+		const auto elision = overflow_paint.find(&p_item);
+		if (elision != overflow_paint.end() && elision->second.clip) {
+			const auto& clip = *elision->second.clip;
+			push_clip(clip);
+			text_overflow_clip_active = true;
+		}
+		if (filter_depth > 0 || (p_item.parent() && active_geometry->matrix != Transform2D())) r_clip = nullptr;
 		return true;
 	}
 
 	void HTMLPaintRecorder::end_render_item() {
 		if (!active_decoration) record_outline();
+		if (std::exchange(text_overflow_clip_active, false)) del_clip();
+		const auto horizons = std::exchange(horizon_clip_count, std::size_t(0));
+		for (std::size_t i = 0; i < horizons; ++i) del_clip();
 		active_geometry = nullptr;
 	}
 
-	void HTMLPaintRecorder::begin_paint_group() {
-		outline_groups.emplace_back();
+	void HTMLPaintRecorder::draw_scrollbars(const render_item& p_item) {
+		if (!recording_geometry->has_scrollbars() || has_elided_ancestor(p_item)) return;
+		const auto* geometry = recording_geometry->find_renderer(&p_item);
+		if (!geometry) return;
+		const auto bars = geometry->scrollbars();
+		active_geometry = geometry;
+		const auto colors = html_scrollbar_appearance(p_item.css()).colors.value_or(HTMLScrollbarColors{});
+		for (int axis = 0; axis < 2; ++axis) {
+			const auto& bar = bars[axis];
+			if (!bar.track.has_area()) continue;
+			fill_rect(bar.track, colors.track);
+			const Rect2 thumb = bar.thumb.grow(-1);
+			fill_rect(thumb.has_area() ? thumb : bar.thumb, colors.thumb);
+			pointer_targets.push_back({ geometry, axis, bar.track });
+			const Rect2 bounds = geometry->matrix.xform(bar.track);
+			scrollbar_bounds = scrollbar_bounds.has_area() ? scrollbar_bounds.merge(bounds) : bounds;
+		}
+		active_geometry = nullptr;
+	}
+
+	void HTMLPaintRecorder::draw_text_overflow(const render_item& p_context) {
+		const auto found = ellipses_by_context.find(&p_context);
+		if (found == ellipses_by_context.end() || has_elided_ancestor(p_context)) return;
+		active_geometry = recording_geometry->find_renderer(&p_context);
+		for (int64_t index : found->second) {
+			const auto& mark = ellipses[index];
+			push_clip(mark.clip);
+			const auto& color = p_context.css().get_color();
+			add_indexed_text(Text{ mark.layout, mark.origin, to_color(color), -1, 0, nullptr, index }, p_context.src_el().get(), color);
+			del_clip();
+		}
+		active_geometry = nullptr;
+	}
+
+	HTMLPaintGroup& HTMLPaintRecorder::start_isolated_group(float p_opacity) {
+		open_groups.back().isolated_group = paint_groups.size();
+		paint_groups.push_back({paint_runs.size(), 0, 0, p_opacity});
+		auto& group = paint_groups.back();
+		group.first_pointer = pointer_targets.size();
+		separate_run = true;
+		return group;
+	}
+
+	void HTMLPaintRecorder::begin_background_blend(std::optional<css_blend_mode> p_layer) {
+		open_groups.emplace_back();
+		auto& group = start_isolated_group(1.0f);
+		group.blends_background = !p_layer;
+		group.blend_mode = p_layer.value_or(css_blend_mode::normal);
+		if (active_geometry) group.depth_plane = active_geometry->depth_plane;
+	}
+
+	void HTMLPaintRecorder::begin_paint_group(const render_item& p_item) {
+		auto& recording = open_groups.emplace_back();
+		recording.is_stacking_context = p_item.establishes_stacking_context();
+		const auto& style = p_item.css();
+		const auto* geometry = recording_geometry->find_renderer(&p_item);
+		recording.mask_geometry = style.get_mask() ? geometry : nullptr;
+		const bool sorts_depth = geometry && geometry->starts_3d_context;
+		const bool flattens_depth = geometry && geometry->flattens_3d_context;
+		const bool extends_depth_scene = geometry && geometry->depth_plane && style.preserves_3d() && !sorts_depth;
+		const bool blend_boundary = recording_geometry->has_element_blending() && recording.is_stacking_context &&
+			!extends_depth_scene;
+		const bool backdrop_root = p_item.is_root() || style.establishes_backdrop_root();
+		if (style.has_group_effects() || sorts_depth || flattens_depth || blend_boundary ||
+			(backdrop_root && recording_geometry->has_backdrop_filtering())) {
+			auto& group = start_isolated_group(static_cast<float>(style.get_opacity()));
+			recording.is_blend_boundary = blend_boundary;
+			group.backdrop_root = backdrop_root;
+			group.can_draw_directly = !style.has_backdrop_effects() && !sorts_depth && !flattens_depth;
+			if (style.mixes_with_backdrop()) {
+				for (auto ancestor = open_groups.rbegin() + 1; ancestor != open_groups.rend(); ++ancestor) {
+					if (!ancestor->is_blend_boundary) continue;
+					paint_groups[*ancestor->isolated_group].captures_backdrop = true;
+					group.element_blend_mode = style.get_mix_blend_mode();
+					break;
+				}
+			}
+			group.sorts_depth = sorts_depth;
+			has_depth_scene |= sorts_depth;
+			if (geometry) {
+				group.depth_plane = sorts_depth ? geometry->enclosing_depth_plane : geometry->depth_plane;
+				const auto box = geometry->item->get_placement();
+				group.matrix = geometry->matrix.affine_at(to_rect(box).get_center());
+				recording.path_clip = geometry->path_clip;
+			}
+			const auto record_filters = [&](const css_filter_list& filters, std::vector<HTMLPaintFilter>& output) {
+				for (const auto& filter : filters) {
+					const bool spatial = is_one_of(filter.type, css_filter_type::blur, css_filter_type::drop_shadow);
+					const float amount = spatial ? filter.blur.calc_percent(0) : static_cast<float>(filter.amount);
+					output.push_back({ filter.type, amount, Vector2(filter.x.calc_percent(0), filter.y.calc_percent(0)),
+						to_color(filter.color, style.get_color()) });
+				}
+			};
+			if (style.has_backdrop_filters() && geometry && geometry->inverse && !geometry->fragments.empty()) {
+				record_filters(style.get_backdrop_filters(), group.backdrop_filters);
+				for (const auto& fragment : geometry->fragments) {
+					if (!fragment.rect.has_area()) continue;
+					const TransformedClip shape{ fragment, geometry->matrix };
+					const TransformedClip rectangle{ RoundedRect(fragment.rect, {}), geometry->matrix };
+					const auto output_clip = style.has_filters() || clips.empty() ? std::nullopt : clips.back().bounds;
+					group.backdrop_areas.push_back({ shape, create_material(&shape.shape, true, &shape, !style.has_filters()),
+						create_material(&rectangle.shape, true, &rectangle, false), output_clip });
+				}
+				for (auto ancestor = open_groups.rbegin() + 1; ancestor != open_groups.rend(); ++ancestor) {
+					if (!ancestor->isolated_group) continue;
+					auto& outer = paint_groups[*ancestor->isolated_group];
+					if (outer.backdrop_root) {
+						outer.captures_filter_backdrop = true;
+						break;
+					}
+					outer.needs_parent_backdrop = true;
+				}
+			}
+			if (style.has_filters() && !clips.empty()) group.output_clip = clips.back().bounds;
+			if (const auto* path = recording.path_clip) {
+				const Rect2 bounds = path->matrix.xform(path->shape.rect);
+				group.output_clip = group.output_clip ? group.output_clip->intersection(bounds) : bounds;
+				group.output_material = create_material(&path->shape, true, path, style.has_filters());
+			} else if (style.has_filters() && !clips.empty() && clips.back().has_precise_clip) {
+				group.output_material = create_material(nullptr, true);
+			}
+			if (style.has_filters()) {
+				record_filters(style.get_filters(), group.filters);
+				recording.enclosing_clips = std::exchange(clips, {});
+				clip_material.unref();
+				++filter_depth;
+			}
+		}
 	}
 
 	void HTMLPaintRecorder::end_paint_group() {
-		auto& outlines = outline_groups.back();
+		auto& recording = open_groups.back();
+		auto& outlines = recording.outlines;
 		paint_runs.insert(paint_runs.end(), std::make_move_iterator(outlines.begin()), std::make_move_iterator(outlines.end()));
-		outline_groups.pop_back();
+		if (recording.isolated_group) {
+			auto& group = paint_groups[*recording.isolated_group];
+			group.last_run = paint_runs.size();
+			group.after_group = paint_groups.size();
+			group.last_pointer = pointer_targets.size();
+			if (recording.mask_geometry) record_mask(*recording.isolated_group, *recording.mask_geometry);
+			separate_run = true;
+		}
+		if (recording.enclosing_clips) {
+			clips = std::move(*recording.enclosing_clips);
+			clip_material.unref();
+			--filter_depth;
+		}
+		open_groups.pop_back();
+	}
+
+	void HTMLPaintRecorder::record_mask(std::size_t p_group, const RenderGeometry& p_geometry) {
+		const auto& item = p_geometry.item;
+		const auto& mask = *item->css().get_mask();
+		const auto& source = mask.layers;
+		auto& output = paint_groups[p_group].mask;
+		output.resize(source.m_image.size());
+		if (!p_geometry.inverse) return;
+
+		const bool unbounded = std::find(source.m_clip.begin(), source.m_clip.end(), background_box_no_clip) != source.m_clip.end() ||
+			std::any_of(source.m_image.begin(), source.m_image.end(), [](const litehtml::image& p_image) {
+				return p_image.type == litehtml::image::type_url && p_image.url.find('#') != std::string::npos;
+			});
+		const Rect2 ink = unbounded ? p_geometry.inverse->xform(html_group_ink_bounds(paint_runs, paint_groups, p_group)) : Rect2();
+		auto element = item->src_el();
+		auto* container = element->get_document()->container();
+		litehtml::position viewport;
+		container->get_viewport(viewport);
+		auto commands = std::exchange(paint_runs, {});
+		auto enclosing_clips = std::exchange(clips, {});
+		const auto* previous_geometry = std::exchange(active_geometry, &p_geometry);
+		const auto box_of = [](const Rect2& p_box) -> litehtml::position {
+			return { p_box.position.x, p_box.position.y, p_box.size.x, p_box.size.y };
+		};
+
+		const bool inline_box = item->css().get_display() == display_inline && !p_geometry.fragments.empty();
+		const bool sliced = inline_box && p_geometry.fragments.size() > 1;
+		Rect2 target_box;
+		for (const auto& fragment : p_geometry.fragments)
+			target_box = target_box.has_area() ? target_box.merge(fragment.rect) : fragment.rect;
+		float slice_width = 0.0f;
+		if (inline_box) {
+			for (const auto& fragment : p_geometry.fragments) slice_width += fragment.rect.size.x;
+		}
+		for (std::size_t index = 0; index < output.size(); ++index) {
+			auto& layer_output = output[index];
+			const auto mode = mask.modes.empty() ? css_mask_mode::match_source :
+				static_cast<css_mask_mode>(mask.modes[index % mask.modes.size()]);
+			layer_output.luminance = mode == css_mask_mode::luminance;
+			if (!mask.composites.empty()) layer_output.composite = mask.composites[index % mask.composites.size()];
+			const auto& image = source.m_image[index];
+			if (image.type == litehtml::image::type_url) {
+				const auto svg = rasterize_svg_mask(*element, image.url, source.m_baseurl, target_box, ink,
+					Vector2(viewport.width, viewport.height), p_geometry.matrix, mode);
+				if (svg) {
+					layer_output.luminance = svg->luminance;
+					layer_output.linear_rgb = svg->linear_rgb;
+					if (svg->texture.is_valid()) {
+						add_image(Image{ svg->texture, svg->box, Rect2(Vector2(), svg->texture->get_size()) });
+						layer_output.runs.swap(paint_runs);
+					}
+					continue;
+				}
+			}
+			if (source.get_layer_type(static_cast<int>(index)) == background::type_none) continue;
+			const int clip = source.m_clip.empty() ? background_box_border : source.m_clip[index % source.m_clip.size()];
+			const auto draw = [&](litehtml::position p_content, const RoundedRect* p_slice) {
+				background_layer layer;
+				if (!source.get_layer(static_cast<int>(index), p_content, element.get(), item, layer)) return;
+				layer.is_root = false;
+				if (clip == background_box_no_clip) {
+					layer.border_box = layer.clip_box = box_of(ink);
+					layer.border_radius = {};
+				} else if (clip == background_box_margin) {
+					layer.border_box = layer.clip_box;
+					layer.border_radius = {};
+				}
+				if (p_slice) push_clip(*p_slice, p_geometry.matrix);
+				source.draw_layer(0, static_cast<int>(index), layer, container);
+				if (p_slice) del_clip();
+			};
+			if (inline_box) {
+				float offset = 0.0f;
+				for (const auto& fragment : p_geometry.fragments) {
+					auto strip = fragment.rect;
+					strip.position.x -= item->css().is_right_to_left() ? slice_width - offset - fragment.rect.size.x : offset;
+					strip.size.x = slice_width;
+					auto content = box_of(strip);
+					content -= item->get_borders();
+					content -= item->get_paddings();
+					draw(content, sliced ? &fragment : nullptr);
+					offset += fragment.rect.size.x;
+				}
+			} else {
+				draw(item->get_placement(), nullptr);
+			}
+			layer_output.runs.swap(paint_runs);
+		}
+		active_geometry = previous_geometry;
+		clips = std::move(enclosing_clips);
+		clip_material.unref();
+		paint_runs = std::move(commands);
 	}
 
 	void HTMLPaintRecorder::record_outline() {
@@ -1628,7 +2358,7 @@ void fragment() {
 		const Vector2 outsets = Vector2(width + gap, width + gap).max(Vector2(width, width) - box.size * 0.5f);
 		const Rect2 outer(box.position - outsets, box.size + outsets * 2.0f);
 		if (!outer.is_finite() || !outer.has_area() ||
-			(!clips.empty() && !clips.back().bounds.intersects(active_geometry->matrix.xform(outer)))) return;
+			(!clips.empty() && clips.back().bounds && !clips.back().bounds->intersects(active_geometry->matrix.xform(outer)))) return;
 
 		border side;
 		side.width = width;
@@ -1667,14 +2397,24 @@ void fragment() {
 		ring.radius.bottom_right_y = bottom_right.y;
 		ring.radius.bottom_left_x = bottom_left.x;
 		ring.radius.bottom_left_y = bottom_left.y;
-		add_borders(outline_groups.empty() ? paint_runs : outline_groups.back(), ring, outer);
+		// Positioned descendants can paint after their ancestor's local paint group.
+		const auto context = std::find_if(open_groups.rbegin(), open_groups.rend(),
+			[](const OpenPaintGroup& group) { return group.is_stacking_context; });
+		add_borders(context == open_groups.rend() ? paint_runs : context->outlines, ring, outer);
 	}
 
-	void HTMLPaintRecorder::push_clip(const RoundedRect& p_shape, const Transform2D& p_matrix) {
-		const Rect2 bounds = p_matrix.xform(p_shape.rect);
-		const bool precise = p_shape.has_radius() || p_matrix != Transform2D() || (!clips.empty() && clips.back().has_precise_clip);
-		const Clip clip{ clips.empty() ? bounds : clips.back().bounds.intersection(bounds), p_shape, p_matrix, precise };
-		clips.push_back(std::move(clip));
+	void HTMLPaintRecorder::push_clip(const TransformedClip& p_clip) {
+		auto bounds = clips.empty() ? std::optional<Rect2>{} : clips.back().bounds;
+		if (p_clip.axes == ClipAxes::both) {
+			const Rect2 rect = p_clip.matrix.xform(p_clip.shape.rect);
+			bounds = bounds ? bounds->intersection(rect) : rect;
+		}
+		else if (p_clip.axes != ClipAxes::horizon) {
+			const int axis = p_clip.axes == ClipAxes::x ? 0 : 1;
+			if (p_clip.shape.rect.size[axis] <= 0) bounds = Rect2();
+		}
+		const bool precise = p_clip.needs_precise_geometry() || (!clips.empty() && clips.back().has_precise_clip);
+		clips.push_back({ p_clip, bounds, precise });
 		clip_material.unref();
 	}
 
@@ -1686,6 +2426,19 @@ void fragment() {
 	}
 } // namespace docrender
 
+Ref<ShaderMaterial> docrender::make_html_paint_material(bool p_composite) {
+	auto& shader = p_composite ? composite_clip_shader : paint_shader;
+	if (shader.is_null()) {
+		shader.instantiate();
+		shader->set_code(p_composite ? String("#define HTML_COMPOSITE_CLIP\n") + PAINT_SHADER_CODE : String(PAINT_SHADER_CODE));
+	}
+	Ref<ShaderMaterial> material;
+	material.instantiate();
+	material->set_shader(shader);
+	return material;
+}
+
 void docrender::release_html_paint_shader() {
 	paint_shader.unref();
+	composite_clip_shader.unref();
 }

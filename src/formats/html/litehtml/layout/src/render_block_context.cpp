@@ -187,7 +187,7 @@ std::optional<litehtml::pixel_t> litehtml::render_item_block_context::find_layou
 
 litehtml::pixel_t litehtml::render_item_block_context::get_first_baseline()
 {
-	if(m_children.empty())
+	if(m_children.empty() || css().has_layout_containment())
 	{
 		return height() - margin_bottom();
 	}
@@ -199,7 +199,7 @@ litehtml::pixel_t litehtml::render_item_block_context::get_first_baseline()
 
 litehtml::pixel_t litehtml::render_item_block_context::get_last_baseline()
 {
-	if(m_children.empty())
+	if(m_children.empty() || css().has_layout_containment())
 	{
 		return height() - margin_bottom();
 	}

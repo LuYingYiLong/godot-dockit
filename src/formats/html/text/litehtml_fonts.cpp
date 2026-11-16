@@ -897,6 +897,22 @@ namespace docrender {
 		return reinterpret_cast<FontData*>(p_font)->shape(p_text == "\t" ? String(" ") : p_text);
 	}
 
+	HTMLTextLayout LiteHTMLFonts::shape_text_for_outline(uint_ptr p_font, const String& p_text,
+		bool p_right_to_left, float& r_scale) {
+		const auto& font = *reinterpret_cast<const FontData*>(p_font);
+		if (font.description.size <= 0) return {};
+		const int size = std::max(font.size, 32);
+		r_scale = font.description.size / size;
+		Ref<TextLine> line;
+		line.instantiate();
+		line->set_direction(p_right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
+		font.stack->add_text(*line.ptr(), p_text, size);
+		HTMLTextLayout layout{ line };
+		layout.spacing = HTMLTextSpacing::create(layout, p_text,
+			font.description.letter_spacing / r_scale, font.description.word_spacing / r_scale);
+		return layout;
+	}
+
 	HTMLShapedText LiteHTMLFonts::shape_styled_text(uint_ptr p_font, const String& p_run, text_justify_adjustment p_justification,
 		float p_advance, int64_t p_start, int64_t p_end, punctuation_trim p_trim) {
 		FontData& font = *reinterpret_cast<FontData*>(p_font);

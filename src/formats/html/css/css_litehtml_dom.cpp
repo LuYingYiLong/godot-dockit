@@ -1,4 +1,5 @@
 #include "css_litehtml_dom.h"
+#include "formats/html/elements/html_form_state.h"
 
 #include <litehtml/html_tag.h>
 
@@ -71,6 +72,12 @@ struct selector_dom final : syntax::SelectorDOM {
 	bool has_pseudo_class(SelectorNode node, std::string_view name) const override {
 		const auto* tag = dynamic_cast<const html_tag*>(&as_element(node));
 		if (!tag) return false;
+		if (name == "required" || name == "optional") {
+			return docrender::forms::supports_required(*tag) && (name == "required") == bool(tag->get_attr("required"));
+		}
+		if (name == "read-only" || name == "read-write") {
+			return kind(node) == SelectorNodeKind::element && (name == "read-write") == docrender::forms::is_read_write(*tag);
+		}
 		return std::any_of(tag->m_pseudo_classes.begin(), tag->m_pseudo_classes.end(),
 			[&](string_id pseudo) { return _s(pseudo) == name; });
 	}

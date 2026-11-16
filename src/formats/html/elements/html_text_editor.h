@@ -56,6 +56,7 @@ namespace docrender {
 		std::optional<ImeEdit> ime_edit;
 		bool dirty_value = false;
 		bool user_changed = false;
+		bool last_edit_was_user = false;
 		uint64_t reset_version = 0;
 		int64_t anchor = 0;
 		int64_t caret = 0;
@@ -83,7 +84,9 @@ namespace docrender {
 		godot::Vector2 layout_size = {-1, -1};
 		float layout_line_height = -1;
 		int layout_wrap = 0;
-		int layout_overflow = 0;
+		int layout_overflow_x = 0;
+		int layout_overflow_y = 0;
+		float layout_scrollbar_width = 0;
 		int layout_align = 0;
 		bool layout_resize = false;
 		uintptr_t layout_font = 0;
@@ -134,6 +137,7 @@ namespace docrender {
 		bool has_preedit() const { return !preedit.is_empty(); }
 		const godot::String& get_preedit() const { return preedit; }
 		bool take_user_change();
+		bool has_length_violation(const char* p_minlength, const char* p_maxlength) const;
 		godot::Rect2 get_caret_rect() const { return caret_rect; }
 		bool is_caret_visible() const { return caret_visible; }
 		bool set_caret_visible(bool p_visible) {

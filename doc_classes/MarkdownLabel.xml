@@ -269,7 +269,7 @@
 			<param index="0" name="anchor" type="String" />
 			<param index="1" name="align" type="float" default="0.0" />
 			<description>
-				Scrolls to the first Markdown heading or laid-out HTML element with the given anchor ID. Pass the case-sensitive ID without [code]#[/code]. [param align] ranges from [code]0.0[/code] at the top of the viewport to [code]1.0[/code] at the bottom. With [member fit_content] enabled, this scrolls the nearest ancestor [ScrollContainer] with vertical scrolling enabled, when present. Returns [code]false[/code] if the anchor does not exist.
+				Scrolls to the first Markdown heading or laid-out HTML element with the given anchor ID. Pass the case-sensitive ID without [code]#[/code]. [param align] ranges from [code]0.0[/code] at the top of the viewport to [code]1.0[/code] at the bottom. HTML anchors scroll their own containers first and use CSS scroll margins for the Markdown viewport. With [member fit_content] enabled, this scrolls the nearest ancestor [ScrollContainer] with vertical scrolling enabled, when present. Returns [code]false[/code] if the anchor does not exist.
 			</description>
 		</method>
 		<method name="scroll_to_search_result">

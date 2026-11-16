@@ -9,26 +9,34 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Feature | Support |
 | --- | --- |
 | Basic selectors | Type, class, ID, attribute, selector lists, descendant, child, and sibling combinators |
-| Pseudo-classes | `:root`, `:scope`, `:empty`, `:is()`, `:where()`, `:not()`, `:has()`, `:nth-child()` and related structural selectors, `:lang()`, `:link`, and `:any-link`. `HTMLLabel` supplies `:hover`, `:focus`, `:focus-visible`, and `:focus-within`, plus `:active` for buttons, checkboxes, and radios. Form controls expose `:enabled` and `:disabled`. Checkboxes, radios, and dropdown options expose `:checked`. |
-| Pseudo-elements | `::before`, `::after`, and `::marker` with generated content in the final compound selector. The legacy `:before` and `:after` spellings are equivalent. Fields support `::placeholder` and `::selection` through the stylesheet cascade. Sub-pseudo-elements, `::first-line`, and `::first-letter` are unsupported. |
-| Cascade | Named and anonymous layers, specificity, source order, `!important`, custom properties, and `var()`. Supported declarations share the CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, and `revert-layer`. |
+| Pseudo-classes | `:root`, `:scope`, `:empty`, `:is()`, `:where()`, `:not()`, `:has()`, `:nth-child()` and related structural selectors, `:lang()`, `:link`, and `:any-link`. `HTMLLabel` supplies `:hover`, `:focus`, `:focus-visible`, and `:focus-within`, plus `:active` for buttons, checkboxes, and radios. Form state selectors include `:enabled`, `:disabled`, `:checked`, `:placeholder-shown`, `:required`, `:optional`, `:read-only`, `:read-write`, `:valid`, and `:invalid`. |
+| Pseudo-elements | `::before`, `::after`, and `::marker` with generated content in the final compound selector. The legacy `:before` and `:after` spellings are equivalent. `::placeholder` styles the placeholder in text fields. `::selection` styles the selected text and its background. Sub-pseudo-elements, `::first-line`, and `::first-letter` are unsupported. |
+| Cascade | Named and anonymous layers, specificity, scope proximity, source order, `!important`, custom properties, and `var()`. The `all` shorthand resets properties using the CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, and `revert-layer`. |
 | Style sources | Inline `style`, `<style>`, the extra `stylesheet` string, and local project stylesheets loaded through `<link>` or `@import`. |
-| At-rules | `@media` supports viewport conditions such as width, height, and orientation. `@supports` tests declarations and selectors. `@layer` supports ordering statements and nested blocks. `@import` accepts local paths with optional layer, `supports(…)`, and media clauses. `@counter-style` defines document-local counter styles. `@font-face` loads project fonts. `@font-feature-values` names font-specific glyph alternates. `@keyframes` is unsupported. |
+| Nesting | Nested selectors, `&`, relative combinators, interleaved declarations, and nested `@media`, `@supports`, and `@layer` blocks. |
+| At-rules | `@media` queries viewport conditions. `@container` queries ancestor content sizes and computed custom properties. `@supports` tests declarations and selectors. `@layer` supports ordering statements and nested blocks. `@scope` bounds rules to a DOM subtree, with optional limits. `@import` accepts local paths with optional layer, `supports(…)`, and media clauses. `@counter-style` defines document-local counter styles. `@font-face` loads project fonts. `@font-feature-values` names font-specific glyph alternates. `@keyframes` is unsupported. |
 
 ## Properties and values
 
 | Area | Support |
 | --- | --- |
-| Layout | Block and inline layout, lists, tables, Flexbox, block and inline Grid, dimensions, margins, padding, and static, relative, absolute, and fixed positioning. The `inset` shorthand sets `top`, `right`, `bottom`, and `left`. Sticky positioning is unsupported. |
+| Layout | Block and inline layout, lists, tables, Flexbox, block and inline Grid, box suppression with `display: contents`, dimensions, margins, padding, and static, relative, absolute, fixed, and sticky positioning. The `inset` shorthand sets `top`, `right`, `bottom`, and `left`. |
 | Tables | Automatic and fixed column sizing, header and footer ordering, top and bottom captions, and row and column spans. Separated borders support `border-spacing` and `empty-cells`. Collapsed borders are resolved per grid-line segment. `visibility: collapse` removes row and column tracks and clips cells spanning the remaining tracks. Column and row groups support solid backgrounds. [CSS table model](https://www.w3.org/TR/CSS22/tables.html) |
 | Form controls | `appearance: auto\|none` controls default decoration for buttons, text fields, checkboxes, radios, and selects. `accent-color` sets default checked colors on checkboxes and radios. Text inputs and textareas support `caret-color`, `::placeholder` color, opacity and font properties, and `::selection` foreground and background colors. [CSS user interface](https://www.w3.org/TR/css-ui-4/) · [CSS pseudo-elements](https://www.w3.org/TR/css-pseudo-4/) |
 | Box sizing | `width`, `min-width`, and `max-width` accept `min-content`, `max-content`, `fit-content`, `stretch`, `fit-content()`, and `stretch()`. `aspect-ratio` sets a preferred width-to-height ratio. Logical size properties map to the horizontal writing mode. |
-| 2D transforms | `transform` accepts `none` and lists of `matrix()`, `translate()`, `translateX()`, `translateY()`, `rotate()`, `scale()`, `scaleX()`, `scaleY()`, `skew()`, `skewX()`, and `skewY()`. `transform-origin` supports one or two position components. See the 2D transforms section below. |
+| Transforms | 2D and 3D transform lists, including `perspective()` and `matrix3d()`. Individual `translate`, `rotate`, and `scale` compose with `transform-origin`, `transform-box`, and `backface-visibility`. The `perspective` and `perspective-origin` properties project child planes. Use `transform-style: preserve-3d` for shared depth. |
+| Motion paths | `offset`, `offset-path`, `offset-distance`, `offset-position`, `offset-anchor`, and `offset-rotate` control path placement before the `transform` list. |
 | Grid | Track lists support intrinsic sizes, named lines, and `repeat()`, including `auto-fill` and `auto-fit`. Grid items support placement by name, line number, or span. Grid supports automatic placement, patterned implicit tracks, item alignment, and track distribution. |
 | Flexbox spacing | `row-gap`, `column-gap`, and one- or two-value `gap` work with wrapping and reverse directions. The shorthand sets the row gap first and the column gap second. Values include `normal` (zero in Flexbox), non-negative lengths, and percentages. Percentage gaps use the container's inner size on their axis and resolve to zero when that size depends on the flex items. [CSS Gaps](https://www.w3.org/TR/css-gaps-1/#gaps) |
 | Lengths | Absolute, font-relative, and viewport-relative lengths. See the length units and math functions sections below. |
 | Colors | Named and hex colors, `rgb()` and `hsl()` variants, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, predefined `color()` spaces, `color-mix()`, and `currentColor` where applicable. |
-| Backgrounds | Solid colors, local images, and linear, radial, and conic gradients. Two-axis tiling supports `repeat`, `no-repeat`, `round`, and `space`. |
+| Opacity | `opacity` accepts a number, percentage, or matching CSS math expression. The element and descendants composite as a group, with separate groups for nested values below `1`. |
+| Transitions | `transition` and its five longhands animate changes to supported colors, opacity, dimensions, and transform functions. |
+| Element blending | `mix-blend-mode` accepts the CSS blend modes and `plus-lighter`. `isolation: isolate` starts a new stacking context with a transparent backdrop. |
+| Filters | `filter` and `backdrop-filter` accept `none` or a chain of the ten CSS filter functions. See the filter effects section below. |
+| Image masks | `mask` and its eight longhands apply local images, gradients, and SVG `<mask>` references. Layers support alpha, luminance, and the four CSS compositing operators. |
+| Clipping paths | `clip-path` supports box geometry, `inset()`, `rect()`, `xywh()`, `circle()`, `ellipse()`, `polygon()`, `path()`, `shape()`, and references to inline or project-local SVG clipping paths. |
+| Backgrounds | Solid colors, local images, and linear, radial, and conic gradients. Two-axis tiling supports `repeat`, `no-repeat`, `round`, and `space`. `background-blend-mode` blends the layers within an element. |
 | Image fitting | `object-fit` sizes image pixels inside the element's content box. `object-position` aligns the fitted image using keywords, lengths, percentages, or four-component edge offsets. |
 | Image sampling | `image-rendering` supports `auto`, `smooth`, `high-quality`, `crisp-edges`, and `pixelated`. |
 | Image orientation | `image-orientation` reads EXIF by default, supports the encoded orientation with `none`, and accepts legacy quarter-turn and flip overrides for content images. |
@@ -40,6 +48,11 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Outlines | `outline`, its three longhands, and `outline-offset` paint focus rings and other outlines around element boxes. |
 | Borders and shadows | `solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset`, and `outset`, with per-side widths and colors and `border-radius`. `box-shadow` supports `inset` and multiple layers. |
 | Text | Theme fonts, font size and weight, italic text, wrapping, alignment, and line height. `font-family` accepts a prioritized list of installed family names and generic families, including in the `font` shorthand. `text-decoration` supports underline, overline, and line-through in five styles, with `auto`, `from-font`, length, and percentage thickness. `text-shadow` supports offsets, blur, and multiple layers on glyphs and decorations. Text emphasis paints keyword shapes and custom marks above or below horizontal text. |
+| Overflow | `overflow`, its physical and logical longhands, `clip`, and `overflow-clip-margin`. See the overflow section below. |
+| Scrolling | `scroll-padding` and `scroll-margin` adjust anchors, element alignment, and keyboard focus. `scroll-behavior` controls navigation animation. `overscroll-behavior` sets scroll chaining at edges. CSS Scroll Snap aligns scroll containers with descendant boxes. |
+| Text overflow | `text-overflow: clip \| ellipsis` controls how a block with non-visible overflow paints overflowing inline content. See the text overflow section below. |
+| Pointer hit testing | The inherited [`pointer-events`](https://www.w3.org/TR/css-ui-4/#pointer-events-control) property accepts `auto` and `none`. A box with `none` lets pointer hits reach the boxes below. A descendant can restore hits with `auto`. Text selection and keyboard focus remain available. |
+| Text selection | `user-select` accepts `auto`, `text`, `none`, and `all`. The `-webkit-user-select` spelling is an alias. `::selection` supports foreground and background colors. |
 | Cursor | `HTMLLabel` maps common CSS keywords to Godot cursor shapes. Image cursors and unmapped keywords use the control's fallback. |
 
 ## Relational selectors and feature queries
@@ -47,7 +60,7 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 `:has()` matches relative to its subject. Use `:has(.icon)` for descendants, `:has(> .icon)` for children, and `:has(+ .item)` or `:has(~ .item)` for following siblings. A relative selector may continue with more combinators. The argument list contributes its highest specificity. `:where()` matches its selector list with zero specificity. `:empty` follows Selectors Level 4 and ignores comments, generated content, and document whitespace. [Selectors Level 4](https://www.w3.org/TR/selectors-4/#relational)
 
 
-In a stylesheet, `:scope` selects the document root. In an element query, it selects the element that issued the query. `:nth-child(An+B of S)` and `:nth-last-child(An+B of S)` count matching element siblings, including hidden ones. An invalid selector in the `of` list invalidates that pseudo-class. [Selectors Level 4](https://www.w3.org/TR/selectors-4/#tree-structural-pseudos)
+In an unscoped stylesheet rule, `:scope` selects the document root. In an element query, it selects the element that issued the query. `:nth-child(An+B of S)` and `:nth-last-child(An+B of S)` count matching element siblings, including hidden ones. An invalid selector in the `of` list invalidates that pseudo-class. [Selectors Level 4](https://www.w3.org/TR/selectors-4/#tree-structural-pseudos)
 
 `:lang(en, "*-Hant")` checks the inherited HTML `lang` attribute using case-insensitive subtag matching. `:lang("")` matches untagged content. Language-tag aliases and extlang canonicalization are outside the supported set. Hyperlinks on `<a>` and `<area>` match both `:link` and `:any-link` when `href` is present. DocRender records no browsing history. [Selectors Level 4](https://www.w3.org/TR/selectors-4/#the-lang-pseudo)
 
@@ -69,9 +82,12 @@ DocRender compares declarations for each longhand in this order.
 2. A `style` attribute precedes stylesheet rules of the same importance.
 3. Among stylesheet rules with equal importance, determine layer precedence. Later layers win for normal declarations, and earlier layers win for important declarations. Unlayered rules form the final implicit layer.
 4. Within a layer, higher selector specificity wins. For instance, a document rule for `#card` takes precedence over an additional rule for `.card`.
-5. When the preceding criteria match, the later declaration wins, including repeated declarations within a single block. For equally specific stylesheet rules in the same layer, the additional stylesheet comes last.
+5. When the preceding criteria match, fewer ancestor steps from the matched element to the scope root wins. Unscoped rules have an infinite distance.
+6. When the preceding criteria match, the later declaration wins, including repeated declarations within a single block. The additional stylesheet comes last.
 
 For example, a matching stylesheet rule with `width: 12rem !important` overrides `style="width: var(--card-width)"`. Adding `!important` to the inline `width` makes the inline declaration win. A value rejected during parsing leaves earlier declarations eligible. A winning value rejected after variable substitution uses `unset` and the earlier stylesheet value stays overridden. The same distinction applies to a shorthand and the longhands it wins. [Invalid values after variable substitution](https://www.w3.org/TR/css-variables-1/#invalid-variables)
+
+`all` accepts `initial`, `inherit`, `unset`, `revert`, and `revert-layer`, including through `var()`. The reset participates in the cascade for each property. It excludes `direction`, `unicode-bidi`, and custom properties. `all: initial` resets a `div` to the initial `display: inline`, whereas `all: revert` can restore the default block display. For paired logical and physical edges, the reset uses the physical declaration, so `all: inherit` inherits the physical edges even when the parent's direction differs. [The all shorthand](https://www.w3.org/TR/css-cascade-5/#all-shorthand) · [Logical property mapping](https://www.w3.org/TR/css-logical-1/#mapping)
 
 Pseudo-elements contribute to the type count. `:is()` and `:not()` take the highest specificity in their argument lists, including valid arguments that did not match. `:nth-child(… of …)` and `:nth-last-child(… of …)` add that highest specificity to their own pseudo-class specificity. [Selectors specificity](https://www.w3.org/TR/selectors-4/#specificity-rules)
 
@@ -81,11 +97,51 @@ The pre-author baseline contains litehtml defaults, control and theme defaults, 
 
 If a custom property resolves to a CSS-wide keyword, DocRender applies it before substituting values that reference the property. For example, `--card-width: var(--missing, revert)` restores the baseline for `--card-width`, so `width: var(--card-width, 12rem)` sees the restored or inherited value and uses `12rem` if neither is available. [CSS Variables](https://www.w3.org/TR/css-variables-1/#using-variables)
 
+## Nesting
+
+```css
+.card {
+  color: black;
+  > h2 { margin-top: 0; }
+  &:hover { color: navy; }
+  @media (min-width: 400px) {
+    padding: 1rem;
+    .icon { width: 2rem; }
+  }
+}
+```
+
+A nested selector can place `&` anywhere a subclass selector is valid. A branch without `&` is relative to the parent selector, with a descendant combinator by default. Leading `>`, `+`, and `~` also use the parent as their anchor. Each `&` has the maximum specificity of the parent selector list and matches its element branches. Outside a nested rule, `&` matches the current scope with zero specificity.
+
+Declarations before, between, and after nested rules keep their source order. Direct declarations inside a nested group match the exact parent selectors, including their pseudo-elements. Stylesheets support up to 128 nested rule blocks. [CSS Nesting](https://www.w3.org/TR/css-nesting-1/)
+
+## Scoped styles
+
+```css
+@scope (.card) to (.embedded-card) {
+  border-radius: 8px;
+  > h2 { margin-top: 0; }
+  :scope:hover .action { text-decoration: underline; }
+}
+```
+
+Each matching root defines a scope that includes itself and its descendants. A matching descendant limit excludes that element and its subtree. Bare selectors inside the block match relative to the root, with a descendant combinator by default. An explicit `:scope` or `&` can address the root or refer to ancestors outside the scope while keeping the matched element within it. Direct declarations and `&` match the root with zero specificity. `:scope` contributes one pseudo-class to specificity. Nested scopes stay within the outer scope, and the innermost root determines proximity.
+
+An omitted root uses the parent of the `<style>` or stylesheet `<link>` element. Sheets without an owner element use the document root. The `@import scope(…)` modifier is outside the supported grammar. [CSS Cascade Level 6](https://drafts.csswg.org/css-cascade-6/#scoped-styles)
+
 ## Tables and form controls
 
 Fixed tables use a resolved table width, column declarations, and the first visual row to size tracks. Later cells can overflow their assigned tracks. In the separated border model, hidden empty cells leave the table background visible. Collapsed row and column tracks retain their DOM handles, while spanning cells are clipped to the remaining tracks.
 
-Form decoration uses DocRender's painted controls. Use `appearance: none` to keep the control's interactions and author styling with custom chrome. `::placeholder` accepts color, opacity as a number or percentage, and font properties. `::selection` paints text fields and textareas. Element-wide opacity still produces a drawing diagnostic.
+Form decoration uses DocRender's painted controls. Use `appearance: none` to keep the control's interactions and author styling with custom chrome. `::placeholder` accepts color, opacity, and font properties. `::selection` paints text fields and textareas.
+
+`:required` and `:optional` apply to text inputs, checkboxes, radios, textareas, and dropdowns. `:read-write` matches editable text inputs and textareas. Other HTML elements match `:read-only`. `:valid` and `:invalid` reflect the same constraints used for form submission. The supported constraints cover `required`, including radio groups and dropdown placeholders, and user-edited text length in UTF-16 units through `minlength` and `maxlength`. Forms aggregate their owned controls, including controls linked by `form`, and fieldsets aggregate their descendant controls. `novalidate` and `formnovalidate` bypass submission checks while the selectors still reflect the control state. Pattern validation and type-specific constraints remain pending. [HTML selector semantics](https://html.spec.whatwg.org/multipage/semantics-other.html#selector-valid) · [HTML text length constraints](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#attr-fe-maxlength)
+
+## Display and box generation
+
+An element with `display: contents` keeps its DOM position and inherited styles. Its text, child boxes, and generated `::before` and `::after` boxes participate in the nearest ancestor's layout. In Flexbox and Grid this lets the promoted boxes become items. The element has no client rectangles of its own. Its padding, background, transform, and positioning do not create geometry. Line decorations propagate from ancestor boxes, so declaring an underline on a boxless element creates no underline. The document root computes to `block`. Replaced boxes such as images, inputs, textareas, and selects, plus line-break elements and SVG roots, are suppressed. [CSS Display](https://www.w3.org/TR/css-display-3/#box-generation) · [CSS Text Decoration](https://www.w3.org/TR/css-text-decor-3/#line-decoration)
+
+The supported outer and inner display keywords can appear together, in either order. For example, `inline grid` computes like `inline-grid`, `block flex` like `flex`, and `inline flow-root` like `inline-block`.
 
 ## Box sizes
 
@@ -94,6 +150,54 @@ Form decoration uses DocRender's painted controls. Use `appearance: none` to kee
 In the supported horizontal writing mode, `inline-size`, `min-inline-size`, and `max-inline-size` share the cascade with their `width` counterparts. `block-size`, `min-block-size`, and `max-block-size` share the cascade with their `height` counterparts and accept the corresponding height values. Box content sizing keywords and functions are currently available on the inline axis.
 
 `aspect-ratio` accepts `auto`, a non-negative number, or a pair such as `16 / 9`. CSS math functions with finite numeric results and `var()` may supply ratio components. A zero component makes the ratio behave as `auto`. A ratio alone uses the dimensions selected by `box-sizing`. Combining `auto` with a ratio uses the content box and gives an image's natural ratio priority when available. An image with numeric HTML `width` and `height` attributes gets the corresponding fallback ratio as a presentational hint. A ratio can supply an automatic dimension as the other dimension changes through layout. An in-flow box with visible overflow can grow to fit its content when the minimum on the ratio-dependent axis is automatic. [CSS preferred aspect ratios](https://drafts.csswg.org/css-sizing-4/#aspect-ratio) · [HTML image dimensions](https://html.spec.whatwg.org/multipage/rendering.html#attributes-for-embedded-content-and-images)
+
+## Logical edges
+
+In horizontal writing, `margin-block`, `padding-block`, and `inset-block` set top and bottom. Their `-inline` equivalents set the left and right edges in LTR and reverse them in RTL. The two-value form sets start then end. A single value applies to both edges. The corresponding `-block-start`, `-block-end`, `-inline-start`, and `-inline-end` longhands use the same value grammar as the physical properties.
+
+`border-block`, `border-inline`, and their individual edge shorthands accept a width, style, and color. Use forms such as `border-inline-width: 2px 4px` to set a single component on the two edges. In the logical corner names, the first `start` or `end` refers to the block axis and the second refers to the inline axis. For example, `border-start-start-radius` selects the top-left corner in LTR and the top-right corner in RTL.
+
+The element's computed direction pairs each logical longhand with a physical longhand. Both declarations participate in the same cascade, including `!important`, layers, and `var()`. A winning logical `inherit` reads the parent's corresponding logical edge, even when parent and child have different directions. A winning physical `inherit` reads the same physical edge. [CSS Logical Properties](https://www.w3.org/TR/css-logical-1/#box)
+
+The `float` and `clear` values `inline-start` and `inline-end` resolve using the direction of the containing block. An inherited value remains logical until placement. [CSS Logical Float and Clear](https://www.w3.org/TR/css-logical-1/#float-clear)
+
+## Containment
+
+`contain` supports `none` and combinations of `layout`, `style`, `paint`, and one of `size` or `inline-size`. The `content` keyword combines layout, style, and paint containment. `strict` also includes size containment. Layout and paint containment establish a formatting context, a stacking context, and a containing block for absolute and fixed descendants. Layout containment keeps visible descendant overflow out of the outer scroll range and uses a synthesized external baseline. Paint containment clips descendants and their pointer hits to the rounded overflow clip edge, including `overflow-clip-margin`. Explicit scroll containers can still scroll their contents.
+
+Style containment scopes descendant counter increments and assignments. Generated content can read enclosing counters. The first update of an enclosing counter creates a fresh nested counter. Quotes start at the surrounding depth, and changes inside the subtree stay local. Ordinary inline boxes can establish these boundaries. [CSS style containment](https://drafts.csswg.org/css-contain-2/#containment-style)
+
+Size containment calculates the affected dimensions as if the box had no contents. `inline-size` applies this rule on the inline axis only. Explicit dimensions and constraints still apply, and an empty Grid retains its explicit tracks. The contents lay out inside the resulting box and can overflow it. Replaced images use the contained intrinsic dimensions for layout. An authored aspect ratio still applies. The size rules exclude non-atomic inlines, tables, and their internal boxes other than captions. [CSS size containment](https://drafts.csswg.org/css-contain-2/#containment-size)
+
+`contain-intrinsic-size` takes one or two dimensions in width and height order. Each accepts a non-negative length or `none`, optionally preceded by `auto`. Lengths can use CSS math. The longhands are `contain-intrinsic-width` and `contain-intrinsic-height`, with `contain-intrinsic-inline-size` and `contain-intrinsic-block-size` mapping to them in horizontal writing. An explicit dimension replaces the empty-content size on the contained axis. An `auto` dimension uses the last laid-out inner size of its uncontained axis while the element skips its contents, with the declared value as a fallback. [CSS Contain Intrinsic Size](https://www.w3.org/TR/css-sizing-4/#intrinsic-size-override)
+
+`content-visibility: hidden` activates size, layout, style, and paint containment. The element keeps its own box and decoration. Its skipped descendants have no committed layout boxes, paint, or focus targets. Replaced content such as image pixels is also skipped. DOM queries still return the descendants, and changing to `visible` lays them out again. The property applies to boxes eligible for size containment. [CSS Content Visibility](https://www.w3.org/TR/css-contain-2/#content-visibility)
+
+`content-visibility: auto` applies layout, style, and paint containment continuously. In `HTMLLayout` and `HTMLLabel`, distant boxes also use size containment and skip laying out and painting their contents. DocRender reveals content within 240 CSS pixels of a viewport or scrollport and can skip it again beyond 320 pixels. Focus and selection keep content relevant. Text remains available to copying, Tab can reveal a skipped control before focusing it, and scrolling to a skipped target uses its placeholder. Styles are still computed for skipped auto content to resolve these interactions. Embedded Markdown HTML blocks keep their contents laid out for the outer document's search and selection. [CSS auto content visibility](https://drafts.csswg.org/css-contain-2/#content-visibility)
+
+Containment on `html` or `body` keeps the body's overflow and background local. Non-atomic inline boxes and internal table boxes other than table cells are excluded from layout and paint containment. [CSS Containment](https://www.w3.org/TR/css-contain-2/#contain-property)
+
+## Container size queries
+
+```css
+.card { container: card / inline-size; }
+.card-body { display: block; }
+@container card (inline-size >= 24em) {
+  .card-body { display: grid; grid-template-columns: 1fr 2fr; }
+}
+```
+
+`container-type` accepts `normal`, `inline-size`, and `size`. The last two establish independent formatting contexts with size containment on the inline axis or on both axes, respectively. `container-name` accepts `none` or a list of case-sensitive names. The `container` shorthand sets the names and the optional type after a slash.
+
+Size queries select the nearest ancestor with any requested name and with containment on every axis required by the condition. The dimensions come from its untransformed content box. `width` and `inline-size` use the horizontal axis, while `height` and `block-size` use the vertical axis. `aspect-ratio` and `orientation` require both axes. Font-relative thresholds use the queried container's font. Conditions support ranges, boolean operators, comma-separated alternatives, and nested queries. A generated child such as `::before` can query its originating element. [CSS Container Queries](https://drafts.csswg.org/css-conditional-5/#container-queries)
+
+The length units `cqw`, `cqh`, `cqi`, `cqb`, `cqmin`, and `cqmax` also work without an `@container` rule. Each axis uses the closest ancestor that supports size queries on that axis, with the viewport size as a fallback. The two axes can use different containers. In declarations, these units resolve for the styled element and inherit as computed lengths. In a query threshold they resolve for the queried container, so their basis comes from that container's ancestors. [Container-relative lengths](https://drafts.csswg.org/css-conditional-5/#container-lengths)
+
+`style(--theme: dark)` compares a computed custom property with a value. `style(--theme)` tests whether it has a value other than its guaranteed-invalid initial value. A style-only query can select an ordinary ancestor. When size and style tests are combined in one condition, both use the same selected container. Values and property names are case-sensitive. Query values support `var()` and its fallback, and declarations anywhere inside the query block use ordinary variable substitution. [Container style queries](https://drafts.csswg.org/css-conditional-5/#style-container)
+
+Size queries can use `var()` in thresholds, for example `@container card (width > var(--breakpoint, 24em))`. Substitution uses the queried container's computed custom properties. It also works inside length calculations and in chained ranges, orientation values, and aspect ratios. Missing variables without a fallback and invalid substituted values make that test unknown, including inside a negated condition. [Container size features](https://drafts.csswg.org/css-conditional-5/#size-container)
+
+Style ranges, queries of standard CSS properties, and `scroll-state()` are pending.
 
 ## Image fitting
 
@@ -128,6 +232,22 @@ In HTMLLabel, `textarea` wraps text by default. Use `wrap="off"` or `white-space
 `round` adjusts the tile size so a whole number fits in the background positioning area. When only one axis rounds and the other axis uses an automatic size, the other dimension follows the original tile ratio. `space` puts whole tiles against the two edges and distributes gaps equally. If fewer than two tiles fit, one tile is placed according to `background-position` on that axis. Both patterns extend through the painting area selected by `background-clip`.
 
 `background-repeat-x` and `background-repeat-y` cascade as independent lists. `background-repeat-inline` and `background-repeat-block` map to them in horizontal writing mode. Textures, gradients, solid image fallbacks, and cross-fades share the tiling geometry. Background positions and sizes also accept CSS length and percentage math. [CSS Backgrounds 3 tiling and sizing](https://www.w3.org/TR/css-backgrounds-3/#the-background-repeat) · [CSS Backgrounds 4 repeat longhands](https://drafts.csswg.org/css-backgrounds-4/#the-background-repeat)
+
+## Background blending
+
+`background-blend-mode` accepts all 16 CSS blend modes, including `multiply`, `screen`, `soft-light`, `hue`, and `luminosity`. Each image blends with the layers below it and the background color. The element's background forms an isolated stack above the document backdrop. Short mode lists repeat, excess modes are unused, and `none` image entries consume a mode without drawing. The `background` shorthand resets the mode to `normal`.
+
+Blend modes use sRGB components and apply source-over compositing with alpha. Each layer keeps its own positioning, tiling, and clip, including rounded corners. Raster images, gradients, and cross-fades use the same compositing path. [CSS background blending](https://www.w3.org/TR/compositing-1/#background-blend-mode) · [Blend formulas](https://www.w3.org/TR/compositing-1/#blending)
+
+## Element blending and isolation
+
+`mix-blend-mode` blends the element and its painted descendants with content already painted in the enclosing stacking context. It supports the same modes as `background-blend-mode` plus `plus-lighter` for additive compositing of color and alpha. Element filters, clips, and opacity shape the foreground before it blends. Successive blending elements see the preceding result.
+
+`isolation: isolate` creates a stacking context with a transparent initial backdrop. `auto` follows the element's other stacking-context properties. For example, an explicit positioned `z-index`, a transform, or opacity below one still isolates descendant blending. A blend mode other than `normal` and explicit isolation also flatten the element's descendants in a surrounding `preserve-3d` scene. The resulting plane blends at its depth in that scene.
+
+The HTML document is isolated from other Godot canvas items. [CSS stacking context blending](https://www.w3.org/TR/compositing-1/#csscompositingrules_CSS) · [`mix-blend-mode` and `plus-lighter`](https://drafts.csswg.org/compositing-2/#mix-blend-mode) · [`isolation`](https://www.w3.org/TR/compositing-1/#isolation)
+
+Relatively and absolutely positioned boxes with `z-index: auto` paint their in-flow contents together at level zero. Their positioned descendants and nested stacking contexts participate in the enclosing stacking context while retaining ancestor clipping. Painting, blend backdrops, and pointer targeting follow the resulting order. Fixed and sticky boxes create stacking contexts even with `z-index: auto`. [CSS Positioned Layout painting order](https://www.w3.org/TR/css-position-3/#painting-order)
 
 ## Outlines
 
@@ -256,7 +376,63 @@ Each input can include a weight from `0%` to `100%`. Omitted weights share the r
 
 Markdown HTML blocks use the full HTML color pipeline. Markdown's inline `<span style>` supports constant mixes in `color` and `background-color`.
 
-## 2D transforms
+`opacity` clamps its computed value to the range `0` through `1`. Values below `1` establish a stacking context and composite the painted element and its descendants together. Each element defaults to `1`, and positioned descendants use the usual containing block. An element with zero opacity still participates in layout, selection, and pointer targeting. Large groups render in tiles, with very large surfaces cropped to the visible drawing area. [CSS Opacity](https://www.w3.org/TR/css-color-4/#transparency) · [Compositing groups](https://www.w3.org/TR/compositing-1/#groupcompositing)
+
+## Transitions
+
+Use `transition: width 200ms ease-out, opacity 150ms linear`, or set the property, duration, delay, easing, and behavior with separate longhands. Shorter lists repeat to match the property list. Durations and delays accept seconds and milliseconds. A negative delay starts partway through a transition. Easing supports the standard keywords, `cubic-bezier()`, `steps()`, and `linear()` with intermediate stops. Reversing a running transition starts from its current value and shortens its duration. Style changes can also cancel a transition by removing its property from the list. The initial layout uses the authored values immediately. [CSS Transitions](https://www.w3.org/TR/css-transitions-1/) · [CSS Easing](https://www.w3.org/TR/css-easing-2/)
+
+The scene clock samples `opacity`, `color`, `background-color`, the four border colors, `width`, `height`, and `transform`. Dimension transitions preserve mixed lengths and percentages through layout. Colors participate in inheritance and `currentColor` resolution. Matching translate, scale, skew, and rotation functions interpolate their parameters, including rotations with complete turns and interpolation from `none`. Dimensions with intrinsic keywords can switch discretely with `transition-behavior: allow-discrete`. Matrix decomposition for incompatible transform lists, transitions on generated pseudo-elements, and `@keyframes` remain pending. [CSS transform interpolation](https://www.w3.org/TR/css-transforms-1/#interpolation-of-transforms) · [CSS Transitions Level 2](https://www.w3.org/TR/css-transitions-2/)
+
+## Filter effects
+
+`filter` accepts `none` or a space-separated list of `blur()`, `brightness()`, `contrast()`, `drop-shadow()`, `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`, `saturate()`, and `sepia()`. Amounts accept numbers, percentages, or compatible CSS math. A drop shadow uses two offsets, an optional Gaussian standard deviation, and an optional color. The color defaults to `currentColor`.
+
+The renderer applies the functions in declaration order to the element and its painted descendants. Blur and shadow offsets follow the element’s transform. The final group uses ancestor clipping and the `opacity` property. Filter ink can extend beyond the box, while document geometry and pointer targeting use the layout box. A filter creates a stacking context. A filtered element other than the document root also provides a containing block for absolute and fixed descendants. Spatial filters use tiled buffers with a sampling margin of up to 1,024 device pixels per axis. SVG `url()` filter references remain pending. [CSS Filter Effects](https://www.w3.org/TR/filter-effects-1/#FilterProperty)
+
+`backdrop-filter` uses the same functions to filter the pixels already painted within the nearest Backdrop Root. The result is clipped to the element's transformed border box and rounded corners, then drawn below its background and content. Blur reflects samples at the edges of the border box. The combined image then participates in ordinary filtering, clipping, masking, opacity, and blending. A non-root element with a backdrop filter establishes a containing block for absolute and fixed descendants. [Backdrop filters and clipping](https://drafts.csswg.org/filter-effects-2/#BackdropFilterProperty)
+
+The document root, group opacity below one, filters, backdrop filters, masks, clipping paths, and element blend modes other than `normal` establish Backdrop Roots. `will-change` hints for those effects also establish Backdrop Roots. A transform or numeric `z-index` can create a stacking context while keeping access to previously painted pixels within the same Backdrop Root. The HTML document supplies its own backdrop inside the Godot canvas. [Backdrop Root](https://drafts.csswg.org/filter-effects-2/#BackdropRoot)
+
+`will-change` accepts `auto` or a comma-separated list of property names and hints. Transform, filter, and applicable containment hints establish containing blocks for absolute and fixed descendants and establish stacking contexts. A `position` hint establishes an absolute containing block and a stacking context. A `z-index` hint applies to positioned boxes and to Flexbox and Grid items. Transform hints also make fixed backgrounds sample in the local coordinate space. DocRender accepts `scroll-position`, `contents`, and unknown feature names without additional rendering effects. [CSS Will Change](https://www.w3.org/TR/css-will-change-1/#will-change)
+
+## Image masks
+
+`mask-image` accepts a list of CSS images, including project-local textures, gradients, and the supported CSS image functions. An unavailable image contributes a transparent layer. A list containing only `none` disables masking. In a list with another source, `none` contributes a transparent layer.
+
+`mask-position`, `mask-size`, and `mask-repeat` use the same length, percentage, and tiling rules as backgrounds. The initial positioning and painting area is the border box. `mask-origin` selects the positioning box and `mask-clip` sets the painting box. Use `no-clip` to include overflowing ink. The `mask` shorthand sets these properties together with the image, mode, and composite operator. Omitted components reset to their initial values.
+
+`mask-mode` accepts `match-source`, `alpha`, and `luminance`. For CSS images, `match-source` uses alpha. Luminance multiplies the weighted color channels by the source alpha. `mask-composite` accepts `add`, `subtract`, `intersect`, and `exclude`. Short lists repeat to cover all image layers. The bottom layer is placed first and its operator is ignored.
+
+The mask applies to the element and its rendered descendants as a group after filtering and before opacity and element blending. Masking creates a stacking context and leaves layout boxes and pointer hit areas intact. Local mask images use the same import dependencies as background images. `mask-border` is pending. [CSS Masking](https://www.w3.org/TR/css-masking-1/#positioned-masks)
+
+`url(#mask-id)` references an inline SVG `<mask>`. Use `url(local.svg#mask-id)` for a project-local SVG file. SVG masks use their own region and content coordinates through `maskUnits`, `maskContentUnits`, `x`, `y`, `width`, and `height`. CSS mask position, size, repeat, origin, and clip apply to ordinary image layers. With `match-source`, an SVG mask uses its computed `mask-type` and defaults to luminance. SVG luminance can use `color-interpolation: linearRGB`. Imported HTML resources retain the source SVG. SVG artwork uses Godot's SVG rasterizer, with DocRender's SVG text outlines and same-document `<use>` references. SVG `<image>` children and external references inside the source SVG are pending. [SVG mask sources](https://www.w3.org/TR/css-masking-1/#svg-masks)
+
+## Clipping paths
+
+`clip-path` accepts a shape with an optional reference box in either order. The default reference is the border box. The `margin-box`, `border-box`, `padding-box`, and `content-box` keywords can also clip to the selected box on their own, including its corner radii. In HTML, `fill-box` uses the content box, while `stroke-box` and `view-box` use the border box.
+
+`inset()`, `rect()`, and `xywh()` support rounded corners after `round`. Circles and ellipses accept an optional center after `at`, with radii supplied as lengths, percentages, `closest-side`, or `farthest-side`. The path moves with the element's CSS transform, clips its own ink and descendants after filtering, and creates a stacking context. Pointer hits and selection geometry respect the path. Layout boxes and scrollable overflow retain their normal dimensions. Use `none` to remove the path. [CSS Masking](https://www.w3.org/TR/css-masking-1/#the-clip-path) · [CSS Basic Shapes](https://www.w3.org/TR/css-shapes-1/#basic-shape-functions)
+
+`polygon()` closes the supplied list of vertices. Each coordinate can use lengths, percentages of the reference box, or CSS math. The default `nonzero` and optional `evenodd` fill rules apply to concave and self-intersecting outlines, including holes. Nested paths intersect. A polygon with fewer than three vertices has an empty fill. [CSS polygon shape](https://drafts.csswg.org/css-shapes-1/#funcdef-basic-shape-polygon) · [SVG winding rules](https://www.w3.org/TR/SVG2/painting.html#FillRuleProperty)
+
+`path()` accepts SVG path data in a quoted string, with an optional `nonzero` or `evenodd` fill rule before the string. Commands support absolute and relative coordinates, curves, elliptical arcs, and multiple independent subpaths. The coordinate origin is the top-left of the reference box. Coordinates are CSS pixels. Closing each subpath for clipping is implicit. Drawing, pointer hits, and selection share the flattened curve geometry. [CSS path shape](https://drafts.csswg.org/css-shapes-1/#funcdef-basic-shape-path) · [SVG path data](https://www.w3.org/TR/SVG11/paths.html#PathData)
+
+`shape()` starts at a `from` position and accepts comma-separated `move`, `line`, `hline`, `vline`, `curve`, `smooth`, `arc`, and `close` commands. Absolute `to` positions use the reference box. Relative `by` offsets start at the preceding command's endpoint. Percentages use the reference box dimensions in either case. Bézier control points can also use offsets from the segment's start, end, or reference-box origin. Arc radii, sweep, size, and rotation follow the CSS Shapes rules. Positions and radii accept lengths, percentages, and CSS math. Variables can supply coordinates or whole commands. The path follows changes to layout and shares the curve geometry used by `path()`. [CSS shape function](https://drafts.csswg.org/css-shapes-1/#shape-function)
+
+`polygon()` also accepts `round <length>` before the first comma, after any fill rule. Each vertex is replaced by a tangent circular arc. The radius is limited per vertex so the arc uses at most half of either adjoining edge. The radius accepts CSS length math.
+
+`clip-path: url(#name)` references an inline SVG `<clipPath>` by its case-sensitive ID. A URL like `url(shapes.svg#name)` references a project-local UTF-8 SVG file. Relative URLs in CSS use the declaring stylesheet's directory. Imported HTML embeds the SVG source so clipping can work in an export without the original file. SVG files are parsed as separate documents. Their embedded styles and same-document `use` references apply.
+
+Supported clip geometry includes `path`, `rect`, `circle`, `ellipse`, `polygon`, `polyline`, and direct `use` references to these shapes. Geometry attributes and SVG transform lists apply in either `userSpaceOnUse` or `objectBoundingBox` coordinates. Inherited `clip-rule` supports `nonzero` and `evenodd`. Hidden children are omitted. A missing or invalid reference leaves the element unclipped, and an empty valid clip removes all paint.
+
+A `clip-path` on a child intersects that child's silhouette before the child shapes are united. A clip on the `<clipPath>` itself intersects the complete union using the original target's reference box. Stylesheet declarations and SVG presentation attributes can use either a URL or a CSS basic shape. Basic shapes on SVG children currently use the graphics bounds for their reference box. An active reference can be nested up to 24 sources, and repeated references on the same branch are skipped. [SVG clipPath and clip-rule](https://www.w3.org/TR/css-masking-1/#svg-clipping-paths)
+
+SVG `<text>` can also supply the clipping silhouette, including through a direct `<use>` reference. Horizontal text and nested `<tspan>` runs use Godot's font fallback and shaping. Position and rotation lists use `x`, `y`, `dx`, `dy`, and `rotate`. CSS and the SVG presentation attribute support inherited `text-anchor: start | middle | end`. The font's actual outline, including the holes inside glyphs, determines painting and hit testing. Bitmap-only glyphs contribute no outline. Vertical text, alternate baselines, and automatic wrapping in SVG text remain pending. [SVG text layout](https://www.w3.org/TR/SVG2/text.html#TextElement)
+
+`<textPath>` follows its inline `path` data or a same-document `href` or `xlink:href` reference to an SVG path or basic shape. Shape transforms affect the guide. `startOffset` accepts lengths and percentages, and `pathLength` calibrates absolute offsets. Each glyph cluster follows the local tangent without losing its outline or combining marks. `side="right"` reverses the guide. An open guide hides glyphs whose centers fall outside it, while one closed subpath can wrap around its seam. Text following the path resumes at its endpoint. DocRender uses aligned glyphs and exact spacing. Outline warping with `method="stretch"` and automatic spacing adjustments are pending. [SVG text on a path](https://www.w3.org/TR/SVG2/text.html#TextPathElement)
+
+## Transforms
 
 ```css
 .card {
@@ -265,11 +441,27 @@ Markdown HTML blocks use the full HTML color pipeline. Markdown's inline `<span 
 }
 ```
 
-Translation and origin offsets accept lengths, percentages, and length expressions. Percentages use the border-box width or height. The default origin is the center of that box. Rotation accepts `deg`, `grad`, `rad`, `turn`, and unitless zero. Scale accepts finite factors, including negative factors. Angles and numeric factors also accept math functions. A singular transform such as `scale(0)` hides the subtree while preserving its place in the flow.
+Translation and origin offsets accept lengths, percentages, and length expressions. Percentages and the default center origin use the transform reference box. On HTML elements, `content-box` and `fill-box` use the content box. `border-box`, `stroke-box`, and the default `view-box` use the border box. The optional third length in `transform-origin` has no effect on a 2D transform.
 
-Transforms affect painting, element rectangles, links, selection, and scrollable overflow. Non-replaced inline boxes and table columns or column groups can inherit an ancestor's transform as part of its subtree. Use an inline-block for a transform on an inline element itself. In Markdown, downward overflow expands the HTML block and the column bounds clip horizontal overflow. 3D transforms, `transform-box`, standalone transform properties, and animation are outside the supported set. [CSS Transforms Level 1](https://www.w3.org/TR/css-transforms-1/)
+The individual properties compose in the order `translate`, `rotate`, and `scale`, followed by the Motion Path offset and the `transform` list. Independent `translate` accepts an optional Z length. `rotate` accepts an angle with an optional axis keyword or vector. `scale` accepts numbers or equivalent percentages for up to three axes. An explicit identity value establishes a stacking context and a containing block for positioned descendants. `none` removes the corresponding transform. [CSS Transforms Level 2](https://www.w3.org/TR/css-transforms-2/#ctm)
+
+The `transform` list accepts `matrix()`, the XYZ translate, rotate, and scale variants, and `skew()`, `skewX()`, and `skewY()`. Use `translate3d()`, `rotate3d()`, `scale3d()`, or `matrix3d()` to specify multiple axes at once. Composition uses all three axes and the third `transform-origin` length, then projects the result onto the parent plane under the default `transform-style: flat`. `backface-visibility: hidden` excludes a back-facing surface and its descendants from painting and hit testing. Their rectangles and scrollable area remain available. CSS animation of transforms is pending. [CSS Transforms rendering model](https://www.w3.org/TR/css-transforms-2/#transform-rendering)
+
+`perspective()` projects the element's transform list about its transform origin. The `perspective` property instead sets a viewing distance for the child planes and establishes a containing block for positioned descendants. Use `perspective-origin` to set that projection's center within the parent's reference box. Both forms accept non-negative distances and clamp distances below one CSS pixel during rendering. Painting and pointer targeting use the visible side of the projected plane, and a box crossing the viewing plane has finite scroll bounds. Projective drawing rasterizes visible source regions to intermediate textures. Spatial filters use the projection's local scale at the element center. [CSS Perspective](https://www.w3.org/TR/css-transforms-2/#perspective-property) · [Perspective-transformed boxes](https://www.w3.org/TR/css-transforms-2/#processing-of-perspective-transformed-boxes)
+
+`transform-style: preserve-3d` lets descendants accumulate transforms in one 3D coordinate space. The renderer splits intersecting planes so each side composites in depth order. Coplanar planes follow CSS paint order. Hit testing uses depth at the pointer position. When a box flattens, its subtree composites on that box's plane in any enclosing scene. Scrollable overflow, opacity below one, filters, `clip-path`, and paint containment force flattening. `overflow: clip` keeps the 3D context under the CSS Transforms draft's grouping rules. [3D rendering contexts](https://drafts.csswg.org/css-transforms-2/#3d-rendering-contexts) · [Grouping property values](https://drafts.csswg.org/css-transforms-2/#grouping-property-values)
+
+Scale factors can be negative, and factors and angles can use CSS math. A singular transform such as `scale(0)` hides the subtree while preserving its place in the flow. Transforms affect painting, element rectangles, links, selection, and scrollable overflow. Non-replaced inline boxes and table columns or column groups can inherit an ancestor's transform as part of its subtree. Use an inline-block for a transform on an inline element itself. In Markdown, downward overflow expands the HTML block and the column bounds clip horizontal overflow. [CSS Transforms Level 1](https://www.w3.org/TR/css-transforms-1/)
 
 Painting and hit testing use the exact clip shapes of up to 16 rounded or transformed overflow ancestors, starting with the closest ancestor. Farther clips use their document-space bounding rectangles. An element's own rounded shape is evaluated separately.
+
+## Motion paths
+
+`offset-path` accepts `path()`, `shape()`, circles, ellipses, rectangles, polygons, and `ray()`. A coordinate box sizes relative shapes against the containing block. A coordinate box on its own follows that box's outline, including its rounded corners. SVG fragments can reference paths and basic shapes in the document or a project-local SVG file.
+
+`offset-distance` accepts lengths, percentages of the path length, and CSS math. Open paths clamp distances to their endpoints, and closed paths wrap them. Rays support their five size keywords, `at` origins, and `contain`. `offset-position` supplies an omitted ray origin or circle or ellipse center. `offset-anchor: auto` uses `transform-origin`. `offset-rotate: auto` follows the path tangent, `reverse` also adds a half turn, and a bare angle fixes the orientation. The `offset` shorthand resets omitted longhands.
+
+Motion changes the element's visual geometry, stacking, and containing-block behavior. Painting, pointer hits, and text selection use the same transform. Curves are sampled from flattened paths. CSS animation and remote SVG sources remain outside the supported set. [CSS Motion Path](https://www.w3.org/TR/motion-1/)
 
 ## Grid
 
@@ -334,8 +526,58 @@ Grid items with `align-content: first baseline` or `last baseline` can align the
 
 `grid` accepts the same explicit forms and adds automatic placement forms such as `auto-flow dense 24px / repeat(3, 1fr)` and `40px 40px / auto-flow 100px`. Put `auto-flow` on the left of the slash to create rows or on the right to create columns. The optional `dense` keyword can appear immediately before or after it. Any sizes that follow form the repeating implicit track pattern on that axis. Omitted longhands reset to their initial values: `none` for the explicit grid, `auto` for implicit track sizes, and `row` for the flow direction. Both shorthands preserve the existing gaps. [CSS Grid definition shorthand](https://www.w3.org/TR/css-grid-2/#grid-shorthand)
 
-`subgrid` remains unsupported.
+`grid-template-columns: subgrid` and `grid-template-rows: subgrid` share the parent grid's tracks in the corresponding axis. They also work in the `grid-template` and `grid` shorthands. A grid that cannot adopt parent tracks uses `none` on that axis. Items use local line numbers, inherit the names of the corresponding parent lines, and can add names with brackets or a name-only `repeat()`, including `auto-fill`. Parent template areas are clipped to the subgrid's span. Subgridded axes cannot create implicit tracks, so placements outside the available lines are clamped. [CSS Grid subgrids](https://www.w3.org/TR/css-grid-2/#subgrids)
 
+Descendant items contribute to the sizes of the parent tracks. The subgrid stretches in the shared axis and adjusts inherited track geometry for its outer box edges. With `gap: normal`, the shared axis follows the parent's gaps. An explicit gap is centered on the inherited gutters. [CSS Grid track sizing](https://www.w3.org/TR/css-grid-2/#algo-track-sizing)
+
+Items in shared tracks participate in first- and last-baseline groups alongside items in the parent grid, including through nested subgrids. The baseline adjustment contributes to intrinsic track sizing and accounts for the subgrid's outer edges and gap differences. An item whose percentage size would create an intrinsic sizing cycle uses the corresponding fallback alignment. [CSS Grid alignment](https://www.w3.org/TR/css-grid-2/#alignment)
+
+Inline measurements start with estimates from definite row maxima. After sizing the rows, the renderer measures height-dependent inline content again, including aspect-ratio boxes, images, and wrapping column flex containers. If its minimum content contribution changed, the owning grid resolves the columns again and remeasures the rows when the column geometry changes. Each axis gets at most one additional solve per grid layout pass. Subgrid measurements carry the available sizes across shared and standalone axes. [CSS Grid sizing algorithm](https://www.w3.org/TR/css-grid-2/#algo-grid-sizing)
+
+
+## Overflow
+
+`overflow` sets the horizontal and vertical axes to the same keyword, or takes two keywords in x/y order. Each axis accepts `visible`, `clip`, `hidden`, `auto`, and `scroll`. The legacy value `overlay` aliases `auto`. In horizontal writing, `overflow-inline` and `overflow-block` map to `overflow-x` and `overflow-y` respectively. If either axis is scrollable, the other axis's `visible` computes to `auto` and its `clip` computes to `hidden`. For example, `overflow: clip auto` allows wheel scrolling vertically and clips horizontal scrolling by wheel.
+
+`overflow: clip visible` clips horizontally at the padding edge and leaves vertical overflow visible. A one-axis strip is rectangular. When both axes clip, their shared edge follows the adjusted border radius. Clipping follows transforms and applies to painting, hit testing, and selection geometry. An axis with `clip` has no internal scroll range. Use `display: flow-root` to establish a block formatting context while clipping, for example to contain floats.
+
+`overflow-clip-margin` selects the `content-box`, `padding-box`, or `border-box` as the origin and accepts a non-negative length in either order. The default is `padding-box 0`. A length can use CSS math or relative units. Each axis using `clip` can paint to the expanded edge. The same shape limits pointer hits. Rounded intersections use the cumulative spread from the border edge. `hidden`, `auto`, and `scroll` continue clipping at the padding box. [Overflow clip edge](https://www.w3.org/TR/css-overflow-3/#overflow-clip-margin)
+
+In `HTMLLabel` and Markdown HTML blocks, scroll boxes respond to wheel input, track clicks, and dragging the scrollbar thumb. Overlay bars use the padding box and consume no layout space. `auto` shows a bar on each overflowing axis and `scroll` keeps that axis’s bar visible. Textareas retain their field scrollbars. `scrollbar-width` accepts `auto`, `thin`, and `none`. It applies to the scrollbar on the element where it is declared. The `none` value hides the bar while wheel and programmatic scrolling remain available. `scrollbar-color` inherits and accepts `auto` or two colors in thumb/track order. Colors can use `currentColor`. Both properties style the self-drawn textareas as well as ordinary scroll boxes.
+
+In `HTMLLabel`, the viewport takes the root element's overflow modes, or the first displayed `body` child's modes when both root axes are `visible`. The source box uses visible overflow. A viewport axis treats `visible` as `auto` and `clip` as `hidden`. A hidden axis allows anchors and `set_scroll_offset()` to scroll while suppressing direct user scrolling. A `scroll` axis shows a scrollbar even without overflow unless the root hides scrollbars with `scrollbar-width: none`. Standalone `HTMLLayout` and Markdown HTML blocks keep their local CSS scroll boxes. [CSS Overflow Viewport Propagation](https://www.w3.org/TR/css-overflow-3/#overflow-propagation)
+
+The root HTML element also styles the native viewport scrollbars of `HTMLLabel`. `scrollbar-gutter: stable` reserves the vertical scrollbar's width, including when that bar is hidden or the content fits. Add `both-edges` to reserve the same width on the opposite side. Both keywords can appear in either order. The document canvas background extends into the gutters. `scrollbar-width: none` removes the reservation. The `body` element's gutter does not propagate to the viewport. Ordinary CSS scroll boxes use overlay scrollbars, which consume no layout space. [CSS Scrollbar Gutters](https://www.w3.org/TR/css-overflow-3/#scrollbar-gutter-property) · [CSS Scrollbars Styling](https://www.w3.org/TR/css-scrollbars-1/)
+
+Media queries use the viewport before subtracting native scrollbars or gutters. Viewport-percentage units in declarations also use that size, reduced only by space reserved unconditionally by the root's `overflow: scroll` or `scrollbar-gutter`. Scrollbars made visible by content overflow or by `body` reduce the layout area without reducing viewport-percentage units. [Media Queries](https://www.w3.org/TR/mediaqueries-4/#width) · [CSS Viewport Units](https://www.w3.org/TR/css-values-4/#viewport-relative-lengths)
+
+`position: sticky` keeps its place in normal flow and paints in its own stacking context. Use `top`, `right`, `bottom`, `left`, or `inset` to keep the box within the nearest scrollport and its containing block. Percentages use the scrollport size on the relevant axis, and `auto` leaves its edge unconstrained. Painting, element rectangles, links, and text selection use the offset position. CSS scroll boxes take precedence over the viewport, including boxes with `overflow: hidden`. Viewport sticky boxes in `HTMLLabel` follow Godot's scroll offset. In Markdown, each HTML block has its own viewport, so sticky elements can follow an internal CSS scroll box. Table rows, row groups, and cells can stick. Shared collapsed borders remain on the table's original grid lines. [CSS sticky positioning](https://www.w3.org/TR/css-position-3/#sticky-pos)
+
+## Scroll positioning
+
+`scroll-padding` sets insets on a scrollport. It accepts one to four non-negative lengths, percentages, or `auto`. Percentages use the scrollport dimension for that axis, and `auto` resolves to zero. In `HTMLLabel`, the root `html` style supplies the viewport insets. `scroll-margin` accepts one to four lengths, including negative lengths. It expands or contracts the axis-aligned bounds of the target's transformed border box in each scroll container. Both properties support physical and logical longhands, `-block` and `-inline` shorthands, CSS math, and custom properties. Logical sides use the element's `direction` in horizontal writing. [CSS Scroll Snap insets and outsets](https://www.w3.org/TR/css-scroll-snap-1/#scroll-snap-model)
+
+Anchor navigation and `HTMLLabel.scroll_to_element()` scroll nested CSS containers from the inside out, including containers with `overflow: hidden`. The `align` argument positions the expanded target's top edge within the inset region. Keyboard focus scrolls by the minimum distance needed to reveal the target. In Markdown HTML blocks, internal scrollports apply their CSS insets, and the target's margin also adjusts its position in the Markdown host. Scroll insets and outsets keep the underlying layout, element rectangles, and scroll ranges intact. [CSSOM View scrolling](https://drafts.csswg.org/cssom-view/#scroll-a-target-into-view)
+
+`overscroll-behavior` sets the horizontal and vertical policies with one or two keywords. The physical longhands are `-x` and `-y`. The logical `-inline` and `-block` follow the horizontal writing mode. With `auto` or `chain`, remaining scroll input can reach an ancestor. With `contain` or `none`, it stops at the scroll container's boundary, including on an axis with no overflow. DocRender has no elastic overscroll effect. The root `html` style controls chaining from the HTMLLabel viewport to its Godot ancestors. HTML blocks in Markdown apply the policy to their internal CSS scroll containers. [CSS Overscroll Behavior](https://drafts.csswg.org/css-overscroll-1/#overscroll-behavior-properties)
+
+`scroll-behavior` accepts `auto` for immediate navigation and `smooth` for an eased transition. Each scroll container uses its own computed value for fragment links, explicit anchor and element navigation, and keyboard focus reveal. The root `html` style controls the HTMLLabel viewport. Markdown HTML blocks apply smooth behavior to their internal CSS scroll containers. Wheel and pan input, a scrollbar drag, or a new destination can interrupt the corresponding animation. `HTMLLabel.set_scroll_offset()` applies a viewport offset immediately, with scroll snapping when enabled. [CSS Overflow smooth scrolling](https://www.w3.org/TR/css-overflow-3/#smooth-scrolling)
+
+`scroll-snap-type` accepts `none`, or an axis (`x`, `y`, `block`, `inline`, or `both`) followed by optional `mandatory` or `proximity`. The default strictness for an enabled axis is `proximity`. `scroll-snap-align` accepts one or two values of `none`, `start`, `center`, and `end`, in block and inline order. The nearest scroll container captures each target. The snap area uses its transformed border rectangle with `scroll-margin`, and `scroll-padding` insets the snapport. [CSS Scroll Snap model](https://www.w3.org/TR/css-scroll-snap-1/#scroll-snap-model)
+
+Directional wheel steps can stop at the first crossed `scroll-snap-stop: always` target. Direct navigation, panning, and released scrollbar thumbs choose by their endpoint. Touchpad panning moves continuously and settles after a short pause in input. Fragment and element navigation prefer the requested target in its nearest scroll container. A proximity candidate must be within 30% of the snapport length, and an oversized area can be scrolled through when space between its surrounding snap points permits. On relayout, the renderer looks for the previously snapped element before choosing a new target. [CSS Scroll Snap mechanics](https://www.w3.org/TR/css-scroll-snap-1/#snap-mechanics)
+
+## Text overflow
+
+Use `overflow: hidden; white-space: nowrap; text-overflow: ellipsis` to elide a title that exceeds its box width. The initial value `clip` keeps ordinary overflow clipping. The ellipsis reserves space at the line’s visual end by eliding whole grapheme clusters and atomic inline boxes. The first item is kept and clipped if necessary. The ellipsis uses the block’s font and baseline, and existing overflow and rounded clipping apply. The original positions and text are available for link hits, selection, copy, and search. Selecting the full elided range highlights its ellipsis. The property operates in the renderer's horizontal writing mode. [CSS Overflow Level 3](https://www.w3.org/TR/css-overflow-3/#text-overflow)
+
+## Text selection
+
+`user-select: none` prevents starting a selection in the element. Selecting across it skips excluded text in both the highlight and the clipboard. `text` restores ordinary selection, including within a descendant of an excluded element. `all` selects the element's text as a unit. The initial `auto` follows the parent's `none` or `all` behavior and otherwise allows ordinary text selection. Buttons, button-like inputs, selects, meters, and progress indicators default to `none` and accept author overrides. This behavior applies in `HTMLLabel` and in Markdown HTML blocks. Search and DOM text queries still include excluded text. [CSS UI selection](https://www.w3.org/TR/css-ui-4/#content-selection)
+
+Editable inputs and textareas keep their own selection inside the field, including under `user-select: none`. Read-only fields follow the authored selection policy. The `contain` declaration value is outside the supported grammar. [CSS UI selection](https://www.w3.org/TR/css-ui-4/#content-selection)
+
+`::selection` accepts `color` and `background-color` for selected text in `HTMLLabel`, Markdown HTML blocks, and text fields. Unspecified colors inherit from the parent element's selection style. `var()` falls back to the originating element's custom properties, and `background-color: currentColor` uses the selected text color. A foreground-only author rule leaves the selection background transparent if no ancestor supplies a color. Selection styling covers glyphs and their background. Highlight decorations, shadows, and replaced content are pending. [CSS highlight styles](https://www.w3.org/TR/css-pseudo-4/#highlight-cascade) · [Paired defaults](https://www.w3.org/TR/css-pseudo-4/#paired-defaults)
 
 ## Underline placement
 
@@ -452,7 +694,7 @@ The editor's HTML source preview outlines visible elements with CSS declaration 
 
 | Kind | Example |
 | --- | --- |
-| `unknown_property` | `scrollbar-width: thin` |
+| `unknown_property` | `writing-mode: vertical-rl` |
 | `unsupported_value` | `grid-template-areas: "head head" "head ."` |
 
 Diagnostics cover declarations reached by the stylesheet parser. For a declaration using `var()`, the value is checked when DocRender resolves it on an element. Drawing diagnostics identify the winning declaration after shorthand expansion. Use `get_render_error()` for parse and layout failures.

@@ -41,6 +41,7 @@ namespace litehtml
 		struct scoped_counter
 		{
 			const element* scope_parent;
+			const element* containment_root;
 			struct state
 			{
 				int64_t value;
@@ -49,6 +50,7 @@ namespace litehtml
 			std::shared_ptr<state> counter;
 		};
 		std::map<string_id, std::vector<scoped_counter>> m_counter_values;
+		const element* m_counter_containment_root = nullptr;
 
 	public:
 		explicit element(const std::shared_ptr<document>& doc);
@@ -138,6 +140,7 @@ namespace litehtml
 
 		std::tuple<element::ptr, element::ptr, element::ptr> split_inlines();
 		virtual std::shared_ptr<render_item> create_render_item(const std::shared_ptr<render_item>& parent_ri);
+		void append_render_items(const std::shared_ptr<render_item>& parent_ri);
 		bool requires_styles_update();
 		void add_render(const std::shared_ptr<render_item>& ri);
 		bool find_styles_changes( position::vector& redraw_boxes);
@@ -162,7 +165,7 @@ namespace litehtml
 		void				run_on_renderers(const std::function<bool(const std::shared_ptr<render_item>&)>& func);
 
 	private:
-		scoped_counter::state& get_counter(string_id name);
+		scoped_counter::state& get_counter(string_id name, bool for_change = false);
 		void reset_counter_state(string_id name, int64_t value, bool reversed);
 	};
 

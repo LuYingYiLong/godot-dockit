@@ -298,7 +298,9 @@ CharString HTMLDOM::normalize_tag_name(const String& p_tag_name) {
 }
 
 Ref<HTMLElement> HTMLDOM::create_element(const CharString& p_tag) {
-	return make_detached_element(document->create_element(p_tag.get_data(), {}));
+	const auto node = document->create_element(p_tag.get_data(), {});
+	if (node && (docrender::forms::is_listed(*node) || node->tag() == litehtml::_form_)) docrender::forms::synchronize(node);
+	return make_detached_element(node);
 }
 
 Ref<HTMLDocumentFragment> HTMLDOM::create_document_fragment() {
@@ -412,6 +414,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 		return {};
 	}
 	if (r_adoption) {
+		copy->css_w().copy_remembered_content_size(p_source.css());
 		if (const auto handle = p_source_dom.find_element_handle(p_source); handle.is_valid()) {
 			r_adoption->handles.push_back({ &p_source, copy, handle });
 		}
@@ -635,6 +638,13 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	}
 	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected") {
 		docrender::forms::synchronize(p_element, p_element);
+	} else if (name == "value" || name == "required" || name == "readonly" || name == "minlength" || name == "maxlength" ||
+		name == "command" || name == "commandfor") {
+		if (const auto* option = dynamic_cast<const docrender::HTMLOptionNode*>(p_element.get())) {
+			if (auto* select = option->select()) docrender::forms::update_validity(*select);
+		} else if (docrender::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
+			docrender::forms::update_validity(*p_element);
+		}
 	}
 	if (is_element_connected(*p_element)) {
 		on_change();

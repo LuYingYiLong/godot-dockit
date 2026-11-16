@@ -47,6 +47,8 @@ namespace litehtml
 
 	bool parse_color(const css_token& token, web_color& color, document_container* container);
 	bool parse_color_at_depth(const css_token& token, web_color& color, document_container* container, unsigned depth);
+	bool equal_css_colors(const web_color& first, const web_color& second);
+	web_color interpolate_css_color(const web_color& from, const web_color& to, double progress);
 }
 
 #endif  // LH_WEB_COLOR_H

@@ -21,21 +21,25 @@ void Selector::calc_specificity()
 {
 	m_specificity = selector_specificity();
 	if (m_right.m_tag != "*")
-		m_specificity.d++;
+		m_specificity += {0, 0, 0, 1};
 
 	for (const auto& attr : m_right.m_attrs)
 	{
-		if (attr.type == select_id)
-			m_specificity.b++;
+		if (attr.type == select_nesting)
+		{
+			if (attr.nesting) m_specificity += attr.nesting->specificity;
+		}
+		else if (attr.type == select_id)
+			m_specificity += {0, 1, 0, 0};
 		else if (attr.type == select_pseudo_element)
-			m_specificity.d++;
+			m_specificity += {0, 0, 0, 1};
 		else if (attr.type == select_pseudo_class && attr.name == "where")
 			continue;
 		else if (attr.type == select_pseudo_class &&
 			is_one_of(attr.name, "is", "not", "nth-child", "nth-last-child", "has"))
 		{
 			if (is_one_of(attr.name, "nth-child", "nth-last-child"))
-				m_specificity.c++;
+				m_specificity += {0, 0, 1, 0};
 
 			selector_specificity maximum;
 			for (const auto& argument : attr.selector_list)
@@ -46,13 +50,29 @@ void Selector::calc_specificity()
 			m_specificity += maximum;
 		}
 		else
-			m_specificity.c++;
+			m_specificity += {0, 0, 1, 0};
 	}
 	if (m_left)
 	{
 		m_left->calc_specificity();
 		m_specificity += m_left->m_specificity;
 	}
+}
+
+unsigned Selector::state_dependencies() const
+{
+	unsigned dependencies = 0;
+	for (auto part = this; part; part = part->m_left.get()) {
+		for (const auto& attribute : part->m_right.m_attrs) {
+			if (attribute.type == select_pseudo_class) {
+				if (attribute.name == "hover") dependencies |= selector_depends_on_hover;
+				if (attribute.name == "valid" || attribute.name == "invalid") dependencies |= selector_depends_on_validity;
+			}
+			if (attribute.nesting) dependencies |= attribute.nesting->state_dependencies;
+			for (const auto& argument : attribute.selector_list) dependencies |= argument->state_dependencies();
+		}
+	}
+	return dependencies;
 }
 
 // https://www.w3.org/TR/selectors-4/#type-nmsp
@@ -448,6 +468,7 @@ bool is_supported_simple_pseudo_class(const string& name)
 		// User Action Pseudo-classes  https://www.w3.org/TR/selectors-4/#useraction-pseudos
 		"hover", "active", "focus", "focus-visible", "focus-within",
 		"enabled", "disabled", "checked", "placeholder-shown",
+		"required", "optional", "valid", "invalid", "read-only", "read-write",
 		// Tree-Structural pseudo-classes  https://www.w3.org/TR/selectors-4/#structural-pseudos
 		"root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type",
 	};
@@ -527,6 +548,10 @@ AttributeSelector parse_subclass_selector(const css_token_vector& tokens, int& i
 		selector = parse_attribute_selector(tok0);
 		if (selector) index++;
 		return selector;
+
+	case AMPERSAND:
+		++index;
+		return { select_nesting, "&" };
 
 	default:
 		return parse_pseudo_class(tokens, index, mode, options);
@@ -693,6 +718,70 @@ static bool has_selector(const Selector& selector, attr_select_type type)
 		return has_selector(*selector.m_left, type);
 
 	return false;
+}
+
+NestingSelectorList::NestingSelectorList(Selector::vector p_selectors) : selectors(std::move(p_selectors))
+{
+	for (const auto& selector : selectors) {
+		selector->calc_specificity();
+		specificity = std::max(specificity, selector->m_specificity);
+		if (!has_selector(*selector, select_pseudo_element)) {
+			element_selectors.push_back(selector);
+			state_dependencies |= selector->state_dependencies();
+		}
+	}
+}
+
+static bool contains_anchor(const css_token_vector& tokens, bool scoped)
+{
+	for (size_t index = 0; index < tokens.size(); ++index) {
+		const auto& token = tokens[index];
+		if (token.type == AMPERSAND || (scoped && token.type == ':' && index + 1 < tokens.size() &&
+			lowcase(tokens[index + 1].ident()) == "scope")) return true;
+		if (token.is_component_value() && contains_anchor(token.value, scoped)) return true;
+	}
+	return false;
+}
+
+static void bind_nesting(Selector& selector, const std::shared_ptr<const NestingSelectorList>& parent)
+{
+	for (auto part = &selector; part; part = part->m_left.get()) {
+		for (auto& attribute : part->m_right.m_attrs) {
+			if (attribute.type == select_nesting) attribute.nesting = parent;
+			for (const auto& argument : attribute.selector_list) bind_nesting(*argument, parent);
+		}
+	}
+}
+
+static Selector::vector parse_anchored_selector_list(const css_token_vector& tokens, SelectorMode mode,
+	const std::shared_ptr<const NestingSelectorList>& parent, int options, bool scoped)
+{
+	Selector::vector result;
+	for (auto& branch : parse_comma_separated_list(tokens)) {
+		int first = 0;
+		skip_whitespace(branch, first);
+		if (first == static_cast<int>(branch.size())) return {};
+		const auto leading = at(branch, first).type;
+		if (is_one_of(leading, '>', '+', '~') || !contains_anchor(branch, scoped)) {
+			branch.insert(branch.begin(), {css_token(AMPERSAND), css_token(WHITESPACE)});
+		}
+		auto parsed = parse_complex_selector(branch, mode, options);
+		if (!parsed || ((options & forbid_pseudo_elements) && has_selector(*parsed, select_pseudo_element))) return {};
+		bind_nesting(*parsed, parent);
+		result.push_back(std::move(parsed));
+	}
+	return result;
+}
+
+Selector::vector parse_nested_selector_list(const css_token_vector& tokens, SelectorMode mode,
+	const std::shared_ptr<const NestingSelectorList>& parent, int options)
+{
+	return parse_anchored_selector_list(tokens, mode, parent, options, false);
+}
+
+Selector::vector parse_scoped_selector_list(const css_token_vector& tokens, SelectorMode mode, int options)
+{
+	return parse_anchored_selector_list(tokens, mode, {}, options, true);
 }
 
 // https://www.w3.org/TR/css-syntax-3/#parse-comma-list

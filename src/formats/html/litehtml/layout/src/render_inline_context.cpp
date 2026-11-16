@@ -94,22 +94,9 @@ void litehtml::render_item_inline_context::fix_line_width(element_float flt,
     {
 		auto el_front = m_line_boxes.back()->get_first_text_part();
 
-        std::vector<std::shared_ptr<render_item>> els;
-        bool was_cleared = false;
-        if(el_front && el_front->src_el()->css().get_clear() != clear_none)
-        {
-            if(el_front->src_el()->css().get_clear() == clear_both)
-            {
-                was_cleared = true;
-            } else
-            {
-                if(	(flt == float_left	&& el_front->src_el()->css().get_clear() == clear_left) ||
-                       (flt == float_right	&& el_front->src_el()->css().get_clear() == clear_right) )
-                {
-                    was_cleared = true;
-                }
-            }
-        }
+        const auto clear = el_front ? el_front->get_used_clear() : clear_none;
+        const bool was_cleared = clear == clear_both ||
+            (flt == float_left && clear == clear_left) || (flt == float_right && clear == clear_right);
 
         if(!was_cleared)
         {
@@ -353,6 +340,7 @@ std::optional<litehtml::pixel_t> litehtml::render_item_inline_context::find_layo
 
 litehtml::pixel_t litehtml::render_item_inline_context::get_first_baseline()
 {
+	if (css().has_layout_containment()) return height() - margin_bottom();
 	pixel_t bl;
 	if(!m_line_boxes.empty())
 	{
@@ -367,6 +355,7 @@ litehtml::pixel_t litehtml::render_item_inline_context::get_first_baseline()
 
 litehtml::pixel_t litehtml::render_item_inline_context::get_last_baseline()
 {
+	if (css().has_layout_containment()) return height() - margin_bottom();
 	pixel_t bl;
 	if(!m_line_boxes.empty())
 	{

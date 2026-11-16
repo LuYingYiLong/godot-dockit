@@ -151,7 +151,7 @@ void litehtml::el_image::compute_styles(bool recursive)
 	const auto orientation = image_orientation();
 	m_alt_text.reset();
 	const char* alt = get_attr("alt", "");
-	if (*alt)
+	if (*alt && !css().skips_contents())
 	{
 		if (source.empty() || !container->is_image_available(source.c_str(), m_baseurl.c_str(), orientation))
 			m_alt_text = container->shape_image_alt(alt, *this);

@@ -2,6 +2,7 @@
 
 #include "html_paint_run.h"
 #include "formats/html/text/html_shaped_text.h"
+#include "formats/html/text/html_text_selection.h"
 #include "html_border_image.h"
 #include "formats/html/css/css_shadows.h"
 
@@ -11,9 +12,11 @@
 #include <litehtml/borders.h>
 
 #include <functional>
+#include <unordered_map>
 
 namespace litehtml {
 	struct css_underline;
+	class render_item_inline_context;
 	class html_tag;
 	struct list_marker;
 }
@@ -25,10 +28,8 @@ namespace docrender {
 		std::optional<litehtml::web_color> caret;
 	};
 	class HTMLPaintRecorder {
-		struct Clip {
-			godot::Rect2 bounds;
-			RoundedRect shape;
-			godot::Transform2D matrix;
+		struct Clip : TransformedClip {
+			std::optional<godot::Rect2> bounds;
 			bool has_precise_clip;
 		};
 
@@ -38,9 +39,27 @@ namespace docrender {
 			godot::Rect2 visible_rect;
 			int64_t offset;
 			int64_t length;
-			godot::Transform2D matrix;
-			godot::Transform2D inverse;
+			HTMLPlaneTransform matrix;
+			HTMLPlaneTransform inverse;
 			std::vector<TransformedClip> clips;
+			int8_t ellipsis_direction = 0;
+		};
+
+		struct ElidedSource {
+			const litehtml::element* element;
+			int64_t from;
+			int64_t to;
+		};
+		struct Ellipsis {
+			HTMLTextLayout layout;
+			godot::Vector2 origin;
+			TransformedClip clip;
+			std::vector<ElidedSource> sources;
+			bool rtl;
+		};
+		struct OverflowPaint {
+			std::optional<TransformedClip> clip;
+			bool hide = false;
 		};
 
 		using Fill = HTMLFill;
@@ -51,48 +70,106 @@ namespace docrender {
 
 		using TextShaper = std::function<HTMLTextLayout(const litehtml::element&, const godot::String&)>;
 
+		using OverflowTextShaper = std::function<HTMLTextLayout(litehtml::uint_ptr, const godot::String&,
+			int64_t, int64_t, const litehtml::render_item*)>;
+
 		std::vector<HTMLPaintRun> paint_runs;
-		std::vector<std::vector<HTMLPaintRun>> outline_groups;
+		std::vector<HTMLPaintRun> viewport_background_runs;
+		std::vector<HTMLPaintGroup> viewport_background_groups;
+		struct OpenPaintGroup {
+			std::vector<HTMLPaintRun> outlines;
+			std::optional<std::size_t> isolated_group;
+			std::optional<std::vector<Clip>> enclosing_clips;
+			const TransformedClip* path_clip = nullptr;
+			const RenderGeometry* mask_geometry = nullptr;
+			bool is_stacking_context = false;
+			bool is_blend_boundary = false;
+		};
+		std::vector<OpenPaintGroup> open_groups;
+		std::vector<HTMLPaintGroup> paint_groups;
+		int filter_depth = 0;
+		bool separate_run = false;
+		bool has_depth_scene = false;
 		std::vector<HTMLPaintRun> diagnostic_runs;
 		std::vector<Clip> clips;
 		godot::Ref<godot::ShaderMaterial> clip_material;
-		godot::Transform2D clip_material_matrix;
+		HTMLPlaneTransform clip_material_matrix;
 		const HTMLGeometryIndex* recording_geometry = nullptr;
 		const RenderGeometry* active_geometry = nullptr;
 		bool active_decoration = false;
-		std::vector<const RenderGeometry*> painted_elements;
+		struct PointerTarget {
+			const RenderGeometry* geometry;
+			int axis = -1;
+			godot::Rect2 track;
+		};
+		std::vector<PointerTarget> pointer_targets;
+		void visit_pointer_targets(const godot::Vector2& p_point, const std::function<bool(const PointerTarget&)>& p_visitor) const;
+		godot::Rect2 scrollbar_bounds;
 		godot::String plain_text;
+		std::vector<godot::Vector2i> excluded_selection;
+		std::unordered_map<const litehtml::element*, godot::Vector2i> selection_scopes;
+		std::vector<int64_t> selection_scope_starts;
+		std::optional<bool> separator_selectable;
 		std::vector<TextRun> text_runs;
+		std::vector<std::pair<const litehtml::element*, godot::Vector2i>> auto_content_text;
+		std::vector<Ellipsis> ellipses;
+		std::unordered_map<const litehtml::render_item*, std::vector<int64_t>> ellipses_by_context;
+		std::unordered_map<const litehtml::render_item*, OverflowPaint> overflow_paint;
+		std::unordered_map<const litehtml::element*, std::pair<int64_t, int64_t>> elided_text_offsets;
+		bool text_overflow_clip_active = false;
+		std::size_t horizon_clip_count = 0;
 		godot::HashMap<godot::Vector2, std::vector<Text*>> painted_text;
 		godot::HashMap<const litehtml::render_item*, std::vector<Text*>> painted_text_by_renderer;
 		godot::HashMap<const litehtml::element*, std::vector<std::pair<Text*, int64_t>>> painted_text_by_source;
 
-		void index_text(const std::shared_ptr<litehtml::element>& p_element, const TextShaper& p_shape_text, godot::String& r_separator);
-		godot::Ref<godot::ShaderMaterial> create_material(const RoundedRect* p_shape = nullptr);
+		void prepare_text_overflow(const litehtml::render_item& p_root, const OverflowTextShaper& p_shaper);
+		void prepare_inline_overflow(const litehtml::render_item_inline_context& p_context, const OverflowTextShaper& p_shaper);
+		bool has_elided_ancestor(const litehtml::render_item& p_item) const;
+		void index_text(const std::shared_ptr<litehtml::element>& p_element, const TextShaper& p_shape_text,
+			godot::String& r_separator, bool p_unlaid = false, bool p_selectable = true);
+		int64_t index_source_text(const godot::String& p_text, godot::String& r_separator, bool p_selectable);
+		void exclude_from_selection(int64_t p_from, int64_t p_to);
+		godot::Ref<godot::ShaderMaterial> create_material(const RoundedRect* p_shape = nullptr, bool p_composite = false,
+			const TransformedClip* p_path = nullptr, bool p_include_clips = true);
 		void add_command(Command p_command, godot::Ref<godot::ShaderMaterial> p_material = {}, HTMLTextureSampling p_sampling = {},
 			bool p_fixed_background = false);
+		void add_indexed_text(Text p_text, const litehtml::element* p_source, const litehtml::web_color& p_color);
 		void add_command_to(std::vector<HTMLPaintRun>& r_runs, Command p_command, godot::Ref<godot::ShaderMaterial> p_material = {},
 			HTMLTextureSampling p_sampling = {}, bool p_fixed_background = false);
 		void add_image(Image p_image, const RoundedRect* p_shape = nullptr, const godot::Vector2i& p_repeat = {},
 			godot::Ref<godot::ShaderMaterial> p_material = {}, bool p_fixed_background = false);
 		void add_borders(std::vector<HTMLPaintRun>& r_runs, const litehtml::borders& p_borders, const godot::Rect2& p_rect);
 		void record_outline();
+		void record_mask(std::size_t p_group, const RenderGeometry& p_geometry);
+		HTMLPaintGroup& start_isolated_group(float p_opacity);
 		void fill_rect(const godot::Rect2& p_rect, const godot::Color& p_color);
 		void draw_decoration(const godot::Rect2& p_rect, litehtml::text_decoration_style p_style, const godot::Color& p_color);
 		void draw_gradient(const litehtml::background_layer& p_layer, const litehtml::background_layer::gradient_base& p_gradient,
 			int p_type, const godot::Vector2& p_start, const godot::Vector2& p_parameters);
-		void push_clip(const RoundedRect& p_shape, const godot::Transform2D& p_matrix);
+		void push_clip(const TransformedClip& p_clip);
+		void push_clip(const RoundedRect& p_shape, const HTMLPlaneTransform& p_matrix) { push_clip({ p_shape, p_matrix }); }
 		bool push_content_clip(const godot::Rect2& p_box);
 
 	public:
 		void clear();
-		void begin(const HTMLGeometryIndex& p_geometry);
+		void begin(const HTMLGeometryIndex& p_geometry, const litehtml::render_item* p_root, const OverflowTextShaper& p_shaper);
+		void record_viewport_background(const litehtml::render_item& p_root, const std::function<void()>& p_draw);
+		void draw_text_overflow(const litehtml::render_item& p_context);
+		void draw_scrollbars(const litehtml::render_item& p_item);
+		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;
 		void finish(const std::shared_ptr<litehtml::element>& p_root, const TextShaper& p_shape_text);
 
 		const std::vector<HTMLPaintRun>& get_paint_runs() const;
+		const std::vector<HTMLPaintRun>& get_viewport_background() const { return viewport_background_runs; }
+		const std::vector<HTMLPaintGroup>& get_viewport_background_groups() const { return viewport_background_groups; }
+		const std::vector<HTMLPaintGroup>& get_paint_groups() const { return paint_groups; }
 		const std::vector<HTMLPaintRun>& get_diagnostic_runs() const { return diagnostic_runs; }
-		std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_point) const;
+		std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_point, bool p_text_selection = false) const;
 		const godot::String& get_plain_text() const;
+		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
+		bool has_selectable_text(int64_t p_from, int64_t p_to) const;
+		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target) const;
+		const auto& get_auto_content_text() const { return auto_content_text; }
 		int64_t hit_test_text(const godot::Vector2& p_point) const;
 		godot::TypedArray<godot::Rect2> get_selection_rects(int64_t p_from, int64_t p_to) const;
 
@@ -121,12 +198,14 @@ namespace docrender {
 		void draw_conic_gradient(const litehtml::background_layer& p_layer, const litehtml::background_layer::conic_gradient& p_gradient);
 
 		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii);
+		void set_overflow_clip(const litehtml::render_item& p_item);
 		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
 			const litehtml::render_item& p_item);
 		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration);
 		void end_render_item();
-		void begin_paint_group();
+		void begin_paint_group(const litehtml::render_item& p_item);
 		void end_paint_group();
+		void begin_background_blend(std::optional<litehtml::css_blend_mode> p_layer);
 		void del_clip();
 	};
 }

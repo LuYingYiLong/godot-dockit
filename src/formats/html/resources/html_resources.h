@@ -16,6 +16,7 @@
 namespace docrender {
 	bool is_html_stylesheet_link(const char* p_rel);								// 判断 rel 是否声明默认应用的样式表
 	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path); // 读取大小受限的本地 UTF-8 样式表
+	std::optional<godot::String> read_html_svg_source(const godot::String& p_path); // 读取大小受限的本地 UTF-8 SVG 文件
 
 	class HTMLResources {
 		godot::String base_dir;
@@ -24,6 +25,7 @@ namespace docrender {
 		godot::Dictionary local_fonts;
 		godot::Dictionary image_dpi;
 		godot::Dictionary image_orientations;
+		godot::Dictionary svg_clip_sources;
 		godot::HashMap<godot::String, godot::Ref<godot::Texture2D>> images;
 		godot::HashMap<godot::String, godot::Ref<godot::FontFile>> fonts;
 		godot::HashMap<godot::String, HTMLImageMetadata> image_metadata;
@@ -37,11 +39,13 @@ namespace docrender {
 	public:
 		HTMLResources(const godot::String& p_base_dir, const godot::Dictionary& p_textures,
 			const godot::Dictionary& p_local_stylesheets, const godot::Dictionary& p_local_fonts, const godot::Dictionary& p_image_dpi,
-			const godot::Dictionary& p_image_orientations);
+			const godot::Dictionary& p_image_orientations, const godot::Dictionary& p_svg_clip_sources);
 
 		static std::string_view stylesheet_path(std::string_view p_css_base);
 		void reset_stylesheet_reads();
 		void import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base);
+		godot::String resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const;
+		std::optional<godot::String> get_svg_clip_source(const godot::String& p_path) const;
 		godot::String resolve_image_source(std::string_view p_source) const; // 返回保留片段的项目图片路径
 		bool is_vector_image(const char* p_src, const char* p_css_base) const; // 判断本地图片是否为 SVG
 		double get_image_dpi(const char* p_src, const char* p_css_base); // 获取导入保存或从源图片读取的 DPI

@@ -79,7 +79,9 @@ std::optional<StylesheetImport> parse_import(const raw_rule& rule) {
 
 std::optional<Kind> block_rule_kind(const string& name) {
 	if (name == "media") return Kind::media;
+	if (name == "container") return Kind::container;
 	if (name == "supports") return Kind::supports;
+	if (name == "scope") return Kind::scope;
 	if (name == "font-face") return Kind::font_face;
 	if (name == "font-feature-values") return Kind::font_feature_values;
 	if (name == "counter-style") return Kind::counter_style;
@@ -115,6 +117,10 @@ void visit_stylesheet_rules(const raw_rule::vector& rules, bool top_level,
 	bool import_allowed = top_level;
 	bool saw_import = false;
 	for (const auto& rule : rules) {
+		if (rule->type == raw_rule::declaration_list) {
+			if (visit({Kind::declarations, *rule})) import_allowed = false;
+			continue;
+		}
 		if (rule->type == raw_rule::qualified) {
 			if (visit({Kind::style, *rule})) import_allowed = false;
 			continue;

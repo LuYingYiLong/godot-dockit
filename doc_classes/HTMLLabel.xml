@@ -20,7 +20,7 @@
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
 			<description>
-				Activates a visible link or a form control in this label. A fragment link scrolls before emitting [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if activation was dispatched.
+				Activates a visible link or a form control in this label. A fragment link requests an anchor scroll before emitting [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if activation was dispatched.
 			</description>
 		</method>
 		<method name="focus_element">
@@ -126,7 +126,7 @@
 			<param index="0" name="id" type="String" />
 			<param index="1" name="align" type="float" default="0.0" />
 			<description>
-				Scrolls to a laid-out element by its case-sensitive HTML ID. Pass the ID without [code]#[/code]. The vertical alignment ranges from [code]0.0[/code] at the top to [code]1.0[/code] at the bottom and is clamped to the scrollable range. Returns [code]false[/code] if the ID is absent or the layout is pending.
+				Scrolls to a laid-out element by its case-sensitive HTML ID. Pass the ID without [code]#[/code]. Alignment follows [method scroll_to_element], including CSS scroll padding and margins. Each scroll container uses its own [code]scroll-behavior[/code]. Returns [code]false[/code] if the ID is absent or the layout is pending.
 			</description>
 		</method>
 		<method name="scroll_to_element">
@@ -134,7 +134,7 @@
 			<param index="0" name="element" type="HTMLElement" />
 			<param index="1" name="align" type="float" default="0.0" />
 			<description>
-				Scrolls to an element obtained from this label. [param align] positions the element's top from [code]0.0[/code] at the viewport top to [code]1.0[/code] at the viewport bottom, within the scrollable range. Horizontal scrolling adjusts when the target's left edge is outside the viewport. Returns [code]false[/code] for an invalid, foreign, or invisible element, or when layout is pending.
+				Scrolls to an element obtained from this label, starting with its innermost scroll container. [param align] places the top of the target's CSS scroll margin area from [code]0.0[/code] at the top of the scroll-padding region to [code]1.0[/code] at its bottom, within the scrollable range. Horizontal scrolling adjusts when the area's left edge is outside that region. Returns [code]false[/code] for an invalid or foreign element, an element without a visible layout box, or a pending layout.
 			</description>
 		</method>
 		<method name="select_all">
@@ -219,7 +219,7 @@
 			<param index="0" name="form" type="HTMLFormElement" />
 			<param index="1" name="control" type="HTMLElement" />
 			<description>
-				Emitted with the first control that fails required validation.
+				Emitted with the first control that fails form validation.
 			</description>
 		</signal>
 		<signal name="input_changed">

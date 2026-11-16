@@ -145,6 +145,8 @@ namespace litehtml
 		bool ratio_height = false;
 		intrinsic_inline_sizes intrinsic_inline;
 		std::optional<pixel_t> positioned_height;
+		// Used auto height for layout inside a size-contained box. It remains indefinite for percentages.
+		std::optional<pixel_t> contained_auto_block_size;
 
 		int context_idx;
 		uint32_t size_mode;

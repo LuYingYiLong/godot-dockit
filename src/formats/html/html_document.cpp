@@ -19,6 +19,8 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_get_image_dpi"), &HTMLDocument::get_image_dpi);
 	ClassDB::bind_method(D_METHOD("_set_image_orientations", "orientations"), &HTMLDocument::set_image_orientations);
 	ClassDB::bind_method(D_METHOD("_get_image_orientations"), &HTMLDocument::get_image_orientations);
+	ClassDB::bind_method(D_METHOD("_set_svg_clip_sources", "sources"), &HTMLDocument::set_svg_clip_sources);
+	ClassDB::bind_method(D_METHOD("_get_svg_clip_sources"), &HTMLDocument::get_svg_clip_sources);
 	ClassDB::bind_method(D_METHOD("create_layout"), &HTMLDocument::create_layout);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
@@ -33,6 +35,8 @@ void HTMLDocument::_bind_methods() {
 		"_set_image_dpi", "_get_image_dpi");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_image_orientations", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_image_orientations", "_get_image_orientations");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_svg_clip_sources", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_svg_clip_sources", "_get_svg_clip_sources");
 }
 
 void HTMLDocument::set_text(const String& p_text) {
@@ -113,6 +117,15 @@ Dictionary HTMLDocument::get_image_orientations() const {
 	return image_orientations.duplicate();
 }
 
+void HTMLDocument::set_svg_clip_sources(const Dictionary& p_sources) {
+	svg_clip_sources = p_sources.duplicate();
+	emit_changed();
+}
+
+Dictionary HTMLDocument::get_svg_clip_sources() const {
+	return svg_clip_sources.duplicate();
+}
+
 Ref<HTMLLayout> HTMLDocument::create_layout() const {
 	Ref<HTMLLayout> result;
 	result.instantiate();
@@ -121,5 +134,6 @@ Ref<HTMLLayout> HTMLDocument::create_layout() const {
 }
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
-	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets, local_fonts, image_dpi, image_orientations);
+	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets,
+		local_fonts, image_dpi, image_orientations, svg_clip_sources);
 }

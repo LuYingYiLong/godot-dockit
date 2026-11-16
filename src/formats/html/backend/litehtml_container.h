@@ -17,7 +17,9 @@
 #include <vector>
 
 namespace docrender {
+	namespace css { class TransitionState; }
 	class HTMLDOM;
+	struct HTMLSVGClipDocument;
 
 	class LiteHTMLContainer final : public litehtml::document_container {
 	public:
@@ -30,22 +32,31 @@ namespace docrender {
 			const godot::Dictionary& p_local_stylesheets,
 			const godot::Dictionary& p_local_fonts,
 			const godot::Dictionary& p_image_dpi,
-			const godot::Dictionary& p_image_orientations
+			const godot::Dictionary& p_image_orientations,
+			const godot::Dictionary& p_svg_clip_sources,
+			bool p_svg_clip_only = false
 		);
 
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);		// 更新文档的字体声明和命名特性并报告是否变化
-		void set_viewport(const godot::Vector2i& p_size);							// 更新排版和媒体查询使用的视口尺寸
+		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size); // 更新排版和媒体查询各自使用的视口尺寸
+		std::shared_ptr<litehtml::document> get_svg_clip_document(std::string_view p_url, const char* p_base); // 读取并缓存独立 SVG 裁剪文档
+		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const; // 读取保留原始拼写的属性
 		godot::String resolve_image_source(std::string_view p_source) const {
 			return resources.resolve_image_source(p_source);
 		}
 		void record(
 			litehtml::document& p_document,
 			const godot::Vector2i& p_content_size,
-			const HTMLGeometryIndex& p_geometry
+			const HTMLGeometryIndex& p_geometry,
+			const godot::Vector2& p_viewport_gutters
 		);																			// 记录已排版文档的绘制命令并建立可选择文本的索引
 		HTMLTextLayout shape_input(litehtml::uint_ptr p_font, const godot::String& p_text) {
 			return p_font && !p_text.is_empty() ? fonts.shape_text(p_font, p_text) : HTMLTextLayout{};
+		}
+		HTMLTextLayout shape_text_for_outline(litehtml::uint_ptr p_font, const godot::String& p_text,
+			bool p_right_to_left, float& r_scale) {
+			return p_font ? fonts.shape_text_for_outline(p_font, p_text, p_right_to_left, r_scale) : HTMLTextLayout{};
 		}
 		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
 			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
@@ -62,6 +73,8 @@ namespace docrender {
 		}
 		void reset_stylesheet_reads();												// 重置本轮外部样式表的读取计数
 		void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
+		void set_transition_state(const css::TransitionState* p_state) { transition_state = p_state; }
+		const litehtml::property_value* transition_override(const litehtml::element* p_element, litehtml::string_id p_name) const override;
 		void begin_css_diagnostics();												// 清空上一轮样式诊断
 		void set_css_source_kind(litehtml::css_source_kind p_kind);					// 设置当前样式表来源
 		godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;			// 返回诊断快照
@@ -80,13 +93,17 @@ namespace docrender {
 		HTMLDOM& dom;
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;
+		const css::TransitionState* transition_state = nullptr;
 		litehtml::css_source_kind css_source_kind = litehtml::css_source_kind::none;
 		std::vector<godot::Dictionary> css_diagnostics;
 		godot::HashMap<godot::String, int64_t> css_diagnostic_keys;
 		godot::HashMap<const litehtml::element*, std::vector<int64_t>> element_diagnostics;
 		bool fit_images;
+		bool svg_clip_only;
 		LiteHTMLFonts fonts;
 		godot::Vector2i viewport_size;
+		godot::Vector2i media_viewport_size;
+		godot::HashMap<godot::String, std::shared_ptr<HTMLSVGClipDocument>> svg_clip_documents;
 		HTMLPaintRecorder paint;
 
 		litehtml::css_source get_css_source(const litehtml::string& p_base, bool p_inline) const override;
@@ -136,12 +153,17 @@ namespace docrender {
 		void split_text(const char* p_text, const std::function<void(const char*)>& p_word,
 			const std::function<void(const char*)>& p_space) override;
 		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses&) override;
+		void set_overflow_clip(const litehtml::render_item& p_item) override;
 		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
 			const litehtml::render_item& p_item) override;
 		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration) override;
 		void end_render_item() override;
-		void begin_paint_group() override;
+		void draw_scrollbars(const litehtml::render_item& p_item) override;
+		void draw_text_overflow(const litehtml::render_item& p_item) override;
+		void begin_paint_group(const litehtml::render_item& p_item) override;
 		void end_paint_group() override;
+		void begin_background_blend() override;
+		void begin_background_blend_layer(litehtml::css_blend_mode p_mode) override;
 		void del_clip() override;
 		void get_viewport(litehtml::position& r_viewport) const override;
 		void get_media_features(litehtml::media_features& r_media) const override;

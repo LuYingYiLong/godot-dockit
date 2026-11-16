@@ -7,6 +7,7 @@
 
 #include "css_tokenizer.h"
 
+#include <limits>
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -20,10 +21,14 @@ struct selector_specificity {
 	int d = 0;
 
 	void operator+=(const selector_specificity& other) {
-		a += other.a;
-		b += other.b;
-		c += other.c;
-		d += other.d;
+		const auto sum = [](int left, int right) {
+			constexpr int limit = std::numeric_limits<int>::max();
+			return right > limit - left ? limit : left + right;
+		};
+		a = sum(a, other.a);
+		b = sum(b, other.b);
+		c = sum(c, other.c);
+		d = sum(d, other.d);
 	}
 	bool operator==(const selector_specificity& other) const { return columns() == other.columns(); }
 	bool operator<(const selector_specificity& other) const { return columns() < other.columns(); }
@@ -40,6 +45,7 @@ enum attr_select_type
 	select_attr,
 	select_pseudo_class,
 	select_pseudo_element,
+	select_nesting,
 };
 
 // https://www.w3.org/TR/selectors-4/#attribute-selectors
@@ -55,6 +61,7 @@ enum attr_matcher : char
 };
 
 struct Selector;
+struct NestingSelectorList;
 
 struct AttributeSelector {
 	attr_select_type type = select_class;
@@ -65,6 +72,7 @@ struct AttributeSelector {
 	attr_matcher matcher{};
 	bool caseless_match = false;
 	vector<std::shared_ptr<Selector>> selector_list;
+	std::shared_ptr<const NestingSelectorList> nesting;
 	int a = 0;
 	int b = 0;
 
@@ -90,6 +98,11 @@ enum css_combinator
 	combinator_general_sibling   = '~'
 };
 
+enum selector_state_dependency : unsigned {
+	selector_depends_on_hover = 1 << 0,
+	selector_depends_on_validity = 1 << 1,
+};
+
 struct Selector {
 	using ptr = std::shared_ptr<Selector>;
 	using vector = std::vector<ptr>;
@@ -101,6 +114,16 @@ struct Selector {
 	css_combinator m_anchor_combinator = combinator_descendant;
 
 	void calc_specificity();
+	unsigned state_dependencies() const;
+};
+
+struct NestingSelectorList {
+	explicit NestingSelectorList(Selector::vector p_selectors);
+
+	Selector::vector selectors;
+	Selector::vector element_selectors;
+	selector_specificity specificity;
+	unsigned state_dependencies = 0;
 };
 
 enum class SelectorMode { standards, quirks };
@@ -116,6 +139,9 @@ enum {
 
 Selector::ptr parse_complex_selector(const css_token_vector& tokens, SelectorMode mode, int options);
 Selector::vector parse_selector_list(const css_token_vector& tokens, int options, SelectorMode mode);
+Selector::vector parse_nested_selector_list(const css_token_vector& tokens, SelectorMode mode,
+	const std::shared_ptr<const NestingSelectorList>& parent, int options = strict_mode);
+Selector::vector parse_scoped_selector_list(const css_token_vector& tokens, SelectorMode mode, int options = strict_mode);
 bool has_balanced_selector_tokens(const css_token_vector& tokens);
 bool supports_css_selector(const css_token_vector& tokens, SelectorMode mode);
 

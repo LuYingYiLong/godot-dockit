@@ -67,6 +67,7 @@ namespace litehtml
 			return std::make_shared<render_item_inline_context>(src_el());
 		}
 
+		const auto& line_boxes() const { return m_line_boxes; }
 		std::optional<pixel_t> find_layout_baseline(bool last) const override;
 		pixel_t baseline_content_height() const override;
 		void align_content_to_end() override;

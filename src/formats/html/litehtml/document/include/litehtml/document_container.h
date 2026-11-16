@@ -16,6 +16,7 @@ namespace docrender { class HTMLImageAltText; }
 namespace litehtml
 {
 	class html_tag;
+	struct property_value;
 
 	struct list_marker
 	{
@@ -72,12 +73,18 @@ namespace litehtml
 		{ draw_text(hdc, text, font, color, pos); }
 		virtual bool begin_render_item(const render_item&, const position*&, bool = false) { return true; }
 		virtual void end_render_item() {}
-		virtual void begin_paint_group() {}
+		virtual void draw_text_overflow(const render_item&) {}
+		virtual void draw_scrollbars(const render_item&) {}
+		virtual void begin_paint_group(const render_item&) {}
 		virtual void end_paint_group() {}
+		virtual void begin_background_blend() {}
+		virtual void begin_background_blend_layer(css_blend_mode) {}
+		virtual void set_overflow_clip(const render_item&) {}
 		virtual void set_render_item_clip(const position& pos, const border_radiuses& radii, const render_item&)
 			{ set_clip(pos, radii); }
 		virtual css_source get_css_source(const string&, bool) const { return {}; }
 		virtual void report_css_diagnostic(const css_diagnostic&, const html_tag* = nullptr) {}
+		virtual const property_value* transition_override(const element*, string_id) const { return nullptr; }
 
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;

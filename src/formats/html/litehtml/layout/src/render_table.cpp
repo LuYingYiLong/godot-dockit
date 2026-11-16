@@ -896,7 +896,8 @@ void litehtml::render_item_table::paint_table_backgrounds(uint_ptr hdc, const po
     for (const auto& group : m_row_groups)
     {
         const auto& style = group.item->css();
-        if (style.get_visibility() != visibility_visible || !style.get_bg().m_color.to_srgb(style.get_bg().m_current_color).alpha) continue;
+        if (group.item->establishes_paint_context() || style.get_visibility() != visibility_visible ||
+            !style.get_bg().m_color.to_srgb(style.get_bg().m_current_color).alpha) continue;
         for (int row = group.begin; row < group.end; ++row)
         {
             for (const auto& cell : m_grid->cells(row)) paint(cell, *group.item->src_el());
@@ -912,32 +913,20 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
     position viewport = m_pos;
     viewport.x += x;
     viewport.y += y;
-    const bool clips_content = css().get_overflow() > overflow_visible;
-    if (clips_content)
-    {
-        position border_box = viewport;
-        border_box += m_borders;
-        border_box += m_padding;
-        auto radii = css().get_borders().radius.calc_percents(border_box.width, border_box.height);
-        radii -= m_borders;
-        radii -= m_padding;
-        container->set_render_item_clip(viewport, radii, *this);
-    }
+    const bool clips_content = clips_overflow();
+    if (clips_content) container->set_overflow_clip(*this);
 
     position pos = viewport;
     pos.x -= get_scroll_left();
     pos.y -= get_scroll_top();
     if (flag == draw_block) paint_table_backgrounds(hdc, pos);
     const auto paint_table_part = [&](const std::shared_ptr<render_item>& item) {
-        if (item->establishes_paint_context())
+        if (flag == draw_positioned)
         {
-            if (flag == draw_positioned && item->paint_z_index() == zindex)
-            {
-                item->paint(hdc, pos.x, pos.y, clip);
-                item->draw_stacking_context(hdc, pos.x, pos.y, clip, true);
-            }
+            paint_positioned_child(*item, hdc, pos.x, pos.y, clip, zindex);
             return;
         }
+        if (item->establishes_paint_context()) return;
         if (flag == draw_block) item->paint(hdc, pos.x, pos.y, clip);
         item->draw_children(hdc, pos.x, pos.y, clip, flag, zindex);
     };
@@ -945,11 +934,24 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
     {
         paint_table_part(caption);
     }
+    auto group = m_row_groups.begin();
     for (int row = 0; row < m_grid->rows_count(); row++)
     {
+        while (group != m_row_groups.end() && group->end <= row) ++group;
+        if (group != m_row_groups.end() && group->begin == row && group->item->establishes_paint_context())
+        {
+            if (group->item->is_visible()) paint_table_part(group->item);
+            row = group->end - 1;
+            continue;
+        }
+        const auto& item = m_grid->row(row).el_row;
+        if (item->establishes_paint_context())
+        {
+            if (item->is_visible()) paint_table_part(item);
+            continue;
+        }
         if (flag == draw_block && !m_collapsed_rows[row])
         {
-            const auto& item = m_grid->row(row).el_row;
             const position* row_clip = clip;
             if (item->is_visible() && container->begin_render_item(*item, row_clip))
                 item->src_el()->draw_background(hdc, pos.x, pos.y, row_clip, item);
@@ -972,7 +974,11 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
         }
     }
     if (flag == draw_block) paint_shared_borders(hdc, pos);
-    if (clips_content) container->del_clip();
+    if (clips_content)
+    {
+        if (flag == draw_inlines) container->draw_scrollbars(*this);
+        container->del_clip();
+    }
 }
 
 litehtml::pixel_t litehtml::render_item_table::get_draw_vertical_offset()
@@ -982,6 +988,15 @@ litehtml::pixel_t litehtml::render_item_table::get_draw_vertical_offset()
         return m_grid->top_captions_height();
     }
     return 0;
+}
+
+void litehtml::render_item_table_part::get_inline_boxes(position::vector& boxes) const
+{
+    for (const auto& child : m_children)
+    {
+        if (child->css().get_display() == display_table_row && !child->collapsed_table_track())
+            child->get_inline_boxes(boxes);
+    }
 }
 
 void litehtml::render_item_table_row::get_inline_boxes( position::vector& boxes ) const

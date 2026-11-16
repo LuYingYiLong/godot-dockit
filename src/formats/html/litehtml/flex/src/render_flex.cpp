@@ -41,15 +41,17 @@ litehtml::rendered_width litehtml::render_item_flex::_render_content(pixel_t x, 
 		(!self_size.intrinsic_inline_basis && css().get_display() == display_flex && css().get_float() == float_none && src_el()->in_normal_flow());
 	const bool definite_height = self_size.height.type == containing_block_context::cbc_value_type_absolute ||
 		(self_size.height.type == containing_block_context::cbc_value_type_percentage && self_size.height > 0);
+	const bool has_used_height = definite_height || self_size.contained_auto_block_size.has_value();
 	const pixel_t content_width = clamp_axis(self_size.render_width, self_size.min_width, self_size.max_width);
-	const pixel_t content_height = clamp_axis(self_size.height - box_sizing_height(), self_size.min_height, self_size.max_height);
+	const pixel_t content_height = self_size.contained_auto_block_size.value_or(
+		clamp_axis(self_size.height - box_sizing_height(), self_size.min_height, self_size.max_height));
 	// Cyclic percentage gutters resolve to zero in Flexbox.
 	const pixel_t row_gap = css().get_row_gap().calc_percent(definite_height ? content_height : 0);
 	const pixel_t column_gap = css().get_column_gap().calc_percent(definite_width ? content_width : 0);
 	const pixel_t main_gap = is_row_direction ? column_gap : row_gap;
 	const pixel_t cross_gap = is_row_direction ? row_gap : column_gap;
 
-	const bool auto_main_height = !is_row_direction && !definite_height;
+	const bool auto_main_height = !is_row_direction && !has_used_height;
 	const bool has_max_height = self_size.max_height.type != containing_block_context::cbc_value_type_none;
 	const bool single_line = css().get_flex_wrap() == flex_wrap_nowrap || (auto_main_height && !has_max_height);
 	if (!is_row_direction)
@@ -98,7 +100,7 @@ litehtml::rendered_width litehtml::render_item_flex::_render_content(pixel_t x, 
 	/////////////////////////////////////////////////////////////////
 	if (is_row_direction)
 	{
-		if (definite_height)
+		if (has_used_height)
 			free_cross_size = content_height - sum_cross_size;
 	} else
 	{
@@ -221,7 +223,7 @@ litehtml::rendered_width litehtml::render_item_flex::_render_content(pixel_t x, 
 	}
 
 	if (content_baseline && !is_row_direction &&
-		self_size.grid_content_edge == containing_block_context::content_baseline_edge::end && definite_height)
+		self_size.grid_content_edge == containing_block_context::content_baseline_edge::end && has_used_height)
 	{
 		for (const auto& line : m_lines)
 		{
@@ -459,6 +461,7 @@ std::optional<litehtml::pixel_t> litehtml::render_item_flex::find_layout_baselin
 
 litehtml::pixel_t litehtml::render_item_flex::get_first_baseline()
 {
+	if (css().has_layout_containment()) return height() - margin_bottom();
 	if(css().get_flex_direction() == flex_direction_row || css().get_flex_direction() == flex_direction_row_reverse)
 	{
 		if(!m_lines.empty())
@@ -486,6 +489,7 @@ litehtml::pixel_t litehtml::render_item_flex::get_first_baseline()
 
 litehtml::pixel_t litehtml::render_item_flex::get_last_baseline()
 {
+	if (css().has_layout_containment()) return height() - margin_bottom();
 	if(css().get_flex_direction() == flex_direction_row || css().get_flex_direction() == flex_direction_row_reverse)
 	{
 		if(!m_lines.empty())

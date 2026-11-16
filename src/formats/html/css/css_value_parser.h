@@ -1,6 +1,6 @@
 #pragma once
 
-#include "css_property_value.h"
+#include "css_declarations.h"
 #include "css_value_helpers.h"
 
 namespace litehtml {
@@ -13,8 +13,10 @@ namespace litehtml {
 		void add_parsed_property(string_id name, property_value value) {
 			properties.insert_or_assign(name, std::move(value));
 		}
-		void parse_box(string_id name, const css_token_vector& value, bool important);
+		void parse_box(string_id name, const css_token_vector& value, const string& baseurl, bool important);
 		void parse_background_and_border(string_id name, const css_token_vector& value, const string& baseurl,
+			bool important, document_container* container);
+		void parse_mask(string_id name, const css_token_vector& tokens, const string& baseurl,
 			bool important, document_container* container);
 		void parse_text(string_id name, const css_token_vector& value, bool important, document_container* container);
 		void parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important);
@@ -86,5 +88,4 @@ namespace litehtml {
 		add_parsed_property(string_id(top + 3), property_value(values[count == 4 ? 3 : count > 1 ? 1 : 0], important));
 	}
 
-	const vector<string_id>& css_longhands(string_id name);
 }

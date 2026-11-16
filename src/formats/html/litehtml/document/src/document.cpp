@@ -1,3 +1,5 @@
+#include <iterator>
+
 #include "html.h"
 #include "formats/html/css/css_units.h"
 #include "formats/html/backend/litehtml_document_adapter.h"
@@ -253,7 +255,16 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 			for (unsigned int i = 0; i < node->v.element.attributes.length; i++)
 			{
 				attr = (GumboAttribute*)node->v.element.attributes.data[i];
-				attrs[attr->name] = attr->value;
+				if (attr->attr_namespace == GUMBO_ATTR_NAMESPACE_XLINK || attr->attr_namespace == GUMBO_ATTR_NAMESPACE_XML)
+				{
+					const char* prefix = attr->attr_namespace == GUMBO_ATTR_NAMESPACE_XLINK ? "xlink:" : "xml:";
+					attrs[std::string(prefix) + attr->name] = attr->value;
+					attrs.try_emplace(attr->name, attr->value);
+				}
+				else
+				{
+					attrs[attr->name] = attr->value;
+				}
 			}
 
 
@@ -533,18 +544,93 @@ namespace {
 	}
 }
 
+media_features document::get_viewport_unit_features() const
+{
+	auto features = m_media;
+	if (m_viewport_unit_size.width > 0 && m_viewport_unit_size.height > 0) {
+		features.width = m_viewport_unit_size.width;
+		features.height = m_viewport_unit_size.height;
+	}
+	return features;
+}
+
+std::optional<pixel_t> document::find_container_unit_basis(const element& subject, bool block_axis, bool include_subject) const
+{
+	auto candidate = include_subject ? subject.shared_from_this() : subject.parent();
+	for (; candidate; candidate = candidate->parent())
+	{
+		const auto type = candidate->css().get_container_type();
+		if (type == container_type::normal || (block_axis && type != container_type::size)) continue;
+		const auto found = m_query_container_sizes.find(candidate.get());
+		if (found != m_query_container_sizes.end() && candidate->css().establishes_query_container_context())
+			return found->second[block_axis ? 1 : 0];
+	}
+	return std::nullopt;
+}
+
+std::optional<pixel_t> document::resolve_container_unit(const element& subject, bool block_axis, bool include_subject)
+{
+	m_uses_container_units = true;
+	return find_container_unit_basis(subject, block_axis, include_subject);
+}
+
+bool document::matches_container_query(const container_query& query, const element& subject, bool include_subject) const
+{
+	const auto viewport = get_viewport_unit_features();
+	const auto matches = [&](const container_condition& condition) {
+		if (condition.axes & query_unknown) return false;
+		auto candidate = include_subject ? subject.shared_from_this() : subject.parent();
+		for (; candidate; candidate = candidate->parent())
+		{
+			const auto& css = candidate->css();
+			const auto& names = css.get_container_names();
+			if (!condition.name.empty() && std::find(names.begin(), names.end(), condition.name) == names.end()) continue;
+			if (!condition.condition) return true;
+			media_features content;
+			if (condition.axes != 0) {
+				const auto type = css.get_container_type();
+				if (type == container_type::normal || (type == container_type::inline_size && (condition.axes & query_block))) continue;
+				const auto found = m_query_container_sizes.find(candidate.get());
+				if (!css.establishes_query_container_context() || found == m_query_container_sizes.end()) return false;
+				content.width = found->second[0];
+				content.height = found->second[1];
+			}
+			auto font = css.get_font_metrics();
+			font.line_height = css.line_height().computed_value;
+			struct QuerySubject {
+				const document& doc;
+				const element& container;
+			};
+			const QuerySubject query_subject{*this, *candidate};
+			const css_container_units units{&query_subject, [](const void* value, bool block_axis) {
+				const auto& target = *static_cast<const QuerySubject*>(value);
+				return target.doc.find_container_unit_basis(target.container, block_axis, false);
+			}};
+			const query_length_environment lengths{font, {nullptr, &viewport, units}, dynamic_cast<const html_tag*>(candidate.get())};
+			return condition.condition->check(content, &lengths) == True;
+		}
+		return false;
+	};
+	for (auto* rule = &query; rule; rule = rule->parent.get())
+		if (!std::any_of(rule->conditions.begin(), rule->conditions.end(), matches)) return false;
+	return true;
+}
+
 pixel_t document::to_pixels(const css_length& val, const font_metrics& metrics, pixel_t size,
 	css_length_context context) const
 {
-	const auto& viewport = context.viewport ? *context.viewport : m_media;
+	const auto viewport = context.viewport ? *context.viewport : get_viewport_unit_features();
 	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
-	return docrender::css::length_to_pixels(val, metrics, size, {viewport, root, m_container, css_points_to_pixels});
+	return docrender::css::length_to_pixels(val, metrics, size,
+		{viewport, root, m_container, css_points_to_pixels, context.container_units});
 }
 
-void document::cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const
+void document::cvt_units(css_length& val, const font_metrics& metrics, pixel_t size, css_length_context context) const
 {
-	const auto& root = m_root ? m_root->css().get_font_metrics() : metrics;
-	docrender::css::compute_length(val, metrics, size, {m_media, root, m_container, css_points_to_pixels});
+	const auto viewport = context.viewport ? *context.viewport : get_viewport_unit_features();
+	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
+	docrender::css::compute_length(val, metrics, size,
+		{viewport, root, m_container, css_points_to_pixels, context.container_units});
 }
 
 pixel_t document::width() const
@@ -568,7 +654,7 @@ void document::append_document_stylesheets()
 			media = make_shared<media_query_list_list>();
 			media->add(parse_media_query_list(sheet.media, doc));
 		}
-		m_styles.parse_css_stylesheet(sheet.text, sheet.baseurl, doc, media);
+		m_styles.parse_css_stylesheet(sheet.text, sheet.baseurl, doc, media, 0, sheet.scope_root);
 	}
 }
 
@@ -593,11 +679,11 @@ void document::apply_author_styles(element& root)
 	visit_tags(visit_tags, root, [](html_tag& tag) { tag.apply_inline_style(); });
 }
 
-void document::add_stylesheet( const char* str, const char* baseurl, const char* media )
+void document::add_stylesheet(const char* str, const char* baseurl, const char* media, const element* scope_root)
 {
 	if(str && str[0])
 	{
-		m_css.emplace_back(str, baseurl, media);
+		m_css.emplace_back(str, baseurl, media, scope_root);
 	}
 }
 
@@ -1094,9 +1180,10 @@ void document::append_children_from_string(element& parent, const char* str, boo
 	if (replace_existing)
 	{
 		parent.clearRecursive();
-		parent_render->children().clear();
+		if (parent_render) parent_render->children().clear();
 	}
 
+	const auto previous_count = parent_render ? parent_render->children().size() : 0;
 	// Let's process created elements tree
 	for (const auto& child : child_elements)
 	{
@@ -1118,13 +1205,14 @@ void document::append_children_from_string(element& parent, const char* str, boo
 		// Finally initialize elements
 		if(parent_render)
 		{
-			auto child_render = child->create_render_item(parent_render);
-			if (child_render)
-			{
-				child_render = child_render->init();
-				parent_render->add_child(child_render);
-			}
+			child->append_render_items(parent_render);
 		}
+	}
+	if (parent_render)
+	{
+		auto& children = parent_render->children();
+		for (auto it = std::next(children.begin(), previous_count); it != children.end(); ++it)
+			*it = (*it)->init();
 	}
 	// Now the m_tabular_elements is filled with tabular elements.
 	// We have to check the tabular elements for missing table elements

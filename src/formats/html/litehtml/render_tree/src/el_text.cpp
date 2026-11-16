@@ -35,6 +35,7 @@ void litehtml::el_text::compute_styles(bool /*recursive*/)
 		css_w().line_height_w() = el_parent->css().line_height();
 		css_w().set_font(el_parent->css().get_font());
 		css_w().set_font_metrics(el_parent->css().get_font_metrics());
+		css_w().set_visibility(el_parent->css().get_visibility());
 		css_w().copy_white_space(el_parent->css());
 		css_w().set_text_transform(el_parent->css().get_text_transform());
 	}

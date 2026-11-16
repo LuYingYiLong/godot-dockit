@@ -11,10 +11,76 @@
 #include <cmath>
 #include <litehtml/document.h>
 #include <litehtml/document_container.h>
+#include <litehtml/html_tag.h>
+#include "css_variables.h"
 
 
 namespace litehtml
 {
+
+namespace {
+
+std::optional<css_token_vector> read_custom_value(const html_tag* tag, string_id name)
+{
+	css_token_vector tokens;
+	if (tag && tag->get_custom_property(name, tokens)) return tokens;
+	return std::nullopt;
+}
+
+std::optional<css_token_vector> substitute_query_variables(const css_token_vector& tokens, const html_tag& container)
+{
+	const css_inherited_variable read = [&](string_id name, css_token_vector& value) {
+		return container.get_custom_property(name, value);
+	};
+	const css_custom_rollback keep = [](string_id, const property_value& value, css_wide_keyword) -> const property_value& {
+		return value;
+	};
+	return css_variable_resolver(read, {}, keep).substitute(tokens);
+}
+
+bool equal_custom_tokens(const css_token_vector& a, const css_token_vector& b)
+{
+	if (a.size() != b.size()) return false;
+	for (size_t i = 0; i < a.size(); ++i) {
+		const auto& left = a[i];
+		const auto& right = b[i];
+		if (left.type != right.type || left.str != right.str ||
+			(i != 0 && left.preceded_by_space != right.preceded_by_space)) return false;
+		if (is_one_of(left.type, NUMBER, DIMENSION, PERCENTAGE) &&
+			(left.n.number != right.n.number || left.n.number_type != right.n.number_type)) return false;
+		if (left.type == HASH && left.hash_type != right.hash_type) return false;
+		if (left.is_component_value() && !equal_custom_tokens(left.value, right.value)) return false;
+	}
+	return true;
+}
+
+} // namespace
+
+bool style_query_feature::check(const html_tag& container) const
+{
+	const auto actual = read_custom_value(&container, name);
+	if (!value) return actual.has_value();
+
+	auto expected = substitute_query_variables(*value, container);
+	if (expected) {
+		switch (read_css_wide_keyword(*expected)) {
+		case css_wide_keyword::revert:
+		case css_wide_keyword::revert_layer:
+			return false;
+		case css_wide_keyword::initial:
+			expected.reset();
+			break;
+		case css_wide_keyword::inherit:
+		case css_wide_keyword::unset:
+			expected = read_custom_value(dynamic_cast<const html_tag*>(container.parent().get()), name);
+			break;
+		default:
+			break;
+		}
+	}
+	if (!expected || !actual) return expected.has_value() == actual.has_value();
+	return equal_custom_tokens(*actual, *expected);
+}
 
 bool eval_op(float x, short op, float value)
 {
@@ -37,31 +103,33 @@ bool eval_op(float x, short op, float value)
 	}
 }
 
-bool media_feature::compare(float x, const media_features& features) const
+trilean media_feature::compare(float x, const media_features& features, const query_length_environment* lengths) const
 {
-	const auto doc = length_document.lock();
-	if (length && !doc) return false;
-	const css_length_context context{ &length_font, &features };
-	const auto first = length ? doc->to_pixels(*length, length_font, 0, context) : value;
-	if (!op2) return eval_op(x, op, first);
-	const auto second = length2 ? doc->to_pixels(*length2, length_font, 0, context) : value2;
-	return eval_op(first, op, x) && eval_op(x, op2, second);
+	const auto lower = resolve_threshold(first, features, lengths);
+	if (!lower) return Unknown;
+	if (!op2) return static_cast<trilean>(eval_op(x, op, *lower));
+	const auto upper = resolve_threshold(second, features, lengths);
+	if (!upper) return Unknown;
+	return static_cast<trilean>(eval_op(*lower, op, x) && eval_op(x, op2, *upper));
 }
 
-bool media_feature::check(const media_features& feat) const
+trilean media_feature::check(const media_features& feat, const query_length_environment* lengths) const
 {
+	const auto matches = [&](float value) { return compare(value, feat, lengths); };
+	if (name == "inline-size") return matches(feat.width);
+	if (name == "block-size") return matches(feat.height);
 	switch (_id(name))
 	{
 	case _width_:
-		return compare(feat.width, feat);
+		return matches(feat.width);
 	case _height_:
-		return compare(feat.height, feat);
+		return matches(feat.height);
 	case _device_width_:
-		return compare(feat.device_width, feat);
+		return matches(feat.device_width);
 	case _device_height_:
-		return compare(feat.device_height, feat);
+		return matches(feat.device_height);
 	case _orientation_:
-		return compare(feat.height >= feat.width ? _portrait_ : _landscape_, feat);
+		return matches(feat.height >= feat.width ? _portrait_ : _landscape_);
 	case _aspect_ratio_:
 		// The standard calls 1/0 "a degenerate ratio" https://drafts.csswg.org/css-values-4/#ratio-value,
 		// but it doesn't specify exactly how it behaves in this context: https://drafts.csswg.org/mediaqueries-5/#aspect-ratio.
@@ -69,27 +137,27 @@ bool media_feature::check(const media_features& feat) const
 		// (aspect-ratio < 1/0) evaluates to true. But they behave the same for 0/0, which is unexpected
 		// (0/0 is NaN, so any comparisons should evaluate to false).
 		// 0/1 is also degenerate according to the standard.
-		return feat.height != 0 ? compare(float(feat.width) / feat.height, feat) : false;
+		return feat.height != 0 ? matches(float(feat.width) / feat.height) : False;
 	case _device_aspect_ratio_:
-		return feat.device_height != 0 ? compare(float(feat.device_width) / feat.device_height, feat) : false;
+		return feat.device_height != 0 ? matches(float(feat.device_width) / feat.device_height) : False;
 	case _color_:
-		return compare(feat.color, feat);
+		return matches(feat.color);
 	case _color_index_:
-		return compare(feat.color_index, feat);
+		return matches(feat.color_index);
 	case _monochrome_:
-		return compare(feat.monochrome, feat);
+		return matches(feat.monochrome);
 	case _resolution_:
-		return compare(feat.resolution, feat);
+		return matches(feat.resolution);
 	default:
 		assert(0); // must never happen, unknown media features are handled in parse_media_feature
-		return false;
+		return False;
 	}
 }
 
-trilean media_condition::check(const media_features& features) const
+trilean media_condition::check(const media_features& features, const query_length_environment* lengths) const
 {
 	if (op == _not_)
-		return not m_conditions[0].check(features);
+		return not m_conditions[0].check(features, lengths);
 
 	if (op == _and_)
 	{
@@ -100,7 +168,7 @@ trilean media_condition::check(const media_features& features) const
 		trilean result = True;
 		for (const auto& condition : m_conditions)
 		{
-			result = result && condition.check(features);
+			result = result && condition.check(features, lengths);
 			if (result == False) return result; // no need to check further
 		}
 		return result;
@@ -113,7 +181,7 @@ trilean media_condition::check(const media_features& features) const
 		trilean result = False;
 		for (const auto& condition : m_conditions)
 		{
-			result = result || condition.check(features);
+			result = result || condition.check(features, lengths);
 			if (result == True) return result; // no need to check further
 		}
 		return result;
@@ -121,10 +189,12 @@ trilean media_condition::check(const media_features& features) const
 	return False;
 }
 
-trilean media_in_parens::check(const media_features& features) const
+trilean media_in_parens::check(const media_features& features, const query_length_environment* lengths) const
 {
-	if (is<media_condition>()) return get<media_condition>().check(features);
-	if (is<media_feature>()) return (trilean)get<media_feature>().check(features);
+	if (is<media_condition>()) return get<media_condition>().check(features, lengths);
+	if (is<media_feature>()) return get<media_feature>().check(features, lengths);
+	if (is<style_query_feature>() && lengths && lengths->container)
+		return (trilean)get<style_query_feature>().check(*lengths->container);
 	// <general-enclosed>  https://drafts.csswg.org/mediaqueries/#evaluating
 	return Unknown;
 }
@@ -231,7 +301,10 @@ media_query_list parse_media_query_list(const string& str, shared_ptr<document> 
 	return parse_media_query_list(tokens, doc);
 }
 
-bool parse_media_condition(const css_token_vector& tokens, int& index, bool or_allowed, media_condition& condition, document::ptr doc);
+enum class condition_grammar { media, container, style };
+
+bool parse_media_condition(const css_token_vector& tokens, int& index, bool or_allowed, media_condition& condition,
+	document::ptr doc, condition_grammar grammar = condition_grammar::media);
 
 // <media-query> = <media-condition> | [ not | only ]? <media-type> [ and <media-condition-without-or> ]?
 bool parse_media_query(const css_token_vector& tokens, media_query& mquery, document::ptr doc)
@@ -275,24 +348,25 @@ bool parse_media_query(const css_token_vector& tokens, media_query& mquery, docu
 	return true;
 }
 
-bool parse_media_in_parens(const css_token& token, media_in_parens& media_in_parens, document::ptr doc);
+bool parse_media_in_parens(const css_token& token, media_in_parens& media_in_parens, document::ptr doc, condition_grammar grammar);
 
 // <media-condition>            = <media-not> | <media-in-parens> [ <media-and>* | <media-or>* ]
 // <media-condition-without-or> = <media-not> | <media-in-parens> <media-and>*
 // <media-not> = not <media-in-parens>
-bool parse_media_condition(const css_token_vector& tokens, int& index, bool _or_allowed, media_condition& condition, document::ptr doc)
+bool parse_media_condition(const css_token_vector& tokens, int& index, bool _or_allowed, media_condition& condition,
+	document::ptr doc, condition_grammar grammar)
 {
 	media_in_parens media_in_parens;
 	if (at(tokens, index).ident() == "not")
 	{
-		if (!parse_media_in_parens(at(tokens, index + 1), media_in_parens, doc)) return false;
+		if (!parse_media_in_parens(at(tokens, index + 1), media_in_parens, doc, grammar)) return false;
 		condition.op = _not_;
 		condition.m_conditions = {media_in_parens};
 		index += 2;
 		return true;
 	}
 
-	if (!parse_media_in_parens(at(tokens, index), media_in_parens, doc)) return false;
+	if (!parse_media_in_parens(at(tokens, index), media_in_parens, doc, grammar)) return false;
 	condition.m_conditions = {media_in_parens};
 	index++;
 
@@ -306,13 +380,13 @@ bool parse_media_condition(const css_token_vector& tokens, int& index, bool _or_
 		else return true;
 		index++;
 
-		if (!parse_media_in_parens(at(tokens, index), media_in_parens, doc)) return false;
+		if (!parse_media_in_parens(at(tokens, index), media_in_parens, doc, grammar)) return false;
 		condition.m_conditions.push_back(media_in_parens);
 		index++;
 	}
 }
 
-bool parse_media_feature(const css_token& token, media_feature& media_feature, document::ptr doc);
+bool parse_media_feature(const css_token& token, media_feature& media_feature, document::ptr doc, bool container);
 
 bool matches_media_condition(const css_token_vector& tokens, const document::ptr& doc, const media_features& features)
 {
@@ -323,16 +397,92 @@ bool matches_media_condition(const css_token_vector& tokens, const document::ptr
 		index == static_cast<int>(normalized.size()) && condition.check(features) == True;
 }
 
+bool is_container_name(const css_token& token)
+{
+	return token.type == IDENT && !is_one_of(token.ident(), "none", "and", "not", "or",
+		"default", "inherit", "initial", "unset", "revert", "revert-layer");
+}
+
+static unsigned required_query_axes(const media_condition& condition)
+{
+	unsigned axes = 0;
+	for (const auto& part : condition.m_conditions)
+	{
+		if (part.is<media_condition>()) axes |= required_query_axes(part.get<media_condition>());
+		else if (part.is<unknown>()) axes |= query_unknown;
+		else if (part.is<media_feature>())
+		{
+			const auto& name = part.get<media_feature>().name;
+			if (is_one_of(name, "width", "inline-size")) axes |= query_inline;
+			else if (is_one_of(name, "height", "block-size")) axes |= query_block;
+			else axes |= query_inline | query_block;
+		}
+	}
+	return axes;
+}
+
+std::optional<vector<container_condition>> parse_container_conditions(const css_token_vector& input, const document::ptr& doc)
+{
+	const auto lists = parse_comma_separated_list(normalize_media_tokens(input));
+	vector<container_condition> conditions;
+	for (const auto& tokens : lists)
+	{
+		if (tokens.empty()) return std::nullopt;
+		container_condition entry;
+		int index = 0;
+		if (is_container_name(tokens.front())) entry.name = tokens[index++].name;
+		const auto end = static_cast<int>(tokens.size());
+		if (index != end)
+		{
+			entry.condition.emplace();
+			if (!parse_media_condition(tokens, index, true, *entry.condition, doc, condition_grammar::container) || index != end)
+				return std::nullopt;
+			entry.axes = required_query_axes(*entry.condition);
+		}
+		conditions.push_back(std::move(entry));
+	}
+	if (conditions.empty()) return std::nullopt;
+	return conditions;
+}
+
+static std::optional<style_query_feature> parse_style_feature(const css_token_vector& tokens)
+{
+	if (tokens.empty() || tokens.front().type != IDENT) return {};
+	const auto& name = tokens.front().name;
+	if (name.size() <= 2 || name.compare(0, 2, "--") != 0) return {};
+	if (tokens.size() == 1) return style_query_feature{_id(name), std::nullopt};
+	if (tokens[1].ch != ':') return {};
+	auto declaration = css_parser(tokens).consume_declaration();
+	const auto& value = declaration.value;
+	if ((!value.empty() && !is_declaration_value(value)) ||
+		std::any_of(value.begin(), value.end(), [](const css_token& token) { return is_one_of(token.ch, '<', '>', '='); }) ||
+		inspect_css_variables(value) == css_variable_syntax::invalid) return {};
+	return style_query_feature{_id(name), std::move(declaration.value)};
+}
+
 // https://drafts.csswg.org/mediaqueries-5/#typedef-media-in-parens
 // <media-in-parens> = ( <media-condition> ) | <media-feature> | <general-enclosed>
 // <general-enclosed> = [ <function-token> <any-value>? ) ] | [ ( <any-value>? ) ]
-bool parse_media_in_parens(const css_token& token, media_in_parens& media_in_parens, document::ptr doc)
+bool parse_media_in_parens(const css_token& token, media_in_parens& result, document::ptr doc, condition_grammar grammar)
 {
 	if (token.type == CV_FUNCTION)
 	{
 		if (!token.value.empty() && !is_any_value(token.value))
 			return false;
-		media_in_parens = unknown();
+		if (grammar == condition_grammar::container && lowcase(token.name) == "style") {
+			if (auto feature = parse_style_feature(token.value)) {
+				result = std::move(*feature);
+				return true;
+			}
+			int index = 0;
+			media_condition condition;
+			if (parse_media_condition(token.value, index, true, condition, doc, condition_grammar::style) &&
+				index == static_cast<int>(token.value.size())) {
+				result = std::move(condition);
+				return true;
+			}
+		}
+		result = unknown();
 		return true;
 	}
 
@@ -341,20 +491,29 @@ bool parse_media_in_parens(const css_token& token, media_in_parens& media_in_par
 
 	int index = 0;
 	media_condition condition;
-	media_feature media_feature;
-	if (parse_media_condition(tokens, index, true, condition, doc) && index == (int)tokens.size())
-		media_in_parens = condition;
-	else if (parse_media_feature(token, media_feature, doc))
-		media_in_parens = media_feature;
-	else if (!tokens.empty() && !is_any_value(tokens))
-		return false;
-	else
-		media_in_parens = unknown();
+	if (parse_media_condition(tokens, index, true, condition, doc, grammar) && index == static_cast<int>(tokens.size())) {
+		result = std::move(condition);
+		return true;
+	}
+	if (grammar == condition_grammar::style) {
+		if (auto feature = parse_style_feature(tokens)) {
+			result = std::move(*feature);
+			return true;
+		}
+	} else {
+		media_feature feature;
+		if (parse_media_feature(token, feature, doc, grammar == condition_grammar::container)) {
+			result = std::move(feature);
+			return true;
+		}
+	}
+	if (!tokens.empty() && !is_any_value(tokens)) return false;
+	result = unknown();
 	return true;
 }
 
 bool parse_mf_value(const css_token_vector& tokens, int& index, css_token val[2]);
-bool parse_mf_range(const css_token_vector& tokens, media_feature& media_feature, document::ptr doc);
+bool parse_mf_range(const css_token_vector& tokens, media_feature& media_feature, document::ptr doc, bool container);
 
 // https://drafts.csswg.org/mediaqueries/#mq-ranges
 // Every media feature defines its “type” as either “range” or “discrete” in its definition table.
@@ -373,7 +532,16 @@ struct mf_info
 	operator bool() { return type != empty_id; }
 };
 
-std::map<string, mf_info> supported_media_features =
+static const std::map<string, mf_info> container_features = {
+	{ "width", { _range_, _length_ } },
+	{ "height", { _range_, _length_ } },
+	{ "inline-size", { _range_, _length_ } },
+	{ "block-size", { _range_, _length_ } },
+	{ "aspect-ratio", { _range_, _ratio_ } },
+	{ "orientation", { _discrete_, _keyword_, { _portrait_, _landscape_ } } },
+};
+
+static const std::map<string, mf_info> supported_media_features =
 {
 	////////////////////////////////////////////////
 	// 4. Viewport/Page Dimensions Media Features
@@ -425,68 +593,99 @@ std::map<string, mf_info> supported_media_features =
 	{"device-aspect-ratio", {_range_, _ratio_}},
 };
 
-bool convert_units(mf_info mfi, css_token val[2], std::optional<css_length>& length)
+static std::optional<media_feature::threshold> parse_threshold(const mf_info& info, const css_token val[2], bool defer_variables)
 {
-	switch (mfi.value_type)
+	if (defer_variables) {
+		css_token_vector tokens{val[0]};
+		if (val[1].type != 0) {
+			if (info.value_type != _ratio_) return std::nullopt;
+			tokens.emplace_back(static_cast<css_token_type>('/'));
+			tokens.push_back(val[1]);
+		}
+		const auto variables = inspect_css_variables(tokens);
+		if (variables == css_variable_syntax::valid) return media_feature::threshold(std::move(tokens));
+		if (variables == css_variable_syntax::invalid) return std::nullopt;
+	}
+
+	switch (info.value_type)
 	{
 	case _integer_:
-		// nothing to convert, just verify
-		return val[0].type == NUMBER && val[0].n.number_type == css_number_integer && val[1].type == 0;
+		if (val[0].type == NUMBER && val[0].n.number_type == css_number_integer && val[1].type == 0)
+			return val[0].n.number;
+		break;
 
 	case _length_:
 	{
-		if (val[1].type != 0) return false;
+		if (val[1].type != 0) break;
 		css_length parsed;
-		if (!parsed.from_token(val[0], f_length | f_math) || !std::isfinite(parsed.val())) return false;
-		length = std::move(parsed);
-		return true;
+		if (parsed.from_token(val[0], f_length | f_math) && std::isfinite(parsed.val())) return parsed;
+		break;
 	}
 
 	case _resolution_: // https://drafts.csswg.org/css-values-4/#resolution
-		if (val[1].type != 0) return false;
+		if (val[1].type != 0) break;
 		if (const auto resolution = parse_css_resolution(val[0]))
-		{
-			val[0] = css_token(NUMBER, static_cast<float>(*resolution * CSS_DPI_PER_DPPX), css_number_number);
-			return true;
-		}
-		if (val[0].ident() == "infinite")
-		{
-			val[0] = css_token(NUMBER, INFINITY, css_number_number);
-			return true;
-		}
-		return false;
+			return static_cast<float>(*resolution * CSS_DPI_PER_DPPX);
+		if (val[0].ident() == "infinite") return static_cast<float>(INFINITY);
+		break;
 
 	case _ratio_: // https://drafts.csswg.org/css-values-4/#ratio  <ratio> = <number [0,∞]> [ / <number [0,∞]> ]?
-		if (val[0].type == NUMBER && val[0].n.number >= 0 &&
-			((val[1].type == NUMBER && val[1].n.number >= 0) || val[1].type == 0))
-		{
-			if (val[1].type == NUMBER)
-				val[0].n.number /= val[1].n.number; // Note: val[1].n.number may be 0, so result may be inf
-			return true;
-		}
-		return false;
+	{
+		const auto number = [](const css_token& token) -> std::optional<double> {
+			if (token.type == NUMBER) return token.n.number;
+			return evaluate_css_scalar_math(token, css_math_scalar::number);
+		};
+		const auto numerator = number(val[0]);
+		const auto denominator = val[1].type == 0 ? std::optional(1.0) : number(val[1]);
+		if (numerator && denominator && *numerator >= 0 && *denominator >= 0)
+			return static_cast<float>(*numerator / *denominator); // A zero denominator can produce an infinite ratio.
+		break;
+	}
 
 	case _keyword_:
 	{
-		if (val[1].type != 0) return false;
-		string_id ident = _id(val[0].ident());
-		if (!contains(mfi.keywords, ident)) return false;
-		val[0] = css_token(NUMBER, (float)ident);
-		return true;
+		const auto ident = _id(val[0].ident());
+		if (val[1].type == 0 && contains(info.keywords, ident)) return static_cast<float>(ident);
+		break;
 	}
 
 	default:
-		return false;
+		break;
 	}
+	return std::nullopt;
+}
+
+std::optional<float> media_feature::resolve_threshold(const threshold& value, const media_features& features,
+	const query_length_environment* lengths) const
+{
+	if (value.is<float>()) return value.get<float>();
+	const auto doc = length_document.lock();
+	if (!doc) return std::nullopt;
+	const css_length_context context = lengths ? lengths->units : css_length_context{ &length_font, &features };
+	const auto& font = lengths ? lengths->font : length_font;
+	if (value.is<css_length>()) return doc->to_pixels(value.get<css_length>(), font, 0, context);
+	if (!lengths || !lengths->container) return std::nullopt;
+
+	const auto substituted = substitute_query_variables(value.get<css_token_vector>(), *lengths->container);
+	if (!substituted) return std::nullopt;
+	int index = 0;
+	css_token tokens[2];
+	if (!parse_mf_value(*substituted, index, tokens) || index != static_cast<int>(substituted->size())) return std::nullopt;
+	const auto parsed = parse_threshold(container_features.at(name), tokens, false);
+	if (!parsed) return std::nullopt;
+	if (parsed->is<css_length>()) return doc->to_pixels(parsed->get<css_length>(), font, 0, context);
+	return parsed->get<float>();
 }
 
 bool media_feature::verify_and_convert_units(string_id syntax,
-	css_token val[2], css_token val2[2], document::ptr doc)
+	css_token val[2], css_token val2[2], document::ptr doc, bool container)
 {
-	const auto convert = [&](mf_info info, css_token tokens[2], float& scalar, std::optional<css_length>& size)
+	const auto& features = container ? container_features : supported_media_features;
+	const auto convert = [&](const mf_info& info, const css_token tokens[2], threshold& target)
 	{
-		if (!convert_units(info, tokens, size)) return false;
-		if (size)
+		auto parsed = parse_threshold(info, tokens, container);
+		if (!parsed) return false;
+		if (!parsed->is<float>())
 		{
 			if (!doc) return false;
 			if (length_document.expired())
@@ -495,10 +694,7 @@ bool media_feature::verify_and_convert_units(string_id syntax,
 				length_font = doc->initial_font_metrics();
 			}
 		}
-		else
-		{
-			scalar = tokens[0].n.number;
-		}
+		target = std::move(*parsed);
 		return true;
 	};
 
@@ -506,9 +702,9 @@ bool media_feature::verify_and_convert_units(string_id syntax,
 	if (syntax == _boolean_) // (name)
 	{
 		// Attempting to evaluate a min/max prefixed media feature in a boolean context is invalid and a syntax error.
-		auto mf_info = at(supported_media_features, name);
+		auto mf_info = at(features, name);
 		if (!mf_info) return false;
-		value = mf_info.value_type == _keyword_ ? (float)_none_ : 0;
+		first = mf_info.value_type == _keyword_ ? static_cast<float>(_none_) : 0.0f;
 		op = u'≠';
 		return true;
 	}
@@ -517,10 +713,10 @@ bool media_feature::verify_and_convert_units(string_id syntax,
 		if (is_one_of(name.substr(0, 4), "min-", "max-"))
 		{
 			string real_name = name.substr(4);
-			auto mf_info = at(supported_media_features, real_name);
+			auto mf_info = at(features, real_name);
 			if (!mf_info || mf_info.type == _discrete_)
 				return false;
-			if (!convert(mf_info, val, value, length))
+			if (!convert(mf_info, val, first))
 				return false;
 			op = name.substr(0, 4) == "min-" ? u'⩾' : u'⩽';
 			name = real_name;
@@ -528,9 +724,9 @@ bool media_feature::verify_and_convert_units(string_id syntax,
 		}
 		else
 		{
-			auto mf_info = at(supported_media_features, name);
+			auto mf_info = at(features, name);
 			if (!mf_info) return false;
-			if (!convert(mf_info, val, value, length))
+			if (!convert(mf_info, val, first))
 				return false;
 			op = '=';
 			return true;
@@ -538,25 +734,15 @@ bool media_feature::verify_and_convert_units(string_id syntax,
 	}
 	else // range syntax
 	{
-		auto mf_info = at(supported_media_features, name);
+		auto mf_info = at(features, name);
 		if (!mf_info || mf_info.type == _discrete_)
 			return false;
-		//if (val)
-		{
-			if (!convert(mf_info, val, value, length))
-				return false;
-		}
-		if (val2)
-		{
-			if (!convert(mf_info, val2, value2, length2))
-				return false;
-		}
-		return true;
+		return convert(mf_info, val, first) && (!val2 || convert(mf_info, val2, second));
 	}
 }
 
 // <media-feature> = ( [ <mf-plain> | <mf-boolean> | <mf-range> ] )
-bool parse_media_feature(const css_token& token, media_feature& result, document::ptr doc)
+bool parse_media_feature(const css_token& token, media_feature& result, document::ptr doc, bool container)
 {
 	if (token.type != ROUND_BLOCK || token.value.empty()) return false;
 	const css_token_vector& tokens = token.value;
@@ -564,7 +750,7 @@ bool parse_media_feature(const css_token& token, media_feature& result, document
 	if (tokens.size() == 1)
 	{
 		media_feature mf = {tokens[0].ident()};
-		if (!mf.verify_and_convert_units(_boolean_)) return false;
+		if (!mf.verify_and_convert_units(_boolean_, nullptr, nullptr, doc, container)) return false;
 		result = mf;
 		return true;
 	}
@@ -577,12 +763,12 @@ bool parse_media_feature(const css_token& token, media_feature& result, document
 			return false;
 
 		media_feature mf = {tokens[0].ident()};
-		if (!mf.verify_and_convert_units(_plain_, val, nullptr, doc)) return false;
+		if (!mf.verify_and_convert_units(_plain_, val, nullptr, doc, container)) return false;
 		result = mf;
 		return true;
 	}
 
-	return parse_mf_range(tokens, result, doc);
+	return parse_mf_range(tokens, result, doc, container);
 }
 
 // <mf-value> includes math functions that evaluate to a supported feature value.
@@ -595,8 +781,10 @@ bool parse_mf_value(const css_token_vector& tokens, int& index, css_token val[2]
 
 	if (!is_one_of(a.type, NUMBER, DIMENSION, IDENT, CV_FUNCTION)) return false;
 
-	if (a.type == NUMBER && a.n.number >= 0 && b.ch == '/' &&
-		c.type == NUMBER && c.n.number >= 0)
+	const auto ratio_part = [](const css_token& token) {
+		return (token.type == NUMBER && token.n.number >= 0) || token.type == CV_FUNCTION;
+	};
+	if (ratio_part(a) && b.ch == '/' && ratio_part(c))
 	{
 		val[0] = a;
 		val[1] = c;
@@ -605,6 +793,7 @@ bool parse_mf_value(const css_token_vector& tokens, int& index, css_token val[2]
 	else
 	{
 		val[0] = a;
+		val[1] = css_token();
 		index++;
 	}
 	return true;
@@ -627,7 +816,7 @@ short mirror(short op)
 // <mf-gt> = '>' '='?
 // <mf-eq> = '='
 // <mf-comparison> = <mf-lt> | <mf-gt> | <mf-eq>
-bool parse_mf_range(const css_token_vector& tokens, media_feature& result, document::ptr doc)
+bool parse_mf_range(const css_token_vector& tokens, media_feature& result, document::ptr doc, bool container)
 {
 	if (tokens.size() < 3) return false;
 
@@ -687,7 +876,7 @@ bool parse_mf_range(const css_token_vector& tokens, media_feature& result, docum
 	{
 		media_feature mf = {name};
 		mf.op = op;
-		if (!mf.verify_and_convert_units(_range_, val, nullptr, doc)) return false;
+		if (!mf.verify_and_convert_units(_range_, val, nullptr, doc, container)) return false;
 		result = mf;
 		return true;
 	}
@@ -699,7 +888,7 @@ bool parse_mf_range(const css_token_vector& tokens, media_feature& result, docum
 		media_feature mf = {name};
 		mf.op = op;
 		mf.op2 = op2;
-		if (!mf.verify_and_convert_units(_range_, val, val2, doc)) return false;
+		if (!mf.verify_and_convert_units(_range_, val, val2, doc, container)) return false;
 		result = mf;
 		return true;
 	}

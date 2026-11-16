@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 using namespace godot;
@@ -56,6 +58,27 @@ namespace docrender {
 			return count;
 		}
 
+		std::optional<int64_t> length_limit(const char* p_attribute) {
+			if (!p_attribute) return {};
+			std::string_view text(p_attribute);
+			const auto first = text.find_first_not_of(" \t\n\r\f");
+			if (first == std::string_view::npos) return {};
+			text.remove_prefix(first);
+			const bool negative = text.front() == '-';
+			if (negative || text.front() == '+') text.remove_prefix(1);
+			const auto is_digit = [](char p_char) { return p_char >= '0' && p_char <= '9'; };
+			if (text.empty() || !is_digit(text.front())) return {};
+			int64_t limit = 0;
+			for (char character : text) {
+				if (!is_digit(character)) break;
+				const int digit = character - '0';
+				if (negative && digit != 0) return {};
+				if (limit > (std::numeric_limits<int64_t>::max() - digit) / 10) return std::numeric_limits<int64_t>::max();
+				limit = limit * 10 + digit;
+			}
+			return limit;
+		}
+
 		Vector2i utf16_selection(const String& p_value, const Vector2i& p_range) {
 			const int64_t start = std::max(p_range.x, 0);
 			const int64_t end = start + std::max(p_range.y, 0);
@@ -92,6 +115,7 @@ namespace docrender {
 		set_preedit({}, {});
 		set_selection(value.length(), value.length());
 		user_changed = false;
+		last_edit_was_user = false;
 		return true;
 	}
 
@@ -99,6 +123,7 @@ namespace docrender {
 		clear_history();
 		value = p_source.value;
 		dirty_value = p_source.dirty_value;
+		last_edit_was_user = p_preserve_selection && p_source.last_edit_was_user;
 		set_selection(p_preserve_selection ? p_source.anchor : 0, p_preserve_selection ? p_source.caret : 0);
 		if (p_preserve_selection) {
 			history = p_source.history;
@@ -111,6 +136,7 @@ namespace docrender {
 		clear_history();
 		dirty_value = false;
 		user_changed = false;
+		last_edit_was_user = false;
 		value = normalize(p_value);
 		set_preedit({}, {});
 		set_selection(0, 0);
@@ -234,9 +260,8 @@ namespace docrender {
 		const int64_t to = selection_end();
 		const String prefix = value.substr(0, from);
 		const String suffix = value.substr(to);
-		const String max = String::utf8(p_maxlength).strip_edges();
-		if (max.is_valid_int() && max.to_int() >= 0 && !text.is_empty()) {
-			const int64_t limit = max.to_int() - utf16_length(prefix) - utf16_length(suffix);
+		if (const auto max = length_limit(p_maxlength); max && !text.is_empty()) {
+			const int64_t limit = *max - utf16_length(prefix) - utf16_length(suffix);
 			if (utf16_length(text) > limit) {
 				int64_t length = 0;
 				const auto boundaries = breaks(text);
@@ -258,6 +283,7 @@ namespace docrender {
 		value = prefix + text + suffix;
 		dirty_value = true;
 		user_changed = true;
+		last_edit_was_user = true;
 		set_selection(from + text.length(), from + text.length());
 
 		if (!p_merge || history_position == 0 || history_position != history.size()) {
@@ -287,6 +313,7 @@ namespace docrender {
 		set_preedit({}, {});
 		dirty_value = true;
 		user_changed = true;
+		last_edit_was_user = true;
 	}
 
 	bool HTMLTextEditor::undo() {
@@ -346,13 +373,21 @@ namespace docrender {
 		return std::exchange(user_changed, false);
 	}
 
+	bool HTMLTextEditor::has_length_violation(const char* p_minlength, const char* p_maxlength) const {
+		if (!last_edit_was_user || value.is_empty()) return false;
+		const auto min = length_limit(p_minlength);
+		const auto max = length_limit(p_maxlength);
+		if (!min && !max) return false;
+		const int64_t length = utf16_length(value);
+		return (min && length < *min) || (max && length > *max);
+	}
+
 
 	namespace {
 		HTMLInputPaintColors input_paint_colors(const litehtml::html_tag& host) {
-			auto foreground = host.get_selection_color(litehtml::_color_);
-			auto background = host.get_selection_color(litehtml::_background_color_);
-			if (!background && (foreground || host.has_author_selection_style())) background = litehtml::web_color::transparent;
-			return {foreground, background, host.css().get_caret_color().resolve(host.css().get_color())};
+			const auto& color = host.css().get_color();
+			const auto selection = host.get_selection_colors(color);
+			return {selection.foreground, selection.background, host.css().get_caret_color().resolve(color)};
 		}
 
 		litehtml::web_color placeholder_ink(const litehtml::html_tag& host, const css::ComputedStyle* style) {
@@ -648,30 +683,37 @@ namespace docrender {
 		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
 		const css::ComputedStyle& text_style = placeholder_style ? *placeholder_style : p_style;
 		const float height = std::max(1.0f, text_style.line_height().computed_value);
-		const auto overflow = p_style.get_overflow();
+		const auto overflow_x = p_style.get_overflow_x();
+		const auto overflow_y = p_style.get_overflow_y();
 		const auto wrap = p_style.get_text_wrap_mode();
 		const auto align = p_style.get_text_align();
-		const float bar_width = std::min(SCROLLBAR_WIDTH, p_box.size.x);
-		const float bar_height = std::min(SCROLLBAR_WIDTH, p_box.size.y);
+		const auto scrollbar = html_scrollbar_appearance(p_style);
+		const float thickness = scrollbar.thickness(SCROLLBAR_WIDTH);
+		const bool show_scrollbars = thickness > 0;
+		const float bar_width = std::min(thickness, p_box.size.x);
+		const float bar_height = std::min(thickness, p_box.size.y);
 		if (layout_size != p_box.size || layout_font != text_style.get_font() || laid_out_text != display ||
-			layout_line_height != height || layout_wrap != wrap || layout_overflow != overflow ||
-			layout_align != align || layout_resize != p_resize_handle) {
+			layout_line_height != height || layout_wrap != wrap || layout_overflow_x != overflow_x || layout_overflow_y != overflow_y ||
+			layout_scrollbar_width != thickness || layout_align != align || layout_resize != p_resize_handle) {
 			laid_out_text = display;
 			layout_size = p_box.size;
 			layout_font = text_style.get_font();
 			layout_line_height = height;
 			layout_wrap = wrap;
-			layout_overflow = overflow;
+			layout_overflow_x = overflow_x;
+			layout_overflow_y = overflow_y;
+			layout_scrollbar_width = thickness;
 			layout_align = align;
 			layout_resize = p_resize_handle;
 			caret_line_hint.reset();
-			vertical_scrollbar = horizontal_scrollbar = overflow == litehtml::overflow_scroll;
+			horizontal_scrollbar = show_scrollbars && overflow_x == litehtml::overflow_scroll;
+			vertical_scrollbar = show_scrollbars && overflow_y == litehtml::overflow_scroll;
 			for (int pass = 0; pass < 3; ++pass) {
 				const float width = p_box.size.x - (vertical_scrollbar ? bar_width : 0);
 				const float box_height = p_box.size.y - (horizontal_scrollbar ? bar_height : 0);
 				layout_lines(p_container, p_style, display, layout_font, width, height);
-				const bool need_vertical = vertical_scrollbar || (overflow == litehtml::overflow_auto && full_size.y > box_height);
-				const bool need_horizontal = horizontal_scrollbar || (overflow == litehtml::overflow_auto && full_size.x > width);
+				const bool need_vertical = vertical_scrollbar || (show_scrollbars && overflow_y == litehtml::overflow_auto && full_size.y > box_height);
+				const bool need_horizontal = horizontal_scrollbar || (show_scrollbars && overflow_x == litehtml::overflow_auto && full_size.x > width);
 				if (need_vertical == vertical_scrollbar && need_horizontal == horizontal_scrollbar) break;
 				vertical_scrollbar = need_vertical;
 				horizontal_scrollbar = need_horizontal;
@@ -687,6 +729,8 @@ namespace docrender {
 		horizontal_track = horizontal_scrollbar ? Rect2(p_box.position.x, viewport.get_end().y,
 			std::max(0.0f, p_box.size.x - horizontal_corner), bar_height) : Rect2();
 		scroll_limit = (full_size - viewport.size).max(Vector2());
+		if (multiline && !litehtml::is_scrollable_overflow(overflow_x)) scroll_limit.x = 0;
+		if (multiline && !litehtml::is_scrollable_overflow(overflow_y)) scroll_limit.y = 0;
 		scroll = scroll.clamp(Vector2(), scroll_limit);
 
 		const int64_t display_caret = composing ? from + preedit_start : caret;
@@ -731,11 +775,14 @@ namespace docrender {
 				composing ? geometry(from, from + preedit.length()) : PackedVector2Array{},
 				p_focused && caret_visible && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent, colors);
 		}
+		const auto scrollbar_colors = scrollbar.colors.value_or(HTMLScrollbarColors{});
 		for (const bool axis : {false, true}) {
 			const Rect2& track = axis ? vertical_track : horizontal_track;
 			if (!track.has_area()) continue;
-			p_container.draw_input_chrome(p_box, track, Color(0.38f, 0.45f, 0.55f, 0.2f));
-			p_container.draw_input_chrome(p_box, scrollbar_thumb(track, axis).grow(-1), Color(0.38f, 0.45f, 0.55f, 0.7f));
+			p_container.draw_input_chrome(p_box, track, scrollbar_colors.track);
+			const Rect2 thumb = scrollbar_thumb(track, axis);
+			const Rect2 inset = thumb.grow(-1);
+			p_container.draw_input_chrome(p_box, inset.has_area() ? inset : thumb, scrollbar_colors.thumb);
 		}
 	}
 }

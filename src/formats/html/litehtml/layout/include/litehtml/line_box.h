@@ -240,6 +240,7 @@ namespace litehtml
 		std::shared_ptr<render_item> 		get_last_text_part() const;
 		std::shared_ptr<render_item> 		get_first_text_part() const;
 		std::list< std::unique_ptr<line_box_item> >& 	items() { return m_items; }
+		const item_list& items() const { return m_items; }
 	private:
 		struct punctuation_update
 		{

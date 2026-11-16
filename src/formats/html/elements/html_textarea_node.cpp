@@ -86,9 +86,7 @@ namespace docrender {
 	}
 
 	Vector2i HTMLTextAreaNode::resize_axes() const {
-		const auto overflow = css().get_overflow();
-		if (forms::is_disabled(*this) || (overflow != litehtml::overflow_hidden && overflow != litehtml::overflow_auto &&
-			overflow != litehtml::overflow_scroll)) return {};
+		if (forms::is_disabled(*this) || !css().is_scroll_container()) return {};
 		switch (css().get_resize()) {
 			case litehtml::resize_both: return {1, 1};
 			case litehtml::resize_horizontal:

@@ -72,4 +72,11 @@ namespace docrender {
 		const String extension = path.get_extension().to_lower();
 		return litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2") ? path : String();
 	}
+
+	String resolve_html_svg_clip_path(const String& p_url, const String& p_base_dir) {
+		const int64_t fragment = p_url.find("#");
+		if (fragment <= 0 || fragment + 1 == p_url.length()) return {};
+		const String path = resolve_local_path(p_url.substr(0, fragment), p_base_dir);
+		return path.get_extension().nocasecmp_to("svg") == 0 ? path : String();
+	}
 }

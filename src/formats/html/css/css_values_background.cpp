@@ -15,11 +15,60 @@
 namespace litehtml {
 
 static bool parse_bg_image(const css_token& token, image& bg_image, document_container* container);
-static bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size);
+static bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size,
+	bool accept_three = true);
 static bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size);
 static bool parse_border_width(const css_token& token, css_length& width);
 
 namespace {
+	std::optional<css_filter_list> parse_filter(const css_token_vector& p_value, document_container* p_container) {
+		if (p_value.size() == 1 && p_value.front().ident() == "none") return css_filter_list{};
+		if (p_value.empty()) return std::nullopt;
+		constexpr std::string_view names[] = {
+			"grayscale", "sepia", "saturate", "hue-rotate", "invert", "opacity", "brightness", "contrast", "blur", "drop-shadow",
+		};
+		using Type = css_filter_type;
+		css_filter_list result;
+		for (const auto& token : p_value) {
+			if (token.type != CV_FUNCTION) return std::nullopt;
+			const auto name = lowcase(token.name);
+			const auto found = std::find(std::begin(names), std::end(names), name);
+			if (found == std::end(names)) return std::nullopt;
+			css_filter operation{ static_cast<Type>(found - std::begin(names) + 1) };
+			auto args = token.value;
+			args.erase(std::remove_if(args.begin(), args.end(), [](const css_token& arg) { return arg.type == WHITESPACE; }), args.end());
+			if (operation.type == Type::drop_shadow) {
+				std::vector<box_shadow> shadows;
+				if (!parse_text_shadows(args, p_container, shadows) || shadows.size() != 1) return std::nullopt;
+				operation.x = shadows.front().x;
+				operation.y = shadows.front().y;
+				operation.blur = shadows.front().blur;
+				operation.color = shadows.front().color;
+			} else {
+				if (args.size() > 1) return std::nullopt;
+				if (operation.type == Type::blur) {
+					if (!args.empty() && !operation.blur.from_token(args.front(), f_length | f_positive | f_math)) return std::nullopt;
+				} else if (operation.type == Type::hue_rotate) {
+					const auto angle = args.empty() ? std::optional<double>(0.0) : parse_css_angle(args.front(), true);
+					if (!angle) return std::nullopt;
+					operation.amount = *angle;
+				} else if (!args.empty()) {
+					const auto& arg = args.front();
+					const bool computed = arg.type == CV_FUNCTION;
+					std::optional<double> amount = evaluate_css_scalar_math(arg, css_math_scalar::number_or_percentage);
+					if (arg.type == NUMBER || arg.type == PERCENTAGE) amount = arg.n.number / (arg.type == PERCENTAGE ? 100.0 : 1.0);
+					if (!amount || !std::isfinite(*amount) || (*amount < 0 && !computed)) return std::nullopt;
+					operation.amount = std::max(0.0, *amount);
+					if (is_one_of(operation.type, Type::grayscale, Type::sepia, Type::invert, Type::opacity)) {
+						operation.amount = std::min(1.0, operation.amount);
+					}
+				}
+			}
+			result.push_back(std::move(operation));
+		}
+		return result;
+	}
+
 	std::optional<css_image_orientation> parse_image_orientation(const css_token_vector& p_tokens)
 	{
 		using orientation = css_image_orientation;
@@ -94,6 +143,24 @@ namespace {
 void css_value_parser::parse_background_and_border(string_id name, const css_token_vector& value,
 	const string& baseurl, bool important, document_container* container)
 {
+	if (name == _id("background-blend-mode")) {
+		int_vector modes;
+		for (std::size_t i = 0; i < value.size(); ++i) {
+			if (i % 2 == 1) {
+				if (value[i].type != COMMA) return;
+			} else {
+				const int mode = value_index(value[i].ident(), css_blend_mode_keywords);
+				if (mode < 0) return;
+				modes.push_back(mode);
+			}
+		}
+		if (value.size() % 2 == 1) add_parsed_property(name, property_value(modes, important));
+		return;
+	}
+	if (name == _id("filter") || name == _id("backdrop-filter")) {
+		if (auto filter = parse_filter(value, container)) add_parsed_property(name, property_value(std::move(*filter), important));
+		return;
+	}
 	if (is_one_of(name, _id("background-position-inline"), _id("background-position-block"))) {
 		parse_background_position(name, value, important);
 		return;
@@ -142,6 +209,15 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 	}
 	const css_token val = value.size() == 1 ? value[0] : css_token();
 	const auto ident = val.ident();
+	if (name == _id("scrollbar-color")) {
+		if (ident == "auto") add_parsed_property(name, property_value(initial_value{}, important));
+		else if (value.size() == 2) {
+			css_scrollbar_colors colors;
+			if (parse_color(value[0], colors.thumb, container) && parse_color(value[1], colors.track, container))
+				add_parsed_property(name, property_value(std::optional<css_scrollbar_colors>{ colors }, important));
+		}
+		return;
+	}
 	if (name == _id("accent-color") || name == _id("caret-color")) {
 		if (ident == "auto") add_parsed_property(name, property_value(initial_value{}, important));
 		else {
@@ -151,9 +227,14 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 		return;
 	}
 	if (name == _id("opacity")) {
-		if ((val.type == NUMBER || val.type == PERCENTAGE) && std::isfinite(val.n.number))
-			add_parsed_property(name, property_value(static_cast<float>(std::clamp(
-				val.n.number / (val.type == PERCENTAGE ? 100.0 : 1.0), 0.0, 1.0)), important));
+		std::optional<double> opacity;
+		if (val.type == NUMBER || val.type == PERCENTAGE) {
+			opacity = val.type == PERCENTAGE ? val.n.number * 0.01 : val.n.number;
+		} else {
+			opacity = evaluate_css_scalar_math(val, css_math_scalar::number_or_percentage);
+		}
+		if (opacity && !std::isnan(*opacity))
+			add_parsed_property(name, property_value(static_cast<float>(std::clamp(*opacity, 0.0, 1.0)), important));
 		return;
 	}
 	web_color clr[4];
@@ -164,8 +245,6 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 	//  =============================  COLOR  =============================
 
 	case _color_:
-		if (ident == "currentcolor") return add_parsed_property(name, property_value(inherit{}, important));
-		[[fallthrough]];
 	case _background_color_:
 	case _border_top_color_:
 	case _border_bottom_color_:
@@ -240,7 +319,7 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 	case _border_bottom_right_radius_:
 	case _border_top_right_radius_:
 	case _border_top_left_radius_:
-		if (parse_two_lengths(value, len, f_length_percentage | f_positive))
+		if (parse_two_lengths(value, len, f_length_percentage | f_positive | f_math))
 		{
 			const auto& corners = css_longhands(name);
 			add_parsed_property(corners[0], property_value(len[0], important));
@@ -614,6 +693,126 @@ void css_value_parser::parse_background_repeat(string_id name, const css_token_v
 	else add_parsed_property(name, property_value(horizontal, important));
 }
 
+namespace {
+	int parse_mask_box(const css_token& token, bool clip)
+	{
+		const auto keyword = token.ident();
+		if (keyword == "margin-box") return background_box_margin;
+		if (keyword == "no-clip") return clip ? background_box_no_clip : -1;
+		if (keyword == "fill-box") return clip ? background_box_content : background_box_border;
+		if (keyword == "stroke-box" || keyword == "view-box") return background_box_border;
+		return value_index(keyword, background_box_strings);
+	}
+
+	struct MaskLayerValues {
+		image source;
+		css_image_position position{ {}, {} };
+		css_size size{ css_length::predef_value(background_size_auto), css_length::predef_value(background_size_auto) };
+		background_repeat_pair repeat;
+		int origin = background_box_border;
+		int clip = background_box_border;
+		int mode = static_cast<int>(css_mask_mode::match_source);
+		int composite = static_cast<int>(css_mask_composite::add);
+	};
+
+	bool parse_mask_layer(const css_token_vector& tokens, document_container* container, MaskLayerValues& layer)
+	{
+		bool image_found = false, position_found = false, repeat_found = false;
+		bool origin_found = false, clip_found = false, mode_found = false, composite_found = false;
+		for (int index = 0; index < static_cast<int>(tokens.size());) {
+			const auto& token = tokens[index];
+			if (!image_found && parse_bg_image(token, layer.source, container)) {
+				image_found = true;
+			} else if (!position_found && parse_bg_position_size(tokens, index, layer.position, layer.size, false)) {
+				position_found = true;
+				continue;
+			} else if (!repeat_found && parse_repeat_pair(tokens, index, layer.repeat)) {
+				repeat_found = true;
+				continue;
+			} else if (!mode_found && parse_keyword(token, layer.mode, "match-source;alpha;luminance")) {
+				mode_found = true;
+			} else if (!composite_found && parse_keyword(token, layer.composite, "add;subtract;intersect;exclude")) {
+				composite_found = true;
+			} else if (const int origin = parse_mask_box(token, false); !origin_found && origin >= 0) {
+				origin_found = true;
+				layer.origin = origin;
+				if (!clip_found) layer.clip = parse_mask_box(token, true);
+			} else if (const int clip = parse_mask_box(token, true); !clip_found && clip >= 0) {
+				clip_found = true;
+				layer.clip = clip;
+			} else {
+				return false;
+			}
+			++index;
+		}
+		return !tokens.empty();
+	}
+
+	bool parse_mask_longhand(string_id name, const css_token_vector& tokens, document_container* container, MaskLayerValues& layer)
+	{
+		int index = 0;
+		const int count = static_cast<int>(tokens.size());
+		if (name == _id("mask-position")) return parse_image_position(tokens, index, layer.position) && index == count;
+		if (name == _id("mask-size")) return parse_bg_size(tokens, index, layer.size) && index == count;
+		if (name == _id("mask-repeat")) return parse_repeat_pair(tokens, index, layer.repeat) && index == count;
+		if (count != 1) return false;
+		const auto& token = tokens.front();
+		if (name == _id("mask-image")) return parse_bg_image(token, layer.source, container);
+		if (name == _id("mask-mode")) return parse_keyword(token, layer.mode, "match-source;alpha;luminance");
+		if (name == _id("mask-composite")) return parse_keyword(token, layer.composite, "add;subtract;intersect;exclude");
+		const bool clip = name == _id("mask-clip");
+		int& box = clip ? layer.clip : layer.origin;
+		box = parse_mask_box(token, clip);
+		return box >= 0;
+	}
+}
+
+void css_value_parser::parse_mask(string_id name, const css_token_vector& tokens, const string& baseurl,
+	bool important, document_container* container)
+{
+	const auto parts = parse_comma_separated_list(tokens);
+	if (parts.empty()) return;
+
+	const bool shorthand = name == _id("mask");
+	css_mask mask;
+	auto& layers = mask.layers;
+	for (const auto& part : parts) {
+		MaskLayerValues layer;
+		if (shorthand ? !parse_mask_layer(part, container, layer) : !parse_mask_longhand(name, part, container, layer)) return;
+		layers.m_image.push_back(std::move(layer.source));
+		layers.m_position_x.push_back(layer.position.x);
+		layers.m_position_y.push_back(layer.position.y);
+		layers.m_size.push_back(layer.size);
+		layers.m_repeat_x.push_back(layer.repeat.x);
+		layers.m_repeat_y.push_back(layer.repeat.y);
+		layers.m_origin.push_back(layer.origin);
+		layers.m_clip.push_back(layer.clip);
+		mask.modes.push_back(layer.mode);
+		mask.composites.push_back(layer.composite);
+	}
+
+	const auto add = [&](const char* property, auto&& value) {
+		const auto id = _id(property);
+		if (shorthand || id == name) add_parsed_property(id, property_value(std::move(value), important));
+	};
+	add("mask-image", layers.m_image);
+	if (shorthand || name == _id("mask-image"))
+		add_parsed_property(_id("__docrender-mask-image-baseurl"), property_value(baseurl, important));
+	if (shorthand || name == _id("mask-position")) {
+		add_parsed_property(_id("__docrender-mask-position-x"), property_value(std::move(layers.m_position_x), important));
+		add_parsed_property(_id("__docrender-mask-position-y"), property_value(std::move(layers.m_position_y), important));
+	}
+	if (shorthand || name == _id("mask-repeat")) {
+		add_parsed_property(_id("__docrender-mask-repeat-x"), property_value(std::move(layers.m_repeat_x), important));
+		add_parsed_property(_id("__docrender-mask-repeat-y"), property_value(std::move(layers.m_repeat_y), important));
+	}
+	add("mask-size", layers.m_size);
+	add("mask-origin", layers.m_origin);
+	add("mask-clip", layers.m_clip);
+	add("mask-mode", mask.modes);
+	add("mask-composite", mask.composites);
+}
+
 void css_value_parser::parse_background(const css_token_vector& tokens, const string& baseurl, bool important, document_container* container)
 {
 	auto layers = parse_comma_separated_list(tokens);
@@ -655,6 +854,7 @@ void css_value_parser::parse_background(const css_token_vector& tokens, const st
 	add_parsed_property(_background_attachment_,	property_value(attachments, important));
 	add_parsed_property(_background_origin_,		property_value(origins,		important));
 	add_parsed_property(_background_clip_,			property_value(clips,		important));
+	add_parsed_property(_id("background-blend-mode"), property_value(int_vector{}, important));
 }
 
 // https://drafts.csswg.org/css-backgrounds/#typedef-bg-layer
@@ -709,10 +909,11 @@ bool css_value_parser::parse_bg_layer(const css_token_vector& tokens, document_c
 }
 
 // <bg-position> [ / <bg-size> ]?
-bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size)
+bool parse_bg_position_size(const css_token_vector& tokens, int& index, css_image_position& position, css_size& size,
+	bool accept_three)
 {
 	int end = index;
-	if (!parse_image_position(tokens, end, position, true))
+	if (!parse_image_position(tokens, end, position, accept_three))
 		return false;
 
 	if (at(tokens, end).ch == '/' && !parse_bg_size(tokens, ++end, size))

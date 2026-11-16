@@ -4,6 +4,7 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_compute_context.h"
+#include "css_declarations.h"
 #include "css_syntax_util.h"
 
 #include <cmath>
@@ -25,6 +26,20 @@ namespace {
 		return initial;
 	}
 
+	template<class Value, class ReadParent>
+	Value read_flow_property(const ComputeContext& context, css_edge_group kind, size_t side,
+		const Value& initial, bool rtl, const ReadParent& read_parent) {
+		const auto& group = css_edge_properties(kind);
+		const auto name = group.physical[side];
+		const auto& value = context.read_declaration(context.declarations, name);
+		if (value.is<Value>()) return value.get<Value>();
+		if (context.parent && value.is<inherit>()) {
+			const bool flip = context.parent->is_right_to_left() != rtl && css_map_logical_property(value.declaration_property, rtl) == name;
+			return static_cast<Value>(read_parent(group.map_direction(side, flip)));
+		}
+		return initial;
+	}
+
 }
 
 UnitContext ComputeContext::unit_context(const font_metrics& metrics, css_length_context overrides) const
@@ -33,7 +48,7 @@ UnitContext ComputeContext::unit_context(const font_metrics& metrics, css_length
 	const auto* root = overrides.root_font ? overrides.root_font : root_font;
 	return {media, root ? *root : metrics, &host, [](const void* instance, float points) {
 		return static_cast<const StyleHost*>(instance)->points_to_pixels(points);
-	}};
+	}, host.container_units()};
 }
 
 pixel_t ComputeContext::to_pixels(const css_length& length, const font_metrics& metrics,
@@ -57,7 +72,15 @@ void ComputedStyle::compute(const ComputeContext& context)
 
 	m_el_position	 = (element_position)	read_property<int>(context,  _position_,		false,	element_position_static,	 (parent ? &parent->m_el_position : nullptr));
 	m_display		 = (style_display)		read_property<int>(context,  _display_,			false,	display_inline,			 (parent ? &parent->m_display : nullptr));
+	if (m_display == display_contents && context.is_root)
+		m_display = display_block;
+	else if (m_display == display_contents && context.suppress_contents_display)
+		m_display = display_none;
 	m_visibility	 = (visibility)			read_property<int>(context,  _visibility_,		true,	visibility_visible,		 (parent ? &parent->m_visibility : nullptr));
+	m_pointer_events_none = read_property<int>(context, _id("pointer-events"), true, 0,
+		parent ? &parent->m_pointer_events_none : nullptr) != 0;
+	m_user_select = static_cast<css_user_select>(read_property<int>(context, _id("user-select"), false,
+		static_cast<int>(css_user_select::automatic), parent ? &parent->m_user_select : nullptr));
 	m_float			 = (element_float)		read_property<int>(context,  _float_,			false,	float_none,				 (parent ? &parent->m_float : nullptr));
 	m_clear			 = (element_clear)		read_property<int>(context,  _clear_,			false,	clear_none,				 (parent ? &parent->m_clear : nullptr));
 	m_appearance	 = (appearance)			read_property<int>(context,  _appearance_,		false,	appearance_none,			 (parent ? &parent->m_appearance : nullptr));
@@ -70,8 +93,69 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_caret_color = read_property(context, _id("caret-color"), true, web_color::current_color,
 		parent ? &parent->m_caret_color : nullptr);
 	m_opacity = read_property(context, _id("opacity"), false, 1.0f, parent ? &parent->m_opacity : nullptr);
+	static const std::array transition_names{
+		_id("transition-property"), _id("transition-duration"), _id("transition-delay"),
+		_id("transition-timing-function"), _id("transition-behavior")
+	};
+	if (std::any_of(transition_names.begin(), transition_names.end(), [&](auto name) {
+		return !context.read_declaration(context.declarations, name).is<invalid>();
+	})) {
+		static const css_transition_styles defaults;
+		const auto* previous = parent && parent->m_transitions ? parent->m_transitions.get() : &defaults;
+		m_transitions = std::make_shared<css_transition_styles>(css_transition_styles{
+			read_property(context, transition_names[0], false, defaults.properties, &previous->properties),
+			read_property(context, transition_names[1], false, defaults.durations, &previous->durations),
+			read_property(context, transition_names[2], false, defaults.delays, &previous->delays),
+			read_property(context, transition_names[3], false, defaults.easings, &previous->easings),
+			read_property(context, transition_names[4], false, defaults.behaviors, &previous->behaviors)
+		});
+	} else {
+		m_transitions.reset();
+	}
+	m_mix_blend_mode = read_property(context, _id("mix-blend-mode"), false, 0, parent ? &parent->m_mix_blend_mode : nullptr);
+	m_isolation = read_property(context, _id("isolation"), false, 0, parent ? &parent->m_isolation : nullptr);
 	m_box_sizing	 = (box_sizing)			read_property<int>(context,  _box_sizing_,		false,	box_sizing_content_box,	 (parent ? &parent->m_box_sizing : nullptr));
-	m_overflow		 = (overflow)			read_property<int>(context,  _overflow_,		false,	overflow_visible,		 (parent ? &parent->m_overflow : nullptr));
+	m_overflow_x = static_cast<overflow>(read_property<int>(context, _id("overflow-x"), false, overflow_visible,
+		parent ? &parent->m_overflow_x : nullptr));
+	m_overflow_y = static_cast<overflow>(read_property<int>(context, _id("overflow-y"), false, overflow_visible,
+		parent ? &parent->m_overflow_y : nullptr));
+	if (is_scroll_container()) {
+		const auto normalize = [](overflow value) {
+			if (value == overflow_visible) return overflow_auto;
+			if (value == overflow_clip) return overflow_hidden;
+			return value;
+		};
+		m_overflow_x = normalize(m_overflow_x);
+		m_overflow_y = normalize(m_overflow_y);
+	}
+	m_smooth_scroll = read_property<int>(context, _id("scroll-behavior"), false, 0,
+		parent ? &parent->m_smooth_scroll : nullptr) != 0;
+	m_scroll_snap_type = read_property(context, _id("scroll-snap-type"), false, css_scroll_snap_type{},
+		parent ? &parent->m_scroll_snap_type : nullptr);
+	m_scroll_snap_align = read_property(context, _id("scroll-snap-align"), false, css_scroll_snap_align{},
+		parent ? &parent->m_scroll_snap_align : nullptr);
+	m_scroll_snap_stop = read_property<int>(context, _id("scroll-snap-stop"), false, 0,
+		parent ? &parent->m_scroll_snap_stop : nullptr) != 0;
+	m_overscroll_x = static_cast<overscroll_behavior>(read_property<int>(context, _id("overscroll-behavior-x"), false,
+		static_cast<int>(overscroll_behavior::automatic), parent ? &parent->m_overscroll_x : nullptr));
+	m_overscroll_y = static_cast<overscroll_behavior>(read_property<int>(context, _id("overscroll-behavior-y"), false,
+		static_cast<int>(overscroll_behavior::automatic), parent ? &parent->m_overscroll_y : nullptr));
+	m_scrollbar_width = static_cast<scrollbar_width>(read_property<int>(context, _id("scrollbar-width"), false,
+		static_cast<int>(scrollbar_width::automatic), parent ? &parent->m_scrollbar_width : nullptr));
+	m_scrollbar_gutter = static_cast<scrollbar_gutter>(read_property<int>(context, _id("scrollbar-gutter"), false,
+		static_cast<int>(scrollbar_gutter::automatic), parent ? &parent->m_scrollbar_gutter : nullptr));
+	m_containment = read_property(context, _id("contain"), false, 0, parent ? &parent->m_containment : nullptr);
+	m_content_visibility = static_cast<content_visibility>(read_property<int>(context, _id("content-visibility"), false,
+		static_cast<int>(content_visibility::visible), parent ? &parent->m_content_visibility : nullptr));
+	m_container_type = static_cast<container_type>(read_property<int>(context, _id("container-type"), false,
+		static_cast<int>(container_type::normal), parent ? &parent->m_container_type : nullptr));
+	m_container_names = read_property(context, _id("container-name"), false, string_vector{},
+		parent ? &parent->m_container_names : nullptr);
+	m_replaced = context.is_replaced;
+	m_scrollbar_colors = read_property(context, _id("scrollbar-color"), true, std::optional<css_scrollbar_colors>{},
+		parent ? &parent->m_scrollbar_colors : nullptr);
+	m_text_overflow_ellipsis = read_property<int>(context, _id("text-overflow"), false, 0,
+		parent ? &parent->m_text_overflow_ellipsis : nullptr) != 0;
 	m_resize = static_cast<resize_mode>(read_property<int>(context, _id("resize"), false, resize_none,
 		parent ? &parent->m_resize : nullptr));
 	m_text_align = static_cast<text_align>(read_property<int>(context, _id("text-align-all"), true, text_align_left, (parent ? &parent->m_text_align : nullptr)));
@@ -188,15 +272,30 @@ void ComputedStyle::compute(const ComputeContext& context)
 	}
 	// 5. Otherwise, the remaining 'display' property values apply as specified.
 
+	const auto* box_parent = context.box_parent;
 	if (m_display == display_inline_grid)
 	{
 		if (context.is_root || m_float != float_none ||
 			is_one_of(m_el_position, element_position_absolute, element_position_fixed) ||
-			(parent && is_one_of(parent->get_display(), display_flex, display_inline_flex, display_grid, display_inline_grid)))
+			(box_parent && is_one_of(box_parent->get_display(), display_flex, display_inline_flex, display_grid, display_inline_grid)))
 			m_display = display_grid;
 	}
 
 	compute_font(context);
+	m_overflow_clip_margin = read_property(context, _id("overflow-clip-margin"), false, css_clip_margin{},
+		parent ? &parent->m_overflow_clip_margin : nullptr);
+	context.cvt_units(m_overflow_clip_margin.offset, m_font_metrics, 0);
+	m_filters = read_property(context, _id("filter"), false, css_filter_list(), parent ? &parent->m_filters : nullptr);
+	m_backdrop_filters = read_property(context, _id("backdrop-filter"), false, css_filter_list(),
+		parent ? &parent->m_backdrop_filters : nullptr);
+	m_will_change = read_property(context, _id("will-change"), false, 0, parent ? &parent->m_will_change : nullptr);
+	for (auto* filters : { &m_filters, &m_backdrop_filters }) {
+		for (auto& filter : *filters) {
+			context.cvt_units(filter.x, m_font_metrics, 0);
+			context.cvt_units(filter.y, m_font_metrics, 0);
+			context.cvt_units(filter.blur, m_font_metrics, 0);
+		}
+	}
 
 	static const std::vector<box_shadow> no_shadows;
 	static const auto text_shadow_property = _id("text-shadow");
@@ -217,6 +316,62 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_image_rendering = read_property(context, _id("image-rendering"), true,
 		static_cast<int>(image_rendering::automatic), (parent ? &parent->m_image_rendering : nullptr));
 	m_bg.m_direction = read_property(context, _id("direction"), true, static_cast<int>(css_direction::ltr), (parent ? &parent->m_bg.m_direction : nullptr));
+	const bool rtl = is_right_to_left();
+	m_clip_path = read_property(context, _id("clip-path"), false, css_clip_path_ref{}, parent ? &parent->m_clip_path : nullptr);
+	m_clip_rule = read_property(context, _id("clip-rule"), true, 0, parent ? &parent->m_clip_rule : nullptr);
+	m_svg_mask_uses_alpha = read_property<int>(context, _id("mask-type"), false, 0,
+		parent ? &parent->m_svg_mask_uses_alpha : nullptr) != 0;
+	m_svg_interpolates_linear_rgb = read_property<int>(context, _id("color-interpolation"), true, 0,
+		parent ? &parent->m_svg_interpolates_linear_rgb : nullptr) == 1;
+	m_text_anchor = read_property(context, _id("text-anchor"), true, 0, parent ? &parent->m_text_anchor : nullptr);
+	const auto compute_shape_position = [&](css_image_position& p_position) {
+		p_position.x.resolve_flow_direction(rtl);
+		p_position.y.resolve_flow_direction(false);
+		context.cvt_units(p_position.x.offset, m_font_metrics, 0);
+		context.cvt_units(p_position.y.offset, m_font_metrics, 0);
+	};
+	const auto compute_path_shape = [&](const css_clip_path_ref& p_shape) -> css_clip_path_ref {
+		if (!p_shape || p_shape->shape == css_clip_shape::reference) return p_shape;
+		auto path = std::make_shared<css_clip_path>(*p_shape);
+		for (auto& dimension : path->dimensions) context.cvt_units(dimension, m_font_metrics, 0);
+		auto& radii = path->radii;
+		for (auto* radius : { &radii.top_left_x, &radii.top_left_y, &radii.top_right_x, &radii.top_right_y,
+			&radii.bottom_right_x, &radii.bottom_right_y, &radii.bottom_left_x, &radii.bottom_left_y }) {
+			context.cvt_units(*radius, m_font_metrics, 0);
+		}
+		compute_shape_position(path->center);
+		for (auto& vertex : path->vertices) {
+			for (auto& coordinate : vertex) context.cvt_units(coordinate, m_font_metrics, 0);
+		}
+		context.cvt_units(path->polygon_radius, m_font_metrics, 0);
+		if (path->shape_path) compute_shape_path(*path->shape_path, context, m_font_metrics, rtl);
+		return path;
+	};
+	m_clip_path = compute_path_shape(m_clip_path);
+	m_motion_path.path = read_property(context, _id("offset-path"), false, css_offset_path{},
+		parent ? &parent->m_motion_path.path : nullptr);
+	m_motion_path.position = read_property(context, _id("offset-position"), false,
+		css_offset_position{ css_offset_position::mode::normal, {} }, parent ? &parent->m_motion_path.position : nullptr);
+	m_motion_path.anchor = read_property(context, _id("offset-anchor"), false, css_offset_position{},
+		parent ? &parent->m_motion_path.anchor : nullptr);
+	m_motion_path.distance = read_property(context, _id("offset-distance"), false, css_length{},
+		parent ? &parent->m_motion_path.distance : nullptr);
+	m_motion_path.rotation = read_property(context, _id("offset-rotate"), false, css_offset_rotation{},
+		parent ? &parent->m_motion_path.rotation : nullptr);
+	m_motion_path.path.shape = compute_path_shape(m_motion_path.path.shape);
+	if (m_motion_path.path.ray && m_motion_path.path.ray->origin) compute_shape_position(*m_motion_path.path.ray->origin);
+	compute_shape_position(m_motion_path.position.position);
+	compute_shape_position(m_motion_path.anchor.position);
+	context.cvt_units(m_motion_path.distance, m_font_metrics, 0);
+	const auto compute_scroll_edges = [&](css_edge_group kind, auto& output, const auto* inherited) {
+		for (size_t side = 0; side < output.size(); ++side) {
+			output[side] = read_flow_property(context, kind, side, css_length(), rtl,
+				[&](size_t parent_side) -> const css_length& { return (*inherited)[parent_side]; });
+			context.cvt_units(output[side], m_font_metrics, 0);
+		}
+	};
+	compute_scroll_edges(css_edge_group::scroll_padding, m_scroll_padding, parent ? &parent->m_scroll_padding : nullptr);
+	compute_scroll_edges(css_edge_group::scroll_margin, m_scroll_margin, parent ? &parent->m_scroll_margin : nullptr);
 	m_object_position = read_property(context, _id("object-position"), false, css_image_position{}, (parent ? &parent->m_object_position : nullptr));
 	m_object_position.x.resolve_flow_direction(m_bg.m_direction == static_cast<int>(css_direction::rtl));
 	m_object_position.y.resolve_flow_direction(false);
@@ -240,54 +395,41 @@ void ComputedStyle::compute(const ComputeContext& context)
 	context.cvt_units(m_css_max_width, m_font_metrics, 0);
 	context.cvt_units(m_css_max_height, m_font_metrics, 0);
 
-	m_css_margins.left   = read_property<css_length>(context, _margin_left_,   false, 0, (parent ? &parent->m_css_margins.left : nullptr));
-	m_css_margins.right  = read_property<css_length>(context, _margin_right_,  false, 0, (parent ? &parent->m_css_margins.right : nullptr));
-	m_css_margins.top    = read_property<css_length>(context, _margin_top_,    false, 0, (parent ? &parent->m_css_margins.top : nullptr));
-	m_css_margins.bottom = read_property<css_length>(context, _margin_bottom_, false, 0, (parent ? &parent->m_css_margins.bottom : nullptr));
+	m_contain_intrinsic_width = read_property(context, _id("contain-intrinsic-width"), false, css_contain_intrinsic_size{},
+		parent ? &parent->m_contain_intrinsic_width : nullptr);
+	m_contain_intrinsic_height = read_property(context, _id("contain-intrinsic-height"), false, css_contain_intrinsic_size{},
+		parent ? &parent->m_contain_intrinsic_height : nullptr);
+	if (m_contain_intrinsic_width.length) context.cvt_units(*m_contain_intrinsic_width.length, m_font_metrics, 0);
+	if (m_contain_intrinsic_height.length) context.cvt_units(*m_contain_intrinsic_height.length, m_font_metrics, 0);
+	if (!m_contain_intrinsic_width.remember) m_remembered_content_width.reset();
+	if (!m_contain_intrinsic_height.remember) m_remembered_content_height.reset();
 
-	context.cvt_units(m_css_margins.left,	 m_font_metrics, 0);
-	context.cvt_units(m_css_margins.right,	 m_font_metrics, 0);
-	context.cvt_units(m_css_margins.top,	 m_font_metrics, 0);
-	context.cvt_units(m_css_margins.bottom, m_font_metrics, 0);
+	const auto compute_edges = [&](css_edge_group kind, auto& box, const auto* inherited,
+			const auto& members, const css_length& initial) {
+		for (size_t index = 0; index < members.size(); ++index) {
+			auto& output = box.*members[index];
+			output = read_flow_property(context, kind, index, initial, rtl,
+				[&](size_t side) -> const css_length& { return inherited->*members[side]; });
+			context.cvt_units(output, m_font_metrics, 0);
+		}
+	};
+	static constexpr std::array box_sides{&css_margins::top, &css_margins::right, &css_margins::bottom, &css_margins::left};
+	compute_edges(css_edge_group::margin, m_css_margins, parent ? &parent->m_css_margins : nullptr, box_sides, {});
+	compute_edges(css_edge_group::padding, m_css_padding, parent ? &parent->m_css_padding : nullptr, box_sides, {});
 
-	m_css_padding.left   = read_property<css_length>(context, _padding_left_,   false, 0, (parent ? &parent->m_css_padding.left : nullptr));
-	m_css_padding.right  = read_property<css_length>(context, _padding_right_,  false, 0, (parent ? &parent->m_css_padding.right : nullptr));
-	m_css_padding.top    = read_property<css_length>(context, _padding_top_,    false, 0, (parent ? &parent->m_css_padding.top : nullptr));
-	m_css_padding.bottom = read_property<css_length>(context, _padding_bottom_, false, 0, (parent ? &parent->m_css_padding.bottom : nullptr));
-
-	context.cvt_units(m_css_padding.left,	 m_font_metrics, 0);
-	context.cvt_units(m_css_padding.right,	 m_font_metrics, 0);
-	context.cvt_units(m_css_padding.top,	 m_font_metrics, 0);
-	context.cvt_units(m_css_padding.bottom, m_font_metrics, 0);
-
-	m_css_borders.left.color   = read_property(context, _border_left_color_, false, web_color::current_color, (parent ? &parent->m_css_borders.left.color : nullptr));
-	m_css_borders.right.color  = read_property(context, _border_right_color_, false, web_color::current_color, (parent ? &parent->m_css_borders.right.color : nullptr));
-	m_css_borders.top.color    = read_property(context, _border_top_color_, false, web_color::current_color, (parent ? &parent->m_css_borders.top.color : nullptr));
-	m_css_borders.bottom.color = read_property(context, _border_bottom_color_, false, web_color::current_color, (parent ? &parent->m_css_borders.bottom.color : nullptr));
-
-	m_css_borders.left.style   = (border_style) read_property<int>(context, _border_left_style_,   false, border_style_none, (parent ? &parent->m_css_borders.left.style : nullptr));
-	m_css_borders.right.style  = (border_style) read_property<int>(context, _border_right_style_,  false, border_style_none, (parent ? &parent->m_css_borders.right.style : nullptr));
-	m_css_borders.top.style    = (border_style) read_property<int>(context, _border_top_style_,    false, border_style_none, (parent ? &parent->m_css_borders.top.style : nullptr));
-	m_css_borders.bottom.style = (border_style) read_property<int>(context, _border_bottom_style_, false, border_style_none, (parent ? &parent->m_css_borders.bottom.style : nullptr));
-
-	m_css_borders.left.width   = read_property<css_length>(context, _border_left_width_,   false, border_width_medium_value, (parent ? &parent->m_css_borders.left.width : nullptr));
-	m_css_borders.right.width  = read_property<css_length>(context, _border_right_width_,  false, border_width_medium_value, (parent ? &parent->m_css_borders.right.width : nullptr));
-	m_css_borders.top.width    = read_property<css_length>(context, _border_top_width_,    false, border_width_medium_value, (parent ? &parent->m_css_borders.top.width : nullptr));
-	m_css_borders.bottom.width = read_property<css_length>(context, _border_bottom_width_, false, border_width_medium_value, (parent ? &parent->m_css_borders.bottom.width : nullptr));
-
-	if (m_css_borders.left.style == border_style_none || m_css_borders.left.style == border_style_hidden)
-		m_css_borders.left.width = 0;
-	if (m_css_borders.right.style == border_style_none || m_css_borders.right.style == border_style_hidden)
-		m_css_borders.right.width = 0;
-	if (m_css_borders.top.style == border_style_none || m_css_borders.top.style == border_style_hidden)
-		m_css_borders.top.width = 0;
-	if (m_css_borders.bottom.style == border_style_none || m_css_borders.bottom.style == border_style_hidden)
-		m_css_borders.bottom.width = 0;
-
-	snap_border_width(m_css_borders.left.width,		context);
-	snap_border_width(m_css_borders.right.width,	context);
-	snap_border_width(m_css_borders.top.width,		context);
-	snap_border_width(m_css_borders.bottom.width,	context);
+	static constexpr std::array border_sides{&css_borders::top, &css_borders::right, &css_borders::bottom, &css_borders::left};
+	const auto parent_border = [&](size_t side) -> const css_border& { return parent->m_css_borders.*border_sides[side]; };
+	for (size_t side = 0; side < border_sides.size(); ++side) {
+		auto& border = m_css_borders.*border_sides[side];
+		border.color = read_flow_property(context, css_edge_group::border_color, side, web_color::current_color, rtl,
+			[&](size_t index) -> const web_color& { return parent_border(index).color; });
+		border.style = static_cast<border_style>(read_flow_property(context, css_edge_group::border_style, side,
+			static_cast<int>(border_style_none), rtl, [&](size_t index) { return parent_border(index).style; }));
+		border.width = read_flow_property(context, css_edge_group::border_width, side, css_length(border_width_medium_value), rtl,
+			[&](size_t index) -> const css_length& { return parent_border(index).width; });
+		if (border.style == border_style_none || border.style == border_style_hidden) border.width = 0;
+		snap_border_width(border.width, context);
+	}
 
 	m_outline.style = read_property(context, _id("outline-style"), false, static_cast<int>(border_style_none), (parent ? &parent->m_outline.style : nullptr));
 	m_outline.width = read_property(context, _id("outline-width"), false, css_length(border_width_medium_value), (parent ? &parent->m_outline.width : nullptr));
@@ -297,26 +439,13 @@ void ComputedStyle::compute(const ComputeContext& context)
 	snap_border_width(m_outline.width, context);
 	context.cvt_units(m_outline.offset, m_font_metrics, 0);
 
-	m_css_borders.radius.top_left_x = read_property<css_length>(context, _border_top_left_radius_x_, false, 0, (parent ? &parent->m_css_borders.radius.top_left_x : nullptr));
-	m_css_borders.radius.top_left_y = read_property<css_length>(context, _border_top_left_radius_y_, false, 0, (parent ? &parent->m_css_borders.radius.top_left_y : nullptr));
-
-	m_css_borders.radius.top_right_x = read_property<css_length>(context, _border_top_right_radius_x_, false, 0, (parent ? &parent->m_css_borders.radius.top_right_x : nullptr));
-	m_css_borders.radius.top_right_y = read_property<css_length>(context, _border_top_right_radius_y_, false, 0, (parent ? &parent->m_css_borders.radius.top_right_y : nullptr));
-
-	m_css_borders.radius.bottom_left_x = read_property<css_length>(context, _border_bottom_left_radius_x_, false, 0, (parent ? &parent->m_css_borders.radius.bottom_left_x : nullptr));
-	m_css_borders.radius.bottom_left_y = read_property<css_length>(context, _border_bottom_left_radius_y_, false, 0, (parent ? &parent->m_css_borders.radius.bottom_left_y : nullptr));
-
-	m_css_borders.radius.bottom_right_x = read_property<css_length>(context, _border_bottom_right_radius_x_, false, 0, (parent ? &parent->m_css_borders.radius.bottom_right_x : nullptr));
-	m_css_borders.radius.bottom_right_y = read_property<css_length>(context, _border_bottom_right_radius_y_, false, 0, (parent ? &parent->m_css_borders.radius.bottom_right_y : nullptr));
-
-	context.cvt_units( m_css_borders.radius.top_left_x,			m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.top_left_y,			m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.top_right_x,			m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.top_right_y,			m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.bottom_left_x,		m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.bottom_left_y,		m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.bottom_right_x,		m_font_metrics, 0);
-	context.cvt_units( m_css_borders.radius.bottom_right_y,		m_font_metrics, 0);
+	static constexpr std::array corner_x{&css_border_radius::top_left_x, &css_border_radius::top_right_x,
+		&css_border_radius::bottom_right_x, &css_border_radius::bottom_left_x};
+	static constexpr std::array corner_y{&css_border_radius::top_left_y, &css_border_radius::top_right_y,
+		&css_border_radius::bottom_right_y, &css_border_radius::bottom_left_y};
+	const auto* parent_radius = parent ? &parent->m_css_borders.radius : nullptr;
+	compute_edges(css_edge_group::radius_x, m_css_borders.radius, parent_radius, corner_x, {});
+	compute_edges(css_edge_group::radius_y, m_css_borders.radius, parent_radius, corner_y, {});
 
 	m_border_collapse = (border_collapse) read_property<int>(context, _border_collapse_, true, border_collapse_separate, (parent ? &parent->m_border_collapse : nullptr));
 
@@ -326,15 +455,8 @@ void ComputedStyle::compute(const ComputeContext& context)
 	context.cvt_units(m_css_border_spacing_x, m_font_metrics, 0);
 	context.cvt_units(m_css_border_spacing_y, m_font_metrics, 0);
 
-	m_css_offsets.left	 = read_property<css_length>(context, _left_,	 false, _auto, (parent ? &parent->m_css_offsets.left : nullptr));
-	m_css_offsets.right  = read_property<css_length>(context, _right_, false, _auto, (parent ? &parent->m_css_offsets.right : nullptr));
-	m_css_offsets.top	 = read_property<css_length>(context, _top_,	 false, _auto, (parent ? &parent->m_css_offsets.top : nullptr));
-	m_css_offsets.bottom = read_property<css_length>(context, _bottom_,false, _auto, (parent ? &parent->m_css_offsets.bottom : nullptr));
-
-	context.cvt_units(m_css_offsets.left,   m_font_metrics, 0);
-	context.cvt_units(m_css_offsets.right,  m_font_metrics, 0);
-	context.cvt_units(m_css_offsets.top,    m_font_metrics, 0);
-	context.cvt_units(m_css_offsets.bottom, m_font_metrics, 0);
+	static constexpr std::array inset_sides{&css_offsets::top, &css_offsets::right, &css_offsets::bottom, &css_offsets::left};
+	compute_edges(css_edge_group::inset, m_css_offsets, parent ? &parent->m_css_offsets : nullptr, inset_sides, _auto);
 
 	m_z_index = read_property<css_length>(context, _z_index_, false, _auto, (parent ? &parent->m_z_index : nullptr));
 	static const auto quotes = _id("quotes");
@@ -371,6 +493,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_order = read_property<int>(context, _order_, false, 0, (parent ? &parent->m_order : nullptr));
 
 	compute_background(context);
+	compute_mask(context);
 	m_justify_items = read_property(context, _justify_items_, false, initial_alignment(_justify_items_), (parent ? &parent->m_justify_items : nullptr));
 	m_align_items = read_property(context, _align_items_, false, initial_alignment(_align_items_), (parent ? &parent->m_align_items : nullptr));
 	m_justify_self = read_property(context, _justify_self_, false, initial_alignment(_justify_self_), (parent ? &parent->m_justify_self : nullptr));
@@ -383,13 +506,39 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_grid_column_end = read_property(context, _grid_column_end_, false, grid_line(), (parent ? &parent->m_grid_column_end : nullptr));
 	m_transforms = read_property(context, _transform_, false, css_transform_list(), (parent ? &parent->m_transforms : nullptr));
 	m_transform_origin = read_property(context, _transform_origin_, false, css_transform_origin(), (parent ? &parent->m_transform_origin : nullptr));
+	m_perspective = read_property(context, _id("perspective"), false, css_length::predef_value(),
+		parent ? &parent->m_perspective : nullptr);
+	m_perspective_origin = read_property(context, _id("perspective-origin"), false, css_image_position{},
+		parent ? &parent->m_perspective_origin : nullptr);
+	context.cvt_units(m_perspective, m_font_metrics, 0);
+	context.cvt_units(m_perspective_origin.x.offset, m_font_metrics, 0);
+	context.cvt_units(m_perspective_origin.y.offset, m_font_metrics, 0);
+	m_transform_box = read_property(context, _id("transform-box"), false,
+		static_cast<int>(css_transform_box::view), parent ? &parent->m_transform_box : nullptr);
+	m_backface_visibility = read_property(context, _id("backface-visibility"), false, 0,
+		parent ? &parent->m_backface_visibility : nullptr);
+	m_transform_style = read_property(context, _id("transform-style"), false, 0,
+		parent ? &parent->m_transform_style : nullptr);
+	m_individual_transforms.translate = read_property(context, _id("translate"), false, css_individual_transform{},
+		parent ? &parent->m_individual_transforms.translate : nullptr);
+	m_individual_transforms.rotate = read_property(context, _id("rotate"), false, css_individual_transform{},
+		parent ? &parent->m_individual_transforms.rotate : nullptr);
+	m_individual_transforms.scale = read_property(context, _id("scale"), false, css_individual_transform{},
+		parent ? &parent->m_individual_transforms.scale : nullptr);
 	for (auto& transform : m_transforms)
 	{
 		context.cvt_units(transform.x, m_font_metrics, 0);
 		context.cvt_units(transform.y, m_font_metrics, 0);
+		context.cvt_units(transform.z, m_font_metrics, 0);
 	}
 	context.cvt_units(m_transform_origin.x, m_font_metrics, 0);
 	context.cvt_units(m_transform_origin.y, m_font_metrics, 0);
+	context.cvt_units(m_transform_origin.z, m_font_metrics, 0);
+	if (m_individual_transforms.translate) {
+		context.cvt_units(m_individual_transforms.translate->x, m_font_metrics, 0);
+		context.cvt_units(m_individual_transforms.translate->y, m_font_metrics, 0);
+		context.cvt_units(m_individual_transforms.translate->z, m_font_metrics, 0);
+	}
 	m_grid_template_columns = read_property(context, _grid_template_columns_, false, grid_track_template(), (parent ? &parent->m_grid_template_columns : nullptr));
 	m_grid_template_rows = read_property(context, _grid_template_rows_, false, grid_track_template(), (parent ? &parent->m_grid_template_rows : nullptr));
 	m_grid_template_areas = read_property(context, _grid_template_areas_, false, grid_area_template(), (parent ? &parent->m_grid_template_areas : nullptr));
@@ -410,7 +559,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	compute_track_lengths(m_grid_auto_rows);
 	compute_track_lengths(m_grid_auto_columns);
 
-	if (parent && is_grid_display(parent->get_display()) && m_display != display_none &&
+	if (box_parent && is_grid_display(box_parent->get_display()) && m_display != display_none &&
 		!is_one_of(m_el_position, element_position_absolute, element_position_fixed))
 	{
 		m_float = float_none;
@@ -434,6 +583,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	}
 
 	compute_flex(context);
+	set_auto_content_skipped(m_auto_content_skipped && m_content_visibility == content_visibility::automatic);
 }
 
 static const litehtml::pixel_t font_size_table[8][7] =
@@ -460,7 +610,25 @@ void ComputedStyle::prepare_marker(bool outside)
 	m_float = float_none;
 	m_clear = clear_none;
 	m_vertical_align = va_baseline;
-	m_overflow = overflow_visible;
+	m_overflow_x = m_overflow_y = overflow_visible;
+	m_smooth_scroll = false;
+	m_scroll_snap_type = {};
+	m_scroll_snap_align = {};
+	m_scroll_snap_stop = false;
+	m_overscroll_x = m_overscroll_y = overscroll_behavior::automatic;
+	m_overflow_clip_margin = {};
+	m_clip_path.reset();
+	m_scroll_padding = {};
+	m_scroll_margin = {};
+	m_scrollbar_width = scrollbar_width::automatic;
+	m_scrollbar_gutter = scrollbar_gutter::automatic;
+	m_containment = 0;
+	m_used_containment = 0;
+	m_content_visibility = content_visibility::visible;
+	m_container_type = container_type::normal;
+	m_container_names.clear();
+	m_auto_content_skipped = false;
+	m_contain_intrinsic_width = m_contain_intrinsic_height = {};
 	m_box_sizing = box_sizing_content_box;
 	m_text_align = text_align_left;
 	m_text_align_last = text_align_auto;
@@ -471,7 +639,15 @@ void ComputedStyle::prepare_marker(bool outside)
 	m_css_padding = {};
 	m_css_borders = {};
 	m_transforms.clear();
+	m_perspective = css_length::predef_value();
+	m_perspective_origin = {};
+	m_individual_transforms = {};
+	m_transform_box = static_cast<int>(css_transform_box::view);
+	m_backface_visibility = 0;
+	m_transform_style = 0;
+	m_motion_path = {};
 	m_z_index = css_length::predef_value();
+	m_will_change = 0;
 }
 
 void ComputedStyle::compute_font(const ComputeContext& context)
@@ -573,26 +749,30 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	m_font_kerning = read_property(context, _id("font-kerning"), true, int(font_kerning_auto), (parent ? &parent->m_font_kerning : nullptr));
 	m_font_optical_sizing = read_property(context, _id("font-optical-sizing"), true, int(font_optical_sizing_auto), (parent ? &parent->m_font_optical_sizing : nullptr));
 	m_font_variations = read_property(context, _id("font-variation-settings"), true, css_font_variations{}, (parent ? &parent->m_font_variations : nullptr));
-	bool propagate_decoration = !is_one_of(m_display, display_inline_block, display_inline_table, display_inline_flex, display_inline_grid) &&
+	const bool boxless = m_display == display_contents;
+	const auto* decorating_parent = context.box_parent;
+	const bool propagate_decoration = !boxless &&
+								!is_one_of(m_display, display_inline_block, display_inline_table, display_inline_flex, display_inline_grid) &&
 								m_float == float_none && !is_one_of(m_el_position, element_position_absolute, element_position_fixed);
+	const auto read_decoration = [&](string_id name, auto initial, auto member) {
+		// Explicit inheritance uses the DOM, while line decoration follows the box tree.
+		const auto* source = context.read_declaration(context.declarations, name).is<inherit>() ? parent : decorating_parent;
+		return read_property(context, name, propagate_decoration, initial, source ? &(source->*member) : nullptr);
+	};
 
-	m_text_decoration_line = read_property<int>(context, _text_decoration_line_, propagate_decoration, text_decoration_line_none, (parent ? &parent->m_text_decoration_line : nullptr));
+	m_text_decoration_line = read_decoration(_text_decoration_line_, int(text_decoration_line_none), &ComputedStyle::m_text_decoration_line);
 
 	// Merge parent text decoration with child text decoration
-	if (propagate_decoration && parent)
+	if (propagate_decoration && decorating_parent)
 	{
-		m_text_decoration_line |= parent->get_text_decoration_line();
+		m_text_decoration_line |= decorating_parent->get_text_decoration_line();
 	}
 
-	m_text_decoration_color = read_property(context, _text_decoration_color_, propagate_decoration, web_color::current_color, (parent ? &parent->m_text_decoration_color : nullptr));
-	if(m_text_decoration_line)
-	{
-		m_text_decoration_thickness = read_property<css_length>(context, _text_decoration_thickness_, propagate_decoration, css_length::predef_value(text_decoration_thickness_auto), (parent ? &parent->m_text_decoration_thickness : nullptr));
-		m_text_decoration_style = (text_decoration_style) read_property<int>(context, _text_decoration_style_, propagate_decoration, text_decoration_style_solid, (parent ? &parent->m_text_decoration_style : nullptr));
-	} else
-	{
-		m_text_decoration_thickness = css_length::predef_value(text_decoration_thickness_auto);
-	}
+	m_text_decoration_color = read_decoration(_text_decoration_color_, web_color::current_color, &ComputedStyle::m_text_decoration_color);
+	m_text_decoration_thickness = read_decoration(_text_decoration_thickness_,
+		css_length::predef_value(text_decoration_thickness_auto), &ComputedStyle::m_text_decoration_thickness);
+	m_text_decoration_style = static_cast<text_decoration_style>(read_decoration(
+		_text_decoration_style_, int(text_decoration_style_solid), &ComputedStyle::m_text_decoration_style));
 
 	// text-emphasis
 	m_text_emphasis_style = read_property<string>(context, _text_emphasis_style_, true, "", (parent ? &parent->m_text_emphasis_style : nullptr));
@@ -644,10 +824,14 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	descr.optical_sizing = static_cast<css_font_optical_sizing>(m_font_optical_sizing);
 	descr.variations = m_font_variations;
 	descr.weight				= (int) m_font_weight.val();
-	descr.decoration_line		= m_text_decoration_line;
-	descr.decoration_thickness	= m_text_decoration_thickness;
-	descr.decoration_style		= m_text_decoration_style;
-	if (m_text_decoration_line) descr.decoration_color = m_text_decoration_color.to_srgb(m_color);
+	const auto* painted_decoration = boxless ? decorating_parent : this;
+	if (painted_decoration && painted_decoration->m_text_decoration_line)
+	{
+		descr.decoration_line = painted_decoration->m_text_decoration_line;
+		descr.decoration_thickness = painted_decoration->m_text_decoration_thickness;
+		descr.decoration_style = painted_decoration->m_text_decoration_style;
+		descr.decoration_color = painted_decoration->m_text_decoration_color.to_srgb(painted_decoration->m_color);
+	}
 	descr.emphasis_style		= m_text_emphasis_style;
 	if (!m_text_emphasis_style.empty()) descr.emphasis_color = m_text_emphasis_color.to_srgb(m_color);
 	descr.emphasis_position		= m_text_emphasis_position;
@@ -657,7 +841,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	const auto unit = m_text_decoration_thickness.units();
 	const bool resolve_thickness = !m_text_decoration_thickness.is_predefined() &&
 		(m_text_decoration_thickness.expression() || !is_one_of(unit, css_units_percentage, css_units_px, css_units_none));
-	if (resolve_thickness)
+	if (resolve_thickness && !boxless)
 		descr.decoration_thickness = css_length::predef_value(text_decoration_thickness_auto);
 
 	m_font_metrics = {};
@@ -697,7 +881,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	if (resolve_thickness)
 	{
 		context.cvt_units(m_text_decoration_thickness, m_font_metrics, 0);
-		descr.decoration_thickness = m_text_decoration_thickness;
+		if (!boxless) descr.decoration_thickness = m_text_decoration_thickness;
 	}
 
 	const auto resolve_spacing = [&](string_id name, css_length& spacing, const css_length* inherited_spacing) {
@@ -721,9 +905,13 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	context.cvt_units(m_text_underline_offset, m_font_metrics, font_size);
 
 	// The values used by an existing underline come from its decorating box.
-	if (propagate_decoration && el_parent && (el_parent->m_text_decoration_line & text_decoration_line_underline))
+	if (boxless)
 	{
-		m_underline = el_parent->m_underline;
+		m_underline = decorating_parent ? decorating_parent->m_underline : css_underline{};
+	}
+	else if (propagate_decoration && decorating_parent && (decorating_parent->m_text_decoration_line & text_decoration_line_underline))
+	{
+		m_underline = decorating_parent->m_underline;
 	}
 	else
 	{
@@ -773,6 +961,8 @@ void ComputedStyle::compute_background(const ComputeContext& context)
 		{ background_repeat::repeat }, (parent ? &parent->m_bg.m_repeat_y : nullptr));
 	m_bg.m_clip       = read_property<int_vector>(context, _background_clip_,       false, { background_box_border },        (parent ? &parent->m_bg.m_clip : nullptr));
 	m_bg.m_origin     = read_property<int_vector>(context, _background_origin_,     false, { background_box_padding },       (parent ? &parent->m_bg.m_origin : nullptr));
+	m_bg.m_blend_modes = read_property<int_vector>(context, _id("background-blend-mode"), false, {},
+		parent ? &parent->m_bg.m_blend_modes : nullptr);
 
 	m_bg.m_image   = read_property<vector<image>>(context, _background_image_,  false, {{}}, (parent ? &parent->m_bg.m_image : nullptr));
 	m_bg.m_baseurl = read_property<string>(context, _background_image_baseurl_, false, "",   (parent ? &parent->m_bg.m_baseurl : nullptr));
@@ -794,13 +984,72 @@ void ComputedStyle::compute_background(const ComputeContext& context)
 		m_image_resolution, decorative_image_orientation(m_image_orientation));
 }
 
+void ComputedStyle::compute_mask(const ComputeContext& context)
+{
+	const auto& longhands = css_longhands(_id("mask"));
+	if (std::none_of(longhands.begin(), longhands.end(), [&](string_id name) {
+		const auto& value = context.read_declaration(context.declarations, name);
+		return !value.is<invalid>() && !value.is<initial_value>();
+	})) {
+		m_mask.reset();
+		return;
+	}
+	auto mask = std::make_shared<css_mask>();
+	static const css_mask defaults;
+	const auto& parent = context.parent && context.parent->m_mask ? *context.parent->m_mask : defaults;
+	auto& layers = mask->layers;
+	const auto& inherited = parent.layers;
+	const auto read = [&](const char* name, auto& field, const auto& parent_field) {
+		field = read_property(context, _id(name), false, field, &parent_field);
+	};
+	layers.m_origin = { background_box_border };
+	layers.m_color = web_color::transparent;
+	layers.m_current_color = m_color;
+	layers.m_direction = m_bg.m_direction;
+	read("mask-image", layers.m_image, inherited.m_image);
+	read("__docrender-mask-image-baseurl", layers.m_baseurl, inherited.m_baseurl);
+	read("__docrender-mask-position-x", layers.m_position_x, inherited.m_position_x);
+	read("__docrender-mask-position-y", layers.m_position_y, inherited.m_position_y);
+	read("__docrender-mask-repeat-x", layers.m_repeat_x, inherited.m_repeat_x);
+	read("__docrender-mask-repeat-y", layers.m_repeat_y, inherited.m_repeat_y);
+	read("mask-size", layers.m_size, inherited.m_size);
+	read("mask-origin", layers.m_origin, inherited.m_origin);
+	read("mask-clip", layers.m_clip, inherited.m_clip);
+	read("mask-mode", mask->modes, parent.modes);
+	read("mask-composite", mask->composites, parent.composites);
+
+	const auto& image_declaration = context.read_declaration(context.declarations, _id("mask-image"));
+	mask->active = image_declaration.is<inherit>() ? parent.active :
+		std::any_of(layers.m_image.begin(), layers.m_image.end(), [](const image& source) {
+			return source.type != image::type_none;
+		});
+	for (auto& x : layers.m_position_x) {
+		x.resolve_flow_direction(is_right_to_left());
+		context.cvt_units(x.offset, m_font_metrics, 0);
+	}
+	for (auto& y : layers.m_position_y) {
+		y.resolve_flow_direction(false);
+		context.cvt_units(y.offset, m_font_metrics, 0);
+	}
+	for (auto& size : layers.m_size) {
+		context.cvt_units(size.width, m_font_metrics, 0);
+		context.cvt_units(size.height, m_font_metrics, 0);
+	}
+	if (!image_declaration.is<inherit>()) {
+		for (auto& image : layers.m_image)
+			context.host.compute_image(image, layers.m_baseurl, m_font_metrics, m_image_resolution,
+				decorative_image_orientation(m_image_orientation));
+	}
+	m_mask = std::move(mask);
+}
+
 void ComputedStyle::compute_flex(const ComputeContext& context)
 {
 	const auto* parent = context.parent;
 
 	// Keep computed values on all elements so explicit inheritance works through block ancestors.
-	m_row_gap = read_property(context, _row_gap_, false, css_length(), (parent ? &parent->m_row_gap : nullptr));
-	m_column_gap = read_property(context, _column_gap_, false, css_length(), (parent ? &parent->m_column_gap : nullptr));
+	m_row_gap = read_property(context, _row_gap_, false, css_length::predef_value(), (parent ? &parent->m_row_gap : nullptr));
+	m_column_gap = read_property(context, _column_gap_, false, css_length::predef_value(), (parent ? &parent->m_column_gap : nullptr));
 	context.cvt_units(m_row_gap, m_font_metrics, 0);
 	context.cvt_units(m_column_gap, m_font_metrics, 0);
 
@@ -818,7 +1067,8 @@ void ComputedStyle::compute_flex(const ComputeContext& context)
 		m_flex_basis.predef(flex_basis_auto);
 	context.cvt_units(m_flex_basis, m_font_metrics, 0);
 
-	if (parent && (parent->m_display == display_flex || parent->m_display == display_inline_flex))
+	const auto* box_parent = context.box_parent;
+	if (box_parent && is_one_of(box_parent->m_display, display_flex, display_inline_flex))
 	{
 		if(m_display == display_inline || m_display == display_inline_block)
 		{
@@ -831,6 +1081,69 @@ void ComputedStyle::compute_flex(const ComputeContext& context)
 			m_display = display_flex;
 		}
 	}
+}
+
+bool ComputedStyle::has_box_containment() const
+{
+	return (m_used_containment & (contain_layout | contain_paint)) && allows_box_containment();
+}
+
+bool ComputedStyle::allows_box_containment() const
+{
+	return (m_display != display_inline || m_replaced) &&
+		!is_one_of(m_display, display_none, display_contents, display_inline_text,
+		display_table_column, display_table_column_group, display_table_row, display_table_row_group,
+		display_table_header_group, display_table_footer_group);
+}
+
+bool ComputedStyle::set_auto_content_skipped(bool skip)
+{
+	const bool changed = m_auto_content_skipped != skip;
+	m_auto_content_skipped = skip;
+	m_used_containment = m_containment;
+	if (m_container_type != container_type::normal)
+		m_used_containment |= contain_style | (m_container_type == container_type::size ? contain_size : contain_inline_size);
+	if (has_auto_content_visibility() || hides_contents())
+		m_used_containment |= contain_layout | contain_style | contain_paint;
+	if (skips_contents()) m_used_containment |= contain_size;
+	return changed;
+}
+
+bool ComputedStyle::allows_size_containment() const
+{
+	return (m_display != display_inline || m_replaced) &&
+		!is_one_of(m_display, display_none, display_contents, display_inline_text, display_table, display_inline_table) &&
+		(m_display < display_table_cell || m_display > display_table_row_group);
+}
+
+void ComputedStyle::remember_content_size(pixel_t width, pixel_t height)
+{
+	if ((!m_contain_intrinsic_width.remember && !m_contain_intrinsic_height.remember) ||
+		skips_contents() || is_one_of(m_display, display_none, display_inline_text) || (m_display == display_inline && !m_replaced)) return;
+	if (m_contain_intrinsic_width.remember && !has_inline_size_containment())
+		m_remembered_content_width = std::max<pixel_t>(0, width);
+	if (m_contain_intrinsic_height.remember && !has_block_size_containment())
+		m_remembered_content_height = std::max<pixel_t>(0, height);
+}
+
+void ComputedStyle::copy_remembered_content_size(const ComputedStyle& source)
+{
+	m_remembered_content_width = source.m_remembered_content_width;
+	m_remembered_content_height = source.m_remembered_content_height;
+}
+
+std::optional<pixel_t> ComputedStyle::get_contain_intrinsic_width() const
+{
+	if (skips_contents() && m_remembered_content_width) return m_remembered_content_width;
+	if (!m_contain_intrinsic_width.length) return std::nullopt;
+	return std::max<pixel_t>(0, m_contain_intrinsic_width.length->calc_percent(0));
+}
+
+std::optional<pixel_t> ComputedStyle::get_contain_intrinsic_height() const
+{
+	if (skips_contents() && m_remembered_content_height) return m_remembered_content_height;
+	if (!m_contain_intrinsic_height.length) return std::nullopt;
+	return std::max<pixel_t>(0, m_contain_intrinsic_height.length->calc_percent(0));
 }
 
 // https://www.w3.org/TR/css-values-4/#snap-a-length-as-a-border-width
@@ -862,7 +1175,8 @@ std::vector<std::tuple<litehtml::string, litehtml::string>> ComputedStyle::dump_
 	ret.emplace_back("el_position", index_value(m_el_position, element_position_strings));
 	ret.emplace_back("text_align", index_value(m_text_align, text_align_strings));
 	ret.emplace_back("font_size", m_font_size.to_string());
-	ret.emplace_back("overflow", index_value(m_overflow, overflow_strings));
+	ret.emplace_back("overflow_x", index_value(m_overflow_x, overflow_strings));
+	ret.emplace_back("overflow_y", index_value(m_overflow_y, overflow_strings));
 	ret.emplace_back("white_space_collapse", index_value(m_white_space_collapse, white_space_collapse_strings));
 	ret.emplace_back("text_wrap_mode", index_value(m_text_wrap_mode, text_wrap_mode_strings));
 	ret.emplace_back("text_wrap_style", index_value(m_text_wrap_style, text_wrap_style_strings));
@@ -879,6 +1193,7 @@ std::vector<std::tuple<litehtml::string, litehtml::string>> ComputedStyle::dump_
 		ret.emplace_back("white_space_trim", std::move(trim));
 	}
 	ret.emplace_back("visibility", index_value(m_visibility, visibility_strings));
+	ret.emplace_back("pointer_events", m_pointer_events_none ? "none" : "auto");
 	ret.emplace_back("appearance", index_value(m_appearance, appearance_strings));
 	ret.emplace_back("box_sizing", index_value(m_box_sizing, box_sizing_strings));
 	ret.emplace_back("z_index", m_z_index.to_string());

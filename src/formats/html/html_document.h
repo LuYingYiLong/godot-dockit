@@ -16,6 +16,7 @@ class HTMLDocument : public godot::Resource {
 	godot::Dictionary local_fonts;
 	godot::Dictionary image_dpi;
 	godot::Dictionary image_orientations;
+	godot::Dictionary svg_clip_sources;
 	void parse_into(HTMLLayout& p_layout, const godot::String& p_default_stylesheet = {}) const;
 
 protected:
@@ -43,6 +44,8 @@ public:
 	godot::Dictionary get_image_dpi() const;										// 返回位图路径到 DPI 的映射副本
 	void set_image_orientations(const godot::Dictionary& p_orientations);			// 保存本地位图的 EXIF 方向
 	godot::Dictionary get_image_orientations() const;								// 返回位图路径到 EXIF 方向的映射副本
+	void set_svg_clip_sources(const godot::Dictionary& p_sources);					// 保存导入时收集的 SVG 裁剪源
+	godot::Dictionary get_svg_clip_sources() const;									// 返回 SVG 文件路径到源文本的映射副本
 	
 	godot::Ref<HTMLLayout> create_layout() const;									// 从资源当前内容创建独立的已解析布局实例
 };

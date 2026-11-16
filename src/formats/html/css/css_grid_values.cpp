@@ -204,9 +204,81 @@ namespace litehtml {
 		return true;
 	}
 
+	static std::optional<grid_subgrid_lines> parse_subgrid_lines(const css_token_vector& tokens) {
+		const auto read_names = [](const css_token& block, grid_subgrid_lines::name_list& lists) {
+			if (block.type != SQUARE_BLOCK) return false;
+			std::vector<std::string> names;
+			for (const auto& token : block.value) {
+				if (token.type == WHITESPACE) continue;
+				if (!is_grid_name(token)) return false;
+				names.push_back(token.name);
+			}
+			lists.push_back(std::move(names));
+			return true;
+		};
+		grid_subgrid_lines result;
+		std::size_t remaining = grid_track_limit + 1;
+		for (auto it = tokens.begin() + 1; it != tokens.end(); ++it) {
+			auto& lists = result.automatic.empty() ? result.prefix : result.suffix;
+			if (it->type != CV_FUNCTION || lowcase(it->name) != "repeat") {
+				if (!remaining || !read_names(*it, lists)) return std::nullopt;
+				--remaining;
+				continue;
+			}
+			const auto& args = it->value;
+			if (args.size() < 3 || args[1].ch != ',' || args.size() - 2 > grid_track_limit + 1) return std::nullopt;
+			grid_subgrid_lines::name_list pattern;
+			for (auto name = args.begin() + 2; name != args.end(); ++name) {
+				if (!read_names(*name, pattern)) return std::nullopt;
+			}
+			if (args.front().ident() == "auto-fill") {
+				if (!result.automatic.empty()) return std::nullopt;
+				result.automatic = std::move(pattern);
+			} else {
+				std::int64_t count = 0;
+				if (!read_integer(args.front(), count) || count <= 0 ||
+					static_cast<std::uint64_t>(count) > remaining / pattern.size()) return std::nullopt;
+				remaining -= static_cast<std::size_t>(count) * pattern.size();
+				for (std::int64_t i = 0; i < count; ++i)
+					lists.insert(lists.end(), pattern.begin(), pattern.end());
+			}
+		}
+		return result;
+	}
+
+	void add_subgrid_line_names(const grid_subgrid_lines& value, std::size_t track_count, grid_line_indices& names) {
+		const auto capacity = track_count + 1;
+		std::size_t line = 0;
+		const auto append = [&](const grid_subgrid_lines::name_list& lists) {
+			for (const auto& list : lists) {
+				if (line == capacity) break;
+				const auto index = static_cast<int>(line++);
+				for (const auto& name : list) {
+					auto& indices = names[name];
+					const auto at = std::lower_bound(indices.begin(), indices.end(), index);
+					if (at == indices.end() || *at != index) indices.insert(at, index);
+				}
+			}
+		};
+		append(value.prefix);
+		const auto fixed = value.prefix.size() + value.suffix.size();
+		if (!value.automatic.empty() && capacity > fixed) {
+			const auto repetitions = (capacity - fixed) / value.automatic.size();
+			for (std::size_t i = 0; i < repetitions; ++i) append(value.automatic);
+		}
+		append(value.suffix);
+	}
+
 	bool parse_grid_tracks(const css_token_vector& tokens, grid_track_template& tracks) {
 		if (tokens.size() == 1 && tokens.front().ident() == "none") {
 			tracks = {};
+			return true;
+		}
+		if (!tokens.empty() && tokens.front().ident() == "subgrid") {
+			auto lines = parse_subgrid_lines(tokens);
+			if (!lines) return false;
+			tracks = {};
+			tracks.subgrid = std::move(lines);
 			return true;
 		}
 		return parse_track_template(tokens, tracks, true);

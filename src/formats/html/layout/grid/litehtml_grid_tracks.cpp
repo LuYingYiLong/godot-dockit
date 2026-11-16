@@ -268,24 +268,33 @@ namespace litehtml {
 		return expanded;
 	}
 
-	void apply_grid_template_areas(const grid_area_template& areas, expanded_grid_tracks& rows, expanded_grid_tracks& columns) {
+	void apply_grid_template_areas(const grid_area_template& areas, expanded_grid_tracks& rows, expanded_grid_tracks& columns,
+		bool shared_rows, bool shared_columns) {
 		// An area can extend the explicit grid without assigning track sizes.
-		rows.explicit_count = std::max(rows.tracks.size(), areas.rows);
-		columns.explicit_count = std::max(columns.tracks.size(), areas.columns);
+		if (!shared_rows) rows.explicit_count = std::max(rows.tracks.size(), areas.rows);
+		if (!shared_columns) columns.explicit_count = std::max(columns.tracks.size(), areas.columns);
+		for (const auto& [name, bounds] : areas.areas) {
+			const auto row_end = std::min(bounds.rows.end, rows.explicit_count);
+			const auto column_end = std::min(bounds.columns.end, columns.explicit_count);
+			if (bounds.rows.start >= row_end || bounds.columns.start >= column_end) continue;
+			rows.areas.insert_or_assign(name, grid_track_range{bounds.rows.start, row_end});
+			columns.areas.insert_or_assign(name, grid_track_range{bounds.columns.start, column_end});
+		}
+	}
+
+	grid_line_indices grid_placement_names(const expanded_grid_tracks& axis) {
+		auto names = axis.names;
 		const auto add_name = [](grid_line_indices& names, const std::string& name, std::size_t index) {
 			auto& lines = names[name];
 			const auto line = static_cast<int>(index);
 			const auto at = std::lower_bound(lines.begin(), lines.end(), line);
 			if (at == lines.end() || *at != line) lines.insert(at, line);
 		};
-		for (const auto& [name, bounds] : areas.areas) {
-			const auto start = name + "-start";
-			const auto end = name + "-end";
-			add_name(rows.names, start, bounds.rows.start);
-			add_name(rows.names, end, bounds.rows.end);
-			add_name(columns.names, start, bounds.columns.start);
-			add_name(columns.names, end, bounds.columns.end);
+		for (const auto& [name, bounds] : axis.areas) {
+			add_name(names, name + "-start", bounds.start);
+			add_name(names, name + "-end", bounds.end);
 		}
+		return names;
 	}
 
 	grid_track_gutters finish_grid_tracks(expanded_grid_tracks& axis, const grid_track_list& pattern, std::size_t offset, std::size_t count,

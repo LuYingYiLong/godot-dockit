@@ -81,7 +81,10 @@ void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vec
 	const auto input = label->layout->text_control(p_input);
 	const auto local = label->layout->input_local_point(*p_input.ptr(), p_point);
 	if (input && local) {
-		input->editor.hit_caret(*local, p_extend);
+		const auto mode = input->user_selection_mode();
+		if (mode == litehtml::css_user_select::none) return;
+		if (mode == litehtml::css_user_select::all) input->editor.set_selection(0, input->editor.get_value().length());
+		else input->editor.hit_caret(*local, p_extend);
 		restart_caret_blink();
 		label->layout->repaint_input();
 		queue_redraw();
@@ -210,7 +213,8 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	if (!inserts_text) editor.finish_ime_edit();
 
 	bool changed = false;
-	const bool extend = p_key.is_shift_pressed();
+	const auto selection_mode = input->user_selection_mode();
+	const bool extend = p_key.is_shift_pressed() && selection_mode != litehtml::css_user_select::none;
 	const char* maxlength = input->get_attr("maxlength", "");
 	if (enter && !inserts_text && !editor.is_multiline()) {
 		label->accept_event();
@@ -246,6 +250,9 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		if (editable) changed = input->editor.erase(key == KEY_BACKSPACE ? -1 : 1);
 	} else {
 		return false;
+	}
+	if (extend && selection_mode == litehtml::css_user_select::all && editor.selection_start() != editor.selection_end()) {
+		editor.set_selection(0, editor.get_value().length());
 	}
 	label->accept_event();
 	if (changed) change_input(handle);
@@ -298,7 +305,7 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 		!editable || !has_selection,
 		!has_selection,
 		!editable || DisplayServer::get_singleton()->clipboard_get().is_empty(),
-		editor.get_value().is_empty(),
+		editor.get_value().is_empty() || input->user_selection_mode() == litehtml::css_user_select::none,
 	};
 	for (int command = 0; command < static_cast<int>(std::size(INPUT_MENU_ITEMS)); ++command) {
 		if (command == INPUT_CUT || command == INPUT_SELECT_ALL) input_menu->add_separator();
@@ -365,7 +372,7 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 			}
 			break;
 		case INPUT_SELECT_ALL:
-			editor.set_selection(0, editor.get_value().length());
+			if (input->user_selection_mode() != litehtml::css_user_select::none) editor.set_selection(0, editor.get_value().length());
 			break;
 		default:
 			return;
@@ -510,6 +517,7 @@ bool HTMLLabelCanvas::begin_textarea_drag(const Ref<HTMLElement>& p_element, con
 	const auto inverse = label->layout->input_inverse(*p_element.ptr());
 	if (!inverse) return false;
 	const Vector2 local = inverse->xform(p_point);
+	if (!local.is_finite()) return false;
 	const auto axes = textarea->resize_axes();
 	const auto scrollbar = textarea->editor.scrollbar_at(local);
 	const bool resize = axes != Vector2i() && textarea->get_resize_handle().has_point(local);
@@ -519,8 +527,8 @@ bool HTMLLabelCanvas::begin_textarea_drag(const Ref<HTMLElement>& p_element, con
 	textarea_drag.emplace();
 	auto& drag = *textarea_drag;
 	drag.element = p_element;
-	drag.inverse = *inverse;
-	drag.start_point = p_point - label->get_visible_rect().position;
+	drag.inverse = *inverse * Transform2D(0, label->get_visible_rect().position);
+	drag.start_point = local;
 	if (resize) {
 		drag.axes = axes;
 		drag.start_size = textarea->get_border_size();
@@ -554,7 +562,8 @@ void HTMLLabelCanvas::move_textarea_drag(const Vector2& p_point) {
 		}
 		return;
 	}
-	const auto delta = drag.inverse.basis_xform(p_point - label->get_visible_rect().position - drag.start_point) * Vector2(drag.axes);
+	const auto current = drag.inverse.xform(p_point - label->get_visible_rect().position);
+	const auto delta = (current - drag.start_point) * Vector2(drag.axes);
 	const auto size = (drag.start_size + delta).max(Vector2());
 	if (!size.is_finite() || (delta == Vector2() && !dragged_resize)) return;
 	dragged_resize = true;

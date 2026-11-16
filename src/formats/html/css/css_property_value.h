@@ -5,6 +5,8 @@
 #include <map>
 
 #include "css_background.h"
+#include "css_clip_path.h"
+#include "css_motion_path.h"
 #include "formats/html/css/css_border_image.h"
 #include "css_length.h"
 #include "css_position.h"
@@ -12,6 +14,7 @@
 #include "css_gradient.h"
 #include "css_string_id.h"
 #include "formats/html/css/css_transform.h"
+#include "css_transition.h"
 #include "css_grid_values.h"
 #include "formats/html/css/css_shadows.h"
 #include "formats/html/css/css_values.h"
@@ -40,11 +43,20 @@ namespace litehtml {
 		int_vector,
 		css_length,
 		css_aspect_ratio,
+		css_contain_intrinsic_size,
+		css_clip_margin,
+		css_clip_path_ref,
+		css_offset_path,
+		css_offset_position,
+		css_offset_rotation,
+		css_scroll_snap_type,
+		css_scroll_snap_align,
 		object_fit,
 		css_image_position,
 		vector<css_axis_position>,
 		css_image_resolution,
 		std::optional<web_color>,
+		std::optional<css_scrollbar_colors>,
 		css_border_image_source,
 		css_border_image_slice,
 		css_border_image_offsets,
@@ -62,6 +74,10 @@ namespace litehtml {
 		css_alignment,
 		css_transform_list,
 		css_transform_origin,
+		css_individual_transform,
+		css_transition_times,
+		css_transition_easings,
+		css_filter_list,
 		grid_track_template,
 		grid_area_template,
 		grid_track_list,
@@ -83,6 +99,7 @@ namespace litehtml {
 	{
 		bool m_important = false;
 		docrender::css::CascadePriority priority;
+		string_id declaration_property = empty_id;
 
 		struct deferred_declaration
 		{

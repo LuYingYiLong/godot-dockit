@@ -33,7 +33,7 @@ public:
 	using ptr = shared_ptr<raw_rule>;
 	using vector = std::vector<ptr>;
 
-	enum rule_type { qualified, at };
+	enum rule_type { qualified, at, declaration_list };
 
 	raw_rule(rule_type type, string name = "") : type(type), name(name) {}
 
@@ -45,6 +45,7 @@ public:
 	// Note: Most qualified rules will be style rules, where the prelude is a selector and the block a list of declarations.
 	css_token_vector prelude;
 	css_token block;
+	raw_declaration::vector declarations;
 };
 
 class css_parser
@@ -70,6 +71,7 @@ public:
 	css_token				consume_function(const string& name);
 
 	raw_declaration			consume_declaration();
+	raw_rule::vector		consume_block_contents();
 	void					consume_style_block_contents(/*out*/ raw_declaration::vector& decls, /*out*/ raw_rule::vector& rules);
 };
 

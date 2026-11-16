@@ -83,6 +83,8 @@ namespace docrender {
 		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font);
 		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim);
 		HTMLTextLayout shape_text(litehtml::uint_ptr p_font, const godot::String& p_text);
+		HTMLTextLayout shape_text_for_outline(litehtml::uint_ptr p_font, const godot::String& p_text,
+			bool p_right_to_left, float& r_scale); // 保留字形索引和分数像素字号的轮廓排版
 		HTMLShapedText shape_styled_text(litehtml::uint_ptr p_font, const godot::String& p_text,
 			litehtml::text_justify_adjustment p_justification, float p_advance, int64_t p_start = 0, int64_t p_end = -1,
 			litehtml::punctuation_trim p_trim = litehtml::punctuation_trim::none);

@@ -183,16 +183,27 @@ std::shared_ptr<render_item> element::create_render_item(const std::shared_ptr<r
 		}
 
 		ret->parent(parent_ri);
+		if (css().skips_contents()) return ret;
 		for(const auto& el : m_children)
 		{
-			auto ri = el->create_render_item(ret);
-			if(ri)
-			{
-				ret->add_child(ri);
-			}
+			el->append_render_items(ret);
 		}
 	}
 	return ret;
+}
+
+void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
+{
+	if (css().get_display() == display_none) return;
+	if (css().get_display() == display_contents)
+	{
+		for (const auto& child : m_children)
+			child->append_render_items(parent_ri);
+	}
+	else if (auto item = create_render_item(parent_ri))
+	{
+		parent_ri->add_child(item);
+	}
 }
 
 bool element::requires_styles_update()
@@ -293,7 +304,10 @@ bool element::is_block_formatting_context() const
 		return true;
 	if (const auto p = parent(); p && is_grid_display(p->css().get_display()) && m_css.get_display() != display_inline_text)
 		return true;
-	if(	m_css.get_display() == display_inline_block ||
+	if(	m_css.is_flow_root() ||
+		   m_css.has_box_containment() ||
+		   m_css.establishes_query_container_context() ||
+		   m_css.get_display() == display_inline_block ||
 		   m_css.get_display() == display_table_cell ||
 		   m_css.get_display() == display_inline_flex ||
 		   m_css.get_display() == display_flex ||
@@ -302,7 +316,7 @@ bool element::is_block_formatting_context() const
 		   m_css.get_float() != float_none ||
 		   m_css.get_position() == element_position_absolute ||
 		   m_css.get_position() == element_position_fixed ||
-		   m_css.get_overflow() > overflow_visible)
+		   (m_css.is_scroll_container() && m_css.get_display() != display_inline && m_css.get_display() != display_inline_text))
 	{
 		return true;
 	}
@@ -312,6 +326,9 @@ bool element::is_block_formatting_context() const
 void element::inherit_counters(const element* preceding_sibling)
 {
 	const auto ancestor = parent();
+	m_counter_containment_root = ancestor ? ancestor->m_counter_containment_root : nullptr;
+	if (ancestor && ancestor->css().has_style_containment())
+		m_counter_containment_root = ancestor.get();
 	const auto* source = preceding_sibling ? preceding_sibling : ancestor.get();
 	if (source)
 		m_counter_values = source->m_counter_values;
@@ -319,11 +336,12 @@ void element::inherit_counters(const element* preceding_sibling)
 		m_counter_values.clear();
 }
 
-element::scoped_counter::state& element::get_counter(string_id name)
+element::scoped_counter::state& element::get_counter(string_id name, bool for_change)
 {
 	auto& stack = m_counter_values[name];
-	if (stack.empty())
-		stack.push_back({ parent().get(), std::make_shared<scoped_counter::state>(scoped_counter::state{ 0, false }) });
+	// Content may read enclosing counters. Increment and set may only update a counter in this boundary.
+	if (stack.empty() || (for_change && stack.back().containment_root != m_counter_containment_root))
+		stack.push_back({ parent().get(), m_counter_containment_root, std::make_shared<scoped_counter::state>(scoped_counter::state{ 0, false }) });
 	return *stack.back().counter;
 }
 
@@ -345,14 +363,14 @@ std::vector<int> element::get_counter_values(string_id name)
 
 void element::increment_counter(string_id name, int increment)
 {
-	auto& value = get_counter(name).value;
+	auto& value = get_counter(name, true).value;
 	const auto sum = static_cast<int64_t>(value) + increment;
 	value = static_cast<int>(std::clamp<int64_t>(sum, std::numeric_limits<int>::min(), std::numeric_limits<int>::max()));
 }
 
 void element::set_counter(string_id name, int value)
 {
-	get_counter(name).value = value;
+	get_counter(name, true).value = value;
 }
 
 void element::reset_counter(string_id name, int value)
@@ -367,14 +385,15 @@ void element::reset_list_counter(string_id name, int start, bool reversed)
 
 void element::increment_list_counter(string_id name)
 {
-	increment_counter(name, get_counter(name).reversed ? -1 : 1);
+	increment_counter(name, get_counter(name, true).reversed ? -1 : 1);
 }
 
 void element::reset_counter_state(string_id name, int64_t value, bool reversed)
 {
 	auto& stack = m_counter_values[name];
 	const auto scope = parent();
-	scoped_counter counter{ scope.get(), std::make_shared<scoped_counter::state>(scoped_counter::state{ value, reversed }) };
+	scoped_counter counter{ scope.get(), m_counter_containment_root,
+		std::make_shared<scoped_counter::state>(scoped_counter::state{ value, reversed }) };
 	// Reset replaces an earlier counter at this sibling level and nests under ancestor counters.
 	if (!stack.empty() && stack.back().scope_parent == scope.get())
 		stack.back() = std::move(counter);

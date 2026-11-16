@@ -35,10 +35,18 @@ struct grid_auto_repeat {
 	bool fit;
 };
 
+struct grid_subgrid_lines {
+	using name_list = std::vector<std::vector<std::string>>;
+	name_list prefix;
+	name_list automatic;
+	name_list suffix;
+};
+
 struct grid_track_template {
 	grid_track_segment prefix;
 	std::optional<grid_auto_repeat> repeat;
 	grid_track_segment suffix;
+	std::optional<grid_subgrid_lines> subgrid;
 };
 
 struct grid_area_template {
@@ -65,5 +73,6 @@ bool parse_grid_line(const css_token_vector& tokens, grid_line& line);
 bool parse_grid_axis_placement(const css_token_vector& tokens, grid_axis_placement& placement);
 bool parse_grid_area(const css_token_vector& tokens, std::array<grid_line, 4>& lines);
 void append_grid_segment(grid_track_segment& to, const grid_track_segment& from);
+void add_subgrid_line_names(const grid_subgrid_lines& value, std::size_t track_count, grid_line_indices& names);
 
 }

@@ -4,6 +4,7 @@
 
 #include <limits>
 #include <map>
+#include <cstdint>
 
 namespace docrender::css {
 
@@ -16,6 +17,8 @@ struct CascadePriority {
 	int layer = css_default_layer;
 	selector_specificity specificity;
 	int source_order = 0;
+	int proximity = std::numeric_limits<int>::max();
+	std::uint64_t declaration_order = 0;
 };
 
 bool takes_cascade_precedence(const CascadePriority& candidate, bool candidate_important,

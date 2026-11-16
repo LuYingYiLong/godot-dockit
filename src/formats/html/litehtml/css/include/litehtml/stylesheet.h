@@ -46,8 +46,8 @@ public:
 		return m_selectors;
 	}
 
-	template<class Input>
-	void	parse_css_stylesheet(const Input& input, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media = nullptr, bool top_level = true, size_t layer_id = 0);
+	void	parse_css_stylesheet(const string& input, const string& baseurl, shared_ptr<document> doc,
+		media_query_list_list::ptr media = nullptr, size_t layer_id = 0, const element* implicit_scope_root = nullptr);
 
 	void	sort_selectors(bool author = true);
 	const css_counter_style* find_counter_style(const string& name) const
@@ -58,9 +58,27 @@ public:
 	const std::vector<css_font_face>& font_faces() const { return m_font_faces; }
 	const std::vector<css_font_feature_values_rule>& font_feature_values() const { return m_font_feature_values; }
 	bool	has_layers() const { return cascade_layers.has_layers(); }
+	bool	has_container_queries() const { return m_has_container_queries; }
 
 private:
-	bool	parse_style_rule(const raw_rule& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
+	bool m_has_container_queries = false;
+	struct RuleContext {
+		const string& baseurl;
+		const shared_ptr<document>& doc;
+		media_query_list_list::ptr media;
+		size_t layer_id;
+		std::shared_ptr<const docrender::css::NestingSelectorList> nesting;
+		std::shared_ptr<const docrender::css::ScopeRule> scope;
+		const element* implicit_scope_root;
+		bool in_style_rule = false;
+		int depth = 0;
+		shared_ptr<const container_query> container_queries;
+	};
+	void	parse_rules(const raw_rule::vector& rules, const RuleContext& context, bool top_level);
+	void	parse_block(const css_token_vector& tokens, RuleContext context);
+	bool	parse_style_rule(const raw_rule& rule, const RuleContext& context);
+	bool	parse_scope_rule(const raw_rule& rule, const RuleContext& context);
+	void	apply_declarations(const raw_declaration::vector& declarations, const RuleContext& context);
 	bool	apply_import(const docrender::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
 	void	add_selector(const css_selector::ptr& selector);
 };
@@ -68,6 +86,7 @@ private:
 inline void css::add_selector(const css_selector::ptr& selector)
 {
 	selector->m_order = (int)m_selectors.size();
+	m_has_container_queries |= static_cast<bool>(selector->m_container_query);
 	m_selectors.push_back(selector);
 }
 

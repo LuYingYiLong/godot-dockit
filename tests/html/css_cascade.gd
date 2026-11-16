@@ -328,6 +328,8 @@ func _run() -> void:
 	_check_inline_reflow()
 	_check_css_features()
 	_check_selector_semantics()
+	await _check_css_nesting()
+	await _check_css_scope()
 	_check_element_subclasses()
 	_check_detached_subtrees()
 	await _check_dom_layout_isolation()
@@ -343,10 +345,20 @@ func _run() -> void:
 	await _check_imported_template()
 	await _check_markdown_markup_resources()
 	_check_layers()
+	await _check_all_shorthand()
 	_check_box_and_transform_functions()
+	await _check_motion_paths()
+	await _check_individual_transforms()
+	await _check_flat_3d_transforms()
+	await _check_perspective_transforms()
+	await _check_preserved_3d_contexts()
 	_check_math_functions()
 	_check_length_units()
+	await _check_display_contents()
 	_check_grid_intrinsic_tracks()
+	await _check_subgrid()
+	_check_subgrid_baselines()
+	_check_grid_cross_axis_sizing()
 	_check_intrinsic_box_widths()
 	_check_aspect_ratio()
 	await _check_object_sizing()
@@ -354,15 +366,46 @@ func _run() -> void:
 	await _check_image_set()
 	await _check_annotated_image()
 	await _check_cross_fade()
+	await _check_background_blend_modes()
+	await _check_element_blend_modes()
+	await _check_positioned_stacking_levels()
 	await _check_image_resolution()
 	await _check_image_orientation()
 	await _check_border_image()
+	await _check_group_opacity()
+	await _check_css_transitions()
+	_check_transform_matrix_transitions()
+	await _check_filters()
+	await _check_backdrop_filters()
+	await _check_will_change()
+	await _check_user_select()
+	await _check_selection_colors()
+	await _check_masks()
+	await _check_svg_masks()
+	await _check_clip_paths()
+	await _check_polygon_clip_paths()
+	await _check_rounded_polygon_clip_paths()
+	await _check_svg_clip_paths()
+	await _check_inline_svg_clip_sources()
+	await _check_external_svg_clip_sources()
+	await _check_nested_svg_clip_sources()
+	await _check_svg_text_clips()
+	await _check_svg_text_path_clips()
+	await _check_responsive_clip_shapes()
 	await _check_outlines()
 	await _check_background_tiling()
 	await _check_image_positions()
 	await _check_background_attachment()
 	await _check_embedded_background_attachment()
 	_check_generated_content()
+	_check_style_containment()
+	_check_size_containment()
+	_check_container_size_queries()
+	_check_container_units()
+	_check_container_style_queries()
+	_check_container_query_variables()
+	await _check_hidden_content_visibility()
+	await _check_auto_content_visibility()
 	await _check_generated_image()
 	await _check_list_markers()
 	_check_counter_styles()
@@ -398,6 +441,7 @@ func _run() -> void:
 	await _check_controls()
 	await _check_element_activation()
 	await _check_forms()
+	await _check_form_state_selectors()
 	_check_table_elements()
 	await _check_table_layout()
 	await _check_table_css()
@@ -406,6 +450,22 @@ func _run() -> void:
 	_check_image_element()
 	await _check_responsive_images()
 	await _check_image_alt_text()
+	_check_pointer_events()
+	await _check_text_overflow()
+	await _check_overflow_axes()
+	await _check_overflow_clip_margin()
+	await _check_overflow_scrollbars()
+	await _check_flow_relative_edges()
+	_check_logical_floats()
+	await _check_layout_and_paint_containment()
+	await _check_viewport_overflow()
+	await _check_scrollbar_gutter()
+	await _check_scrollbar_styles()
+	await _check_scroll_insets()
+	await _check_overscroll_behavior()
+	await _check_smooth_scroll_behavior()
+	await _check_scroll_snap()
+	await _check_sticky_positioning()
 	await _check_author_hover()
 	await _check_focus_within()
 	await _check_dom_input()
@@ -1476,6 +1536,333 @@ func _check_markdown_markup_resources() -> void:
 	viewport.queue_free()
 
 
+func _check_css_nesting() -> void:
+	var html: String = """<!doctype html><style>
+		body { margin: 0; }
+		#strong, .widget {
+			article { width: 47px; }
+			> .card, + .peer { height: 18px; }
+			.theme & { padding-top: 4px; }
+			div& { width: 108px; }
+			& .slot & .leaf { width: 39px; }
+			&Suffix { width: 399px; }
+		}
+		.theme .widget article { width: 75px; }
+		.widgetSuffix { width: 21px; }
+		.mixed {
+			width: 20px;
+			& { width: 30px; }
+			width: 40px;
+			> .never, { height: 99px; }
+			@media (min-width: 300px) {
+				width: 50px;
+				@supports selector(&) {
+					& { width: 60px; }
+					width: 70px;
+				}
+			}
+			height: 11px;
+			--tokens: { color: red; };
+			:where(&) { height: 99px; }
+		}
+		.layered {
+			@layer visual, base;
+			@layer base { width: 31px !important; }
+			@layer visual { width: 34px !important; }
+		}
+		#unmatched {
+			:is(:undefined(&), .external) { width: 44px; }
+		}
+		.relation { :has(> &) { padding-bottom: 9px; } }
+		.pseudo { position: absolute; left: 200px; top: 0; width: 32px; height: 20px; background: black; }
+		.pseudo::before {
+			content: ""; display: block; width: 12px; height: 16px; background: red;
+			@media (min-width: 300px) { background: lime; }
+			& { background: blue; }
+		}
+		.hover { position: absolute; left: 8px; top: 104px; width: 140px; height: 24px; }
+		.chip { width: 20px; height: 24px; }
+		.hover:hover { @media (min-width: 200px) { > .chip { width: 56px; } } }
+	</style><div class="theme"><div class="widget" id="widget">
+		<article class="card" id="card"></article><div class="slot"><div class="widget"><div class="leaf" id="leaf"></div></div></div>
+	</div><div class="peer" id="peer"></div></div><div class="widgetSuffix" id="suffix"></div>
+	<div class="mixed" id="mixed"></div><div class="layered" id="layered"></div>
+	<div class="external" id="external"></div><div id="ancestor"><div class="relation"></div></div>
+	<div class="pseudo"></div><div class="hover"><div class="chip" id="chip"></div></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(240, 190)) == OK, "Lay out nested CSS rules")
+	_check(_rect(layout, "card").size == Vector2(47.0, 18.0) and is_equal_approx(_rect(layout, "peer").size.y, 18.0),
+		"Bare type selectors and leading combinators nest with the parent list's maximum specificity")
+	_check(is_equal_approx(_rect(layout, "leaf").size.x, 39.0) and is_equal_approx(_rect(layout, "widget").size.x, 108.0) and
+		is_equal_approx(_rect(layout, "suffix").size.x, 21.0), "Nesting supports multiple ampersands and requires type selectors first")
+	_check(is_equal_approx(_rect(layout, "card").position.y, 4.0), "An explicit ampersand can follow an ancestor selector")
+	_check(_rect(layout, "mixed").size == Vector2(40.0, 11.0), "Interleaved declarations retain source order and :where has zero specificity")
+	_check(is_equal_approx(_rect(layout, "layered").size.x, 31.0), "Nested layer blocks retain importance order and ignore nested layer statements")
+	_check(is_equal_approx(_rect(layout, "external").size.x, 44.0) and is_equal_approx(_rect(layout, "ancestor").size.y, 9.0),
+		"A nesting token inside :is or :has controls the relative scope")
+	var widget: HTMLElement = layout.get_element_by_id("widget")
+	_check(layout.query_selector("&").get_tag_name() == "html" and widget.matches("&") and
+		widget.query_selector("& > .card") == layout.get_element_by_id("card"), "An unbound ampersand matches the query's scope")
+	_check(layout.layout(Vector2i(340, 190)) == OK and _rect(layout, "mixed").size == Vector2(70.0, 11.0),
+		"Nested conditional declarations and rules are ordered after a media relayout")
+	var deep_rules: String = ".deep {" + "&& {".repeat(42) + "width: 27px;" + "}".repeat(43)
+	_check(layout.parse("<!doctype html><div class='deep' id='deep'></div>", "res://", deep_rules) == OK and
+		layout.layout(Vector2i(240, 190)) == OK and is_equal_approx(_rect(layout, "deep").size.x, 27.0),
+		"Repeated nesting selectors share parent matches at deep nesting levels")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(340, 160)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(340.0, 160.0)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(204.0, 5.0), Color.LIME, "Direct declarations in a nested group match the parent's pseudo-element")
+	_check_pixel(image, Vector2(225.0, 5.0), Color.BLACK, "Explicit nesting uses the parent's element selectors")
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = Vector2(14.0, 112.0)
+	motion.global_position = motion.position
+	viewport.push_input(motion, true)
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(label.get_element_by_id("chip").get_bounding_rect().size.x, 56.0),
+		"Hover updates reach rules whose parent selector has no declarations of its own")
+	viewport.queue_free()
+
+
+func _check_css_scope() -> void:
+	var html: String = """<!doctype html><style>
+		body { margin: 0; }
+		.item, .local { width: 10px; height: 10px; }
+		@scope (#near) {
+			.item { width: var(--size, 40px); }
+			.force { height: 30px !important; }
+		}
+		@scope (.outer) {
+			.item { width: 60px; }
+			.force { height: 80px; }
+			#specific { width: 65px; }
+		}
+		.item { width: 90px; }
+		@scope (.outer) to (.outer:scope) {
+			width: 210px;
+			@media (min-width: 280px) { width: 212px; }
+			:SCOPE::before { content: "Scope root"; }
+			@scope (> #near) to (> .limit) {
+				> .item { height: 23px; }
+				article :scope .inset { width: 75px; }
+				.limit, .excluded { width: 99px; }
+			}
+		}
+		@scope (.outer) to (.limit) {
+			@scope (.inner) { .excluded { height: 99px; } }
+		}
+		@scope (.shared) { .nearer .distant { width: 37px; } }
+		article { @scope (#near) { & { height: 100px; } } }
+		@scope (.outer::before) { .item { width: 999px !important; } }
+		@scope (.outer) to (.limit::after) { .item { width: 999px !important; } }
+		@supports at-rule(@scope) {
+			@scope (.outer) { #supports { width: 45px; } }
+		}
+	</style>
+	<article class="outer shared" id="outer">
+		<div class="shared nearer" id="near" style="--size: 43px">
+			<div class="item" id="tie"></div><div class="item force" id="specific"></div>
+			<div class="item distant" id="distant"></div>
+			<div><div class="item inset" id="inset"></div></div>
+			<div class="item limit" id="limit"><div class="inner"><div class="item excluded" id="excluded"></div></div></div>
+			<div class="item supports" id="supports"></div>
+		</div>
+	</article>
+	<div class="item" id="outside"></div>
+	<section id="local_left">
+		<style id="local_sheet">@scope to (.stop) { .local { width: 41px; } }</style>
+		<div class="local" id="local_a"></div><div class="stop"><div class="local" id="local_excluded"></div></div>
+	</section>
+	<section id="local_right"><div class="local" id="local_b"></div></section>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(300, 400)) == OK, "Lay out scoped CSS rules")
+	var expected: Dictionary[String, Vector2] = {
+		"near": Vector2(212.0, 100.0),
+		"tie": Vector2(43.0, 23.0),
+		"specific": Vector2(65.0, 30.0),
+		"distant": Vector2(37.0, 23.0),
+		"inset": Vector2(75.0, 10.0),
+		"limit": Vector2(43.0, 10.0),
+		"excluded": Vector2(43.0, 10.0),
+		"supports": Vector2(45.0, 23.0),
+		"outside": Vector2(90.0, 10.0),
+		"local_a": Vector2(41.0, 10.0),
+		"local_b": Vector2(10.0, 10.0),
+		"local_excluded": Vector2(10.0, 10.0),
+	}
+	for id: String in expected:
+		_check(_rect(layout, id).size.is_equal_approx(expected[id]), "Scoped CSS size for %s" % id)
+	_check(is_equal_approx(_rect(layout, "outer").size.x, 212.0), "Direct declarations apply to the scope root")
+	_check("Scope root" in layout.get_plain_text(), "Scoped pseudo-elements match the inclusive root")
+	_check(layout.layout(Vector2i(260, 400)) == OK and is_equal_approx(_rect(layout, "outer").size.x, 210.0),
+		"Direct scoped declarations follow media conditions")
+	var parent: HTMLElement = layout.get_element_by_id("local_right")
+	var sheet: HTMLElement = layout.get_element_by_id("local_sheet")
+	_check(parent.append_child(sheet) == OK, "Move the owner of an implicitly scoped stylesheet")
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(_rect(layout, "local_a").size.x, 10.0) and is_equal_approx(_rect(layout, "local_b").size.x, 41.0),
+		"An implicit scope follows its stylesheet owner's parent")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(200, 100)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(200.0, 100.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		.trigger, .boundary { width: 100px; height: 30px; }
+		.dynamic { width: 20px; height: 20px; }
+		@scope (.trigger:hover) { .dynamic { width: 50px; } }
+		@scope (.bounded) to (.boundary:hover) { .dynamic { width: 50px; } }
+	</style><div class="trigger"><div class="dynamic" id="start"></div></div>
+	<div class="bounded"><div class="boundary"><div class="dynamic" id="end"></div></div></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var hover_steps: Array[Vector2] = [
+		Vector2(70.0, 10.0), Vector2(70.0, 40.0), Vector2(160.0, 80.0),
+	]
+	var widths: Array[Vector2] = [
+		Vector2(50.0, 50.0), Vector2(20.0, 20.0), Vector2(20.0, 50.0),
+	]
+	viewport.notify_mouse_entered()
+	for step: int in hover_steps.size():
+		var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+		motion.position = hover_steps[step]
+		motion.global_position = motion.position
+		motion.relative = motion.position - viewport.get_mouse_position()
+		viewport.push_input(motion, true)
+		await process_frame
+		await process_frame
+		await process_frame
+		var actual: Vector2 = Vector2(_label_rect(label, "start").size.x, _label_rect(label, "end").size.x)
+		_check(actual.is_equal_approx(widths[step]), "Scoped hover at %s gives %s, expected %s" % [
+			motion.position, actual, widths[step],
+		])
+	viewport.queue_free()
+
+
+func _check_all_shorthand() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var source: String = """<!doctype html><style>
+		body { margin: 0; color: red; }
+		#before { width: 70px; all: initial; display: block; }
+		#after { all: unset; display: block; width: 71px; }
+		#all_important { width: 72px; all: unset !important; display: block !important; }
+		#named_important { width: 73px !important; all: unset; display: block; }
+		#inline, #inline_important { width: 74px !important; }
+		#invalid_literal { width: 75px; all: block; }
+		#invalid_var { width: 76px; all: var(--missing); display: block; }
+		#wrong_var { --wrong: 4px; width: 77px; all: var(--wrong); display: block; }
+		#custom { --width: 78px; all: var(--missing, initial); display: block; width: var(--width); }
+		#rollback { display: none; all: revert; }
+		#flow_parent { direction: ltr; margin-left: 16px; margin-right: 34px; width: 180px; }
+		#flow_reset { direction: rtl; margin-inline-end: 90px; all: inherit; width: 80px; }
+		#flow_later { direction: rtl; all: inherit; margin-inline-end: 7px; width: 80px; }
+		#type { font-size: 32px; }
+		#initial_reference { font-size: initial; width: 4em; }
+		#unset_font { all: unset; display: block; width: 4em; }
+		@layer base, theme;
+		@layer base {
+			#layer_reset { width: 79px; }
+			#layer_var { width: 80px; }
+			#earlier_all { all: initial; display: block; width: 4em; }
+			#layer_inline { width: 81px; }
+			#layer_logical { margin-inline-start: 12px; width: 40px; }
+		}
+		@layer theme {
+			#layer_reset { all: revert-layer; }
+			#layer_var { all: var(--missing, revert-layer); }
+			#earlier_all { font-size: revert-layer; }
+			#layer_logical { all: revert-layer; }
+		}
+		@supports (all: var(--reset)) and (all: initial) and (not (all: block)) { #supports { width: 82px; } }
+	</style><div id="before">a</div><div id="after">a</div><div id="all_important">a</div><div id="named_important">a</div>
+	<div id="inline" style="all: initial; display: block">a</div>
+	<div id="inline_important" style="all: initial !important; display: block !important">a</div>
+	<div id="invalid_literal">a</div><div id="invalid_var">a</div><div id="wrong_var">a</div>
+	<div id="custom">a</div><div id="rollback">a</div>
+	<div id="flow_parent"><div id="flow_reset">a</div><div id="flow_later">a</div></div>
+	<div id="type"><div id="initial_reference">a</div><div id="unset_font">a</div><div id="earlier_all">a</div></div>
+	<div id="layer_reset">a</div><div id="layer_var">a</div><div id="layer_inline" style="all: revert-layer">a</div>
+	<div id="layer_logical">a</div><div id="supports">a</div>"""
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(320, 550)) == OK, "Parse and lay out the all shorthand")
+	var widths: Dictionary[String, float] = {
+		"before": 320.0,
+		"after": 71.0,
+		"all_important": 320.0,
+		"named_important": 73.0,
+		"inline": 74.0,
+		"inline_important": 320.0,
+		"invalid_literal": 75.0,
+		"invalid_var": 320.0,
+		"wrong_var": 320.0,
+		"custom": 78.0,
+		"rollback": 320.0,
+		"unset_font": 128.0,
+		"layer_reset": 79.0,
+		"layer_var": 80.0,
+		"layer_inline": 81.0,
+		"supports": 82.0,
+	}
+	for id: String in widths:
+		var actual: float = _rect(layout, id).size.x
+		_check(is_equal_approx(actual, widths[id]), "CSS all width for %s is %s, expected %s" % [id, actual, widths[id]])
+	_check(is_equal_approx(_rect(layout, "earlier_all").size.x, _rect(layout, "initial_reference").size.x),
+		"A later named rollback can pick an earlier all declaration")
+	var parent_x: float = _rect(layout, "flow_parent").position.x
+	_check(is_equal_approx(_rect(layout, "flow_reset").position.x - parent_x, 16.0),
+		"All inherits the physical margin even when a lower-priority logical declaration is present")
+	_check(is_equal_approx(_rect(layout, "flow_later").position.x - parent_x, 7.0),
+		"All preserves direction and lets a later logical declaration win")
+	_check(is_equal_approx(_rect(layout, "layer_logical").position.x, 12.0), "All can roll back to a logical declaration")
+	for value: String in ["block", "var(--missing)", "var(--wrong)",]:
+		_check(_has_diagnostic(layout, "all", value, "style_element"), "The invalid all value %s retains its source" % value)
+	_check(layout.get_css_diagnostics().size() == 3, "All diagnoses each invalid declaration once")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(160, 65)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		html { background: white; } body { margin: 8px; color: red; font: 26px monospace; }
+		#initial { background-color: lime; opacity: 0; all: initial; font: 26px monospace; }
+		#unset { background-color: lime; all: unset; }
+		#inline_box { all: initial; }
+	</style><span id="initial">MMM</span><span id="unset">MMM</span><div id="inline_box">M</div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var initial: Rect2i = Rect2i(_label_rect(label, "initial"))
+	var unset: Rect2i = Rect2i(_label_rect(label, "unset"))
+	_check(_color_bounds(image, initial, Color.BLACK).has_area() and not _color_bounds(image, initial, Color.LIME).has_area(),
+		"All initial resets text color, background, and opacity")
+	_check(_color_bounds(image, unset, Color.RED).has_area() and not _color_bounds(image, unset, Color.LIME).has_area(),
+		"All unset uses inherited text color and initial background")
+	_check(_label_rect(label, "inline_box").position.x > float(unset.position.x), "All initial resets a div's default block display")
+	viewport.queue_free()
+
+
 func _check_layers() -> void:
 	var layout: HTMLLayout = HTMLLayout.new()
 	layout.css_diagnostics_enabled = true
@@ -1561,6 +1948,117 @@ div { position: absolute; width: 20px; height: 10px; transform-origin: 0 0; }
 		"Hit testing skips the skewed rectangle's empty corner")
 	_check(layout.get_element_at(Vector2(36.0, 68.0)) == layout.get_element_by_id("skew_x"),
 		"Hit testing finds the skewed rectangle")
+
+
+func _check_display_contents() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """
+<!doctype html><style>
+html { display: contents; }
+body { margin: 0; background: black; }
+#grid { display: block grid; grid-template: 18px / 40px 55px 65px; }
+#wrapper { --box: contents; display: var(--box); position: relative; padding: 40px;
+  transform: translateX(100px); opacity: 0; color: #345678; content-visibility: hidden; }
+#wrapper.boxed { display: block; position: static; padding: 0; transform: none; opacity: 1;
+  content-visibility: visible; }
+#wrapper::before { content: ""; display: block; background: #832146; }
+#inner, #flex_wrapper, #absolute_wrapper { display: contents; }
+#grid_link { color: inherit; background: currentColor; }
+#end { background: #176543; }
+#flex { display: flex block; height: 14px; }
+#flex_wrapper > * { flex: 0 0 35px; }
+#flex_a { display: inline grid; grid-template-columns: 1fr; background: #754024; }
+#flex_b { display: block; display: inline contents; background: #254075; }
+#positioned { position: relative; width: 150px; height: 20px; }
+#absolute_wrapper { position: relative; padding: 30px; }
+#absolute { position: absolute; right: 3px; width: 12px; height: 10px; background: #565656; }
+#hidden_image, #hidden_select, #hidden_textarea { display: contents; }
+#boxless_link { display: contents; }
+#link_child { display: inline flow-root; width: 24px; height: 12px; background: #127348; }
+.decor { position: absolute; top: 75px; color: white; font: 16px/20px sans-serif;
+  text-decoration: overline solid #44cc44 2px; }
+.decor_wrapper { display: contents; text-decoration: underline solid red 2px; }
+#hidden_text { position: absolute; left: 175px; top: 75px; font: 16px/20px sans-serif; }
+#hidden_text span { display: contents; visibility: hidden; color: magenta; }
+@supports (display: contents) and (display: inline flex) {
+  #supports { display: block flow-root; width: 17px; height: 5px; }
+}
+</style>
+<div id="grid"><div id="wrapper"><div id="inner">
+  <a id="grid_link" href="#supports">Click</a></div></div><div id="end"></div></div>
+<div id="flex"><div id="flex_wrapper"><div id="flex_a"></div><div id="flex_b"></div></div></div>
+<div id="positioned"><div id="absolute_wrapper"><div id="absolute"></div></div></div>
+<img id="hidden_image" alt="Unexpected image fallback">
+<select id="hidden_select"><option>Unexpected option</option></select>
+<textarea id="hidden_textarea">Unexpected field</textarea>
+<div id="supports"></div>
+<div><a id="boxless_link" href="#supports"><span id="link_child"></span></a></div>
+<div class="decor" style="left: 0"><span class="decor_wrapper">Some<span> text</span></span></div>
+<div class="decor" style="left: 80px">Some<span> text</span></div>
+<div id="hidden_text"><span>Hidden</span></div>
+"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(240, 100)) == OK, "Lay out display: contents fixture")
+	var wrapper: HTMLElement = layout.get_element_by_id("wrapper")
+	var link: HTMLElement = layout.get_element_by_id("grid_link")
+	_check(not wrapper.get_bounding_rect().has_area() and wrapper.get_client_rects().is_empty(),
+		"A contents element has no client rectangles")
+	_check(wrapper.query_selector(":scope > #inner > #grid_link") == link and link.get_parent().get_parent() == wrapper,
+		"Nested contents elements remain in the DOM ancestry")
+	_check(link.get_bounding_rect().is_equal_approx(Rect2(40.0, 0.0, 55.0, 18.0))
+		and _rect(layout, "end").is_equal_approx(Rect2(95.0, 0.0, 65.0, 18.0)),
+		"Grid places generated content and descendants in box-tree order")
+	_check(layout.get_link_at(Vector2(90.0, 11.0)) == "#supports",
+		"Link hit testing follows promoted grid items")
+	var child_hit: Vector2 = _rect(layout, "link_child").get_center()
+	_check(layout.get_element_at(child_hit) == layout.get_element_by_id("link_child")
+		and layout.get_link_at(child_hit) == "#supports"
+		and layout.get_element_by_id("boxless_link").get_client_rects().is_empty(),
+		"Hit testing finds the rendered child and resolves the link through its DOM ancestor")
+	var text_offset: int = layout.get_plain_text().find("Click")
+	_check(text_offset >= 0 and not layout.get_selection_rects(text_offset, text_offset + 5).is_empty(),
+		"Text selection preserves the promoted item's text geometry")
+	_check(_rect(layout, "flex_a").is_equal_approx(Rect2(0.0, 18.0, 35.0, 14.0))
+		and _rect(layout, "flex_b").is_equal_approx(Rect2(35.0, 18.0, 35.0, 14.0)),
+		"Flex items are blockified and sized under nested contents, and invalid display keeps its fallback")
+	_check(is_equal_approx(_rect(layout, "absolute").position.x, 135.0),
+		"The positioned contents wrapper does not establish a containing block")
+	for id: String in ["hidden_image", "hidden_select", "hidden_textarea",]:
+		_check(layout.get_element_by_id(id).get_client_rects().is_empty(),
+			"Contents suppresses the replaced box for %s" % id)
+	_check(not layout.get_plain_text().contains("Unexpected") and is_equal_approx(_rect(layout, "supports").size.x, 17.0),
+		"Suppressed controls have no rendered text and feature queries recognize the new display grammar")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 100)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(240.0, 100.0)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(10.0, 10.0), Color("#832146"), "Generated box under display: contents")
+	_check_pixel(image, Vector2(90.0, 10.0), Color("#345678"), "Inherited color under display: contents")
+	_check_pixel(image, Vector2(120.0, 10.0), Color("#176543"), "Sibling box after display: contents")
+	var decorated: Rect2i = Rect2i(0, 74, 78, 22)
+	_check(_color_bounds(image, decorated, Color("#44cc44")).has_area()
+		and image.get_region(decorated).get_data() == image.get_region(Rect2i(80, 74, 78, 22)).get_data(),
+		"Decoration follows the box tree for both direct text and child elements")
+	_check(image.get_region(Rect2i(175, 74, 60, 22)).get_data() == image.get_region(Rect2i(175, 20, 60, 22)).get_data(),
+		"Boxless wrappers still pass visibility to their direct text")
+	viewport.queue_free()
+
+	wrapper.set_attribute("class", "boxed")
+	_check(layout.layout(Vector2i(240, 100)) == OK and wrapper.get_bounding_rect().has_area()
+		and is_equal_approx(_rect(layout, "end").position.x, 40.0),
+		"Changing contents to block restores the wrapper's own grid placement")
+	wrapper.remove_attribute("class")
+	_check(layout.layout(Vector2i(240, 100)) == OK and wrapper.get_client_rects().is_empty()
+		and layout.get_element_by_id("grid_link") == link and is_equal_approx(link.get_bounding_rect().position.x, 40.0),
+		"Returning to contents rebuilds geometry and retains node handles")
 
 
 func _check_math_functions() -> void:
@@ -1827,6 +2325,260 @@ func _check_grid_intrinsic_tracks() -> void:
 	_check(_has_diagnostic(layout, "grid-template-columns", "repeat(auto-fit , max-content)", "style_element") and
 		_has_diagnostic(layout, "grid-template-columns", "fit-content(-10px)", "style_element"),
 		"Invalid intrinsic track syntax leaves the valid declaration in place: %s" % [layout.get_css_diagnostics()])
+
+
+func _check_subgrid() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """
+<!doctype html><style>
+body { margin: 0; }
+#outer { display:grid; grid-template:20px 20px / [left] auto [middle] 1fr [right]; column-gap:10px; }
+#track_measure { grid-column:1; grid-row:1; }
+#shared { display:grid; grid-column:1 / -1; grid-row:2; --columns:subgrid [local]; grid-template-columns:var(--columns);
+  grid-template-rows:20px; column-gap:20px; padding:0 7px; width:1px; max-width:2px; justify-self:end; }
+#contribution { grid-column:left / middle; width:68px; }
+#align_track { grid-column:middle / right; background:#12643f; }
+#rows { display:grid; width:160px; grid-template:[first] auto [second] auto [end] / 50px 1fr; row-gap:8px; }
+#shared_both { display:grid; grid-template:subgrid / subgrid; grid-area:1 / 1 / -1 / -1; row-gap:18px; }
+#first_row { grid-row:first / second; height:29px; }
+#nested_both { display:grid; grid:subgrid / subgrid; grid-area:second / 1 / end / -1; height:1px; align-self:end; }
+#second_row { grid-row:-1 / span 2; grid-column:2; height:37px; }
+#names { display:grid; grid-template:12px / [parent_start] 30px [parent_middle] 40px [parent_next] 50px 60px; }
+#names_shared { display:grid; grid-column:1 / -1; grid-template-columns:subgrid [front] repeat(2,[named]) repeat(auto-fill,[spare]) [tail]; }
+#from_parent { grid-column:parent_middle / parent_next; grid-row:1; }
+#local_names { grid-column:2 named / spare; grid-row:1; }
+#clamped { grid-column:99 / span 4; grid-row:1; }
+#fallback { display:grid; grid-template-columns:subgrid [unused]; grid-auto-columns:24px 36px; }
+#standalone { grid-column:2; height:10px; }
+#areas { display:grid; grid-template:". promo promo promo" 10px / 20px 30px 40px 50px; }
+#area_shared { display:grid; grid-column:1 / 4; grid-template-columns:subgrid; }
+#from_area { grid-column:promo; height:10px; }
+#edge_gap { display:inline-grid; grid-template-columns:auto auto; column-gap:10px; }
+#edge_shared { display:grid; grid-column:1 / -1; grid-template-columns:subgrid; padding-left:20px; }
+#edge_content { grid-column:2; width:50px; height:10px; }
+#fit_parent { display:grid; width:200px; grid-template-columns:repeat(auto-fit,[repeated] 40px); column-gap:10px; }
+#fit_shared { display:grid; grid-column:2 / 4; grid-template-columns:subgrid; }
+#fit_cell { grid-column:2 repeated / -1; height:10px; }
+#image_parent { display:grid; grid-template-columns:80px; }
+#grid_image { display:grid; grid-template-columns:subgrid; width:12px; height:10px; }
+@supports (grid-template-columns: subgrid repeat(auto-fit,[invalid])) {
+  #clamped { grid-column:1; }
+}
+</style>
+<div id="outer"><div id="track_measure"></div><div id="shared">
+  <div id="contribution"></div><div id="align_track"></div></div></div>
+<div id="rows"><div id="shared_both"><div id="first_row"></div>
+  <div id="nested_both"><a id="second_row" href="#outer">Second</a></div></div></div>
+<div id="names"><div id="names_shared"><div id="from_parent"></div><div id="local_names"></div><div id="clamped"></div></div></div>
+<div id="fallback"><div id="standalone"></div></div>
+<div id="areas"><div id="area_shared"><div id="from_area"></div></div></div>
+<div><div id="edge_gap"><div id="edge_shared"><div id="edge_content"></div></div></div></div>
+<div id="fit_parent"><div id="fit_shared"><div id="fit_cell"></div></div></div>
+<div id="image_parent"><img id="grid_image" alt="Image"></div>
+"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(200, 240)) == OK, "Lay out subgrid fixtures")
+	_check(_rect(layout, "track_measure").is_equal_approx(Rect2(0.0, 0.0, 80.0, 20.0))
+		and _rect(layout, "shared").is_equal_approx(Rect2(0.0, 20.0, 200.0, 20.0)),
+		"Child width, edge padding and half the gap difference contribute to the parent track")
+	_check(_rect(layout, "contribution").is_equal_approx(Rect2(7.0, 20.0, 68.0, 20.0))
+		and _rect(layout, "align_track").is_equal_approx(Rect2(95.0, 20.0, 98.0, 20.0)),
+		"Local gaps are centered on the inherited gutters")
+	_check(_rect(layout, "rows").is_equal_approx(Rect2(0.0, 40.0, 160.0, 84.0))
+		and _rect(layout, "nested_both").is_equal_approx(Rect2(0.0, 87.0, 160.0, 37.0))
+		and _rect(layout, "second_row").is_equal_approx(Rect2(50.0, 87.0, 110.0, 37.0)),
+		"Nested descendants contribute to auto row sizing after inheriting the solved columns")
+	_check(layout.get_link_at(Vector2(60.0, 95.0)) == "#outer", "Hit testing uses the shared track geometry")
+	var second_text: int = layout.get_plain_text().find("Second")
+	_check(second_text >= 0 and not layout.get_selection_rects(second_text, second_text + 6).is_empty(),
+		"Subgrid leaves its text selectable at the inherited track position")
+	_check(is_equal_approx(_rect(layout, "from_parent").position.x, 30.0)
+		and is_equal_approx(_rect(layout, "local_names").position.x, 70.0)
+		and is_equal_approx(_rect(layout, "local_names").size.x, 50.0)
+		and is_equal_approx(_rect(layout, "clamped").position.x, 120.0)
+		and is_equal_approx(_rect(layout, "clamped").size.x, 60.0),
+		"Inherited and repeated line names resolve within the subgrid, and overflow placement clamps to its tracks")
+	_check(is_equal_approx(_rect(layout, "standalone").position.x, 24.0)
+		and is_equal_approx(_rect(layout, "standalone").size.x, 36.0),
+		"A grid without a grid parent falls back to standalone implicit tracks")
+	_check(is_equal_approx(_rect(layout, "from_area").position.x, 20.0)
+		and is_equal_approx(_rect(layout, "from_area").size.x, 70.0),
+		"Named parent areas are clipped to the portion spanned by the subgrid")
+	_check(is_equal_approx(_rect(layout, "edge_gap").size.x, 70.0),
+		"Padding on an empty outer track contributes across the neighboring occupied track")
+	_check(is_equal_approx(_rect(layout, "fit_shared").size.x, 90.0)
+		and is_equal_approx(_rect(layout, "fit_cell").position.x, 50.0)
+		and is_equal_approx(_rect(layout, "fit_cell").size.x, 40.0),
+		"Auto-fit retains the names and positions of the tracks spanned by a subgrid")
+	_check(is_equal_approx(_rect(layout, "grid_image").size.x, 12.0),
+		"An image remains a replaced box when its display value names a grid")
+	_check(layout.get_css_diagnostics().is_empty(), "Valid subgrid grammar passes CSS diagnostics")
+	_check(layout.layout(Vector2i(180, 240)) == OK and is_equal_approx(_rect(layout, "align_track").size.x, 78.0),
+		"Resizing the parent updates the adopted track geometry")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(200, 240)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(200.0, 240.0)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(110.0, 25.0), Color("#12643f"),
+		"HTMLLabel paints the item in the adopted track")
+	viewport.queue_free()
+
+
+func _check_subgrid_baselines() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """
+<!doctype html><style>
+body { margin:0; }
+#vertical { display:grid; grid-template: auto auto / 30px 30px 30px; row-gap:12px; }
+#outside_first { grid-area:1 / 1; align-self:first baseline; height:35px; }
+#outside_last { grid-area:2 / 1; align-self:last baseline; height:33px; }
+#rows_shared { display:grid; grid-template:subgrid / subgrid; grid-area:1 / 2 / -1 / -1;
+  padding:6px 0 8px; row-gap:20px; }
+#inside_first { grid-area:1 / 1; align-self:first baseline; height:20px; }
+#inside_last { grid-area:2 / 1; align-self:last baseline; height:16px; }
+#deep_shared { display:grid; grid-template:subgrid / subgrid; grid-area:1 / 2 / -1 / -1;
+  padding:2px 0 3px; }
+#deep_first { grid-area:1 / 1; align-self:first baseline; height:31px; }
+#deep_last { grid-area:2 / 1; align-self:last baseline; height:11px; }
+#horizontal { display:grid; grid-template:20px 20px / 100px; }
+#outside_column { grid-row:1; justify-self:last baseline; width:30px; }
+#columns_shared { display:grid; grid-row:2; grid-template-columns:subgrid; padding:0 8px 0 5px; }
+#inside_column { justify-self:last baseline; width:10px; height:10px; }
+#cyclic { display:grid; grid-template-columns:30px 30px; }
+#outside_cyclic { grid-area:1 / 1; align-self:first baseline; height:40px; }
+#cyclic_shared { display:grid; grid-area:1 / 2; grid-template-rows:subgrid; }
+#inside_cyclic { align-self:first baseline; height:50%; }
+#text_grid { display:grid; grid-template:10px auto 10px / 70px 70px; row-gap:6px; }
+#text_outer { grid-area:2 / 1; align-self:first baseline; font:16px/23px sans-serif; padding-bottom:24px; }
+#text_shared { display:grid; grid-area:1 / 2 / -1; grid-template-rows:subgrid; row-gap:14px; }
+#text_inner { grid-row:2; align-self:first baseline; font:28px/35px sans-serif; }
+.baseline_marker { display:inline-block; width:1px; height:1px; vertical-align:baseline; }
+</style>
+<div id="vertical">
+	<div id="outside_first"></div><div id="outside_last"></div>
+	<div id="rows_shared">
+		<div id="inside_first"></div><div id="inside_last"></div>
+		<div id="deep_shared"><div id="deep_first"></div><div id="deep_last"></div></div>
+	</div>
+</div>
+<div id="horizontal">
+	<div id="outside_column"></div>
+	<div id="columns_shared"><div id="inside_column"></div></div>
+</div>
+<div id="cyclic">
+	<div id="outside_cyclic"></div><div id="cyclic_shared"><div id="inside_cyclic"></div></div>
+</div>
+<div id="text_grid">
+	<div id="text_outer"><span id="outer_marker" class="baseline_marker"></span>Small</div>
+	<div id="text_shared"><div id="text_inner"><span id="inner_marker" class="baseline_marker"></span>Large</div></div>
+</div>
+"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(180, 300)) == OK, "Lay out shared baseline fixtures")
+	var first: Rect2 = _rect(layout, "outside_first")
+	var last: Rect2 = _rect(layout, "outside_last")
+	_check(is_equal_approx(first.position.y, 4.0)
+		and is_equal_approx(first.end.y, _rect(layout, "inside_first").end.y)
+		and is_equal_approx(first.end.y, _rect(layout, "deep_first").end.y),
+		"The deepest first baseline moves its ancestor's neighboring grid item")
+	_check(is_equal_approx(last.position.y, 55.0)
+		and is_equal_approx(last.end.y, _rect(layout, "inside_last").end.y)
+		and is_equal_approx(last.end.y, _rect(layout, "deep_last").end.y)
+		and is_equal_approx(_rect(layout, "vertical").size.y, 99.0),
+		"Last baselines share the trailing track edge and increase its intrinsic size")
+	_check(is_equal_approx(_rect(layout, "outside_column").position.x, 70.0)
+		and is_equal_approx(_rect(layout, "inside_column").position.x, 70.0),
+		"Last column baselines include subgrid edge padding and share a horizontal position")
+	_check(is_equal_approx(_rect(layout, "inside_cyclic").position.y, _rect(layout, "cyclic").position.y)
+		and is_equal_approx(_rect(layout, "inside_cyclic").size.y, 20.0),
+		"A percentage-height item uses start fallback when its inherited track depends on intrinsic sizing")
+	var outer_marker: Rect2 = _rect(layout, "outer_marker")
+	var inner_marker: Rect2 = _rect(layout, "inner_marker")
+	_check(outer_marker.has_area() and inner_marker.has_area() and is_equal_approx(outer_marker.end.y, inner_marker.end.y),
+		"Different font sizes align their text baselines across an adjusted interior gutter")
+
+
+func _check_grid_cross_axis_sizing() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """
+<!doctype html><style>
+body { margin:0; }
+.ratio { height:100%; aspect-ratio:2 / 1; }
+#fixed { display:inline-grid; grid-template:minmax(0,40px) / max-content; }
+#distributed { display:inline-grid; height:100px; grid-template:20px 20px / max-content;
+  row-gap:10px; align-content:space-between; }
+#distributed_ratio { grid-row:1 / -1; }
+#resized { display:grid; width:150px; grid-template-columns:max-content minmax(0,1fr); }
+#resized > * { grid-row:1; }
+#wrapping, #height_anchor { grid-column:2; }
+#height_anchor { align-self:start; height:30px; }
+#wrapping { display:flex; flex-wrap:wrap; align-self:start; }
+#wrapping > i { flex:0 0 40px; height:20px; }
+#column_wrap { display:inline-grid; grid-template:minmax(0,1fr) / max-content 50px; height:45px; }
+#vertical_flex { display:flex; flex-flow:column wrap; column-gap:4px; height:100%; }
+#vertical_flex > i { flex:0 0 20px; width:20px; }
+#vertical_height { height:45px; }
+#shared_rows { display:inline-grid; grid-template-columns:max-content 20px; }
+#shared_row_grid { display:grid; grid-template:subgrid / max-content; }
+#shared_height { height:36px; }
+#shared_columns { display:inline-grid; grid-template-columns:max-content 20px; }
+#shared_column_grid { display:grid; grid-template:1fr / subgrid; height:100%; }
+#shared_col_height { height:30px; }
+#interlaced { display:inline-grid; grid-template:30px / max-content 20px; }
+#both_axes { display:grid; grid-template:subgrid / subgrid; }
+#interlaced_cols { display:grid; grid-template:1fr / subgrid; height:100%; }
+</style>
+<div><div id="fixed"><div class="ratio" id="fixed_ratio"></div></div></div>
+<div id="resized">
+	<div class="ratio" id="resized_ratio"></div>
+	<div id="wrapping"><i></i><i></i><i></i></div><div id="height_anchor"></div>
+</div>
+<div><div id="column_wrap">
+	<div id="vertical_flex"><i></i><i></i><i></i></div><div id="vertical_height"></div>
+</div></div>
+<div><div id="shared_rows">
+	<div id="shared_row_grid"><div class="ratio" id="shared_ratio"></div></div><div id="shared_height"></div>
+</div></div>
+<div><div id="shared_columns">
+	<div id="shared_column_grid"><div class="ratio" id="shared_col_ratio"></div></div><div id="shared_col_height"></div>
+</div></div>
+<div><div id="distributed"><div class="ratio" id="distributed_ratio"></div></div></div>
+<div><div id="interlaced">
+	<div id="both_axes"><div id="interlaced_cols"><div class="ratio" id="interlaced_ratio"></div></div></div><div id="interlaced_marker"></div>
+</div></div>
+"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(250, 330)) == OK, "Lay out cross-axis sizing fixtures")
+	_check(is_equal_approx(_rect(layout, "fixed").size.x, 80.0)
+		and is_equal_approx(_rect(layout, "fixed_ratio").size.x, 80.0),
+		"Intrinsic column sizing uses a row with a definite maximum in its first pass")
+	_check(is_equal_approx(_rect(layout, "wrapping").position.x, 60.0)
+		and is_equal_approx(_rect(layout, "wrapping").size.y, 40.0)
+		and is_equal_approx(_rect(layout, "resized_ratio").size.x, 80.0),
+		"Columns use the first row height, then rows use the new columns without repeating the cycle")
+	_check(is_equal_approx(_rect(layout, "vertical_height").position.x, 44.0)
+		and is_equal_approx(_rect(layout, "vertical_flex").size.x, 44.0),
+		"A wrapping column flex container contributes its width at the resolved row height")
+	_check(is_equal_approx(_rect(layout, "shared_height").position.x, 72.0)
+		and is_equal_approx(_rect(layout, "shared_ratio").size.x, 72.0),
+		"A row subgrid sizes its standalone columns using its adopted row height")
+	_check(is_equal_approx(_rect(layout, "shared_col_height").position.x, 60.0)
+		and is_equal_approx(_rect(layout, "shared_col_ratio").size.x, 60.0),
+		"A column subgrid resolves its standalone rows before returning revised contributions")
+	_check(is_equal_approx(_rect(layout, "distributed").size.x, 200.0),
+		"The first pass includes distributed space between definite spanned rows")
+	_check(is_equal_approx(_rect(layout, "interlaced_marker").position.x, 60.0)
+		and is_equal_approx(_rect(layout, "interlaced_ratio").size.x, 60.0),
+		"Resolved row and column bases pass through a two-axis subgrid to a standalone row")
+	layout.get_element_by_id("shared_col_height").set_attribute("style", "height:34px")
+	_check(layout.layout(Vector2i(250, 330)) == OK and is_equal_approx(_rect(layout, "shared_col_ratio").size.x, 68.0),
+		"Reflow calculates cross-axis contributions again after a height change")
 
 
 func _check_intrinsic_box_widths() -> void:
@@ -2454,7 +3206,7 @@ func _check_image_set() -> void:
 		_check_pixel(output, _label_rect(label, id).position + offset, color, "Image-set choice for %s" % id)
 	if imported != null:
 		var point: Vector2 = imported_label.position + _label_rect(imported_label, "imported_set").position + Vector2(3.0, 3.0)
-		_check_pixel(output, point, Color("#67bb39"), "An imported image-set resolves its relative URL after the linked CSS is removed")
+		_check_pixel(output, point, Color("#67bb39"), "A nested rule in an imported stylesheet keeps its relative image-set URL")
 	var layout: HTMLLayout = document.create_layout()
 	layout.css_diagnostics_enabled = true
 	_check(layout.layout(Vector2i(175, 90)) == OK, "Lay out the image-set diagnostics fixture")
@@ -2687,6 +3439,382 @@ func _check_cross_fade() -> void:
 	_check(diagnostics.layout(Vector2i(180, 90)) == OK, "Lay out the cross-fade diagnostics fixture")
 	_check(diagnostics.get_element_by_id("invalid").get_css_diagnostics().size() == 1,
 		"Reject a cross-fade weight outside the percentage range")
+	viewport.queue_free()
+
+
+func _check_background_blend_modes() -> void:
+	var expected: Dictionary[String, String] = {
+		"normal": "cc4d1a",
+		"multiply": "332714",
+		"screen": "d9a6c6",
+		"overlay": "664e8c",
+		"darken": "404d1a",
+		"lighten": "cc80bf",
+		"color-dodge": "ffb7d5",
+		"color-burn": "100000",
+		"hard-light": "b24d27",
+		"soft-light": "666799",
+		"difference": "8c33a5",
+		"exclusion": "a67fb1",
+		"hue": "b75d38",
+		"saturation": "2b85dd",
+		"color": "d25320",
+		"luminosity": "3a7ab9",
+	}
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.swatch { position: absolute; width: 34px; height: 24px; background-color: #4080bf;
+			background-image: linear-gradient(#cc4d1a,#cc4d1a); }
+		.extra { position: absolute; top: 86px; width: 34px; height: 24px; }
+		#cycle { left: 8px; background-color: #808080;
+			background-image: linear-gradient(#ff80ff,#ff80ff), none, linear-gradient(#80ff80,#80ff80), linear-gradient(red,red);
+			background-blend-mode: multiply, screen; }
+		#truncated { left: 46px; background-blend-mode: multiply, screen; }
+		#variable { left: 84px; --mode: screen; background-blend-mode: var(--mode); }
+		#reset { left: 122px; --bg: linear-gradient(#cc4d1a,#cc4d1a) #4080bf;
+			background-blend-mode: multiply; background: var(--bg); }
+		#important { left: 160px; background-blend-mode: multiply !important;
+			background: linear-gradient(#cc4d1a,#cc4d1a) #4080bf; }
+		#invalid { left: 198px; background-blend-mode: screen; background-blend-mode: screen, plus-lighter; }
+		#isolated { left: 236px; background-image: linear-gradient(red,red); background-blend-mode: multiply; }
+		#fade { left: 274px; background-color: #4080bf; background-image: cross-fade(#cc4d1a 100%);
+			background-blend-mode: screen; }
+		#bottom { position: absolute; left: 8px; top: 130px; width: 34px; height: 24px; background: white; }
+		#alpha { left: 8px; top: 130px; background-color: rgb(0 0 255 / 50%);
+			background-image: linear-gradient(rgb(255 0 0 / 50%),rgb(255 0 0 / 50%)); background-blend-mode: multiply; }
+		#rounded { left: 62px; top: 130px; width: 30px; height: 24px; padding: 6px; border-radius: 12px;
+			background-color: blue; background-image: linear-gradient(red,red), none;
+			background-clip: content-box, border-box; background-blend-mode: screen; }
+		#projected { left: 125px; top: 130px; width: 70px; height: 36px; background-color: #4080bf;
+			background-image: linear-gradient(#cc4d1a,#cc4d1a); background-blend-mode: screen;
+			transform: perspective(100px) rotateY(45deg); transform-origin: top left; }
+		#inline_case { position: absolute; left: 205px; top: 132px; width: 39px; line-height: 22px;
+			font: 16px monospace; }
+		#inline { color: transparent; background-color: blue; background-image: linear-gradient(red,red);
+			background-blend-mode: screen; }
+	</style>
+	<div id="cycle" class="extra"></div><div id="truncated" class="extra swatch"></div>
+	<div id="variable" class="extra swatch"></div><div id="reset" class="extra swatch"></div>
+	<div id="important" class="extra swatch"></div><div id="invalid" class="extra swatch"></div>
+	<div id="isolated" class="extra"></div><div id="fade" class="extra"></div>
+	<div id="bottom"></div><div id="alpha" class="extra"></div>
+	<div id="rounded" class="extra"></div><div id="projected" class="extra"></div>
+	<div id="inline_case"><span id="inline">One Two</span></div>"""
+	var points: Dictionary[String, Vector2] = {}
+	var index: int
+	for mode: String in expected:
+		var left: int = 8 + (index % 8) * 38
+		var top: int = (12 if index < 8 else 48)
+		source += '<div class="swatch" style="left:%dpx;top:%dpx;background-blend-mode:%s"></div>' % [left, top, mode]
+		points[mode] = Vector2(left + 12, top + 8)
+		index += 1
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(320, 180)) == OK, "Lay out CSS background blends")
+	_check(_has_diagnostic(layout, "background-blend-mode", "screen , plus-lighter", "style_element"),
+		"Invalid background blend lists leave earlier declarations in effect")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 180)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for mode: String in expected:
+		_check_pixel(image, points[mode], Color(expected[mode]), "Background blend " + mode)
+	_check_pixel(image, Vector2(20.0, 94.0), Color("804040"), "The mode list cycles over all image slots, including none")
+	_check_pixel(image, Vector2(58.0, 94.0), Color(expected["multiply"]), "Surplus modes are unused")
+	_check_pixel(image, Vector2(96.0, 94.0), Color(expected["screen"]), "A substituted mode is parsed in the cascade")
+	_check_pixel(image, Vector2(134.0, 94.0), Color(expected["normal"]), "The background shorthand resets the mode after var substitution")
+	_check_pixel(image, Vector2(172.0, 94.0), Color(expected["multiply"]), "A higher priority blend survives the shorthand reset")
+	_check_pixel(image, Vector2(210.0, 94.0), Color(expected["screen"]), "Invalid trailing modes reject the entire declaration")
+	_check_pixel(image, Vector2(248.0, 94.0), Color.RED, "The document backdrop is outside the isolated background stack")
+	_check_pixel(image, Vector2(286.0, 94.0), Color(expected["screen"]), "Cross-fade images participate in background blending")
+	_check_pixel(image, Vector2(20.0, 138.0), Color(0.5, 0.25, 0.5), "Partially transparent layers preserve uncovered color")
+	_check_pixel(image, Vector2(63.0, 131.0), Color.BLACK, "Blended layers honor rounded corners")
+	_check_pixel(image, Vector2(82.0, 133.0), Color.BLUE, "Only the bottom color covers the border-box inset")
+	_check_pixel(image, Vector2(82.0, 143.0), Color.MAGENTA, "The content-box background blends with the bottom color")
+	_check_pixel(image, Vector2(132.0, 141.0), Color(expected["screen"]), "Projected background layers still blend together")
+	var fragments: Array[Rect2] = label.get_element_by_id("inline").get_client_rects()
+	_check(fragments.size() == 2, "Wrapped inline background produces two fragments")
+	for fragment: Rect2 in fragments:
+		_check_pixel(image, fragment.get_center().floor(), Color.MAGENTA, "Each inline fragment blends its own background")
+	viewport.queue_free()
+
+	if RenderingServer.get_current_rendering_method() == "forward_plus":
+		var hdr_viewport: SubViewport = SubViewport.new()
+		hdr_viewport.size = Vector2i(320, 180)
+		hdr_viewport.use_hdr_2d = true
+		hdr_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(hdr_viewport)
+		var hdr_label: HTMLLabel = HTMLLabel.new()
+		hdr_label.size = Vector2(hdr_viewport.size)
+		hdr_label.text = source
+		hdr_viewport.add_child(hdr_label)
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var hdr_image: Image = hdr_viewport.get_texture().get_image()
+		for mode: String in ["normal", "multiply", "screen", "color"]:
+			var pixel: Color = hdr_image.get_pixelv(Vector2i(points[mode])).linear_to_srgb()
+			_check(_same_color(pixel, Color(expected[mode])), "HDR background blend %s yields %s" % [mode, pixel])
+		for point: Vector2i in [Vector2i(286, 94), Vector2i(132, 141)]:
+			var pixel: Color = hdr_image.get_pixelv(point).linear_to_srgb()
+			_check(_same_color(pixel, Color(expected["screen"])), "HDR blend through an intermediate surface at %s yields %s" % [point, pixel])
+		hdr_viewport.queue_free()
+
+
+func _check_element_blend_modes() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.slot { position: absolute; width: 52px; height: 30px; background: #4080bf; top: 10px; }
+		.ink { position: absolute; inset: 0; background: #cc4d1a; }
+		#multiply { left: 8px; } #multiply .ink { mix-blend-mode: multiply; }
+		#variable { left: 70px; } #variable .ink { --blend: screen; mix-blend-mode: var(--blend); }
+		#hue { left: 132px; } #hue .ink { mix-blend-mode: hue; }
+		#plus { left: 194px; } #plus .ink { mix-blend-mode: plus-lighter; }
+		#under { position: absolute; left: 8px; top: 58px; width: 302px; height: 30px; background: cyan; }
+		.holder { position: absolute; top: 58px; width: 52px; height: 30px; }
+		.holder .ink { background: red; mix-blend-mode: multiply; }
+		#auto { left: 8px; isolation: auto; }
+		#isolate { left: 70px; isolation: isolate; }
+		#stack { left: 132px; z-index: 0; }
+		#transformed { left: 194px; transform: translateX(0px); }
+		#opacity { left: 256px; opacity: .5; }
+		#sequence, #plus_alpha, #mask, #whole_source, #round { top: 108px; background: blue; }
+		#sequence { left: 8px; }
+		#sequence .ink { background: red; }
+		#sequence .ink:first-child { mix-blend-mode: screen; }
+		#sequence .ink:last-child { mix-blend-mode: difference; }
+		#plus_alpha { left: 70px; isolation: isolate; background: none; }
+		#plus_alpha .ink:first-child { background: rgb(0 0 255 / 50%); }
+		#plus_alpha .ink:last-child { background: red; opacity: .5; mix-blend-mode: plus-lighter; }
+		#mask { left: 132px; }
+		#mask .ink { background: red; mix-blend-mode: screen; opacity: .5; filter: grayscale(1); clip-path: circle(8px); }
+		#whole_source { left: 194px; }
+		#whole_source .ink { background: red; mix-blend-mode: screen; opacity: .5; }
+		#whole_source .child { position: absolute; inset: 0 50% 0 0; background: lime; }
+		#round { left: 256px; border-radius: 12px; overflow: hidden; }
+		#round .ink { background: yellow; mix-blend-mode: screen; }
+		#depth { left: 8px; top: 160px; width: 106px; height: 40px; background: blue; transform-style: preserve-3d; }
+		#depth .ink:first-child { background: blue; }
+		#depth .ink:last-child { background: red; mix-blend-mode: screen; transform: rotateY(42deg); }
+		#invalid { left: 256px; } #invalid .ink { mix-blend-mode: screen; mix-blend-mode: hue screen; isolation: isolate auto; }
+	</style>
+	<div id="multiply" class="slot"><div class="ink"></div></div>
+	<div id="variable" class="slot"><div class="ink"></div></div>
+	<div id="hue" class="slot"><div class="ink"></div></div>
+	<div id="plus" class="slot"><div class="ink"></div></div>
+	<div id="invalid" class="slot"><div class="ink"></div></div>
+	<div id="under"></div>
+	<div id="auto" class="holder"><div class="ink"></div></div>
+	<div id="isolate" class="holder"><div class="ink"></div></div>
+	<div id="stack" class="holder"><div class="ink"></div></div>
+	<div id="transformed" class="holder"><div class="ink"></div></div>
+	<div id="opacity" class="holder"><div class="ink"></div></div>
+	<div id="sequence" class="slot"><div class="ink"></div><div class="ink"></div></div>
+	<div id="plus_alpha" class="slot"><div class="ink"></div><div class="ink"></div></div>
+	<div id="mask" class="slot"><div class="ink"></div></div>
+	<div id="whole_source" class="slot"><div class="ink"><div class="child"></div></div></div>
+	<div id="round" class="slot"><div class="ink"></div></div>
+	<div id="depth" class="slot"><div class="ink"></div><div class="ink" id="depth_ink"></div></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(330, 220)) == OK, "Lay out element blends")
+	_check(_has_diagnostic(layout, "mix-blend-mode", "hue screen", "style_element")
+		and _has_diagnostic(layout, "isolation", "isolate auto", "style_element"),
+		"Mixed or repeated keywords are invalid for blend and isolation")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(330, 220)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(34.0, 25.0), Color("332714"), "Multiply uses the element's stacking backdrop")
+	_check_pixel(image, Vector2(96.0, 25.0), Color("d9a6c6"), "Variable resolves to an element blend mode")
+	_check_pixel(image, Vector2(158.0, 25.0), Color("b75d38"), "Hue blends nonseparable sRGB components")
+	_check_pixel(image, Vector2(220.0, 25.0), Color("ffcdd9"), "Plus-lighter adds premultiplied color")
+	_check_pixel(image, Vector2(282.0, 25.0), Color("d9a6c6"), "Invalid mixed keywords preserve the earlier mode")
+	_check_pixel(image, Vector2(34.0, 73.0), Color.BLACK, "An automatic z-index shares the enclosing backdrop")
+	_check_pixel(image, Vector2(96.0, 73.0), Color.RED, "Explicit isolation starts with a transparent backdrop")
+	_check_pixel(image, Vector2(158.0, 73.0), Color.RED, "An explicit z-index isolates descendants")
+	_check_pixel(image, Vector2(220.0, 73.0), Color.RED, "An identity transform establishes an isolated context")
+	_check_pixel(image, Vector2(282.0, 73.0), Color(0.5, 0.5, 0.5), "An opacity group blends internally before composition")
+	_check_pixel(image, Vector2(34.0, 123.0), Color.BLUE, "A second blender samples the previously blended result")
+	_check_pixel(image, Vector2(96.0, 123.0), Color(0.5, 0.0, 0.5), "Plus-lighter adds source and backdrop alpha")
+	_check_pixel(image, Vector2(158.0, 123.0), Color(0.1063, 0.1063, 1.0), "Filter, clip and opacity apply before blending")
+	_check_pixel(image, Vector2(142.0, 123.0), Color.BLUE, "The blend leaves the document unchanged beyond the clip path")
+	_check_pixel(image, Vector2(208.0, 123.0), Color(0.0, 0.5, 1.0), "A blending element includes its descendants as a group")
+	_check_pixel(image, Vector2(232.0, 123.0), Color(0.5, 0.0, 1.0), "Group opacity attenuates the rest of the source")
+	_check_pixel(image, Vector2(257.0, 109.0), Color.BLACK, "An overflow corner clips element blending")
+	_check_pixel(image, Vector2(282.0, 123.0), Color.WHITE, "The same blend is visible inside the overflow clip")
+	_check_pixel(image, Vector2(36.0, 180.0), Color.MAGENTA, "A split 3D plane blends in front of the backdrop")
+	_check_pixel(image, Vector2(88.0, 180.0), Color.BLUE, "The other side of the 3D intersection is behind the backdrop")
+	_check(label.get_element_at(Vector2(36.0, 180.0)) == label.get_element_by_id("depth_ink"),
+		"Depth hit testing survives element blending")
+
+	label.hide()
+	var backdrop: ColorRect = ColorRect.new()
+	backdrop.size = Vector2(viewport.size)
+	backdrop.color = Color.CYAN
+	viewport.add_child(backdrop)
+	var standalone: HTMLLayout = HTMLLayout.new()
+	_check(standalone.parse('<div style="width:30px;height:30px;background:red;mix-blend-mode:multiply"></div>') == OK
+		and standalone.layout(viewport.size) == OK, "Lay out transparent HTML over a Godot canvas")
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: standalone.draw(canvas, Vector2(80.0, 30.0)))
+	viewport.add_child(canvas)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(92.0, 42.0), Color.RED, "The document blend backdrop excludes surrounding Godot canvas items")
+	_check_pixel(image, Vector2(135.0, 42.0), Color.CYAN, "The surrounding Godot canvas remains visible")
+	viewport.queue_free()
+
+	if RenderingServer.get_current_rendering_method() == "forward_plus":
+		var hdr_viewport: SubViewport = SubViewport.new()
+		hdr_viewport.size = Vector2i(330, 220)
+		hdr_viewport.use_hdr_2d = true
+		hdr_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(hdr_viewport)
+		var hdr_label: HTMLLabel = HTMLLabel.new()
+		hdr_label.size = Vector2(hdr_viewport.size)
+		hdr_label.text = source
+		hdr_viewport.add_child(hdr_label)
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var hdr_image: Image = hdr_viewport.get_texture().get_image()
+		var hdr_cases: Dictionary[Vector2i, Color] = {
+			Vector2i(34, 25): Color("332714"),
+			Vector2i(158, 25): Color("b75d38"),
+			Vector2i(220, 25): Color("ffcdd9"),
+			Vector2i(96, 73): Color.RED,
+			Vector2i(34, 123): Color.BLUE,
+			Vector2i(96, 123): Color(0.5, 0.0, 0.5),
+			Vector2i(36, 180): Color.MAGENTA,
+		}
+		for point: Vector2i in hdr_cases:
+			var pixel: Color = hdr_image.get_pixelv(point).linear_to_srgb()
+			_check(_same_color(pixel, hdr_cases[point]), "HDR element blend at %s yields %s" % [point, pixel])
+		hdr_viewport.queue_free()
+
+
+func _check_positioned_stacking_levels() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.stage { position: absolute; z-index: 0; top: 10px; width: 84px; height: 40px; background: white; }
+		.wrapper { position: relative; left: 6px; top: 4px; width: 66px; height: 28px; }
+		.fore { position: absolute; left: 8px; top: 6px; width: 38px; height: 20px; background: lime; z-index: 3; }
+		.under { position: absolute; inset: 6px; z-index: 1; background: blue; }
+		#relative, #negative { left: 10px; }
+		#absolute, #float_group { left: 110px; }
+		#isolated, #clipped { left: 210px; }
+		#tie, #table_group { left: 310px; }
+		#negative, #float_group, #clipped, #table_group { top: 75px; }
+		#absolute .wrapper { position: absolute; }
+		#isolated .wrapper { z-index: 0; }
+		#tie .fore, #tie .under { z-index: 2; }
+		#negative .wrapper { background: red; }
+		#negative .fore { z-index: -1; }
+		#float_group .wrapper { position: static; float: left; }
+		#float_group .inline { display: inline-block; width: 76px; height: 30px; }
+		#clipped .wrapper { overflow: hidden; border-radius: 10px; width: 38px; height: 24px; }
+		#clipped .fore { inset: 0 auto auto 0; width: 62px; height: 25px; }
+		.stage table { border-spacing: 0; }
+		.stage td { position: relative; width: 66px; height: 28px; padding: 0; }
+		#table_row, #table_section { top: 132px; }
+		#table_row { left: 10px; } #table_row tr { position: relative; z-index: 2; }
+		#table_section { left: 110px; } #table_section tbody { position: relative; z-index: 0; }
+	</style>
+	<div class="stage" id="relative"><div class="wrapper" id="relative_wrapper"><div id="relative_fore" class="fore"></div></div><div class="under"></div></div>
+	<div class="stage" id="absolute"><div class="wrapper"><div id="absolute_fore" class="fore"></div></div><div class="under"></div></div>
+	<div class="stage" id="isolated"><div class="wrapper"><div class="fore"></div></div><div class="under" id="isolated_under"></div></div>
+	<div class="stage" id="tie"><div class="wrapper"><div class="fore"></div></div><div class="under" id="tie_under"></div></div>
+	<div class="stage" id="negative"><div class="wrapper" id="negative_wrapper"><div class="fore"></div></div></div>
+	<div class="stage" id="float_group"><div class="wrapper"><span class="inline"><span id="float_fore" class="fore"></span></span></div><div class="under"></div></div>
+	<div class="stage" id="clipped"><div class="wrapper"><div class="fore" id="clipped_fore"></div></div><div class="under" id="clipped_under"></div></div>
+	<div class="stage" id="table_group"><table><tr><td><div class="fore" id="table_fore"></div></td></tr></table><div class="under"></div></div>
+	<div class="stage" id="table_row"><table><tr><td><div class="fore" id="row_fore"></div></td></tr></table><div class="under"></div></div>
+	<div class="stage" id="table_section"><table><tbody><tr><td><div class="fore"></div></td></tr></tbody></table><div class="under" id="section_under"></div></div>"""
+	var hits: Dictionary[Vector2, String] = {
+		Vector2(30.0, 26.0): "relative_fore",
+		Vector2(130.0, 26.0): "absolute_fore",
+		Vector2(230.0, 26.0): "isolated_under",
+		Vector2(330.0, 26.0): "tie_under",
+		Vector2(30.0, 92.0): "negative_wrapper",
+		Vector2(130.0, 92.0): "float_fore",
+		Vector2(217.0, 81.0): "clipped_under",
+		Vector2(240.0, 90.0): "clipped_fore",
+		Vector2(264.0, 90.0): "clipped_under",
+		Vector2(330.0, 92.0): "table_fore",
+		Vector2(30.0, 150.0): "row_fore",
+		Vector2(130.0, 150.0): "section_under",
+	}
+	var colors: Dictionary[Vector2, Color] = {
+		Vector2(30.0, 26.0): Color.LIME,
+		Vector2(130.0, 26.0): Color.LIME,
+		Vector2(230.0, 26.0): Color.BLUE,
+		Vector2(330.0, 26.0): Color.BLUE,
+		Vector2(30.0, 92.0): Color.RED,
+		Vector2(130.0, 92.0): Color.LIME,
+		Vector2(217.0, 81.0): Color.BLUE,
+		Vector2(240.0, 90.0): Color.LIME,
+		Vector2(264.0, 90.0): Color.BLUE,
+		Vector2(330.0, 92.0): Color.LIME,
+		Vector2(30.0, 150.0): Color.LIME,
+		Vector2(130.0, 150.0): Color.BLUE,
+	}
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(414, 180)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for point: Vector2 in hits:
+		var target: HTMLElement = label.get_element_at(point)
+		_check(target == label.get_element_by_id(hits[point]),
+			"The layout hit at %s follows the stacking context, expected %s" % [point, hits[point]])
+		_check_pixel(image, point, colors[point], "Positioned painting at " + hits[point])
+
+	var wrapper: HTMLElement = label.get_element_by_id("relative_wrapper")
+	wrapper.set_attribute("style", "z-index: 0")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(30.0, 26.0), Color.BLUE, "Changing the ancestor to z-index zero isolates its child")
+	_check(label.get_element_at(Vector2(30.0, 26.0)) != label.get_element_by_id("relative_fore"),
+		"Style edits also rebuild the hit-test order")
+
+	label.text = source + "<style>#relative_fore { background: yellow; mix-blend-mode: multiply; }</style>"
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(30.0, 26.0), Color.BLACK,
+		"A lifted positioned element blends with the lower sibling in its enclosing stacking context")
+	for point: Vector2 in hits:
+		_check(label.get_element_at(point) == label.get_element_by_id(hits[point]),
+			"The recorded paint hit at %s follows the same stacking order" % point)
 	viewport.queue_free()
 
 
@@ -3609,7 +4737,7 @@ func _check_embedded_background_attachment() -> void:
 	viewport.queue_free()
 
 
-func _push_html_wheel(viewport: SubViewport, position: Vector2, index: MouseButton) -> void:
+func _push_html_wheel(viewport: SubViewport, position: Vector2, index: MouseButton, factor: float = 1.0) -> void:
 	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
 	motion.position = position
 	motion.global_position = position
@@ -3619,7 +4747,7 @@ func _push_html_wheel(viewport: SubViewport, position: Vector2, index: MouseButt
 	event.pressed = true
 	event.position = position
 	event.global_position = position
-	event.factor = 1.0
+	event.factor = factor
 	viewport.push_input(event, true)
 
 
@@ -3734,6 +4862,702 @@ q::after { content: close-quote; }
 	var attribute: HTMLElement = layout.get_element_by_id("attribute_name")
 	_check(attribute.set_attribute("data-name", 'C)"D') == OK and layout.layout(Vector2i(420, 460)) == OK and
 		'<"C)"D" >value' in layout.get_plain_text(), "Updating an attribute refreshes generated text literally")
+
+
+func _check_style_containment() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """<!doctype html><style>
+		body { counter-reset: section 10; quotes: "A" "Z" "B" "Y" "C" "X" "D" "W"; }
+		#scope { contain: style; counter-increment: section; }
+		@media (min-width: 400px) { #scope { contain: none; } }
+		.scope { contain: style; }
+		.step { counter-increment: section 2; }
+		.read::before, .pseudo_step::before {
+			content: "(" counters(section, ".") ")";
+		}
+		#scope::before { content: "(" counters(section, ".") ")ENTER"; }
+		#scope::after { content: "(" counters(section, ".") ")LEAVE"; }
+		.pseudo_step::before { counter-increment: section 3; }
+		.open::before, #quotes::before { content: open-quote; }
+		.close::after, #quotes::after { content: close-quote; }
+		.silent::before { content: no-open-quote open-quote no-close-quote close-quote open-quote; }
+		#content { width: 60px; height: 28px; }
+		@supports (contain: content) and (contain: style paint layout) and (not (contain: content style)) {
+			#content { contain: content; }
+		}
+		#fixed { position: fixed; width: 80px; height: 20px; left: 12px; top: 4px; counter-set: section 99; }
+	</style>
+	<div class="read">START</div>
+	<div id="scope">
+		<div class="read step">STEP</div>
+		<div class="scope">
+			<div class="read" style="counter-set: section 7">SET</div>
+			<div class="read step">NESTED</div>
+		</div>
+		<div class="read step">RESUME</div>
+		<div class="read" style="counter-reset: section 30">RESET</div>
+		<div class="pseudo_step">PSEUDO</div>
+	</div>
+	<div class="read step">OUT</div>
+	<div class="open close"><span id="quotes" class="scope"><span id="nested_quotes" class="scope"><span class="silent"></span></span></span></div>
+	<div id="content"><div id="fixed"></div></div>
+	<div class="read">END</div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(360, 420)) == OK, "Lay out style containment")
+	var rendered: String = layout.get_plain_text()
+	for snippet: String in [
+		"(10)START",
+		"(11)ENTER",
+		"(11.2)STEP",
+		"(11.2.7)SET",
+		"(11.2.9)NESTED",
+		"(11.4)RESUME",
+		"(11.30)RESET",
+		"(11.33)PSEUDO",
+		"(11.33)LEAVE",
+		"(13)OUT",
+		"ABDXCYZ",
+		"(13)END",
+	]:
+		_check(snippet in rendered, "Style containment renders %s in %s" % [snippet, rendered])
+	var fixed: HTMLElement = layout.get_element_by_id("fixed")
+	var origin: Vector2 = layout.get_element_by_id("content").get_bounding_rect().position
+	_check(fixed.get_bounding_rect().position == origin + Vector2(12.0, 4.0),
+		"Contain content includes layout containment and is accepted by feature queries")
+	_check(layout.get_element_at(origin + Vector2(15.0, 8.0)) == fixed and
+		layout.get_element_at(origin + Vector2(70.0, 8.0)) != fixed, "Contain content includes paint containment")
+	_check(layout.get_css_diagnostics().is_empty(), "Supported containment values produce no declaration diagnostics")
+	_check(layout.layout(Vector2i(420, 420)) == OK and "(17)OUT" in layout.get_plain_text(),
+		"Removing style containment at a media breakpoint merges the descendant increments into the outer counter")
+	_check(layout.layout(Vector2i(360, 420)) == OK and layout.get_plain_text() == rendered,
+		"Restoring style containment rebuilds the original counter and quote scopes")
+	var nested_quotes: HTMLElement = layout.get_element_by_id("nested_quotes")
+	_check(nested_quotes.set_attribute("style", "contain: none") == OK and layout.layout(Vector2i(360, 420)) == OK and
+		"ABDXCXZ" in layout.get_plain_text(), "Quote scoping follows DOM style mutations on a non-atomic inline")
+
+	var list: HTMLLayout = HTMLLayout.new()
+	var ordered: String = """<!doctype html><style>
+		li::before { content: "[" counter(list-item) "]"; }
+	</style><ol reversed start="10"><li>FIRST</li><div style="contain: style">
+		<li>LOCAL1</li><li value="4">LOCAL2</li><li>LOCAL3</li>
+	</div><li>LAST</li></ol>"""
+	_check(list.parse(ordered) == OK and list.layout(Vector2i(360, 260)) == OK, "Lay out list ordinals in a style scope")
+	for snippet: String in [
+		"[10]FIRST",
+		"[1]LOCAL1",
+		"[4]LOCAL2",
+		"[5]LOCAL3",
+		"[9]LAST",
+	]:
+		_check(snippet in list.get_plain_text(), "List ordinal isolation renders %s" % snippet)
+
+
+func _check_container_size_queries() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		body { margin: 0; }
+		#outer { container: Outer alias / size; box-sizing: border-box; width: 270px; height: 130px;
+			padding: 10px; border: 5px solid; font-size: 20px; margin-left: 27px; }
+		#inner { --query: Inner / inline-size; container: var(--query); width: 140px; font-size: 10px; }
+		.probe { width: 13px; height: 4px; }
+		#fixed { position: fixed; left: 9px; top: 5px; }
+		#responsive { container-type: inline-size; width: 50%; }
+		#promoted { width: 80px; }
+		#flagged { container-name: flag; }
+		@container Inner (100px < inline-size <= 14em) { #named { width: 41px; } }
+		@container (min-width: 200px) { #nearest { width: 99px; } }
+		@container (block-size >= 100px) { #both { width: 42px; } }
+		@container Outer (orientation: landscape) and (aspect-ratio > 2 / 1) { #ratio { width: 43px; } }
+		@container Outer (width = 240px) { #exact { width: 44px; } }
+		@container outer (width > 0px) { #case { width: 99px; } }
+		@container Inner (width < 90px), alias (width > 200px) { #comma { width: 45px; } }
+		@container Inner (width >= 140px) {
+			@container Outer (height = 100px) { #chain { width: 46px; } }
+			#inner { width: 190px; }
+			#inner::before { content: "CONTAINER PSEUDO"; }
+		}
+		@container (not (unsupported-feature: 1)) { #unknown { width: 99px; } }
+		@container flag { #name_only { width: 47px; } }
+		@supports at-rule(@container) {
+			@container (width >= 210px) {
+				#resized { width: 48px; }
+				#promoted { container: special / inline-size; }
+			}
+			@container special (width = 80px) { #dependent { width: 49px; } }
+		}
+	</style>
+	<div id="outer"><div id="inner">
+		<div class="probe" id="named"></div><div class="probe" id="nearest"></div>
+		<div class="probe" id="both"></div><div class="probe" id="ratio"></div>
+		<div class="probe" id="exact"></div><div class="probe" id="case"></div>
+		<div class="probe" id="comma"></div><div class="probe" id="chain"></div>
+		<div class="probe" id="unknown"></div><div class="probe" id="fixed"></div>
+	</div></div>
+	<div id="flagged"><div class="probe" id="name_only"></div></div>
+	<div id="responsive"><div class="probe" id="resized"></div>
+		<div id="promoted"><div class="probe" id="dependent"></div></div>
+	</div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(360, 360)) == OK,
+		"Lay out size container queries")
+	var expected_widths: Dictionary[String, float] = {
+		"named": 41.0,
+		"nearest": 13.0,
+		"both": 42.0,
+		"ratio": 43.0,
+		"exact": 44.0,
+		"case": 13.0,
+		"comma": 45.0,
+		"chain": 46.0,
+		"unknown": 13.0,
+		"name_only": 47.0,
+		"inner": 140.0,
+		"resized": 13.0,
+		"dependent": 13.0,
+	}
+	for id: String in expected_widths:
+		var width: float = _rect(layout, id).size.x
+		_check(width == expected_widths[id], "Container query width for %s was %s" % [id, width])
+	_check("CONTAINER PSEUDO" in layout.get_plain_text(), "A generated pseudo-element can query its originating element")
+	_check(_rect(layout, "fixed").position == Vector2(9.0, 5.0),
+		"Container type alone does not capture fixed-position descendants")
+	_check(layout.layout(Vector2i(520, 360)) == OK and _rect(layout, "resized").size.x == 48.0
+		and _rect(layout, "dependent").size.x == 49.0, "Viewport resize updates queries and newly eligible containers")
+	_check(layout.layout(Vector2i(360, 360)) == OK and _rect(layout, "resized").size.x == 13.0
+		and _rect(layout, "dependent").size.x == 13.0, "Both responsive rules stop matching when the viewport shrinks")
+	var inner: HTMLElement = layout.get_element_by_id("inner")
+	_check(inner.set_attribute("style", "container-type: normal") == OK and layout.layout(Vector2i(360, 360)) == OK,
+		"Recompute container eligibility after an inline style change")
+	_check(_rect(layout, "named").size.x == 13.0 and _rect(layout, "nearest").size.x == 99.0
+		and "CONTAINER PSEUDO" not in layout.get_plain_text(),
+		"Removing inline containment updates named, anonymous and pseudo-element queries")
+	_check(inner.remove_attribute("style") == OK and layout.layout(Vector2i(360, 360)) == OK
+		and _rect(layout, "named").size.x == 41.0 and _rect(layout, "nearest").size.x == 13.0,
+		"Restoring the inner container updates the same element handles at a fixed viewport size")
+
+
+func _check_container_units() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var markup: String = """<!doctype html><style>
+		body { margin: 0; }
+		#fallback { width: 25cqw; height: 10cqh; }
+		#outer { container-type: size; width: 300px; height: 200px; }
+		#inner { container-type: inline-size; width: 60cqi; }
+		#split { --relative: 20cqw; width: calc(10% + var(--relative)); height: 15cqb; }
+		#range { width: 20cqmin; height: 25cqmax; }
+		#inheritance { container-type: inline-size; width: 25cqw; }
+		#inherited { width: inherit; height: 1px; }
+		#badge { container-type: inline-size; width: 50px; }
+		#badge::before { content: ""; display: block; height: 40cqw; }
+		#zero { container-type: size; width: 0; height: 0; }
+		#zero_child { width: 5cqi; height: 5cqb; }
+		#shift { position: absolute; left: 0; top: 0; transform: translate(10cqw, 10cqh);
+			width: 5cqi; height: 5cqb; }
+	</style>
+	<div id="fallback"></div>
+	<div id="outer"><div id="inner">
+		<div id="split"></div><div id="range"></div>
+		<div id="inheritance"><div id="inherited"></div></div>
+		<div id="badge"></div><div id="zero"><div id="zero_child"></div></div>
+		<div id="shift"></div>
+	</div></div>"""
+	_check(layout.parse(markup) == OK and layout.layout(Vector2i(320, 500)) == OK,
+		"Lay out container units without a container query")
+	var expected_sizes: Dictionary[String, Vector2] = {
+		"fallback": Vector2(80.0, 50.0),
+		"inner": Vector2(180.0, 101.0),
+		"split": Vector2(54.0, 30.0),
+		"range": Vector2(36.0, 50.0),
+		"inherited": Vector2(45.0, 1.0),
+		"badge": Vector2(50.0, 20.0),
+		"zero_child": Vector2.ZERO,
+	}
+	for id: String in expected_sizes:
+		var actual: Vector2 = _rect(layout, id).size
+		_check(actual.is_equal_approx(expected_sizes[id]), "Container unit size for %s was %s" % [id, actual])
+	_check(_rect(layout, "shift").is_equal_approx(Rect2(18.0, 20.0, 9.0, 10.0)),
+		"Transforms and fixed CSS lengths use the same query container axes")
+	var outer: HTMLElement = layout.get_element_by_id("outer")
+	_check(outer.set_attribute("style", "width: 240px; height: 100px") == OK and
+		layout.layout(Vector2i(320, 500)) == OK, "Resize nested query containers at a fixed viewport")
+	_check(_rect(layout, "split").size.is_equal_approx(Vector2(43.2, 15.0)) and
+		_rect(layout, "range").size.is_equal_approx(Vector2(20.0, 36.0)),
+		"Container units update after ancestor-only edits and resolve the axes independently")
+	_check(layout.layout(Vector2i(400, 350)) == OK and _rect(layout, "fallback").size == Vector2(100.0, 35.0),
+		"Container unit viewport fallback follows viewport changes")
+
+	var query: HTMLLayout = HTMLLayout.new()
+	_check(query.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#outer { container-type: size; width: 300px; height: 200px; }
+		#inner { container-type: inline-size; width: 180px; }
+		#gate { container: gate / size; width: 90px; height: 20px; }
+		#probe { width: 1px; height: 8px; }
+		@container gate (width = 50cqi) and (width = 45cqb) {
+			#probe { height: 30px; width: calc(10cqw + 2px); }
+		}
+	</style><div id="outer"><div id="inner"><div id="gate"><div id="probe"></div></div></div></div>""") == OK
+		and query.layout(Vector2i(320, 400)) == OK and _rect(query, "probe").size == Vector2(11.0, 30.0),
+		"Units in a query threshold use the queried container's own ancestors")
+	var query_outer: HTMLElement = query.get_element_by_id("outer")
+	_check(query_outer.set_attribute("style", "height: 100px") == OK and
+		query.layout(Vector2i(320, 400)) == OK and _rect(query, "probe").size == Vector2(1.0, 8.0),
+		"Changing a threshold's container-relative value invalidates the query")
+
+
+func _check_container_style_queries() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var markup: String = """<!doctype html><style>
+		body { margin: 0; --inherited: shared; }
+		#card { container-name: card; --target: Dark; --theme: var(--target); --empty: ;
+			--words: some text; --cycle: var(--cycle); }
+		#tray { container-type: inline-size; width: 170px; --theme: Light; }
+		.probe { width: 11px; height: 4px; }
+		@container card style(--theme: Dark !important) {
+			#named { width: 41px; }
+			#promoted { --derived: match; }
+			#card::before { content: "STYLE QUERY PSEUDO"; }
+		}
+		@container style(--theme: Light) { #nearest { width: 42px; } }
+		@container style(--theme: Dark) { #nearest { width: 99px; } }
+		@container card style(--theme: dark) { #wrong_case { width: 99px; } }
+		@container card style(--Theme) { #wrong_case { width: 98px; } }
+		@container card style((--theme: var(--target)) and (--empty: )) { #combined { width: 43px; } }
+		@container card style((--theme: var(--missing, nowhere)) or (--words: some   text)) { #either { width: 44px; } }
+		@container card style(not (--cycle)) { #cycle { width: 45px; } }
+		@container card style(--missing: var(--unknown)) { #missing { width: 46px; } }
+		@container card style(--inherited: unset) { #inherited { width: 47px; } }
+		@container card style(--cycle: initial) { #initial { width: 48px; } }
+		@container card not style(--missing: revert-layer) { #rollback { width: 49px; } }
+		@container (width > 120px) and style(--theme: Light) { #mixed { width: 50px; } }
+		@container style(--derived) { #dependent { width: 51px; } }
+		@container card not style(color: red) { #unknown { width: 99px; } }
+	</style><div id="card"><section id="tray">
+		<div class="probe" id="named"></div><div class="probe" id="nearest"></div>
+		<div class="probe" id="wrong_case"></div><div class="probe" id="combined"></div>
+		<div class="probe" id="either"></div><div class="probe" id="cycle"></div>
+		<div class="probe" id="missing"></div><div class="probe" id="inherited"></div>
+		<div class="probe" id="initial"></div><div class="probe" id="rollback"></div>
+		<div class="probe" id="mixed"></div><div class="probe" id="unknown"></div>
+		<div id="promoted"><div class="probe" id="dependent"></div></div>
+	</section></div>"""
+	_check(layout.parse(markup) == OK and layout.layout(Vector2i(320, 500)) == OK,
+		"Apply style queries to ordinary and size query containers")
+	var expected_widths: Dictionary[String, float] = {
+		"named": 41.0,
+		"nearest": 42.0,
+		"wrong_case": 11.0,
+		"combined": 43.0,
+		"either": 44.0,
+		"cycle": 45.0,
+		"missing": 46.0,
+		"inherited": 47.0,
+		"initial": 48.0,
+		"rollback": 49.0,
+		"mixed": 50.0,
+		"dependent": 51.0,
+		"unknown": 11.0,
+	}
+	for id: String in expected_widths:
+		var width: float = _rect(layout, id).size.x
+		_check(width == expected_widths[id], "Container style query width for %s was %s" % [id, width])
+	_check("STYLE QUERY PSEUDO" in layout.get_plain_text(), "The generated pseudo-element queries its originating style")
+	var card: HTMLElement = layout.get_element_by_id("card")
+	_check(card.set_attribute("style", "--target: Silver") == OK and layout.layout(Vector2i(320, 500)) == OK,
+		"Reevaluate style queries after changing a container variable")
+	_check(_rect(layout, "named").size.x == 11.0 and _rect(layout, "dependent").size.x == 11.0
+		and _rect(layout, "combined").size.x == 43.0 and "STYLE QUERY PSEUDO" not in layout.get_plain_text(),
+		"Changing an ancestor variable updates direct, dependent and pseudo-element queries")
+
+
+func _check_container_query_variables() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var markup: String = """<!doctype html><style>
+		body { margin: 0; --inherited-limit: 180px; }
+		#card { container: card / size; width: 200px; height: 100px; font-size: 16px;
+			--min: var(--inherited-limit); --max: 240px; --padding: 1em; --invalid: initial;
+			--broken: red; --orientation: landscape; --ratio: 4 / 2; --n: 3; --d: 2;
+			--injection: 0px < width; }
+		.probe { width: 11px; height: 4px; }
+		#fallback { --inherited-limit: 280px; }
+		@container card (width > var(--invalid, var(--inherited-limit, 500px))) { #fallback { width: 41px; } }
+		@container card (min-width: calc(var(--min) + var(--padding))) { #math { width: 42px; } }
+		@container card (var(--min) < width <= var(--max)) { #range { width: 43px; } }
+		@container card (width < var(--limit, 48cqw)) { #relative { width: 44px; } }
+		@container card (orientation: var(--orientation)) { #orientation { width: 45px; } }
+		@container card (aspect-ratio: var(--ratio)) { #ratio { width: 46px; } }
+		@container card (aspect-ratio = calc(var(--n) + 1) / var(--d)) { #ratio_parts { width: 47px; } }
+		@container card not (width > var(--broken)) { #negation { width: 48px; } }
+		@container card (width > var(--broken)) or (width = 200px) { #alternative { width: 49px; } }
+		@container card not (width > var(--injection)) { #injection { width: 99px; } }
+		@media not (width > var(--inherited-limit)) { #media { width: 99px; } }
+	</style><div id="card">
+		<div class="probe" id="fallback"></div><div class="probe" id="math"></div>
+		<div class="probe" id="range"></div><div class="probe" id="relative"></div>
+		<div class="probe" id="orientation"></div><div class="probe" id="ratio"></div>
+		<div class="probe" id="ratio_parts"></div><div class="probe" id="negation"></div>
+		<div class="probe" id="alternative"></div><div class="probe" id="injection"></div>
+		<div class="probe" id="media"></div>
+	</div>"""
+	_check(layout.parse(markup) == OK and layout.layout(Vector2i(500, 320)) == OK,
+		"Lay out size queries whose thresholds use custom properties")
+	var expected_widths: Dictionary[String, float] = {
+		"fallback": 41.0,
+		"math": 42.0,
+		"range": 43.0,
+		"relative": 44.0,
+		"orientation": 45.0,
+		"ratio": 46.0,
+		"ratio_parts": 47.0,
+		"negation": 11.0,
+		"alternative": 49.0,
+		"injection": 11.0,
+		"media": 11.0,
+	}
+	for id: String in expected_widths:
+		var width: float = _rect(layout, id).size.x
+		_check(width == expected_widths[id], "Container query variable width for %s was %s" % [id, width])
+	var card: HTMLElement = layout.get_element_by_id("card")
+	_check(card.set_attribute("style", "--min: 210px; --broken: 220px; --orientation: portrait") == OK
+		and layout.layout(Vector2i(500, 320)) == OK, "Reevaluate query thresholds at a fixed container size")
+	_check(_rect(layout, "math").size.x == 11.0 and _rect(layout, "range").size.x == 11.0
+		and _rect(layout, "orientation").size.x == 11.0 and _rect(layout, "negation").size.x == 48.0,
+		"Changing query input variables can stop and start matches in the same update")
+	_check(layout.layout(Vector2i(400, 320)) == OK and _rect(layout, "relative").size.x == 11.0,
+		"Container units inside a substituted threshold retain their viewport fallback")
+
+
+func _check_size_containment() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """<!doctype html><style>
+		body { margin: 0; font-size: 10px; }
+		#block { width: 145px; contain: size; contain-intrinsic-size: 90px 24px; }
+		#big { width: 200px; height: 60px; }
+		#fill { contain: inline-size; contain-intrinsic-width: 35px; }
+		#fill > div { width: 500px; height: 33px; }
+		#inline { display: inline-block; contain: inline-size; contain-intrinsic-size: auto 4.5em 390px; }
+		#inline > div { width: 120px; height: 63px; }
+		#flex { display: inline-flex; flex-direction: column; justify-content: end; contain: size;
+			contain-intrinsic-size: var(--flex-width, 85px) 40px; }
+		#flex_child { width: 140px; height: 15px; flex: none; }
+		#flex_row { display: flex; contain: size; width: 120px; contain-intrinsic-height: 40px; align-items: center; }
+		#flex_row_child { width: 25px; height: 14px; }
+		#grid, #grid_fallback, #grid_inline { display: inline-grid; contain: size; grid-template: 35px / 90px; }
+		#grid_fallback { contain-intrinsic-size: 50px 24px; }
+		#grid_inline { contain: inline-size; grid-template-rows: auto; }
+		#grid > div, #grid_fallback > div, #grid_inline > div { width: 140px; height: 80px; }
+		#percent { width: 80px; contain: size; contain-intrinsic-height: 80px; }
+		#percent_child { height: 50%; }
+		#percent_child > div { height: 17px; }
+		#ratio { width: 100px; aspect-ratio: 2; contain: size; }
+		#ratio > div { height: 116px; }
+		#clamped { display: inline-block; contain: size; min-width: 55px; max-height: 36px;
+			contain-intrinsic-size: auto none calc(60px - 10px); }
+		#explicit { contain: size; width: 55px; height: 28px; contain-intrinsic-size: 300px; }
+		#image { width: 60px; contain: size; border-bottom: 1px solid black; }
+		#image_fallback { contain: size; contain-intrinsic-size: 45px 18px; }
+		#image_ratio { width: 64px; contain: size; aspect-ratio: auto 2; }
+		#grid_parent { display: grid; grid-template-columns: max-content; justify-items: start; }
+		#grid_item { contain: size; contain-intrinsic-inline-size: 64px; contain-intrinsic-block-size: 26px; }
+		#grid_item > div { width: 210px; height: 95px; }
+		#flex_parent { display: flex; align-items: start; }
+		#flex_item { contain: size; contain-intrinsic-size: 62px 24px; }
+		#flex_item > div { width: 175px; height: 109px; }
+		#flex_explicit { contain: size; width: 32px; contain-intrinsic-size: 62px 24px; }
+		#flex_max { contain: size; flex-basis: max-content; contain-intrinsic-size: 42px 24px; }
+		table { border-spacing: 0; contain: size; }
+		td { padding: 0; contain: size; }
+		#cell_child { width: 75px; height: 26px; }
+		#strict { width: 60px; contain-intrinsic-height: 32px; }
+		@supports (contain: strict) and (contain-intrinsic-size: auto none 0) and (not (contain: size inline-size)) {
+			#strict { contain: strict; contain: size inline-size; contain-intrinsic-size: 10% 64px; }
+		}
+		#strict_child { width: 100px; height: 45px; }
+	</style>
+	<div id="block"><div id="big"></div></div>
+	<div id="fill"><div></div></div>
+	<div><div id="inline"><div></div></div></div>
+	<div><div id="flex"><div id="flex_child"></div></div></div>
+	<div id="flex_row"><div id="flex_row_child"></div></div>
+	<div><div id="grid"><div></div></div><div id="grid_fallback"><div></div></div><div id="grid_inline"><div></div></div></div>
+	<div id="percent"><div id="percent_child"><div></div></div></div>
+	<div id="ratio"><div></div></div>
+	<div><div id="clamped"></div></div>
+	<div id="explicit"></div>
+	<img id="image" src="object-fit.svg">
+	<img id="image_fallback" src="object-fit.svg">
+	<img id="image_ratio" src="object-fit.svg">
+	<div id="grid_parent"><div id="grid_item"><div></div></div></div>
+	<div id="flex_parent"><div id="flex_item"><div></div></div><div id="flex_explicit"></div><div id="flex_max"></div></div>
+	<table id="table"><tr><td id="cell"><div id="cell_child"></div></td></tr></table>
+	<div id="strict"><div id="strict_child"></div></div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(360, 650)) == OK, "Lay out size containment")
+	var expected: Dictionary[String, Vector2] = {
+		"block": Vector2(145.0, 24.0),
+		"big": Vector2(200.0, 60.0),
+		"fill": Vector2(360.0, 33.0),
+		"inline": Vector2(45.0, 63.0),
+		"flex": Vector2(85.0, 40.0),
+		"flex_row": Vector2(120.0, 40.0),
+		"grid": Vector2(90.0, 35.0),
+		"grid_fallback": Vector2(50.0, 24.0),
+		"grid_inline": Vector2(90.0, 80.0),
+		"percent": Vector2(80.0, 80.0),
+		"percent_child": Vector2(80.0, 17.0),
+		"ratio": Vector2(100.0, 50.0),
+		"clamped": Vector2(55.0, 36.0),
+		"explicit": Vector2(55.0, 28.0),
+		"image": Vector2(60.0, 1.0),
+		"image_fallback": Vector2(45.0, 18.0),
+		"image_ratio": Vector2(64.0, 32.0),
+		"grid_item": Vector2(64.0, 26.0),
+		"flex_item": Vector2(62.0, 24.0),
+		"flex_explicit": Vector2(32.0, 24.0),
+		"flex_max": Vector2(42.0, 24.0),
+		"table": Vector2(75.0, 26.0),
+		"cell": Vector2(75.0, 26.0),
+		"strict": Vector2(60.0, 32.0),
+	}
+	for id: String in expected:
+		var actual: Vector2 = layout.get_element_by_id(id).get_bounding_rect().size
+		_check(actual == expected[id], "Size containment at #%s measures %s (expected %s)" % [id, actual, expected[id]])
+	var flex_y: float = layout.get_element_by_id("flex").get_bounding_rect().position.y
+	var flex_child_y: float = layout.get_element_by_id("flex_child").get_bounding_rect().position.y
+	_check(flex_child_y - flex_y == 25.0, "A contained flex column positions children inside its used height")
+	var flex_row_y: float = layout.get_element_by_id("flex_row").get_bounding_rect().position.y
+	var flex_row_child_y: float = layout.get_element_by_id("flex_row_child").get_bounding_rect().position.y
+	_check(flex_row_child_y - flex_row_y == 13.0, "A contained flex row aligns items using its used cross size")
+	var strict: HTMLElement = layout.get_element_by_id("strict")
+	var strict_child: HTMLElement = layout.get_element_by_id("strict_child")
+	var strict_origin: Vector2 = strict.get_bounding_rect().position
+	_check(layout.get_element_at(strict_origin + Vector2(10.0, 12.0)) == strict_child and
+		layout.get_element_at(strict_origin + Vector2(80.0, 12.0)) != strict_child, "Strict containment clips its contents")
+	_check(layout.get_css_diagnostics().size() == 2, "Invalid containment values preserve earlier values")
+	var contained: HTMLElement = layout.get_element_by_id("block")
+	_check(contained.set_attribute("style", "contain: none") == OK and layout.layout(Vector2i(360, 650)) == OK and
+		contained.get_bounding_rect().size == Vector2(145.0, 60.0), "Removing containment restores auto height from content")
+
+
+func _check_hidden_content_visibility() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """<!doctype html><style>
+		body { margin: 0; counter-reset: n 9; }
+		#cold, #warm { display: inline-block; contain-intrinsic-size: auto 52px auto none; }
+		#cold { content-visibility: hidden; content-visibility: wrong; counter-increment: n; }
+		#cold > div { width: 135px; height: 95px; counter-set: n 100; }
+		#cold::before { content: "GENERATED"; }
+		#warm { contain-intrinsic-height: auto 14px; }
+		#warm > div { width: 70px; height: 42px; }
+		#next::before { content: "(" counter(n) ")"; }
+		@supports (content-visibility: hidden) and (content-visibility: visible) {
+			#cold { contain-intrinsic-height: auto 21px; }
+		}
+		#exempt { content-visibility: hidden; }
+	</style>
+	<div><div id="cold"><div id="cold_child">SKIPPED</div></div></div>
+	<div><div id="warm"><div id="warm_child">WARM</div></div></div>
+	<div id="next">NEXT <span id="exempt">INLINE</span></div>"""
+	var size: Vector2i = Vector2i(320, 240)
+	_check(layout.parse(html) == OK and layout.layout(size) == OK, "Lay out hidden contents")
+	var cold: HTMLElement = layout.get_element_by_id("cold")
+	var cold_child: HTMLElement = layout.get_element_by_id("cold_child")
+	var warm: HTMLElement = layout.get_element_by_id("warm")
+	var warm_child: HTMLElement = layout.get_element_by_id("warm_child")
+	var rendered: String = layout.get_plain_text()
+	_check(cold.get_bounding_rect().size == Vector2(52.0, 21.0), "An initially hidden box uses its declared fallback sizes")
+	_check(cold_child.is_connected() and cold_child.get_text_content() == "SKIPPED" and
+		cold_child.get_client_rects().is_empty(), "Hidden descendants keep their DOM handles without committed boxes")
+	_check("SKIPPED" not in rendered and "GENERATED" not in rendered and "(10)NEXT INLINE" in rendered,
+		"Hidden contents do not paint or change outside counters and a non-atomic inline is exempt")
+	_check(layout.get_css_diagnostics().size() == 1, "Invalid content-visibility leaves the earlier declaration in the cascade")
+	_check(warm.get_bounding_rect().size == Vector2(70.0, 42.0), "A visible box measures its contents")
+	_check(warm.set_attribute("style", "display: none") == OK and layout.layout(size) == OK and
+		warm.get_client_rects().is_empty(), "Display none removes the box")
+	_check(warm.set_attribute("style", "content-visibility: hidden") == OK and layout.layout(size) == OK and
+		warm.get_bounding_rect().size == Vector2(70.0, 42.0), "Remembered size survives a period without a principal box")
+	_check(warm_child.set_attribute("style", "width: 93px; height: 65px") == OK and layout.layout(size) == OK and
+		warm.get_bounding_rect().size == Vector2(70.0, 42.0) and warm_child.get_client_rects().is_empty(),
+		"Edits inside a hidden subtree preserve the remembered box")
+	_check(warm.set_attribute("style", "content-visibility: visible") == OK and layout.layout(size) == OK and
+		warm_child == layout.get_element_by_id("warm_child") and warm.get_bounding_rect().size == Vector2(93.0, 65.0),
+		"Revealing a subtree lays out edits and preserves descendant identity")
+	_check(warm.set_attribute("style", "content-visibility: hidden; contain-intrinsic-height: 29px") == OK and
+		layout.layout(size) == OK and warm.get_bounding_rect().size == Vector2(93.0, 29.0),
+		"Removing auto from one axis clears only that axis's remembered size")
+	_check(warm.set_attribute("style", "content-visibility: hidden") == OK and layout.layout(size) == OK and
+		warm.get_bounding_rect().size == Vector2(93.0, 14.0),
+		"Reintroducing auto on a hidden axis uses its fallback")
+
+	var destination: HTMLLayout = HTMLLayout.new()
+	_check(destination.parse('<div id="destination"></div>') == OK, "Parse a destination for hidden nodes")
+	_check(warm.set_attribute("style", "display: inline-block; content-visibility: hidden; contain-intrinsic-size: auto 52px auto 14px") == OK,
+		"Set the intrinsic fallback on the element before transferring it")
+	var destination_element: HTMLElement = destination.get_element_by_id("destination")
+	var copied: HTMLElement = destination.import_node(warm, true)
+	_check(destination_element.append_child(copied) == OK and destination.adopt_node(warm) == warm and
+		destination_element.append_child(warm) == OK and destination.layout(size) == OK and
+		copied.get_bounding_rect().size == Vector2(52.0, 14.0) and warm.get_bounding_rect().size == Vector2(93.0, 14.0),
+		"Adoption transfers remembered size with the original node, while a clone uses the fallback")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(190, 105)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: white; }
+		#cover { content-visibility: hidden; width: 70px; height: 35px; background: blue; border: 2px solid red; }
+		#target { display: block; width: 120px; height: 50px; padding: 0; margin: 0; border: 0; background: lime; }
+		#photo { display: block; content-visibility: hidden; width: 40px; height: 20px; background: cyan; }
+	</style><div id="cover"><button id="target" type="button">Reveal</button></div>
+	<img id="photo" src="object-fit.svg">"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var cover: HTMLElement = label.get_element_by_id("cover")
+	var target: HTMLElement = label.get_element_by_id("target")
+	var photo: HTMLElement = label.get_element_by_id("photo")
+	var cover_box: Rect2 = cover.get_bounding_rect()
+	var photo_box: Rect2 = photo.get_bounding_rect()
+	_check_pixel(image, cover_box.get_center(), Color.BLUE, "The skipped host paints its own background")
+	_check_pixel(image, cover_box.position + Vector2(1.0, 1.0), Color.RED, "The skipped host paints its own border")
+	_check_pixel(image, photo_box.get_center(), Color.CYAN, "A replaced host paints its background and skips its image")
+	_check(label.get_element_at(cover_box.get_center()) == cover and not label.scroll_to_anchor("target") and
+		not label.focus_element(target), "Skipped descendants cannot be hit, scrolled to, or focused")
+	cover.set_attribute("style", "content-visibility: visible")
+	photo.set_attribute("style", "content-visibility: visible")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, cover_box.position + Vector2(6.0, 30.0), Color.LIME, "Revealing contents restores the button paint")
+	_check_pixel(image, photo_box.get_center(), Color("#c5692b"), "Revealing contents restores replaced image paint")
+	_check(label.get_element_at(cover_box.get_center()) == target and label.focus_element(target),
+		"Revealing contents restores hit testing and focus on the same handle")
+	viewport.queue_free()
+
+
+func _check_auto_content_visibility() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; }
+		.auto { content-visibility: auto; contain-intrinsic-height: auto 45px; }
+		.space { height: 1040px; }
+		button { display: block; box-sizing: border-box; width: 100px; height: 72px; margin: 0; user-select: text; }
+		#fixed { position: fixed; left: 7px; top: 4px; width: 10px; height: 10px; }
+		@supports (content-visibility: auto) { #far { background: blue; } }
+	</style>
+	<section class="auto" id="near"><button id="first" type="button">FIRST</button><div id="fixed"></div></section>
+	<div class="space"></div>
+	<section class="auto" id="far"><button id="second" type="button">SECOND</button></section>
+	<div class="space"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(200, 120)) == OK, "Lay out auto content with a standalone viewport")
+	var section: HTMLElement = layout.get_element_by_id("far")
+	var child: HTMLElement = layout.get_element_by_id("second")
+	_check(section.get_bounding_rect().size.y == 45.0 and child.get_client_rects().is_empty(),
+		"An initially distant auto box uses its intrinsic fallback")
+	_check("FIRST" in layout.get_plain_text() and "SECOND" in layout.get_plain_text(),
+		"Distant content remains in the selectable text")
+	_check(layout.get_element_by_id("fixed").get_bounding_rect().position ==
+		layout.get_element_by_id("near").get_bounding_rect().position + Vector2(7.0, 4.0),
+		"Auto content creates the fixed containing block while showing its contents")
+	_check(layout.get_css_diagnostics().is_empty() and layout.layout(Vector2i(200, 1290)) == OK and
+		child.get_bounding_rect().size.y == 72.0, "Growing the viewport reveals previously skipped boxes")
+	_check(layout.layout(Vector2i(200, 120)) == OK and section.get_bounding_rect().size.y == 72.0 and
+		child.get_client_rects().is_empty(), "Shrinking the viewport reuses the last rendered size")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(200, 120)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var first: HTMLElement = label.get_element_by_id("first")
+	var second: HTMLElement = label.get_element_by_id("second")
+	_check(second.get_client_rects().is_empty() and label.scroll_to_anchor("second"), "A skipped anchor scrolls to its placeholder")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_bounding_rect().size.y == 72.0 and label.get_scroll_offset().y > 1000,
+		"Scrolling to the placeholder reveals the anchored element")
+	label.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_client_rects().is_empty() and label.focus_element(first), "The distant control skips again after scrolling back")
+	_send_dom_key(viewport, KEY_TAB)
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(label.get_focused_element() == second and second.get_bounding_rect().size.y == 72.0 and label.get_scroll_offset().y > 1000,
+		"Tab reveals an offscreen control before bringing it into view")
+	label.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_bounding_rect().size.y == 72.0, "Focus keeps distant contents relevant")
+	label.release_focus()
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_client_rects().is_empty(), "Losing focus lets the distant contents skip again")
+	label.select_all()
+	_check("SECOND" in label.get_selected_text(), "Select all includes skipped auto contents")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_bounding_rect().size.y == 72.0 and "SECOND" in label.get_selected_text(),
+		"Selection keeps distant contents relevant")
+	label.clear_selection()
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(second.get_client_rects().is_empty(), "Clearing selection releases distant contents")
+
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		#port { width: 150px; height: 90px; overflow: auto; }
+		.space { height: 720px; }
+		#auto { content-visibility: auto; contain-intrinsic-height: 36px; }
+		#hit { width: 85px; height: 55px; background: red; }
+	</style><div id="port"><div class="space"></div><div id="auto"><div id="hit"></div></div><div class="space"></div></div>"""
+	await process_frame
+	await process_frame
+	var nested: HTMLElement = label.get_element_by_id("hit")
+	_check(nested.get_client_rects().is_empty() and label.scroll_to_element(nested), "A nested scroll port can navigate to an auto placeholder")
+	await process_frame
+	await process_frame
+	await process_frame
+	var nested_rect: Rect2 = nested.get_bounding_rect()
+	var nested_hit: HTMLElement = label.get_element_at(Vector2(18.0, 18.0))
+	var outer_scroll: Vector2i = label.get_scroll_offset()
+	_check(nested_rect.size.y == 55.0 and nested_hit == nested and outer_scroll == Vector2i.ZERO,
+		"Nested scrolling reveals contents without moving the outer viewport (box %s, hit %s, scroll %s)" %
+		[nested_rect, nested_hit, outer_scroll,])
+	label.hide()
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(viewport.size)
+	markdown.parse_html = true
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for name: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(name, icon)
+	markdown.text = """<div><div style="height: 1000px"></div><div style="content-visibility: auto">NEEDLE</div></div>"""
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	_check(markdown.search("NEEDLE", 0, 0, 0).x >= 0 and markdown.scroll_to_search_result(),
+		"Embedded Markdown blocks keep distant content searchable and scrollable in the outer document")
+	viewport.queue_free()
 
 
 func _check_generated_image() -> void:
@@ -6930,6 +8754,3663 @@ func _check_image_alt_text() -> void:
 	viewport.queue_free()
 
 
+func _check_pointer_events() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	for transform: String in ["none", "translateX(5px)"]:
+		_check(layout.parse("""
+			<style>
+				@supports (pointer-events: none) { #overlay { pointer-events: var(--hits, none); } }
+			</style>
+			<div style="position: relative; width: 220px; height: 120px;">
+				<a id="behind" href="#behind"
+					style="position: absolute; inset: 0; display: block;">Behind</a>
+				<div id="overlay" style="position: absolute; inset: 0; transform: %s;">
+					<a id="pass" href="#pass" style="display: block; width: 140px; height: 35px;">Pass through</a>
+					<a id="restore" href="#restore" style="display: block; width: 140px; height: 35px;
+						pointer-events: initial;">Restored</a>
+				</div>
+			</div>
+		""" % transform) == OK and layout.layout(Vector2i(240, 140)) == OK, "Pointer-events document lays out")
+		var pass_box: HTMLElement = layout.get_element_by_id("pass")
+		var restored: HTMLElement = layout.get_element_by_id("restore")
+		var pass_rect: Rect2 = pass_box.get_bounding_rect()
+		_check(layout.get_element_at(pass_rect.get_center()) == layout.get_element_by_id("behind") and
+			layout.get_link_at(pass_rect.get_center()) == "#behind", "Inherited pointer-events passes hits through")
+		_check(layout.get_element_at(restored.get_bounding_rect().get_center()) == restored and
+			layout.get_link_at(restored.get_bounding_rect().get_center()) == "#restore",
+			"An eligible descendant restores hits inside a pointer-transparent box")
+		_check(layout.get_plain_text().contains("Pass through") and layout.hit_test_text(
+			pass_rect.position + Vector2(32.0, 10.0)) >= layout.get_plain_text().find("Pass through"),
+			"Pointer transparency preserves text, layout and text hit testing")
+		layout.get_element_by_id("overlay").set_attribute("style", "position:absolute; inset:0; --hits:auto;")
+		_check(layout.layout(Vector2i(240, 140)) == OK and layout.get_link_at(
+			pass_box.get_bounding_rect().get_center()) == "#pass", "Changing pointer-events updates hits")
+
+
+func _check_text_overflow() -> void:
+	var html: String = """<!doctype html><style>
+		body { margin: 0; color: white; background: black; font: 24px / 32px Consolas, monospace; }
+		.row { width: 5.2ch; height: 32px; overflow: hidden; white-space: nowrap; }
+		.cut { text-overflow: var(--mode, ellipsis); }
+		a { color: inherit; text-decoration: none; }
+		.badge { display: inline-block; width: 4ch; height: 19px; background: red; }
+		.shift { transform: translateX(20px); }
+		.tiny { width: 0.7ch; }
+		.scroll { overflow: auto; }
+	</style>
+	<div class="row cut" id="cut"><a id="title" href="#foo">A&#x301;<span>BCD</span>EFGHIJK</a></div>
+	<div class="row" id="reference">A&#x301;<span>BCD</span>…</div>
+	<div class="row cut shift" id="atomic">AB<a class="badge" id="badge" href="#badge"></a>CD</div>
+	<div class="row shift" id="atomic_ref">AB…</div>
+	<div class="row cut tiny" id="tiny">ABC</div>
+	<div class="row tiny" id="tiny_ref">ABC</div>
+	<div class="row scroll cut" id="scroll_cut">ABCDEFGHIJKL</div>
+	<div class="row scroll" id="scroll_ref">ABCDEFGHIJKL</div>
+	"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(180, 270)) == OK, "Text overflow document lays out")
+	var source: String = layout.get_plain_text()
+	var start: int = source.find("ÁBCDEFGHIJK")
+	_check(start >= 0, "Elision preserves the original string and combining marks for copy and search")
+	var tail: Array[Rect2] = layout.get_selection_rects(start + 5, start + 12)
+	_check(tail.size() == 1 and tail[0].has_area(), "Selection of the elided tail highlights the ellipsis")
+	if not tail.is_empty():
+		_check(layout.get_link_at(tail[0].get_center()) == "#foo", "The ellipsis keeps the original link hit area")
+	var badge: Rect2 = _rect(layout, "badge")
+	_check(layout.get_link_at(badge.position + Vector2(2.0, 4.0)) == "#badge",
+		"Eliding an atomic inline does not change its geometry or pointer target")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(180, 270)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var pairs: Array[Vector2i] = [
+		Vector2i(0, 32),
+		Vector2i(64, 96),
+		Vector2i(128, 160),
+	]
+	for pair: Vector2i in pairs:
+		var drawn: Image = image.get_region(Rect2i(0, pair.x, 160, 32))
+		var reference: Image = image.get_region(Rect2i(0, pair.y, 160, 32))
+		_check(drawn.get_data() == reference.get_data(), "Text ellipsis matches its reference row at %d" % pair.x)
+
+	var scroll_cut: Rect2 = _label_rect(label, "scroll_cut")
+	var scroll_ref: Rect2 = _label_rect(label, "scroll_ref")
+	var cut_row: Rect2i = Rect2i(0, roundi(scroll_cut.position.y), 160, 32)
+	var ref_row: Rect2i = Rect2i(0, roundi(scroll_ref.position.y), 160, 32)
+	_check(image.get_region(cut_row).get_data() != image.get_region(ref_row).get_data(),
+		"A scrollable line displays an ellipsis while its end is clipped")
+	for _step: int in 4:
+		_push_html_wheel(viewport, scroll_cut.get_center(), MOUSE_BUTTON_WHEEL_RIGHT)
+		_push_html_wheel(viewport, scroll_ref.get_center(), MOUSE_BUTTON_WHEEL_RIGHT)
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check(image.get_region(cut_row).get_data() == image.get_region(ref_row).get_data(),
+		"Scrolling to the inline end replaces the ellipsis with the actual text")
+	viewport.queue_free()
+
+
+func _check_overflow_axes() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var base: String = """<!doctype html><style>
+		body { margin: 0; } .box { width: 25px; height: 25px; }
+		.child { width: 110px; height: 110px; }
+	</style><div class="box" style="%s"><div class="child" id="child"></div></div>"""
+	for sample: Vector2i in [Vector2i(0, 1), Vector2i(1, 0)]:
+		var declaration: String = "overflow-x: visible; overflow-y: clip" if sample.x else "overflow: clip visible"
+		_check(layout.parse(base % declaration) == OK and layout.layout(Vector2i(60, 60)) == OK, "A mixed clip strip lays out")
+		var child: HTMLElement = layout.get_element_by_id("child")
+		var point: Vector2 = Vector2.ONE * 12.0 + Vector2(sample) * 28.0
+		_check(layout.get_element_at(point) == child and
+			layout.get_element_at(Vector2.ONE * 52.0 - Vector2(sample) * 36.0) != child,
+			"A clip strip accepts hits beyond its visible axis and rejects them on its clipped axis")
+		var extent: Vector2i = layout.get_content_size()
+		_check(extent[sample.max_axis_index()] >= 110 and extent[sample.min_axis_index()] <= 60,
+			"Only overflow on the visible axis extends the document")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(220, 220)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.frame { position: absolute; width: 36px; height: 24px; }
+		.fill { width: 120px; height: 58px; }
+		#xclip { top: 10px; left: 12px; overflow: clip visible; padding: 6px;
+			border: 2px solid black; border-radius: 20px; }
+		#yclip { top: 10px; left: 100px; overflow-x: visible; overflow-y: clip; }
+		#turn { top: 95px; left: 110px; overflow: clip visible;
+			transform-origin: 0 0; transform: rotate(90deg); }
+		#scroll { top: 158px; left: 12px; overflow: var(--axes); --axes: clip auto; }
+		#auto { top: 158px; left: 90px; overflow-y: hidden; }
+		.ellipsis { top: 196px; width: 4.2ch; height: 4px; color: white;
+			font: 16px / 22px Consolas, monospace; white-space: nowrap; }
+		#short { left: 12px; overflow: clip visible; text-overflow: ellipsis; }
+		#short_ref { left: 86px; }
+	</style>
+	<div class="frame" id="xclip"><div class="fill" id="red" style="background: red"></div></div>
+	<div class="frame" id="yclip"><div class="fill" id="green" style="background: lime"></div></div>
+	<div class="frame" id="turn"><div class="fill" id="blue" style="background: blue"></div></div>
+	<div class="frame" id="scroll"><div class="fill" id="down"></div></div>
+	<div class="frame" id="auto"><div class="fill" id="right"></div></div>
+	<div class="frame ellipsis" id="short">ABCDEFGHIJ</div>
+	<div class="frame ellipsis" id="short_ref">ABC…</div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(24.0, 62.0), Color.RED, "X clipping leaves vertical paint visible")
+	_check_pixel(image, Vector2(60.0, 25.0), Color.RED, "The overflow clip reaches the padding edge")
+	_check_pixel(image, Vector2(63.0, 25.0), Color.BLACK, "X clipping cuts off paint beyond the padding edge")
+	_check_pixel(image, Vector2(153.0, 26.0), Color.GREEN, "Y clipping leaves horizontal paint visible")
+	_check_pixel(image, Vector2(112.0, 42.0), Color.BLACK, "Y clipping cuts off vertical paint")
+	_check_pixel(image, Vector2(64.0, 107.0), Color.BLUE, "A strip clips in its rotated local coordinates")
+	_check_pixel(image, Vector2(87.0, 146.0), Color.BLACK, "The rotated strip rejects paint across its clipped axis")
+	_check(label.get_element_at(Vector2(64.0, 107.0)) == label.get_element_by_id("blue") and
+		label.get_element_at(Vector2(87.0, 146.0)) != label.get_element_by_id("blue"),
+		"Rotated strip hit tests agree with clipping")
+
+	var ellipsis_line: Image = image.get_region(Rect2i(12, 196, 48, 22))
+	var reference_line: Image = image.get_region(Rect2i(86, 196, 48, 22))
+	var ink_count: int
+	var mask_difference: int
+	for y: int in ellipsis_line.get_height():
+		for x: int in ellipsis_line.get_width():
+			var painted: bool = ellipsis_line.get_pixel(x, y).r > 0.45
+			if painted:
+				ink_count += 1
+			if painted != (reference_line.get_pixel(x, y).r > 0.45):
+				mask_difference += 1
+	# The ellipsis is shaped separately, so its antialiasing may round differently.
+	_check(ink_count > 100 and mask_difference <= 8, "An ellipsis and its retained text paint beyond the visible Y edge")
+
+	var down: HTMLElement = label.get_element_by_id("down")
+	var right: HTMLElement = label.get_element_by_id("right")
+	var down_before: Vector2 = down.get_bounding_rect().position
+	var right_before: Vector2 = right.get_bounding_rect().position
+	for wheel: MouseButton in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
+		_push_html_wheel(viewport, Vector2(24.0, 170.0), wheel)
+		_push_html_wheel(viewport, Vector2(102.0, 170.0), wheel)
+	var down_shift: Vector2 = down_before - down.get_bounding_rect().position
+	var right_shift: Vector2 = right_before - right.get_bounding_rect().position
+	_check(is_zero_approx(down_shift.x) and down_shift.y > 0.0,
+		"A clip axis computes to hidden when paired with auto and ignores horizontal wheel input")
+	_check(right_shift.x > 0.0 and is_zero_approx(right_shift.y),
+		"A visible axis computes to auto when paired with hidden and consumes horizontal wheel input")
+	viewport.queue_free()
+
+
+func _check_overflow_clip_margin() -> void:
+	var html: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.frame { position: absolute; width: 30px; height: 24px; overflow: clip; font-size: 10px;
+			padding: 6px; border: 4px solid transparent; }
+		.child { width: 66px; height: 53px; background: red; }
+		#content { top: 16px; left: 16px; overflow-clip-margin: content-box 3px;
+			overflow-clip-margin: content-box -2px; }
+		#padding { top: 16px; left: 100px; --edge: 0.6em padding-box; overflow-clip-margin: var(--edge);
+			overflow-clip-margin: calc(3% + 1px); }
+		#round { top: 16px; left: 184px; border-radius: 14px; overflow-clip-margin: border-box 6px; }
+		#strip { top: 90px; left: 16px; overflow-clip-margin: padding-box 5px; border-radius: 20px; }
+		@supports (overflow-inline: clip) and (overflow: overlay) {
+			#strip { overflow-inline: clip; overflow-block: visible; }
+		}
+		#hidden { top: 90px; left: 100px; overflow: hidden; overflow-clip-margin: border-box 12px; }
+	</style>
+	<div class="frame" id="content"><div class="child" id="content_child"></div></div>
+	<div class="frame" id="padding"><div class="child"></div></div>
+	<div class="frame" id="round"><div class="child" id="rounded_child"></div></div>
+	<div class="frame" id="strip"><div class="child" id="strip_child"></div></div>
+	<div class="frame" id="hidden"><div class="child"></div></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(260, 170)) == OK, "Overflow clip margins lay out")
+	_check(_has_diagnostic(layout, "overflow-clip-margin", "content-box -2px", "style_element") and
+		_has_diagnostic(layout, "overflow-clip-margin", "calc(3% + 1px)", "style_element"),
+		"Clip margins reject negative lengths and percentage expressions")
+	var content_child: HTMLElement = layout.get_element_by_id("content_child")
+	var rounded_child: HTMLElement = layout.get_element_by_id("rounded_child")
+	var strip_child: HTMLElement = layout.get_element_by_id("strip_child")
+	_check(layout.get_element_at(Vector2(58.0, 38.0)) == content_child and
+		layout.get_element_at(Vector2(60.0, 38.0)) != content_child,
+		"The content-box clip margin clips hits at its expanded edge")
+	_check(layout.get_element_at(Vector2(236.0, 37.0)) == rounded_child and
+		layout.get_element_at(Vector2(237.0, 64.0)) != rounded_child,
+		"Expanded rounded corners clip pointer hits with the same shape as paint")
+	_check(layout.get_element_at(Vector2(65.0, 149.0)) == strip_child and
+		layout.get_element_at(Vector2(68.0, 149.0)) != strip_child,
+		"The logical overflow strip applies clip margins on the inline axis")
+
+	for display: String in ["block", "flow-root"]:
+		_check(layout.parse("""<!doctype html><style>
+			body { margin: 0; }
+			#container { display: %s; width: 50px; overflow: clip; }
+			#float { float: left; width: 20px; height: 28px; }
+		</style><div id="container"><div id="float"></div></div>""" % display) == OK and
+			layout.layout(Vector2i(120, 80)) == OK, "A clipped float lays out")
+		var height: float = _rect(layout, "container").size.y
+		_check(is_equal_approx(height, 28.0 if display == "flow-root" else 0.0),
+			"Only flow-root contains the float, display=%s height=%s" % [display, height])
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(260, 170)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(58.0, 38.0), Color.RED, "Content-box clip margin paints up to its edge")
+	_check_pixel(image, Vector2(60.0, 38.0), Color.BLACK, "Content-box clip margin cuts off overflow past its edge")
+	_check_pixel(image, Vector2(149.0, 38.0), Color.RED, "Variable padding-box margin accepts a font-relative length")
+	_check_pixel(image, Vector2(153.0, 38.0), Color.BLACK, "Padding-box margin stops before further ink")
+	_check_pixel(image, Vector2(236.0, 37.0), Color.RED, "Border-box clip margin shows ink beyond the border")
+	_check_pixel(image, Vector2(237.0, 64.0), Color.BLACK, "The expanded rounded corner excludes overflow")
+	_check_pixel(image, Vector2(65.0, 149.0), Color.RED, "One-axis clip margin preserves vertical ink")
+	_check_pixel(image, Vector2(68.0, 149.0), Color.BLACK, "One-axis clip margin cuts off horizontal ink")
+	_check_pixel(image, Vector2(148.0, 111.0), Color.BLACK, "Overflow hidden uses the original padding box")
+	viewport.queue_free()
+
+
+func _check_overflow_scrollbars() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 288)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(320.0, 178.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.box { position: absolute; background: #222222; }
+		#vertical { top: 8px; left: 8px; width: 84px; height: 60px; overflow: hidden auto; }
+		#vertical a { display: block; height: 180px; background: lime; }
+		#cover { display: none; top: 8px; left: 84px; width: 8px; height: 60px; z-index: 1; }
+		#spin { top: 8px; left: 200px; width: 68px; height: 50px; overflow: hidden auto;
+			transform-origin: 0 0; transform: rotate(90deg); }
+		#spin div { height: 150px; background: teal; }
+		#fixed { top: 8px; left: 224px; width: 56px; height: 50px; overflow: hidden scroll; }
+		#fits { top: 72px; left: 224px; width: 56px; height: 50px; overflow: hidden auto; }
+		#outer { top: 86px; left: 8px; width: 84px; height: 60px; overflow: hidden auto; }
+		#inner { width: 55px; height: 45px; overflow: hidden auto; background: #556677; }
+		#inner div { height: 150px; }
+		#oversize { height: 130px; }
+		#horizontal { top: 94px; left: 106px; width: 94px; height: 48px; overflow: auto hidden; }
+		#horizontal div { width: 218px; height: 44px; background: #2a3750; }
+	</style>
+	<div class="box" id="vertical"><a href="#wrong" id="link"></a></div>
+	<div class="box" id="cover"></div>
+	<div class="box" id="spin"><div id="rotated_child"></div></div>
+	<div class="box" id="fixed"></div><div class="box" id="fits"></div>
+	<div class="box" id="outer"><div id="inner"><div id="inner_child"></div></div><div id="oversize"></div></div>
+	<div class="box" id="horizontal"><div id="wide"></div></div>"""
+	viewport.add_child(label)
+	var links: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: links.append(uri))
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.parse_html = true
+	markdown.position = Vector2(0.0, 180.0)
+	markdown.size = Vector2(260.0, 96.0)
+	var test_texture: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, test_texture)
+	markdown.text = """<div style="background: #244c30; width: 70px; height: 48px; overflow: auto">
+		<div style="height: 72px;"></div><div style="height: 100px; background: #ee3061;"></div>
+	</div>"""
+	viewport.add_child(markdown)
+
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check(not image.get_pixel(275, 20).is_equal_approx(Color("#222222")) and
+		image.get_pixel(275, 88).is_equal_approx(Color("#222222")),
+		"Forced scroll paints a track when content fits and auto leaves it hidden")
+
+	var link: HTMLElement = label.get_element_by_id("link")
+	var start_y: float = link.get_bounding_rect().position.y
+	_drag_pointer(viewport, Vector2(88.0, 13.0), Vector2(88.0, 76.0))
+	_check(is_equal_approx(start_y - link.get_bounding_rect().position.y, 120.0),
+		"Dragging the vertical thumb reaches the end of the inner scroll range")
+	_drag_pointer(viewport, Vector2(88.0, 10.0), Vector2(88.0, 10.0))
+	_check(is_equal_approx(start_y, link.get_bounding_rect().position.y) and links.is_empty(),
+		"Clicking near the beginning of the track scrolls back without activating the link")
+
+	var rotated: HTMLElement = label.get_element_by_id("rotated_child")
+	var rotated_x: float = rotated.get_bounding_rect().position.x
+	_drag_pointer(viewport, Vector2(195.0, 72.0), Vector2(143.0, 72.0))
+	_check(is_equal_approx(rotated.get_bounding_rect().position.x - rotated_x, 100.0),
+		"The rotated thumb maps pointer movement through the inverse transform")
+
+	var inner_child: HTMLElement = label.get_element_by_id("inner_child")
+	var inner_y: float = inner_child.get_bounding_rect().position.y
+	_drag_pointer(viewport, Vector2(58.0, 91.0), Vector2(58.0, 134.0))
+	_check(is_equal_approx(inner_y - inner_child.get_bounding_rect().position.y, 105.0) and
+		is_equal_approx(label.get_element_by_id("inner").get_bounding_rect().position.y, 86.0),
+		"Dragging a nested scroller moves the inner box contents independently")
+	var wide: HTMLElement = label.get_element_by_id("wide")
+	var wide_x: float = wide.get_bounding_rect().position.x
+	_drag_pointer(viewport, Vector2(114.0, 138.0), Vector2(206.0, 138.0))
+	_check(is_equal_approx(wide_x - wide.get_bounding_rect().position.x, 124.0),
+		"The horizontal scrollbar moves content only along X")
+
+	label.get_element_by_id("cover").set_attribute("style", "display: block")
+	await process_frame
+	await process_frame
+	_drag_pointer(viewport, Vector2(88.0, 13.0), Vector2(88.0, 76.0))
+	_check(is_equal_approx(start_y, link.get_bounding_rect().position.y),
+		"An overlapping box painted above a scrollbar receives pointer input")
+
+	var markdown_origin: Vector2i = Vector2i(-1, -1)
+	for y: int in range(180, 276):
+		for x: int in 170:
+			if image.get_pixel(x, y).is_equal_approx(Color("#244c30")):
+				markdown_origin = Vector2i(x, y)
+				break
+		if markdown_origin.x >= 0:
+			break
+	_check(markdown_origin.x >= 0, "Markdown HTML paints the scroll box")
+	if markdown_origin.x >= 0:
+		var thumb: Vector2 = Vector2(markdown_origin + Vector2i(66, 4))
+		_drag_pointer(viewport, thumb, thumb + Vector2(0.0, 42.0))
+		await RenderingServer.frame_post_draw
+		_check_pixel(viewport.get_texture().get_image(), Vector2(markdown_origin + Vector2i(6, 8)),
+			Color("#ee3061"), "Markdown HTML scrollbar dragging reveals the end of the box")
+	viewport.queue_free()
+
+
+func _check_scroll_insets() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(220, 160)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(220.0, 160.0)
+	label.css_diagnostics_enabled = true
+	label.text = """<!doctype html><style>
+		@layer base { html { scroll-padding-block: 12px 10%; } }
+		@layer override { html { scroll-padding-top: var(--rollback, revert-layer); } }
+		html { direction: var(--flow, rtl); scrollbar-width: none;
+			scroll-padding-top: -1px; scroll-padding-left: 25px; scroll-padding-inline-end: 24px; }
+		body { margin: 0; width: 520px; height: 780px; }
+		#target { position: absolute; top: 280px; left: 270px; width: 32px; height: 20px;
+			transform: translate(2px, 4px); scroll-margin: 5px;
+			scroll-margin-block: var(--outset); --outset: 9px -5px;
+			scroll-margin-inline-end: 6px; scroll-margin-left: -4px;
+			scroll-margin-bottom: 10%; }
+		#fixed { position: fixed; top: 6px; right: 5px; width: 16px; height: 14px; }
+	</style><a id="jump" href="#target">Jump</a>
+	<div id="target" tabindex="0"></div><div id="fixed"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var target: HTMLElement = label.get_element_by_id("target")
+	var initial: Rect2 = target.get_bounding_rect()
+	_check(label.activate_element(label.get_element_by_id("jump")), "Activate a link to a CSS scroll target")
+	await process_frame
+	var expected: Vector2i = Vector2i(initial.position + Vector2(-20.0, -21.0))
+	_check(label.get_scroll_offset() == expected, "Scroll margins and viewport padding set anchor offsets to %s" % expected)
+	_check(target.get_bounding_rect().is_equal_approx(initial), "Scroll insets leave document-space element bounds unchanged")
+	_check(label.scroll_to_element(target, 0.5), "Align a transformed element in the optimal viewing region")
+	await process_frame
+	var offset: Vector2i = label.get_scroll_offset()
+	_check(offset.y == expected.y - 66, "Percentage scroll padding reduces the available aligned height")
+	_check(label.scroll_to_anchor("fixed") and label.get_scroll_offset() == offset,
+		"Navigating to a viewport-fixed target preserves the viewport offset")
+	var document_root: HTMLElement = label.query_selector("html")
+	document_root.set_attribute("style", "direction: ltr")
+	await process_frame
+	await process_frame
+	label.set_scroll_offset(Vector2i.ZERO)
+	_check(label.scroll_to_anchor("target") and label.get_scroll_offset().x == expected.x - 1,
+		"Changing direction remaps the logical edge and exposes the physical left inset")
+	var invalid: Dictionary[String, String] = {
+		"scroll-padding-top": "-1px",
+		"scroll-margin-bottom": "10%",
+	}
+	for diagnostic: Dictionary in label.get_css_diagnostics():
+		if diagnostic["kind"] == "unsupported_value" and invalid.get(diagnostic["property"]) == diagnostic["value"]:
+			invalid.erase(diagnostic["property"])
+	_check(invalid.is_empty(), "Reject direct negative padding and percentage scroll margins")
+
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; scroll-padding-top: 7px; scroll-padding-bottom: 6px; }
+		body { margin: 0; height: 850px; }
+		#outer { margin-top: 160px; width: 150px; height: 110px; overflow: hidden;
+			scroll-padding: 11px 0 8px; transform: scale(.75); transform-origin: left top; }
+		#inner { width: 140px; height: 70px; overflow: auto; scrollbar-width: none;
+			scroll-padding: 20% 0 10px; }
+		#nested { appearance: none; padding: 0; border: 0; display: block; width: 32px; height: 20px;
+			transform: translateY(4px); scroll-margin: 4px 0 2px; }
+	</style>
+	<div id="outer"><div style="height: 140px"></div><div id="inner">
+		<div style="height: 180px"></div><button type="button" id="nested">Focus</button><div style="height: 180px"></div>
+	</div><div style="height: 170px"></div></div>"""
+	await process_frame
+	await process_frame
+	var nested: HTMLElement = label.get_element_by_id("nested")
+	_check(label.focus_element(nested), "A clipped button can receive keyboard focus in a nested scroller")
+	await process_frame
+	await process_frame
+	_check(label.get_focused_element() == nested and
+		label.get_element_at(nested.get_bounding_rect().get_center() - Vector2(label.get_scroll_offset())) == nested,
+		"Keyboard focus scrolls both inner containers until the transformed target is hittable")
+	_check(label.scroll_to_anchor("nested"), "Scroll the same nested target to the leading edge")
+	await process_frame
+	var outer: Rect2 = _label_rect(label, "outer")
+	var inner: Rect2 = _label_rect(label, "inner")
+	var box: Rect2 = nested.get_bounding_rect()
+	_check(is_equal_approx(box.position.y - inner.position.y, 13.5) and
+		is_equal_approx(box.position.y - outer.position.y, 11.25) and
+		absf(box.position.y - label.get_scroll_offset().y - 11.0) < 1.0,
+		"The nested scrollports apply insets before mapping bounds into the HTML viewport")
+	viewport.queue_free()
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(220.0, 120.0)
+	markdown.parse_html = true
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for name: StringName in [
+		&"task_checked",
+		&"task_unchecked",
+		&"file_broken",
+	]:
+		markdown.add_theme_icon_override(name, icon)
+	root.add_child(markdown)
+	var source: String = """<div style="height:210px"></div>
+<div id="css-anchor" style="scroll-margin-top:%spx; height:24px">Target</div>
+<div style="height:360px"></div>
+"""
+	markdown.text = source % 0
+	await process_frame
+	await process_frame
+	_check(markdown.scroll_to_anchor("css-anchor"), "Find a Markdown HTML anchor")
+	var previous: float = markdown.get_v_scroll_bar().value
+	markdown.text = source % 15
+	await process_frame
+	await process_frame
+	_check(markdown.scroll_to_anchor("css-anchor") and is_equal_approx(markdown.get_v_scroll_bar().value, previous - 15.0),
+		"HTML scroll margin adjusts the Markdown anchor's position")
+	markdown.queue_free()
+
+
+func _check_overscroll_behavior() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(390, 220)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var outer: ScrollContainer = ScrollContainer.new()
+	outer.size = Vector2(390.0, 220.0)
+	viewport.add_child(outer)
+	var content: Control = Control.new()
+	content.custom_minimum_size = Vector2(700.0, 530.0)
+	outer.add_child(content)
+	var html: HTMLLabel = HTMLLabel.new()
+	html.size = Vector2(370.0, 180.0)
+	html.text = """<!doctype html><style>
+		html { scrollbar-width: none; }
+		body { margin: 0; width: 560px; height: 510px; }
+		.port { position: absolute; top: 15px; width: 46px; height: 50px; overflow: auto; scrollbar-width: none; }
+		.fill { width: 56px; height: 60px; background: green; }
+		#contained { left: 8px; overscroll-behavior: var(--edges); --edges: auto contain; }
+		#default { left: 66px; overscroll-behavior: chain; }
+		#empty { left: 124px; overscroll-behavior: contain;
+			overscroll-behavior: auto invalid; background: green; }
+		#hidden { left: 182px; overflow: hidden; overscroll-behavior: contain; }
+		#clip { left: 240px; overflow: clip; overscroll-behavior: none; }
+		#both { left: 298px; overscroll-behavior: auto; overscroll-behavior-inline: none; }
+		#field { position: absolute; top: 90px; left: 8px; height: 34px; width: 100px; resize: none;
+			overflow: auto; overscroll-behavior-block: contain; }
+	</style>
+	<div class="port" id="contained"><div class="fill" id="moving"></div></div>
+	<div class="port" id="default"><div class="fill"></div></div><div class="port" id="empty"></div>
+	<div class="port" id="hidden"><div class="fill"></div></div><div class="port" id="clip"><div class="fill"></div></div>
+	<div class="port" id="both"><div class="fill" id="diagonal"></div></div><textarea id="field">Short</textarea>"""
+	content.add_child(html)
+	await process_frame
+	await process_frame
+	var start: float = _label_rect(html, "moving").position.y
+	_push_html_wheel(viewport, Vector2(20.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(is_equal_approx(start - _label_rect(html, "moving").position.y, 10.0) and html.get_scroll_offset() == Vector2i.ZERO,
+		"Containment lets the inner scroller reach its boundary and absorbs its residual wheel delta")
+	_push_html_wheel(viewport, Vector2(20.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(134.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(194.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(20.0, 102.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(html.get_scroll_offset() == Vector2i.ZERO and outer.scroll_vertical == 0,
+		"An exhausted scroller, a zero-range scroller, overflow hidden, and textarea contain the wheel")
+	_push_html_wheel(viewport, Vector2(82.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(html.get_scroll_offset().y > 0, "Chain forwards residual wheel distance after an inner scroller moves")
+	html.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	_push_html_wheel(viewport, Vector2(254.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(html.get_scroll_offset().y > 0, "Overflow clip leaves the ancestor scroller in the chain")
+	html.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	var diagonal_start: Vector2 = _label_rect(html, "diagonal").position
+	var pan: InputEventPanGesture = InputEventPanGesture.new()
+	pan.position = Vector2(310.0, 26.0)
+	pan.delta = Vector2(2.0, 2.0)
+	viewport.push_input(pan, true)
+	_check(diagonal_start - _label_rect(html, "diagonal").position == Vector2(10.0, 10.0) and
+		html.get_scroll_offset().x == 0 and html.get_scroll_offset().y > 0,
+		"A diagonal pan chains only the uncontained axis")
+
+	html.text = """<!doctype html><style>
+		html { scrollbar-width: none; overscroll-behavior: auto none; }
+		body { margin: 0; height: 500px; overscroll-behavior: none; }
+	</style><div style="height: 500px"></div>"""
+	await process_frame
+	await process_frame
+	var html_root: HTMLElement = html.query_selector("html")
+	_push_html_wheel(viewport, Vector2(30.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(html.get_scroll_offset().y > 0, "Viewport containment preserves local wheel scrolling")
+	html.set_scroll_offset(Vector2i(0, 900))
+	await process_frame
+	await process_frame
+	_push_html_wheel(viewport, Vector2(30.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(outer.scroll_vertical == 0, "The HTML root stops scroll chaining to a Godot ancestor")
+	html_root.set_attribute("style", "overscroll-behavior-block: auto")
+	await process_frame
+	await process_frame
+	_push_html_wheel(viewport, Vector2(30.0, 26.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(outer.scroll_vertical > 0, "The body's containment is local and does not propagate to the viewport")
+	viewport.queue_free()
+
+	var markdown_view: SubViewport = SubViewport.new()
+	markdown_view.size = Vector2i(220, 120)
+	markdown_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(markdown_view)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(220.0, 120.0)
+	markdown.parse_html = true
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for name: StringName in [
+		&"task_checked",
+		&"task_unchecked",
+		&"file_broken",
+	]:
+		markdown.add_theme_icon_override(name, icon)
+	markdown_view.add_child(markdown)
+	var markdown_source: String = """<div style="width:120px;height:54px;overflow:auto;overscroll-behavior:%s;
+		background:#b5423a;scrollbar-width:none;"><div style="height:66px"></div></div>
+
+<div style="height:420px"></div>
+"""
+	var policies: Array[String] = [
+		"contain",
+		"auto",
+	]
+	for policy: String in policies:
+		markdown.text = markdown_source % policy
+		markdown.get_v_scroll_bar().value = 0.0
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var image: Image = markdown_view.get_texture().get_image()
+		var box: Rect2i = _color_bounds(image, Rect2i(Vector2i.ZERO, markdown_view.size), Color("#b5423a"))
+		_check(box.has_area(), "Locate the Markdown HTML scrollport")
+		if box.has_area():
+			_push_html_wheel(markdown_view, Vector2(box.get_center()), MOUSE_BUTTON_WHEEL_DOWN)
+			_check((markdown.get_v_scroll_bar().value > 0.0) == (policy == "auto"),
+				"The Markdown host observes the HTML scrollport's %s policy" % policy)
+	markdown_view.queue_free()
+
+
+func _check_smooth_scroll_behavior() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(220, 160)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(220.0, 160.0)
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; scroll-padding-top: 15px; scroll-behavior: var(--behavior, smooth); }
+		body { margin: 0; height: 1300px; }
+		.target { position: absolute; left: 10px; width: 30px; height: 20px; scroll-margin-top: 5px; }
+	</style><a id="jump" href="#first">Jump</a>
+	<div class="target" id="first" style="top: 360px"></div>
+	<div class="target" id="second" style="top: 850px"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var first: HTMLElement = label.get_element_by_id("first")
+	var second: HTMLElement = label.get_element_by_id("second")
+	var destination: int = roundi(first.get_bounding_rect().position.y - 20.0)
+	_check(label.activate_element(label.get_element_by_id("jump")) and label.get_scroll_offset().y == 0,
+		"Root smooth behavior schedules a fragment scroll")
+	var sampled_intermediate: bool
+	var end: int = Time.get_ticks_msec() + 600
+	while label.get_scroll_offset().y != destination and Time.get_ticks_msec() < end:
+		await process_frame
+		var offset: int = label.get_scroll_offset().y
+		sampled_intermediate = sampled_intermediate or (offset > 0 and offset < destination)
+	_check(sampled_intermediate and label.get_scroll_offset().y == destination,
+		"Smooth navigation interpolates and ends at the exact padded and margined destination")
+	_check(label.scroll_to_element(second), "Start another smooth viewport scroll")
+	await create_timer(0.06).timeout
+	_push_html_wheel(viewport, Vector2(42.0, 24.0), MOUSE_BUTTON_WHEEL_UP)
+	var interrupted: Vector2i = label.get_scroll_offset()
+	await create_timer(0.3).timeout
+	_check(label.get_scroll_offset() == interrupted and interrupted.y < roundi(second.get_bounding_rect().position.y),
+		"An ordinary wheel scroll interrupts the viewport animation")
+	_check(label.scroll_to_element(second) and label.scroll_to_element(first), "Retarget the same scroll container")
+	await create_timer(0.3).timeout
+	_check(label.get_scroll_offset().y == destination, "A newer scroll request replaces the previous destination")
+	_check(label.scroll_to_element(second), "Start an animation before setting an exact control offset")
+	label.set_scroll_offset(Vector2i(0, 55))
+	await create_timer(0.3).timeout
+	_check(label.get_scroll_offset() == Vector2i(0, 55), "Setting the exact offset cancels CSS navigation motion")
+
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; scroll-padding-top: 8px; }
+		body { margin: 0; height: 800px; scroll-behavior: smooth; }
+		#inner { margin-top: 180px; width: 140px; height: 80px; overflow: hidden;
+			scroll-padding-top: 16px; scroll-behavior: smooth; }
+		#nested { height: 20px; scroll-margin-top: 4px; }
+	</style><div id="inner"><div style="height: 170px"></div><div id="nested">Target</div>
+	<div style="height: 200px"></div></div>"""
+	await process_frame
+	await process_frame
+	var inner: HTMLElement = label.get_element_by_id("inner")
+	var nested: HTMLElement = label.get_element_by_id("nested")
+	var original: float = nested.get_bounding_rect().position.y - inner.get_bounding_rect().position.y
+	_check(label.scroll_to_anchor("nested") and label.get_scroll_offset().y > 0 and
+		is_equal_approx(nested.get_bounding_rect().position.y - inner.get_bounding_rect().position.y, original),
+		"The viewport and nested scroll box honor their own computed behavior")
+	await create_timer(0.3).timeout
+	var target_top: float = nested.get_bounding_rect().position.y
+	_check(is_equal_approx(target_top - inner.get_bounding_rect().position.y, 20.0) and
+		is_equal_approx(target_top - label.get_scroll_offset().y, 12.0),
+		"The viewport destination uses the inner animation's final geometry")
+	viewport.queue_free()
+
+	var markdown_view: SubViewport = SubViewport.new()
+	markdown_view.size = Vector2i(220, 120)
+	markdown_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(markdown_view)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(220.0, 120.0)
+	markdown.parse_html = true
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for name: StringName in [
+		&"task_checked",
+		&"task_unchecked",
+		&"file_broken",
+	]:
+		markdown.add_theme_icon_override(name, icon)
+	markdown.text = """<div style="width:120px;height:54px;overflow:hidden;scroll-behavior:smooth;">
+		<div style="height:90px;"></div><div id="inside" style="height:24px;background:#db462e;">Aim</div><div style="height:90px;"></div></div>"""
+	markdown_view.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var visible: Rect2i = Rect2i(Vector2i.ZERO, markdown_view.size)
+	_check(_color_bounds(markdown_view.get_texture().get_image(), visible, Color("#db462e")).size == Vector2i.ZERO and
+		markdown.scroll_to_anchor("inside"), "Locate a smooth scroll target inside a clipped Markdown HTML block")
+	await create_timer(0.3).timeout
+	await RenderingServer.frame_post_draw
+	_check(_color_bounds(markdown_view.get_texture().get_image(), visible, Color("#db462e")).has_area(),
+		"Markdown paints the anchor after the nested smooth scroll finishes")
+	markdown_view.queue_free()
+
+
+func _check_scroll_snap() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(230, 165)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(230.0, 160.0)
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; scroll-snap-type: var(--axis, block mandatory); scroll-padding-top: 10px; }
+		body { width: 220px; height: 900px; margin: 0; }
+		.tile { position: absolute; left: 0; width: 100px; height: 30px; scroll-snap-align: start none; }
+		#one { top: 0; }
+		#stop { top: 120px; scroll-snap-stop: always; scroll-margin-top: 5px; }
+		#three { top: 260px; scroll-snap-align: center none; }
+		#last { top: 870px; }
+		#outside { left: 900px; top: 70px; }
+	</style><div class="tile" id="one"></div><div class="tile" id="stop"></div>
+	<div class="tile" id="three"></div><div class="tile" id="last"></div><div class="tile" id="outside"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	_push_html_wheel(viewport, Vector2(14.0, 18.0), MOUSE_BUTTON_WHEEL_DOWN, 14.0)
+	_check(label.get_scroll_offset() == Vector2i(0, 105),
+		"A directional scroll stops at the first crossed stop, with padding and margin")
+	await process_frame
+	_push_html_wheel(viewport, Vector2(14.0, 18.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(label.get_scroll_offset() == Vector2i(0, 190),
+		"The next wheel step leaves the starting snap point and selects the next visible point")
+	label.set_scroll_offset(Vector2i(0, 0))
+	_check(label.scroll_to_anchor("three", 1.0) and label.get_scroll_offset() == Vector2i(0, 190),
+		"Fragment navigation prefers its target's snap area and ignores intervening always stops")
+	var third: HTMLElement = label.get_element_by_id("three")
+	third.set_attribute("style", "top:340px")
+	await process_frame
+	await process_frame
+	_check(label.get_scroll_offset() == Vector2i(0, 270), "Relayout keeps the same snapped element as its position changes")
+	_check(label.scroll_to_anchor("last") and label.get_scroll_offset().y == 740,
+		"An unreachable alignment snaps as far as the scroll range allows")
+	label.set_scroll_offset(Vector2i.ZERO)
+	await process_frame
+	var pan: InputEventPanGesture = InputEventPanGesture.new()
+	pan.position = Vector2(14.0, 18.0)
+	pan.delta = Vector2(0.0, 4.0)
+	viewport.push_input(pan, true)
+	_check(label.get_scroll_offset().y == 80, "Touchpad panning moves continuously before settling")
+	await create_timer(0.18).timeout
+	_check(label.get_scroll_offset().y == 105, "The viewport snaps after the pan gesture is idle")
+
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; scroll-snap-type: y mandatory; }
+		body { margin: 0; height: 1050px; }
+		div { position: absolute; width: 100px; scroll-snap-align: start; }
+	</style><div style="top:0;height:30px"></div><div style="top:220px;height:410px"></div>
+	<div style="top:800px;height:40px"></div>"""
+	await process_frame
+	await process_frame
+	label.set_scroll_offset(Vector2i(0, 360))
+	_check(label.get_scroll_offset() == Vector2i(0, 360), "An oversized snap area lets the user scroll within its contents")
+
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		#port { position: absolute; left: 10px; top: 8px; width: 100px; height: 110px; overflow: auto;
+			scroll-snap-type: inline mandatory; scroll-padding-left: 8px; scrollbar-width: none; direction: rtl; }
+		.card { position: absolute; width: 80px; height: 65px; scroll-snap-align: none end; }
+		#outer { position: absolute; left: 150px; top: 8px; width: 70px; height: 110px; overflow: auto;
+			scroll-snap-type: y proximity; }
+		.marker { width: 50px; height: 36px; scroll-snap-align: start; }
+	</style><div id="port"><div style="position:relative;width:430px;height:80px">
+	<div class="card" style="left:0"></div><div class="card" id="side" style="left:130px; transform:translateX(7px);scroll-margin-left:4px"></div>
+	<div class="card" style="left:265px"></div>
+	</div></div><div id="outer">
+	<div class="marker" id="marker"></div><div style="height:88px"></div><div class="marker"></div>
+	<div style="height:135px"></div><div class="marker"></div><div style="height:89px"></div></div>"""
+	await process_frame
+	await process_frame
+	var side: HTMLElement = label.get_element_by_id("side")
+	_push_html_wheel(viewport, Vector2(35.0, 28.0), MOUSE_BUTTON_WHEEL_RIGHT)
+	_check(is_equal_approx(side.get_bounding_rect().position.x, 22.0),
+		"Horizontal snapping resolves logical end in RTL and measures transformed snap areas")
+	var marker: HTMLElement = label.get_element_by_id("marker")
+	_push_html_wheel(viewport, Vector2(162.0, 24.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(is_equal_approx(marker.get_bounding_rect().position.y, -28.0), "Proximity allows a step far from the next snap point")
+	_push_html_wheel(viewport, Vector2(162.0, 24.0), MOUSE_BUTTON_WHEEL_DOWN, 2.0)
+	_check(is_equal_approx(marker.get_bounding_rect().position.y, -116.0), "Proximity snaps when the endpoint nears a target")
+	await process_frame
+	_drag_pointer(viewport, Vector2(216.0, 54.0), Vector2(216.0, 105.0))
+	var snapped_y: float = marker.get_bounding_rect().position.y
+	_check(is_equal_approx(snapped_y, -287.0),
+		"Releasing an inner scrollbar snaps to the nearby endpoint, got %s" % snapped_y)
+	pan.position = Vector2(162.0, 24.0)
+	pan.delta = Vector2(0.0, -4.0)
+	viewport.push_input(pan, true)
+	_check(is_equal_approx(marker.get_bounding_rect().position.y, -143.0), "The inner scroller also pans continuously")
+	await create_timer(0.18).timeout
+	_check(is_equal_approx(marker.get_bounding_rect().position.y, -116.0), "An inner pan settles at the nearby snap point")
+
+	label.text = """<!doctype html><style>
+		html { scrollbar-width:none; scroll-snap-type:both mandatory; }
+		body { margin:0; width:800px; height:800px; }
+		.point { position:absolute; width:50px; height:50px; scroll-snap-align:start center; }
+	</style><div class="point" style="left:0;top:0"></div><div class="point" id="diagonal_target" style="left:380px;top:370px"></div>"""
+	await process_frame
+	await process_frame
+	var target: Rect2 = _label_rect(label, "diagonal_target")
+	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
+	var expected: Vector2i = Vector2i(roundi(target.get_center().x - scroller.get_h_scroll_bar().page / 2.0), roundi(target.position.y))
+	label.set_scroll_offset(Vector2i(285, 355))
+	await process_frame
+	await process_frame
+	_check(label.get_scroll_offset() == expected, "Diagonal snap gives %s, expected %s for %s in %s with ranges %s" % [
+		label.get_scroll_offset(), expected, target, label.get_content_size(),
+		Vector2(scroller.get_h_scroll_bar().max_value, scroller.get_v_scroll_bar().max_value),
+	])
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; }
+		body { width: 120px; height: 60px; margin: 0; }
+	</style><div style="width: 60px; height: 30px"></div>"""
+	label.set_scroll_offset(Vector2i(500, 500))
+	await process_frame
+	await process_frame
+	_check(label.get_scroll_offset() == Vector2i.ZERO and
+		scroller.get_h_scroll_bar().max_value <= scroller.get_h_scroll_bar().page and
+		scroller.get_v_scroll_bar().max_value <= scroller.get_v_scroll_bar().page,
+		"Replacing an overflowing document refreshes hidden scrollbar ranges before applying a queued offset")
+	viewport.queue_free()
+
+	var markdown_view: SubViewport = SubViewport.new()
+	markdown_view.size = Vector2i(220, 120)
+	markdown_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(markdown_view)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(220.0, 120.0)
+	markdown.parse_html = true
+	var icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for name: StringName in [
+		&"task_checked",
+		&"task_unchecked",
+		&"file_broken",
+	]:
+		markdown.add_theme_icon_override(name, icon)
+	markdown.text = """<div style="height:48px;width:100px;overflow:auto;scroll-snap-type:y mandatory;scrollbar-width:none">
+	<div style="height:56px;scroll-snap-align:start;background:#40a85c"></div>
+	<div style="height:50px;scroll-snap-align:start;background:#df2042"></div>
+	</div>"""
+	markdown_view.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var region: Rect2i = Rect2i(Vector2i.ZERO, markdown_view.size)
+	var page: Rect2i = _color_bounds(markdown_view.get_texture().get_image(), region, Color("#40a85c"))
+	_check(page.has_area(), "Locate the first snap page in Markdown")
+	if page.has_area():
+		_push_html_wheel(markdown_view, Vector2(page.get_center()), MOUSE_BUTTON_WHEEL_DOWN)
+		await RenderingServer.frame_post_draw
+		var output: Image = markdown_view.get_texture().get_image()
+		_check(_color_bounds(output, region, Color("#df2042")).size.y == page.size.y and
+			_color_bounds(output, region, Color("#40a85c")).size.y == 0,
+			"Markdown uses the internal HTML container's complete next snap page")
+	markdown_view.queue_free()
+
+
+func _check_flow_relative_edges() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """<!doctype html><style>
+		body { margin: 0; }
+		#arena { position: relative; width: 200px; height: 310px; }
+		#probe {
+			position: absolute; direction: var(--direction, ltr);
+			inset-inline: 16px auto; inset-block: 10px auto;
+			margin-inline: 7px 11px; margin-block: 3px 5px;
+			width: 40px; height: 25px; padding-inline: 4px 6px; padding-block: 2px 8px;
+			border-inline: solid 2px; border-inline-width: 1px 3px; border-block: 2px solid;
+		}
+		#priority {
+			position: absolute; inset-block-start: 70px; left: 10px; width: 20px; height: 10px;
+			margin-left: 9px; margin-inline-start: 16px;
+			padding-left: 3px; padding-inline-start: var(--inline, 8px) !important; padding-left: 100px;
+			padding-inline: 8px -1px;
+		}
+		@layer base, theme;
+		@layer base { #layered { padding-left: 8px; border-left: 4px solid; } }
+		@layer theme { #layered {
+			padding-inline: var(--reset, revert-layer);
+			border-inline-start-width: 7px; border-left-width: var(--reset, revert-layer);
+		} }
+		#layered { position: absolute; left: 0; inset-block: 100px auto; width: 20px; height: 10px; }
+		#inheritance { position: absolute; left: 0; top: 170px; padding-left: 9px; padding-right: 2px; direction: ltr; }
+		#child { direction: rtl; padding-inline-start: inherit; padding-left: inherit; width: 20px; height: 10px; }
+		@supports (border-inline-end: 2px solid blue) and (inset-block: 20px 15px) {
+			#child { margin-block-start: 1px; }
+		}
+	</style><div id="arena"><div id="probe"></div><div id="priority"></div><div id="layered"></div>
+	<div id="inheritance"><div id="child"></div></div></div>"""
+	var size: Vector2i = Vector2i(240, 340)
+	_check(layout.parse(html) == OK and layout.layout(size) == OK, "Lay out physical and flow-relative declarations")
+	_check(_rect(layout, "probe") == Rect2(23.0, 13.0, 54.0, 39.0), "Logical side pairs use LTR inline start and end")
+	var probe: HTMLElement = layout.get_element_by_id("probe")
+	probe.set_attribute("style", "--direction: rtl")
+	_check(layout.layout(size) == OK and _rect(layout, "probe") == Rect2(123.0, 13.0, 54.0, 39.0),
+		"Changing direction through var() remaps inline insets, margins and padding")
+	_check(_rect(layout, "priority") == Rect2(26.0, 70.0, 28.0, 10.0),
+		"Logical and physical declarations respect source order and !important")
+	_check(_has_diagnostic(layout, "padding-inline", "8px -1px", "style_element"), "An invalid logical pair reports the complete declaration")
+	_check(_rect(layout, "layered").size.x == 32.0, "Variable rollback finds the prior physical edge in the same logical group")
+	_check(_rect(layout, "child").size.x == 38.0, "Logical inheritance mirrors across direction and physical inheritance keeps its side")
+	_check(_rect(layout, "child").position.y == 171.0, "@supports uses the same grammar for logical border and inset shorthands")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(150, 70)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		#frame {
+			position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; direction: rtl;
+			border-inline: 4px solid; border-inline-color: #3366ff #ff9933;
+			border-block: 3px solid lime; border-block-end-width: 5px;
+		}
+		#corner {
+			position: absolute; top: 10px; left: 90px; width: 44px; height: 44px;
+			direction: rtl; background: red; border-radius: 0;
+			border-start-start-radius: calc(12px + 8px) 20px; border-end-end-radius: 20px;
+		}
+	</style><div id="frame"></div><div id="corner"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(11.0, 28.0), Color("#ff9933"), "The RTL inline-end border paints on the left")
+	_check_pixel(image, Vector2(55.0, 28.0), Color("#3366ff"), "The RTL inline-start border paints on the right")
+	_check_pixel(image, Vector2(32.0, 11.0), Color.GREEN, "A logical block border paints the top edge")
+	_check_pixel(image, Vector2(91.0, 11.0), Color.RED, "The top-left corner stays square in RTL")
+	_check(image.get_pixel(132, 11).a < 0.1 and image.get_pixel(91, 52).a < 0.1,
+		"Logical corner radii round the RTL top-right and bottom-left corners")
+	viewport.queue_free()
+
+
+func _check_logical_floats() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		body { margin: 0; direction: ltr; }
+		.zone { display: flow-root; width: 120px; height: 85px; }
+		#logical { direction: var(--flow, rtl); }
+		#start { float: var(--start-edge, inline-start); width: 20px; height: 25px; direction: ltr; }
+		#end { float: inline-end; width: 22px; height: 60px; direction: ltr; }
+		.clear { width: 15px; height: 5px; direction: ltr; }
+		@supports (clear: inline-start) and (float: inline-end) {
+			#after_start { clear: inline-start; }
+			#after_end { clear: inline-end; }
+		}
+		#holder { float: inline-start; width: 80px; height: 55px; direction: rtl; }
+		#inherited { float: inherit; width: 20px; height: 12px; direction: ltr; }
+		#line { direction: rtl; font-size: 14px; line-height: 18px; }
+		#wrapped_float { float: inline-start; width: 18px; height: 45px; }
+	</style>
+	<section class="zone" id="logical">
+		<div id="start"></div><div id="end"></div>
+		<div class="clear" id="after_start"></div><div class="clear" id="after_end"></div>
+	</section>
+	<section class="zone" id="mixed"><div id="holder"><div id="inherited"></div></div></section>
+	<section class="zone" id="line"><span dir="ltr">
+		<span id="wrapped_float"></span>First<br id="clear_break" style="clear: inline-start"><span id="after_break">After</span>
+	</span></section>"""
+	var size: Vector2i = Vector2i(180, 290)
+	_check(layout.parse(html) == OK and layout.layout(size) == OK, "Lay out logical float and clear values")
+	_check(_rect(layout, "start").position.x == 100.0 and _rect(layout, "end").position.x == 0.0,
+		"RTL containing blocks map inline-start to the right and inline-end to the left")
+	_check(_rect(layout, "after_start").position.y == 25.0 and _rect(layout, "after_end").position.y == 60.0,
+		"Clear uses the containing block's direction to select the matching float")
+	_check(_rect(layout, "holder").position.x == 0.0 and _rect(layout, "inherited").position.x == 60.0,
+		"Inheritance preserves the logical float value for remapping in a different containing block")
+	_check(_rect(layout, "wrapped_float").position.x == 102.0,
+		"An intervening inline element with a different direction does not determine the float's side")
+	var cleared_start: Rect2 = _rect(layout, "after_break")
+	var line_break: HTMLElement = layout.get_element_by_id("clear_break")
+	line_break.set_attribute("style", "clear: right")
+	_check(layout.layout(size) == OK and _rect(layout, "after_break") == cleared_start,
+		"A line break with inline-start clearance matches right clearance in this RTL block")
+	line_break.set_attribute("style", "clear: inline-end")
+	var end_laid_out: bool = layout.layout(size) == OK
+	var cleared_end: Rect2 = _rect(layout, "after_break")
+	line_break.set_attribute("style", "clear: left")
+	_check(end_laid_out and layout.layout(size) == OK and _rect(layout, "after_break") == cleared_end and
+		cleared_end.position.y < cleared_start.position.y,
+		"Inline-end clearance on the break matches left clearance and skips the right float")
+	var zone: HTMLElement = layout.get_element_by_id("logical")
+	zone.set_attribute("style", "--flow: ltr")
+	_check(layout.layout(size) == OK, "Reflow after changing the containing block's direction")
+	_check(_rect(layout, "start").position.x == 0.0 and _rect(layout, "end").position.x == 98.0,
+		"An LTR containing block maps the same logical values to the opposite edges")
+	_check(_rect(layout, "after_start").position.y == 25.0 and _rect(layout, "after_end").position.y == 60.0,
+		"Logical clearance follows the remapped floats after a direction change")
+
+
+func _check_layout_and_paint_containment() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(255, 185)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.css_diagnostics_enabled = true
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: #121c28; }
+		#scene { position: relative; width: 230px; height: 170px; padding-top: 10px; }
+		#layout { contain: var(--isolate, layout); width: 60px; height: 42px; margin-left: 20px; }
+		#abs { position: absolute; left: 8px; top: 5px; width: 92px; height: 18px; background: red; z-index: 20; }
+		#far { position: absolute; left: 0; top: 0; width: 10px; height: 10px; transform: translateX(650px); }
+		#cover { position: absolute; left: 40px; top: 12px; width: 20px; height: 22px; background: lime; z-index: 1; }
+		#paint_position { position: absolute; left: 142px; top: 10px; }
+		#paint { contain: paint; width: 50px; height: 44px; padding: 4px; border-radius: 20px; overflow-clip-margin: 6px; }
+		#fixed { position: fixed; top: 0; left: 0; width: 100px; height: 62px; background: #3366ff; }
+		#float_test { position: absolute; left: 10px; top: 87px; width: 110px; }
+		#outside_float { float: left; width: 36px; height: 58px; }
+		#isolated { contain: layout paint; width: 60px; }
+		#inside_float { float: left; width: 12px; height: 23px; }
+		#baseline { position: absolute; left: 135px; top: 95px; display: flex; align-items: baseline; }
+		#baseline > div { width: 35px; height: 46px; }
+		#baseline_box { contain: layout; contain: paint paint; }
+		@supports (contain: paint layout) { #isolated { padding-bottom: 2px; } }
+	</style><div id="scene">
+		<div id="layout"><div id="abs"></div><div id="far"></div></div><div id="cover"></div>
+		<div id="paint_position"><div id="paint"><div id="fixed"></div></div></div>
+		<div id="float_test"><div id="outside_float"></div><div id="isolated"><div id="inside_float"></div></div></div>
+		<div id="baseline"><div id="baseline_box">Text</div><div id="empty_box"></div></div>
+	</div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var abs_box: Rect2 = _label_rect(label, "abs")
+	var paint_box: Rect2 = _label_rect(label, "paint")
+	_check(abs_box.position == _label_rect(label, "layout").position + Vector2(8.0, 5.0),
+		"Layout containment establishes the containing block for absolute descendants")
+	_check(_label_rect(label, "fixed").position == paint_box.position,
+		"Paint containment establishes the containing block for fixed descendants")
+	_check(label.get_content_size().x <= 255 and _label_rect(label, "far").position.x >= 650.0,
+		"Layout containment keeps transformed overflow out of the outer scroll range")
+	_check(_label_rect(label, "isolated") == Rect2(46.0, 87.0, 60.0, 25.0),
+		"Containment establishes an independent float context and supports combined keywords")
+	_check(_label_rect(label, "baseline_box").position.y == _label_rect(label, "empty_box").position.y,
+		"Layout containment suppresses the item's descendant baseline")
+	var invalid: bool
+	for diagnostic: Dictionary in label.get_css_diagnostics():
+		if diagnostic.get("property") == "contain" and diagnostic.get("value") == "paint paint":
+			invalid = true
+	_check(invalid, "Repeating a containment keyword invalidates the declaration")
+
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(46.0, 21.0), Color.GREEN, "The contained z-index stays below a sibling stacking context")
+	_check_pixel(image, Vector2(95.0, 21.0), Color.RED, "Layout containment preserves visible ink outside its box")
+	var inside_clip_margin: Vector2 = Vector2(paint_box.end.x + 3.0, paint_box.get_center().y)
+	var outside_clip_margin: Vector2 = Vector2(paint_box.end.x + 9.0, paint_box.get_center().y)
+	_check_pixel(image, inside_clip_margin, Color("#3366ff"), "Paint containment honors overflow-clip-margin")
+	_check_pixel(image, outside_clip_margin, Color("#121c28"), "Paint containment clips descendant overflow")
+	_check_pixel(image, paint_box.position, Color("#121c28"), "Paint containment rounds the clipping corners")
+	_check(label.get_element_at(inside_clip_margin) == label.get_element_by_id("fixed") and
+		label.get_element_at(outside_clip_margin) != label.get_element_by_id("fixed") and
+		label.get_element_at(paint_box.position + Vector2(0.5, 0.5)) != label.get_element_by_id("fixed"),
+		"Paint containment uses the same clipping edge for pointer hits")
+
+	for mode: String in ["layout", "style",]:
+		label.text = """<!doctype html><style>
+			body { margin: 0; width: 100px; height: 80px; contain: %s; overflow: auto; background: #b02040; }
+			#extra { width: 30px; height: 180px; }
+		</style><div id="extra"></div>""" % mode
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		image = viewport.get_texture().get_image()
+		_check(image.get_pixel(150, 25).a < 0.1, "%s containment keeps the body background local" % mode)
+		var previous_y: float = _label_rect(label, "extra").position.y
+		_push_html_wheel(viewport, Vector2(15.0, 25.0), MOUSE_BUTTON_WHEEL_DOWN)
+		_check(label.get_scroll_offset() == Vector2i.ZERO and _label_rect(label, "extra").position.y < previous_y,
+			"%s containment keeps body overflow and scrolling local" % mode)
+	viewport.queue_free()
+
+
+func _check_viewport_overflow() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 150)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { width: 160px; height: 55px; margin: 0; overflow: hidden; }
+		#target { position: absolute; left: 320px; top: 280px; width: 50px; height: 40px; background: red; }
+	</style><div id="target"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
+	_check(label.get_content_size() == Vector2i(370, 320), "Body overflow moves to the viewport and leaves its box unclipped")
+	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
+		"Hidden body overflow suppresses both viewport scrollbars")
+	_push_html_wheel(viewport, Vector2(16.0, 16.0), MOUSE_BUTTON_WHEEL_DOWN, 8.0)
+	var pan: InputEventPanGesture = InputEventPanGesture.new()
+	pan.position = Vector2(16.0, 16.0)
+	pan.delta = Vector2(4.0, 4.0)
+	viewport.push_input(pan, true)
+	_check(label.get_scroll_offset() == Vector2i.ZERO, "Hidden viewport axes suppress wheel and pan movement")
+	_check(label.scroll_to_anchor("target") and label.get_scroll_offset() == Vector2i(130, 170),
+		"Anchor navigation can scroll past the body's own box on hidden viewport axes")
+	await process_frame
+	await process_frame
+	_check(label.get_element_at(Vector2(200.0, 120.0)) == label.get_element_by_id("target"),
+		"Hidden-axis navigation moves the painted canvas and its hit coordinates")
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(200.0, 120.0), Color.RED, "Hidden-axis navigation reveals the target")
+	var body: HTMLElement = label.query_selector("body")
+	body.set_attribute("style", "overflow: auto")
+	await process_frame
+	await process_frame
+	_check(scroller.get_h_scroll_bar().visible and scroller.get_v_scroll_bar().visible and
+		label.get_scroll_offset() == Vector2i(130, 170),
+		"Changing hidden overflow back to auto transfers the position to the native scrollbars")
+	body.set_attribute("style", "overflow: hidden")
+	await process_frame
+	await process_frame
+	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible and
+		label.get_scroll_offset() == Vector2i(130, 170),
+		"Changing auto overflow to hidden retains the viewport position without native scroll ranges")
+
+	label.text = """<!doctype html><style>
+		html { overflow: auto hidden; }
+		body { margin: 0; width: 500px; height: 430px; }
+	</style>"""
+	await process_frame
+	await process_frame
+	_check(scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
+		"The root controls the two scrollbars independently")
+	_push_html_wheel(viewport, Vector2(16.0, 16.0), MOUSE_BUTTON_WHEEL_DOWN, 8.0)
+	_check(label.get_scroll_offset() == Vector2i.ZERO, "A blocked vertical wheel leaves the horizontal axis unchanged")
+	_push_html_wheel(viewport, Vector2(16.0, 16.0), MOUSE_BUTTON_WHEEL_RIGHT, 8.0)
+	_check(label.get_scroll_offset() == Vector2i(240, 0), "The other viewport axis remains directly scrollable")
+	label.set_scroll_offset(Vector2i(120, 90))
+	await process_frame
+	_check(label.get_scroll_offset() == Vector2i(120, 90), "One request can set both the native and the hidden-axis offsets")
+
+	label.text = """<!doctype html><style>
+		html { overflow: scroll; }
+		body { width: 64px; height: 64px; margin: 0; overflow: hidden; }
+		div { width: 350px; height: 400px; }
+	</style><div></div>"""
+	await process_frame
+	await process_frame
+	_check(scroller.get_h_scroll_bar().visible and scroller.get_v_scroll_bar().visible,
+		"Root overflow scroll forces both viewport scrollbars even when the body fits")
+	label.set_scroll_offset(Vector2i(120, 90))
+	_check(label.get_scroll_offset() == Vector2i.ZERO, "Explicit root overflow leaves the body's local clipping in place")
+	label.query_selector("html").set_attribute("style", "overflow: clip")
+	await process_frame
+	await process_frame
+	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
+		"Setting root overflow clip updates the native scrollbar policy")
+	viewport.queue_free()
+
+
+func _check_scrollbar_gutter() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(240, 150)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		html { --gutters: both-edges stable; scrollbar-gutter: var(--gutters); scrollbar-color: #e8a100 transparent; }
+		body { margin: 0; background: linear-gradient(#35679a, #35679a); }
+		#unit { width: 100vw; height: 20px; background: red; }
+		#media { width: 80px; height: 1px; }
+		@media (width: 240px) and (height: 150px) and (min-width: 100vw) {
+			#media { width: 120px; }
+		}
+	</style><div id="unit"></div><div id="media"></div><div id="extent"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
+	var bar_width: float = scroller.get_v_scroll_bar().get_combined_minimum_size().x
+	var reserved_width: float = viewport.size.x - 2.0 * bar_width
+	_check(not scroller.get_v_scroll_bar().visible and is_equal_approx(scroller.get_h_scroll_bar().page, reserved_width),
+		"Stable both-edges reserves two gutters without displaying a scrollbar")
+	_check(_label_rect(label, "unit").size.x == reserved_width, "Unconditional gutters reduce the viewport unit basis")
+	_check(_label_rect(label, "media").size.x == 120.0, "Media dimensions include the native gutters")
+	var in_gutter: Vector2 = Vector2(bar_width / 2.0, 10.0)
+	var in_content: Vector2 = Vector2(bar_width + 2.0, 10.0)
+	_check(label.get_element_at(in_gutter) == null and label.get_element_at(in_content) == label.get_element_by_id("unit"),
+		"Content hit testing starts after the leading gutter")
+	await RenderingServer.frame_post_draw
+	var output: Image = viewport.get_texture().get_image()
+	_check_pixel(output, in_gutter, Color("#35679a"), "The canvas gradient extends to the leading gutter")
+	_check_pixel(output, Vector2(240.0 - bar_width / 2.0, 10.0), Color("#35679a"),
+		"The canvas gradient extends to the trailing gutter")
+	_check_pixel(output, in_content, Color.RED, "Document content paints inside the gutters")
+
+	label.get_element_by_id("extent").set_attribute("style", "height: 320px")
+	await process_frame
+	await process_frame
+	_check(scroller.get_v_scroll_bar().visible and is_equal_approx(scroller.get_h_scroll_bar().page, reserved_width),
+		"Showing the scrollbar consumes its reserved gutter without resizing the scrollport")
+	_check(_label_rect(label, "media").size.x == 120.0, "Showing the native scrollbar keeps the media rule matched")
+	_check(not scroller.get_h_scroll_bar().visible, "The stable viewport width avoids a redundant horizontal scrollbar")
+	await RenderingServer.frame_post_draw
+	output = viewport.get_texture().get_image()
+	_check_pixel(output, Vector2(240.0 - bar_width / 2.0, 115.0), Color("#35679a"),
+		"The canvas background also paints under a transparent scrollbar track")
+
+	var html: HTMLElement = label.query_selector("html")
+	html.set_attribute("style", "scrollbar-gutter: auto")
+	await process_frame
+	await process_frame
+	_check(_label_rect(label, "unit").size.x == 240.0 and scroller.get_v_scroll_bar().visible,
+		"A conditional scrollbar leaves vw based on the full viewport")
+	_check(_label_rect(label, "media").size.x == 120.0, "A conditional scrollbar still preserves the media viewport")
+	html.set_attribute("style", "scrollbar-gutter: auto; overflow: auto scroll")
+	await process_frame
+	await process_frame
+	_check(_label_rect(label, "unit").size.x == 240.0 - bar_width and not scroller.get_h_scroll_bar().visible,
+		"A forced scrollbar on the root reduces vw without overflowing an exact viewport fit")
+	var unit: HTMLElement = label.get_element_by_id("unit")
+	unit.set_attribute("style", "width: calc(200vw - 235px)")
+	await process_frame
+	await process_frame
+	_check(not scroller.get_h_scroll_bar().visible, "Conditional bars are decided after the unconditional viewport-unit reduction")
+	unit.remove_attribute("style")
+
+	html.set_attribute("style", "scrollbar-width: none")
+	await process_frame
+	await process_frame
+	_check(not scroller.get_v_scroll_bar().visible and _label_rect(label, "unit").size.x == 240.0,
+		"Scrollbar-width none removes the stable gutters")
+
+	html.set_attribute("style", "overflow: hidden; scrollbar-gutter: stable")
+	label.layout_direction = Control.LAYOUT_DIRECTION_RTL
+	await process_frame
+	await process_frame
+	_check(_label_rect(label, "unit").size.x == 240.0 - bar_width and not scroller.get_v_scroll_bar().visible,
+		"A hidden axis can reserve a stable gutter")
+	_check(label.get_element_at(in_gutter) == null and label.get_element_at(in_content) == label.get_element_by_id("unit"),
+		"A single stable gutter follows the native scrollbar side in RTL")
+
+	label.text = """<!doctype html><style>
+		body { margin: 0; overflow: scroll; scrollbar-gutter: stable both-edges; }
+		#unit { width: 100vw; height: 20px; }
+	</style><div id="unit"></div>"""
+	await process_frame
+	await process_frame
+	_check(scroller.get_v_scroll_bar().visible and scroller.get_h_scroll_bar().page == 240.0 - bar_width and
+		_label_rect(label, "unit").size.x == 240.0,
+		"Body overflow can force native bars without propagating its gutter or changing viewport units")
+	viewport.queue_free()
+
+
+func _check_scrollbar_styles() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(360, 245)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(360.0, 114.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; scrollbar-color: currentColor #2855d8;
+			scrollbar-width: none; color: pink; }
+		div.scroller { position: absolute; top: 8px; width: 80px; height: 48px;
+			overflow: hidden auto; background: #252525; }
+		.child { height: 155px; }
+		#thin { left: 12px; color: #ff481e; scrollbar-width: thin; scrollbar-color: red; }
+		#normal { left: 110px; color: #39ed35; }
+		#invisible { left: 208px; scrollbar-width: none; }
+		textarea { display: block; position: absolute; top: 8px; left: 300px; width: 45px; height: 48px;
+			padding: 0; border: none; resize: none; color: #ffffff; background: #252525;
+			scrollbar-width: thin; --tones: #ee25c9 #79dc33; scrollbar-color: var(--tones);
+			overflow: hidden scroll; }
+	</style>
+	<div class="scroller" id="thin"><div class="child"></div></div>
+	<div class="scroller" id="normal"><div class="child"></div></div>
+	<div class="scroller" id="invisible"><div class="child" id="moving"></div></div>
+	<textarea>One
+Two
+Three
+Four
+Five
+Six
+Seven</textarea>"""
+	viewport.add_child(label)
+
+	var port: HTMLLabel = HTMLLabel.new()
+	port.position = Vector2(0.0, 128.0)
+	port.size = Vector2(180.0, 104.0)
+	port.text = """<!doctype html><style>body { margin: 0; scrollbar-width: none; scrollbar-color: orange purple; }</style>
+		<div style="height:360px;">Viewport scrollbar</div>"""
+	viewport.add_child(port)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var pixels: Image = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(85.0, 16.0), Color("#252525"), "Thin leaves the original outer part of the track clear")
+	_check_pixel(pixels, Vector2(89.0, 16.0), Color("#ff481e"), "Thin still paints a usable currentColor thumb")
+	_check_pixel(pixels, Vector2(89.0, 41.0), Color("#2855d8"), "The second scrollbar color paints the track")
+	_check_pixel(pixels, Vector2(184.0, 16.0), Color("#39ed35"), "Color inherits and resolves on the scroller, while width uses auto")
+	_check_pixel(pixels, Vector2(285.0, 16.0), Color("#252525"), "Scrollbar-width none hides the inner track")
+	_check_pixel(pixels, Vector2(341.0, 16.0), Color("#ee25c9"), "Textarea thumb uses its CSS color")
+	_check_pixel(pixels, Vector2(341.0, 41.0), Color("#79dc33"), "Textarea track uses its CSS color")
+	var moving: HTMLElement = label.get_element_by_id("moving")
+	var original_y: float = moving.get_bounding_rect().position.y
+	_push_html_wheel(viewport, Vector2(228.0, 24.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(moving.get_bounding_rect().position.y < original_y, "Scrollbar-width none preserves scrolling")
+
+	var scroll: ScrollContainer = port.get_node("_HTMLScroll") as ScrollContainer
+	var bar: VScrollBar = scroll.get_v_scroll_bar()
+	var default_width: float = bar.size.x
+	var html: HTMLElement = port.query_selector("html")
+	_check(bar.visible and not bar.has_theme_stylebox_override("scroll"),
+		"Viewport scrollbar settings come from html rather than body")
+	html.set_attribute("style", "scrollbar-width: thin; scrollbar-color: #ec34ee #25c9a4;")
+	await process_frame
+	await process_frame
+	var styled_thumb: StyleBoxFlat = bar.get_theme_stylebox("grabber") as StyleBoxFlat
+	var styled_track: StyleBoxFlat = bar.get_theme_stylebox("scroll") as StyleBoxFlat
+	_check(bar.visible and bar.size.x > 0.0 and bar.size.x < default_width and
+		styled_thumb != null and styled_track != null and styled_thumb.bg_color.is_equal_approx(Color("#ec34ee")) and
+		styled_track.bg_color.is_equal_approx(Color("#25c9a4")),
+		"Root styles reduce the viewport scrollbar width and apply the thumb and track colors")
+
+	html.set_attribute("style", "scrollbar-width: none")
+	await process_frame
+	await process_frame
+	_push_html_wheel(viewport, Vector2(80.0, 160.0), MOUSE_BUTTON_WHEEL_DOWN)
+	await process_frame
+	_check(not bar.visible and port.get_scroll_offset().y > 0, "Viewport scrolling stays active with its scrollbar hidden")
+
+	html.set_attribute("style", "scrollbar-width: auto; scrollbar-color: auto")
+	await process_frame
+	await process_frame
+	_check(bar.visible and is_equal_approx(bar.size.x, default_width) and not bar.has_theme_stylebox_override("scroll"),
+		"CSS auto restores the native viewport scrollbar theme")
+	viewport.queue_free()
+
+
+func _check_css_transitions() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	var html: String = """
+<!doctype html><style>
+body { margin:0; background:white; }
+#wide { width:20px; height:10px; --timing:width 120s linear -60s; transition:var(--timing); }
+#multi { width:20px; height:10px; transition-property:height,width;
+  transition-duration:120s; transition-delay:-60s; transition-timing-function:linear; }
+#moving { position:absolute; left:100px; top:25px; width:40px; height:14px;
+  transform:none; transition:transform 120s linear -60s; }
+#rotating { position:absolute; left:175px; top:40px; width:20px; height:10px; transform-origin:0 0;
+  transform:rotate(0deg); transition:transform 120s linear -60s; }
+#easing { width:20px; height:6px; transition:width 120s linear(0, .25 50%, 1) -60s; }
+#stepped { width:20px; height:6px; transition:width 120s steps(4,jump-end) -36s; }
+#discrete { height:6px; transition:width 120s allow-discrete linear -30s; }
+#no_discrete { height:6px; transition:width 120s linear -30s; }
+#alpha { position:absolute; left:10px; top:65px; width:20px; height:14px;
+  background:red; opacity:0.2; transition:opacity 120s linear -60s; }
+#paint { position:absolute; left:40px; top:65px; width:20px; height:14px;
+  background:red; transition:background-color 120s cubic-bezier(0,0,1,1) -60s; }
+#ink { position:absolute; left:70px; top:65px; color:red; transition:color 120s linear -60s; }
+#ink_child { width:20px; height:14px; background-color:currentColor; }
+.next #wide { width:20%; }
+.next #multi { width:60px; height:30px; }
+.next #moving { transform:translateX(50%); }
+.next #rotating { transform:rotate(1turn); }
+.next #easing, .next #stepped { width:60px; }
+.next #discrete, .next #no_discrete { width:60px; }
+.next #alpha { opacity:0.8; }
+.next #paint { background-color:blue; }
+.next #ink { color:blue; }
+@supports (transition: width 1s steps(1,jump-none)) {
+  #wide { width:70px; }
+}
+</style>
+<body id="scene">
+	<div id="wide"></div><div id="multi"></div><div id="easing"></div><div id="stepped"></div>
+	<div id="discrete"></div><div id="no_discrete"></div>
+	<a id="moving" href="#destination"></a>
+	<div id="rotating"></div>
+	<div id="alpha"></div><div id="paint"></div><div id="ink"><div id="ink_child"></div></div>
+</body>
+"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(200, 120)) == OK, "Lay out the initial CSS transition styles")
+	_check(is_equal_approx(_rect(layout, "wide").size.x, 20.0), "First layout does not start a CSS transition")
+	_check(layout.get_css_diagnostics().is_empty(), "Transition shorthand, longhands and easing functions parse")
+	var scene: HTMLElement = layout.get_element_by_id("scene")
+	scene.set_attribute("class", "next")
+	_check(layout.layout(Vector2i(200, 120)) == OK, "Lay out the initial transition sample")
+	_check(is_equal_approx(_rect(layout, "wide").size.x, 30.0)
+		and _rect(layout, "multi").size.is_equal_approx(Vector2(40.0, 20.0)),
+		"Negative delay samples mixed units and repeats shorter transition lists")
+	_check(is_equal_approx(_rect(layout, "easing").size.x, 30.0)
+		and is_equal_approx(_rect(layout, "stepped").size.x, 30.0),
+		"Piecewise linear and step easing pick the matching intermediate sizes")
+	_check(is_equal_approx(_rect(layout, "discrete").size.x, 200.0)
+		and is_equal_approx(_rect(layout, "no_discrete").size.x, 60.0),
+		"Only allow-discrete holds an intrinsic width through the first half of the transition")
+	_check(is_equal_approx(_rect(layout, "moving").position.x, 110.0)
+		and layout.get_link_at(Vector2(145.0, 30.0)) == "#destination",
+		"Transform interpolation from none updates the box and link hit area together")
+	_check(_rect(layout, "rotating").position.is_equal_approx(Vector2(155.0, 30.0)),
+		"Rotation keeps complete turns until interpolation")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(200, 120)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: layout.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(18.0, 70.0), Color(1.0, 0.5, 0.5), "Mid-transition group opacity")
+	_check_pixel(image, Vector2(48.0, 70.0), Color(0.5, 0.0, 0.5), "Mid-transition background color")
+	_check_pixel(image, Vector2(78.0, 70.0), Color(0.5, 0.0, 0.5), "A descendant paints inherited animated currentColor")
+
+	scene.remove_attribute("class")
+	_check(layout.layout(Vector2i(200, 120)) == OK and absf(_rect(layout, "wide").size.x - 25.0) < 0.1,
+		"Reversing a running transition samples the current value and shortens its remaining duration")
+	layout.get_element_by_id("wide").set_attribute("style", "transition-property:none")
+	_check(layout.layout(Vector2i(200, 120)) == OK and is_equal_approx(_rect(layout, "wide").size.x, 20.0),
+		"Removing the transition property cancels its running transition")
+	layout.clear()
+	viewport.queue_free()
+
+	var short_transition: HTMLLayout = HTMLLayout.new()
+	var short_html: String = """<!doctype html><style>
+		body { margin:0; }
+		#short { width:20px; height:10px; transition:width 80ms linear 25ms; }
+		.changed #short { width:60px; }
+	</style><body id="short_body"><div id="short"></div></body>"""
+	_check(short_transition.parse(short_html) == OK and short_transition.layout(Vector2i(100, 80)) == OK,
+		"Lay out a transition with a positive delay")
+	short_transition.get_element_by_id("short_body").set_attribute("class", "changed")
+	_check(short_transition.layout(Vector2i(100, 80)) == OK and is_equal_approx(_rect(short_transition, "short").size.x, 20.0),
+		"A positive delay holds the starting value")
+	await create_timer(0.25).timeout
+	_check(is_equal_approx(_rect(short_transition, "short").size.x, 60.0),
+		"The scene timeline applies the final style without another edit")
+
+	var label_viewport: SubViewport = SubViewport.new()
+	label_viewport.size = Vector2i(100, 80)
+	root.add_child(label_viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(100.0, 80.0)
+	label.text = """<!doctype html><style>
+		body { margin:0; }
+		#box { width:20px; height:14px; transition:width 120s linear -60s; }
+		.changed #box { width:60px; }
+	</style><body id="label_body"><div id="box"></div></body>"""
+	label_viewport.add_child(label)
+	await process_frame
+	await process_frame
+	label.get_element_by_id("label_body").set_attribute("class", "changed")
+	await process_frame
+	await process_frame
+	_check(absf(label.get_element_by_id("box").get_bounding_rect().size.x - 40.0) < 0.1,
+		"HTMLLabel defers the edit and keeps its intermediate geometry")
+	label_viewport.queue_free()
+
+
+func _check_transform_matrix_transitions() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		body { margin:0; }
+		.box { position:absolute; display:block; left:60px; top:20px; width:20px; height:10px;
+			transform-origin:0 0; transition:transform 120s linear -60s; }
+		#different { width:40px; transform:translateX(50%) rotate(0deg);
+			transition:transform 120s linear -60s, width 120s linear -60s; }
+		#prefix { top:95px; transform:rotate(0deg) scale(1); }
+		#matrix { left:140px; top:50px; transform:matrix(1, 0, 0, 1, 0, 0) rotate(0deg); }
+		#reflection { left:220px; top:55px; transform:matrix(-1, 0, 0, 1, 0, 0); }
+		#axes { top:110px; transform:rotateX(90deg); }
+		#spatial { left:140px; top:110px; transform:perspective(200px) translateZ(0px); }
+		#singular { left:220px; top:85px; transform:scale(0); transition-delay:-30s; }
+		#discrete { left:220px; top:110px; transform:scale(0); transition-delay:-30s;
+			transition-behavior:allow-discrete; }
+		.changed #different { width:80px; transform:rotate(90deg); }
+		.changed #prefix { transform:rotate(1turn) translateX(40px); }
+		.changed #matrix { transform:matrix(1, 0, 0, 1, 40, 0) rotate(1turn); }
+		.changed #reflection { transform:matrix(1, 0, 0, -1, 0, 0); }
+		.changed #axes { transform:rotateY(90deg); }
+		.changed #spatial { transform:translateZ(100px); }
+		.changed #singular, .changed #discrete { transform:translateX(25px); }
+	</style><body id="scene">
+		<a class="box" id="different" href="#transformed"></a>
+		<div class="box" id="prefix"></div><div class="box" id="matrix"></div>
+		<div class="box" id="reflection"></div><div class="box" id="axes"></div>
+		<div class="box" id="spatial"></div>
+		<a class="box" id="singular" href="#jump"></a><a class="box" id="discrete" href="#hold"></a>
+	</body>"""
+	var viewport_size: Vector2i = Vector2i(300, 160)
+	_check(layout.parse(html) == OK and layout.layout(viewport_size) == OK, "Lay out matrix transition endpoints")
+	var scene: HTMLElement = layout.get_element_by_id("scene")
+	scene.set_attribute("class", "changed")
+	_check(layout.layout(viewport_size) == OK, "Sample matrix transitions")
+	var unit: float = sqrt(0.5)
+	var different: Rect2 = _rect(layout, "different")
+	_check(different.position.is_equal_approx(Vector2(75.0 - 10.0 * unit, 20.0))
+		and different.size.is_equal_approx(Vector2.ONE * 70.0 * unit)
+		and layout.get_link_at(Vector2(90.0, 43.0)) == "#transformed"
+		and layout.get_link_at(Vector2(113.0, 22.0)).is_empty(),
+		"Matrix fallback uses the current reference width and exact rotated link hits")
+	_check(_rect(layout, "prefix").position.is_equal_approx(Vector2(20.0, 85.0))
+		and _rect(layout, "matrix").position.is_equal_approx(Vector2(140.0, 40.0)),
+		"Matrix interpolation preserves complete turns in matching functions before and after it")
+	var reflection: Rect2 = _rect(layout, "reflection")
+	_check(reflection.position.is_equal_approx(Vector2(210.0, 35.0))
+		and reflection.size.is_equal_approx(Vector2(10.0, 20.0)),
+		"2D decomposition interpolates reflections without shrinking through zero")
+	_check(_rect(layout, "axes").size.is_equal_approx(Vector2(50.0 / 3.0, 40.0 / 3.0))
+		and _rect(layout, "spatial").size.is_equal_approx(Vector2(20.0, 10.0) / 0.875),
+		"3D decomposition applies quaternion rotation and projective translation")
+	_check(layout.get_link_at(Vector2(250.0, 90.0)) == "#jump"
+		and layout.get_link_at(Vector2(250.0, 115.0)).is_empty(),
+		"A singular matrix endpoint only holds the source with allow-discrete")
+	scene.remove_attribute("class")
+	_check(layout.layout(viewport_size) == OK and absf(_rect(layout, "prefix").position.x - 50.0) < 0.1,
+		"Reversing a matrix transition samples the currently interpolated transform")
+	layout.clear()
+
+
+func _check_group_opacity() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(232, 128)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(232.0, 128.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		#backdrop { position: absolute; inset: 0 0 auto; height: 106px; background: black; }
+		.group { position: absolute; top: 8px; width: 52px; height: 40px; background: red; }
+		.blue { position: absolute; left: 19px; top: 5px; width: 30px; height: 28px; background: blue; z-index: 9; }
+		#group { left: 8px; --fade: 25%; opacity: calc(var(--fade) * 2); }
+		#nested { left: 68px; opacity: 50%; }
+		#nested .blue { opacity: inherit; }
+		#outside { position: absolute; z-index: 1; top: 14px; left: 39px; width: 12px; height: 10px; background: lime; }
+		#zero { left: 128px; opacity: -2; }
+		#clipped { left: 172px; transform: translate(5px, 0); background: blue; opacity: .5;
+			border-radius: 14px; overflow: hidden; }
+		#gradient { width: 70px; height: 48px; background: linear-gradient(red, red); }
+		#positioned_parent { position: absolute; top: 58px; left: 8px; width: 100px; height: 34px; }
+		#static_alpha { margin-left: 24px; width: 48px; height: 30px; opacity: .5; }
+		#absolute_child { position: absolute; top: 4px; left: 5px; width: 10px; height: 10px; background: white; }
+		#transparent, #rgba { position: absolute; top: 110px; width: 18px; height: 12px; }
+		#transparent { background: blue; opacity: .5; }
+		#rgba { left: 24px; background: rgb(0 0 255 / 50%); }
+	</style><div id="backdrop"></div><div class="group" id="group"><div class="blue"></div></div>
+	<div class="group" id="nested"><div class="blue"></div></div><div id="outside"></div>
+	<a class="group" id="zero" href="#activate">Invisible link</a>
+	<div class="group" id="clipped"><div id="gradient"></div></div>
+	<div id="positioned_parent"><div id="static_alpha"><div id="absolute_child"></div></div></div>
+	<div id="transparent"></div><div id="rgba"></div>"""
+	var links: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: links.append(uri))
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(13.0, 24.0), Color(0.5, 0.0, 0.0), "CSS math opacity applies to the group background")
+	_check_pixel(image, Vector2(31.0, 24.0), Color(0.0, 0.0, 0.5), "An opaque child covers the parent before group blending")
+	_check_pixel(image, Vector2(94.0, 24.0), Color(0.25, 0.0, 0.25), "Nested inherited opacity uses two isolated groups")
+	_check_pixel(image, Vector2(44.0, 17.0), Color.LIME, "A child z-index stays inside its opacity context")
+	_check_pixel(image, Vector2(157.0, 43.0), Color.BLACK, "Opacity clamps negative values to zero")
+	_check_pixel(image, Vector2(177.0, 8.0), Color.BLACK, "Rounded clipping follows a transformed opacity group")
+	_check_pixel(image, Vector2(190.0, 23.0), Color(0.5, 0.0, 0.0), "A clipped gradient is composited with the rest of its group")
+	_check_pixel(image, Vector2(16.0, 65.0), Color(0.5, 0.5, 0.5), "An absolute descendant of an opacity group uses its positioned ancestor")
+	_check(_same_color(image.get_pixel(6, 115), image.get_pixel(30, 115)) and
+		absf(image.get_pixel(6, 115).a - 0.5) < 0.02, "The group preserves premultiplied color and alpha on a transparent canvas")
+	_drag_pointer(viewport, Vector2(152.0, 35.0), Vector2(152.0, 35.0))
+	_check(links == ["#activate"], "Zero opacity preserves pointer targeting")
+
+	label.get_element_by_id("group").set_attribute("style", "opacity: 150%;")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(31.0, 24.0), Color.BLUE,
+		"Opacity clamps to one and removes the composite when the style changes")
+
+	viewport.size = Vector2i(2180, 40)
+	label.size = Vector2(2180.0, 40.0)
+	label.text = """<!doctype html><style>body { margin: 0; background: black; }
+		#wide { width: 2160px; height: 20px; background: red; opacity: .5; }
+	</style><div id="wide"></div>"""
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(2047.0, 8.0), Color(0.5, 0.0, 0.0), "The first opacity tile fills its last column")
+	_check_pixel(image, Vector2(2048.0, 8.0), Color(0.5, 0.0, 0.0), "The next opacity tile begins without a seam")
+	viewport.queue_free()
+
+
+func _check_filters() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(236, 132)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(236.0, 132.0)
+	label.css_diagnostics_enabled = true
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		#backdrop { position: absolute; left: 0; top: 0; width: 236px; height: 104px; background: black; }
+		.swatch { position: absolute; top: 8px; width: 24px; height: 24px; background: red; }
+		#sequence { left: 8px; --value: 50%; filter: invert() brightness(var(--value)); opacity: .5; }
+		#gray { left: 40px; filter: grayscale(130%); }
+		#sepia { left: 72px; filter: sepia(); }
+		#hue { left: 104px; filter: hue-rotate(.5turn); }
+		#saturation { left: 136px; filter: saturate(0); }
+		#contrast { left: 168px; background: #404040; filter: brightness(200%) contrast(2); }
+		#invalid { left: 200px; filter: invert(1); filter: invert(-1) brightness(1); }
+		#blur { position: absolute; left: 12px; top: 60px; width: 16px; height: 16px; background: white; filter: blur(2px); }
+		#shadow { position: absolute; left: 54px; top: 60px; width: 14px; height: 16px; background: red; color: lime;
+			transform-origin: 0 0; transform: scaleX(1.5); filter: drop-shadow(10px 0 1px); }
+		#round { position: absolute; left: 112px; top: 60px; width: 36px; height: 26px; overflow: hidden; border-radius: 10px; }
+		#ink { position: absolute; left: -15px; top: 0; width: 12px; height: 16px; background: red; filter: drop-shadow(17px 0 lime); }
+		#container { margin: 58px 0 0 164px; width: 52px; height: 30px; filter: brightness(); }
+		#abs, #fixed { background: white; width: 6px; height: 6px; top: 5px; }
+		#abs { position: absolute; left: 3px; }
+		#fixed { position: fixed; right: 4px; }
+		#outside { position: absolute; left: -12px; top: 90px; width: 10px; height: 10px; background: red;
+			filter: drop-shadow(20px 0 lime); }
+		#alpha, #ref { position: absolute; top: 110px; width: 16px; height: 10px; }
+		#alpha { left: 8px; background: lime; filter: opacity(calc(25% * 2)); }
+		#ref { left: 32px; background: rgb(0 255 0 / 50%); }
+	</style><div id="backdrop"></div><div class="swatch" id="sequence"></div><div class="swatch" id="gray"></div>
+	<div class="swatch" id="sepia"></div><div class="swatch" id="hue"></div><div class="swatch" id="saturation"></div>
+	<div class="swatch" id="contrast"></div><div class="swatch" id="invalid"></div><div id="blur"></div><div id="shadow"></div>
+	<div id="round"><div id="ink"></div></div><div id="container"><div id="abs"></div><div id="fixed"></div></div>
+	<div id="outside"></div><div id="alpha"></div><div id="ref"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(20.0, 20.0), Color(0.0, 0.25, 0.25), "Filters execute in source order before group opacity")
+	_check_pixel(image, Vector2(52.0, 20.0), Color(0.2126, 0.2126, 0.2126), "Grayscale clamps above 100 percent")
+	_check_pixel(image, Vector2(84.0, 20.0), Color(0.393, 0.349, 0.272), "Sepia uses its default amount")
+	_check_pixel(image, Vector2(116.0, 20.0), Color(0.0, 0.426, 0.426), "Hue rotation resolves angle units")
+	_check_pixel(image, Vector2(148.0, 20.0), Color(0.213, 0.213, 0.213), "Zero saturation yields the luminance channel")
+	_check_pixel(image, Vector2(180.0, 20.0), Color(0.504, 0.504, 0.504), "Brightness and contrast accept amounts above one")
+	_check_pixel(image, Vector2(212.0, 20.0), Color.CYAN, "An invalid filter list preserves the previous declaration")
+	var blur: HTMLElement = label.get_element_by_id("blur")
+	var halo_pixel: float = image.get_pixel(10, 68).r
+	_check(halo_pixel > 0.12 and halo_pixel < 0.48 and image.get_pixel(20, 68).r > 0.97,
+		"Gaussian blur spreads color past the source edge and preserves the center")
+	_check(blur.get_bounding_rect() == Rect2(12.0, 60.0, 16.0, 16.0) and label.get_element_at(Vector2(10.0, 68.0)) != blur,
+		"Filter ink leaves the element's layout box and pointer area intact")
+	_check_pixel(image, Vector2(83.0, 68.0), Color.LIME, "Drop shadows use currentColor and transform the local offset")
+	_check_pixel(image, Vector2(60.0, 68.0), Color.RED, "A drop shadow composites behind its source")
+	_check_pixel(image, Vector2(117.0, 70.0), Color.LIME, "An ancestor clips a filtered element after its source has been filtered")
+	_check_pixel(image, Vector2(115.0, 60.0), Color.BLACK, "The ancestor's rounded corner clips the composited filter")
+	_check_pixel(image, Vector2(13.0, 94.0), Color.LIME, "Filter ink from an offscreen source can enter the viewport")
+	_check(_same_color(image.get_pixel(12, 114), image.get_pixel(36, 114)) and
+		absf(image.get_pixel(12, 114).a - 0.5) < 0.02, "The opacity filter preserves the output alpha")
+	var container_rect: Rect2 = label.get_element_by_id("container").get_bounding_rect()
+	var abs_rect: Rect2 = label.get_element_by_id("abs").get_bounding_rect()
+	var fixed_rect: Rect2 = label.get_element_by_id("fixed").get_bounding_rect()
+	_check(abs_rect.position - container_rect.position == Vector2(3.0, 5.0) and
+		fixed_rect.position - container_rect.position == Vector2(42.0, 5.0),
+		"A filter establishes the containing block for absolute and fixed descendants")
+	_check(label.get_element_by_id("invalid").get_css_diagnostics().size() == 1,
+		"The failed declaration reports an unsupported filter value")
+
+	viewport.size = Vector2i(2180, 132)
+	label.size = Vector2(2180.0, 132.0)
+	label.text = """<!doctype html><style>body { margin: 0; background: black; }
+		#wide { width: 2160px; height: 124px; position: relative; filter: blur(24px); }
+		#wide div { position: absolute; top: 12px; width: 80px; height: 96px; background: white; }
+	</style><div id="wide"><div style="left: 8px;"></div><div style="left: 2008px;"></div></div>"""
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	var before_seam: float = image.get_pixel(2047, 60).r
+	var after_seam: float = image.get_pixel(2048, 60).r
+	_check(before_seam > 0.8 and absf(before_seam - after_seam) < 0.02, "Wide blurs carry a sampling margin across the tile boundary")
+	viewport.queue_free()
+
+
+func _check_backdrop_filters() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(358, 224)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.css_diagnostics_enabled = true
+	label.text = """<!doctype html><style>
+		html { background: blue; } body { margin: 0; }
+		.tile { position: absolute; top: 10px; width: 60px; height: 40px; }
+		#basic { left: 10px; --invert: invert(100%); backdrop-filter: var(--invert); border-radius: 12px; }
+		#basic > b { position: absolute; left: 10px; top: 10px; width: 14px; height: 20px; background: red; }
+		#same, #again { left: 95px; backdrop-filter: invert(); }
+		#opacity { left: 175px; backdrop-filter: invert(); opacity: .5; }
+		#invalid { left: 255px; backdrop-filter: invert(); backdrop-filter: blur(-1px); }
+		#over { position: absolute; left: 275px; top: 22px; width: 20px; height: 20px; background: lime; }
+		#transformed { left: 10px; top: 68px; transform: translateX(4px); z-index: 0; }
+		#transformed > b { display: block; width: 50px; height: 40px; backdrop-filter: invert(); }
+		#isolated { left: 95px; top: 68px; opacity: .5; }
+		#isolated > i { position: absolute; width: 30px; height: 40px; background: red; }
+		#isolated > b { position: absolute; inset: 0; backdrop-filter: invert(); }
+		#nested { left: 175px; top: 68px; backdrop-filter: invert(); }
+		#nested > b { position: absolute; inset: 3px; backdrop-filter: invert(); }
+		#filters { left: 255px; top: 68px; backdrop-filter: invert(); filter: invert(); }
+		#filters > b { position: absolute; left: 10px; width: 14px; height: 30px; background: red; }
+		#stripe, #blur { left: 10px; top: 126px; }
+		#stripe { background: linear-gradient(to right, red 50%, white 50%); }
+		#blur { backdrop-filter: blur(4px); }
+		#rotated { left: 108px; top: 128px; width: 44px; height: 26px; transform: rotate(35deg); backdrop-filter: invert(); }
+		#clip { left: 175px; top: 126px; overflow: hidden; border-radius: 14px; }
+		#clip > b { position: absolute; inset: 0; backdrop-filter: invert(); }
+		#container { margin: 126px 0 0 255px; width: 60px; height: 40px; backdrop-filter: brightness(1); }
+		#abs, #fixed { width: 5px; height: 6px; top: 2px; }
+		#abs { position: absolute; left: 3px; } #fixed { position: fixed; right: 4px; }
+		#depth { position: absolute; left: 10px; top: 180px; width: 106px; height: 30px;
+			background: red; transform-style: preserve-3d; }
+		#depth i, #depth b { position: absolute; inset: 0; }
+		#depth i { background: blue; }
+		#depth b { transform: rotateY(42deg); backdrop-filter: invert(); }
+		#blend { position: absolute; left: 150px; top: 180px; width: 84px; height: 30px; isolation: isolate; }
+		#blend i { position: absolute; inset: 0 50% 0 0; background: red; mix-blend-mode: multiply; }
+		#blend b { position: absolute; inset: 0; backdrop-filter: invert(); }
+		@supports (backdrop-filter: invert()) { #container { background: lime; } }
+	</style><div id="basic" class="tile"><b></b></div><div id="same" class="tile"></div>
+	<div id="again" class="tile"></div><div id="opacity" class="tile"></div>
+	<div id="invalid" class="tile"></div><div id="over"></div>
+	<div id="transformed" class="tile"><b></b></div><div id="isolated" class="tile"><i></i><b></b></div>
+	<div id="nested" class="tile"><b></b></div><div id="filters" class="tile"><b></b></div>
+	<div id="stripe" class="tile"></div><div id="blur" class="tile"></div>
+	<div id="rotated" class="tile"></div><div id="clip" class="tile"><b></b></div>
+	<div id="container"><div id="abs"></div><div id="fixed"></div></div>
+	<div id="depth"><i></i><b></b></div><div id="blend"><i></i><b></b></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(55.0, 25.0), Color.YELLOW, "Backdrop filtering reads earlier ink behind a transparent box")
+	_check_pixel(image, Vector2(25.0, 25.0), Color.RED, "The element's foreground is drawn after backdrop filtering")
+	_check_pixel(image, Vector2(11.0, 11.0), Color.BLUE, "Backdrop filtering respects the element's rounded border")
+	_check_pixel(image, Vector2(122.0, 25.0), Color.BLUE, "Successive filters read the preceding composited result")
+	_check_pixel(image, Vector2(205.0, 25.0), Color(0.5, 0.5, 0.5), "Group opacity attenuates the filtered backdrop")
+	_check_pixel(image, Vector2(266.0, 33.0), Color.YELLOW, "An invalid declaration preserves the earlier filter")
+	_check_pixel(image, Vector2(283.0, 33.0), Color.LIME, "Later content is excluded from backdrop capture")
+	_check_pixel(image, Vector2(43.0, 83.0), Color.YELLOW, "A transform and z-index do not establish a Backdrop Root")
+	_check_pixel(image, Vector2(105.0, 83.0), Color(0.0, 0.5, 1.0), "A backdrop root exposes its own earlier content")
+	_check_pixel(image, Vector2(140.0, 83.0), Color.BLUE, "An opacity backdrop root excludes earlier content from outside")
+	_check_pixel(image, Vector2(200.0, 84.0), Color.YELLOW, "A nested filter cannot read its ancestor's filtered backdrop")
+	_check_pixel(image, Vector2(268.0, 85.0), Color.CYAN, "The foreground filter applies after backdrop and foreground composition")
+	_check_pixel(image, Vector2(301.0, 85.0), Color.BLUE, "The foreground filter also applies to the filtered backdrop")
+	_check_pixel(image, Vector2(11.0, 146.0), Color.RED, "Blur reflects the backdrop at the filter's border instead of sampling outside")
+	var boundary: Color = image.get_pixel(40, 146)
+	_check(boundary.r > 0.99 and boundary.g > 0.3 and boundary.g < 0.7, "Backdrop blur mixes both sides of an interior edge")
+	_check_pixel(image, Vector2(130.0, 140.0), Color.YELLOW, "The backdrop uses the transformed border quad")
+	_check_pixel(image, Vector2(108.0, 128.0), Color.BLUE, "The rotated filter leaves pixels outside its border quad alone")
+	_check_pixel(image, Vector2(177.0, 128.0), Color.BLUE, "An ancestor's rounded overflow clips backdrop output")
+	_check_pixel(image, Vector2(209.0, 138.0), Color.YELLOW, "Filtered pixels inside the ancestor clip remain visible")
+	_check_pixel(image, Vector2(277.0, 147.0), Color.LIME, "Backdrop filter declarations work in feature queries")
+	_check_pixel(image, Vector2(36.0, 196.0), Color.YELLOW, "The front slice of an intersecting plane filters the plane behind it")
+	_check_pixel(image, Vector2(94.0, 196.0), Color.BLUE, "The plane in front hides the rear slice of a backdrop filter")
+	_check_pixel(image, Vector2(177.0, 196.0), Color.CYAN, "A backdrop filter can sample local blended ink")
+	_check_pixel(image, Vector2(211.0, 196.0), Color.YELLOW, "An isolated blend context also exposes its external backdrop to filters")
+	var container: Rect2 = label.get_element_by_id("container").get_bounding_rect()
+	_check(label.get_element_by_id("abs").get_bounding_rect().position - container.position == Vector2(3.0, 2.0) and
+		label.get_element_by_id("fixed").get_bounding_rect().position - container.position == Vector2(51.0, 2.0),
+		"A backdrop filter establishes the containing block for absolute and fixed descendants")
+	var invalid: HTMLElement = label.get_element_by_id("invalid")
+	_check(invalid.get_css_diagnostics().size() == 1, "The invalid backdrop filter reports one diagnostic")
+
+	viewport.size = Vector2i(2176, 88)
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>html { background: blue; } body { margin: 0; }
+		.tile { position: absolute; inset: 0 auto auto 0; width: 2160px; height: 70px; }
+		#stripe { background: linear-gradient(to right, red 2048px, white 2048px); }
+		#blur { backdrop-filter: blur(8px); }
+	</style><div class="tile" id="stripe"></div><div class="tile" id="blur"></div>"""
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	var before_seam: float = image.get_pixel(2047, 35).g
+	var after_seam: float = image.get_pixel(2048, 35).g
+	_check(before_seam > 0.4 and before_seam < 0.6 and after_seam > before_seam and absf(before_seam - after_seam) < 0.1,
+		"Backdrop filters retain neighboring samples across viewport tiles, got %s and %s" % [before_seam, after_seam])
+	viewport.queue_free()
+
+
+func _check_will_change() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var position_cases: Dictionary[String, Vector2i] = {
+		"transform": Vector2i(1, 1),
+		"TrAnSlAtE": Vector2i(1, 1),
+		"transform-style": Vector2i(1, 1),
+		"perspective": Vector2i(1, 1),
+		"offset": Vector2i(1, 1),
+		"offset-position": Vector2i(1, 1),
+		"filter": Vector2i(1, 1),
+		"backdrop-filter": Vector2i(1, 1),
+		"contain": Vector2i(1, 1),
+		"content-visibility": Vector2i(1, 1),
+		"position": Vector2i(1, 0),
+		"opacity": Vector2i.ZERO,
+		"backface-visibility": Vector2i.ZERO,
+		"offset-distance": Vector2i.ZERO,
+		"mask": Vector2i.ZERO,
+		"z-index": Vector2i.ZERO,
+		"scroll-position, contents, --transform, unknown-property": Vector2i.ZERO,
+		"auto": Vector2i.ZERO,
+	}
+	var frame: String = """<!doctype html><style>
+		body { margin: 0; } #host { margin: 10px 20px; width: 60px; height: 40px; }
+		#absolute, #fixed { top: 2px; left: 3px; width: 5px; height: 5px; }
+		#absolute { position: absolute; } #fixed { position: fixed; }
+	</style><div id="host" style="will-change:%s"><b id="absolute"></b><b id="fixed"></b></div>"""
+	for hint: String in position_cases:
+		_check(layout.parse(frame % hint) == OK and layout.layout(Vector2i(280, 150)) == OK,
+			"Lay out will-change: %s" % hint)
+		var host: Vector2 = layout.get_element_by_id("host").get_bounding_rect().position
+		var absolute: Vector2 = layout.get_element_by_id("absolute").get_bounding_rect().position
+		var fixed: Vector2 = layout.get_element_by_id("fixed").get_bounding_rect().position
+		var result: Vector2i = Vector2i(absolute - host == Vector2(3.0, 2.0), fixed - host == Vector2(3.0, 2.0))
+		_check(result == position_cases[hint], "Positioning with will-change: %s gives %s" % [hint, result])
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(458, 188)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.css_diagnostics_enabled = true
+	label.text = """<!doctype html><style>
+		html { background: blue; } body { margin: 0; }
+		.tile { position: absolute; top: 10px; width: 62px; height: 38px; z-index: 0; }
+		.a { left: 10px; } .b { left: 86px; } .c { left: 162px; }
+		.d { left: 238px; } .e { left: 314px; } .f { left: 390px; }
+		.host { width: 58px; height: 36px; }
+		.relative { position: relative; }
+		.high, .cover { position: absolute; inset: 7px auto auto 10px; width: 30px; height: 24px; }
+		.high { background: lime; z-index: 3; } .cover { background: red; z-index: 1; }
+		#opacity_host { --effect: opacity; will-change: var(--effect); will-change: opacity, none; }
+		#static_host, #relative_host, #grid_host, #flex_host { will-change: z-index; }
+		.grid { display: grid; } .flex { display: flex; }
+		.glass { top: 68px; } .glass b { position: absolute; inset: 0; backdrop-filter: invert(); }
+		.glass i { position: absolute; inset: 0 50% 0 0; background: red; }
+		#opacity_root { will-change: opacity; } #filter_root { will-change: filter; }
+		#mask_root { will-change: mask; } #blend_root { will-change: mix-blend-mode; }
+		#transform_root { will-change: transform; } #isolate_root { will-change: isolation; }
+		.banner { top: 132px; background: fixed top left / 40px 48px
+			repeating-linear-gradient(to bottom, red 0 24px, blue 24px 48px); }
+		#transform_bg { will-change: transform; }
+		#supports { top: 132px; background: blue; }
+		@supports (will-change: opacity, contents, --duration, future-feature) { #supports { background: lime; } }
+		@supports (will-change: contents, default) { #supports { background: yellow; } }
+	</style>
+	<div class="tile a"><div class="host relative"><b class="high"></b></div><b class="cover"></b></div>
+	<div class="tile b"><div class="host relative" id="opacity_host"><b class="high"></b></div><b class="cover"></b></div>
+	<div class="tile c"><div class="host" id="static_host"><b class="high"></b></div><b class="cover"></b></div>
+	<div class="tile d"><div class="host relative" id="relative_host"><b class="high"></b></div><b class="cover"></b></div>
+	<div class="tile e"><div class="grid"><div class="host" id="grid_host"><b class="high"></b></div></div><b class="cover"></b></div>
+	<div class="tile f"><div class="flex"><div class="host" id="flex_host"><b class="high"></b></div></div><b class="cover"></b></div>
+	<div class="tile glass a" id="opacity_root"><i></i><b></b></div><div class="tile glass b" id="filter_root"><b></b></div>
+	<div class="tile glass c" id="mask_root"><b></b></div><div class="tile glass d" id="blend_root"><b></b></div>
+	<div class="tile glass e" id="transform_root"><b></b></div><div class="tile glass f" id="isolate_root"><b></b></div>
+	<div class="tile banner a"></div><div class="tile banner b" id="transform_bg"></div><div class="tile c" id="supports"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var stacking: Array[Color] = [Color.LIME, Color.RED, Color.LIME, Color.RED, Color.RED, Color.RED,]
+	for index: int in range(stacking.size()):
+		_check_pixel(image, Vector2(30.0 + 76.0 * index, 25.0), stacking[index], "Will-change stacking case %d" % index)
+	_check_pixel(image, Vector2(20.0, 80.0), Color.CYAN, "An opacity hint exposes earlier local paint")
+	_check_pixel(image, Vector2(59.0, 80.0), Color.BLUE, "An opacity hint excludes external paint from the backdrop")
+	_check_pixel(image, Vector2(106.0, 80.0), Color.BLUE, "A filter hint forms a Backdrop Root")
+	_check_pixel(image, Vector2(182.0, 80.0), Color.BLUE, "The mask shorthand forms a Backdrop Root")
+	_check_pixel(image, Vector2(258.0, 80.0), Color.BLUE, "An element blending hint forms a Backdrop Root")
+	_check_pixel(image, Vector2(334.0, 80.0), Color.YELLOW, "A transform hint keeps access to the outer backdrop")
+	_check_pixel(image, Vector2(410.0, 80.0), Color.YELLOW, "An isolation hint does not form a Backdrop Root")
+	_check_pixel(image, Vector2(30.0, 137.0), Color.BLUE, "A fixed background samples at the viewport")
+	_check_pixel(image, Vector2(106.0, 137.0), Color.RED, "A transform hint anchors a fixed background to its element")
+	_check_pixel(image, Vector2(182.0, 137.0), Color.LIME, "The hint accepts custom names and rejects reserved features")
+
+	var opacity_host: HTMLElement = label.get_element_by_id("opacity_host")
+	_check(opacity_host.get_css_diagnostics().size() == 1, "One invalid hint list is diagnosed")
+	_check(opacity_host.set_attribute("style", "will-change: auto") == OK, "Clear the stacking hint through the DOM")
+	var opacity_root: HTMLElement = label.get_element_by_id("opacity_root")
+	_check(opacity_root.set_attribute("style", "will-change: auto") == OK, "Clear the backdrop hint through the DOM")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(106.0, 25.0), Color.LIME, "Removing a hint rebuilds stacking order")
+	_check_pixel(image, Vector2(59.0, 80.0), Color.YELLOW, "Removing a hint restores outer backdrop sampling")
+	viewport.queue_free()
+
+
+func _check_user_select() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 180)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.css_diagnostics_enabled = true
+	var selection_color: Color = Color("#d200d2")
+	label.add_theme_color_override("selection_color", selection_color)
+	label.text = """<!doctype html><style>
+		html { background: white; } body { margin: 8px; font: 16px/24px monospace; }
+		#blocked { --policy: none; -webkit-user-select: var(--policy); }
+		#allowed { user-select: text; }
+		#atomic { user-select: all; }
+	</style><div><span id="lead">HEAD</span></div>
+	<div id="blocked"><span id="hidden">HIDDEN</span> <span id="allowed">REOPEN</span> SECRET</div>
+	<div><span id="atomic">TOKEN <b id="nested">ALL</b></span></div>
+	<div><span id="end">END</span></div>
+	<button id="button">COMMAND</button>
+	<input id="field" style="user-select: none" value="Text">
+	<input id="read_only" style="user-select: none" value="Text" readonly>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	label.select_all()
+	await RenderingServer.frame_post_draw
+	var all_text: String = label.get_selected_text()
+	_check("HEAD" in all_text and "REOPEN" in all_text and "TOKEN ALL" in all_text and "END" in all_text and
+		"HIDDEN" not in all_text and "SECRET" not in all_text and "COMMAND" not in all_text,
+		"Copying a range excludes user-select none and includes a descendant that restores text selection")
+	var hidden: Rect2 = label.get_element_by_id("hidden").get_bounding_rect()
+	var allowed: Rect2 = label.get_element_by_id("allowed").get_bounding_rect()
+	var pixels: Image = viewport.get_texture().get_image()
+	_check(not _color_bounds(pixels, Rect2i(hidden), selection_color).has_area() and
+		_color_bounds(pixels, Rect2i(allowed), selection_color).has_area(), "CSS exclusion applies to selection paint")
+	var lead: Rect2 = label.get_element_by_id("lead").get_bounding_rect()
+	_drag_pointer(viewport, hidden.get_center(), lead.get_center())
+	_check(label.get_selected_text() == all_text, "Starting on excluded text preserves an existing selection")
+	var nested: Rect2 = label.get_element_by_id("nested").get_bounding_rect()
+	_drag_pointer(viewport, nested.get_center(), nested.get_center())
+	_check(label.get_selected_text() == "TOKEN ALL", "Clicking a descendant selects the outer atomic span")
+	_drag_pointer(viewport, lead.position + Vector2(0.5, lead.size.y * 0.5), hidden.get_center())
+	_check(label.get_selected_text().strip_edges() == "HEAD", "Dragging into excluded text stops at its leading edge")
+	_drag_pointer(viewport, lead.position + Vector2(0.5, lead.size.y * 0.5), nested.get_center())
+	_check("TOKEN ALL" in label.get_selected_text() and "HIDDEN" not in label.get_selected_text(),
+		"Dragging through an excluded range into atomic text includes the whole atomic span")
+	var field: HTMLInputElement = label.get_element_by_id("field") as HTMLInputElement
+	_check(label.focus_element(field), "Focus the editable field in the selection test")
+	_send_text_history_key(viewport, KEY_A)
+	_check(field.get_selection_start() == 0 and field.get_selection_end() == 4,
+		"Editable fields keep an independent selection under user-select none")
+	var read_only: HTMLInputElement = label.get_element_by_id("read_only") as HTMLInputElement
+	_check(label.focus_element(read_only), "Focus the read-only field in the selection test")
+	_send_text_history_key(viewport, KEY_A)
+	_check(read_only.get_selection_start() == read_only.get_selection_end(), "Read-only fields honor user-select none")
+	_check(label.get_element_by_id("blocked").set_attribute("style", "user-select: text") == OK,
+		"Override the prefixed declaration through the DOM")
+	await process_frame
+	await process_frame
+	label.select_all()
+	_check("HIDDEN" in label.get_selected_text() and label.get_css_diagnostics().is_empty(),
+		"A restyle updates copy filtering and accepts the alias and variable")
+	label.queue_free()
+	await process_frame
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(viewport.size)
+	markdown.parse_html = true
+	markdown.text = "Before\n\n<div>Start <span style='user-select: none'>HIDDEN</span> End</div>\n\nAfter"
+	var test_icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, test_icon)
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	markdown.select_all()
+	var markdown_text: String = markdown.get_selected_text()
+	_check("Before" in markdown_text and "Start" in markdown_text and "End" in markdown_text and "After" in markdown_text and
+		"HIDDEN" not in markdown_text, "Markdown copying uses the HTML block's selection policy")
+	viewport.queue_free()
+
+
+func _check_selection_colors() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(340, 184)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.add_theme_color_override("selection_color", Color.MAGENTA)
+	label.text = """<!doctype html><style>
+		html { background: white; } body { margin: 8px; color: black; font: 28px/38px monospace; }
+		:root::selection { color: red; background: lime; }
+		#child { --selected-ink: blue; }
+		#child::selection { color: var(--selected-ink); }
+		#clear::selection { color: currentColor; background-color: initial; }
+		#skip { user-select: none; }
+		@layer base, theme;
+		@layer base { #reset::selection { color: blue; background: cyan; } }
+		@layer theme { #reset::selection { color: yellow; background: revert-layer; } }
+	</style><div><span id="parent">MMM</span> <span id="child">MMM</span></div>
+	<div><span id="clear">MMM</span> <span id="skip">MMM</span> <span id="reset">MMM</span></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	label.select_all()
+	await RenderingServer.frame_post_draw
+	var pixels: Image = viewport.get_texture().get_image()
+	var parent: Rect2i = Rect2i(label.get_element_by_id("parent").get_bounding_rect())
+	var child: Rect2i = Rect2i(label.get_element_by_id("child").get_bounding_rect())
+	var clear: Rect2i = Rect2i(label.get_element_by_id("clear").get_bounding_rect())
+	var skip: Rect2i = Rect2i(label.get_element_by_id("skip").get_bounding_rect())
+	var reset: Rect2i = Rect2i(label.get_element_by_id("reset").get_bounding_rect())
+	_check(_color_bounds(pixels, parent, Color.LIME).has_area() and _color_bounds(pixels, parent, Color.RED).has_area(),
+		"Root selection colors inherit into ordinary text")
+	_check(_color_bounds(pixels, child, Color.LIME).has_area() and _color_bounds(pixels, child, Color.BLUE).has_area(),
+		"A child selection inherits the parent's highlight background and reads variables from the child")
+	_check(not _color_bounds(pixels, clear, Color.LIME).has_area() and not _color_bounds(pixels, clear, Color.MAGENTA).has_area() and
+		_color_bounds(pixels, clear, Color.BLACK).has_area(), "An explicit transparent selection uses the originating currentColor")
+	_check(not _color_bounds(pixels, skip, Color.LIME).has_area() and _color_bounds(pixels, skip, Color.BLACK).has_area(),
+		"Unselectable text retains its normal paint")
+	_check(_color_bounds(pixels, reset, Color.CYAN).has_area() and _color_bounds(pixels, reset, Color.YELLOW).has_area(),
+		"A selection longhand can roll back independently within the cascade")
+
+	label.text = """<!doctype html><style>
+		html { background: white; } body { margin: 8px; color: black; font: 36px/48px monospace; }
+		#translated { width: 200px; overflow: hidden; border-radius: 12px; transform: translate(22px, 4px); }
+		#partial::selection { color: red; }
+		@media (min-width: 352px) { #partial::selection { color: transparent; background-color: lime; } }
+	</style><div id="translated"><span id="partial">MMMMMM</span></div>"""
+	await process_frame
+	await process_frame
+	var partial: HTMLElement = label.get_element_by_id("partial")
+	var bounds: Rect2 = partial.get_bounding_rect()
+	var midpoint: Vector2 = bounds.get_center()
+	_drag_pointer(viewport, Vector2(bounds.position.x + 0.5, midpoint.y), midpoint)
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	var first: Rect2i = Rect2i(Rect2(bounds.position, Vector2(bounds.size.x * 0.47, bounds.size.y)))
+	var last: Rect2i = Rect2i(Rect2(bounds.position + Vector2(bounds.size.x * 0.53, 0.0), Vector2(bounds.size.x * 0.47, bounds.size.y)))
+	_check(label.get_selected_text() == "MMM" and _color_bounds(pixels, first, Color.RED).has_area() and
+		_color_bounds(pixels, last, Color.BLACK).has_area() and not _color_bounds(pixels, last, Color.RED).has_area(),
+		"A partial selection recolors only the selected part of a shaped word in a transformed clip")
+	_check(not _color_bounds(pixels, first, Color.MAGENTA).has_area(), "A foreground-only rule suppresses the theme selection background")
+	viewport.size = Vector2i(360, 184)
+	label.size = Vector2(viewport.size)
+	await process_frame
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check(label.get_selected_text() == "MMM" and _color_bounds(pixels, first, Color.LIME).has_area() and
+		not _color_bounds(pixels, first, Color.BLACK).has_area() and _color_bounds(pixels, last, Color.BLACK).has_area(),
+		"A media rule changes the existing selection and a transparent foreground replaces selected glyphs")
+	label.queue_free()
+	await process_frame
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.size = Vector2(viewport.size)
+	markdown.parse_html = true
+	markdown.text = "<div><style>div::selection { color: red; background-color: lime; }</style>MMMM</div>"
+	var test_icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, test_icon)
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	markdown.select_all()
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	var view_bounds: Rect2i = Rect2i(Vector2i.ZERO, viewport.size)
+	_check(_color_bounds(pixels, view_bounds, Color.LIME).has_area() and _color_bounds(pixels, view_bounds, Color.RED).has_area(),
+		"Markdown HTML paints authored selection colors")
+	viewport.queue_free()
+
+
+func _check_masks() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: blue; }
+		.tile { position: absolute; top: 10px; width: 60px; height: 36px; background: red; }
+		#alpha { left: 10px; --cut: linear-gradient(to right, black 50%, transparent 50%);
+			mask: var(--cut); mask: white; }
+		#alpha > b { display: block; height: 16px; background: lime; }
+		#luminance { left: 90px; mask: linear-gradient(to right, black 50%, white 50%) luminance; }
+		#missing { left: 170px; mask-image: url(nonexistent-mask.png); }
+		#image { left: 250px; mask-image: url(css-mask-source.png); mask-size: 100% 100%; }
+		.layers { top: 65px; mask: linear-gradient(black, black) left top / 40px 100% no-repeat,
+			linear-gradient(black, black) right top / 40px 100% no-repeat; }
+		#add { left: 10px; } #subtract { left: 90px; mask-composite: subtract; }
+		#intersect { left: 170px; mask-composite: intersect; } #exclude { left: 250px; mask-composite: exclude; }
+		#extend { left: 10px; top: 125px; transform: translateX(8px); mask: linear-gradient(black, black) no-clip; }
+		#extend > b { position: absolute; left: 55px; width: 24px; height: 20px; background: lime; }
+		#repeat { left: 130px; top: 125px; width: 65px; mask: linear-gradient(black, black) center / 14px 16px space no-repeat; }
+		#origin { left: 225px; top: 125px; width: 30px; padding: 10px; border: 5px solid lime;
+			mask: linear-gradient(black, black) top left / 16px 100% no-repeat content-box border-box; }
+		#fallback { left: 310px; top: 125px; mask-image: none; mask: none, linear-gradient(black, black); }
+		#round, #gray, #all-none, #one-line, #two-lines { top: 183px; }
+		#round { left: 10px; border-radius: 18px; mask: linear-gradient(white, white); }
+		#round > b { display: block; height: 36px; background: lime; }
+		#gray { left: 90px; mask: linear-gradient(red, red) luminance; }
+		#all-none { left: 170px; mask-image: none, none; }
+		#one-line, #two-lines { position: absolute; font: 20px monospace; color: transparent; line-height: 28px; }
+		#one-line { left: 250px; } #two-lines { left: 310px; }
+		#one-line span { background: red; mask: linear-gradient(white, white); }
+		#two-lines span { background: red; mask: linear-gradient(to right, black 50%, transparent 50%); }
+		@supports (mask-image: linear-gradient(black, transparent)) {
+			#fallback { mask-composite: subtract; }
+		}
+	</style><div class="tile" id="alpha"><b id="child"></b></div><div class="tile" id="luminance"></div>
+	<div class="tile" id="missing"></div><div class="tile" id="image"></div>
+	<div class="tile layers" id="add"></div><div class="tile layers" id="subtract"></div>
+	<div class="tile layers" id="intersect"></div><div class="tile layers" id="exclude"></div>
+	<div class="tile" id="extend"><b></b></div><div class="tile" id="repeat"></div>
+	<div class="tile" id="origin"></div><div class="tile" id="fallback"></div>
+	<div class="tile" id="round"><b></b></div><div class="tile" id="gray"></div>
+	<div class="tile" id="all-none"></div><div id="one-line"><span id="single">AA</span></div>
+	<div id="two-lines"><span id="wrapped">AA<br>AA</span></div>"""
+	var alpha: Image = Image.create_empty(60, 36, false, Image.FORMAT_RGBA8)
+	alpha.fill_rect(Rect2i(0, 0, 30, 36), Color.BLACK)
+	var texture: ImageTexture = ImageTexture.create_from_image(alpha)
+	var document: HTMLDocument = HTMLDocument.new()
+	document.text = source
+	document.set("_textures", { "res://css-mask-source.png": texture })
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(390, 287)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(390.0, 247.0)
+	label.css_diagnostics_enabled = true
+	label.document = document
+	viewport.add_child(label)
+	var imported: HTMLDocument = ResourceLoader.load("{MASK_IMAGE_UID}") as HTMLDocument
+	_check(imported != null and not FileAccess.file_exists("res://mask-import.png"),
+		"Load the mask from the imported document's dependencies after removing CSS and PNG sources")
+	var imported_label: HTMLLabel = HTMLLabel.new()
+	imported_label.position = Vector2(0.0, 247.0)
+	imported_label.size = Vector2(50.0, 40.0)
+	imported_label.document = imported
+	viewport.add_child(imported_label)
+	var standalone: HTMLLayout = HTMLLayout.new()
+	_check(standalone.parse("""<style>body { margin: 0; background: blue; }
+		div { width: 40px; height: 30px; }
+		#masked { filter: drop-shadow(30px 0 lime); opacity: 0.5;
+			mask: linear-gradient(black, black) right top / 10px 100% no-repeat; }
+		#masked div { width: 10px; background: red; }
+	</style><div id="masked"><div></div></div>""") == OK and standalone.layout(Vector2i(50, 40)) == OK,
+		"Lay out a mask over filtered content in a standalone layout")
+	var canvas: Node2D = Node2D.new()
+	var draw_box: Rect2 = Rect2(60.0, 247.0, 50.0, 40.0)
+	canvas.draw.connect(func() -> void: standalone.draw(canvas, draw_box.position, draw_box))
+	viewport.add_child(canvas)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2(120.0, 247.0)
+	markdown.size = Vector2(100.0, 40.0)
+	markdown.parse_html = true
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, texture)
+	markdown.text = ('<div style="width:40px;height:30px;background:blue"><div style="width:40px;height:30px;' +
+		'background:red;mask:linear-gradient(black,black) left top / 20px 100% no-repeat"></div></div>')
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(23.0, 15.0), Color.LIME, "The parent mask preserves the covered part of a child")
+	_check_pixel(image, Vector2(54.0, 15.0), Color.BLUE, "The parent mask removes the uncovered part of a child")
+	_check(label.get_element_at(Vector2(54.0, 15.0)) == label.get_element_by_id("child"),
+		"The transparent part of a CSS mask remains part of its element's hit area")
+	_check_pixel(image, Vector2(100.0, 25.0), Color.BLUE, "Black luminance masks out the source")
+	_check_pixel(image, Vector2(135.0, 25.0), Color.RED, "White luminance keeps the source")
+	_check_pixel(image, Vector2(190.0, 25.0), Color.BLUE, "An unavailable mask image is transparent")
+	_check_pixel(image, Vector2(265.0, 25.0), Color.RED, "An HTML resource texture supplies mask alpha")
+	_check_pixel(image, Vector2(296.0, 25.0), Color.BLUE, "The transparent side of the texture masks out the source")
+	var operators: Array[Array] = [
+		[Color.RED, Color.RED, Color.RED],
+		[Color.RED, Color.BLUE, Color.BLUE],
+		[Color.BLUE, Color.RED, Color.BLUE],
+		[Color.RED, Color.BLUE, Color.RED],
+	]
+	for index: int in range(operators.size()):
+		for sample: int in range(3):
+			var expected: Color = operators[index][sample]
+			_check_pixel(image, Vector2(20.0 + 80.0 * index + 20.0 * sample, 80.0), expected,
+				"Mask composite operation %d at sample %d" % [index, sample])
+	_check_pixel(image, Vector2(92.0, 138.0), Color.LIME, "A transformed no-clip mask covers overflowing ink")
+	_check_pixel(image, Vector2(136.0, 143.0), Color.RED, "Mask tiles use their declared size")
+	_check_pixel(image, Vector2(145.0, 143.0), Color.BLUE, "Space repeat leaves transparent gaps")
+	_check_pixel(image, Vector2(153.0, 143.0), Color.RED, "The next spaced mask tile covers the source")
+	_check_pixel(image, Vector2(238.0, 151.0), Color.BLUE, "The mask origin excludes the border and padding")
+	_check_pixel(image, Vector2(243.0, 151.0), Color.RED, "A content-box mask origin aligns the image tile")
+	_check_pixel(image, Vector2(340.0, 151.0), Color.BLUE, "A none layer participates in subtraction")
+	_check_pixel(image, Vector2(12.0, 185.0), Color.BLUE, "The rounded masking area clips descendant pixels")
+	_check_pixel(image, Vector2(41.0, 200.0), Color.LIME, "The rounded mask keeps ink at the center")
+	_check_pixel(image, Vector2(110.0, 200.0), Color("#3600c9"), "Mask luminance scales opacity by channel weight")
+	_check_pixel(image, Vector2(190.0, 200.0), Color.RED, "A list containing only none has no mask")
+	var single: HTMLElement = label.get_element_by_id("single")
+	_check_pixel(image, single.get_bounding_rect().get_center(), Color.RED, "A single non-atomic inline provides its mask box")
+	var wrapped: HTMLElement = label.get_element_by_id("wrapped")
+	var fragments: Array[Rect2] = wrapped.get_client_rects()
+	_check(fragments.size() == 2, "The masked inline has two fragments")
+	if fragments.size() == 2:
+		_check_pixel(image, fragments[0].get_center(), Color.RED, "The first fragment uses the first half of the sliced mask")
+		_check_pixel(image, fragments[1].get_center(), Color.BLUE, "The last fragment uses the second half of the sliced mask")
+	_check_pixel(image, Vector2(9.0, 258.0), Color.RED, "The imported mask URL resolves inside a nested stylesheet")
+	_check_pixel(image, Vector2(28.0, 258.0), Color.BLUE, "The imported mask preserves its size and repeat mode")
+	_check_pixel(image, Vector2(66.0, 254.0), Color.BLUE, "A mask can remove the input to a drop shadow")
+	_check_pixel(image, Vector2(95.0, 254.0), Color(0.0, 0.5, 0.5), "The mask applies after the filter and before group opacity")
+	var markdown_region: Rect2i = Rect2i(120, 247, 100, 40)
+	var covered: Rect2i = _color_bounds(image, markdown_region, Color.RED)
+	var revealed: Rect2i = _color_bounds(image, markdown_region, Color.BLUE)
+	_check(covered.size.x == 20 and revealed.size.x == 20 and covered.end.x == revealed.position.x,
+		"Markdown HTML blocks draw the two sides of the mask, got %s and %s" % [covered, revealed])
+	var diagnostics: Array[Dictionary] = label.get_css_diagnostics()
+	_check(diagnostics.size() == 1 and diagnostics[0].get("property") == "mask" and
+		diagnostics[0].get("kind") == "unsupported_value", "Invalid mask shorthand preserves the earlier variable declaration")
+	viewport.queue_free()
+
+
+func _check_svg_masks() -> void:
+	var source: String = """<!doctype html><style>
+		html { background: blue; } body { margin: 0; }
+		.tile { position: absolute; top: 10px; width: 60px; height: 40px; background: red; }
+		#object { left: 10px; mask: url(#cut%2Dbox) 100% 100% / 1px 1px no-repeat content-box; }
+		#use { left: 90px; mask-image: url(#preferred); }
+		#override { left: 170px; mask: url(#preferred) luminance; }
+		#gradient { left: 250px; mask: url(#gradient-cut); }
+		#linear { left: 315px; width: 25px; mask: url(#linear-gray); }
+		#overflow { top: 64px; left: 15px; mask: url(#overflow-cut); transform: translateX(10px); }
+		#overflow > b { position: absolute; left: -12px; width: 100px; height: 40px; background: lime; }
+		#missing { top: 64px; left: 110px; mask: url(#wrong-target); }
+		#empty { top: 64px; left: 190px; mask: url(#empty-cut); }
+		#text { top: 64px; left: 270px; mask: url(#letters) alpha; }
+		#preferred { mask-type: alpha !important; }
+	</style>
+	<svg style="display:none;" xmlns="http://www.w3.org/2000/svg">
+		<defs>
+			<rect id="wrong-target" width="12" height="16" fill="black"/>
+			<linearGradient id="stops" x2="100%" y2="0%">
+				<stop offset="0.5" stop-color="black"/><stop offset="0.5" stop-color="white"/>
+			</linearGradient>
+			<mask id="cut-box" x=".2" y="0%" width="50%" height="1" maskContentUnits="objectBoundingBox" mask-type="alpha">
+				<rect width="50%" height="1" fill="black"/>
+			</mask>
+			<mask id="preferred" mask-type="luminance" style="mask-type: luminance; opacity:0">
+				<use href="#wrong-target" x="10" y="4"/>
+			</mask>
+			<mask id="gradient-cut" maskUnits="userSpaceOnUse" x="10" y="0" width="45" height="40">
+				<rect width="60" height="40" fill="url(#stops)"/>
+			</mask>
+			<g fill="#808080" color-interpolation="linearRGB">
+				<mask id="linear-gray"><rect width="60" height="40"/></mask>
+			</g>
+			<mask id="overflow-cut" maskContentUnits="objectBoundingBox"><rect x="-1" width="3" height="1" fill="white"/></mask>
+			<mask id="empty-cut"></mask>
+			<mask id="letters"><text x="4" y="30" font-size="28" fill="black">MASK</text></mask>
+		</defs>
+	</svg>
+	<div id="object" class="tile"></div><div id="use" class="tile"></div><div id="override" class="tile"></div>
+	<div id="gradient" class="tile"></div><div id="linear" class="tile"></div><div id="overflow" class="tile"><b></b></div>
+	<div id="missing" class="tile"></div><div id="empty" class="tile"></div><div id="text" class="tile"></div>"""
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(344, 155)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(344.0, 110.0)
+	label.text = source
+	viewport.add_child(label)
+	var imported: HTMLDocument = ResourceLoader.load("{SVG_MASK_UID}") as HTMLDocument
+	_check(imported != null and not FileAccess.file_exists("res://svg-mask-import.svg"),
+		"The imported mask document retains its external SVG source")
+	var imported_label: HTMLLabel = HTMLLabel.new()
+	imported_label.position = Vector2(0.0, 110.0)
+	imported_label.size = Vector2(48.0, 40.0)
+	imported_label.document = imported
+	viewport.add_child(imported_label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var pixels: Image = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(17.0, 27.0), Color.BLUE, "The object bounding box mask region clips covered ink")
+	_check_pixel(pixels, Vector2(30.0, 27.0), Color.RED, "Normalized SVG lengths and percentage widths use the target size")
+	_check_pixel(pixels, Vector2(44.0, 27.0), Color.BLUE, "The normalized shape ends inside the mask region")
+	_check_pixel(pixels, Vector2(105.0, 20.0), Color.RED, "Match source uses the computed mask-type and draws use references")
+	_check_pixel(pixels, Vector2(95.0, 20.0), Color.BLUE, "A use offset shifts the mask's coverage")
+	_check_pixel(pixels, Vector2(185.0, 20.0), Color.BLUE, "An explicit luminance mode overrides the mask type")
+	_check_pixel(pixels, Vector2(275.0, 26.0), Color.BLUE, "An SVG gradient can remove pixels through luminance")
+	_check_pixel(pixels, Vector2(290.0, 26.0), Color.RED, "An SVG gradient preserves pixels above its luminance stop")
+	_check_pixel(pixels, Vector2(306.0, 26.0), Color.BLUE, "A user-space mask region clips its source")
+	_check_pixel(pixels, Vector2(323.0, 26.0), Color("#3700c8"), "SVG masks inherit fill and convert luminance in linear RGB")
+	_check_pixel(pixels, Vector2(17.0, 84.0), Color.BLUE, "Default SVG region excludes distant overflow")
+	_check_pixel(pixels, Vector2(21.0, 84.0), Color.LIME, "The mask region can include overflow outside a transformed element")
+	_check_pixel(pixels, Vector2(123.0, 84.0), Color.BLUE, "A fragment that isn't a mask produces no coverage")
+	_check_pixel(pixels, Vector2(203.0, 84.0), Color.BLUE, "An empty mask produces no coverage")
+	var glyphs: Rect2i = _color_bounds(pixels, Rect2i(270, 64, 60, 40), Color.RED)
+	_check(glyphs.has_area() and glyphs.size.y < 40, "SVG mask text contributes shaped glyph outlines")
+	_check_pixel(pixels, Vector2(9.0, 122.0), Color.RED, "A local SVG mask resolves through the imported nested stylesheet")
+	_check_pixel(pixels, Vector2(30.0, 122.0), Color.BLUE, "An external SVG mask clips after the SVG file is removed")
+	var mask: HTMLElement = label.get_element_by_id("cut-box")
+	_check(mask.set_attribute("x", "40%") == OK, "Edit the inline mask region through the DOM")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(30.0, 27.0), Color.BLUE, "Changing the SVG source invalidates the recorded mask")
+	_check_pixel(pixels, Vector2(37.0, 27.0), Color.RED, "The new mask region uses the same coordinate system")
+	viewport.queue_free()
+
+
+func _check_clip_paths() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 168)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; box-sizing: border-box; width: 64px; height: 64px; }
+		.top { top: 12px; } .bottom { top: 92px; }
+		#circle { left: 12px; background: red; --clip: circle(45%); clip-path: var(--clip); }
+		#circle_link { position: absolute; inset: 0; z-index: 2; }
+		#front { position: absolute; left: 35px; top: 32px; width: 4px; height: 8px; background: white; z-index: 1; }
+		#ellipse { left: 92px; background: blue; clip-path: ellipse(26px 14px at right 7px bottom 12px); }
+		#inset { left: 168px; background: lime; border: 4px solid transparent;
+			clip-path: padding-box inset(5px 10px round 12px / 6px); clip-path: ellipse(20px); }
+		#box { left: 244px; background: yellow; border: 4px solid red; padding: 8px; border-radius: 15px;
+			clip-path: content-box; }
+		#rect { left: 12px; background: orange; clip-path: rect(8px 50px auto 14px round 4px); }
+		#xywh { left: 92px; background: cyan; clip-path: xywh(25% 10px 30px 40px); }
+		#filter { left: 168px; clip-path: inset(0 0 0 20px); filter: drop-shadow(32px 0 lime); }
+		#ink { position: absolute; left: 0; top: 20px; width: 12px; height: 18px; background: red; }
+		#rotate { left: 244px; background: magenta; transform: rotate(90deg); clip-path: inset(0 0 50% 0); }
+	</style><a id="behind" href="#behind"></a>
+	<div class="tile top" id="circle"><a id="circle_link" href="#circle"></a></div>
+	<div id="front"></div><div class="tile top" id="ellipse"></div><div class="tile top" id="inset"></div>
+	<div class="tile top" id="box"></div><div class="tile bottom" id="rect"></div>
+	<div class="tile bottom" id="xywh"></div><div class="tile bottom" id="filter"><div id="ink"></div></div>
+	<div class="tile bottom" id="rotate"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(14.0, 14.0), Color.BLACK, "Circle clips its own corner and link")
+	_check_pixel(image, Vector2(44.0, 44.0), Color.RED, "Circle keeps its center")
+	_check_pixel(image, Vector2(37.0, 35.0), Color.WHITE, "Clip path isolates the stacking order of its descendants")
+	_check_pixel(image, Vector2(149.0, 64.0), Color.BLUE, "Ellipse uses a four-component center position")
+	_check_pixel(image, Vector2(98.0, 38.0), Color.BLACK, "Ellipse clips the part outside its axes")
+	_check_pixel(image, Vector2(201.0, 42.0), Color.LIME, "Rounded inset resolves against the padding box")
+	_check_pixel(image, Vector2(183.0, 22.0), Color.BLACK, "A fitted inset retains its rounded corners after an invalid declaration")
+	_check_pixel(image, Vector2(276.0, 44.0), Color.YELLOW, "A geometry box can be used on its own")
+	_check_pixel(image, Vector2(250.0, 28.0), Color.BLACK, "Content box clips border and padding paint")
+	_check_pixel(image, Vector2(34.0, 125.0), Color.ORANGE, "Rect resolves explicit and automatic edge coordinates")
+	_check_pixel(image, Vector2(18.0, 125.0), Color.BLACK, "Rect clips before the explicit left edge")
+	_check_pixel(image, Vector2(126.0, 121.0), Color.CYAN, "XYWH resolves its position and size")
+	_check_pixel(image, Vector2(102.0, 121.0), Color.BLACK, "XYWH excludes the area before its origin")
+	_check_pixel(image, Vector2(204.0, 120.0), Color.LIME, "The clip path applies after filtering")
+	_check_pixel(image, Vector2(174.0, 120.0), Color.BLACK, "The unshifted source is outside the clip path")
+	_check_pixel(image, Vector2(292.0, 125.0), Color.MAGENTA, "The clip path rotates with its element")
+	_check_pixel(image, Vector2(258.0, 125.0), Color.BLACK, "The rotated clip excludes the other half")
+	_check(label.get_element_at(Vector2(14.0, 14.0)) == label.get_element_by_id("behind") and
+		label.get_element_at(Vector2(44.0, 44.0)) == label.get_element_by_id("circle_link"),
+		"Pointer hits fall through a clipped corner and reach the inner link at the center")
+	_check(label.get_element_at(Vector2(258.0, 125.0)) == label.get_element_by_id("behind") and
+		label.get_element_at(Vector2(292.0, 125.0)) == label.get_element_by_id("rotate"),
+		"Rotated clip paint and hit geometry agree")
+	_check(label.get_element_by_id("circle").get_bounding_rect() == Rect2(12.0, 12.0, 64.0, 64.0),
+		"Clip path preserves the CSSOM bounding rectangle")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#text { width: 160px; font: 20px monospace; white-space: nowrap; clip-path: inset(0 90px 0 0); }
+		#overflow { width: 20px; height: 20px; clip-path: circle(5px); }
+		#child { width: 14px; height: 14px; transform: translateX(210px); }
+	</style><div id="text">CLIPPED SELECTION</div><div id="overflow"><div id="child"></div></div>""") == OK
+		and layout.layout(Vector2i(180, 100)) == OK, "Lay out selection and visual overflow under a clip path")
+	var selection: Array[Rect2] = layout.get_selection_rects(0, layout.get_plain_text().length())
+	_check(not selection.is_empty(), "Clipped text remains selectable")
+	for rect: Rect2 in selection:
+		_check(rect.end.x <= 70.1, "Selection geometry stops at the clip-path edge")
+	_check(layout.get_content_size().x >= 224, "Clip path leaves transformed scrollable overflow intact")
+
+
+func _check_polygon_clip_paths() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(324, 166)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	var ring: String = """0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+		25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 25%, 0 0"""
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; box-sizing: border-box; width: 64px; height: 64px; }
+		#concave { left: 12px; top: 12px; background: lime; border: 4px solid red;
+			clip-path: polygon(0 0, 100%% 0, 100%% 40%%, 40%% 40%%, 40%% 100%%, 0 100%%) padding-box;
+			clip-path: polygon(evenodd 0 0, 100%% 0, 100%% 100%%); }
+		#evenodd { left: 88px; top: 12px; background: cyan; clip-path: polygon(evenodd, %s); }
+		#nonzero { left: 164px; top: 12px; background: blue; clip-path: polygon(nonzero, %s); }
+		#rotated { left: 240px; top: 12px; background: magenta; transform: rotate(90deg);
+			clip-path: polygon(0 0, 100%% 0, 0 100%%); }
+		#parent_clip { left: 12px; top: 88px; clip-path: polygon(0 0, 100%% 0, 0 100%%); }
+		#child_clip { position: absolute; inset: 0; display: block; background: yellow;
+			clip-path: polygon(25%% 0, 100%% 0, 100%% 100%%, 25%% 100%%); }
+		#multirow { left: 88px; top: 88px; background: white;
+			clip-path: polygon(%s100%% 0, 100%% 100%%, 0 100%%); }
+		#degenerate { left: 164px; top: 88px; background: red; clip-path: polygon(0 0, 100%% 100%%); }
+		#crossing { left: 240px; top: 88px; background: orange;
+			clip-path: polygon(0 0, 100%% 100%%, 0 100%%, 100%% 0); }
+	</style><a id="behind" href="#behind"></a><div class="tile" id="concave"></div>
+	<div class="tile" id="evenodd"></div><div class="tile" id="nonzero"></div><div class="tile" id="rotated"></div>
+	<div class="tile" id="parent_clip"><a id="child_clip" href="#child_clip"></a></div>
+	<div class="tile" id="multirow"></div><div class="tile" id="degenerate"></div>
+	<div class="tile" id="crossing"></div>""" % [ring, ring, "0 0, ".repeat(1030)]
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(22.0, 65.0), Color.LIME, "Concave polygon keeps its lower arm")
+	_check_pixel(image, Vector2(53.0, 65.0), Color.BLACK, "Concave polygon cuts out its notch")
+	_check_pixel(image, Vector2(13.0, 35.0), Color.BLACK, "Polygon coordinates use the padding box")
+	_check_pixel(image, Vector2(95.0, 44.0), Color.CYAN, "Even-odd polygon fills its outer ring")
+	_check_pixel(image, Vector2(120.0, 44.0), Color.BLACK, "Even-odd crossing counts cut out a hole")
+	_check_pixel(image, Vector2(196.0, 44.0), Color.BLUE, "Nonzero winding fills the same center")
+	_check_pixel(image, Vector2(288.0, 31.0), Color.MAGENTA, "Polygon rotates with the clipped element")
+	_check_pixel(image, Vector2(250.0, 64.0), Color.BLACK, "The rotated polygon rejects the outside corner")
+	_check_pixel(image, Vector2(36.0, 105.0), Color.YELLOW, "Nested polygons paint their intersection")
+	_check_pixel(image, Vector2(24.0, 105.0), Color.BLACK, "Nested clip rejects points outside the inner polygon")
+	_check_pixel(image, Vector2(64.0, 125.0), Color.BLACK, "Nested clip rejects points outside the outer polygon")
+	_check_pixel(image, Vector2(120.0, 122.0), Color.WHITE, "A long vertex list crosses the texture row boundary")
+	_check_pixel(image, Vector2(196.0, 122.0), Color.BLACK, "A two-point polygon has no fill")
+	_check_pixel(image, Vector2(271.0, 101.0), Color.ORANGE, "Crossing edges preserve the top lobe")
+	_check_pixel(image, Vector2(271.0, 139.0), Color.ORANGE, "Crossing edges preserve the bottom lobe")
+	_check_pixel(image, Vector2(252.0, 120.0), Color.BLACK, "Crossing edges leave the sides unfilled")
+	var behind: HTMLElement = label.get_element_by_id("behind")
+	_check(label.get_element_at(Vector2(53.0, 65.0)) == behind and
+		label.get_element_at(Vector2(120.0, 44.0)) == behind and
+		label.get_element_at(Vector2(196.0, 44.0)) == label.get_element_by_id("nonzero"),
+		"Pointer hits follow concavity and the chosen fill rule")
+	_check(label.get_element_at(Vector2(36.0, 105.0)) == label.get_element_by_id("child_clip") and
+		label.get_element_at(Vector2(64.0, 125.0)) == behind, "Nested clip paths share paint and link hit geometry")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#clip { width: 168px; height: 28px; font: 20px / 24px monospace;
+			clip-path: polygon(evenodd, 0 -10px, 168px -10px, 168px 38px, 0 38px, 0 -10px,
+				24px -2px, 96px -2px, 96px 26px, 24px 26px, 24px -2px, 0 -10px); }
+	</style><div id="clip">ABCDEFGHIJK</div>""") == OK and layout.layout(Vector2i(180, 80)) == OK,
+		"Lay out text under a polygon with a hole")
+	_check(not layout.get_selection_rects(0, 1).is_empty() and layout.get_selection_rects(3, 5).is_empty()
+		and not layout.get_selection_rects(9, 10).is_empty(),
+		"Visible selection rectangles exclude the winding-rule hole")
+
+
+func _check_rounded_polygon_clip_paths() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(326, 164)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; top: 12px; width: 64px; height: 64px; }
+		#rounded { left: 12px; background: lime; font-size: 24px; --r: calc(0.5em + 4px);
+			clip-path: polygon(evenodd round var(--r), 0 0, 100% 0, 100% 100%, 0 100%);
+			clip-path: polygon(round 5%, 0 0, 100% 0, 100% 100%, 0 100%);
+			clip-path: polygon(round 0 0 0, 100% 0, 100% 100%, 0 100%);
+			clip-path: polygon(round -1px, 0 0, 100% 0, 100% 100%, 0 100%); }
+		#concave { left: 88px; background: cyan; clip-path: polygon(round 12px,
+			0 0, 64px 0, 64px 32px, 32px 32px, 32px 64px, 0 64px); }
+		#limited { left: 164px; height: 24px; background: yellow;
+			clip-path: polygon(round 100px, 0 0, 64px 0, 64px 24px, 0 24px); }
+		#duplicate { left: 240px; background: red; clip-path: polygon(round 16px,
+			0 0, 0 64px, 64px 64px, 64px 0, 64px 0, 0 0); }
+		#zero { top: 88px; left: 12px; background: white;
+			clip-path: polygon(round 0, 0 0, 100% 0, 100% 100%, 0 100%); }
+		#triangle { top: 88px; left: 88px; background: orange;
+			clip-path: polygon(round 16px, 0 0, 64px 0, 0 64px); }
+	</style><a id="behind" href="#behind"></a><a class="tile" id="rounded" href="#rounded"></a>
+	<div class="tile" id="concave"></div><div class="tile" id="limited"></div>
+	<div class="tile" id="duplicate"></div><div class="tile" id="zero"></div><div class="tile" id="triangle"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(14.0, 14.0), Color.BLACK, "Polygon rounding clips a convex corner")
+	_check_pixel(image, Vector2(19.0, 19.0), Color.LIME, "Polygon rounding keeps the inside of a circular arc")
+	_check_pixel(image, Vector2(121.0, 45.0), Color.CYAN, "Polygon rounding fills the tip of a concave notch")
+	_check_pixel(image, Vector2(128.0, 52.0), Color.BLACK, "The rounded concave notch stays open")
+	_check_pixel(image, Vector2(166.0, 14.0), Color.BLACK, "An oversized radius still rounds the corner")
+	_check_pixel(image, Vector2(186.0, 14.0), Color.YELLOW, "Short adjoining edges clamp an oversized radius")
+	_check_pixel(image, Vector2(242.0, 14.0), Color.BLACK, "Rounded polygons tolerate repeated and closing vertices")
+	_check_pixel(image, Vector2(247.0, 19.0), Color.RED, "Reversing polygon winding preserves the same rounded arc")
+	_check_pixel(image, Vector2(14.0, 90.0), Color.WHITE, "A zero rounding radius leaves the corner square")
+	_check_pixel(image, Vector2(144.0, 90.0), Color.BLACK, "An acute vertex is rounded")
+	_check_pixel(image, Vector2(127.0, 96.0), Color.ORANGE, "The acute corner radius respects its angle and edge lengths")
+	_check(label.get_element_at(Vector2(14.0, 14.0)) == label.get_element_by_id("behind")
+		and label.get_element_at(Vector2(19.0, 19.0)) == label.get_element_by_id("rounded")
+		and label.get_element_at(Vector2(121.0, 45.0)) == label.get_element_by_id("concave"),
+		"Rounded polygons share the convex and concave outlines between painting and hit testing")
+	viewport.queue_free()
+
+
+func _check_inline_svg_clip_sources() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 164)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; top: 12px; width: 80px; height: 60px; }
+		.second { top: 88px; }
+		.first { left: 12px; }
+		.middle { left: 108px; }
+		.last { left: 204px; }
+		#union { background: cyan; clip-path: url("#Ring%20and%20Bar"); }
+		#normalized { background: lime; --clip: url(#normalized_source); clip-path: var(--clip); }
+		#use_target { background: yellow; clip-path: url(#reuse); }
+		#missing { background: red; clip-path: url(#missing_source); }
+		#empty { background: blue; clip-path: url(#empty_source); }
+		#invalid { background: white; clip-path: url(#other_element); }
+		.ring { clip-rule: evenodd; }
+		.excluded { display: none; }
+	</style>
+	<svg width="0" height="0"><defs>
+		<clipPath id="Ring and Bar" class="ring">
+			<path d="M0 0H62V60H0Z M12 12H48V44H12Z"/>
+			<rect id="bar" x="29" y="24" width="44" height="10"/>
+			<rect class="excluded" x="74" width="6" height="60"/>
+		</clipPath>
+		<clipPath id="normalized_source" clipPathUnits="objectBoundingBox" transform="translate(.1 .1)">
+			<ellipse cx=".3" cy=".3" rx=".2" ry=".2"/>
+		</clipPath>
+		<polygon id="triangle" points="0,0 42,0 0,42"/>
+		<clipPath id="reuse" transform="translate(10 6)">
+			<use xlink:href="#triangle" x="4" y="3"/>
+		</clipPath>
+		<clipPath id="empty_source"/>
+	</defs></svg>
+	<span id="other_element"></span><a id="behind" href="#behind"></a>
+	<a class="tile first" id="union" href="#union"></a>
+	<div class="tile middle" id="normalized"></div><div class="tile last" id="use_target"></div>
+	<div class="tile first second" id="missing"></div><div class="tile middle second" id="empty"></div>
+	<div class="tile last second" id="invalid"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(18.0, 18.0), Color.CYAN, "Inline SVG path fills its outer ring")
+	_check_pixel(image, Vector2(34.0, 30.0), Color.BLACK, "Inherited clip-rule preserves each SVG shape's hole")
+	_check_pixel(image, Vector2(48.0, 41.0), Color.CYAN, "A sibling SVG rect fills part of the hole")
+	_check_pixel(image, Vector2(66.0, 41.0), Color.CYAN, "Overlapping SVG clipping children form a union")
+	_check_pixel(image, Vector2(89.0, 41.0), Color.BLACK, "Display-none children do not contribute to the SVG clip")
+	_check_pixel(image, Vector2(140.0, 35.0), Color.LIME, "Object bounds map the transformed unit ellipse")
+	_check_pixel(image, Vector2(140.0, 51.0), Color.BLACK, "A normalized ellipse scales each axis independently")
+	_check_pixel(image, Vector2(162.0, 35.0), Color.BLACK, "Object-bounds clipping uses the original target width")
+	_check_pixel(image, Vector2(222.0, 25.0), Color.YELLOW, "A use child references basic geometry and translates it")
+	_check_pixel(image, Vector2(209.0, 19.0), Color.BLACK, "The original unshifted triangle is not part of the clip")
+	_check_pixel(image, Vector2(20.0, 96.0), Color.RED, "A missing SVG reference leaves the element visible")
+	_check_pixel(image, Vector2(120.0, 96.0), Color.BLACK, "An empty SVG clip removes all paint")
+	_check_pixel(image, Vector2(212.0, 96.0), Color.WHITE, "A fragment on a non-clip element leaves the element visible")
+	_check(label.get_element_at(Vector2(34.0, 30.0)) == label.get_element_by_id("behind")
+		and label.get_element_at(Vector2(48.0, 41.0)) == label.get_element_by_id("union")
+		and label.get_element_at(Vector2(66.0, 41.0)) == label.get_element_by_id("union"),
+		"Pointer hits use the same independent winding fills as the SVG clip shader")
+	var bar: HTMLElement = label.get_element_by_id("bar")
+	_check(bar.set_attribute("width", "2") == OK, "Edit the hidden clip source through the DOM")
+	var normalized: HTMLElement = label.get_element_by_id("normalized")
+	_check(normalized.set_attribute("style", "width: 96px") == OK, "Resize the clipped element")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var edited: Image = viewport.get_texture().get_image()
+	_check_pixel(edited, Vector2(48.0, 41.0), Color.BLACK,
+		"SVG clip geometry is rebuilt after an attribute edit on its source")
+	_check_pixel(edited, Vector2(162.0, 35.0), Color.LIME,
+		"Object-bounds clipping is recomputed for the resized target")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#text { clip-path: url(#text_clip); width: 140px; font: 20px / 24px monospace; }
+		</style><svg><defs><clipPath id="text_clip">
+		<rect width="20" height="30"/><rect x="84" width="36" height="30"/>
+		</clipPath></defs></svg><div id="text">ABCDEFGHIJK</div>""") == OK
+		and layout.layout(Vector2i(180, 60)) == OK, "Lay out text clipped by two separate SVG children")
+	_check(not layout.get_selection_rects(0, 1).is_empty()
+		and layout.get_selection_rects(3, 5).is_empty()
+		and not layout.get_selection_rects(7, 8).is_empty(),
+		"Selection geometry respects gaps in the SVG union")
+
+
+func _check_external_svg_clip_sources() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(248, 80)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var imported: HTMLDocument = ResourceLoader.load("{EXTERNAL_CLIP_UID}") as HTMLDocument
+	_check(imported != null and not FileAccess.file_exists("res://clip-assets/import.svg"),
+		"Load an external SVG clip after the SVG and its declaring stylesheets are removed")
+	var imported_label: HTMLLabel = HTMLLabel.new()
+	imported_label.size = Vector2(64.0, 80.0)
+	imported_label.document = imported
+	viewport.add_child(imported_label)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.position = Vector2(64.0, 0.0)
+	label.size = Vector2(184.0, 80.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { position: absolute; top: 0; width: 60px; height: 60px; }
+		#live { left: 0; clip-path: url(clip-assets/local.svg#use-ring); background: lime; }
+		#missing { left: 62px; clip-path: url(clip-assets/local.svg#missing); background: yellow; }
+		#empty { left: 124px; clip-path: url(clip-assets/local.svg#source-empty); background: red; }
+	</style><svg><defs><clipPath id="use-ring"/></defs></svg>
+	<div class="tile" id="live"></div><div class="tile" id="missing"></div><div class="tile" id="empty"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(8.0, 8.0), Color.CYAN, "An imported clip resolves the nested stylesheet's path")
+	_check_pixel(image, Vector2(30.0, 30.0), Color.BLACK, "Imported SVG styles and use references stay inside their own document")
+	_check_pixel(image, Vector2(55.0, 8.0), Color.BLACK, "An imported SVG resolves its own nested clip references")
+	_check_pixel(image, Vector2(72.0, 8.0), Color.LIME, "Load a live local SVG independently of matching IDs in the HTML")
+	_check_pixel(image, Vector2(94.0, 30.0), Color.BLACK, "External SVG styles and XLink references preserve the hole")
+	_check_pixel(image, Vector2(135.0, 8.0), Color.YELLOW, "A missing ID in a valid local SVG leaves the target unclipped")
+	_check_pixel(image, Vector2(196.0, 8.0), Color.BLACK, "A valid empty external clip removes all target paint")
+	var live: HTMLElement = label.get_element_by_id("live")
+	_check(label.get_element_at(Vector2(8.0, 8.0)) == live and label.get_element_at(Vector2(30.0, 30.0)) != live,
+		"External SVG clips affect element hits")
+	viewport.queue_free()
+
+
+func _check_nested_svg_clip_sources() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(284, 156)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; top: 8px; width: 80px; height: 64px; }
+		#root_clip { left: 8px; background: cyan; clip-path: url(#normalized_outer); }
+		#child_clip { left: 100px; background: yellow; clip-path: url(#siblings); }
+		#reused { left: 192px; background: lime; clip-path: url(#reuse); }
+		#simple { left: 8px; top: 84px; background: magenta; clip-path: url(#basic); }
+		#cyclic { left: 100px; top: 84px; background: white; clip-path: url(#cycle); }
+		#empty { left: 192px; top: 84px; background: red; clip-path: url(#gone); }
+		.round { clip-path: circle(14px at center); }
+	</style><svg width="0" height="0"><defs>
+		<clipPath id="normalized_outer" clipPathUnits="objectBoundingBox" clip-path="url(#normalized_inner)">
+			<rect width=".5" height=".5"/>
+		</clipPath>
+		<clipPath id="normalized_inner" clipPathUnits="objectBoundingBox"><circle cx=".25" cy=".25" r=".25"/></clipPath>
+		<clipPath id="siblings">
+			<rect x="8" y="6" width="54" height="50" transform="translate(2 1)" clip-path="url(#right_half)"/>
+			<rect y="22" width="30" height="12"/>
+		</clipPath>
+		<clipPath id="right_half" clipPathUnits="objectBoundingBox"><rect x=".5" width=".5" height="1"/></clipPath>
+		<rect id="reusable" width="55" height="50"/>
+		<clipPath id="reuse"><use href="#reusable" x="12" y="6" clip-path="url(#slice)"/></clipPath>
+		<clipPath id="slice"><rect width="12" height="50"/></clipPath>
+		<clipPath id="basic"><rect class="round" x="10" y="6" width="60" height="48"/></clipPath>
+		<clipPath id="cycle" clip-path="url(#cycle)"><rect width="30" height="40"/></clipPath>
+		<clipPath id="gone" clip-path="url(#empty_source)"><rect width="80" height="64"/></clipPath>
+		<clipPath id="empty_source"/>
+	</defs></svg><a id="behind" href="#behind"></a>
+	<div class="tile" id="root_clip"></div><div class="tile" id="child_clip"></div>
+	<div class="tile" id="reused"></div><div class="tile" id="simple"></div>
+	<div class="tile" id="cyclic"></div><div class="tile" id="empty"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(28.0, 24.0), Color.CYAN, "Clip on a clipPath uses the original object's reference box")
+	_check_pixel(image, Vector2(12.0, 12.0), Color.BLACK, "The nested normalized path cuts the outer rectangle's corner")
+	_check_pixel(image, Vector2(118.0, 23.0), Color.BLACK, "A clip child is clipped in its own transformed coordinates")
+	_check_pixel(image, Vector2(118.0, 36.0), Color.YELLOW, "A sibling can fill the area clipped from another shape")
+	_check_pixel(image, Vector2(142.0, 23.0), Color.YELLOW, "Object-bounds clipping retains the transformed child's right half")
+	_check_pixel(image, Vector2(210.0, 23.0), Color.LIME, "User-space clipping follows use x and y translations")
+	_check_pixel(image, Vector2(222.0, 23.0), Color.BLACK, "The use instance is clipped to its translated slice")
+	_check_pixel(image, Vector2(48.0, 114.0), Color.MAGENTA, "CSS basic shapes clip SVG silhouettes")
+	_check_pixel(image, Vector2(24.0, 96.0), Color.BLACK, "The basic shape removes a corner of the SVG silhouette")
+	_check_pixel(image, Vector2(112.0, 96.0), Color.WHITE, "A self-referencing clip terminates at the cyclic edge")
+	_check_pixel(image, Vector2(140.0, 96.0), Color.BLACK, "The valid outer silhouette remains after ignoring the cycle")
+	_check_pixel(image, Vector2(206.0, 96.0), Color.BLACK, "An empty nested clip removes the whole outer silhouette")
+	_check(label.get_element_at(Vector2(118.0, 23.0)) == label.get_element_by_id("behind")
+		and label.get_element_at(Vector2(118.0, 36.0)) == label.get_element_by_id("child_clip")
+		and label.get_element_at(Vector2(28.0, 24.0)) == label.get_element_by_id("root_clip"),
+		"Nested SVG intersections and sibling unions match the painted hit regions")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#text { clip-path: url(#nested_text); width: 140px; font: 20px / 24px monospace; }
+		</style><svg><defs>
+		<clipPath id="nested_text"><rect width="136" height="30" clip-path="url(#sides)"/></clipPath>
+		<clipPath id="sides"><rect width="20" height="30"/><rect x="84" width="36" height="30"/></clipPath>
+		</defs></svg><div id="text">ABCDEFGHIJK</div>""") == OK
+		and layout.layout(Vector2i(180, 60)) == OK, "Lay out text clipped by an SVG child clip")
+	_check(not layout.get_selection_rects(0, 1).is_empty()
+		and layout.get_selection_rects(3, 5).is_empty()
+		and not layout.get_selection_rects(7, 8).is_empty(),
+		"Selection geometry respects nested intersections and gaps in the union")
+
+
+func _check_svg_text_clips() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 162)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { position: absolute; top: 8px; width: 96px; height: 70px; background: lime; }
+		.second { top: 88px; }
+		#letter { left: 8px; clip-path: url(#letter_source); }
+		#pair { left: 112px; clip-path: url(#pair_source); }
+		#rotate { left: 216px; clip-path: url(#rotate_source); }
+		#scaled { left: 8px; clip-path: url(#scaled_source); }
+		#external { left: 112px; clip-path: url(clip-assets/local.svg#letter); }
+		#reused { left: 216px; clip-path: url(#reuse_source); }
+		.centered { text-anchor: middle; }
+	</style><svg width="0" height="0"><defs>
+	<clipPath id="letter_source" font-size="52"><text id="glyph" class="centered" x="48" y="58">O</text></clipPath>
+	<clipPath id="pair_source"><text font-size="38" x="4 54" y="53"><tspan display="none">O</tspan><tspan>O</tspan>O</text></clipPath>
+	<clipPath id="rotate_source"><text font-size="38" x="68" y="17" rotate="180">O</text></clipPath>
+	<clipPath id="scaled_source" clipPathUnits="objectBoundingBox">
+		<text x=".5" y=".8" font-size=".65" text-anchor="middle">O</text>
+	</clipPath>
+	<clipPath id="reuse_source"><use href="#glyph" x="8"/></clipPath>
+	</defs></svg>
+	<div class="tile" id="letter"></div><div class="tile" id="pair"></div><div class="tile" id="rotate"></div>
+	<div class="tile second" id="scaled"></div><div class="tile second" id="external"></div>
+	<div class="tile second" id="reused"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var letter: Rect2i = _color_bounds(image, Rect2i(8, 8, 96, 70), Color.LIME)
+	_check(letter.size.x >= 24 and letter.size.y >= 30 and absi(letter.get_center().x - 56) <= 2,
+		"SVG clipping text uses the inherited font size and its middle anchor")
+	_check_pixel(image, Vector2(letter.get_center()), Color.BLACK, "The hole in O is outside the glyph silhouette")
+	var ink: Rect2i = _color_bounds(image, Rect2i(letter.position, Vector2i(letter.size.x, 1)), Color.LIME)
+	var target: HTMLElement = label.get_element_by_id("letter")
+	_check(ink.has_area() and label.get_element_at(Vector2(ink.get_center()) + Vector2(0.5, 0.5)) == target
+		and label.get_element_at(Vector2(letter.get_center())) != target, "SVG glyph ink and holes agree with hit testing")
+	var first: Rect2i = _color_bounds(image, Rect2i(112, 8, 46, 70), Color.LIME)
+	var second: Rect2i = _color_bounds(image, Rect2i(162, 8, 46, 70), Color.LIME)
+	_check(first.has_area() and second == Rect2i(first.position + Vector2i(50, 0), first.size),
+		"Per-character x positioning passes across tspan boundaries and skips display:none")
+	var rotated: Rect2i = _color_bounds(image, Rect2i(216, 8, 96, 70), Color.LIME)
+	_check(rotated.has_area() and rotated.position.y >= 23 and rotated.end.y >= 45,
+		"Per-character rotation moves the glyph below its baseline within font overshoot: %s" % [rotated])
+	var scaled: Rect2i = _color_bounds(image, Rect2i(8, 88, 96, 70), Color.LIME)
+	_check(scaled.size.x >= 30 and scaled.size.y >= 24 and absi(scaled.get_center().x - 56) <= 2,
+		"Fractional font sizes stay proportional to the object bounding box")
+	var external: Rect2i = _color_bounds(image, Rect2i(112, 88, 96, 70), Color.LIME)
+	var reused: Rect2i = _color_bounds(image, Rect2i(216, 88, 96, 70), Color.LIME)
+	_check(external == Rect2i(letter.position + Vector2i(104, 80), letter.size),
+		"Project-local SVG sources preserve text and presentation attributes")
+	_check(reused == Rect2i(letter.position + Vector2i(216, 80), letter.size),
+		"Use references preserve the text contours and offset them")
+	viewport.queue_free()
+
+
+func _check_motion_paths() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.mover { position: absolute; width: 20px; height: 10px; background: lime; }
+		#path { left: 10px; top: 12px; offset-path: path("M0 0 H80 V40");
+			offset-distance: calc(50% + 10px); offset-anchor: left top; }
+		#tangent { left: 10px; top: 50px; offset-path: path("M0 0 V60"); offset-distance: 100%; }
+		#compound { left: 160px; top: 20px; offset-path: path("M0 0 H70"); offset-distance: 30px;
+			offset-anchor: left top; offset-rotate: 0deg; transform-origin: left top; transform: translateY(8px); }
+		#reverse { left: 70px; top: 55px; offset-path: path("M0 0 H60"); offset-distance: 20px;
+			offset-anchor: left top; offset-rotate: reverse; }
+		#closed { left: 40px; top: 72px;
+			--motion: auto path("M0 0 H40 Z") -25% 0deg / left top; offset: var(--motion); }
+		#clamp { left: 100px; top: 72px; offset: right bottom path("M0 0 H40") 200% 0deg / left top; }
+		#reset { left: 180px; top: 72px; offset: path("M0 0 H50") 100% / left top; offset: center; }
+		#box { position: absolute; left: 120px; top: 100px; width: 160px; height: 90px;
+			padding: 8px; border: 4px solid blue; }
+		#ray { width: 20px; height: 20px; offset-path: ray(90deg sides contain at center) content-box;
+			offset-distance: 100%; offset-anchor: center; offset-rotate: 0deg; }
+		#polygon { offset-path: polygon(0 0, 100% 0, 100% 100%) content-box;
+			offset-distance: 50px; offset-anchor: left top; offset-rotate: 0deg; }
+		#circle { offset-path: circle(20px) content-box; offset-position: 25% 50%;
+			offset-anchor: left top; offset-rotate: 0deg; }
+		#circle_tangent { offset: circle(20px at center) content-box / left top; }
+		#box_edge { offset: padding-box 0deg / left top; }
+		#shape { offset: shape(from 0 0, hline to 50%, vline by 20px) content-box 100% 0deg / left top; }
+		#url { offset: url(clip-assets/local.svg#guide) content-box 50% 0deg / left top; }
+		#support { width: 33px; }
+		@supports (offset: path("M0 0H20") 50% reverse / center) { #support { width: 60px; } }
+		#bad { left: 240px; top: 24px; offset-path: ray(45deg contain contain); offset-anchor: normal; }
+	</style><div id="path" class="mover"></div><div id="tangent" class="mover"></div>
+	<div id="compound" class="mover"></div><div id="reverse" class="mover"></div>
+	<div id="closed" class="mover"></div><div id="clamp" class="mover"></div><div id="reset" class="mover"></div>
+	<div id="box"><div id="ray" class="mover"></div><div id="polygon" class="mover"></div>
+	<div id="circle" class="mover"></div><div id="circle_tangent" class="mover"></div>
+	<div id="box_edge" class="mover"></div><div id="shape" class="mover"></div><div id="url" class="mover"></div>
+	</div><div id="support"></div><div id="bad" class="mover"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(350, 236)) == OK, "Lay out the CSS motion path fixture")
+	var expected: Dictionary[String, Rect2] = {
+		"path": Rect2(80.0, 12.0, 20.0, 10.0),
+		"tangent": Rect2(5.0, 100.0, 10.0, 20.0),
+		"compound": Rect2(190.0, 28.0, 20.0, 10.0),
+		"reverse": Rect2(70.0, 45.0, 20.0, 10.0),
+		"closed": Rect2(60.0, 72.0, 20.0, 10.0),
+		"clamp": Rect2(140.0, 72.0, 20.0, 10.0),
+		"reset": Rect2(180.0, 72.0, 20.0, 10.0),
+		"ray": Rect2(272.0, 147.0, 20.0, 20.0),
+		"polygon": Rect2(182.0, 112.0, 20.0, 10.0),
+		"circle": Rect2(192.0, 157.0, 20.0, 10.0),
+		"circle_tangent": Rect2(222.0, 157.0, 10.0, 20.0),
+		"box_edge": Rect2(124.0, 104.0, 20.0, 10.0),
+		"shape": Rect2(212.0, 132.0, 20.0, 10.0),
+		"url": Rect2(182.0, 170.0, 20.0, 10.0),
+	}
+	for id: String in expected:
+		var actual: Rect2 = _rect(layout, id)
+		_check(actual.is_equal_approx(expected[id]), "Motion path %s resolves to %s, expected %s" % [id, actual, expected[id]])
+	_check(_rect(layout, "support").size.x == 60.0, "Feature queries accept valid motion path shorthands")
+	_check(_has_diagnostic(layout, "offset-path", "ray(45deg contain contain)", "style_element")
+		and _has_diagnostic(layout, "offset-anchor", "normal", "style_element"),
+		"Invalid motion path and anchor values trigger declaration diagnostics")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(350, 236)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(84.0, 16.0), Color.LIME, "Motion path paints at the sampled point")
+	_check_pixel(image, Vector2(14.0, 16.0), Color.BLACK, "Motion paint leaves the element's original position")
+	_check(label.get_element_at(Vector2(84.0, 16.0)) == label.get_element_by_id("path")
+		and label.get_element_at(Vector2(14.0, 16.0)) != label.get_element_by_id("path"),
+		"Motion geometry updates pointer hits")
+	viewport.queue_free()
+
+
+func _check_individual_transforms() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { position: absolute; width: 40px; height: 20px; background: lime; }
+		#separate { left: 20px; top: 20px; transform-origin: left top;
+			scale: 200% 50%; rotate: z 90deg; translate: 30px 4px 0; transform: translateX(10px); }
+		#motion { left: 100px; top: 20px; width: 24px; height: 12px; transform-origin: left top;
+			translate: 20px 5px; rotate: 90deg; scale: 2 1 100%;
+			offset: path("M0 0 H30") 100% 0deg / left top; transform: translateX(3px); }
+		.reference { left: 220px; width: 60px; height: 20px; padding: 10px; border: 5px solid lime;
+			translate: 50% 50%; scale: 200% calc(30% + 20%); transform-origin: left top 20px; }
+		#content { top: 20px; transform-box: content-box; }
+		#border { top: 70px; transform-box: border-box; }
+		#fill { top: 118px; transform-box: fill-box; }
+		#stroke { top: 166px; transform-box: stroke-box; }
+		#list { left: 220px; top: 220px; width: 60px; padding: 10px; border: 5px solid lime;
+			transform-box: content-box; transform: translate(100%, 100%); }
+		#axis { left: 80px; top: 220px; width: 30px; height: 10px;
+			transform-origin: left top; rotate: 90deg 0 0 -2; }
+		#singular { left: 25px; top: 157px; scale: 0; }
+		#reset { left: 128px; top: 192px; translate: 99px; translate: none; }
+		#invalid { left: 90px; top: 152px; translate: 5px; translate: 8px 0 2%;
+			rotate: q 45deg; scale: 1 1 2 3; transform-box: padding-box; }
+		#percent { left: 25px; top: 200px; --shift: calc(50% + 2px); translate: var(--shift); }
+		#identity, #inert { width: 65px; height: 20px; margin: 25px 0 0 155px; }
+		#identity { translate: 0px; }
+		#inert { translate: none; transform-box: content-box; }
+		#fixed_local, #fixed_viewport { position: fixed; width: 4px; height: 4px; }
+		#fixed_local { left: 5px; top: 4px; }
+		#fixed_viewport { left: 9px; top: 7px; }
+	</style><div id="identity"><div id="fixed_local"></div></div><div id="inert"><div id="fixed_viewport"></div></div>
+	<div id="separate" class="tile"></div><div id="motion" class="tile"></div>
+	<div id="content" class="tile reference"></div><div id="border" class="tile reference"></div>
+	<div id="fill" class="tile reference"></div><div id="stroke" class="tile reference"></div>
+	<div id="list" class="tile"></div><div id="axis" class="tile"></div><div id="singular" class="tile"></div>
+	<div id="reset" class="tile"></div><div id="invalid" class="tile"></div><div id="percent" class="tile"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(480, 320)) == OK, "Lay out independent CSS transforms")
+	var expected: Dictionary[String, Rect2] = {
+		"separate": Rect2(40.0, 44.0, 10.0, 80.0),
+		"motion": Rect2(108.0, 91.0, 12.0, 48.0),
+		"content": Rect2(235.0, 37.5, 180.0, 25.0),
+		"border": Rect2(265.0, 95.0, 180.0, 25.0),
+		"fill": Rect2(235.0, 135.5, 180.0, 25.0),
+		"stroke": Rect2(265.0, 191.0, 180.0, 25.0),
+		"list": Rect2(280.0, 240.0, 90.0, 50.0),
+		"axis": Rect2(80.0, 190.0, 10.0, 30.0),
+		"reset": Rect2(128.0, 192.0, 40.0, 20.0),
+		"invalid": Rect2(95.0, 152.0, 40.0, 20.0),
+		"percent": Rect2(47.0, 200.0, 40.0, 20.0),
+		"fixed_viewport": Rect2(9.0, 7.0, 4.0, 4.0),
+	}
+	for id: String in expected:
+		var actual: Rect2 = _rect(layout, id)
+		_check(actual.is_equal_approx(expected[id]), "Individual transform %s resolves to %s, expected %s" % [id, actual, expected[id]])
+	_check(_rect(layout, "fixed_local").position == _rect(layout, "identity").position + Vector2(5.0, 4.0),
+		"An explicit identity transform establishes a fixed containing block")
+	_check(not _rect(layout, "singular").has_area(), "A singular independent scale hides the element")
+	_check(_has_diagnostic(layout, "translate", "8px 0 2%", "style_element")
+		and _has_diagnostic(layout, "rotate", "q 45deg", "style_element")
+		and _has_diagnostic(layout, "scale", "1 1 2 3", "style_element")
+		and _has_diagnostic(layout, "transform-box", "padding-box", "style_element"),
+		"Malformed transforms and invalid reference boxes participate in diagnostics")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(480, 320)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(44.0, 55.0), Color.LIME, "Paint follows independent transforms")
+	_check_pixel(image, Vector2(25.0, 25.0), Color.BLACK, "The transform moves paint away from the original layout box")
+	_check(label.get_element_at(Vector2(44.0, 55.0)) == label.get_element_by_id("separate")
+		and label.get_element_at(Vector2(25.0, 25.0)) != label.get_element_by_id("separate"),
+		"Hit testing follows the composed transformation")
+	viewport.queue_free()
+
+
+func _check_flat_3d_transforms() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { position: absolute; width: 40px; height: 20px; background: lime; transform-origin: left top; }
+		#tilt { left: 20px; top: 20px; transform: rotate3d(0, 200, 0, 60deg); }
+		#pivot { left: 100px; top: 20px; transform-origin: left top 20px; transform: rotateX(60deg); }
+		#depth { left: 20px; top: 60px; transform: rotateY(90deg) translateZ(25px) rotateY(-90deg); }
+		#individual { left: 100px; top: 60px; translate: 4px 2px 12px; rotate: y 90deg; scale: 1 1 2;
+			transform: translateZ(calc(3px + 2px)) rotateY(-90deg); }
+		#parent { left: 20px; top: 100px; transform: rotateY(60deg); transform-style: flat; }
+		#nested { left: 0; top: 0; transform: rotateY(60deg); }
+		#matrix { left: 100px; top: 100px; transform: matrix3d(1,0,0,0, 0,2,0,0, 0,0,2,0, 20,10,6,2); }
+		#under, #hidden { left: 20px; top: 150px; }
+		#under { background: blue; }
+		#hidden { transform-origin: center; transform: rotateY(180deg); backface-visibility: hidden; }
+		#hidden_child { left: 0; top: 0; }
+		#shown { left: 80px; top: 150px; transform-origin: center; transform: rotateY(180deg); }
+		#mirror { left: 140px; top: 150px; transform-origin: center; transform: scaleX(-1);
+			backface-visibility: hidden; }
+		#singular { left: 200px; top: 150px; transform: scaleZ(0); }
+		#edge { left: 260px; top: 150px; transform: rotateY(90deg); }
+		#fallback { left: 20px; top: 190px; transform: translate3d(5px, 0, 10px);
+			transform: matrix3d(1,0,0,0); }
+		@supports (transform: scale3d(1, 1, 2)) { #fallback { width: 45px; } }
+		#scroll { left: 20px; top: 230px; transform-origin: center;
+			transform: translateX(400px) rotateY(180deg); backface-visibility: hidden; }
+	</style>
+	<div id="tilt" class="tile"></div><div id="pivot" class="tile"></div>
+	<div id="depth" class="tile"></div><div id="individual" class="tile"></div>
+	<div id="parent" class="tile"><div id="nested" class="tile"></div></div><div id="matrix" class="tile"></div>
+	<div id="under" class="tile"></div><div id="hidden" class="tile"><div id="hidden_child" class="tile"></div></div>
+	<div id="shown" class="tile"></div><div id="mirror" class="tile"></div><div id="singular" class="tile"></div>
+	<div id="edge" class="tile"></div><div id="fallback" class="tile"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source + '<div id="scroll" class="tile"></div>') == OK
+		and layout.layout(Vector2i(320, 260)) == OK, "Lay out affine 3D transforms")
+	var expected: Dictionary[String, Rect2] = {
+		"tilt": Rect2(20.0, 20.0, 20.0, 20.0),
+		"pivot": Rect2(100.0, 20.0 + sqrt(3.0) * 10.0, 40.0, 10.0),
+		"depth": Rect2(45.0, 60.0, 40.0, 20.0),
+		"individual": Rect2(114.0, 62.0, 80.0, 20.0),
+		"nested": Rect2(20.0, 100.0, 10.0, 20.0),
+		"matrix": Rect2(110.0, 105.0, 20.0, 20.0),
+		"hidden": Rect2(20.0, 150.0, 40.0, 20.0),
+		"singular": Rect2(200.0, 150.0, 40.0, 20.0),
+		"edge": Rect2(260.0, 150.0, 0.0, 20.0),
+		"fallback": Rect2(25.0, 190.0, 45.0, 20.0),
+	}
+	for id: String in expected:
+		var actual: Rect2 = _rect(layout, id)
+		_check(actual.is_equal_approx(expected[id]), "Flat 3D transform %s resolves to %s, expected %s" % [id, actual, expected[id]])
+	_check(layout.get_content_size().x >= 460, "A hidden back face still contributes to scrollable overflow")
+	_check(_has_diagnostic(layout, "transform", "matrix3d(1 , 0 , 0 , 0)", "style_element"),
+		"A malformed matrix leaves the earlier valid transform in effect")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 260)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(30.0, 160.0), Color.BLUE, "A hidden back face leaves the underlying element visible")
+	_check_pixel(image, Vector2(90.0, 160.0), Color.LIME, "A back face is visible by default")
+	_check_pixel(image, Vector2(150.0, 160.0), Color.LIME, "A 2D mirror keeps its front face visible")
+	_check_pixel(image, Vector2(215.0, 160.0), Color.BLACK, "A singular 3D transform suppresses paint")
+	_check(label.get_element_at(Vector2(30.0, 160.0)) == label.get_element_by_id("under"),
+		"A hidden back face and its descendants leave the underlying element hittable")
+	_check(label.get_element_at(Vector2(150.0, 160.0)) == label.get_element_by_id("mirror"),
+		"A reflected 2D element with backface-visibility hidden remains hittable")
+	_check(label.get_element_at(Vector2(215.0, 160.0)) != label.get_element_by_id("singular"),
+		"A singular 3D transform suppresses hits")
+	viewport.queue_free()
+
+
+func _check_perspective_transforms() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { display: block; position: absolute; width: 40px; height: 20px; background: lime; transform-origin: left top; }
+		#tilt { left: 20px; top: 20px; width: 80px; height: 60px;
+			transform: perspective(var(--depth, 100px)) rotateY(60deg); color: lime; }
+		#matrix { left: 310px; top: 20px; transform: matrix3d(1,0,0,.005, 0,1,0,0, 0,0,1,0, 0,0,0,1); }
+		#parent { position: absolute; left: 110px; top: 20px; width: 160px; height: 95px;
+			perspective: 100px; perspective-origin: right 80px bottom 75px; }
+		#child { position: fixed; left: 90px; top: 20px; transform: translateZ(50px); }
+		#behind { left: 20px; top: 120px; transform: perspective(100px) translateZ(200px); }
+		#rounded { left: 110px; top: 120px; width: 80px; height: 70px; background: none;
+			border-radius: 20px; overflow: hidden; transform: perspective(120px) rotateY(-35deg); }
+		#rounded_child { left: 0; top: 0; width: 100%; height: 100%; opacity: .5; }
+		#outer { left: 235px; top: 120px; width: 80px; height: 40px; background: none;
+			transform: matrix3d(1,0,0,.03, 0,1,0,0, 0,0,1,0, 0,0,0,1); }
+		#inner { left: 0; top: 0; width: 80px; height: 40px;
+			transform: matrix3d(1,0,0,-.02, 0,1,0,0, 0,0,1,0, 0,0,0,1); }
+		#cross { left: 20px; top: 205px; width: 80px; height: 30px; transform: perspective(45px) rotateY(-60deg); }
+		#invalid { left: 310px; top: 130px; perspective: -9px; perspective-origin: left 1px top 2px 4px;
+			transform: perspective(none) translateX(5px); transform: perspective(50%); }
+	</style>
+	<a id="tilt" class="tile" href="#child">Tilt</a><div id="matrix" class="tile"></div>
+	<div id="parent"><div id="child" class="tile"></div></div><div id="behind" class="tile"></div>
+	<div id="rounded" class="tile"><div id="rounded_child" class="tile"></div></div><div id="invalid" class="tile"></div>
+	<div id="outer" class="tile"><div id="inner" class="tile"></div></div>
+	<div id="cross" class="tile"></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(360, 250)) == OK, "Lay out CSS perspective")
+	var width: float = 40.0 / (1.0 + 0.4 * sqrt(3.0))
+	var expected: Dictionary[String, Rect2] = {
+		"tilt": Rect2(20.0, 20.0, width, 60.0),
+		"matrix": Rect2(310.0, 20.0, 40.0 / 1.2, 20.0),
+		"child": Rect2(210.0, 40.0, 80.0, 40.0),
+		"invalid": Rect2(315.0, 130.0, 40.0, 20.0),
+	}
+	for id: String in expected:
+		var actual: Rect2 = _rect(layout, id)
+		_check(actual.is_equal_approx(expected[id]), "Perspective transform %s resolves to %s, expected %s" % [id, actual, expected[id]])
+	_check(not _rect(layout, "behind").has_area(), "A plane behind the viewer has no visible rectangle")
+	_check(layout.get_content_size().x > 360, "A plane crossing the horizon extends scrollable overflow")
+	var offset: int = layout.get_plain_text().find("Tilt")
+	var selected: Array[Rect2] = layout.get_selection_rects(offset, offset + 4)
+	_check(offset >= 0 and selected.size() == 1 and _rect(layout, "tilt").encloses(selected[0]),
+		"Text selection geometry follows the perspective projection")
+	_check(_has_diagnostic(layout, "perspective", "-9px", "style_element")
+		and _has_diagnostic(layout, "perspective-origin", "left 1px top 2px 4px", "style_element")
+		and _has_diagnostic(layout, "transform", "perspective(50%)", "style_element"),
+		"Perspective diagnostics reject negative distances, percentages and malformed origins")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(360, 250)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(28.0, 45.0), Color.LIME, "Projective link paint follows its plane")
+	_check_pixel(image, Vector2(41.0, 75.0), Color.BLACK, "The unpainted corner of the projected bounds stays empty")
+	_check_pixel(image, Vector2(230.0, 55.0), Color.LIME, "Parent perspective projects a fixed child about the configured origin")
+	_check_pixel(image, Vector2(30.0, 130.0), Color.BLACK, "Paint rejects a plane behind the viewer")
+	_check_pixel(image, Vector2(112.0, 122.0), Color.BLACK, "Perspective preserves a rounded overflow clip")
+	_check_pixel(image, Vector2(155.0, 150.0), Color(0.0, 0.5, 0.0), "Perspective composites opacity inside the same clip")
+	_check_pixel(image, Vector2(260.0, 135.0), Color.LIME, "Nested projection paints the front of both planes")
+	_check_pixel(image, Vector2(273.0, 135.0), Color.BLACK, "Nested projection does not paint through an ancestor's horizon")
+	_check_pixel(image, Vector2(180.0, 218.0), Color.LIME, "The front side of a horizon-crossing plane remains painted")
+	_check(label.get_element_at(Vector2(28.0, 45.0)) == label.get_element_by_id("tilt")
+		and label.get_element_at(Vector2(41.0, 75.0)) != label.get_element_by_id("tilt"),
+		"Perspective link hit testing follows the projected quadrilateral")
+	_check(label.get_element_at(Vector2(180.0, 218.0)) == label.get_element_by_id("cross"),
+		"Perspective hit testing retains the visible side of a horizon-crossing plane")
+	_check(label.get_element_at(Vector2(260.0, 135.0)) == label.get_element_by_id("inner")
+		and label.get_element_at(Vector2(273.0, 135.0)) != label.get_element_by_id("inner"),
+		"Nested projection also rejects hits beyond the ancestor horizon")
+
+	label.hide()
+	var standalone: HTMLLayout = HTMLLayout.new()
+	_check(standalone.parse("""<!doctype html><body style="margin:0;background:black">
+		<div style="width:80px;height:60px;background:lime;transform-origin:top left;
+		transform:perspective(100px) rotateY(60deg)"></div>""") == OK
+		and standalone.layout(viewport.size) == OK, "Lay out projected content for an independent canvas")
+	var canvas: Node2D = Node2D.new()
+	canvas.position = Vector2(500.0, 0.0)
+	canvas.draw.connect(func() -> void: standalone.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	canvas.position = Vector2.ZERO
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(8.0, 20.0), Color.LIME,
+		"A CanvasItem can move projected content into view without requesting a redraw")
+	viewport.queue_free()
+
+
+func _check_preserved_3d_contexts() -> void:
+	var source: String = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.scene { position: absolute; transform-style: preserve-3d; }
+		.face { position: absolute; width: 48px; height: 24px; background: lime; }
+		#shared, #flat, #clipped { top: 16px; width: 80px; height: 44px; transform-origin: left top; transform: rotateY(60deg); }
+		#shared { left: 20px; } #flat { left: 120px; overflow: hidden; } #clipped { left: 220px; overflow: clip; }
+		.cancel_rotation { left: 0; top: 0; transform-origin: left top; transform: rotateY(-60deg); }
+		#camera { position: absolute; left: 320px; top: 16px; width: 80px; height: 60px;
+			perspective: 200px; perspective-origin: left top; }
+		#rig { left: 8px; top: 8px; width: 60px; height: 30px; transform: translateZ(20px); }
+		#lens { left: 0; top: 0; width: 32px; height: 20px; transform: translateZ(30px); }
+		#depth, #crossing, #coplanar { top: 80px; width: 120px; height: 60px; background: blue; }
+		#depth { left: 20px; } #crossing { left: 160px; } #coplanar { left: 300px; }
+		#near, #far, #tie_first, #tie_last { left: 8px; top: 8px; width: 80px; height: 36px; }
+		#near { transform: translateZ(20px); z-index: -5; }
+		#far { background: red; transform: translateZ(-20px); z-index: 10; }
+		#negative { left: 98px; top: 8px; width: 16px; transform: translateZ(-10px); }
+		#slant_left, #slant_right { left: 10px; top: 8px; width: 100px; height: 40px; }
+		#slant_left { transform: rotateY(45deg); }
+		#slant_right { transform: rotateY(-45deg); background: red; opacity: .5; }
+		#tie_first { transform: translateZ(4px); z-index: -1; }
+		#tie_last { transform: translateZ(4px); z-index: 1; background: yellow; }
+		#flip { left: 20px; top: 170px; width: 48px; height: 24px; transform: rotateY(180deg); }
+		#front_face, #rear_face { left: 0; top: 0; backface-visibility: hidden; }
+		#rear_face { transform: rotateY(180deg); background: red; }
+		#isolated { left: 120px; top: 170px; width: 80px; height: 50px; }
+		#flattening_face { left: 0; top: 0; width: 80px; height: 50px; transform: translateZ(-10px); opacity: .8; }
+		#nested_context { left: 0; top: 0; width: 80px; height: 50px; }
+		#nested_front { left: 0; top: 0; width: 80px; height: 50px; background: red; transform: translateZ(200px); }
+		#outer_front { left: 8px; top: 8px; width: 64px; height: 36px; transform: translateZ(5px); z-index: -1; }
+		#hidden_scene { left: 230px; top: 170px; width: 48px; height: 24px; transform: rotateY(180deg);
+			backface-visibility: hidden; }
+		#hidden_scene_child { left: 0; top: 0; transform: rotateY(180deg); }
+	</style>
+	<div class="scene" id="shared"><div id="shared_child" class="face cancel_rotation"></div></div>
+	<div class="scene" id="flat"><div id="flat_child" class="face cancel_rotation"></div></div>
+	<div class="scene" id="clipped"><div id="clipped_child" class="face cancel_rotation"></div></div>
+	<div id="camera"><div class="scene" id="rig"><div id="lens" class="face"></div></div></div>
+	<div class="scene" id="depth"><div id="near" class="face"></div><div id="far" class="face"></div>
+		<div id="negative" class="face"></div></div>
+	<div class="scene" id="crossing"><div id="slant_left" class="face"></div><div id="slant_right" class="face"></div></div>
+	<div class="scene" id="coplanar"><div id="tie_last" class="face"></div><div id="tie_first" class="face"></div></div>
+	<div class="scene" id="flip"><div id="front_face" class="face"></div><div id="rear_face" class="face"></div></div>
+	<div class="scene" id="isolated"><div id="outer_front" class="face"></div>
+		<div class="scene" id="flattening_face"><div class="scene" id="nested_context">
+			<div id="nested_front" class="face"></div></div></div></div>
+	<div class="scene" id="hidden_scene"><div id="hidden_scene_child" class="face"></div></div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(440, 245)) == OK, "Lay out preserved 3D contexts")
+	var expected: Dictionary[String, Rect2] = {
+		"shared_child": Rect2(20.0, 16.0, 48.0, 24.0),
+		"flat_child": Rect2(120.0, 16.0, 12.0, 24.0),
+		"clipped_child": Rect2(220.0, 16.0, 48.0, 24.0),
+		"lens": Rect2(320.0 + 8.0 / 0.75, 16.0 + 8.0 / 0.75, 32.0 / 0.75, 20.0 / 0.75),
+	}
+	for id: String in expected:
+		var actual: Rect2 = _rect(layout, id)
+		_check(actual.is_equal_approx(expected[id]), "3D context geometry %s resolves to %s, expected %s" % [id, actual, expected[id]])
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(440, 245)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = source
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(45.0, 28.0), Color.LIME, "Nested transformations cancel in a shared 3D context")
+	_check_pixel(image, Vector2(144.0, 28.0), Color.BLACK, "Scrollable overflow flattens the child")
+	_check_pixel(image, Vector2(245.0, 28.0), Color.LIME, "Overflow clip keeps the shared depth context inside its clip")
+	_check_pixel(image, Vector2(350.0, 36.0), Color.LIME, "Ancestor perspective sees both Z translations")
+	_check_pixel(image, Vector2(40.0, 105.0), Color.LIME, "Depth beats z-index for overlapping planes in the same context")
+	_check_pixel(image, Vector2(125.0, 100.0), Color.BLUE, "The root background participates in depth ordering")
+	_check_pixel(image, Vector2(195.0, 105.0), Color.LIME, "Intersection shows the left plane on the left")
+	_check_pixel(image, Vector2(245.0, 105.0), Color(0.5, 0.0, 0.5), "Intersection blends the right plane on the right")
+	_check_pixel(image, Vector2(330.0, 105.0), Color.YELLOW, "Coplanar faces use CSS paint order")
+	_check_pixel(image, Vector2(45.0, 182.0), Color.RED, "Back-face visibility uses the accumulated matrix")
+	_check_pixel(image, Vector2(140.0, 192.0), Color.LIME, "A nested scene stays on the enclosing flattened plane")
+	_check_pixel(image, Vector2(250.0, 182.0), Color.BLACK, "A hidden back face hides the preserving subtree")
+	var hit_cases: Dictionary[Vector2, String] = {
+		Vector2(40.0, 105.0): "near",
+		Vector2(125.0, 100.0): "depth",
+		Vector2(195.0, 105.0): "slant_left",
+		Vector2(245.0, 105.0): "slant_right",
+		Vector2(330.0, 105.0): "tie_last",
+		Vector2(45.0, 182.0): "rear_face",
+		Vector2(140.0, 192.0): "outer_front",
+	}
+	for point: Vector2 in hit_cases:
+		_check(label.get_element_at(point) == label.get_element_by_id(hit_cases[point]),
+			"Pointer targeting follows the top 3D plane at %s" % point)
+	_check(label.get_element_at(Vector2(250.0, 182.0)) != label.get_element_by_id("hidden_scene_child"),
+		"A hidden preserving subtree has no pointer targets")
+	viewport.queue_free()
+
+
+func _check_svg_text_path_clips() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(424, 280)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		.tile { position: absolute; top: 8px; width: 96px; height: 84px; background: lime; }
+		.row2 { top: 100px; } .row3 { top: 192px; }
+		.c1 { left: 8px; } .c2 { left: 112px; } .c3 { left: 216px; } .c4 { left: 320px; }
+		#flat { clip-path: url(#flat_source); }
+		#calibrated { clip-path: url(#calibrated_source); }
+		#inline { clip-path: url(#inline_source); }
+		#external { clip-path: url(clip-assets/local.svg#path-letter); }
+		#vertical { clip-path: url(#vertical_source); }
+		#reverse { clip-path: url(#reverse_source); }
+		#closed { clip-path: url(#closed_source); }
+		#open { clip-path: url(#open_source); }
+		#gap { clip-path: url(#gap_source); }
+		#curve { clip-path: url(#curve_source); }
+		#after { clip-path: url(#after_source); }
+		#invalid_path { clip-path: url(#invalid_source); }
+	</style><svg width="0" height="0"><defs font-size="48">
+		<path id="guide" d="M5 29 H45" transform="scale(2)" pathLength="20"/>
+		<line id="baseline" x1="10" y1="58" x2="90" y2="58"/>
+		<clipPath id="flat_source"><text x="50" y="58" text-anchor="middle">O</text></clipPath>
+		<clipPath id="calibrated_source"><text text-anchor="middle">
+			<textPath href="#guide" startOffset="10">O</textPath>
+		</text></clipPath>
+		<clipPath id="inline_source"><text text-anchor="middle">
+			<textPath href="#unused" path="M10 58 H90 Q 20" startOffset="50%">O</textPath>
+		</text></clipPath>
+		<clipPath id="vertical_source"><text text-anchor="middle">
+			<textPath path="M30 4 V76" startOffset="50%"><tspan>O</tspan></textPath>
+		</text></clipPath>
+		<clipPath id="reverse_source"><text text-anchor="middle">
+			<textPath path="M10 17 H90" startOffset="50%" side="right">O</textPath>
+		</text></clipPath>
+		<clipPath id="closed_source"><text><textPath path="M20 56 H80 V72 H20 Z" startOffset="100%">O</textPath></text></clipPath>
+		<clipPath id="open_source"><text><textPath path="M20 56 H80 V72 H20 V56" startOffset="100%">O</textPath></text></clipPath>
+		<clipPath id="gap_source"><text text-anchor="middle">
+			<textPath path="M10 58 H30 M54 58 H90" startOffset="50%">O</textPath>
+		</text></clipPath>
+		<clipPath id="curve_source"><text text-anchor="middle">
+			<textPath path="M10 70 C10 20 90 20 90 70" startOffset="50%">O</textPath>
+		</text></clipPath>
+		<clipPath id="after_source"><text font-size="30"><textPath path="M5 58 H55" startOffset="100%">O</textPath>O</text></clipPath>
+		<clipPath id="invalid_source"><text><textPath href="#flat_source">O</textPath></text></clipPath>
+	</defs></svg>
+	<div id="flat" class="tile c1"></div><div id="calibrated" class="tile c2"></div>
+	<div id="inline" class="tile c3"></div><div id="external" class="tile c4"></div>
+	<div id="vertical" class="tile c1 row2"></div><div id="reverse" class="tile c2 row2"></div>
+	<div id="closed" class="tile c3 row2"></div><div id="open" class="tile c4 row2"></div>
+	<div id="gap" class="tile c1 row3"></div><div id="curve" class="tile c2 row3"></div>
+	<div id="after" class="tile c3 row3"></div><div id="invalid_path" class="tile c4 row3"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var flat: Rect2i = _color_bounds(image, Rect2i(8, 8, 96, 84), Color.LIME)
+	_check(flat.has_area(), "The straight SVG glyph reference is visible")
+	var calibrated: Rect2i = _color_bounds(image, Rect2i(112, 8, 96, 84), Color.LIME)
+	_check(calibrated == Rect2i(flat.position + Vector2i(104, 0), flat.size),
+		"Path transforms change the measured path without scaling glyphs, and pathLength calibrates startOffset")
+	var inline_path: Rect2i = _color_bounds(image, Rect2i(216, 8, 96, 84), Color.LIME)
+	_check(inline_path == Rect2i(flat.position + Vector2i(208, 0), flat.size),
+		"Inline path data uses the valid segment prefix and resolves percentage startOffset")
+	var external: Rect2i = _color_bounds(image, Rect2i(320, 8, 96, 84), Color.LIME)
+	_check(external == Rect2i(flat.position + Vector2i(312, 0), flat.size),
+		"External SVG textPath resolves a basic shape in its own document")
+	var vertical: Rect2i = _color_bounds(image, Rect2i(8, 100, 96, 84), Color.LIME)
+	_check(vertical.has_area() and vertical.position.x >= 36 and vertical.end.x > 61,
+		"A vertical guide rotates the horizontal glyph around its own baseline")
+	_check_pixel(image, Vector2(vertical.get_center()), Color.BLACK, "The letter hole remains transparent on a path")
+	var top: Rect2i = _color_bounds(image, Rect2i(vertical.position, Vector2i(vertical.size.x, 1)), Color.LIME)
+	var target: HTMLElement = label.get_element_by_id("vertical")
+	_check(top.has_area() and label.get_element_at(Vector2(top.get_center()) + Vector2(0.5, 0.5)) == target
+		and label.get_element_at(Vector2(vertical.get_center())) != target, "Path-positioned glyphs share geometry with hit testing")
+	var reverse: Rect2i = _color_bounds(image, Rect2i(112, 100, 96, 84), Color.LIME)
+	_check(reverse.has_area() and reverse.position.y >= 115 and reverse.end.y > 145,
+		"Reversing the guide places the upside-down glyph on the other side")
+	var closed: Rect2i = _color_bounds(image, Rect2i(216, 100, 96, 84), Color.LIME)
+	var open: Rect2i = _color_bounds(image, Rect2i(320, 100, 96, 84), Color.LIME)
+	_check(closed.has_area() and not open.has_area(),
+		"Text wraps across closepath and stays hidden beyond an open subpath")
+	var gap: Rect2i = _color_bounds(image, Rect2i(8, 192, 96, 84), Color.LIME)
+	_check(gap == Rect2i(flat.position + Vector2i(12, 184), flat.size), "Moves between subpaths add no distance")
+	var curve: Rect2i = _color_bounds(image, Rect2i(112, 192, 96, 84), Color.LIME)
+	_check(curve.has_area() and absi(curve.get_center().x - 162) <= 2 and curve.end.y < 233,
+		"A cubic guide places the letter at half the measured curve length")
+	var after: Rect2i = _color_bounds(image, Rect2i(216, 192, 96, 84), Color.LIME)
+	_check(after.has_area() and after.position.x >= 270 and after.end.x < 302,
+		"Plain text after textPath begins at the end of the path")
+	_check(not _color_bounds(image, Rect2i(320, 192, 96, 84), Color.LIME).has_area(),
+		"An invalid guide produces no glyph outline")
+	viewport.queue_free()
+
+
+func _check_svg_clip_paths() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(324, 188)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; box-sizing: border-box; width: 64px; height: 64px; }
+		.top { top: 10px; } .bottom { top: 94px; }
+		#curves { left: 12px; background: red; transform: scale(1.1); transform-origin: 0 0;
+			--shape: path("M0 32 C0 12 12 0 32 0 S64 12 64 32 Q64 64 32 64 T0 32 Z");
+			clip-path: var(--shape); }
+		#arc { left: 88px; background: lime; clip-path: path("M6 32 A26 20 0 0 1 58 32 a26 20 0 01-52 0z"); }
+		#corrected { left: 164px; background: magenta; clip-path: path("M6 32 A10 6 0 0 1 58 32 A10 6 0 0 1 6 32Z"); }
+		#large { left: 240px; background: orange; clip-path: path("M54 32 A22 22 0 1 1 32 10 L32 32 Z"); }
+		#hole { left: 12px; background: cyan; clip-path: path(evenodd, "M0 0H64V64H0Z M16 16h32v32h-32"); }
+		#solid { left: 88px; background: blue; clip-path: path(nonzero, "M0 0H64V64H0Z M16 16h32v32h-32"); }
+		#reference { left: 164px; background: yellow; border: 4px solid red;
+			clip-path: path("m10 10 30 0 0 30-30 0") padding-box; }
+		#invalid { left: 240px; background: white; clip-path: path("M.5.5 4e1 0 0 4e1");
+			clip-path: path("M0 0 A10 10 0 2 1 20 20"); }
+	</style><a id="behind" href="#behind"></a>
+	<div class="tile top" id="curves"></div><div class="tile top" id="arc"></div>
+	<div class="tile top" id="corrected"></div><div class="tile top" id="large"></div>
+	<div class="tile bottom" id="hole"></div><div class="tile bottom" id="solid"></div>
+	<div class="tile bottom" id="reference"></div><div class="tile bottom" id="invalid"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(26.0, 23.0), Color.RED, "Cubic and smooth cubic commands paint the upper curve")
+	_check_pixel(image, Vector2(24.0, 64.0), Color.RED, "Quadratic and smooth quadratic commands paint the lower curve")
+	_check_pixel(image, Vector2(14.0, 12.0), Color.BLACK, "The transformed Bézier path clips its corner")
+	_check_pixel(image, Vector2(120.0, 26.0), Color.LIME, "Absolute and relative arcs fill an ellipse")
+	_check_pixel(image, Vector2(120.0, 18.0), Color.BLACK, "An elliptical arc excludes the area above its radius")
+	_check_pixel(image, Vector2(196.0, 29.0), Color.MAGENTA, "An arc expands radii too small to reach its endpoint")
+	_check_pixel(image, Vector2(272.0, 58.0), Color.ORANGE, "The large-arc flag includes the lower part of the circle")
+	_check_pixel(image, Vector2(285.0, 29.0), Color.BLACK, "The sweep leaves a cutout next to the closing segment")
+	_check_pixel(image, Vector2(18.0, 125.0), Color.CYAN, "The first subpath is filled around the hole")
+	_check_pixel(image, Vector2(44.0, 125.0), Color.BLACK, "An implicitly closed subpath can form an even-odd hole")
+	_check_pixel(image, Vector2(120.0, 125.0), Color.BLUE, "Nonzero winding fills both same-direction subpaths")
+	_check_pixel(image, Vector2(197.0, 125.0), Color.YELLOW, "Relative move and repeated coordinates use the padding-box origin")
+	_check_pixel(image, Vector2(175.0, 125.0), Color.BLACK, "The SVG path does not start at the border edge")
+	_check_pixel(image, Vector2(250.0, 104.0), Color.WHITE, "Malformed SVG arc flags preserve the last valid clip-path declaration")
+	_check_pixel(image, Vector2(287.0, 137.0), Color.BLACK, "Adjacent decimals and exponents parse without extending the triangular clip")
+	_check(label.get_element_at(Vector2(44.0, 125.0)) == label.get_element_by_id("behind") and
+		label.get_element_at(Vector2(120.0, 125.0)) == label.get_element_by_id("solid") and
+		label.get_element_at(Vector2(120.0, 26.0)) == label.get_element_by_id("arc"),
+		"Pointer hits share the arc and multi-contour winding geometry")
+	var reference: HTMLElement = label.get_element_by_id("reference")
+	_check(reference.set_attribute("style", "width: 80px; height: 80px") == OK, "Resize the clipped element")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(197.0, 125.0), Color.YELLOW, "Path coordinates retain their CSS pixel size")
+	_check_pixel(image, Vector2(215.0, 125.0), Color.BLACK, "A larger reference box does not scale path coordinates")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>
+		body { margin: 0; }
+		#clip { width: 168px; height: 28px; font: 20px / 24px monospace;
+			clip-path: path(evenodd, "M0 -10H168V38H0Z M24 -2H96V26H24"); }
+	</style><div id="clip">ABCDEFGHIJK</div>""") == OK and layout.layout(Vector2i(180, 80)) == OK,
+		"Lay out text clipped by multiple SVG contours")
+	_check(not layout.get_selection_rects(0, 1).is_empty() and layout.get_selection_rects(3, 5).is_empty()
+		and not layout.get_selection_rects(9, 10).is_empty(), "Selection intervals exclude the SVG path hole")
+
+
+func _check_responsive_clip_shapes() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 170)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#behind { position: absolute; inset: 0; display: block; }
+		.tile { position: absolute; box-sizing: border-box; width: 64px; height: 64px; }
+		.top { top: 12px; } .bottom { top: 94px; }
+		#responsive { left: 12px; background: lime; border: 4px solid red; --pad: 5px;
+			clip-path: content-box shape(from var(--pad) top, hline to calc(50% + var(--pad)),
+				vline to bottom, hline by -50%, close); }
+		#curves { left: 108px; background: red;
+			clip-path: shape(from left center, curve to center top with 0px 12px from origin / -20px 0px from end,
+				smooth to right center with 64px 12px, curve by -50% 50% with 0px 32px from start,
+				smooth by -50% -50%, close); }
+		#arcs { left: 188px; background: magenta;
+			clip-path: shape(from 10% 50%, arc by 80% 0 cw of 40% 30% rotate 0deg,
+				arc to 10% 50% of -40% -30% cw, close); }
+		#rotated_arc { left: 260px; background: orange;
+			clip-path: shape(from 6px 32px, arc by 52px 0 rotate .25turn of 20px 26px,
+				arc to 6px 32px of 20px 26px rotate .25turn, close); }
+		#hole { left: 12px; background: cyan;
+			clip-path: shape(evenodd from top left, hline to right, vline to bottom, hline to left, close,
+				move by 25% 25%, hline by 50%, vline by 50%, hline by -50%); }
+		#rtl { left: 108px; background: blue; direction: rtl;
+			clip-path: shape(from x-start top, hline by -50%, vline to y-end, hline to x-start, close); }
+		#invalid { left: 188px; background: white;
+			clip-path: shape(from 0 0, line to 30px 0, line to 0 30px);
+			clip-path: shape(from 0 0, hline to bottom); clip-path: shape(from 0 0, arc to 40px 40px cw); }
+	</style><a id="behind" href="#behind"></a>
+	<div class="tile top" id="responsive"></div><div class="tile top" id="curves"></div>
+	<div class="tile top" id="arcs"></div><div class="tile top" id="rotated_arc"></div>
+	<div class="tile bottom" id="hole"></div><div class="tile bottom" id="rtl"></div>
+	<div class="tile bottom" id="invalid"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(45.0, 42.0), Color.LIME, "CSS variables and calculations resolve against the content box")
+	_check_pixel(image, Vector2(58.0, 42.0), Color.BLACK, "The first shape is clipped before the rest of the element")
+	_check_pixel(image, Vector2(120.0, 24.0), Color.RED, "Cubic and smooth cubic shape commands use anchored controls")
+	_check_pixel(image, Vector2(120.0, 60.0), Color.RED, "Relative quadratic and smooth shape commands preserve the lower curve")
+	_check_pixel(image, Vector2(110.0, 14.0), Color.BLACK, "The responsive Bézier path excludes its corner")
+	_check_pixel(image, Vector2(220.0, 29.0), Color.MAGENTA, "Percentage arc radii resolve on their respective axes")
+	_check_pixel(image, Vector2(220.0, 21.0), Color.BLACK, "The arc leaves the area beyond its vertical radius empty")
+	_check_pixel(image, Vector2(292.0, 29.0), Color.ORANGE, "Arc rotation and the default counterclockwise sweep")
+	_check_pixel(image, Vector2(18.0, 125.0), Color.CYAN, "Move after close starts an independent contour")
+	_check_pixel(image, Vector2(44.0, 125.0), Color.BLACK, "An open contour is closed for even-odd clipping")
+	_check_pixel(image, Vector2(151.0, 123.0), Color.BLUE, "Logical starting edge follows RTL direction")
+	_check_pixel(image, Vector2(120.0, 123.0), Color.BLACK, "A relative horizontal segment keeps its signed offset in RTL")
+	_check_pixel(image, Vector2(192.0, 98.0), Color.WHITE, "Invalid axis and missing radii preserve the previous shape")
+	_check_pixel(image, Vector2(215.0, 122.0), Color.BLACK, "The surviving triangle closes implicitly")
+	_check(label.get_element_at(Vector2(44.0, 125.0)) == label.get_element_by_id("behind"),
+		"A compound shape lets pointer hits pass through its hole")
+	var responsive: HTMLElement = label.get_element_by_id("responsive")
+	_check(responsive.set_attribute("style", "width: 96px") == OK, "Resize the responsive shape's reference box")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(58.0, 42.0), Color.LIME, "A new width recomputes the percentage-based outline")
+	_check(label.get_element_at(Vector2(58.0, 42.0)) == responsive,
+		"The responsive outline updates pointer hits after a layout change")
+	viewport.queue_free()
+
+
+func _check_sticky_positioning() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 220)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(190.0, 100.0)
+	label.text = """<!doctype html><style>
+		html { scrollbar-width: none; }
+		body { margin: 0; background: black; }
+		section { height: 160px; }
+		#space { height: 46px; }
+		a { display: block; position: sticky; top: 10%; height: 24px; background: #e02040; color: white; }
+		#after { height: 270px; background: #202040; }
+	</style><section><div id="space"></div><a id="sticky" href="#target">Sticky</a>
+		<div id="flow" style="height: 20px;"></div></section><div id="after"></div>"""
+	var links: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: links.append(uri))
+	viewport.add_child(label)
+	var inner: HTMLLabel = HTMLLabel.new()
+	inner.position = Vector2(190.0, 0.0)
+	inner.size = Vector2(130.0, 100.0)
+	inner.text = """<!doctype html><style>
+		body { margin: 0; background: black; }
+		#port { overflow: auto; scrollbar-width: none; width: 126px; height: 100px; background: #202020; }
+		#section { height: 140px; width: 200px; }
+		#pin { position: sticky; top: 10%; left: 8px; width: 50px; height: 20px; background: #23c091; }
+	</style><div id="port"><div id="section"><div style="height: 30px;"></div>
+		<a id="pin" href="#inner" style="display: block;">Pin</a></div><div style="height: 160px;"></div></div>"""
+	viewport.add_child(inner)
+	var table: HTMLLabel = HTMLLabel.new()
+	table.position = Vector2(0.0, 105.0)
+	table.size = Vector2(150.0, 96.0)
+	table.text = """<!doctype html><style>
+		body { margin: 0; }
+		#table_port { width: 130px; height: 90px; overflow: auto; scrollbar-width: none; }
+		table { width: 120px; border-spacing: 0; }
+		thead { position: sticky; top: 0; z-index: 2; background: #8050d0; }
+		tbody tr:first-child { position: sticky; top: 22px; z-index: 1; background: #2070b0; }
+		th, td { padding: 0; height: 22px; }
+		tbody tr:last-child td { position: sticky; bottom: 0; height: 32px; background: #205050; }
+	</style><div id="table_port"><div style="height: 30px;"></div><table>
+		<thead id="heading"><tr><th>Title</th></tr></thead><tbody>
+		<tr id="row"><td>Row</td></tr><tr><td style="height: 180px;">Ordinary</td></tr>
+		<tr><td id="cell">Cell</td></tr></tbody></table></div>"""
+	viewport.add_child(table)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2(165.0, 105.0)
+	markdown.size = Vector2(150.0, 110.0)
+	markdown.parse_html = true
+	var test_texture: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, test_texture)
+	markdown.text = """<div style="width: 110px; height: 70px; overflow: auto; scrollbar-width: none; background: #123456;">
+		<div style="height: 24px;"></div>
+		<div style="position: sticky; top: 4px; height: 16px; background: #f0b020;">Markdown</div>
+		<div style="height: 140px;"></div>
+	</div>"""
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	var sticky: HTMLElement = label.get_element_by_id("sticky")
+	_check(is_equal_approx(sticky.get_bounding_rect().position.y, 46.0), "Sticky starts at its normal position")
+	label.set_scroll_offset(Vector2i(0, 60))
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(sticky.get_bounding_rect().position.y, 70.0) and
+		is_equal_approx(label.get_element_by_id("flow").get_bounding_rect().position.y, 70.0),
+		"Host scrolling resolves sticky percentages against the viewport and preserves normal flow")
+	_check(label.get_element_at(Vector2(70.0, 15.0)) == sticky, "The sticky box wins hits over the in-flow box below")
+	_drag_pointer(viewport, Vector2(70.0, 15.0), Vector2(70.0, 15.0))
+	_check(links == ["#target"], "The sticky link activates from its visual position")
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(70.0, 15.0), Color("#e02040"),
+		"The host paints the sticky border box at its scrolled position")
+	label.set_scroll_offset(Vector2i(0, 144))
+	await process_frame
+	await process_frame
+	_check(is_equal_approx(sticky.get_bounding_rect().position.y, 136.0),
+		"The sticky border box stops at the containing block's end")
+
+	var pin: HTMLElement = inner.get_element_by_id("pin")
+	_push_html_wheel(viewport, Vector2(260.0, 60.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(260.0, 60.0), MOUSE_BUTTON_WHEEL_RIGHT)
+	_check(pin.get_bounding_rect().position == Vector2(8.0, 10.0) and
+		inner.get_element_at(Vector2(26.0, 16.0)) == pin and inner.get_scroll_offset() == Vector2i.ZERO,
+		"Both sticky axes use the nearest internal scrollport and its own offset")
+	_push_html_wheel(viewport, Vector2(260.0, 60.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(260.0, 60.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(260.0, 60.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(is_equal_approx(pin.get_bounding_rect().position.y, -24.0) and
+		inner.get_element_at(Vector2(26.0, 16.0)) != pin, "Sticky moves out through the inner scroll clip at the section end")
+
+	_push_html_wheel(viewport, Vector2(75.0, 160.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_push_html_wheel(viewport, Vector2(75.0, 160.0), MOUSE_BUTTON_WHEEL_DOWN)
+	_check(is_equal_approx(table.get_element_by_id("heading").get_bounding_rect().position.y, 0.0) and
+		is_equal_approx(table.get_element_by_id("row").get_bounding_rect().position.y, 22.0) and
+		is_equal_approx(table.get_element_by_id("cell").get_bounding_rect().position.y, 58.0),
+		"Sticky table groups, rows, and cells use the table's containing area")
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(75.0, 110.0), Color("#8050d0"), "The sticky header keeps its own painted stacking context")
+	_check_pixel(image, Vector2(75.0, 132.0), Color("#2070b0"), "The sticky table row paints over the table body")
+	var markdown_origin: Vector2i = Vector2i(-1, -1)
+	for y: int in range(105, 175):
+		for x: int in range(165, 300):
+			if image.get_pixel(x, y).is_equal_approx(Color("#123456")):
+				markdown_origin = Vector2i(x, y)
+				break
+		if markdown_origin.x >= 0:
+			break
+	_check(markdown_origin.x >= 0, "Markdown draws the sticky fixture's scroll box")
+	if markdown_origin.x >= 0:
+		_push_html_wheel(viewport, Vector2(markdown_origin + Vector2i(90, 50)), MOUSE_BUTTON_WHEEL_DOWN)
+		await RenderingServer.frame_post_draw
+		_check_pixel(viewport.get_texture().get_image(), Vector2(markdown_origin + Vector2i(95, 8)), Color("#f0b020"),
+			"Markdown HTML blocks paint sticky content after scrolling their own box")
+	viewport.queue_free()
+
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><style>body { margin: 0; }
+		#bottom { position: sticky; bottom: 10px; height: 24px; }
+		#tall { position: sticky; top: 5px; bottom: 10px; height: 150px; }
+	</style><div style="height: 180px;"></div><div id="bottom">Bottom</div>
+		<div id="tall">Tall</div><div style="height: 120px;"></div>""") == OK and
+		layout.layout(Vector2i(200, 100)) == OK, "Lay out bottom and oversized sticky boxes")
+	_check(is_equal_approx(_rect(layout, "bottom").position.y, 66.0) and
+		is_equal_approx(_rect(layout, "tall").position.y, 5.0), "Bottom offsets apply initially and an oversized box can reduce the end inset")
+	var start: int = layout.get_plain_text().find("Bottom")
+	var selection: Array[Rect2] = layout.get_selection_rects(start, start + 6)
+	_check(not selection.is_empty() and selection[0].position.y >= 66.0 and selection[0].get_center().y < 90.0,
+		"Selection geometry follows sticky text")
+	_check(layout.parse("""<!doctype html><style>body { margin: 0; }
+		main { display: grid; grid-template-rows: 140px 80px; align-items: start; }
+		#grid_pin { grid-row: 2; position: sticky; bottom: 10px; height: 24px; }
+	</style><main><div id="grid_pin"></div></main>""") == OK and
+		layout.layout(Vector2i(200, 100)) == OK and is_equal_approx(_rect(layout, "grid_pin").position.y, 140.0),
+		"A sticky Grid item stays inside its assigned grid area")
+
+
 func _check_author_hover() -> void:
 	var viewport: SubViewport = SubViewport.new()
 	viewport.size = Vector2i(240, 160)
@@ -7042,6 +12523,109 @@ func _send_dom_key(viewport: SubViewport, key: Key, unicode: int = 0, shift: boo
 	event.shift_pressed = shift
 	event.pressed = pressed
 	viewport.push_input(event)
+
+
+func _check_form_state_selectors() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><form id="owner" novalidate>
+		<fieldset id="group" disabled><legend><input id="legend" required></legend><input id="disabled" required></fieldset>
+		<input id="readonly" required readonly>
+		<input id="hidden" required type="hidden">
+		<input id="toggle" required type="checkbox">
+		<input id="radio_one" type="radio" name="group" required><input id="radio_two" type="radio" name="group">
+		<select id="choice" required><option value="">Choose</option><option value="known">Known</option></select>
+		<button id="submit">Send</button><button id="reset" type="reset">Reset</button>
+	</form><form id="other"></form><input id="external" required form="owner">
+	<p id="plain" required>Plain</p><template id="template"><input id="inert_missing" required></template>""") == OK,
+		"Parse a document with form constraint selectors")
+	var owner: HTMLFormElement = layout.get_element_by_id("owner") as HTMLFormElement
+	var other: HTMLFormElement = layout.get_element_by_id("other") as HTMLFormElement
+	var group: HTMLElement = layout.get_element_by_id("group")
+	var legend: HTMLInputElement = layout.get_element_by_id("legend") as HTMLInputElement
+	var disabled: HTMLElement = layout.get_element_by_id("disabled")
+	var read_only: HTMLElement = layout.get_element_by_id("readonly")
+	var hidden: HTMLElement = layout.get_element_by_id("hidden")
+	var toggle: HTMLInputElement = layout.get_element_by_id("toggle") as HTMLInputElement
+	var radio_one: HTMLInputElement = layout.get_element_by_id("radio_one") as HTMLInputElement
+	var radio_two: HTMLInputElement = layout.get_element_by_id("radio_two") as HTMLInputElement
+	var choice: HTMLSelectElement = layout.get_element_by_id("choice") as HTMLSelectElement
+	var external: HTMLInputElement = layout.get_element_by_id("external") as HTMLInputElement
+	var plain: HTMLElement = layout.get_element_by_id("plain")
+	_check(owner.matches(":invalid") and other.matches(":valid") and group.matches(":invalid") and legend.matches(":required:read-write:invalid"),
+		"Form and fieldset validity include a first-legend control even under a disabled fieldset")
+	_check(disabled.matches(":required:read-only:not(:valid):not(:invalid)") and read_only.matches(":required:read-only:not(:valid):not(:invalid)"),
+		"Disabled and read-only controls retain optionality but are barred from validation")
+	_check(hidden.matches(":read-only:not(:required):not(:optional):not(:valid):not(:invalid)") and
+		plain.matches(":read-only:not(:required):not(:optional):not(:valid):not(:invalid)"), "Hidden controls and ordinary HTML lack these input constraints")
+	_check(layout.get_element_by_id("submit").matches(":valid:read-only") and layout.get_element_by_id("reset").matches(":not(:valid):not(:invalid)"),
+		"Submit buttons participate in validation")
+	_check(radio_one.matches(":required:invalid") and radio_two.matches(":optional:invalid") and toggle.matches(":required:invalid") and choice.matches(":required:invalid"),
+		"Checkboxes, radio groups, and the required dropdown placeholder report missing values")
+	legend.value = "present"
+	toggle.checked = true
+	radio_two.checked = true
+	choice.selected_index = 1
+	_check(group.matches(":valid") and legend.matches(":valid") and radio_one.matches(":valid") and radio_two.matches(":valid") and choice.matches(":valid"),
+		"Live control values immediately update their own, their peers', and their fieldset's selectors")
+	_check(owner.matches(":invalid") and external.set_attribute("form", "other") == OK and owner.matches(":valid") and other.matches(":invalid"),
+		"An associated control updates validity according to its current form owner")
+	_check(external.remove_attribute("required") == OK and external.matches(":optional:valid") and other.matches(":valid"),
+		"Removing required updates the control and its form immediately")
+	_check(owner.reset() == OK and owner.matches(":invalid") and group.matches(":invalid") and radio_two.matches(":invalid") and choice.matches(":invalid"),
+		"Form reset updates all related validity states")
+	var fresh: HTMLInputElement = layout.create_element("input") as HTMLInputElement
+	var template: HTMLTemplateElement = layout.get_element_by_id("template") as HTMLTemplateElement
+	var inert: HTMLElement = template.content.query_selector(":invalid")
+	_check(fresh.matches(":optional:valid:read-write") and inert != null and inert.get_attribute("id") == "inert_missing",
+		"Detached elements and template contents expose their own constraint state")
+	_check(layout.query_selector_all(":invalid").has(legend) and not layout.query_selector_all(":invalid").has(inert),
+		"Document queries preserve isolation from template content")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 220)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>body { margin: 0; }
+		#summary { width: 90px; height: 10px; }
+		@supports selector(form:has(:invalid)) { html:has(form:invalid) #summary { width: 120px; } }
+	</style><form id="form"><input id="text" required minlength="3" maxlength="4">
+	<textarea id="area" minlength="2"></textarea><button type="submit">Send</button></form><div id="summary"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var form: HTMLFormElement = label.get_element_by_id("form") as HTMLFormElement
+	var text_input: HTMLInputElement = label.get_element_by_id("text") as HTMLInputElement
+	var area: HTMLTextAreaElement = label.get_element_by_id("area") as HTMLTextAreaElement
+	_check(_label_rect(label, "summary").size.x == 120.0 and area.matches(":optional:valid"), "Invalid forms affect stylesheet rules and optional empty values are valid")
+	text_input.value = "x"
+	_check(text_input.matches(":valid") and form.matches(":valid"), "A script-set value does not trigger length validation")
+	text_input.value = ""
+	await process_frame
+	await process_frame
+	_check(label.focus_element(text_input), "Focus the required field for a user edit")
+	_send_dom_key(viewport, KEY_NONE, 0x1F642)
+	_check(text_input.value.length() == 1 and text_input.matches(":invalid"), "A user edit is checked in UTF-16 units against minlength")
+	_send_dom_key(viewport, KEY_X, 0x78)
+	_check(text_input.matches(":valid") and form.matches(":valid"), "A second user edit satisfies the UTF-16 minimum")
+	await process_frame
+	await process_frame
+	_check(_label_rect(label, "summary").size.x == 90.0, "A validity transition updates related layout through CSS")
+	_check(text_input.set_attribute("maxlength", "2") == OK and text_input.matches(":invalid") and label.submit_form(form) == ERR_INVALID_DATA,
+		"Shrinking maxlength after a user edit updates selectors and submission through the same validation")
+	_check(form.set_attribute("novalidate", "") == OK and label.submit_form(form) == OK and form.matches(":invalid"),
+		"Novalidate bypasses submission checks while keeping the CSS validity state")
+	text_input.value = "manual"
+	await process_frame
+	await process_frame
+	_check(text_input.matches(":valid") and label.focus_element(area), "A script assignment clears user length constraints")
+	_send_dom_key(viewport, KEY_X, 0x78)
+	await process_frame
+	await process_frame
+	_check(area.matches(":invalid") and label.focus_element(text_input) and area.matches(":invalid"),
+		"Optional nonempty textareas keep user length constraints after focus leaves")
+	_check(form.reset() == OK and area.matches(":optional:valid") and form.matches(":invalid"), "Reset restores empty optional and required validity separately")
+	viewport.queue_free()
 
 
 func _check_forms() -> void:
@@ -7713,13 +13297,13 @@ func _check_form_css() -> void:
 	diagnostics.css_diagnostics_enabled = true
 	_check(diagnostics.parse("""<style>input::placeholder { opacity: 50% }</style>
 		<input id="diagnosed" placeholder="Valid" style="caret-color: bogus; appearance: auto">
-		<div id="opacity_gap" style="opacity: 0.6"></div><table style="table-layout: bogus"></table>""") == OK and
+		<div id="valid_opacity" style="opacity: 0.6"></div><table style="table-layout: bogus"></table>""") == OK and
 		diagnostics.layout(Vector2i(250, 100)) == OK, "Lay out the CSS diagnostic fixture")
 	_check(_has_diagnostic(diagnostics, "caret-color", "bogus", "inline_style") and
 		_has_diagnostic(diagnostics, "table-layout", "bogus", "inline_style"), "Invalid new property values retain diagnostics")
 	_check(diagnostics.get_element_by_id("diagnosed").get_css_diagnostics().size() == 1 and
-		diagnostics.get_element_by_id("opacity_gap").get_css_diagnostics().size() == 1,
-		"Placeholder opacity is painted and regular element opacity retains its rendering diagnostic")
+		diagnostics.get_element_by_id("valid_opacity").get_css_diagnostics().is_empty(),
+		"Both placeholder and element opacity are supported without rendering diagnostics")
 	viewport.queue_free()
 
 
@@ -7876,7 +13460,7 @@ func _check_input_context_menu() -> void:
 	single.set_selection_range(1, 3)
 
 	_right_click_field(viewport, single)
-	var menu: PopupMenu = label.get_node_or_null("_HTMLScroll/_HTMLCanvas/_HTMLInputMenu") as PopupMenu
+	var menu: PopupMenu = label.get_node_or_null("_HTMLScroll/_HTMLContent/_HTMLCanvas/_HTMLInputMenu") as PopupMenu
 	_check(menu != null and menu.visible and label.get_focused_element() == single,
 		"Right-click opens the popup and focuses the input")
 	if menu == null or not menu.visible:

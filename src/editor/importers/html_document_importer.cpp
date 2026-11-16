@@ -55,6 +55,7 @@ namespace godot {
 		document->set_local_fonts(assets.fonts);
 		document->set_image_dpi(assets.image_dpi);
 		document->set_image_orientations(assets.image_orientations);
+		document->set_svg_clip_sources(assets.svg_clip_sources);
 		return ResourceSaver::get_singleton()->save(document, p_save_path + String(".res"));
 	}
 }

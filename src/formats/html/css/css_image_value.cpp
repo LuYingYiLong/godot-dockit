@@ -236,7 +236,7 @@ namespace litehtml {
 	}
 
 	void compute_css_image(image& r_image, const string& p_base, document& p_doc, const font_metrics& p_font,
-		const css_image_resolution& p_resolution, css_image_orientation p_orientation) {
+		const css_image_resolution& p_resolution, css_image_orientation p_orientation, css_length_context p_units) {
 		auto* container = p_doc.container();
 		if (r_image.type == image::type_set) {
 			media_features output;
@@ -257,16 +257,20 @@ namespace litehtml {
 					container->load_image(r_image.url.c_str(), p_base.c_str(), true, p_orientation);
 				}
 				break;
-			case image::type_gradient:
-				for (auto& stop : r_image.m_gradient.m_colors)
-					if (stop.length) p_doc.cvt_units(*stop.length, p_font, 0);
+			case image::type_gradient: {
+				auto& gradient = r_image.m_gradient;
+				for (auto* length : { &gradient.radial_radius_x, &gradient.radial_radius_y, &gradient.position_x, &gradient.position_y })
+					p_doc.cvt_units(*length, p_font, 0, p_units);
+				for (auto& stop : gradient.m_colors)
+					if (stop.length) p_doc.cvt_units(*stop.length, p_font, 0, p_units);
 				break;
+			}
 			case image::type_cross_fade: {
 				auto mixture = std::make_shared<css_cross_fade>();
 				for (const auto& layer : r_image.m_cross_fade->layers) {
 					if (layer.weight <= 0) continue;
 					auto value = layer.value;
-					compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation);
+					compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation, p_units);
 					if (value.type == image::type_cross_fade) {
 						for (const auto& nested : value.m_cross_fade->layers)
 							mixture->layers.push_back({ nested.value, nested.weight * layer.weight });

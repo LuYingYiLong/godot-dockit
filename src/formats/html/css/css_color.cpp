@@ -28,6 +28,7 @@ namespace litehtml {
 			css_color_space space;
 			Components values;
 			unsigned missing = 0;
+			bool legacy_srgb = false;
 		};
 
 		constexpr ColorSample BLACK{ css_color_space::srgb, { 0.0, 0.0, 0.0, 1.0 } };
@@ -609,14 +610,36 @@ namespace litehtml {
 			if (color.css_data) {
 				return evaluate_mix(std::get<ColorMix>(color.css_data->value), current);
 			}
-			return { css_color_space::srgb, { color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0 } };
+			return { css_color_space::srgb, { color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0 }, 0, true };
+		}
+
+		web_color store_sample(ColorSample value) {
+			web_color color;
+			color.css_data = std::make_shared<css_color_data>(css_color_data{ value });
+			return color;
 		}
 	}
 
 	web_color make_css_color(css_color_space space, Components components, unsigned missing) {
-		web_color color;
-		color.css_data = std::make_shared<css_color_data>(css_color_data{ ColorSample{ space, components, missing } });
-		return color;
+		return store_sample({space, components, missing});
+	}
+
+	bool equal_css_colors(const web_color& first, const web_color& second) {
+		const auto a = convert(evaluate(first, BLACK), css_color_space::srgb, true);
+		const auto b = convert(evaluate(second, BLACK), css_color_space::srgb, true);
+		return a.missing == b.missing && std::equal(a.values.begin(), a.values.end(), b.values.begin(),
+			[](double left, double right) { return std::abs(left - right) < 1e-7; });
+	}
+
+	web_color interpolate_css_color(const web_color& from, const web_color& to, double progress) {
+		const auto first = evaluate(from, BLACK);
+		const auto second = evaluate(to, BLACK);
+		ColorMix mix;
+		const bool legacy = first.legacy_srgb && second.legacy_srgb;
+		if (legacy) mix.space = css_color_space::srgb;
+		auto value = interpolate(mix, first, second, progress);
+		value.legacy_srgb = legacy;
+		return store_sample(value);
 	}
 
 	bool web_color::needs_current_color() const {
@@ -709,7 +732,7 @@ namespace litehtml {
 			for (size_t i = 0; i < 3; ++i) components[i] = std::clamp(components[i] / 255.0, 0.0, 1.0);
 		}
 		components[3] = std::clamp(components[3], 0.0, 1.0);
-		color = make_css_color(*space, components, missing);
+		color = store_sample({*space, components, missing, !predefined && (rgb || hsl || *space == Space::hwb)});
 		return true;
 	}
 

@@ -138,6 +138,7 @@
     <ClCompile Include="src\formats\markdown\markdown_html.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_render.cpp" />
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
+    <ClCompile Include="src\formats\html\paint\html_depth_sort.cpp" />
     <ClCompile Include="src\formats\html\html_document.cpp" />
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_button_element.cpp" />
@@ -159,6 +160,8 @@
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp" />
+    <ClCompile Include="src\formats\html\paint\html_svg_mask.cpp" />
+    <ClCompile Include="src\formats\html\paint\html_text_overflow.cpp" />
     <ClCompile Include="src\formats\html\resources\html_asset_collector.cpp" />
     <ClCompile Include="src\formats\html\resources\html_resource_paths.cpp" />
     <ClCompile Include="src\formats\html\resources\html_resources.cpp" />
@@ -169,6 +172,7 @@
     <ClCompile Include="src\formats\html\resources\html_image_sources.cpp" />
     <ClCompile Include="src\formats\html\text\html_system_fonts.cpp" />
     <ClCompile Include="src\formats\html\text\html_text_layout.cpp" />
+    <ClCompile Include="src\formats\html\text\html_glyph_outline.cpp" />
     <ClCompile Include="src\formats\html\markup\html_markup.cpp" />
     <ClCompile Include="src\formats\html\css\css_shadows.cpp" />
     <ClCompile Include="src\formats\html\paint\html_text_mask.cpp" />
@@ -199,7 +203,19 @@
     <ClCompile Include="src\formats\html\css\css_values.cpp" />
     <ClCompile Include="src\formats\html\css\css_math.cpp" />
     <ClCompile Include="src\formats\html\css\css_transform.cpp" />
+    <ClCompile Include="src\formats\html\css\css_transition.cpp" />
+    <ClCompile Include="src\formats\html\css\css_transition_state.cpp" />
+    <ClCompile Include="src\formats\html\css\css_clip_path.cpp" />
+    <ClCompile Include="src\formats\html\css\css_motion_path.cpp" />
+    <ClCompile Include="src\formats\html\css\css_shape_path.cpp" />
+    <ClCompile Include="src\formats\html\css\css_svg_path.cpp" />
     <ClCompile Include="src\formats\html\layout\html_geometry.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_plane_transform.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_transform_interpolation.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_polygon_clip.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_svg_clip.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_svg_geometry.cpp" />
+    <ClCompile Include="src\formats\html\layout\html_svg_text.cpp" />
     <ClCompile Include="src\formats\html\layout\html_hyphenation.cpp" />
     <ClCompile Include="src\formats\html\layout\html_hyphenation_dictionary.cpp" />
     <ClCompile Include="src\formats\html\layout\html_line_alignment.cpp" />
@@ -242,6 +258,7 @@
     <ClCompile Include="src\formats\html\litehtml\flex\src\flex_item.cpp" />
     <ClCompile Include="src\formats\html\litehtml\flex\src\flex_line.cpp" />
     <ClCompile Include="src\formats\html\litehtml\flex\src\render_flex.cpp" />
+    <ClCompile Include="src\formats\html\litehtml\layout\src\formatting_context.cpp" />
     <ClCompile Include="src\formats\html\litehtml\layout\src\iterators.cpp" />
     <ClCompile Include="src\formats\html\litehtml\layout\src\line_box.cpp" />
     <ClCompile Include="src\formats\html\litehtml\layout\src\render_block.cpp" />
@@ -288,6 +305,8 @@
     <ClInclude Include="src\formats\markdown\markdown_html.h" />
     <ClInclude Include="src\formats\mermaid\mermaid_render.h" />
     <ClInclude Include="src\formats\html\paint\html_canvas_renderer.h" />
+    <ClInclude Include="src\formats\html\paint\html_blend_shader.h" />
+    <ClInclude Include="src\formats\html\paint\html_depth_sort.h" />
     <ClInclude Include="src\formats\html\html_document.h" />
     <ClInclude Include="src\formats\html\elements\html_anchor_element.h" />
     <ClInclude Include="src\formats\html\elements\html_button_element.h" />
@@ -316,6 +335,7 @@
     <ClInclude Include="src\formats\html\markup\html_markup.h" />
     <ClInclude Include="src\formats\html\paint\html_paint_run.h" />
     <ClInclude Include="src\formats\html\paint\html_paint_recorder.h" />
+    <ClInclude Include="src\formats\html\paint\html_svg_mask.h" />
     <ClInclude Include="src\formats\html\resources\html_asset_collector.h" />
     <ClInclude Include="src\formats\html\resources\html_resource_paths.h" />
     <ClInclude Include="src\formats\html\resources\html_resources.h" />
@@ -327,6 +347,8 @@
     <ClInclude Include="src\formats\html\text\html_system_fonts.h" />
     <ClInclude Include="src\formats\html\text\html_shaped_text.h" />
     <ClInclude Include="src\formats\html\text\html_text_layout.h" />
+    <ClInclude Include="src\formats\html\text\html_text_selection.h" />
+    <ClInclude Include="src\formats\html\text\html_glyph_outline.h" />
     <ClInclude Include="src\formats\html\css\css_shadows.h" />
     <ClInclude Include="src\formats\html\paint\html_text_mask.h" />
     <ClInclude Include="src\formats\html\css\css_color.h" />
@@ -349,7 +371,19 @@
     <ClInclude Include="src\formats\html\css\css_values.h" />
     <ClInclude Include="src\formats\html\css\css_math.h" />
     <ClInclude Include="src\formats\html\css\css_transform.h" />
+    <ClInclude Include="src\formats\html\css\css_transition.h" />
+    <ClInclude Include="src\formats\html\css\css_transition_state.h" />
+    <ClInclude Include="src\formats\html\css\css_clip_path.h" />
+    <ClInclude Include="src\formats\html\css\css_motion_path.h" />
+    <ClInclude Include="src\formats\html\css\css_shape_path.h" />
+    <ClInclude Include="src\formats\html\css\css_svg_path.h" />
     <ClInclude Include="src\formats\html\layout\html_geometry.h" />
+    <ClInclude Include="src\formats\html\layout\html_plane_transform.h" />
+    <ClInclude Include="src\formats\html\layout\html_transform_interpolation.h" />
+    <ClInclude Include="src\formats\html\layout\html_polygon_clip.h" />
+    <ClInclude Include="src\formats\html\layout\html_svg_clip.h" />
+    <ClInclude Include="src\formats\html\layout\html_svg_geometry.h" />
+    <ClInclude Include="src\formats\html\layout\html_svg_text.h" />
     <ClInclude Include="src\formats\html\layout\html_hyphenation.h" />
     <ClInclude Include="src\formats\html\layout\html_hyphenation_dictionary.h" />
     <ClInclude Include="src\formats\html\layout\html_line_break.h" />
@@ -367,6 +401,7 @@
     <ClInclude Include="src\formats\html\layout\grid\litehtml_render_grid.h" />
     <ClInclude Include="src\formats\html\css\css_variables.h" />
     <ClInclude Include="src\formats\html\css\css_background.h" />
+    <ClInclude Include="src\formats\html\css\css_blend_mode.h" />
     <ClInclude Include="src\formats\html\css\css_borders.h" />
     <ClInclude Include="src\formats\html\css\css_cascade.h" />
     <ClInclude Include="src\formats\html\css\css_cascade_order.h" />

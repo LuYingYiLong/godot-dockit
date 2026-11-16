@@ -14,6 +14,7 @@ namespace docrender::css {
 		virtual pixel_t default_font_size() const = 0;
 		virtual font_metrics initial_font_metrics() const = 0;
 		virtual pixel_t points_to_pixels(float points) const = 0;
+		virtual css_container_units container_units() const = 0;
 		virtual uint_ptr get_font(const font_description& description, font_metrics* metrics) const = 0;
 		virtual void load_image(const string& url, const string& base, css_image_orientation orientation) const = 0;
 		virtual void compute_image(image& value, const string& base, const font_metrics& metrics,
@@ -29,6 +30,8 @@ namespace docrender::css {
 		const font_metrics* root_font;
 		bool is_root;
 		bool is_replaced;
+		const ComputedStyle* box_parent = nullptr;
+		bool suppress_contents_display = false;
 
 		pixel_t to_pixels(const css_length& length, const font_metrics& metrics,
 			pixel_t basis, css_length_context overrides = {}) const;

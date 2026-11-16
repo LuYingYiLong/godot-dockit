@@ -3,8 +3,11 @@
 
 #include "elements/html_input_element.h"
 #include "elements/html_textarea_element.h"
+#include "formats/html/css/css_types.h"
+#include "formats/html/layout/html_geometry.h"
 #include "formats/html/text/html_font_config.h"
 #include "formats/html/text/html_text_layout.h"
+#include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -18,18 +21,32 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <string_view>
 #include <vector>
 
 namespace godot {
 	class CanvasItem;
-	class InputEventMouseButton;
+	class InputEvent;
+	class Node;
 	class StyleBox;
+	class Tween;
 }
 
 namespace docrender {
 	class HTMLDOM;
 	class HTMLTextControlNode;
+	struct HTMLAnchor {
+		godot::Rect2 bounds;
+		std::weak_ptr<const litehtml::element> element;
+	};
+	enum class HTMLScrollInput { ignored, forwarded, handled };
+	struct HTMLViewportStyle {
+		HTMLScrollbarAppearance scrollbar;
+		std::array<litehtml::overflow, 2> overflow{litehtml::overflow_auto, litehtml::overflow_auto};
+		std::array<litehtml::overflow, 2> root_overflow{litehtml::overflow_visible, litehtml::overflow_visible};
+		litehtml::scrollbar_gutter gutter = litehtml::scrollbar_gutter::automatic;
+	};
 	struct HTMLSelectMenuRow {
 		HTMLTextLayout text;
 		godot::Color color;
@@ -52,18 +69,34 @@ class HTMLLayout : public godot::RefCounted {
 	struct State;
 	std::unique_ptr<State> state;
 	uint64_t parse_version = 0;
+	bool uses_document_viewport = false;
 
 	bool initialize_document(const godot::CharString& p_html);
 	bool ensure_document_for_editing();
 	docrender::HTMLDOM& get_dom() const;
-	godot::Error reflow(const godot::Vector2i& p_viewport_size);
+	godot::Error layout_viewport(const godot::Vector2i& p_viewport_size, const godot::Vector2i& p_media_size,
+		const godot::Vector2i& p_viewport_unit_size);
+	godot::Error reflow(const godot::Vector2i& p_viewport_size, const godot::Vector2i& p_media_size,
+		const godot::Vector2i& p_viewport_unit_size);
 	void record_paint();
+	bool update_auto_content_visibility(const godot::Vector2i& p_viewport_size,
+		const std::unordered_set<const litehtml::element*>& p_selected,
+		std::unordered_set<const litehtml::element*>& r_revealed, bool p_test_only = false);
+	std::unordered_set<const litehtml::element*> selected_auto_content() const;
+	void request_auto_content_update();
+	bool prepare_content_focus(const godot::Ref<HTMLElement>& p_element);
+	void set_content_visibility_callbacks(const godot::Callable& p_update, const godot::Callable& p_selection);
 	void invalidate_styles();
 	void queue_reflow();
 	static void reflow_after_edit(uint64_t p_id, uint64_t p_version);
 	void set_edit_callback(const godot::Callable& p_callback);
+	void set_transition_callback(const godot::Callable& p_callback);
+	void update_transition_subscription();
+	void disconnect_transition_frames();
+	static void sample_transition_frame(uint64_t p_id, uint64_t p_version);
 	godot::TypedArray<godot::Rect2> get_element_rects(const std::shared_ptr<litehtml::element>& p_element) const;
-	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position) const;
+	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
+		bool p_text_selection = false) const;
 	godot::Ref<HTMLElement> wrap_hit_element(std::shared_ptr<litehtml::element> p_element) const;
 	bool update_hover(const std::optional<godot::Vector2>& p_position);
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
@@ -80,10 +113,37 @@ class HTMLLayout : public godot::RefCounted {
 	std::optional<godot::Vector2> input_caret_point(const HTMLElement& p_input) const;
 	void update_input(docrender::HTMLTextControlNode& p_input);
 	std::shared_ptr<docrender::HTMLTextControlNode> text_control(const godot::Ref<HTMLElement>& p_element) const;
-	std::optional<godot::Transform2D> input_inverse(const HTMLElement& p_input) const;
+	std::optional<docrender::HTMLPlaneTransform> input_inverse(const HTMLElement& p_input) const;
 	bool resize_textarea(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_size, const godot::Vector2i& p_axes);
-	godot::Vector2 scroll_overflow(const godot::Vector2& p_position, const godot::Vector2& p_delta);
-	static godot::Vector2 wheel_delta(const godot::InputEventMouseButton& p_event);
+	godot::Vector2 scroll_overflow(const godot::Vector2& p_position, const godot::Vector2& p_delta,
+		godot::Node* p_pan_owner, const godot::Callable& p_changed);
+	void refresh_overflow_paint(bool p_moved_boxes);
+	void rebuild_scroll_geometry();
+	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const litehtml::element& p_element,
+		std::optional<float> p_align, bool p_allow_fallback, godot::Node& p_owner, const godot::Callable& p_changed);
+	bool viewport_uses_smooth_scroll() const;
+	godot::Vector2i viewport_snap_axes() const;
+	docrender::HTMLSnapResult snap_viewport(const godot::Vector2& p_viewport, docrender::HTMLSnapRequest p_request);
+	docrender::HTMLSnapResult snap_nested(const litehtml::render_item& p_container, docrender::HTMLSnapRequest p_request);
+	void resnap_nested(const godot::Vector2i& p_viewport_size);
+	static godot::Ref<godot::Tween> start_scroll_tween(godot::Node& p_owner, const godot::Callable& p_update);
+	static godot::Ref<godot::Tween> start_snap_timer(godot::Node& p_owner, const godot::Callable& p_callback);
+	void queue_nested_snap(const std::shared_ptr<litehtml::element>& p_element, const godot::Vector2i& p_axes,
+		godot::Node& p_owner, const godot::Callable& p_changed);
+	void cancel_nested_snap(const litehtml::element& p_element);
+	static void settle_nested_pan(uint64_t p_layout_id, uint64_t p_motion_id);
+	bool settle_nested_snap(const litehtml::element& p_element, const godot::Vector2i& p_axes);
+	static void advance_nested_scroll(double p_fraction, uint64_t p_layout_id, uint64_t p_motion_id);
+	void cancel_nested_scroll(const litehtml::element& p_element);
+	godot::Rect2 viewport_scroll_region(const godot::Rect2& p_viewport) const;
+	void set_viewport_scroll_offset(const godot::Vector2i& p_offset);
+	void set_viewport_gutters(const godot::Vector2& p_gutters);
+	void draw_viewport_background(godot::CanvasItem& p_canvas, const godot::Vector2& p_position,
+		const godot::Rect2& p_clip, const godot::Vector2& p_viewport_origin);
+	docrender::HTMLViewportStyle get_viewport_style() const;
+	godot::Vector2 viewport_contained_scroll(const godot::Vector2& p_delta) const;
+	static godot::Vector2 scroll_input_steps(const godot::Ref<godot::InputEvent>& p_event);
+	static bool forward_scroll_remainder(const godot::Ref<godot::InputEvent>& p_event, const godot::Vector2& p_remaining);
 	void flush_input_paint();
 	void repaint_input();
 	bool set_interaction_pseudo(const godot::Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled);
@@ -122,12 +182,16 @@ public:
 		const godot::Dictionary& p_local_stylesheets = {},
 		const godot::Dictionary& p_local_fonts = {},
 		const godot::Dictionary& p_image_dpi = {},
-		const godot::Dictionary& p_image_orientations = {}
+		const godot::Dictionary& p_image_orientations = {},
+		const godot::Dictionary& p_svg_clip_sources = {}
 	);																				// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
 	godot::Error layout(const godot::Vector2i& p_viewport_size);					// 按给定视口尺寸排版并更新几何
+	godot::Error layout_embedded_block(const godot::Vector2i& p_viewport_size);	// 为外层排版器保留完整块的几何和文字
 	godot::Vector2i get_content_size() const;										// 返回最近一次成功排版的内容尺寸
 	godot::String get_plain_text() const;											// 返回排版后的可复制文本
 	int64_t hit_test_text(const godot::Vector2& p_position) const;					// 返回离指定文档坐标最近的文本光标偏移
+	docrender::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
+	godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 	godot::TypedArray<godot::Rect2> get_selection_rects(
 		int64_t p_from,
 		int64_t p_to
@@ -153,7 +217,12 @@ public:
 		godot::Ref<HTMLElement>* r_element = nullptr
 	) const;																		// 命中文档坐标处的链接，可同时写出命中的元素
 	godot::Rect2 get_anchor_rect(const godot::String& p_id) const;					// 返回指定 HTML ID 的锚点矩形
-	const godot::HashMap<godot::String, godot::Rect2>& get_anchor_rects() const;	// 返回当前布局中各 HTML ID 对应的锚点矩形
+	const godot::HashMap<godot::String, docrender::HTMLAnchor>& get_anchors() const; // 提供当前布局的锚点位置及节点
+	std::optional<docrender::HTMLScrollTarget> scroll_anchor_into_view(const godot::String& p_id, float p_align,
+		godot::Node& p_owner, const godot::Callable& p_changed = {});
+	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const godot::Ref<HTMLElement>& p_element,
+		std::optional<float> p_align, godot::Node& p_owner, const godot::Callable& p_changed);
+	void cancel_scroll_activity();
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建同一布局中尚未插入文档的元素
 	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建属于当前布局的空片段
 	godot::Ref<HTMLElement> import_node(const godot::Ref<HTMLElement>& p_element, bool p_deep = false);	// 在当前布局中创建分离副本，可选复制后代
@@ -164,7 +233,11 @@ public:
 	) const;																		// 按文档顺序返回所有匹配元素的去重数组
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
-	bool scroll_overflow_from_wheel(const godot::Vector2& p_position, const godot::InputEventMouseButton& p_event);
+	std::optional<docrender::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
+	void drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, const godot::Vector2& p_position); // 按文档坐标移动滑块
+	void finish_scrollbar_drag(const docrender::HTMLScrollbarDrag& p_drag);
+	docrender::HTMLScrollInput scroll_overflow_from_input(const godot::Vector2& p_position, const godot::Ref<godot::InputEvent>& p_event,
+		godot::Node& p_owner, const godot::Callable& p_changed = {});
 	std::optional<godot::Rect2> get_element_scroll_bounds(
 		const godot::Ref<HTMLElement>& p_element
 	) const; // 获取同一布局中目标元素可用于滚动定位的边界

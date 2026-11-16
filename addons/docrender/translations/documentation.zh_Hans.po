@@ -945,11 +945,13 @@ msgstr ""
 msgid ""
 "Scrolls to the first Markdown heading or laid-out HTML element with the given anchor ID. Pass the"
 " case-sensitive ID without [code]#[/code]. [param align] ranges from [code]0.0[/code] at the top "
-"of the viewport to [code]1.0[/code] at the bottom. With [member fit_content] enabled, this "
+"of the viewport to [code]1.0[/code] at the bottom. HTML anchors scroll their own containers "
+"first and use CSS scroll margins for the Markdown viewport. With [member fit_content] enabled, this "
 "scrolls the nearest ancestor [ScrollContainer] with vertical scrolling enabled, when present. "
 "Returns [code]false[/code] if the anchor does not exist."
 msgstr "滚动到第一个具有指定锚点 ID 的 Markdown 标题或已排版的 HTML 元素。ID 区分大小写，传入时省略 [code]#[/code]。"
-"[param align] 从视口顶部的 [code]0.0[/code] 到底部的 [code]1.0[/code]。启用 [member fit_content] 后，"
+"[param align] 从视口顶部的 [code]0.0[/code] 到底部的 [code]1.0[/code]。HTML 锚点先滚动自身的容器，"
+"再以 CSS 滚动外边距计算 Markdown 视口中的位置。启用 [member fit_content] 后，"
 "会滚动最近的启用了垂直滚动的祖先 [ScrollContainer]。锚点不存在时返回 [code]false[/code]。"
 
 #. doc_classes/MarkdownLabel.xml
@@ -2638,8 +2640,15 @@ msgid "Returns all matches in this label's parsed document. See [method HTMLLayo
 msgstr "返回控件解析后的文档中的全部匹配项。参见 [method HTMLLayout.query_selector_all]。"
 
 #. doc_classes/HTMLLabel.xml
-msgid "Scrolls to an element obtained from this label. [param align] positions the element's top from [code]0.0[/code] at the viewport top to [code]1.0[/code] at the viewport bottom, within the scrollable range. Horizontal scrolling adjusts when the target's left edge is outside the viewport. Returns [code]false[/code] for an invalid, foreign, or invisible element, or when layout is pending."
-msgstr "滚动到从此控件获取的元素。[param align] 将元素顶部定位于视口顶部的 [code]0.0[/code] 到视口底部的 [code]1.0[/code] 之间，实际偏移限制在可滚动范围内。目标左边缘在视口之外时会调整横向偏移。元素无效、属于其他布局、不可见或布局待更新时返回 [code]false[/code]。"
+msgid ""
+"Scrolls to an element obtained from this label, starting with its innermost scroll container. "
+"[param align] places the top of the target's CSS scroll margin area from [code]0.0[/code] at "
+"the top of the scroll-padding region to [code]1.0[/code] at its bottom, within the scrollable "
+"range. Horizontal scrolling adjusts when the area's left edge is outside that region. "
+"Returns [code]false[/code] for an invalid or foreign element, an element without a visible layout box, or a pending layout."
+msgstr "滚动到从此控件获取的元素，从目标最内层的滚动容器开始。[param align] 将目标 CSS 滚动外边距区域的顶部"
+"定位在滚动内边距区域顶部的 [code]0.0[/code] 和底部的 [code]1.0[/code] 之间，偏移限制在可滚动范围内。"
+"目标区域左边缘超出该区域时会调整横向偏移。元素无效、属于其他布局、没有可见布局盒或布局待更新时返回 [code]false[/code]。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Displays a scrollable HTML document."
@@ -2824,11 +2833,13 @@ msgstr "返回第一个具有指定 HTML [code]id[/code] 的已排版元素的�
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Scrolls to a laid-out element by its case-sensitive HTML ID. Pass the ID without [code]#[/code]. "
-"The vertical alignment ranges from [code]0.0[/code] at the top to [code]1.0[/code] at the bottom "
-"and is clamped to the scrollable range. Returns [code]false[/code] if the ID is absent or the "
-"layout is pending."
-msgstr "按区分大小写的 HTML ID 滚动到已排版的元素，传入 ID 时省略 [code]#[/code]。垂直对齐从顶部的 [code]0.0[/code] "
-"到底部的 [code]1.0[/code]，实际偏移限制在可滚动范围内。ID 不存在或布局尚未完成时返回 [code]false[/code]。"
+"Alignment follows [method scroll_to_element], including CSS scroll padding and margins. "
+"Each scroll container uses its own [code]scroll-behavior[/code]. "
+"Returns [code]false[/code] if the ID is absent or the layout is pending."
+msgstr "按区分大小写的 HTML ID 滚动到已排版的元素，传入 ID 时省略 [code]#[/code]。"
+"对齐方式沿用 [method scroll_to_element]，包括 CSS 滚动内边距和外边距。"
+"各滚动容器分别使用自身的 [code]scroll-behavior[/code]。"
+"ID 不存在或布局尚未完成时返回 [code]false[/code]。"
 
 #. doc_classes/HTMLElement.xml
 msgid "A handle to an element in a parsed HTML layout."
@@ -3640,8 +3651,8 @@ msgid ""
 msgstr "发出有序的条目字典及提交按钮。按钮可能为 [code]null[/code]。游戏决定如何使用这些数据。"
 
 #. doc_classes/HTMLLabel.xml
-msgid "Emitted with the first control that fails required validation."
-msgstr "发出第一个未通过必填校验的控件。"
+msgid "Emitted with the first control that fails form validation."
+msgstr "表单验证失败时发出，并传入第一个未通过验证的控件。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Emitted when a user selects a different option in a dropdown."
@@ -3649,12 +3660,12 @@ msgstr "用户在下拉框中选择其他选项时发出。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
-"Activates a visible link or a form control in this label. A fragment link scrolls before emitting"
-" [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, "
+"Activates a visible link or a form control in this label. A fragment link requests an anchor scroll "
+"before emitting [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, "
 "toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if "
 "activation was dispatched."
 msgstr ""
-"激活此控件内可见的链接或表单控件。片段链接先滚动再发出 [signal link_pressed]。命令按钮发出 [signal "
+"激活此控件内可见的链接或表单控件。片段链接先请求锚点滚动，再发出 [signal link_pressed]。命令按钮发出 [signal "
 "button_pressed]。表单按钮、标签、开关和下拉框执行各自的操作。已派发激活时返回 [code]true[/code]。"
 
 #. doc_classes/HTMLLabel.xml

@@ -82,7 +82,6 @@ namespace docrender {
 			Adoption* r_adoption = nullptr);
 		bool clone_children(const HTMLDOM& p_source_dom, const litehtml::element& p_source, litehtml::element& r_target,
 			Adoption* r_adoption = nullptr);
-		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const;
 		void set_source_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		void forget_source_attributes(const litehtml::element& p_element);
 
@@ -127,6 +126,7 @@ namespace docrender {
 		godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id, const litehtml::element::ptr& p_root = {}) const;
 		bool is_element_connected(const litehtml::element& p_element) const;
 		void remember_source_attributes(const litehtml::element::ptr& p_element, const litehtml::string_map& p_values);
+		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const;
 		godot::Dictionary get_element_attributes(const litehtml::element& p_element) const;
 		const char* get_element_attribute(const litehtml::element& p_element, const char* p_name) const;
 		godot::String serialize_children(const litehtml::element& p_element) const;

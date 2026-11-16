@@ -130,6 +130,9 @@
     <ClCompile Include="src\formats\docrender_source.cpp">
       <Filter>Source Files\formats</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\paint\html_depth_sort.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp">
       <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
@@ -196,6 +199,12 @@
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp">
       <Filter>Source Files\formats\html\paint</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\paint\html_svg_mask.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\paint\html_text_overflow.cpp">
+      <Filter>Source Files\formats\html\paint</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\resources\html_asset_collector.cpp">
       <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
@@ -224,6 +233,9 @@
       <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\text\html_text_layout.cpp">
+      <Filter>Source Files\formats\html\text</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\text\html_glyph_outline.cpp">
       <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\markup\html_markup.cpp">
@@ -316,7 +328,43 @@
     <ClCompile Include="src\formats\html\css\css_transform.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_transition.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_transition_state.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_clip_path.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_motion_path.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_shape_path.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_svg_path.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_plane_transform.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_transform_interpolation.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\layout\html_geometry.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_polygon_clip.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_svg_clip.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_svg_geometry.cpp">
+      <Filter>Source Files\formats\html\layout</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\layout\html_svg_text.cpp">
       <Filter>Source Files\formats\html\layout</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\layout\html_hyphenation.cpp">
@@ -444,6 +492,9 @@
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml\flex\src\render_flex.cpp">
       <Filter>Source Files\formats\html\litehtml\flex</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\litehtml\layout\src\formatting_context.cpp">
+      <Filter>Source Files\formats\html\litehtml\layout</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\litehtml\layout\src\iterators.cpp">
       <Filter>Source Files\formats\html\litehtml\layout</Filter>
@@ -615,6 +666,12 @@
     <ClInclude Include="src\formats\mermaid\mermaid_render.h">
       <Filter>Header Files\formats\mermaid</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\paint\html_depth_sort.h">
+      <Filter>Header Files\formats\html\paint</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\paint\html_blend_shader.h">
+      <Filter>Header Files\formats\html\paint</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\paint\html_canvas_renderer.h">
       <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
@@ -702,6 +759,9 @@
     <ClInclude Include="src\formats\html\paint\html_paint_recorder.h">
       <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\paint\html_svg_mask.h">
+      <Filter>Header Files\formats\html\paint</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\resources\html_asset_collector.h">
       <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
@@ -733,6 +793,12 @@
       <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\text\html_text_layout.h">
+      <Filter>Header Files\formats\html\text</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\text\html_text_selection.h">
+      <Filter>Header Files\formats\html\text</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\text\html_glyph_outline.h">
       <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_shadows.h">
@@ -801,7 +867,43 @@
     <ClInclude Include="src\formats\html\css\css_transform.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_transition.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_transition_state.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_clip_path.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_motion_path.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_shape_path.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_svg_path.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_plane_transform.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_transform_interpolation.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\layout\html_geometry.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_polygon_clip.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_svg_clip.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_svg_geometry.h">
+      <Filter>Header Files\formats\html\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_svg_text.h">
       <Filter>Header Files\formats\html\layout</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\layout\html_hyphenation.h">
@@ -850,6 +952,9 @@
       <Filter>Header Files\formats\html\layout\grid</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_variables.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_blend_mode.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_background.h">

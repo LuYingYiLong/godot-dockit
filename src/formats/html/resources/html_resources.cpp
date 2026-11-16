@@ -23,7 +23,7 @@ using namespace godot;
 
 namespace docrender {
 	namespace {
-		constexpr int MAX_STYLESHEET_BYTES = 1024 * 1024;
+		constexpr int MAX_SOURCE_BYTES = 1024 * 1024;
 
 		struct ImageFragment {
 			std::array<int, 4> coordinates;
@@ -148,13 +148,13 @@ namespace docrender {
 		return stylesheet;
 	}
 
-	std::optional<String> read_html_stylesheet(const String& p_path) {
+	static std::optional<String> read_html_source_text(const String& p_path) {
 		const Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 		if (file.is_null()) {
 			return std::nullopt;
 		}
 		const uint64_t length = file->get_length();
-		if (length > MAX_STYLESHEET_BYTES) {
+		if (length > MAX_SOURCE_BYTES) {
 			return std::nullopt;
 		}
 		const PackedByteArray bytes = file->get_buffer(length);
@@ -166,10 +166,19 @@ namespace docrender {
 		return text;
 	}
 
+	std::optional<String> read_html_stylesheet(const String& p_path) {
+		return read_html_source_text(p_path);
+	}
+
+	std::optional<String> read_html_svg_source(const String& p_path) {
+		return read_html_source_text(p_path);
+	}
+
 	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets,
-		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations) :
+		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations,
+		const Dictionary& p_svg_clip_sources) :
 		base_dir(p_base_dir), textures(p_textures), local_stylesheets(p_local_stylesheets), local_fonts(p_local_fonts),
-		image_dpi(p_image_dpi), image_orientations(p_image_orientations) {
+		image_dpi(p_image_dpi), image_orientations(p_image_orientations), svg_clip_sources(p_svg_clip_sources) {
 	}
 
 	std::string_view HTMLResources::stylesheet_path(std::string_view p_css_base) {
@@ -187,6 +196,15 @@ namespace docrender {
 		}
 		const auto path = stylesheet_path(p_css_base);
 		return String::utf8(path.data(), path.size()).get_base_dir();
+	}
+
+	String HTMLResources::resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const {
+		return resolve_html_svg_clip_path(String::utf8(p_url.data(), p_url.size()), get_url_dir(p_css_base));
+	}
+
+	std::optional<String> HTMLResources::get_svg_clip_source(const String& p_path) const {
+		const Variant stored = svg_clip_sources.get(p_path, Variant());
+		return stored.get_type() == Variant::STRING ? std::optional<String>(stored) : read_html_svg_source(p_path);
 	}
 
 	void HTMLResources::import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base) {

@@ -2,6 +2,7 @@
 #define LH_STYLE_H
 
 #include "formats/html/css/css_cascade.h"
+#include "formats/html/css/css_parser.h"
 #include "formats/html/css/css_property_value.h"
 #include "formats/html/css/css_value_helpers.h"
 
@@ -21,6 +22,8 @@ namespace litehtml {
 	public:
 		void add(const css_token_vector& tokens, const string& baseurl = "", document_container* container = nullptr, const html_tag* element = nullptr);
 		void add(const string& txt,              const string& baseurl = "", document_container* container = nullptr, const html_tag* element = nullptr);
+		void add_declarations(const docrender::css::raw_declaration::vector& declarations, const string& baseurl,
+			document_container* container, const html_tag* element = nullptr);
 
 		void add_property(string_id name, const css_token_vector& tokens, const string& baseurl = "", bool important = false, document_container* container = nullptr);
 		void add_property(string_id name, const string& val,              const string& baseurl = "", bool important = false, document_container* container = nullptr);
@@ -28,10 +31,10 @@ namespace litehtml {
 		const property_value& get_property(string_id name) const;
 
 		void combine(const style& src, docrender::css::CascadePriority priority = {});
-		void clear()
+		void clear(bool keep_variables = false)
 		{
 			diagnostics.reset();
-			cascade.clear();
+			cascade.clear(keep_variables);
 		}
 
 		const css_token_vector* get_custom_property(string_id name, bool& local) const;

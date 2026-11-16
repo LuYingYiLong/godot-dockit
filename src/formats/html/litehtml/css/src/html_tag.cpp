@@ -190,18 +190,39 @@ litehtml::element::ptr litehtml::html_tag::select_one( const css_selector& selec
 	return nullptr;
 }
 
-bool html_tag::apply_field_pseudo(int match, const css_selector& selector)
+bool html_tag::apply_auxiliary_pseudo(int match, const css_selector& selector,
+	const docrender::css::CascadePriority& priority)
 {
 	if (!(match & (select_match_with_placeholder | select_match_with_selection))) return false;
 	if (match & select_match_with_placeholder)
 	{
 		if (tag() != _input_ && tag() != _textarea_) return true;
 	}
-	if (!m_field_pseudos) m_field_pseudos = std::make_unique<field_pseudo_styles>();
-	auto& declarations = (match & select_match_with_placeholder) ? m_field_pseudos->placeholder : m_field_pseudos->selection;
+	if (!m_auxiliary_pseudos) m_auxiliary_pseudos = std::make_unique<auxiliary_pseudo_styles>();
+	auto& declarations = (match & select_match_with_placeholder) ? m_auxiliary_pseudos->placeholder : m_auxiliary_pseudos->selection;
 	if (!declarations) declarations = std::make_unique<style>();
-	declarations->combine(*selector.m_style, selector.cascade_priority());
+	declarations->combine(*selector.m_style, priority);
 	return true;
+}
+
+void html_tag::apply_matched_style(int match, const css_selector& selector, int proximity, bool create_generated)
+{
+	const auto priority = selector.cascade_priority(proximity);
+	if (!(match & select_match_with_pseudo_element))
+	{
+		m_style.combine(*selector.m_style, priority);
+		return;
+	}
+	if (apply_auxiliary_pseudo(match, selector, priority)) return;
+
+	element::ptr generated;
+	if (match & select_match_with_marker)
+		generated = get_element_marker(create_generated);
+	else if (match & select_match_with_after)
+		generated = get_element_after(*selector.m_style, create_generated);
+	else if (match & select_match_with_before)
+		generated = get_element_before(*selector.m_style, create_generated);
+	if (generated) static_cast<html_tag&>(*generated).m_style.combine(*selector.m_style, priority);
 }
 
 void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
@@ -216,57 +237,20 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 			std::find(m_str_classes.begin(), m_str_classes.end(), right.m_attrs.front().name) == m_str_classes.end())
 			continue;
 
-		int apply = select(*sel, false);
-
-		if(apply != select_no_match)
+		int proximity = 0;
+		int apply = match_style_selector(*sel, false, proximity);
+		if (apply == select_no_match) continue;
+		auto used = std::make_unique<used_selector>(sel, false);
+		if (sel->is_media_valid())
 		{
-			used_selector::ptr us = std::make_unique<used_selector>(sel, false);
-
-			if(sel->is_media_valid())
+			if ((apply & select_match_pseudo_class) || sel->m_container_query) apply = match_style_selector(*sel, true, proximity);
+			if (apply != select_no_match)
 			{
-				auto apply_generated = [&]()
-				{
-					if (apply_field_pseudo(apply, *sel))
-					{
-						us->m_used = true;
-						return;
-					}
-					element::ptr el;
-					if (apply & select_match_with_marker)
-						el = get_element_marker(true);
-					else if (apply & select_match_with_after)
-						el = get_element_after(*sel->m_style, true);
-					else if (apply & select_match_with_before)
-						el = get_element_before(*sel->m_style, true);
-
-					if (el) static_cast<html_tag&>(*el).m_style.combine(*sel->m_style, sel->cascade_priority());
-					us->m_used = true;
-				};
-
-				if(apply & select_match_pseudo_class)
-				{
-					if(select(*sel, true))
-					{
-						if((apply & select_match_with_pseudo_element))
-						{
-							apply_generated();
-						} else
-						{
-							m_style.combine(*sel->m_style, sel->cascade_priority());
-							us->m_used = true;
-						}
-					}
-				} else if((apply & select_match_with_pseudo_element))
-				{
-					apply_generated();
-				} else
-				{
-					m_style.combine(*sel->m_style, sel->cascade_priority());
-					us->m_used = true;
-				}
+				apply_matched_style(apply, *sel, proximity, true);
+				used->m_used = true;
 			}
-			m_used_styles.push_back(std::move(us));
 		}
+		m_used_styles.push_back(std::move(used));
 	}
 
 	for(auto& el : m_children)
@@ -334,26 +318,23 @@ void litehtml::html_tag::compute_styles(bool recursive)
 	for (const auto& diagnostic : m_style.get_computed_diagnostics())
 		doc->container()->report_css_diagnostic(diagnostic, this);
 
-	const auto& opacity = get_cascaded_property(_id("opacity"));
-	if (opacity.origin)
-		doc->container()->report_css_diagnostic({css_diagnostic_kind::not_rendered, "opacity",
-			opacity.origin->value, opacity.origin->source}, this);
 	m_css.compute(this, doc);
-	if (m_field_pseudos)
+	if (m_auxiliary_pseudos)
 	{
 		const auto resolve = [&](style& declarations) {
 			declarations.resolve_cascade(*this, true);
 			for (const auto& diagnostic : declarations.get_computed_diagnostics())
 				doc->container()->report_css_diagnostic(diagnostic, this);
 		};
-		if (m_field_pseudos->selection) resolve(*m_field_pseudos->selection);
-		if (m_field_pseudos->placeholder)
+		if (m_auxiliary_pseudos->selection) resolve(*m_auxiliary_pseudos->selection);
+		if (m_auxiliary_pseudos->placeholder)
 		{
-			resolve(*m_field_pseudos->placeholder);
-			m_field_pseudos->placeholder_css = std::make_unique<css_properties>();
-			m_field_pseudos->placeholder_css->compute_placeholder(*this, *m_field_pseudos->placeholder, *doc);
+			resolve(*m_auxiliary_pseudos->placeholder);
+			m_auxiliary_pseudos->placeholder_css = std::make_unique<css_properties>();
+			m_auxiliary_pseudos->placeholder_css->compute_placeholder(*this, *m_auxiliary_pseudos->placeholder, *doc);
 		}
 	}
+	compute_selection_colors();
 	if (!is_generated_content(*this)) handle_counter_properties();
 
 	if (recursive)
@@ -364,37 +345,46 @@ void litehtml::html_tag::compute_styles(bool recursive)
 
 const css_properties* html_tag::get_placeholder_style() const
 {
-	return m_field_pseudos ? m_field_pseudos->placeholder_css.get() : nullptr;
+	return m_auxiliary_pseudos ? m_auxiliary_pseudos->placeholder_css.get() : nullptr;
 }
 
 bool html_tag::has_placeholder_color() const
 {
-	return m_field_pseudos && m_field_pseudos->placeholder &&
-		!m_field_pseudos->placeholder->get_property(_color_).is<invalid>();
+	return m_auxiliary_pseudos && m_auxiliary_pseudos->placeholder &&
+		!m_auxiliary_pseudos->placeholder->get_property(_color_).is<invalid>();
 }
 
-std::optional<web_color> html_tag::get_selection_color(string_id name) const
+void html_tag::compute_selection_colors()
 {
-	for (const html_tag* tag = this; tag; tag = dynamic_cast<const html_tag*>(tag->parent().get()))
-	{
-		if (!tag->m_field_pseudos || !tag->m_field_pseudos->selection) continue;
-		const auto& value = tag->m_field_pseudos->selection->get_property(name);
-		if (value.is<web_color>()) return value.get<web_color>();
-		if (value.is<initial_value>()) return name == _color_ ? web_color::current_color : web_color::transparent;
-	}
-	return std::nullopt;
+	const auto parent = this->parent();
+	const auto* tag = dynamic_cast<const html_tag*>(parent.get());
+	m_selection_colors = tag ? tag->m_selection_colors : nullptr;
+	if (!m_auxiliary_pseudos || !m_auxiliary_pseudos->selection) return;
+	const auto& declarations = *m_auxiliary_pseudos->selection;
+	const auto& foreground = declarations.get_property(_color_);
+	const auto& background = declarations.get_property(_background_color_);
+	const bool author = foreground.priority.layer != css_default_layer || background.priority.layer != css_default_layer;
+	if (!author && !foreground.is<web_color>() && !foreground.is<initial_value>() &&
+		!background.is<web_color>() && !background.is<initial_value>()) return;
+
+	auto colors = std::make_shared<cascaded_selection_colors>(m_selection_colors ? *m_selection_colors : cascaded_selection_colors{});
+	colors->author |= author;
+	if (foreground.is<web_color>()) colors->foreground = foreground.get<web_color>();
+	else if (foreground.is<initial_value>()) colors->foreground = web_color::black;
+	if (background.is<web_color>()) colors->background = background.get<web_color>();
+	else if (background.is<initial_value>()) colors->background = web_color::transparent;
+	m_selection_colors = std::move(colors);
 }
 
-bool html_tag::has_author_selection_style() const
+html_tag::selection_colors html_tag::get_selection_colors(const web_color& text_color) const
 {
-	for (const html_tag* tag = this; tag; tag = dynamic_cast<const html_tag*>(tag->parent().get()))
-	{
-		if (!tag->m_field_pseudos || !tag->m_field_pseudos->selection) continue;
-		const auto& selection = *tag->m_field_pseudos->selection;
-		if (selection.get_property(_color_).priority.layer != css_default_layer ||
-			selection.get_property(_background_color_).priority.layer != css_default_layer) return true;
-	}
-	return false;
+	if (!m_selection_colors) return {};
+	const auto& colors = *m_selection_colors;
+	selection_colors result;
+	if (colors.foreground) result.foreground = colors.foreground->resolve(text_color);
+	if (colors.background) result.background = colors.background->resolve(result.foreground.value_or(text_color));
+	else if (colors.author) result.background = web_color::transparent;
+	return result;
 }
 
 bool html_tag::has_author_property(string_id name) const
@@ -427,10 +417,29 @@ int litehtml::html_tag::select(const string& selector)
 
 int litehtml::html_tag::select(const css_selector& selector, bool apply_pseudo)
 {
+	int proximity = 0;
+	return match_style_selector(selector, apply_pseudo, proximity);
+}
+
+int html_tag::match_style_selector(const css_selector& selector, bool apply_pseudo, int& proximity)
+{
+	proximity = std::numeric_limits<int>::max();
 	if (!selector.m_syntax) return select_no_match;
 	namespace syntax = docrender::css;
-	const syntax::MatchContext context{nullptr, apply_pseudo ? syntax::MatchMode::complete : syntax::MatchMode::candidate};
-	return selector_match_flags(syntax::match_selector(selector_dom_view(), this, *selector.m_syntax, context));
+	const auto mode = apply_pseudo ? syntax::MatchMode::complete : syntax::MatchMode::candidate;
+	int flags;
+	if (selector.m_scope)
+	{
+		const auto match = syntax::match_scoped_selector(selector_dom_view(), this, *selector.m_syntax, *selector.m_scope, mode);
+		proximity = match.proximity;
+		flags = selector_match_flags(match.flags);
+	}
+	else
+		flags = selector_match_flags(syntax::match_selector(selector_dom_view(), this, *selector.m_syntax, {nullptr, mode}));
+	if (flags != select_no_match && apply_pseudo && selector.m_container_query &&
+		!get_document()->matches_container_query(*selector.m_container_query, *this, flags & select_match_with_pseudo_element))
+		return select_no_match;
+	return flags;
 }
 void litehtml::html_tag::parse_attributes()
 {
@@ -584,7 +593,10 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 		box.round();
 		get_document()->container()->draw_box_shadows(*this, box, decoration, inset);
 	};
-	if(m_css.get_display() != display_inline && m_css.get_display() != display_table_row)
+	const auto display = m_css.get_display();
+	const bool painted_row_group = ri->establishes_paint_context() &&
+		is_one_of(display, display_table_row_group, display_table_header_group, display_table_footer_group);
+	if(display != display_inline && display != display_table_row && !painted_row_group)
 	{
 		position pos = ri->pos();
 		pos.x	+= x;
@@ -607,13 +619,8 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 			const background* bg = get_background();
 			if(bg)
 			{
-				int num_layers = bg->get_layers_number();
-				for(int i = num_layers - 1; i >= 0; i--)
+				bg->draw_layers(hdc, pos, this, ri, *get_document()->container(), [&](background_layer& layer)
 				{
-					background_layer layer;
-
-					if(!bg->get_layer(i, pos, this, ri, layer)) continue;
-
 					if(is_root() && (clip != nullptr))
 					{
 						layer.clip_box = *clip;
@@ -622,9 +629,7 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 
 					layer.border_box.round();
 					layer.clip_box.round();
-
-					bg->draw_layer(hdc, i, layer, get_document()->container());
-				}
+				});
 			}
 
 			paint_shadows(border_box, shadow_box, true);
@@ -701,20 +706,12 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 				paint_shadows(*box, shadow_box, false);
 				if(bg)
 				{
-					int num_layers = bg->get_layers_number();
-					for(int i = num_layers - 1; i >= 0; i--)
+					bg->draw_layers(hdc, content_box, this, ri, *get_document()->container(), [&](background_layer& layer)
 					{
-						background_layer layer;
-
-						if(!bg->get_layer(i, content_box, this, ri, layer)) continue;
-
 						layer.border_radius = bdr.radius.calc_percents(box->width, box->height);
-
 						layer.border_box.round();
 						layer.clip_box.round();
-
-						bg->draw_layer(hdc, i, layer, get_document()->container());
-					}
+					});
 				}
 				paint_shadows(*box, shadow_box, true);
 				if(has_border_image || bdr.is_visible())
@@ -849,8 +846,11 @@ litehtml::element::ptr litehtml::html_tag::get_element_after(const style& style,
 
 void litehtml::html_tag::compute_child_styles()
 {
+	if (css().hides_contents()) return;
 	if (css().get_display() == display_list_item)
 		get_element_marker(true);
+	const auto quote_scope = css().has_style_containment() ? get_document() : nullptr;
+	const size_t outer_quote_depth = quote_scope ? quote_scope->quote_depth() : 0;
 	const element* preceding = nullptr;
 	for (const auto& child : m_children)
 	{
@@ -859,6 +859,8 @@ void litehtml::html_tag::compute_child_styles()
 		if (child->tag() != empty_id && child->css().get_display() != display_none)
 			preceding = child.get();
 	}
+	if (quote_scope)
+		quote_scope->set_quote_depth(outer_quote_depth);
 }
 
 void litehtml::html_tag::handle_counter_properties()
@@ -934,7 +936,7 @@ void litehtml::html_tag::refresh_styles()
 	}
 
 	m_style.clear();
-	m_field_pseudos.reset();
+	m_auxiliary_pseudos.reset();
 
 	for (auto& usel : m_used_styles)
 	{
@@ -942,27 +944,11 @@ void litehtml::html_tag::refresh_styles()
 
 		if(usel->m_selector->is_media_valid())
 		{
-			int apply = select(*usel->m_selector, false);
-
-			if (apply == select_no_match || ((apply & select_match_pseudo_class) && !select(*usel->m_selector, true)))
-				continue;
 			const auto& selector = *usel->m_selector;
-			if (apply_field_pseudo(apply, selector))
-			{
-				usel->m_used = true;
-				continue;
-			}
-			element::ptr generated;
-			if (apply & select_match_with_marker)
-				generated = get_element_marker(false);
-			else if (apply & select_match_with_after)
-				generated = get_element_after(*selector.m_style, false);
-			else if (apply & select_match_with_before)
-				generated = get_element_before(*selector.m_style, false);
-			if (generated)
-				static_cast<html_tag&>(*generated).m_style.combine(*selector.m_style, selector.cascade_priority());
-			else if (!(apply & select_match_with_pseudo_element))
-				m_style.combine(*selector.m_style, selector.cascade_priority());
+			int proximity = 0;
+			const int apply = match_style_selector(selector, true, proximity);
+			if (apply == select_no_match) continue;
+			apply_matched_style(apply, selector, proximity, false);
 			usel->m_used = true;
 		}
 	}
@@ -984,11 +970,11 @@ const litehtml::background* litehtml::html_tag::get_background(bool own_only)
 	if(m_css.get_bg().is_empty())
 	{
 		// if this is root element (<html>) try to get background from body
-		if (is_root())
+		if (is_root() && !css().has_containment())
 		{
 			for (const auto& el : m_children)
 			{
-				if( el->is_body() )
+				if( el->is_body() && !el->css().has_containment() )
 				{
 					// return own body background
 					return el->get_background(true);
@@ -998,12 +984,12 @@ const litehtml::background* litehtml::html_tag::get_background(bool own_only)
 		return nullptr;
 	}
 
-	if(is_body())
+	if(is_body() && !css().has_containment())
 	{
 		element::ptr el_parent = parent();
 		if (el_parent)
 		{
-			if (!el_parent->get_background(true))
+			if (!el_parent->css().has_containment() && !el_parent->get_background(true))
 			{
 				// parent of body will draw background for body
 				return nullptr;

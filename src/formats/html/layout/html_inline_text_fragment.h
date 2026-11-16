@@ -20,6 +20,9 @@ namespace docrender {
 			const HTMLTextCluster& p_cluster, bool p_lexical_break_before,
 			bool p_hyphenation_fallback = false);
 		const std::shared_ptr<litehtml::render_item>& original_renderer() const { return original; }
+		const godot::String& shaping_text() const { return *rendered; }
+		int64_t shaping_start() const { return start - run_start; }
+		int64_t shaping_end() const { return end - run_start; }
 		int64_t source_start() const { return start; }
 		int64_t source_end() const { return end; }
 		bool has_lexical_break_before() const { return lexical_break_before; }

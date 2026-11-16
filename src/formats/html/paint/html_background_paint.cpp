@@ -31,6 +31,11 @@ bool litehtml::background::get_layer(int idx, position pos, const element* el, c
 	padding_box += ri->get_paddings();
 	position border_box = padding_box;
 	border_box += ri->get_borders();
+	const auto margin_box = [&] {
+		position margins = border_box;
+		margins += ri->get_margins();
+		return margins;
+	};
 
 	layer.border_radius	= el->css().get_borders().radius.calc_percents(border_box.width, border_box.height);
 	layer.border_box = border_box;
@@ -68,7 +73,7 @@ bool litehtml::background::get_layer(int idx, position pos, const element* el, c
 		{
 			for (auto item = ri; item; item = item->parent())
 			{
-				if (item->css().has_transform())
+				if (item->css().has_transform() || item->css().has_perspective() || item->css().anticipates_transform())
 				{
 					layer.attachment = background_attachment_scroll;
 					break;
@@ -109,6 +114,7 @@ bool litehtml::background::get_layer(int idx, position pos, const element* el, c
 			{
 				case background_box_border: layer.origin_box = local_border; break;
 				case background_box_content: layer.origin_box = local_content; break;
+				case background_box_margin: layer.origin_box = margin_box(); break;
 				default: layer.origin_box = local_padding; break;
 			}
 			if (local_extent)
@@ -125,6 +131,7 @@ bool litehtml::background::get_layer(int idx, position pos, const element* el, c
 		{
 			case background_box_padding: layer.clip_box = padding_box; break;
 			case background_box_content: layer.clip_box = content_box; break;
+			case background_box_margin: layer.clip_box = margin_box(); break;
 			default: layer.clip_box = border_box; break;
 		}
 	}
@@ -738,6 +745,31 @@ litehtml::background::layer_type litehtml::background::get_layer_type(int idx) c
 		return type_color;
 	}
 	return type_none;
+}
+
+litehtml::css_blend_mode litehtml::background::blend_mode(int idx) const
+{
+	if (m_blend_modes.empty() || idx >= static_cast<int>(m_image.size())) return css_blend_mode::normal;
+	return static_cast<css_blend_mode>(m_blend_modes[idx % m_blend_modes.size()]);
+}
+
+void litehtml::background::draw_layers(uint_ptr hdc, const position& box, const element* el,
+	const std::shared_ptr<render_item>& ri, document_container& container,
+	const std::function<void(background_layer&)>& prepare) const
+{
+	bool blends = false;
+	for (int i = 0; !blends && i < static_cast<int>(m_image.size()); ++i)
+		blends = blend_mode(i) != css_blend_mode::normal && get_layer_type(i) != type_none;
+	if (blends) container.begin_background_blend();
+	for (int i = get_layers_number() - 1; i >= 0; --i) {
+		background_layer layer;
+		if (!get_layer(i, box, el, ri, layer)) continue;
+		prepare(layer);
+		if (blends) container.begin_background_blend_layer(blend_mode(i));
+		draw_layer(hdc, i, layer, &container);
+		if (blends) container.end_paint_group();
+	}
+	if (blends) container.end_paint_group();
 }
 
 void litehtml::background::draw_layer(uint_ptr hdc, int idx, const background_layer& layer, document_container* container) const

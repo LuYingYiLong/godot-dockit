@@ -2,6 +2,7 @@
 #include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_textarea_node.h"
 #include "litehtml_container.h"
+#include "formats/html/css/css_transition_state.h"
 
 #include "formats/html/dom/html_dom.h"
 
@@ -23,6 +24,10 @@ using namespace godot;
 using namespace litehtml;
 
 namespace docrender {
+
+	const property_value* LiteHTMLContainer::transition_override(const element* p_element, string_id p_name) const {
+		return transition_state ? transition_state->find(p_element, p_name) : nullptr;
+	}
 	namespace {
 		constexpr float CSS_DPI = 96.0f;
 
@@ -43,7 +48,7 @@ namespace docrender {
 				}
 				std::string text;
 				get_text(text);
-				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"));
+				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get());
 			}
 
 			void compute_styles(bool) override {
@@ -111,11 +116,21 @@ namespace docrender {
 
 	} // namespace
 
+	struct HTMLSVGClipDocument {
+		std::shared_ptr<HTMLDOM> dom = std::make_shared<HTMLDOM>(nullptr);
+		LiteHTMLContainer container;
+		document::ptr source;
+
+		explicit HTMLSVGClipDocument(const String& p_base_dir) :
+			container(*dom, p_base_dir, {}, false, {}, {}, {}, {}, {}, {}, true) {}
+	};
+
 	LiteHTMLContainer::LiteHTMLContainer(HTMLDOM& p_dom, const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
 		const HTMLFontConfig& p_fonts, const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts,
-		const Dictionary& p_image_dpi, const Dictionary& p_image_orientations) :
-		dom(p_dom), resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations),
-		fit_images(p_fit_images), fonts(p_fonts, resources) {
+		const Dictionary& p_image_dpi, const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources,
+		bool p_svg_clip_only) :
+		dom(p_dom), resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources),
+		fit_images(p_fit_images), svg_clip_only(p_svg_clip_only), fonts(p_fonts, resources) {
 	}
 
 	bool LiteHTMLContainer::set_font_rules(std::vector<litehtml::css_font_face> p_faces,
@@ -232,15 +247,61 @@ namespace docrender {
 		}
 	}
 
-	void LiteHTMLContainer::set_viewport(const Vector2i& p_size) {
+	void LiteHTMLContainer::set_viewport(const Vector2i& p_size, const Vector2i& p_media_size) {
+		if (viewport_size != p_size || media_viewport_size != p_media_size) svg_clip_documents.clear();
 		viewport_size = p_size;
+		media_viewport_size = p_media_size;
 	}
 
-	void LiteHTMLContainer::record(litehtml::document& p_document, const Vector2i& p_content_size, const HTMLGeometryIndex& p_geometry) {
+	document::ptr LiteHTMLContainer::get_svg_clip_document(std::string_view p_url, const char* p_base) {
+		if (svg_clip_only) return {};
+		const String path = resources.resolve_svg_clip_source(p_url, p_base);
+		if (path.is_empty()) return {};
+		if (const auto* cached = svg_clip_documents.getptr(path)) return *cached ? (*cached)->source : nullptr;
+		const auto text = resources.get_svg_clip_source(path);
+		if (!text) {
+			svg_clip_documents.insert(path, {});
+			return {};
+		}
+		auto clip = std::make_shared<HTMLSVGClipDocument>(path.get_base_dir());
+		clip->container.set_viewport(viewport_size, media_viewport_size);
+		clip->source = docrender_editor::parse_svg_clip_source(*text, clip->container);
+		const auto source = clip->source;
+		svg_clip_documents.insert(path, source ? std::move(clip) : nullptr);
+		return source;
+	}
+
+	const litehtml::string_map* LiteHTMLContainer::get_source_attributes(const litehtml::element& p_element) const {
+		return dom.get_source_attributes(p_element);
+	}
+
+	void LiteHTMLContainer::record(litehtml::document& p_document, const Vector2i& p_content_size,
+		const HTMLGeometryIndex& p_geometry, const Vector2& p_viewport_gutters) {
 		const litehtml::position bounds(0, 0, std::max(p_content_size.x, viewport_size.x),
 			std::max(p_content_size.y, viewport_size.y));
-		paint.begin(p_geometry);
+		paint.begin(p_geometry, p_document.root_render().get(), [this](uint_ptr p_font, const String& p_text,
+			int64_t p_start, int64_t p_end, const render_item* p_item) {
+			if (!p_item) return fonts.shape_text(p_font, p_text);
+			return fonts.shape_styled_text(p_font, p_text, p_item->get_text_justification(), p_item->get_placement().width,
+				p_start, p_end, p_item->get_punctuation_trim()).layout;
+		});
 		p_document.draw(0, 0, 0, &bounds);
+		const auto& root_render = p_document.root_render();
+		if (p_viewport_gutters != Vector2() && root_render && root_render->is_visible()) {
+			const auto& root = p_document.root();
+			if (const auto* background = root->get_background()) {
+				auto canvas = bounds;
+				canvas.x -= p_viewport_gutters.x;
+				canvas.width += p_viewport_gutters.x + p_viewport_gutters.y;
+				canvas.round();
+				paint.record_viewport_background(*root_render, [&] {
+					background->draw_layers(0, root_render->pos(), root.get(), root_render, *this, [&](background_layer& layer) {
+						layer.clip_box = layer.border_box = canvas;
+						layer.border_radius = {};
+					});
+				});
+			}
+		}
 		paint.finish(p_document.root(), [this](const element& p_element, const String& p_text) {
 			const auto font = p_element.parent()->css().get_font();
 			return font ? fonts.shape_text(font, p_text) : HTMLTextLayout{};
@@ -330,7 +391,8 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::import_css(litehtml::string& r_text, const litehtml::string& p_url, litehtml::string& r_css_base) {
-		resources.import_css(r_text, p_url, r_css_base);
+		if (svg_clip_only) r_text.clear();
+		else resources.import_css(r_text, p_url, r_css_base);
 	}
 
 	void LiteHTMLContainer::link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) {
@@ -346,16 +408,16 @@ namespace docrender {
 		litehtml::string base;
 		import_css(css, href, base);
 		if (!css.empty()) {
-			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"));
+			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"), p_element->parent().get());
 		}
 	}
 
 	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool, css_image_orientation p_orientation) {
-		resources.load_texture(p_src, p_css_base, p_orientation);
+		if (!svg_clip_only) resources.load_texture(p_src, p_css_base, p_orientation);
 	}
 
 	bool LiteHTMLContainer::is_image_available(const char* p_source, const char* p_base, css_image_orientation p_orientation) {
-		return resources.load_texture(p_source, p_base, p_orientation).is_valid();
+		return !svg_clip_only && resources.load_texture(p_source, p_base, p_orientation).is_valid();
 	}
 
 	std::shared_ptr<HTMLImageAltText> LiteHTMLContainer::shape_image_alt(const char* p_alt, const html_tag& p_image) {
@@ -387,7 +449,7 @@ namespace docrender {
 
 	void LiteHTMLContainer::get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size,
 		css_image_orientation p_orientation) {
-		const Ref<Texture2D> texture = resources.load_texture(p_src, p_css_base, p_orientation);
+		const Ref<Texture2D> texture = svg_clip_only ? Ref<Texture2D>() : resources.load_texture(p_src, p_css_base, p_orientation);
 		const Vector2 size = texture.is_valid() ? texture->get_size() : Vector2();
 		r_size = litehtml::size(size.x, size.y);
 	}
@@ -487,6 +549,10 @@ namespace docrender {
 		paint.set_clip(p_position, p_radii);
 	}
 
+	void LiteHTMLContainer::set_overflow_clip(const render_item& p_item) {
+		paint.set_overflow_clip(p_item);
+	}
+
 	void LiteHTMLContainer::set_render_item_clip(const litehtml::position& p_position, const border_radiuses& p_radii,
 		const render_item& p_item) {
 		paint.set_render_item_clip(p_position, p_radii, p_item);
@@ -500,12 +566,28 @@ namespace docrender {
 		paint.end_render_item();
 	}
 
-	void LiteHTMLContainer::begin_paint_group() {
-		paint.begin_paint_group();
+	void LiteHTMLContainer::draw_scrollbars(const render_item& p_item) {
+		paint.draw_scrollbars(p_item);
+	}
+
+	void LiteHTMLContainer::draw_text_overflow(const render_item& p_item) {
+		paint.draw_text_overflow(p_item);
+	}
+
+	void LiteHTMLContainer::begin_paint_group(const render_item& p_item) {
+		paint.begin_paint_group(p_item);
 	}
 
 	void LiteHTMLContainer::end_paint_group() {
 		paint.end_paint_group();
+	}
+
+	void LiteHTMLContainer::begin_background_blend() {
+		paint.begin_background_blend(std::nullopt);
+	}
+
+	void LiteHTMLContainer::begin_background_blend_layer(css_blend_mode p_mode) {
+		paint.begin_background_blend(p_mode);
 	}
 
 	void LiteHTMLContainer::del_clip() {
@@ -518,8 +600,8 @@ namespace docrender {
 
 	void LiteHTMLContainer::get_media_features(media_features& r_media) const {
 		r_media.type = media_type_screen;
-		r_media.width = r_media.device_width = viewport_size.x;
-		r_media.height = r_media.device_height = viewport_size.y;
+		r_media.width = r_media.device_width = media_viewport_size.x;
+		r_media.height = r_media.device_height = media_viewport_size.y;
 		r_media.color = 8;
 		r_media.resolution = CSS_DPI;
 	}

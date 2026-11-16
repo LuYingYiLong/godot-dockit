@@ -42,14 +42,17 @@ namespace docrender {
 		}
 
 		void collect_css_paths(const char* p_css, const String& p_base_dir, HashSet<String>& r_images,
-			HashSet<String>* r_fonts = nullptr) {
+			HashSet<String>& r_svg_clips, HashSet<String>* r_fonts = nullptr) {
 			using namespace litehtml;
 			const auto add = [&](const char* p_url) {
 				add_image_path(r_images, p_url, p_base_dir);
+				const String url = String::utf8(p_url);
 				if (r_fonts) {
-					const String path = resolve_html_font_path(String::utf8(p_url), p_base_dir);
-					if (!path.is_empty()) r_fonts->insert(path);
+					const String font = resolve_html_font_path(url, p_base_dir);
+					if (!font.is_empty()) r_fonts->insert(font);
 				}
+				const String clip = resolve_html_svg_clip_path(url, p_base_dir);
+				if (!clip.is_empty()) r_svg_clips.insert(clip);
 			};
 			const auto add_string_source = [&](const css_token& p_source) {
 				const css_token* source = &p_source;
@@ -93,6 +96,7 @@ namespace docrender {
 		public:
 			HashSet<String> images;
 			HashSet<String> fonts;
+			HashSet<String> svg_clips;
 			Dictionary stylesheets;
 
 			void add_stylesheet(const String& p_url, const String& p_dir) {
@@ -110,7 +114,7 @@ namespace docrender {
 			void add_css(const char* p_css, const String& p_dir) {
 				using namespace litehtml;
 				const std::string text(p_css);
-				collect_css_paths(p_css, p_dir, images, &fonts);
+				collect_css_paths(p_css, p_dir, images, svg_clips, &fonts);
 				for (const auto& rule : css_parser::parse_stylesheet(text, true)) {
 					if (rule->type != raw_rule::at || String::utf8(rule->name.c_str()).nocasecmp_to("import") != 0) {
 						continue;
@@ -171,7 +175,7 @@ namespace docrender {
 				}
 			}
 			if (const GumboAttribute* style = gumbo_get_attribute(&element.attributes, "style")) {
-				collect_css_paths(style->value, p_base_dir, assets.images);
+				collect_css_paths(style->value, p_base_dir, assets.images, assets.svg_clips);
 			}
 			for (size_t i = 0; i < element.children.length; ++i) {
 				const GumboNode* nested = child(element, i);
@@ -204,6 +208,10 @@ namespace docrender {
 				if (font.is_valid()) fonts[path] = font;
 			}
 		}
-		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations };
+		Dictionary svg_clip_sources;
+		for (const String& path : assets.svg_clips) {
+			if (const auto text = read_html_svg_source(path)) svg_clip_sources[path] = *text;
+		}
+		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources };
 	}
 }

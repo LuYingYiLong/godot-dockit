@@ -53,6 +53,33 @@ namespace litehtml {
 		RoundStrategy strategy = RoundStrategy::NEAREST;
 	};
 
+	css_length interpolate_css_length(const css_length& from, const css_length& to, double progress, bool non_negative) {
+		const auto operation = [](MathOp op, int type, css_math_node_ptr left, css_math_node_ptr right) {
+			return std::make_shared<css_math_node>(css_math_node{op, type, 0, css_units_none, {std::move(left), std::move(right)}});
+		};
+		const auto scaled = [&](const css_length& length, double weight) {
+			const auto node = length.expression() ? length.expression()->root :
+				std::make_shared<css_math_node>(css_math_node{MathOp::LITERAL,
+					length.units() == css_units_percentage ? PERCENT_TYPE : LENGTH_TYPE,
+					length.val(), length.units(), {}});
+			const auto factor = std::make_shared<css_math_node>(css_math_node{MathOp::LITERAL, NUMBER_TYPE, weight, css_units_none, {}});
+			return operation(MathOp::MULTIPLY, node->type, node, factor);
+		};
+		if (!from.expression() && !to.expression() && from.units() == to.units()) {
+			const auto result = std::clamp(from.val() + (to.val() - from.val()) * progress,
+				non_negative ? 0.0 : -CSS_LENGTH_LIMIT, CSS_LENGTH_LIMIT);
+			return css_length(static_cast<float>(result), from.units());
+		}
+		const auto left = scaled(from, 1.0 - progress);
+		const auto right = scaled(to, progress);
+		const int type = left->type | right->type;
+		css_length result;
+		result.set_expression(std::make_shared<css_math_expression>(css_math_expression{
+			operation(MathOp::ADD, type, left, right), (type & PERCENT_TYPE) != 0, non_negative, false
+		}));
+		return result;
+	}
+
 	namespace {
 		css_math_node_ptr literal(double p_number, css_units p_unit = css_units_none, int p_dimension = NUMBER_TYPE) {
 			const int type = p_unit == css_units_none ? p_dimension : (p_unit == css_units_percentage ? PERCENT_TYPE : LENGTH_TYPE);
@@ -417,21 +444,24 @@ namespace litehtml {
 		return value;
 	}
 
-	std::optional<double> parse_css_angle(const css_token& p_token, bool p_allow_unitless_zero) {
+	std::optional<double> parse_css_angle(const css_token& p_token, bool p_allow_unitless_zero, bool p_normalize) {
 		constexpr double full_turn = 2.0 * PI;
+		const auto normalize = [p_normalize](double value, double period) {
+			return p_normalize ? std::remainder(value, period) : value;
+		};
 		if (p_token.type == CV_FUNCTION) {
 			const auto angle = evaluate_css_scalar_math(p_token, css_math_scalar::angle);
 			if (!angle) return std::nullopt;
-			return std::isfinite(*angle) ? std::remainder(*angle, full_turn) : 0.0;
+			return std::isfinite(*angle) ? normalize(*angle, full_turn) : 0.0;
 		}
 		if (p_token.type == NUMBER && p_allow_unitless_zero && p_token.n.number == 0) return 0.0;
 		if (p_token.type != DIMENSION || !std::isfinite(p_token.n.number)) return std::nullopt;
 		const auto unit = lowcase(p_token.unit);
 		const double value = p_token.n.number;
-		if (unit == "deg") return std::remainder(value, 360.0) * PI / 180.0;
-		if (unit == "grad") return std::remainder(value, 400.0) * PI / 200.0;
-		if (unit == "rad") return std::remainder(value, full_turn);
-		if (unit == "turn") return std::remainder(value, 1.0) * full_turn;
+		if (unit == "deg") return normalize(value, 360.0) * PI / 180.0;
+		if (unit == "grad") return normalize(value, 400.0) * PI / 200.0;
+		if (unit == "rad") return normalize(value, full_turn);
+		if (unit == "turn") return normalize(value, 1.0) * full_turn;
 		return std::nullopt;
 	}
 

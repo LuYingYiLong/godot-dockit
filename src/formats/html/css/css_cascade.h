@@ -17,8 +17,10 @@ class Cascade {
 	litehtml::props_map computed;
 	litehtml::css_computed_variables variables;
 	vector<litehtml::css_diagnostic> diagnostics;
+	std::uint64_t next_declaration = 0;
 
-	const Value& rollback(Property name, int layer, bool layer_only, bool has_author_layers) const;
+	void insert(Property name, Value value, CascadePriority priority);
+	const Value& rollback(Property name, Property alias, int layer, bool layer_only, bool has_author_layers) const;
 
 public:
 	using ParseDeferred = std::function<litehtml::css_parsed_declaration(
@@ -27,8 +29,8 @@ public:
 	void add(Property name, Value value, CascadePriority priority);
 	void merge(const Cascade& source, CascadePriority priority);
 	void snapshot_defaults();
-	void clear();
-	void resolve(bool has_author_layers, const litehtml::css_inherited_variable& inherited,
+	void clear(bool keep_variables = false);
+	void resolve(bool has_author_layers, bool inherited_rtl, const litehtml::css_inherited_variable& inherited,
 		const ParseDeferred& parse_deferred);
 
 	const Value& get(Property name) const;

@@ -330,7 +330,7 @@ namespace litehtml {
 		pixel_t base_line() const	{ return descent; }
 	};
 
-#define  style_display_strings		"none;block;inline;inline-block;inline-table;list-item;table;table-caption;table-cell;table-column;table-column-group;table-footer-group;table-header-group;table-row;table-row-group;inline-text;flex;inline-flex;grid;inline-grid"
+#define  style_display_strings		"none;block;inline;inline-block;inline-table;list-item;table;table-caption;table-cell;table-column;table-column-group;table-footer-group;table-header-group;table-row;table-row-group;inline-text;flex;inline-flex;grid;inline-grid;flow-root;contents"
 
 	enum style_display
 	{
@@ -354,6 +354,8 @@ namespace litehtml {
 		display_inline_flex,
 		display_grid,
 		display_inline_grid,
+		display_flow_root,
+		display_contents,
 	};
 
 	inline bool is_grid_display(style_display value)
@@ -491,26 +493,30 @@ namespace litehtml {
 		border_style_outset
 	};
 
-#define  element_float_strings	"none;left;right"
+#define  element_float_strings	"none;left;right;inline-start;inline-end"
 
 	enum element_float
 	{
 		float_none,
 		float_left,
-		float_right
+		float_right,
+		float_inline_start,
+		float_inline_end,
 	};
 
-#define  element_clear_strings	"none;left;right;both"
+#define  element_clear_strings	"none;left;right;both;inline-start;inline-end"
 
 	enum element_clear
 	{
 		clear_none,
 		clear_left,
 		clear_right,
-		clear_both
+		clear_both,
+		clear_inline_start,
+		clear_inline_end,
 	};
 
-#define  css_units_strings	"none;%;in;cm;mm;em;ex;pt;pc;px;vw;vh;vmin;vmax;rem;ch;q;cap;ic;lh;rex;rcap;rch;ric;rlh;vi;vb;svw;svh;svi;svb;svmin;svmax;lvw;lvh;lvi;lvb;lvmin;lvmax;dvw;dvh;dvi;dvb;dvmin;dvmax"
+#define  css_units_strings	"none;%;in;cm;mm;em;ex;pt;pc;px;vw;vh;vmin;vmax;rem;ch;q;cap;ic;lh;rex;rcap;rch;ric;rlh;vi;vb;svw;svh;svi;svb;svmin;svmax;lvw;lvh;lvi;lvb;lvmin;lvmax;dvw;dvh;dvi;dvb;dvmin;dvmax;cqw;cqh;cqi;cqb;cqmin;cqmax"
 
 	enum css_units : byte // see css_length
 	{
@@ -559,6 +565,12 @@ namespace litehtml {
 		css_units_dvb,
 		css_units_dvmin,
 		css_units_dvmax,
+		css_units_cqw,
+		css_units_cqh,
+		css_units_cqi,
+		css_units_cqb,
+		css_units_cqmin,
+		css_units_cqmax,
 	};
 
 #define  background_attachment_strings	"scroll;fixed;local"
@@ -591,7 +603,9 @@ namespace litehtml {
 	{
 		background_box_border,
 		background_box_padding,
-		background_box_content
+		background_box_content,
+		background_box_margin,
+		background_box_no_clip
 	};
 
 #define  background_position_strings				"left;right;top;bottom;center"
@@ -606,7 +620,7 @@ namespace litehtml {
 		background_position_center,
 	};
 
-#define element_position_strings	"static;relative;absolute;fixed"
+#define element_position_strings	"static;relative;absolute;fixed;sticky"
 
 	enum element_position
 	{
@@ -614,6 +628,7 @@ namespace litehtml {
 		element_position_relative,
 		element_position_absolute,
 		element_position_fixed,
+		element_position_sticky,
 	};
 
 #define text_align_strings		"left;right;center;justify;auto;match-parent"
@@ -716,7 +731,7 @@ namespace litehtml {
 #define resize_strings "none;both;horizontal;vertical;inline;block"
 	enum resize_mode { resize_none, resize_both, resize_horizontal, resize_vertical, resize_inline, resize_block };
 
-#define overflow_strings		"visible;hidden;scroll;auto;no-display;no-content"
+#define overflow_strings		"visible;hidden;scroll;auto;no-display;no-content;clip"
 
 	enum overflow
 	{
@@ -725,8 +740,47 @@ namespace litehtml {
 		overflow_scroll,
 		overflow_auto,
 		overflow_no_display,
-		overflow_no_content
+		overflow_no_content,
+		overflow_clip
 	};
+
+	inline bool is_scrollable_overflow(overflow value)
+	{
+		return value == overflow_hidden || value == overflow_scroll || value == overflow_auto;
+	}
+
+	inline bool is_interactive_overflow(overflow value)
+	{
+		return value == overflow_scroll || value == overflow_auto;
+	}
+
+	enum class overscroll_behavior { automatic, contain, none, chain };
+	inline constexpr const char* overscroll_behavior_keywords = "auto;contain;none;chain";
+	enum class scrollbar_gutter { automatic, stable, both_edges };
+	enum containment_flag {
+		contain_layout = 1, contain_paint = 2, contain_style = 4, contain_size = 8, contain_inline_size = 16,
+	};
+	enum class content_visibility { visible, hidden, automatic };
+	enum class container_type { normal, inline_size, size };
+
+	enum class scroll_snap_align { none, start, end, center };
+	struct css_scroll_snap_align {
+		scroll_snap_align block = scroll_snap_align::none;
+		scroll_snap_align inline_axis = scroll_snap_align::none;
+		bool empty() const { return block == scroll_snap_align::none && inline_axis == scroll_snap_align::none; }
+	};
+
+	struct css_scroll_snap_type {
+		bool x = false;
+		bool y = false;
+		bool mandatory = false;
+		bool enabled() const { return x || y; }
+	};
+
+	inline bool blocks_scroll_chain(overscroll_behavior value)
+	{
+		return value == overscroll_behavior::contain || value == overscroll_behavior::none;
+	}
 
 #define background_size_strings		"auto;cover;contain"
 

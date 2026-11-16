@@ -2,7 +2,28 @@
 
 #include "css_property_value.h"
 
+#include <array>
+
 namespace litehtml {
+	enum class css_edge_group { margin, padding, inset, scroll_padding, scroll_margin, border_width, border_style,
+		border_color, radius_x, radius_y, count };
+
+	struct css_flow_edges {
+		std::array<string_id, 4> physical;
+		std::array<string_id, 4> logical;
+		bool corners = false;
+
+		size_t map_direction(size_t side, bool rtl) const {
+			if (!rtl) return side;
+			if (corners) return side ^ 1;
+			return side % 2 == 1 ? 4 - side : side;
+		}
+	};
+
+	const css_flow_edges& css_edge_properties(css_edge_group group);
+	string_id css_map_logical_property(string_id name, bool rtl);
+	const vector<string_id>& css_longhands(string_id name);
+
 	enum class css_declaration_status { unknown, invalid, deferred, parsed };
 
 	struct css_parsed_declaration {

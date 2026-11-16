@@ -30,11 +30,13 @@ public:
 };
 
 enum class MatchMode { candidate, complete };
+struct NestingMatchCache;
 
 struct MatchContext {
 	SelectorNode scope = nullptr;
 	MatchMode mode = MatchMode::complete;
 	bool virtual_scope = false;
+	NestingMatchCache* nesting_cache = nullptr;
 };
 
 enum MatchFlag : unsigned {
@@ -48,10 +50,25 @@ enum MatchFlag : unsigned {
 	match_selection = 1 << 6,
 };
 
+struct ScopeRule {
+	std::shared_ptr<const ScopeRule> parent;
+	Selector::vector start;
+	Selector::vector end;
+	SelectorNode implicit_root = nullptr;
+	unsigned state_dependencies() const;
+};
+
+struct SelectorMatch {
+	unsigned flags = match_none;
+	int proximity = std::numeric_limits<int>::max();
+};
+
 unsigned match_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,
 	const MatchContext& context = {});
 unsigned match_selector_list(const SelectorDOM& dom, SelectorNode node, const Selector::vector& selectors,
 	const MatchContext& context = {});
+SelectorMatch match_scoped_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,
+	const ScopeRule& scope, MatchMode mode);
 std::optional<std::string_view> inherited_language(const SelectorDOM& dom, SelectorNode node);
 bool matches_language(const SelectorDOM& dom, SelectorNode node, const vector<string>& ranges);
 

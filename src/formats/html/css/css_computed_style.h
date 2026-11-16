@@ -9,8 +9,11 @@
 #include "css_types.h"
 #include "css_margins.h"
 #include "css_borders.h"
+#include "css_clip_path.h"
 #include "css_offsets.h"
 #include "css_transform.h"
+#include "css_transition.h"
+#include "css_motion_path.h"
 #include "css_grid_values.h"
 #include "css_shadows.h"
 #include "css_values.h"
@@ -47,7 +50,34 @@ namespace docrender::css {
 		text_justify				m_text_justify = text_justify_auto;
 		int m_text_autospace = text_autospace_normal;
 		int m_text_spacing_trim = text_spacing_normal;
-		overflow				m_overflow;
+		overflow m_overflow_x = overflow_visible;
+		overflow m_overflow_y = overflow_visible;
+		bool m_smooth_scroll = false;
+		css_scroll_snap_type m_scroll_snap_type;
+		css_scroll_snap_align m_scroll_snap_align;
+		bool m_scroll_snap_stop = false;
+		overscroll_behavior m_overscroll_x = overscroll_behavior::automatic;
+		overscroll_behavior m_overscroll_y = overscroll_behavior::automatic;
+		css_clip_margin m_overflow_clip_margin;
+		css_clip_path_ref m_clip_path;
+		int m_clip_rule = 0;
+		int m_text_anchor = 0;
+		std::array<css_length, 4> m_scroll_padding;
+		std::array<css_length, 4> m_scroll_margin;
+		scrollbar_width m_scrollbar_width = scrollbar_width::automatic;
+		scrollbar_gutter m_scrollbar_gutter = scrollbar_gutter::automatic;
+		int m_containment = 0;
+		int m_used_containment = 0;
+		content_visibility m_content_visibility = content_visibility::visible;
+		container_type m_container_type = container_type::normal;
+		string_vector m_container_names;
+		bool m_auto_content_skipped = false;
+		bool m_replaced = false;
+		css_contain_intrinsic_size m_contain_intrinsic_width;
+		css_contain_intrinsic_size m_contain_intrinsic_height;
+		std::optional<pixel_t> m_remembered_content_width;
+		std::optional<pixel_t> m_remembered_content_height;
+		std::optional<css_scrollbar_colors> m_scrollbar_colors;
 		resize_mode m_resize = resize_none;
 		white_space_collapse m_white_space_collapse = white_space_collapse_spaces;
 		text_wrap_mode m_text_wrap_mode = text_wrap_wrap;
@@ -62,12 +92,21 @@ namespace docrender::css {
 		int m_white_space_trim = white_space_trim_none;
 		style_display			m_display;
 		visibility				m_visibility;
+		bool m_pointer_events_none = false;
+		css_user_select m_user_select = css_user_select::automatic;
+		bool m_text_overflow_ellipsis = false;
 		appearance				m_appearance;
 		bool m_fixed_table_layout = false;
 		bool m_hide_empty_cells = false;
 		web_color m_accent_color{37, 99, 235};
 		web_color m_caret_color;
 		double m_opacity = 1.0;
+		std::shared_ptr<const css_transition_styles> m_transitions;
+		int m_mix_blend_mode = 0;
+		int m_isolation = 0;
+		css_filter_list m_filters;
+		css_filter_list m_backdrop_filters;
+		int m_will_change = 0;
 		box_sizing				m_box_sizing;
 		css_length				m_z_index;
 		vertical_align			m_vertical_align;
@@ -100,6 +139,9 @@ namespace docrender::css {
 		string					m_list_style_image_baseurl;
 		background				m_bg;
 		css_border_image m_border_image;
+		std::shared_ptr<const css_mask> m_mask;
+		bool m_svg_mask_uses_alpha = false;
+		bool m_svg_interpolates_linear_rgb = false;
 		uint_ptr				m_font;
 		css_length				m_font_size;
 		css_font_families		m_font_families;
@@ -150,6 +192,13 @@ namespace docrender::css {
 		grid_line m_grid_row_start, m_grid_row_end, m_grid_column_start, m_grid_column_end;
 		css_transform_list m_transforms;
 		css_transform_origin m_transform_origin;
+		css_length m_perspective = css_length::predef_value();
+		css_image_position m_perspective_origin;
+		css_individual_transforms m_individual_transforms;
+		int m_transform_box = static_cast<int>(css_transform_box::view);
+		int m_backface_visibility = 0;
+		int m_transform_style = 0;
+		css_motion_path m_motion_path;
 		grid_track_template m_grid_template_columns, m_grid_template_rows;
 		grid_area_template m_grid_template_areas;
 		grid_track_list m_grid_auto_rows, m_grid_auto_columns;
@@ -168,6 +217,7 @@ namespace docrender::css {
 	private:
 		void compute_font(const ComputeContext& context);
 		void compute_background(const ComputeContext& context);
+		void compute_mask(const ComputeContext& context);
 		void compute_flex(const ComputeContext& context);
 		void snap_border_width(css_length& width, const ComputeContext& context);
 
@@ -175,7 +225,6 @@ namespace docrender::css {
 		ComputedStyle() :
 				m_el_position(element_position_static),
 				m_text_align(text_align_left),
-				m_overflow(overflow_visible),
 				m_display(display_inline),
 				m_visibility(visibility_visible),
 				m_appearance(appearance_none),
@@ -229,9 +278,56 @@ namespace docrender::css {
 		int get_text_spacing_trim() const { return m_text_spacing_trim; }
 		void set_text_align(text_align mTextAlign);
 
-		overflow get_overflow() const;
+		overflow get_overflow_x() const { return m_overflow_x; }
+		overflow get_overflow_y() const { return m_overflow_y; }
+		bool uses_smooth_scroll() const { return m_smooth_scroll; }
+		const css_scroll_snap_type& get_scroll_snap_type() const { return m_scroll_snap_type; }
+		const css_scroll_snap_align& get_scroll_snap_align() const { return m_scroll_snap_align; }
+		bool stops_scroll_snap() const { return m_scroll_snap_stop; }
+		overscroll_behavior get_overscroll_x() const { return m_overscroll_x; }
+		overscroll_behavior get_overscroll_y() const { return m_overscroll_y; }
+		const css_clip_margin& get_overflow_clip_margin() const { return m_overflow_clip_margin; }
+		const std::array<css_length, 4>& get_scroll_padding() const { return m_scroll_padding; }
+		const std::array<css_length, 4>& get_scroll_margin() const { return m_scroll_margin; }
+		scrollbar_width get_scrollbar_width() const { return m_scrollbar_width; }
+		scrollbar_gutter get_scrollbar_gutter() const { return m_scrollbar_gutter; }
+		bool has_box_containment() const;
+		bool allows_box_containment() const;
+		bool has_style_containment() const
+		{
+			return (m_used_containment & contain_style) && m_display != display_none && m_display != display_inline_text;
+		}
+		bool allows_size_containment() const;
+		container_type get_container_type() const { return m_container_type; }
+		const string_vector& get_container_names() const { return m_container_names; }
+		bool establishes_query_container_context() const
+		{
+			return m_container_type != container_type::normal && allows_size_containment();
+		}
+		bool hides_contents() const { return m_content_visibility == content_visibility::hidden && allows_size_containment(); }
+		bool has_auto_content_visibility() const { return m_content_visibility == content_visibility::automatic && allows_size_containment(); }
+		bool skips_contents() const { return hides_contents() || (m_auto_content_skipped && has_auto_content_visibility()); }
+		bool set_auto_content_skipped(bool skip);
+		bool has_inline_size_containment() const
+		{
+			return (m_used_containment & (contain_size | contain_inline_size)) && allows_size_containment();
+		}
+		bool has_block_size_containment() const
+		{
+			return (m_used_containment & contain_size) && allows_size_containment();
+		}
+		bool has_containment() const { return has_box_containment() || has_style_containment() || has_inline_size_containment(); }
+		std::optional<pixel_t> get_contain_intrinsic_width() const;
+		std::optional<pixel_t> get_contain_intrinsic_height() const;
+		void remember_content_size(pixel_t width, pixel_t height);
+		void copy_remembered_content_size(const ComputedStyle& source);
+		bool has_layout_containment() const { return (m_used_containment & contain_layout) && has_box_containment(); }
+		bool has_paint_containment() const { return (m_used_containment & contain_paint) && has_box_containment(); }
+		const std::optional<css_scrollbar_colors>& get_scrollbar_colors() const { return m_scrollbar_colors; }
+		bool clips_overflow() const { return m_overflow_x != overflow_visible || m_overflow_y != overflow_visible; }
+		bool is_scroll_container() const { return is_scrollable_overflow(m_overflow_x) || is_scrollable_overflow(m_overflow_y); }
+		bool has_text_overflow_ellipsis() const { return m_text_overflow_ellipsis; }
 		resize_mode get_resize() const { return m_resize; }
-		void set_overflow(overflow mOverflow);
 
 		white_space_collapse get_white_space_collapse() const { return m_white_space_collapse; }
 		text_wrap_mode get_text_wrap_mode() const { return m_text_wrap_mode; }
@@ -268,8 +364,11 @@ namespace docrender::css {
 
 		style_display get_display() const;
 		void set_display(style_display mDisplay);
+		bool is_flow_root() const { return m_display == display_flow_root; }
 
 		visibility get_visibility() const;
+		bool accepts_pointer_events() const { return !m_pointer_events_none; }
+		css_user_select get_user_select() const { return m_user_select; }
 		void set_visibility(visibility mVisibility);
 
 		appearance get_appearance() const;
@@ -279,6 +378,27 @@ namespace docrender::css {
 		const web_color& get_accent_color() const { return m_accent_color; }
 		const web_color& get_caret_color() const { return m_caret_color; }
 		double get_opacity() const { return m_opacity; }
+		const css_transition_styles* get_transitions() const { return m_transitions.get(); }
+		css_blend_mode get_mix_blend_mode() const { return static_cast<css_blend_mode>(m_mix_blend_mode); }
+		bool mixes_with_backdrop() const { return get_mix_blend_mode() != css_blend_mode::normal; }
+		bool isolates_blending() const { return m_isolation == 1; }
+		bool has_group_opacity() const { return m_opacity < 1.0; }
+		const css_filter_list& get_filters() const { return m_filters; }
+		bool has_filters() const { return !m_filters.empty(); }
+		const css_filter_list& get_backdrop_filters() const { return m_backdrop_filters; }
+		bool has_backdrop_filters() const { return !m_backdrop_filters.empty(); }
+		const css_clip_path_ref& get_clip_path() const { return m_clip_path; }
+		bool uses_even_odd_clip_rule() const { return m_clip_rule == 1; }
+		int get_text_anchor() const { return m_text_anchor; }
+		const css_mask* get_mask() const { return m_mask && m_mask->active ? m_mask.get() : nullptr; }
+		bool svg_mask_uses_alpha() const { return m_svg_mask_uses_alpha; }
+		bool svg_interpolates_linear_rgb() const { return m_svg_interpolates_linear_rgb; }
+		bool has_will_change(css_will_change_hint hint) const { return (m_will_change & hint) != 0; }
+		bool has_backdrop_effects() const {
+			return has_group_opacity() || has_filters() || has_backdrop_filters() || m_clip_path || get_mask() || mixes_with_backdrop();
+		}
+		bool establishes_backdrop_root() const { return has_backdrop_effects() || has_will_change(will_change_backdrop); }
+		bool has_group_effects() const { return has_backdrop_effects() || isolates_blending(); }
 		void set_appearance(appearance mAppearance);
 
 		box_sizing get_box_sizing() const;
@@ -406,9 +526,26 @@ namespace docrender::css {
 		bool has_z_index() const { return !m_z_index.is_predefined(); }
 		const css_transform_list& get_transforms() const { return m_transforms; }
 		const css_transform_origin& get_transform_origin() const { return m_transform_origin; }
-		bool has_transform() const {
-			return !m_transforms.empty() && m_display != display_inline && m_display != display_inline_text &&
+		const css_length& get_perspective() const { return m_perspective; }
+		const css_image_position& get_perspective_origin() const { return m_perspective_origin; }
+		const css_individual_transforms& get_individual_transforms() const { return m_individual_transforms; }
+		css_transform_box get_transform_box() const { return static_cast<css_transform_box>(m_transform_box); }
+		bool hides_backface() const { return m_backface_visibility == 1; }
+		const css_motion_path& get_motion_path() const { return m_motion_path; }
+		bool is_transformable() const {
+			return m_display != display_inline && m_display != display_inline_text &&
 				m_display != display_table_column && m_display != display_table_column_group;
+		}
+		bool has_perspective() const { return !m_perspective.is_predefined() && is_transformable(); }
+		bool anticipates_transform() const { return is_transformable() && has_will_change(will_change_transform); }
+		bool specifies_preserve_3d() const { return m_transform_style == 1 && is_transformable(); }
+		bool preserves_3d() const {
+			return specifies_preserve_3d() && (m_overflow_x == overflow_visible || m_overflow_x == overflow_clip) &&
+				(m_overflow_y == overflow_visible || m_overflow_y == overflow_clip) && !has_group_effects() && !has_paint_containment();
+		}
+		bool has_transform() const {
+			return (!m_transforms.empty() || m_individual_transforms.enabled() || m_motion_path.enabled()) &&
+				is_transformable();
 		}
 		const grid_track_template& get_grid_template_columns() const { return m_grid_template_columns; }
 		const grid_track_template& get_grid_template_rows() const { return m_grid_template_rows; }
@@ -459,19 +596,9 @@ namespace docrender::css {
 		m_text_align = mTextAlign;
 	}
 
-	inline overflow ComputedStyle::get_overflow() const
-	{
-		return m_overflow;
-	}
-
-	inline void ComputedStyle::set_overflow(overflow mOverflow)
-	{
-		m_overflow = mOverflow;
-	}
-
 	inline style_display ComputedStyle::get_display() const
 	{
-		return m_display;
+		return is_flow_root() ? display_block : m_display;
 	}
 
 	inline void ComputedStyle::set_display(style_display mDisplay)

@@ -18,6 +18,15 @@ namespace docrender {
 		virtual bool is_text_control() const = 0;
 		virtual bool update_pseudos() = 0;
 		bool is_editable() const { return is_text_control() && !forms::is_disabled(*this) && !get_attr("readonly"); }
+		litehtml::css_user_select user_selection_mode() const {
+			using litehtml::css_user_select;
+			if (is_editable()) return css_user_select::text;
+			if (css().get_user_select() != css_user_select::automatic) return css().get_user_select();
+			for (auto node = parent(); node; node = node->parent()) {
+				if (node->css().get_user_select() != css_user_select::automatic) return node->css().get_user_select();
+			}
+			return css_user_select::text;
+		}
 		void set_focus_style(bool p_focused) { focused = p_focused; }
 	};
 }
