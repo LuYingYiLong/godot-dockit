@@ -236,6 +236,18 @@
 				Scrolls the viewport to the first available selection rectangle for character offsets [param from] and [param to]. Returns [code]false[/code] if the range has no visible rectangle in the laid-out document.
 			</description>
 		</method>
+		<method name="create_range">
+			<return type="HTMLRange" />
+			<description>
+				Creates a live range with both endpoints at the start of the DOM document.
+			</description>
+		</method>
+		<method name="get_selection" qualifiers="const">
+			<return type="HTMLSelection" />
+			<description>
+				Returns the live document selection, or [code]null[/code] if the document is unavailable.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">

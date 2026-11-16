@@ -4547,3 +4547,183 @@ msgstr "按文档顺序返回供辅助技术使用的文本。[code]content[/cod
 #. doc_classes/HTMLLabel.xml
 msgid "Returns the document text published as this control's accessibility text value. CSS alternatives in [code]content[/code] are applied. See [method HTMLLayout.get_accessible_text]."
 msgstr "返回此控件发布的无障碍文本值，应用 [code]content[/code] 中的 CSS 替代文本。另请参见 [method HTMLLayout.get_accessible_text]。"
+
+#. doc_classes/HTMLRange.xml
+msgid "A live range of nodes in an HTML layout."
+msgstr "HTML 布局中的实时节点范围。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Create a range with [method HTMLLayout.create_range] or [method HTMLLabel.create_range]. Endpoints use Godot character offsets for text and comments and logical child indices for other nodes. DOM edits update endpoints. Clearing or reparsing the layout invalidates the range."
+msgstr "使用 [method HTMLLayout.create_range] 或 [method HTMLLabel.create_range] 创建范围。文本和注释的端点使用 Godot 字符偏移，其他节点使用逻辑子节点索引。DOM 编辑会更新端点。清空或重新解析布局会使范围失效。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns whether the range still belongs to a live layout and its endpoints belong to that layout."
+msgstr "返回范围是否仍属于有效布局，且两个端点是否都属于该布局。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns whether the range's endpoints are equal."
+msgstr "返回范围的两个端点是否相同。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the node containing the start boundary."
+msgstr "返回起点所在的节点。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the node containing the end boundary."
+msgstr "返回终点所在的节点。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the start offset in its container."
+msgstr "返回起点在其容器内的偏移。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the end offset in its container."
+msgstr "返回终点在其容器内的偏移。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Sets the start boundary. If it follows the end or has a different tree root, both endpoints move to the new boundary."
+msgstr "设置起点。如果起点位于终点之后或属于不同树根，两个端点都移动到新位置。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Sets the end boundary. If it precedes the start or has a different tree root, both endpoints move to the new boundary."
+msgstr "设置终点。如果终点位于起点之前或属于不同树根，两个端点都移动到新位置。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Collapses the range to its end by default. Pass [code]true[/code] to collapse to the start."
+msgstr "默认将范围折叠到终点。传入 [code]true[/code] 可折叠到起点。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Selects the node by setting the endpoints immediately before and after it in its parent."
+msgstr "将端点设置在父节点内该节点的前后，从而选中整个节点。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Selects the entire character data or all child nodes of the given node."
+msgstr "选择指定节点的全部字符数据或所有子节点。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the DOM text within the range, excluding comments and generated content."
+msgstr "返回范围内的 DOM 文本，排除注释和生成内容。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns the visible text-selection rectangles in document coordinates from the last layout."
+msgstr "返回上次排版中文本选区的可见矩形，使用文档坐标。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Returns a detached copy of the selected contents, preserving the shells of partially selected elements."
+msgstr "返回选中内容的分离副本，保留部分选中元素的外壳。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Moves the selected contents to a detached fragment and collapses the range. Fully selected nodes retain their handles."
+msgstr "将选中内容移动到分离片段并折叠范围。完整选中的节点保留句柄。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Removes the selected contents and collapses the range."
+msgstr "移除选中内容并折叠范围。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Inserts a same-layout node or fragment at the start. A text start container is split at its offset."
+msgstr "在起点插入同布局的节点或片段。文本起点容器会在指定偏移处拆分。"
+
+#. doc_classes/HTMLRange.xml
+msgid "Moves the selected contents into the given element and selects that element. A partially selected non-text node rejects the operation."
+msgstr "将选中内容移入指定元素并选中该元素。部分选中的非文本节点会使操作失败。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "The live node selection of an HTML layout."
+msgstr "HTML 布局的实时节点选区。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Get the selection with [method HTMLLayout.get_selection] or [method HTMLLabel.get_selection]. It holds at most one [HTMLRange]. The anchor can follow the focus in document order. In [HTMLLabel], this selection also controls rendered highlighting and copying."
+msgstr "通过 [method HTMLLayout.get_selection] 或 [method HTMLLabel.get_selection] 获取选区。它最多持有一个 [HTMLRange]。锚点可以位于焦点之后。在 [HTMLLabel] 中，该选区也用于渲染高亮和复制。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns whether the selection still belongs to a live layout."
+msgstr "返回选区是否仍属于有效布局。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns whether the selection is empty or its anchor and focus are the same."
+msgstr "返回选区是否为空，或锚点与焦点是否重合。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns zero for an empty selection or one when a live range is attached."
+msgstr "选区为空时返回零，关联实时范围时返回一。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the attached range for index zero, or [code]null[/code] when there is no such range."
+msgstr "索引为零时返回关联的范围，没有对应范围时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the selection's anchor node."
+msgstr "返回选区的锚点节点。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the offset of the selection's anchor."
+msgstr "返回选区锚点的偏移。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the selection's focus node."
+msgstr "返回选区的焦点节点。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the offset of the selection's focus."
+msgstr "返回选区焦点的偏移。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Attaches a live range from the same document when the selection is empty."
+msgstr "选区为空时关联同一文档中的实时范围。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Clears the selection."
+msgstr "清除选区。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Moves the anchor and focus to the same boundary. Passing [code]null[/code] clears the selection."
+msgstr "将锚点和焦点移动到同一位置。传入 [code]null[/code] 清除选区。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Moves the focus while keeping the anchor fixed."
+msgstr "移动焦点并保持锚点位置。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Sets both ends of the selection and preserves their direction."
+msgstr "设置选区的两个端点，并保留选择方向。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Selects the contents of the given node."
+msgstr "选择给定节点的内容。"
+
+#. doc_classes/HTMLSelection.xml
+msgid "Returns the source text in the selection's live range."
+msgstr "返回选区实时范围内的源文本。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Emitted with a snapshot of the layout's pending records. Each record has the keys type, target, added_nodes, removed_nodes, previous_sibling, next_sibling, attribute_name, and old_value."
+msgstr "延迟发出该布局待交付记录的快照。记录包含 type、target、added_nodes、removed_nodes、previous_sibling、next_sibling、attribute_name 和 old_value 字段。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Observes DOM changes in one or more HTML layouts."
+msgstr "观察一个或多个 HTML 布局中的 DOM 变更。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Call [method observe] for each target. Use [signal mutations_delivered] for deferred batches or [method take_records] for synchronous polling. Callback edits enter a later delivery. Clearing a layout drops its registered observations and undelivered records."
+msgstr "对每个目标调用 [method observe]。通过 [signal mutations_delivered] 延迟接收记录，或使用 [method take_records] 同步取出。回调造成的编辑会进入后续批次。清空布局会移除其观察注册和待交付记录。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Observes the target using the boolean options child_list, attributes, character_data, subtree, attribute_old_value, and character_data_old_value. The attribute_filter option accepts an array of attribute names. At least one mutation category must be enabled."
+msgstr "使用 child_list、attributes、character_data、subtree、attribute_old_value 和 character_data_old_value 布尔选项观察目标。attribute_filter 接受属性名数组。至少需要启用一种变更类别。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Removes all registrations and discards pending records."
+msgstr "解除所有观察注册并丢弃待交付记录。"
+
+#. doc_classes/HTMLMutationObserver.xml
+msgid "Returns the queued record dictionaries in order and drains the queue."
+msgstr "按顺序返回排队的记录字典，并清空记录队列。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Creates a live range with both endpoints at the start of the DOM document."
+msgstr "创建实时范围，两个端点初始位于 DOM 文档起点。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the live document selection, or [code]null[/code] if the document is unavailable."
+msgstr "返回实时文档选区，文档不可用时返回 [code]null[/code]。"

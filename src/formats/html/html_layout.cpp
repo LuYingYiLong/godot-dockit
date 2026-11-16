@@ -238,6 +238,8 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLayout::create_element);
 	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLayout::create_document_fragment);
 	ClassDB::bind_method(D_METHOD("get_document_node"), &HTMLLayout::get_document_node);
+	ClassDB::bind_method(D_METHOD("create_range"), &HTMLLayout::create_range);
+	ClassDB::bind_method(D_METHOD("get_selection"), &HTMLLayout::get_selection);
 	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLLayout::get_document_element);
 	ClassDB::bind_method(D_METHOD("get_head"), &HTMLLayout::get_head);
 	ClassDB::bind_method(D_METHOD("get_body"), &HTMLLayout::get_body);
@@ -269,6 +271,7 @@ void HTMLLayout::_bind_methods() {
 HTMLLayout::HTMLLayout() :
 	state(std::make_unique<State>()) {
 	state->dom = std::make_shared<HTMLDOM>([this] { invalidate_styles(); });
+	set_dom_selection_change_callback({});
 }
 
 HTMLDOM& HTMLLayout::get_dom() const {
@@ -642,7 +645,7 @@ Vector2i HTMLLayout::get_content_size() const {
 }
 
 void HTMLLayout::draw(CanvasItem* p_canvas, const Vector2& p_position, const Rect2& p_clip) {
-	draw_with_highlights(p_canvas, p_position, p_clip, {}, nullptr, Color());
+	draw_with_highlights(p_canvas, p_position, p_clip, get_node_selection_offsets(), nullptr, Color(0.2f, 0.45f, 0.85f, 0.4f));
 }
 
 String HTMLLayout::get_plain_text() const {
@@ -741,6 +744,93 @@ Ref<HTMLDocumentFragment> HTMLLayout::create_document_fragment() {
 
 Ref<HTMLDocumentNode> HTMLLayout::get_document_node() const {
 	return state->dom->get_document_node();
+}
+
+Ref<HTMLRange> HTMLLayout::create_range() {
+	return ensure_document_for_editing() ? state->dom->create_range() : Ref<HTMLRange>();
+}
+
+Ref<HTMLSelection> HTMLLayout::get_selection() const {
+	return state->dom->get_selection();
+}
+
+void HTMLLayout::set_dom_selection_change_callback(const Callable& p_callback) {
+	state->dom->set_selection_callback([this, p_callback] {
+		if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
+		if (p_callback.is_valid()) p_callback.call();
+		callable_mp(this, &HTMLLayout::request_auto_content_update).call_deferred();
+	});
+}
+
+docrender::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
+	if (!state->has_layout()) return {};
+	const auto& recorder = state->container->get_paint_recorder();
+	const auto& spans = recorder.get_text_index_spans();
+	const auto at = std::lower_bound(spans.begin(), spans.end(), p_offset,
+		[](const auto& p_span, int64_t p_index) { return p_span.to < p_index; });
+	const auto mapped = [&](const auto& p_span, int64_t p_local) {
+		const auto point = state->dom->text_boundary(p_span.source.lock(), p_local);
+		return point.node.is_valid() && point.node->is_connected() ? point : docrender::HTMLBoundary();
+	};
+	if (at != spans.end() && p_offset >= at->from) {
+		if (const auto point = mapped(*at, p_offset - at->from); point.node.is_valid()) return point;
+	}
+	for (auto it = at; it != spans.begin();) {
+		--it;
+		if (const auto point = mapped(*it, it->to - it->from); point.node.is_valid()) return point;
+	}
+	for (auto it = at; it != spans.end(); ++it) {
+		if (const auto point = mapped(*it, 0); point.node.is_valid()) return point;
+	}
+	return {};
+}
+
+int64_t HTMLLayout::document_text_offset(const docrender::HTMLBoundary& p_boundary, bool p_forward) const {
+	if (!state->has_layout() || p_boundary.node.is_null() || !p_boundary.node->is_connected()) return 0;
+	const auto& recorder = state->container->get_paint_recorder();
+	int64_t previous = 0;
+	for (const auto& span : recorder.get_text_index_spans()) {
+		const auto native = span.source.lock();
+		if (!native) continue;
+		const auto point = state->dom->text_boundary(native, 0);
+		if (point.node.is_null() || !point.node->is_connected()) continue;
+		if (p_boundary.node == point.node) {
+			if (p_boundary.offset < point.offset) return p_forward ? span.from : previous;
+			if (p_boundary.offset <= point.offset + span.to - span.from) return span.from + p_boundary.offset - point.offset;
+		} else if (docrender::compare_html_boundaries(p_boundary, point) < 0) {
+			return p_forward ? span.from : previous;
+		}
+		previous = span.to;
+	}
+	return previous;
+}
+
+TypedArray<Rect2> HTMLLayout::range_client_rects(const HTMLRange& p_range) const {
+	if (p_range.is_collapsed() || !p_range.start.node->is_connected() || !p_range.end.node->is_connected()) return {};
+	const auto from = document_text_offset(p_range.start);
+	const auto to = document_text_offset(p_range.end, false);
+	return from < to ? get_selection_rects(from, to) : TypedArray<Rect2>();
+}
+
+Vector2i HTMLLayout::get_node_selection_offsets() const {
+	const auto selection = get_selection();
+	const auto range = selection.is_valid() ? selection->get_range_at(0) : Ref<HTMLRange>();
+	if (range.is_null()) return {};
+	const auto from = document_text_offset(range->start);
+	const auto to = range->is_collapsed() ? from : std::max(from, document_text_offset(range->end, false));
+	return Vector2i(from, to);
+}
+
+bool HTMLLayout::set_node_selection_offsets(int64_t p_anchor, int64_t p_focus) {
+	const auto selection = get_selection();
+	if (selection.is_null()) return false;
+	const auto anchor = text_boundary_at(p_anchor);
+	const auto focus = text_boundary_at(p_focus);
+	if (anchor.node.is_null() || focus.node.is_null()) {
+		selection->remove_all_ranges();
+		return false;
+	}
+	return selection->set_base_and_extent(anchor.node, anchor.offset, focus.node, focus.offset) == OK;
 }
 
 Ref<HTMLElement> HTMLLayout::get_document_element() const {

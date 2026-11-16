@@ -579,6 +579,13 @@ namespace litehtml {
 	void docrender_editor::mark_text_node(elements_list& r_parts, const char* p_text) {
 		if (r_parts.size() <= 1) return;
 		const auto group = std::make_shared<const string>(p_text);
-		for (const auto& part : r_parts) static_cast<el_text&>(*part).set_dom_text(group);
+		int64_t offset = 0;
+		for (const auto& part : r_parts) {
+			auto& text = static_cast<el_text&>(*part);
+			text.set_dom_text(group, r_parts.front(), offset);
+			for (const unsigned char byte : text.get_source_text()) {
+				if ((byte & 0xc0) != 0x80) ++offset;
+			}
+		}
 	}
 }

@@ -197,6 +197,8 @@ private:
 	bool parsed = false;
 	bool refresh_queued = false;
 	bool layout_updated = false;
+	bool use_node_selection = false;
+	bool capturing_node_selection = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
 	bool transparent_canvas = false;
@@ -225,6 +227,8 @@ private:
 	void on_transition_frame(bool p_size_changed);
 	void update_internal_processing();
 	godot::Vector2i get_content_selection_range() const;
+	void capture_node_selection();
+	void on_node_selection_changed();
 	std::optional<godot::Vector2> get_hit_document_position(const godot::Vector2& p_position) const;
 	void source_changed();
 	void document_changed(uint64_t p_document_id);
@@ -305,6 +309,8 @@ public:
 	bool scroll_to_anchor(const godot::String& p_id, float p_align = 0.0f);			// 将指定 HTML ID 的锚点滚到视口内的对齐位置
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建可插入当前控件文档的元素
 	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建可插入当前控件文档的片段
+	godot::Ref<HTMLRange> create_range(); // 为当前文档创建实时节点范围
+	godot::Ref<HTMLSelection> get_selection() const; // 返回与当前控件共享的节点选区
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const;	// 返回当前控件文档中第一个匹配元素
 	godot::TypedArray<HTMLElement> query_selector_all(
 		const godot::String& p_selector

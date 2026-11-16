@@ -11,6 +11,8 @@ namespace docrender { class HTMLDOM; }
 class HTMLLayout;
 class HTMLElement;
 class HTMLDocumentFragment;
+class HTMLRange;
+class HTMLMutationObserver;
 
 class HTMLNode : public godot::RefCounted {
 	GDCLASS(HTMLNode, godot::RefCounted)
@@ -19,6 +21,8 @@ class HTMLNode : public godot::RefCounted {
 	friend class HTMLDocumentFragment;
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
+	friend class HTMLRange;
+	friend class HTMLMutationObserver;
 
 protected:
 	struct DetachedTree;

@@ -17,6 +17,8 @@ namespace litehtml
 		bool			m_whole_text_node;
 		bool m_hyphenation_allowed = false;
 		std::shared_ptr<const string> m_dom_text;
+		std::weak_ptr<element> m_dom_source;
+		int64_t m_dom_offset = 0;
 	public:
 		el_text(const char* text, const document::ptr& doc, bool whole_text_node = true);
 
@@ -27,7 +29,13 @@ namespace litehtml
 		}
 		const string& get_source_text() const { return m_text; }
 		const std::shared_ptr<const string>& dom_text() const { return m_dom_text; }
-		void set_dom_text(const std::shared_ptr<const string>& p_text) { m_dom_text = p_text; }
+		std::shared_ptr<element> dom_source() const { return m_dom_source.lock(); }
+		int64_t dom_offset() const { return m_dom_offset; }
+		void set_dom_text(const std::shared_ptr<const string>& p_text, const element::ptr& p_source, int64_t p_offset) {
+			m_dom_text = p_text;
+			m_dom_source = p_source;
+			m_dom_offset = p_offset;
+		}
 		bool is_whole_text_node() const { return m_whole_text_node; }
 		const string& get_rendered_text() const { return m_use_transformed ? m_transformed_text : m_text; }
 		bool allows_hyphenation() const { return m_hyphenation_allowed; }

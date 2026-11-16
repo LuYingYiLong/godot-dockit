@@ -772,6 +772,7 @@ void fragment() {
 		accessible_text = String();
 		excluded_selection.clear();
 		selection_scopes.clear();
+		text_index_spans.clear();
 		selection_scope_starts.clear();
 		separator_selectable.reset();
 		auto_content_text.clear();
@@ -1066,6 +1067,7 @@ void fragment() {
 			const auto append = [&](const String& p_source) {
 				const int64_t start = index_source_text(p_source, r_separator, p_selectable, p_accessible);
 				if (elided != elided_text_offsets.end()) elided->second = { start, p_source.length() };
+				if (!p_source.is_empty()) text_index_spans.push_back({p_element, start, start + p_source.length()});
 				return start;
 			};
 			const auto append_unpainted = [&](const el_text& p_text) {
@@ -1124,11 +1126,11 @@ void fragment() {
 				return;
 			}
 			if (litehtml::is_explicit_wrap_point(*node) || litehtml::is_soft_hyphen(*node)) {
-				index_source_text(String::utf8(node->get_source_text().c_str()), r_separator, p_selectable, p_accessible);
+				append(String::utf8(node->get_source_text().c_str()));
 				return;
 			}
 			if (node->is_preserved_tab() && item->pos().width <= 0) {
-				index_source_text("\t", r_separator, p_selectable, p_accessible);
+				append("\t");
 				return;
 			}
 			auto* candidates = painted_text_by_renderer.getptr(item.get());

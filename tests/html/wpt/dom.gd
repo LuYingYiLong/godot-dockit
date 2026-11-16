@@ -19,6 +19,9 @@ func _initialize() -> void:
 	_test_node_navigation_and_data()
 	_test_mixed_tree_edits()
 	_test_fragment_import_and_adoption()
+	_test_live_range_mutations()
+	_test_range_contents()
+	await _test_mutation_observer_delivery()
 	if _failures == 0:
 		print("DocRender DOM WPT ports passed.")
 	quit(int(_failures != 0))
@@ -29,6 +32,180 @@ func _check(condition: bool, message: String) -> bool:
 		_failures += 1
 		push_error("DOM WPT port: " + message)
 	return condition
+
+
+# DOM living ranges adjust for logical child insertion and removal.
+# https://dom.spec.whatwg.org/#concept-node-insert
+# https://dom.spec.whatwg.org/#concept-node-remove
+func _test_live_range_mutations() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse('<main id="host"><b>A</b><span id="branch">甲🙂乙 文</span><i>Z</i></main>') == OK,
+		"parse range mutation fixture")
+	var host: HTMLElement = layout.get_element_by_id("host")
+	var branch: HTMLElement = layout.get_element_by_id("branch")
+	var text: HTMLTextNode = branch.get_first_child() as HTMLTextNode
+	var range: HTMLRange = layout.create_range()
+	if not _check(range != null and text != null, "create a live range and logical text handle"):
+		return
+	_check(range.set_start(host, 1) == OK and range.set_end(host, 2) == OK, "select one child by logical index")
+	_check(host.prepend(["a new text node",]) == OK and range.get_start_offset() == 2 and range.get_end_offset() == 3,
+		"insertion shifts later offsets by the number of DOM nodes, including split words")
+	_check(host.insert_before(layout.create_element("u"), branch) == OK
+		and range.get_start_offset() == 2 and range.get_end_offset() == 4,
+		"an insertion on a boundary keeps that boundary before the new child")
+	var selection: HTMLSelection = layout.get_selection()
+	_check(selection.set_base_and_extent(text, 4, text, 1) == OK and selection.get_anchor_offset() == 4
+		and selection.get_focus_offset() == 1 and selection.get_text() == "🙂乙 ",
+		"backward selection preserves direction and uses Godot code point offsets")
+	var selected_range: HTMLRange = selection.get_range_at(0)
+	_check(text.set_data("替换") == OK and selected_range.is_collapsed() and selected_range.get_start_container() == text
+		and selected_range.get_start_offset() == 0, "replacing all character data collapses offsets within the replaced interval")
+	_check(branch.detach() == OK and selection.get_range_at(0) == selected_range
+		and selection.get_anchor_node() == host and selection.get_anchor_offset() == 3,
+		"removing a selected subtree updates both endpoints to the old child index")
+	_check(host.append([branch,]) == OK and selection.get_anchor_node() == host,
+		"reinserting the former subtree keeps the selection in the parent")
+
+	_check(branch.replace_children(["ab", "🙂cd",]) == OK, "prepare adjacent logical text nodes")
+	var first: HTMLTextNode = branch.get_first_child() as HTMLTextNode
+	var last: HTMLTextNode = first.get_next_sibling() as HTMLTextNode
+	_check(range.set_start(branch, 1) == OK and range.set_end(last, 2) == OK and branch.normalize() == OK
+		and range.get_start_container() == first and range.get_start_offset() == 2
+		and range.get_end_container() == first and range.get_end_offset() == 4 and range.get_text() == "🙂c",
+		"normalization moves the inter-node boundary and the tail boundary into the merged text")
+	var target: HTMLLayout = HTMLLayout.new()
+	_check(target.parse("<p>Other layout</p>") == OK and target.adopt_node(branch) == branch
+		and range.get_start_container() == host and range.is_collapsed(),
+		"a source range relocates before a subtree is adopted into another layout")
+	layout.clear()
+	_check(not range.is_valid() and not selection.is_valid() and range.get_start_container() == null,
+		"clearing the layout invalidates its ranges and selection")
+
+
+# Adapt the cross-element content and text-split cases from the DOM Range suite.
+# https://dom.spec.whatwg.org/#concept-range-extract
+# https://dom.spec.whatwg.org/#concept-range-insert
+func _test_range_contents() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse('<div id="host"><i id="left">abc</i><b id="middle">M</b><em id="right">xyz</em></div>') == OK,
+		"parse range content fixture")
+	var host: HTMLElement = layout.get_element_by_id("host")
+	var left: HTMLTextNode = layout.get_element_by_id("left").get_first_child() as HTMLTextNode
+	var right: HTMLTextNode = layout.get_element_by_id("right").get_first_child() as HTMLTextNode
+	var middle: HTMLElement = layout.get_element_by_id("middle")
+	var range: HTMLRange = layout.create_range()
+	_check(range.set_start(left, 1) == OK and range.set_end(right, 2) == OK and range.get_text() == "bcMxy",
+		"range text includes partial and full subtrees")
+	_check(range.surround_contents(layout.create_element("strong")) == ERR_INVALID_PARAMETER and range.get_text() == "bcMxy",
+		"surrounding partially selected elements fails before modifying the tree")
+	var clone: HTMLDocumentFragment = range.clone_contents()
+	_check(clone != null and clone.query_selector("i").get_text_content() == "bc"
+		and clone.query_selector("em").get_text_content() == "xy" and clone.query_selector("b") != middle,
+		"clone copies partial ancestor shells and fully contained nodes")
+	var extracted: HTMLDocumentFragment = range.extract_contents()
+	_check(extracted != null and extracted.is_equal_node(clone) and extracted.query_selector("b") == middle
+		and not middle.is_connected() and left.data == "a" and right.data == "z"
+		and range.get_start_container() == host and range.get_start_offset() == 1 and range.is_collapsed(),
+		"extract retains complete node identities and collapses after the first partial ancestor")
+	_check(range.insert_node(extracted) == OK and extracted.get_child_nodes().is_empty() and middle.is_connected(),
+		"inserting the extracted fragment consumes it and reconnects its nodes")
+
+	var text: HTMLTextNode = layout.create_text_node("abcdef")
+	_check(host.replace_children([text,]) == OK and range.set_start(text, 2) == OK and range.collapse(true) == OK,
+		"prepare an insertion in the middle of a text node")
+	var tail: HTMLRange = layout.create_range()
+	_check(tail.set_start(text, 4) == OK and tail.set_end(text, 6) == OK, "track an independent range in the text suffix")
+	var mark: HTMLElement = layout.create_element("mark")
+	_check(range.insert_node(mark) == OK and text.data == "ab" and tail.get_text() == "ef"
+		and tail.get_start_container() != text and tail.get_start_offset() == 2,
+		"splitting a text node transfers later points to the new suffix")
+	var strong: HTMLElement = layout.create_element("strong")
+	_check(tail.surround_contents(strong) == OK and strong.get_text_content() == "ef" and tail.get_text() == "ef",
+		"surrounding a character range wraps the selected text")
+	_check(tail.delete_contents() == OK and not strong.is_connected() and tail.is_collapsed(),
+		"deleting range contents removes nodes and collapses the range")
+
+
+func _test_mutation_observer_delivery() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse('<main id="host"><p id="a">initial</p></main>') == OK, "parse mutation observer fixture")
+	var host: HTMLElement = layout.get_element_by_id("host")
+	var a: HTMLElement = layout.get_element_by_id("a")
+	var text: HTMLTextNode = a.get_first_child() as HTMLTextNode
+	var observer: HTMLMutationObserver = HTMLMutationObserver.new()
+	var batches: Array[Array] = []
+	observer.mutations_delivered.connect(func(records: Array) -> void: batches.append(records))
+	_check(observer.observe(host, {"subtree": true, "child_list": true, "attribute_filter": ["id",],
+		"attribute_old_value": true, "character_data_old_value": true,}) == OK, "observe tree changes and old values")
+	var fragment: HTMLDocumentFragment = layout.create_document_fragment()
+	var empty: HTMLElement = layout.create_element("span")
+	var fragment_observer: HTMLMutationObserver = HTMLMutationObserver.new()
+	_check(fragment.replace_children([empty, "two words",]) == OK
+		and fragment_observer.observe(fragment, {"child_list": true,}) == OK and host.append([fragment, "tail",]) == OK,
+		"insert a mixed fragment in a single transaction")
+	var removed_from_fragment: Array[Dictionary] = fragment_observer.take_records()
+	_check(removed_from_fragment.size() == 1 and removed_from_fragment[0]["target"] == fragment
+		and removed_from_fragment[0]["removed_nodes"].size() == 2,
+		"consuming the fragment also reports its removed logical nodes")
+	_check(a.set_attribute("class", "ignored") == OK and a.set_attribute("id", "updated") == OK
+		and text.set_data("second") == OK, "mutate a filtered attribute and a descendant text node")
+	_check(batches.is_empty(), "mutation callbacks are deferred")
+	var records: Array[Dictionary] = observer.take_records()
+	if _check(records.size() == 3, "mixed batch, filtered attribute, and text each produce one record"):
+		var added: Array = records[0]["added_nodes"]
+		_check(records[0]["type"] == "childList" and added.size() == 3 and added[0] == empty
+			and records[0]["previous_sibling"] == a and records[0]["next_sibling"] == null,
+			"fragment insertion reports logical nodes in order")
+		_check(records[1]["attribute_name"] == "id" and records[1]["old_value"] == "a"
+			and records[2]["target"] == text and records[2]["old_value"] == "initial",
+			"attribute and character data records preserve real prior values")
+	_check(host.append([host,]) == ERR_INVALID_PARAMETER and observer.take_records().is_empty(),
+		"an invalid atomic edit emits no mutation")
+	await process_frame
+	await process_frame
+	_check(batches.is_empty(), "take_records drains the scheduled callback")
+	_check(a.detach() == OK and text.set_data("detached before delivery") == OK, "edit a just-detached subtree")
+	await process_frame
+	await process_frame
+	_check(batches.size() == 1 and batches[0].size() == 2
+		and batches[0][0]["removed_nodes"] == [a,] and batches[0][1]["target"] == text,
+		"subtree observations follow removed descendants through the removal delivery")
+	text.set_data("after delivery")
+	await process_frame
+	_check(batches.size() == 1, "a detached subtree stops reporting changes after delivery")
+	_check(observer.observe(a, {"attributes": true,}) == OK, "observe the detached node directly")
+	var destination: HTMLLayout = HTMLLayout.new()
+	_check(destination.parse("<p>Destination</p>") == OK and destination.adopt_node(a) == a
+		and a.set_attribute("title", "adopted") == OK, "adopt a directly observed node into a second layout")
+	var adoption_records: Array[Dictionary] = observer.take_records()
+	_check(adoption_records.size() == 1 and adoption_records[0]["target"] == a,
+		"direct observations follow an adopted handle without duplicating records")
+	observer.disconnect()
+
+	var first: HTMLMutationObserver = HTMLMutationObserver.new()
+	var second: HTMLMutationObserver = HTMLMutationObserver.new()
+	var order: Array[String] = []
+	first.mutations_delivered.connect(func(batch: Array) -> void:
+		order.append("first:" + str(batch[0]["attribute_name"]))
+		if batch[0]["attribute_name"] == "id":
+			host.set_attribute("class", "reentrant")
+	)
+	second.mutations_delivered.connect(func(batch: Array) -> void:
+		order.append("second:" + str(batch[0]["attribute_name"]))
+		_check(batch.size() == 1, "a reentrant update cannot extend the current delivery snapshot")
+	)
+	_check(first.observe(host, {"attributes": true,}) == OK and second.observe(host, {"attributes": true,}) == OK,
+		"register two observers on the same node")
+	host.set_attribute("id", "changed")
+	_check(order.is_empty(), "observe does not invoke callbacks during the edit")
+	for _frame: int in range(4):
+		await process_frame
+	_check(order == ["first:id", "second:id", "first:class", "second:class",], "callback edits arrive in a separate delivery")
+	host.set_attribute("title", "pending clear")
+	layout.clear()
+	for _frame: int in range(2):
+		await process_frame
+	_check(order.size() == 4 and first.take_records().is_empty(), "clear drops pending observer work from the old layout")
 
 
 func _test_node_navigation_and_data() -> void:

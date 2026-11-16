@@ -271,6 +271,18 @@
 				Returns the elements at the given document position in front-to-back hit order, with each element included once.
 			</description>
 		</method>
+		<method name="create_range">
+			<return type="HTMLRange" />
+			<description>
+				Creates a live range with both endpoints at the start of the DOM document.
+			</description>
+		</method>
+		<method name="get_selection" qualifiers="const">
+			<return type="HTMLSelection" />
+			<description>
+				Returns the live document selection, or [code]null[/code] if the document is unavailable.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="css_diagnostics_enabled" type="bool" setter="set_css_diagnostics_enabled" getter="is_css_diagnostics_enabled" default="false">

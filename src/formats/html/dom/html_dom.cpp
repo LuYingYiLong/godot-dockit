@@ -41,6 +41,7 @@
 
 using namespace godot;
 using docrender::HTMLDOM;
+using docrender::HTMLBoundary;
 using DocumentAdapter = litehtml::docrender_editor;
 
 namespace {
@@ -268,8 +269,10 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 	std::unordered_set<std::string> names;
 	for (const auto& node : open) {
 		if (names.insert(node->get_attr("name")).second) continue;
+		const String old_value = String::utf8(node->get_attr("open", ""));
 		DocumentAdapter::set_attribute(*node, "open", nullptr);
 		set_source_attribute(node, "open", nullptr);
+		publish_attribute(node, "open", old_value);
 		if (p_notify) {
 			const Ref<HTMLDetailsElement> details = make_element(node);
 			if (details.is_valid()) details->queue_toggle();
@@ -283,6 +286,22 @@ void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
 }
 
 void HTMLDOM::clear() {
+	++lifetime;
+	++observer_delivery_epoch;
+	observer_delivery_queued = false;
+	for (ObjectID id : observers) {
+		if (auto* observer = Object::cast_to<HTMLMutationObserver>(ObjectDB::get_instance(id))) observer->clear_owner(*this);
+	}
+	observers.clear();
+	for (ObjectID id : ranges) {
+		if (auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id))) {
+			range->start = {};
+			range->end = {};
+		}
+	}
+	ranges.clear();
+	if (selection.is_valid()) selection->range.unref();
+	selection.unref();
 	node_handles.clear();
 	document_handle = ObjectID();
 	// Releasing one root can destroy nested template fragments and unregister them.
@@ -370,8 +389,9 @@ Ref<HTMLNode> HTMLDOM::make_node(const litehtml::element::ptr& p_node) const {
 		comment.instantiate();
 		handle = comment;
 	} else if (p_node->is_text() || dynamic_cast<const litehtml::el_cdata*>(p_node.get())) {
-		const auto parts = node_parts(p_node);
-		if (parts.front() != p_node) return make_node(parts.front());
+		if (const auto* native = dynamic_cast<const litehtml::el_text*>(p_node.get())) {
+			if (const auto first = native->dom_source(); first && first != p_node) return make_node(first);
+		}
 		Ref<HTMLTextNode> text;
 		text.instantiate();
 		handle = text;
@@ -517,6 +537,7 @@ bool HTMLDOM::adopt_fragment(HTMLDocumentFragment& r_source) {
 	transfer_adoption(source, *root, adoption);
 	++r_source.adoption_version;
 	bind_handle(r_source, copy->detached_tree->root);
+	transfer_observers(source);
 	docrender::forms::synchronize(r_source.detached_tree->root);
 	return true;
 }
@@ -547,10 +568,84 @@ String HTMLDOM::character_data(const litehtml::element& p_node) const {
 	return String::utf8(data.c_str());
 }
 
+HTMLBoundary HTMLDOM::text_boundary(const litehtml::element::ptr& p_part, int64_t p_offset) const {
+	for (auto node = p_part; node; node = node->parent()) {
+		if (litehtml::is_generated_tag(node->tag())) return {};
+	}
+	if (const auto* text = dynamic_cast<const litehtml::el_text*>(p_part.get())) {
+		return {make_node(p_part), p_offset + text->dom_offset()};
+	}
+	return {};
+}
+
 Error HTMLDOM::set_character_data(const litehtml::element::ptr& p_node, const String& p_data, bool p_notify) {
-	const auto data = p_data.utf8();
+	return replace_character_data(p_node, p_data, 0, character_data(*p_node).length(), p_notify);
+}
+
+bool HTMLDOM::range_can_wrap(const litehtml::element::ptr& p_node) const {
+	return p_node && can_contain_elements(*p_node);
+}
+
+bool HTMLDOM::can_insert_range_node(const litehtml::element::ptr& p_parent, const Ref<HTMLNode>& p_node) const {
+	if (!p_parent || p_node.is_null() || p_node->get_node_type() == HTMLNode::DOCUMENT_NODE ||
+		!dynamic_cast<litehtml::html_tag*>(p_parent.get()) || is_void_element(*p_parent) ||
+		dynamic_cast<HTMLTemplateNode*>(p_parent.get())) return false;
+	const auto native = p_node->lock_element();
+	if (!native || is_host_including_ancestor(*native, p_parent) || (!native->parent() && is_element_connected(*native))) return false;
+	if (can_contain_elements(*p_parent)) return true;
+	if (is_element(*native)) return false;
+	return p_node->get_node_type() != HTMLNode::DOCUMENT_FRAGMENT_NODE ||
+		std::none_of(native->children().begin(), native->children().end(), [](const auto& node) { return is_element(*node); });
+}
+
+Ref<HTMLNode> HTMLDOM::split_range_text(const HTMLBoundary& p_boundary) {
+	const auto text = p_boundary.node->lock_element();
+	const auto parent = p_boundary.node->get_parent_node();
+	if (!text || parent.is_null()) return {};
+	const int64_t parent_offset = parent->get_child_nodes().find(p_boundary.node) + 1;
+	const String data = character_data(*text);
+	const auto suffix = create_character_node(data.substr(p_boundary.offset), false);
+	struct SplitBoundary {
+		Ref<HTMLRange> range;
+		bool start;
+		int64_t offset;
+		bool in_tail;
+	};
+	std::vector<SplitBoundary> tracked;
+	for (ObjectID id : ranges) {
+		auto* current = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id));
+		if (!current || !current->is_valid()) continue;
+		const auto capture = [&](const HTMLBoundary& point, bool p_start) {
+			if (point.node == p_boundary.node && point.offset > p_boundary.offset) {
+				tracked.push_back({Ref<HTMLRange>(current), p_start, point.offset - p_boundary.offset, true});
+			} else if (point.node == parent && point.offset == parent_offset) {
+				tracked.push_back({Ref<HTMLRange>(current), p_start, point.offset + 1, false});
+			}
+		};
+		capture(current->start, true);
+		capture(current->end, false);
+	}
+	if (suffix.is_null() || edit_nodes(text, TreeEdit::AFTER, Array::make(suffix), false) != OK ||
+		replace_character_data(text, "", p_boundary.offset, data.length(), false) != OK) return {};
+	bool selection_moved = false;
+	for (const auto& item : tracked) {
+		(item.start ? item.range->start : item.range->end) = {item.in_tail ? suffix : parent, item.offset};
+		selection_moved |= selection.is_valid() && selection->range == item.range;
+	}
+	if (selection_moved) selection_changed();
+	if (parent->is_connected()) on_change();
+	return suffix;
+}
+
+Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, const String& p_data,
+	int64_t p_offset, int64_t p_count, bool p_notify) {
+	const String previous = character_data(*p_node);
+	if (p_offset < 0 || p_offset > previous.length() || p_count < 0) return ERR_INVALID_PARAMETER;
+	const int64_t count = std::min(p_count, previous.length() - p_offset);
+	const String replacement = previous.substr(0, p_offset) + p_data + previous.substr(p_offset + count);
+	const auto data = replacement.utf8();
 	if (!valid_character_data(data)) return ERR_INVALID_PARAMETER;
-	if (p_data == character_data(*p_node)) return OK;
+	if (replacement == previous) return OK;
 	const auto parent = p_node->parent();
 	if (!parent) return ERR_INVALID_PARAMETER;
 	litehtml::elements_list parts;
@@ -570,10 +665,29 @@ Error HTMLDOM::set_character_data(const litehtml::element::ptr& p_node, const St
 	if (begin == children.end()) return ERR_INVALID_PARAMETER;
 	children.splice(begin, parts);
 	children.erase(begin, std::next(begin, original.size()));
-	const auto handle = find_node_handle(*p_node);
+	const auto handle = observers.empty() ? find_node_handle(*p_node) : make_node(p_node);
 	DocumentAdapter::replace_children(*parent, std::move(children));
 	node_handles.erase(p_node.get());
 	if (handle.is_valid()) bind_handle(*handle.ptr(), first);
+	bool selection_moved = false;
+	for (ObjectID id : ranges) {
+		if (auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id)); range && range->is_valid()) {
+			for (auto* point : {&range->start, &range->end}) {
+				if (point->node != handle || point->offset <= p_offset) continue;
+				const int64_t offset = point->offset <= p_offset + count ? p_offset : point->offset + p_data.length() - count;
+				selection_moved |= selection.is_valid() && selection->range.ptr() == range && point->offset != offset;
+				point->offset = offset;
+			}
+		}
+	}
+	if (!observers.empty() && handle.is_valid()) {
+		HTMLMutation record{HTMLMutation::CHARACTER_DATA, handle};
+		record.old_value = previous;
+		std::vector<Ref<HTMLNode>> ancestry;
+		for (auto node = handle; node.is_valid(); node = node->get_parent_node()) ancestry.push_back(node);
+		publish_mutation(record, ancestry);
+	}
+	if (selection_moved) selection_changed();
 	sync_dom_children(parent);
 	if (p_notify && is_element_connected(*parent)) on_change();
 	return OK;
@@ -698,6 +812,17 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 	const bool connected = std::any_of(parents.begin(), parents.end(), [&](const auto& p_entry) {
 		return is_element_connected(*p_entry.first);
 	});
+	std::vector<ChildChange> tracked;
+	for (const auto& [owner, children] : parents) {
+		auto change = capture_children(owner);
+		if (change.target.is_valid()) tracked.push_back(std::move(change));
+	}
+	std::stable_sort(tracked.begin(), tracked.end(), [&](const ChildChange& p_first, const ChildChange& p_second) {
+		const bool first_target = p_first.target->lock_element() == parent;
+		const bool second_target = p_second.target->lock_element() == parent;
+		if (first_target != second_target) return !first_target;
+		return p_first.ancestry.size() > p_second.ancestry.size();
+	});
 	const auto target_tree = get_detached_tree(*parent);
 	DocumentAdapter::replace_child_lists(parents);
 	std::vector<litehtml::element::ptr> preferred;
@@ -723,6 +848,7 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 			retain_detached_subtree(first);
 		}
 	}
+	for (const auto& change : tracked) finish_children(change, preferred);
 	for (const auto& [owner, previous] : parents) sync_dom_children(owner);
 	normalize_details(parent, preferred);
 	if (p_notify && connected) on_change();
@@ -731,22 +857,48 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 
 Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 	bool changed = false;
+	bool selection_moved = false;
 	const auto merge = [&](const auto& p_visit, const litehtml::element::ptr& p_parent) -> void {
 		std::vector<Ref<HTMLTextNode>> run;
 		const auto flush = [&]() {
-			String data;
 			Ref<HTMLTextNode> first;
+			String suffix;
 			for (const auto& node : run) {
 				const String part = node->get_data();
 				if (first.is_null() && !part.is_empty()) {
 					first = node;
+				} else if (first.is_valid()) {
+					suffix += part;
 				} else {
 					edit_nodes(node->lock_element(), TreeEdit::REPLACE, {}, false);
 					changed = true;
 				}
-				data += part;
 			}
-			if (first.is_valid()) set_character_data(first->lock_element(), data, false);
+			if (first.is_valid()) {
+				int64_t offset = first->get_data().length();
+				replace_character_data(first->lock_element(), suffix, offset, 0, false);
+				const auto parent = first->get_parent_node();
+				bool past_first = false;
+				for (const auto& node : run) {
+					if (past_first) {
+						const int64_t index = parent->get_child_nodes().find(node);
+						for (ObjectID id : ranges) {
+							auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id));
+							if (!range || !range->is_valid()) continue;
+							for (auto* point : {&range->start, &range->end}) {
+								if (point->node == node || (point->node == parent && point->offset == index)) {
+									*point = {first, offset + (point->node == node ? point->offset : 0)};
+									selection_moved |= selection.is_valid() && selection->range.ptr() == range;
+								}
+							}
+						}
+						offset += node->get_data().length();
+						edit_nodes(node->lock_element(), TreeEdit::REPLACE, {}, false);
+						changed = true;
+					}
+					past_first |= node == first;
+				}
+			}
 			run.clear();
 		};
 		const auto wrapper = make_node(p_parent);
@@ -763,6 +915,7 @@ Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 		flush();
 	};
 	merge(merge, p_root);
+	if (selection_moved) selection_changed();
 	if (changed && is_element_connected(*p_root)) on_change();
 	return OK;
 }
@@ -788,6 +941,7 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 		return false;
 	}
 	const bool source_connected = p_source_dom.is_element_connected(*p_source);
+	const auto children_change = p_source_dom.capture_children(parent);
 	Adoption adoption;
 	const auto copy = clone_subtree(p_source_dom, *p_source, true, &adoption);
 	if (!copy) {
@@ -800,6 +954,7 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	}
 	p_source_dom.release_detached_root(source_tree, p_source);
 	transfer_adoption(p_source_dom, *p_source, adoption);
+	p_source_dom.finish_children(children_change);
 	docrender::forms::synchronize(copy, copy);
 	docrender::forms::synchronize(parent);
 	if (source_connected) {
@@ -821,6 +976,7 @@ void HTMLDOM::transfer_adoption(HTMLDOM& p_source, const litehtml::element& p_ro
 		++entry.source->adoption_version;
 		entry.target->content = entry.source;
 	}
+	transfer_observers(p_source);
 }
 
 litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep,
@@ -867,6 +1023,7 @@ bool HTMLDOM::clone_children(const HTMLDOM& p_source_dom, const litehtml::elemen
 	Adoption* r_adoption) {
 	std::shared_ptr<const litehtml::string> previous_group;
 	std::shared_ptr<const litehtml::string> copied_group;
+	litehtml::element::ptr first_part;
 	for (const auto& child : p_source.children()) {
 		if (litehtml::is_generated_tag(child->tag())) {
 			continue;
@@ -883,7 +1040,12 @@ bool HTMLDOM::clone_children(const HTMLDOM& p_source_dom, const litehtml::elemen
 			copied_group = group ? std::make_shared<const litehtml::string>(*group) : nullptr;
 			previous_group = group;
 		}
-		if (group) static_cast<litehtml::el_text&>(*copy).set_dom_text(copied_group);
+		if (group) {
+			const auto& source_text = static_cast<const litehtml::el_text&>(*child);
+			auto& text = static_cast<litehtml::el_text&>(*copy);
+			if (source_text.dom_offset() == 0) first_part = copy;
+			text.set_dom_text(copied_group, first_part, source_text.dom_offset());
+		}
 	}
 	return true;
 }
@@ -1069,11 +1231,13 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	if ((!previous && !p_value) || (previous && p_value && std::string_view(previous) == p_value)) {
 		return OK;
 	}
+	const Variant old_value = previous && !observers.empty() ? Variant(String::utf8(previous)) : Variant();
 	if (!DocumentAdapter::set_attribute(*p_element, p_name, p_value)) {
 		return ERR_UNAVAILABLE;
 	}
 	const bool open_presence_changed = std::string_view(p_name) == "open" && bool(previous) != bool(p_value);
 	set_source_attribute(p_element, p_name, p_value);
+	publish_attribute(p_element, p_name, old_value);
 	if (p_element->tag() == litehtml::_details_) {
 		if (open_presence_changed) {
 			const Ref<HTMLDetailsElement> details = make_element(p_element);
@@ -1179,10 +1343,12 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 		return ERR_PARSE_ERROR;
 	}
 	const auto& target = node ? node->content->detached_tree->root : p_element;
+	const auto children_change = capture_children(target);
 	for (const auto& child : target->children()) {
 		forget_subtree(*child);
 	}
 	DocumentAdapter::replace_children(*target, std::move(children));
+	finish_children(children_change);
 	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->sync_default_value();
 	}
@@ -1216,6 +1382,8 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 		return OK;
 	}
 	const auto target_tree = get_detached_tree(*p_parent);
+	const auto source_change = capture_children(root);
+	const auto target_change = capture_children(p_parent);
 	auto child = children.begin();
 	const size_t count = children.size();
 	if (!DocumentAdapter::insert_children(*root, *p_parent, p_reference)) {
@@ -1228,6 +1396,8 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 		update_detached_handles(*child, target_tree);
 		moved.push_back(*child);
 	}
+	finish_children(source_change);
+	finish_children(target_change);
 	normalize_details(p_parent, moved);
 	docrender::forms::synchronize(p_parent, p_parent);
 	if (!target_tree) {
@@ -1257,6 +1427,8 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 		return ERR_INVALID_PARAMETER;
 	}
 	const auto target_tree = get_detached_tree(*p_parent);
+	const auto source_change = old_parent != p_parent ? capture_children(old_parent) : ChildChange();
+	const auto target_change = capture_children(p_parent);
 	using EditResult = DocumentAdapter::child_edit_result;
 	const auto result = DocumentAdapter::place_child(p_child, *p_parent, p_reference, p_replace_reference);
 	if (result != EditResult::changed) {
@@ -1271,6 +1443,8 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 		retain_detached_subtree(p_reference);
 		docrender::forms::synchronize(p_reference);
 	}
+	finish_children(source_change);
+	finish_children(target_change, {p_child});
 	docrender::forms::synchronize(p_parent, p_child);
 	normalize_details(p_parent, {p_child});
 	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) docrender::forms::synchronize(old_parent);
@@ -1316,10 +1490,12 @@ Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_noti
 	if (!parent) {
 		return old_tree ? OK : ERR_INVALID_PARAMETER;
 	}
+	const auto children_change = capture_children(parent);
 	if (!parent->removeChild(p_element)) {
 		return ERR_INVALID_PARAMETER;
 	}
 	retain_detached_subtree(p_element);
+	finish_children(children_change);
 	docrender::forms::synchronize(parent);
 	docrender::forms::synchronize(p_element);
 	if (!old_tree && p_notify) {
@@ -1334,10 +1510,12 @@ Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
 	if (!parent) {
 		return old_tree ? OK : ERR_INVALID_PARAMETER;
 	}
+	const auto children_change = capture_children(parent);
 	if (!parent->removeChild(p_element)) {
 		return ERR_INVALID_PARAMETER;
 	}
 	forget_subtree(*p_element);
+	finish_children(children_change);
 	docrender::forms::synchronize(parent);
 	if (!old_tree) {
 		on_change();

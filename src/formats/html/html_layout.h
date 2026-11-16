@@ -3,6 +3,7 @@
 
 #include "elements/html_input_element.h"
 #include "elements/html_textarea_element.h"
+#include "dom/html_selection.h"
 #include "formats/html/css/css_types.h"
 #include "formats/html/layout/html_geometry.h"
 #include "formats/html/text/html_font_config.h"
@@ -68,6 +69,14 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
+	friend class HTMLRange;
+	friend class docrender::HTMLDOM;
+	int64_t document_text_offset(const docrender::HTMLBoundary& p_boundary, bool p_forward = true) const;
+	docrender::HTMLBoundary text_boundary_at(int64_t p_offset) const;
+	godot::TypedArray<godot::Rect2> range_client_rects(const HTMLRange& p_range) const;
+	godot::Vector2i get_node_selection_offsets() const;
+	bool set_node_selection_offsets(int64_t p_anchor, int64_t p_focus);
+	void set_dom_selection_change_callback(const godot::Callable& p_callback);
 	void set_element_scroll_callback(const godot::Callable& p_callback);
 
 	struct State;
@@ -251,6 +260,8 @@ public:
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建同一布局中尚未插入文档的元素
 	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建属于当前布局的空片段
 	godot::Ref<HTMLDocumentNode> get_document_node() const; // 返回实时文档的节点句柄
+	godot::Ref<HTMLRange> create_range(); // 创建关联当前文档的实时范围
+	godot::Ref<HTMLSelection> get_selection() const; // 返回文档的节点选区
 	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
 	godot::Ref<HTMLElement> get_head() const; // 返回文档的 head 元素
 	godot::Ref<HTMLElement> get_body() const; // 返回文档的 body 或 frameset 元素

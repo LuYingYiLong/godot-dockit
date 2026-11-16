@@ -10923,6 +10923,16 @@ func _check_html_label_dom_and_selection_api() -> void:
 	label.set_selection_range(range.x, range.y)
 	_check(label.get_selection_range() == range and label.get_selected_text() == "中文"
 			and not label.get_selection_rects().is_empty(), "Set and read the document selection through GDScript")
+	var node_selection: HTMLSelection = label.get_selection()
+	var live_range: HTMLRange = node_selection.get_range_at(0)
+	var paragraph: HTMLElement = label.get_element_by_id("text")
+	var original_text: HTMLTextNode = paragraph.get_first_child() as HTMLTextNode
+	var mapped: bool = (live_range != null and live_range.get_start_container() == original_text
+		and live_range.get_text() == "中文" and not live_range.get_client_rects().is_empty())
+	_check(mapped, "Rendered offsets round-trip through a logical text node and retain their geometry")
+	if not mapped:
+		label.queue_free()
+		return
 	var port: HTMLElement = label.get_element_by_id("port")
 	var target: HTMLElement = label.get_element_by_id("target")
 	var offset_box: Rect2 = target.get_offset_rect()
@@ -10950,6 +10960,18 @@ func _check_html_label_dom_and_selection_api() -> void:
 	await process_frame
 	_check(signals[0] == 1 and label.get_plain_text().contains("plus text with a fragment"),
 			"Connected batch edits coalesce into one HTMLLabel layout update")
+	_check(label.get_selection() == node_selection and node_selection.get_range_at(0) == live_range
+			and label.get_selected_text() == "中文", "DOM append preserves the existing rendered selection")
+	_check(paragraph.prepend(["new prefix ",]) == OK, "Insert visible text before the active selection")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(label.get_selection_range().x > range.x and label.get_selected_text() == "中文"
+			and live_range.get_start_container() == original_text,
+		"Selection keeps its DOM endpoints and shifts its rendered positions after a prefix insertion")
+	_check(node_selection.set_base_and_extent(original_text, 14, original_text, 8) == OK
+			and label.get_selected_text() == "target" and node_selection.get_anchor_offset() == 14,
+		"A backwards script selection updates the same text used by label highlights and copy")
 	label.queue_free()
 
 

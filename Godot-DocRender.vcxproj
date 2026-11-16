@@ -164,6 +164,10 @@
     <ClCompile Include="src\formats\html\elements\html_template_node.cpp" />
     <ClCompile Include="src\formats\html\dom\html_dom.cpp" />
     <ClCompile Include="src\formats\html\dom\html_node.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_range.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_selection.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_mutation_observer.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_dom_mutations.cpp" />
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp" />
@@ -349,6 +353,9 @@
     <ClInclude Include="src\formats\html\text\html_font_config.h" />
     <ClInclude Include="src\formats\html\dom\html_dom.h" />
     <ClInclude Include="src\formats\html\dom\html_node.h" />
+    <ClInclude Include="src\formats\html\dom\html_range.h" />
+    <ClInclude Include="src\formats\html\dom\html_selection.h" />
+    <ClInclude Include="src\formats\html\dom\html_mutation_observer.h" />
     <ClInclude Include="src\formats\html\dom\html_document_fragment.h" />
     <ClInclude Include="src\formats\html\html_layout.h" />
     <ClInclude Include="src\formats\html\markup\html_markup.h" />

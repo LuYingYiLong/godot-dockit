@@ -211,6 +211,18 @@
     <ClCompile Include="src\formats\html\dom\html_node.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_range.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_selection.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_mutation_observer.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_dom_mutations.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
@@ -799,6 +811,15 @@
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_node.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_range.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_selection.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_mutation_observer.h">
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_document_fragment.h">

@@ -27,6 +27,12 @@ namespace docrender {
 		std::optional<litehtml::web_color> selection_background;
 		std::optional<litehtml::web_color> caret;
 	};
+	struct HTMLTextIndexSpan {
+		std::weak_ptr<litehtml::element> source;
+		int64_t from;
+		int64_t to;
+	};
+
 	class HTMLPaintRecorder {
 		struct Clip : TransformedClip {
 			std::optional<godot::Rect2> bounds;
@@ -117,6 +123,7 @@ namespace docrender {
 		std::vector<int64_t> selection_scope_starts;
 		std::optional<bool> separator_selectable;
 		std::vector<TextRun> text_runs;
+		std::vector<HTMLTextIndexSpan> text_index_spans;
 		std::vector<std::pair<const litehtml::element*, godot::Vector2i>> auto_content_text;
 		std::vector<Ellipsis> ellipses;
 		std::unordered_map<const litehtml::render_item*, std::vector<int64_t>> ellipses_by_context;
@@ -186,6 +193,7 @@ namespace docrender {
 		void visit_hit_elements(const godot::Vector2& p_point, bool p_text_selection,
 			const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit) const;
 		const godot::String& get_plain_text() const;
+		const auto& get_text_index_spans() const { return text_index_spans; }
 		const godot::String& get_accessible_text() const { return accessible_text; }
 		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 		bool has_selectable_text(int64_t p_from, int64_t p_to) const;

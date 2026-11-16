@@ -94,7 +94,7 @@ void HTMLLabelCanvas::_draw() {
 	}
 	const Rect2 visible_rect = label->get_visible_rect();
 	if (visible_rect.has_area()) {
-		const Vector2i selection(std::min(selection_anchor, selection_caret), std::max(selection_anchor, selection_caret));
+		const Vector2i selection = label->get_selection_range();
 		const Color color = docrender::html_system_color(litehtml::system_color::highlight, label->page_color_scheme);
 		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color, {}, nullptr, visible_rect.position);
 		update_ime();
@@ -361,6 +361,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 				const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
 				selection_anchor = selection.x;
 				selection_caret = selection.y;
+				label->capture_node_selection();
 				if (target_button.is_null()) label->grab_focus();
 				queue_redraw();
 			}
@@ -426,6 +427,7 @@ void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
 	const Vector2i selection = docrender::html_selection_between(selection_origin, label->layout->selection_point_at(p_point));
 	selection_anchor = selection.x;
 	selection_caret = selection.y;
+	label->capture_node_selection();
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
@@ -738,6 +740,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "id", "align"), &HTMLLabel::scroll_to_anchor, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLabel::create_element);
 	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLabel::create_document_fragment);
+	ClassDB::bind_method(D_METHOD("create_range"), &HTMLLabel::create_range);
+	ClassDB::bind_method(D_METHOD("get_selection"), &HTMLLabel::get_selection);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLabel::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLabel::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLabel::get_element_by_id);
@@ -1088,6 +1092,15 @@ Ref<HTMLDocumentFragment> HTMLLabel::create_document_fragment() {
 	return layout->create_document_fragment();
 }
 
+Ref<HTMLRange> HTMLLabel::create_range() {
+	parse_pending_source();
+	return layout->create_range();
+}
+
+Ref<HTMLSelection> HTMLLabel::get_selection() const {
+	return source_dirty ? Ref<HTMLSelection>() : layout->get_selection();
+}
+
 Ref<HTMLElement> HTMLLabel::query_selector(const String& p_selector) const {
 	return source_dirty ? Ref<HTMLElement>() : layout->query_selector(p_selector);
 }
@@ -1290,6 +1303,8 @@ void HTMLLabel::select_all() {
 }
 
 void HTMLLabel::clear_selection() {
+	if (const auto selection = get_selection(); selection.is_valid()) selection->remove_all_ranges();
+	use_node_selection = false;
 	if (canvas) {
 		const bool changed = canvas->selection_anchor != canvas->selection_caret;
 		canvas->selection_anchor = canvas->selection_caret = 0;
@@ -1315,9 +1330,10 @@ void HTMLLabel::set_selection_range(int64_t p_from, int64_t p_to) {
 	const int64_t length = layout->get_plain_text().length();
 	const int64_t anchor = std::clamp(p_from, int64_t(0), length);
 	const int64_t caret = std::clamp(p_to, int64_t(0), length);
-	if (anchor == canvas->selection_anchor && caret == canvas->selection_caret) return;
+	if (!use_node_selection && anchor == canvas->selection_anchor && caret == canvas->selection_caret) return;
 	canvas->selection_anchor = anchor;
 	canvas->selection_caret = caret;
+	capture_node_selection();
 	canvas->queue_redraw();
 	callable_mp(layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
 }
@@ -1355,9 +1371,8 @@ String HTMLLabel::get_selected_text() const {
 	if (!canvas) {
 		return {};
 	}
-	const int64_t from = std::min(canvas->selection_anchor, canvas->selection_caret);
-	const int64_t to = std::max(canvas->selection_anchor, canvas->selection_caret);
-	return layout->get_copyable_text(from, to);
+	const auto range = get_selection_range();
+	return layout->get_copyable_text(range.x, range.y);
 }
 
 PackedStringArray HTMLLabel::_get_configuration_warnings() const {
@@ -1479,6 +1494,7 @@ void HTMLLabel::parse_pending_source() {
 		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
 	}
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
+	layout->set_dom_selection_change_callback(callable_mp(this, &HTMLLabel::on_node_selection_changed));
 	layout->set_element_scroll_callback(callable_mp(this, &HTMLLabel::on_nested_scroll_advanced));
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
 	layout->set_content_visibility_callbacks(callable_mp(this, &HTMLLabel::on_auto_content_update),
@@ -1505,7 +1521,20 @@ void HTMLLabel::update_internal_processing() {
 
 Vector2i HTMLLabel::get_content_selection_range() const {
 	if (!canvas) return {};
+	if (use_node_selection) return layout->get_node_selection_offsets();
 	return Vector2i(std::min(canvas->selection_anchor, canvas->selection_caret), std::max(canvas->selection_anchor, canvas->selection_caret));
+}
+
+void HTMLLabel::capture_node_selection() {
+	capturing_node_selection = true;
+	layout->set_node_selection_offsets(canvas->selection_anchor, canvas->selection_caret);
+	capturing_node_selection = false;
+	use_node_selection = false;
+}
+
+void HTMLLabel::on_node_selection_changed() {
+	if (!capturing_node_selection) use_node_selection = true;
+	if (canvas) canvas->queue_redraw();
 }
 
 void HTMLLabel::on_layout_edited() {
@@ -1517,7 +1546,9 @@ void HTMLLabel::on_layout_edited() {
 		if (!canvas->applying_textarea_resize) {
 			canvas->cancel_press();
 		}
-		clear_selection();
+		const auto selection = get_selection();
+		if (selection.is_valid() && selection->get_range_count() > 0) use_node_selection = true;
+		else clear_selection();
 		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
 			canvas->set_focused_element({});
 		}

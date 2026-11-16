@@ -1,6 +1,8 @@
 #pragma once
 
 #include "formats/html/elements/html_element.h"
+#include "html_mutation_observer.h"
+#include "html_selection.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
 #include <litehtml/element.h>
@@ -28,6 +30,7 @@ namespace docrender {
 
 	class HTMLDOM : public std::enable_shared_from_this<HTMLDOM> {
 		friend struct HTMLNode::DetachedTree;
+		friend class ::HTMLRange;
 
 		std::shared_ptr<litehtml::document> document;
 		godot::ObjectID owner_id;
@@ -41,6 +44,38 @@ namespace docrender {
 		};
 		godot::HashMap<const litehtml::element*, SourceAttributes> source_attributes;
 		std::function<void()> on_change;
+		std::function<void()> on_selection_change;
+		uint64_t lifetime = 0;
+		std::vector<godot::ObjectID> ranges;
+		std::vector<godot::ObjectID> observers;
+		godot::Ref<HTMLSelection> selection;
+		bool observer_delivery_queued = false;
+		bool delivering_observers = false;
+		uint64_t observer_delivery_epoch = 0;
+
+		struct ChildChange {
+			struct Endpoint {
+				godot::Ref<HTMLRange> range;
+				bool start;
+				godot::Ref<HTMLNode> branch;
+				int64_t index;
+			};
+			godot::Ref<HTMLNode> target;
+			godot::TypedArray<HTMLNode> before;
+			std::vector<godot::Ref<HTMLNode>> ancestry;
+			std::vector<Endpoint> endpoints;
+		};
+		ChildChange capture_children(const litehtml::element::ptr& p_parent);
+		void finish_children(const ChildChange& p_change, const std::vector<litehtml::element::ptr>& p_moved = {});
+		void publish_mutation(const HTMLMutation& p_change, const std::vector<godot::Ref<HTMLNode>>& p_ancestry);
+		void publish_attribute(const litehtml::element::ptr& p_element, const char* p_name, const godot::Variant& p_old);
+		void transfer_observers(HTMLDOM& p_source);
+		static void deliver_observers(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
+		godot::Error replace_character_data(const litehtml::element::ptr& p_node, const godot::String& p_data,
+			int64_t p_offset, int64_t p_count, bool p_notify = true);
+		bool can_insert_range_node(const litehtml::element::ptr& p_parent, const godot::Ref<HTMLNode>& p_node) const;
+		bool range_can_wrap(const litehtml::element::ptr& p_node) const;
+		godot::Ref<HTMLNode> split_range_text(const HTMLBoundary& p_boundary);
 
 		struct AdoptedHandle {
 			const litehtml::element* source;
@@ -98,6 +133,15 @@ namespace docrender {
 		void set_document(std::shared_ptr<litehtml::document> p_document, godot::ObjectID p_owner_id, uint64_t p_generation);
 		const std::shared_ptr<litehtml::document>& get_document() const { return document; }
 		void clear();
+		uint64_t get_lifetime() const { return lifetime; }
+		HTMLLayout* get_layout() const;
+		godot::Ref<HTMLRange> create_range();
+		godot::Ref<HTMLSelection> get_selection();
+		void range_changed(const HTMLRange& p_range);
+		void selection_changed() { if (on_selection_change) on_selection_change(); }
+		void set_selection_callback(std::function<void()> p_callback) { on_selection_change = std::move(p_callback); }
+		void track_observer(godot::ObjectID p_id);
+		void queue_observer_delivery();
 		void normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved = {}, bool p_prefer_moved = false, bool p_notify = true);
 		void form_state_changed(const litehtml::element::ptr& p_node);
 
@@ -124,6 +168,7 @@ namespace docrender {
 		godot::Ref<HTMLDocumentNode> get_document_node() const;
 		godot::Ref<HTMLNode> create_character_node(const godot::String& p_data, bool p_comment);
 		godot::String character_data(const litehtml::element& p_node) const;
+		HTMLBoundary text_boundary(const litehtml::element::ptr& p_part, int64_t p_offset) const;
 		godot::Error set_character_data(const litehtml::element::ptr& p_node, const godot::String& p_data, bool p_notify = true);
 		godot::Error normalize(const litehtml::element::ptr& p_node);
 		godot::Error edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edit, const godot::Array& p_items,
