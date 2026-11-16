@@ -5,6 +5,7 @@
 #include <optional>
 
 namespace docrender {
+	godot::String resolve_html_audio_path(const godot::String& p_src, const godot::String& p_base_dir);
 	std::optional<godot::String> normalize_html_resource_path(
 		const godot::String& p_path
 	);																				// 规范化项目内的 res:// 路径并拒绝越界路径

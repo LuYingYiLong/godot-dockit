@@ -2,6 +2,7 @@
 
 #include "formats/html/html_document.h"
 #include "formats/html/elements/html_form_elements.h"
+#include "formats/html/elements/html_audio_element.h"
 #include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/control.hpp>
@@ -54,6 +55,13 @@ class HTMLLabelCanvas : public godot::Control {
 	bool resize_queued = false;
 	bool dragged_resize = false;
 	bool applying_textarea_resize = false;
+	godot::Ref<HTMLAudioElement> pressed_audio;
+	docrender::HTMLAudioPart pressed_audio_part = docrender::HTMLAudioPart::none;
+	bool handle_audio_button(const godot::InputEventMouseButton& p_button, const godot::Vector2& p_point);
+	bool move_audio_control(const godot::Vector2& p_point);
+	bool handle_audio_key(const godot::InputEventKey& p_key);
+	bool move_audio_focus(bool p_backward);
+	void set_audio_focus_edge(bool p_backward);
 	godot::Ref<HTMLInputElement> pressed_checkbox;
 	godot::Ref<HTMLInputElement> dragging_range;
 	std::optional<int32_t> ime_window;
@@ -155,9 +163,44 @@ public:
 
 private:
 	friend class HTMLLabelCanvas;
+	friend class HTMLAudioElement;
 
 	godot::Ref<HTMLDocument> document;
 	godot::Ref<HTMLLayout> layout;
+	struct AudioPlayback {
+		godot::Ref<HTMLAudioElement> element;
+		godot::PackedStringArray sources;
+		godot::Node* player = nullptr;
+		bool started = false;
+		bool autoplay_attempted = false;
+		bool muted = false;
+	};
+	std::vector<AudioPlayback> audio_playbacks;
+	godot::StringName bus = "Master";
+	bool use_fmod_bus = false;
+	bool audio_sync_queued = false;
+	AudioPlayback* find_audio(const HTMLAudioElement& p_element);
+	AudioPlayback& audio_entry(const godot::Ref<HTMLAudioElement>& p_element);
+	godot::Error prepare_audio(AudioPlayback& p_audio);
+	godot::Error play_audio(const godot::Ref<HTMLAudioElement>& p_element);
+	void pause_audio(const HTMLAudioElement& p_element);
+	void seek_audio(const godot::Ref<HTMLAudioElement>& p_element, double p_time);
+	void set_audio_volume(const HTMLAudioElement& p_element);
+	void set_audio_player_volume(AudioPlayback& p_audio);
+	void destroy_audio(AudioPlayback& p_audio);
+	void clear_audio();
+	void queue_audio_sync();
+	void sync_audio();
+	void poll_audio();
+	bool has_playing_audio() const;
+	void audio_finished(uint64_t p_player);
+	bool uses_fmod_audio() const;
+	void validate_audio_property(godot::PropertyInfo& p_property) const;
+	void connect_audio_buses(bool p_connect);
+	godot::PackedStringArray audio_bus_names() const;
+	godot::StringName effective_audio_bus() const;
+	void audio_buses_changed();
+	void audio_bus_renamed(int64_t p_index, const godot::StringName& p_old, const godot::StringName& p_new);
 	godot::Control* viewport_control = nullptr;
 	godot::Control* viewport_bars = nullptr;
 	godot::Control* scroll_content = nullptr;
@@ -283,6 +326,10 @@ protected:
 
 public:
 	HTMLLabel();
+	void set_bus(const godot::StringName& p_bus); // 设置音频输出总线
+	godot::StringName get_bus() const; // 返回配置的音频总线
+	void set_use_fmod_bus(bool p_enable); // 选择可用的 FMOD 播放后端
+	bool is_using_fmod_bus() const; // 返回 FMOD 后端的配置值
 	void _draw() override;
 	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
 	void _input(const godot::Ref<godot::InputEvent>& p_event) override;

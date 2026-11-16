@@ -348,6 +348,13 @@ input:is([type="reset" i], [type="button" i], [type="submit" i], [type="checkbox
 	user-select: none;
 }
 
+audio:not([controls]) { display: none !important; }
+audio[controls] {
+	display: inline-block; width: 300px; max-width: 100%; height: 54px; border-radius: 27px;
+	font-family: Arial, sans-serif; font-size: 13px;
+	background-color: light-dark(#f1f3f4, #303134); color: light-dark(#202124, #e8eaed);
+}
+audio:focus-visible { outline: 2px solid -docrender-focus-ring; }
 progress, meter {
 	display: inline-block;
 	appearance: auto;

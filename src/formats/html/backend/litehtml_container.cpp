@@ -3,6 +3,7 @@
 #include "formats/html/elements/html_textarea_node.h"
 #include "litehtml_container.h"
 #include "formats/html/elements/html_gauge_node.h"
+#include "formats/html/elements/html_audio_node.h"
 #include "formats/html/elements/html_output_node.h"
 #include "formats/html/elements/html_ruby_node.h"
 #include "formats/html/elements/html_details_node.h"
@@ -162,6 +163,7 @@ namespace docrender {
 		if (tag == "details") return std::make_shared<HTMLDetailsNode>(p_document);
 		if (tag == "output") return std::make_shared<HTMLOutputNode>(p_document);
 		if (tag == "template") return dom.create_template_node(p_document);
+		if (tag == "audio") return std::make_shared<HTMLAudioNode>(p_document);
 		if (tag == "meter" || tag == "progress") return std::make_shared<HTMLGaugeNode>(p_document);
 		if (tag == "select") return std::make_shared<HTMLSelectNode>(p_document);
 		if (tag == "option") return std::make_shared<HTMLOptionNode>(p_document);

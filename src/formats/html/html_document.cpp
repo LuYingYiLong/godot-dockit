@@ -11,6 +11,8 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &HTMLDocument::get_stylesheet);
 	ClassDB::bind_method(D_METHOD("_set_textures", "textures"), &HTMLDocument::set_textures);
 	ClassDB::bind_method(D_METHOD("_get_textures"), &HTMLDocument::get_textures);
+	ClassDB::bind_method(D_METHOD("_set_audio_streams", "streams"), &HTMLDocument::set_audio_streams);
+	ClassDB::bind_method(D_METHOD("_get_audio_streams"), &HTMLDocument::get_audio_streams);
 	ClassDB::bind_method(D_METHOD("_set_local_stylesheets", "stylesheets"), &HTMLDocument::set_local_stylesheets);
 	ClassDB::bind_method(D_METHOD("_get_local_stylesheets"), &HTMLDocument::get_local_stylesheets);
 	ClassDB::bind_method(D_METHOD("_set_local_fonts", "fonts"), &HTMLDocument::set_local_fonts);
@@ -26,6 +28,8 @@ void HTMLDocument::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_audio_streams", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_audio_streams", "_get_audio_streams");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "_set_textures", "_get_textures");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_local_stylesheets", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_local_stylesheets", "_get_local_stylesheets");
@@ -70,6 +74,15 @@ void HTMLDocument::set_stylesheet(const String& p_stylesheet) {
 
 String HTMLDocument::get_stylesheet() const {
 	return stylesheet;
+}
+
+void HTMLDocument::set_audio_streams(const Dictionary& p_audio) {
+	audio_streams = p_audio.duplicate();
+	emit_changed();
+}
+
+Dictionary HTMLDocument::get_audio_streams() const {
+	return audio_streams.duplicate();
 }
 
 void HTMLDocument::set_textures(const Dictionary& p_textures) {
@@ -135,5 +148,5 @@ Ref<HTMLLayout> HTMLDocument::create_layout() const {
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
 	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets,
-		local_fonts, image_dpi, image_orientations, svg_clip_sources);
+		local_fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams);
 }

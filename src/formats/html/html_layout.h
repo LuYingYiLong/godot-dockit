@@ -60,12 +60,19 @@ namespace docrender {
 	};
 }
 
+class HTMLAudioElement;
+
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
 
 	friend class HTMLElement;
 	friend class HTMLNode;
 	friend class HTMLImageElement;
+	friend class HTMLAudioElement;
+	godot::ObjectID audio_host;
+	godot::PackedStringArray audio_sources(const HTMLAudioElement& p_element) const;
+	godot::Ref<godot::Resource> audio_resource(const godot::String& p_path) const;
+	godot::TypedArray<HTMLAudioElement> audio_elements() const;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
@@ -239,7 +246,8 @@ public:
 		const godot::Dictionary& p_local_fonts = {},
 		const godot::Dictionary& p_image_dpi = {},
 		const godot::Dictionary& p_image_orientations = {},
-		const godot::Dictionary& p_svg_clip_sources = {}
+		const godot::Dictionary& p_svg_clip_sources = {},
+		const godot::Dictionary& p_audio_streams = {}
 	);																				// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
 	godot::Error layout(const godot::Vector2i& p_viewport_size);					// 按给定视口尺寸排版并更新几何
 	godot::Error layout_embedded_block(const godot::Vector2i& p_viewport_size);	// 为外层排版器保留完整块的几何和文字

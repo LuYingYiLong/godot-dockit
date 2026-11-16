@@ -4863,3 +4863,67 @@ msgstr "CSS 或脚本 HTML 动画的播放控制。"
 #. doc_classes/HTMLAnimation.xml
 msgid "Use [method HTMLLayout.get_animations] or [method HTMLElement.animate] to obtain a handle. Animation time uses the owning layout clock. [HTMLLabel] drives that clock using its [member HTMLLabel.animation_process_mode]."
 msgstr "通过 [method HTMLLayout.get_animations] 或 [method HTMLElement.animate] 获得句柄。动画时间由所属布局的时钟提供。[HTMLLabel] 使用 [member HTMLLabel.animation_process_mode] 推进该时钟。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "An audio element with optional media controls."
+msgstr "带有可选媒体控件的音频元素。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "An [HTMLLabel] owns the audio player for a connected element. Use [member src] or child [code]<source>[/code] elements to select an imported project audio resource."
+msgstr "由 [HTMLLabel] 持有已连接元素的音频播放器。使用 [member src] 或 [code]<source>[/code] 子元素选择已导入的项目音频资源。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Pauses playback at the current position."
+msgstr "在当前位置暂停播放。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Starts or resumes playback. Returns an error if the element has no playback host or no source can be loaded by the selected backend."
+msgstr "开始或继续播放。元素没有播放宿主或所选后端无法加载任何音频源时返回错误。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Starts playback automatically at runtime. Editor previews start on user input."
+msgstr "在游戏运行时自动播放。编辑器预览由用户交互启动。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Shows the playback controls for the audio element."
+msgstr "显示音频元素的播放控件。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Returns the project resource path of the selected audio source."
+msgstr "返回所选音频源的项目资源路径。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "The playback position, in seconds. Assigning a value seeks within the loaded audio stream."
+msgstr "播放位置，以秒为单位。赋值后跳转到已加载音频流的相应位置。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "The duration of the loaded audio, in seconds."
+msgstr "已加载音频的时长，以秒为单位。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Restarts playback when the audio stream ends."
+msgstr "音频流结束后重新播放。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Whether the audio output is muted. The HTML attribute provides the initial value."
+msgstr "音频输出是否静音。HTML 属性提供初始值。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "Whether playback is paused or stopped."
+msgstr "播放是否处于暂停或停止状态。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "The audio source path, relative to the HTML document or starting with [code]res://[/code]. When the attribute is omitted, sources are tried in child order."
+msgstr "音频源路径，可相对于 HTML 文档或以 [code]res://[/code] 开头。省略属性时按子元素顺序尝试音频源。"
+
+#. doc_classes/HTMLAudioElement.xml
+msgid "The linear playback volume from [code]0.0[/code] to [code]1.0[/code]."
+msgstr "线性播放音量，范围为 [code]0.0[/code] 到 [code]1.0[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "The audio bus used by audio elements. An unavailable bus name uses the current backend's Master bus."
+msgstr "音频元素使用的总线。指定总线不可用时使用当前后端的 Master 总线。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Uses the FMOD audio player and bus list when the optional FMOD plugin is available."
+msgstr "可选 FMOD 插件可用时，使用 FMOD 播放器和总线列表。"

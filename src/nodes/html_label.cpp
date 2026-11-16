@@ -168,6 +168,10 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
+		if (move_audio_control(motion->get_position())) {
+			accept_event();
+			return;
+		}
 		if (dragging_range.is_valid()) {
 			const auto range = dragging_range;
 			accept_event();
@@ -240,6 +244,10 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
+	if (handle_audio_button(*button.ptr(), point)) {
+		accept_event();
+		return;
+	}
 	if (visible_rect.has_point(point) && label->handle_listbox_mouse(label->layout->get_element_at(point), *button.ptr(), point)) {
 		cancel_press();
 		accept_event();
@@ -496,6 +504,7 @@ void HTMLLabelCanvas::clear_tab_entry() {
 void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
 	if (label->has_focus() && focused_element.is_null() && !tab_elements.empty()) {
 		set_focused_element(p_backward ? tab_elements.back() : tab_elements.front(), true);
+		set_audio_focus_edge(p_backward);
 	}
 }
 
@@ -503,6 +512,10 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 	if (const auto direction = tab_direction(p_key); direction && !tab_elements.empty()) {
 		label->close_select_menu();
 		const bool backwards = *direction;
+		if (move_audio_focus(backwards)) {
+			accept_event();
+			return true;
+		}
 		auto button = std::find(tab_elements.begin(), tab_elements.end(), focused_element);
 		if (button != tab_elements.end()) {
 			if (backwards && button != tab_elements.begin()) {
@@ -524,10 +537,11 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 		}
 		accept_event();
 		set_focused_element(*button, true);
+		set_audio_focus_edge(backwards);
 		return true;
 	}
 
-	if (label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
+	if (handle_audio_key(p_key) || label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && p_key.is_pressed() && !p_key.is_echo() &&
 		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed()) {
@@ -655,6 +669,8 @@ void HTMLLabelCanvas::_notification(int p_what) {
 }
 
 void HTMLLabelCanvas::cancel_press() {
+	pressed_audio.unref();
+	pressed_audio_part = docrender::HTMLAudioPart::none;
 	if (label && (textarea_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
 	textarea_drag.reset();
 	scrollbar_drag.reset();
@@ -722,6 +738,10 @@ HTMLLabel::HTMLLabel() {
 }
 
 void HTMLLabel::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_bus", "bus"), &HTMLLabel::set_bus);
+	ClassDB::bind_method(D_METHOD("get_bus"), &HTMLLabel::get_bus);
+	ClassDB::bind_method(D_METHOD("set_use_fmod_bus", "enabled"), &HTMLLabel::set_use_fmod_bus);
+	ClassDB::bind_method(D_METHOD("is_using_fmod_bus"), &HTMLLabel::is_using_fmod_bus);
 	ClassDB::bind_method(D_METHOD("set_document", "document"), &HTMLLabel::set_document);
 	ClassDB::bind_method(D_METHOD("get_document"), &HTMLLabel::get_document);
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &HTMLLabel::set_text);
@@ -802,6 +822,9 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
 		"set_animation_process_mode", "get_animation_process_mode");
+	ADD_GROUP("Audio", "");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "bus", PROPERTY_HINT_ENUM), "set_bus", "get_bus");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_fmod_bus"), "set_use_fmod_bus", "is_using_fmod_bus");
 	ADD_GROUP("Caret", "caret_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_interval", PROPERTY_HINT_RANGE, "0.1,10,0.01,suffix:s"),
@@ -833,6 +856,7 @@ void HTMLLabel::_bind_methods() {
 }
 
 void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
+	validate_audio_property(p_property);
 	if (!caret_blink && p_property.name == StringName("caret_blink_interval")) {
 		p_property.usage &= ~PROPERTY_USAGE_EDITOR;
 	}
@@ -865,6 +889,8 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	case NOTIFICATION_POST_ENTER_TREE:
 		ensure_controls();
+		connect_audio_buses(true);
+		queue_audio_sync();
 		if (color_scheme_timer && is_visible_in_tree()) color_scheme_timer->start();
 		queue_refresh();
 		break;
@@ -889,6 +915,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_INTERNAL_PROCESS:
+		poll_audio();
 		if (animation_process_mode == ANIMATION_PROCESS_IDLE && viewport_size.x > 0) {
 			layout->advance_css_animations(get_process_delta_time());
 			update_internal_processing();
@@ -942,6 +969,8 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE:
+		connect_audio_buses(false);
+		clear_audio();
 		viewport_touch_index = -1;
 		viewport_touch_dragged = false;
 		set_process_internal(false);
@@ -1515,6 +1544,7 @@ void HTMLLabel::queue_interaction_style_refresh() {
 }
 
 void HTMLLabel::source_changed() {
+	clear_audio();
 	cancel_viewport_scroll();
 	cancel_viewport_pan_snap();
 	viewport_touch_index = -1;
@@ -1550,6 +1580,7 @@ void HTMLLabel::parse_pending_source() {
 	}
 	source_dirty = false;
 	layout_updated = true;
+	layout->audio_host = ObjectID(get_instance_id());
 	if (document.is_valid()) {
 		document->parse_into(*layout.ptr(), DOCUMENT_DEFAULTS);
 		parsed = layout->get_render_error().is_empty();
@@ -1558,6 +1589,7 @@ void HTMLLabel::parse_pending_source() {
 		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
 	}
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
+	queue_audio_sync();
 	layout->set_dom_selection_change_callback(callable_mp(this, &HTMLLabel::on_node_selection_changed));
 	layout->set_element_scroll_callback(callable_mp(this, &HTMLLabel::on_nested_scroll_advanced));
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
@@ -1579,7 +1611,7 @@ void HTMLLabel::update_internal_processing() {
 	const bool in_tree = is_inside_tree();
 	const bool animate = in_tree && viewport_size.x > 0 && layout->has_active_css_animations();
 	const bool track_ime = in_tree && canvas && canvas->ime_window.has_value();
-	set_process_internal(track_ime || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
+	set_process_internal(track_ime || (in_tree && has_playing_audio()) || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
 	set_physics_process_internal(animate && animation_process_mode == ANIMATION_PROCESS_PHYSICS);
 }
 
@@ -1602,6 +1634,7 @@ void HTMLLabel::on_node_selection_changed() {
 }
 
 void HTMLLabel::on_layout_edited() {
+	queue_audio_sync();
 	close_select_menu();
 	layout_updated = true;
 	if (canvas) {

@@ -1,4 +1,6 @@
 #include "html_layout.h"
+#include "elements/html_audio_element.h"
+#include <godot_cpp/classes/resource_loader.hpp>
 
 #include "elements/html_form_state.h"
 #include "elements/html_input_node.h"
@@ -203,6 +205,8 @@ struct HTMLLayout::State {
 	Vector2 viewport_gutters;
 	std::array<litehtml::overflow, 2> viewport_overflow{litehtml::overflow_auto, litehtml::overflow_auto};
 	Vector2i content_size;
+	String resource_base;
+	Dictionary audio_streams;
 	std::string master_styles;
 	std::string user_styles;
 	std::map<std::weak_ptr<litehtml::element>, int64_t, std::owner_less<>> stylesheet_ids;
@@ -707,13 +711,15 @@ Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const St
 Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
 	const Dictionary& p_textures, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
 	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
-	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources) {
+	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams) {
 	clear();
 	const std::optional<String> base_dir = docrender::normalize_html_resource_path(p_base_dir);
 	if (!base_dir) {
 		state->error = "The base directory must be a project resource path (res://).";
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
+	state->resource_base = *base_dir;
+	state->audio_streams = p_audio_streams;
 	try {
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
@@ -2496,7 +2502,7 @@ namespace {
 		}
 		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
 			docrender::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
-			(tag == litehtml::_a_ && p_node.get_attr("href"));
+			(tag == litehtml::_a_ && p_node.get_attr("href")) || (tag == litehtml::_audio_ && p_node.get_attr("controls"));
 	}
 }
 
@@ -2804,7 +2810,46 @@ String HTMLLayout::get_css_diagnostic_tooltip(const Vector2& p_position) const {
 	return {};
 }
 
+TypedArray<HTMLAudioElement> HTMLLayout::audio_elements() const {
+	TypedArray<HTMLAudioElement> result;
+	if (const auto& document = state->dom->get_document()) {
+		HTMLDOM::visit_elements(document->root(), [&](const auto& node) {
+			if (node->tag() == litehtml::_audio_) result.append(state->dom->make_element(node));
+			return false;
+		});
+	}
+	return result;
+}
+
+PackedStringArray HTMLLayout::audio_sources(const HTMLAudioElement& p_element) const {
+	PackedStringArray result;
+	if (p_element.get_owner() != this) return result;
+	const auto element = p_element.lock_element();
+	if (!element) return result;
+	const auto append_source = [&](const char* p_src) {
+		if (!p_src) return;
+		const String path = docrender::resolve_html_audio_path(String::utf8(p_src), state->resource_base);
+		if (!path.is_empty()) result.append(path);
+	};
+	if (const char* src = element->get_attr("src")) append_source(src);
+	else {
+		for (const auto& child : element->children()) {
+			if (child->tag() == litehtml::_source_) append_source(child->get_attr("src"));
+		}
+	}
+	return result;
+}
+
+Ref<Resource> HTMLLayout::audio_resource(const String& p_path) const {
+	const Ref<Resource> stored = state->audio_streams.get(p_path, Variant());
+	if (stored.is_valid()) return stored;
+	auto* loader = ResourceLoader::get_singleton();
+	return loader->exists(p_path) ? loader->load(p_path) : Ref<Resource>();
+}
+
 void HTMLLayout::clear() {
+	state->audio_streams.clear();
+	state->resource_base = String();
 	++parse_version;
 	state->stylesheet_ids.clear();
 	state->extra_stylesheet_id = 0;

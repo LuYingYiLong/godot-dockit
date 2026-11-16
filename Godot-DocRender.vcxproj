@@ -127,6 +127,7 @@
     <ClCompile Include="src\formats\pdf\reader\pdf_reader_content.cpp" />
     <ClCompile Include="src\formats\pdf\reader\pdf_reader_queries.cpp" />
     <ClCompile Include="src\formats\pdf\pdf_texture.cpp" />
+    <ClCompile Include="src\nodes\html_label_audio.cpp" />
     <ClCompile Include="src\nodes\latex_label.cpp" />
     <ClCompile Include="src\nodes\latex_label_3d.cpp" />
     <ClCompile Include="src\nodes\markdown_label.cpp" />
@@ -140,6 +141,7 @@
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
     <ClCompile Include="src\formats\html\paint\html_depth_sort.cpp" />
     <ClCompile Include="src\formats\html\html_document.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_audio_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element_style.cpp" />
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_button_element.cpp" />
@@ -325,6 +327,8 @@
     <ClInclude Include="src\formats\html\paint\html_blend_shader.h" />
     <ClInclude Include="src\formats\html\paint\html_depth_sort.h" />
     <ClInclude Include="src\formats\html\html_document.h" />
+    <ClInclude Include="src\formats\html\elements\html_audio_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_audio_element.h" />
     <ClInclude Include="src\formats\html\elements\html_anchor_element.h" />
     <ClInclude Include="src\formats\html\elements\html_button_element.h" />
     <ClInclude Include="src\formats\html\elements\html_element.h" />

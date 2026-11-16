@@ -51,6 +51,10 @@ namespace docrender {
 		return "res://" + String("/").join(components);
 	}
 
+	String resolve_html_audio_path(const String& p_src, const String& p_base_dir) {
+		return resolve_local_path(p_src, p_base_dir);
+	}
+
 	String resolve_html_image_path(const String& p_src, const String& p_base_dir) {
 		const int64_t fragment = p_src.find("#");
 		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);

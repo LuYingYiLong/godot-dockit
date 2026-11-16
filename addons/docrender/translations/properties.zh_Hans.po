@@ -241,3 +241,15 @@ msgstr "光标闪烁"
 #. src/nodes/html_label.cpp
 msgid "Caret Blink Interval"
 msgstr "光标闪烁间隔"
+
+#. src/nodes/html_label.cpp
+msgid "Audio"
+msgstr "音频"
+
+#. src/nodes/html_label.cpp
+msgid "Bus"
+msgstr "总线"
+
+#. src/nodes/html_label.cpp
+msgid "Use Fmod Bus"
+msgstr "使用 FMOD 总线"

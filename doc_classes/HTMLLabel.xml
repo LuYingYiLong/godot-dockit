@@ -368,6 +368,12 @@
 		<member name="transparent_canvas" type="bool" setter="set_transparent_canvas" getter="is_transparent_canvas" default="false">
 			If [code]true[/code], the default canvas is transparent. Authored CSS backgrounds still paint over the scene.
 		</member>
+		<member name="bus" type="StringName" setter="set_bus" getter="get_bus" default="&amp;&quot;Master&quot;">
+			The audio bus used by audio elements. An unavailable bus name uses the current backend's Master bus.
+		</member>
+		<member name="use_fmod_bus" type="bool" setter="set_use_fmod_bus" getter="is_using_fmod_bus" default="false">
+			Uses the FMOD audio player and bus list when the optional FMOD plugin is available.
+		</member>
 	</members>
 	<signals>
 		<signal name="button_pressed">

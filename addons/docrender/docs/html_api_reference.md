@@ -116,3 +116,13 @@ label.advance_animation(0.2)
 ```
 
 The label's Idle, Physics, and Manual modes share one timeline. A standalone `HTMLLayout` uses the scene's process frames. Removing a target or replacing the parsed document invalidates its handles.
+
+## Audio
+
+`<audio controls>` draws a player inside `HTMLLabel`. It starts at 300 by 54 CSS pixels and uses the document's color scheme. The controls support play and pause, seeking, muting, volume, and keyboard focus. Audio follows the playback clock in all three CSS animation modes. Editor previews start audio through the controls.
+
+Use an audio asset imported by Godot or the optional FMOD plugin. For example, `<audio controls src="../media/voice.ogg"></audio>` resolves the path relative to the HTML source. Alternatively, omit `src` and provide child `<source src="…">` entries in preference order. `HTMLAudioElement.play()` returns a Godot error if no source can be loaded with the selected backend.
+
+Set `HTMLLabel.bus` to the output bus. When the FMOD extension is loaded, enable `use_fmod_bus` to select the FMOD player and its bus list. Choose the respective importer for each candidate in Godot's Import dock. A candidate has the resource type produced by its importer, either `AudioStream` or `FmodAudioStream`.
+
+The HTML importer records the audio resources as dependencies. Selected-scene exports can resolve their original `res://` paths through Godot's import remaps in the PCK. Include the DocRender extension descriptor in the preset's resource filter, along with the FMOD descriptor when that backend is selected. For audio paths assigned only at runtime, include the resources in the export preset or reference them from an exported resource. [Godot resource loading after export](https://docs.godotengine.org/en/stable/classes/class_fileaccess.html#description)

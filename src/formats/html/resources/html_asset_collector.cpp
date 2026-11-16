@@ -1,4 +1,6 @@
 #include "html_asset_collector.h"
+#include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/core/class_db.hpp>
 
 #include "formats/html/css/css_stylesheet_rules.h"
 #include "formats/html/css/css_value_helpers.h"
@@ -145,6 +147,7 @@ namespace docrender {
 		if (!tree || !tree->root) {
 			return {};
 		}
+		HashSet<String> audio_paths;
 		std::vector<const GumboNode*> nodes{ tree->root };
 		while (!nodes.empty()) {
 			const GumboNode* node = nodes.back();
@@ -165,6 +168,14 @@ namespace docrender {
 					for (const auto& candidate : parse_html_srcset(srcset->value)) {
 						add_image_path(assets.images, candidate.url.c_str(), p_base_dir);
 					}
+				}
+			}
+			if (element.tag == GUMBO_TAG_AUDIO || (element.tag == GUMBO_TAG_SOURCE &&
+				node->parent && node->parent->type == GUMBO_NODE_ELEMENT &&
+				node->parent->v.element.tag == GUMBO_TAG_AUDIO)) {
+				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
+					const String path = resolve_html_audio_path(String::utf8(source->value), p_base_dir);
+					if (!path.is_empty()) audio_paths.insert(path);
 				}
 			}
 			if (element.tag == GUMBO_TAG_LINK) {
@@ -212,6 +223,16 @@ namespace docrender {
 		for (const String& path : assets.svg_clips) {
 			if (const auto text = read_html_svg_source(path)) svg_clip_sources[path] = *text;
 		}
-		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources };
+		Dictionary audio_streams;
+		const bool fmod = ClassDB::class_exists("FmodAudioStream");
+		for (const String& path : audio_paths) {
+			if (!loader->exists(path, "AudioStream") && !(fmod && loader->exists(path, "FmodAudioStream"))) continue;
+			const Ref<Resource> resource = loader->load(path);
+			const Ref<AudioStream> stream = resource;
+			if (stream.is_valid() || (fmod && resource.is_valid() && resource->is_class("FmodAudioStream"))) {
+				audio_streams[path] = resource;
+			}
+		}
+		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams };
 	}
 }
