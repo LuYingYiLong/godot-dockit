@@ -24,6 +24,8 @@ litehtml::rendered_width litehtml::render_item_table::_render(pixel_t x, pixel_t
 
     collect_collapsed_tracks();
     const bool separated = css().get_border_collapse() == border_collapse_separate;
+    m_border_spacing_x = separated ? css().get_border_spacing_x().calc_percent(0) : 0;
+    m_border_spacing_y = separated ? css().get_border_spacing_y().calc_percent(0) : 0;
     if (!separated) resolve_shared_borders();
     containing_block_context self_size = calculate_containing_block_context(containing_block_size);
 
@@ -803,19 +805,6 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_table::init()
     flush_rows();
     add_group(footer);
     m_grid->finish(collect_columns());
-
-    if (css().get_border_collapse() == border_collapse_separate)
-    {
-        const auto metrics = css().get_font_metrics();
-        const auto doc = src_el()->get_document();
-        m_border_spacing_x = doc->to_pixels(css().get_border_spacing_x(), metrics, 0);
-        m_border_spacing_y = doc->to_pixels(css().get_border_spacing_y(), metrics, 0);
-    }
-    else
-    {
-        m_border_spacing_x = 0;
-        m_border_spacing_y = 0;
-    }
 
     src_el()->add_render(shared_from_this());
     return shared_from_this();

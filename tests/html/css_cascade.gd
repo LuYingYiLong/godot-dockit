@@ -376,6 +376,10 @@ func _run() -> void:
 	await _check_css_transitions()
 	await _check_transform_matrix_transitions()
 	await _check_css_animations()
+	await _check_layout_property_motion()
+	await _check_text_property_motion()
+	_check_font_axis_motion()
+	_check_animated_font_cache()
 	await _check_filters()
 	await _check_backdrop_filters()
 	await _check_will_change()
@@ -10343,6 +10347,7 @@ func _check_css_animations() -> void:
 		@keyframes Solid { from, to { width:100px; } }
 		@keyframes "none" { to { width:65px; } }
 		@keyframes Move { to { transform:translateX(40px); } }
+		@keyframes Paint { from { color:red; } to { color:blue; } }
 		@layer low, high;
 		@layer high { @keyframes Layered { to { width:73px; } } }
 		@layer low { @keyframes Layered { to { width:89px; } } }
@@ -10366,6 +10371,8 @@ func _check_css_animations() -> void:
 			animation-timing-function:linear; animation-play-state:paused; }
 		#moving { display:block; transform:rotate(0deg); --motion:120s linear -60s Move paused;
 			animation:var(--motion); }
+		#paint { position:absolute; left:230px; top:12px; animation:Paint 120s linear -60s paused; }
+		#paint > div { width:20px; height:12px; background:currentColor; }
 		#cancel { animation:Solid 0s forwards; transition:width 120s 60s; }
 		.cancelled #cancel { animation-name:none; }
 		@supports (animation-duration:-1s) { #none { width:45px; } }
@@ -10376,6 +10383,7 @@ func _check_css_animations() -> void:
 		<div class="box" id="layered"></div><div class="box" id="media"></div><div class="box" id="feature"></div>
 		<div class="box" id="none"></div><div class="box" id="zero"></div><div class="box" id="longhands"></div>
 		<a class="box" id="moving" href="#motion"></a><div class="box" id="cancel"></div>
+		<div id="paint"><div></div></div>
 	</body>"""
 	layout.css_diagnostics_enabled = true
 	_check(layout.parse(html) == OK and layout.layout(Vector2i(300, 250)) == OK, "Apply CSS keyframes on first layout")
@@ -10403,32 +10411,336 @@ func _check_css_animations() -> void:
 	var moving: Rect2 = _rect(layout, "moving")
 	_check(is_equal_approx(moving.position.x, 20.0) and layout.get_link_at(moving.get_center()) == "#motion",
 		"Animation transform samples also move link hit geometry")
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(300, 250)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: layout.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(235.0, 16.0), Color(0.5, 0.0, 0.5),
+		"Keyframe color is inherited by the descendant's currentColor background")
 	layout.get_element_by_id("scene").set_attribute("class", "cancelled")
 	_check(layout.layout(Vector2i(250, 250)) == OK and is_equal_approx(_rect(layout, "media").size.x, 20.0)
 		and is_equal_approx(_rect(layout, "cancel").size.x, 20.0),
 		"Removing the matching rule or animation name restores the underlying value without starting a transition")
 	layout.clear()
+	viewport.queue_free()
 
 	var timed: HTMLLayout = HTMLLayout.new()
 	var timed_html: String = """<!doctype html><style>
 		@keyframes Timer { from { width:10px; } to { width:110px; } }
 		#clock { width:20px; height:12px; animation:Timer 600ms linear -150ms both paused; }
 		.play #clock { animation-play-state:running; }
-	</style><body id="scene"><div id="clock"></div></body>"""
+		#generated { display:inline-block; }
+		#generated::before { content:''; display:block; height:12px; animation:Timer 600ms linear both; }
+		.play #generated::before { animation-play-state:paused; }
+	</style><body id="scene"><div id="clock"></div><div id="generated"></div></body>"""
 	var viewport_size: Vector2i = Vector2i(180, 80)
 	_check(timed.parse(timed_html) == OK and timed.layout(viewport_size) == OK, "Create a paused scene animation")
 	await create_timer(0.10).timeout
 	_check(is_equal_approx(_rect(timed, "clock").size.x, 35.0), "Paused time stays at the negative delay sample")
+	var generated_width: float = _rect(timed, "generated").size.x
+	_check(generated_width > 10.0, "Generated content advances its own keyframe animation")
 	timed.get_element_by_id("scene").set_attribute("class", "play")
 	_check(timed.layout(viewport_size) == OK and is_equal_approx(_rect(timed, "clock").size.x, 35.0),
 		"Playing a paused animation resumes from the same time")
 	await create_timer(0.1).timeout
 	_check(_rect(timed, "clock").size.x > 35.0 and _rect(timed, "clock").size.x < 110.0,
 		"The scene advances keyframes without a new edit")
+	var paused_generated_width: float = _rect(timed, "generated").size.x
+	_check(paused_generated_width >= generated_width and paused_generated_width < 110.0,
+		"Pausing a generated pseudo-element keeps its time across a style rebuild")
 	await create_timer(0.55).timeout
 	_check(is_equal_approx(_rect(timed, "clock").size.x, 110.0),
 		"The final keyframe remains applied with forwards fill")
+	_check(is_equal_approx(_rect(timed, "generated").size.x, paused_generated_width),
+		"The generated pseudo-element stays paused while the host timeline advances")
 	timed.clear()
+
+
+func _check_layout_property_motion() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var viewport_size: Vector2i = Vector2i(240, 290)
+	var html: String = """<!doctype html><style>
+		body { position:relative; margin:0; background:white; }
+		#offset { position:absolute; top:20px; left:-60px; width:10px; height:10px;
+			transition:inset 120s linear -60s; }
+		.go #offset { top:40px; left:10%; }
+		#logical { position:absolute; direction:rtl; inset-block-start:60px; inset-inline-start:10px;
+			width:20px; height:10px; transition:inset-inline 120s linear -60s, inset-inline-start 120s linear -30s; }
+		.go #logical { inset-inline-start:50px; }
+		#edges { position:absolute; top:60px; left:60px; width:40px; height:10px;
+			margin:-12px -8px -2px; padding:4px; border:2px solid red;
+			transition:margin 120s linear -60s, padding 120s linear -60s, border-left 120s linear -60s; }
+		.go #edges { margin:-28px -24px; padding:12px; border-left-width:10px; }
+		#cap { position:absolute; top:100px; left:20px; width:5px; height:90px;
+			min-inline-size:20px; max-block-size:30px;
+			transition:min-inline-size 120s linear -60s, max-block-size 120s linear -60s; }
+		.go #cap { min-inline-size:60px; max-block-size:70px; }
+		#grid { position:absolute; left:100px; top:100px; display:grid; width:100px;
+			grid-template-columns:20px 20px; grid-auto-rows:10px; gap:4px 8px;
+			transition:gap 120s linear -60s, column-gap 120s linear -30s; }
+		.go #grid { gap:20px 40px; }
+		#flex { position:absolute; top:160px; display:flex; width:130px; column-gap:0;
+			transition:column-gap 120s linear -60s; }
+		.go #flex { column-gap:20px; }
+		#flex > div, #shrink > div { min-width:0; height:10px; }
+		#grow { flex:0 1 20px; transition:flex 120s linear -60s; }
+		.go #grow { flex:4 1 60px; }
+		#grow_other { flex:1 1 20px; }
+		@keyframes Shrink { from { flex-shrink:1; } to { flex-shrink:3; } }
+		#shrink { position:absolute; top:180px; display:flex; width:100px; }
+		#shrink > div { flex:0 1 80px; }
+		#shrinking { animation:Shrink 120s linear -60s paused; }
+		@keyframes Shift {
+			from { left:-40px; margin-left:-24px; padding-block:4px; }
+			to { left:10%; margin-left:-8px; padding-block:20px; }
+		}
+		#shifting { position:absolute; top:200px; width:40px; height:10px; animation:Shift 120s linear -60s paused; }
+		#table { position:absolute; top:240px; left:10px; border-collapse:separate; border-spacing:0;
+			transition:border-spacing 120s linear -60s; }
+		#table td { padding:0; width:20px; height:10px; }
+		.go #table { border-spacing:20px 10px; }
+		#radius { position:absolute; top:200px; left:170px; width:40px; height:40px; background:red;
+			border-radius:0; transition:border-radius 120s linear -60s; }
+		.go #radius { border-radius:40px 0 0 0 / 20px 0 0 0; }
+		#outline { position:absolute; top:250px; left:160px; width:40px; height:20px; background:red;
+			outline:2px solid blue; outline-offset:-2px;
+			transition:outline 120s linear -60s, outline-offset 120s linear -60s; }
+		.go #outline { outline-width:10px; outline-offset:-6px; }
+	</style><body id="scene">
+		<div id="offset"></div><div id="logical"></div><div id="edges"></div><div id="cap"></div>
+		<div id="grid"><div id="grid_first"></div><div id="grid_second"></div><div id="grid_third"></div></div>
+		<div id="flex"><div id="grow"></div><div id="grow_other"></div></div>
+		<div id="shrink"><div id="shrinking"></div><div id="shrink_other"></div></div><div id="shifting"></div>
+		<table id="table"><tr><td id="cell_first"></td><td id="cell_second"></td></tr><tr><td id="cell_third"></td></tr></table>
+		<div id="radius"></div><div id="outline"></div>
+	</body>"""
+	_check(layout.parse(html) == OK and layout.layout(viewport_size) == OK, "Lay out the initial box and spacing values")
+	layout.get_element_by_id("scene").set_attribute("class", "go")
+	_check(layout.layout(viewport_size) == OK, "Apply interpolated layout property values")
+	_check(_rect(layout, "offset").position.is_equal_approx(Vector2(-18.0, 30.0))
+		and _rect(layout, "logical").position.is_equal_approx(Vector2(200.0, 60.0)),
+		"Inset transitions resolve mixed units and map logical shorthand and longhand targets in RTL")
+	var edges: Rect2 = _rect(layout, "edges")
+	_check(edges.position.is_equal_approx(Vector2(44.0, 40.0)) and edges.size.is_equal_approx(Vector2(64.0, 30.0)),
+		"Margins retain their negative values while padding and side border widths grow")
+	_check(_rect(layout, "cap").size.is_equal_approx(Vector2(40.0, 50.0)),
+		"Logical min and max size names animate their physical constraints")
+	var first_grid_position: Vector2 = _rect(layout, "grid_first").position
+	_check((_rect(layout, "grid_second").position - first_grid_position).is_equal_approx(Vector2(36.0, 0.0))
+		and (_rect(layout, "grid_third").position - first_grid_position).is_equal_approx(Vector2(0.0, 22.0)),
+		"Grid recomputes both gaps and uses the timing of the last matching transition entry")
+	_check(is_equal_approx(_rect(layout, "grow").size.x, 80.0)
+		and is_equal_approx(_rect(layout, "grow_other").position.x, 90.0),
+		"Flex basis, gap and grow factors above one change free space distribution")
+	_check(is_equal_approx(_rect(layout, "shrinking").size.x, 40.0)
+		and is_equal_approx(_rect(layout, "shrink_other").size.x, 60.0)
+		and _rect(layout, "shifting").is_equal_approx(Rect2(-24.0, 200.0, 40.0, 34.0)),
+		"Keyframes share the flex and signed box length interpolators")
+	var first_cell_position: Vector2 = _rect(layout, "cell_first").position
+	_check((_rect(layout, "cell_second").position - first_cell_position).is_equal_approx(Vector2(30.0, 0.0))
+		and (_rect(layout, "cell_third").position - first_cell_position).is_equal_approx(Vector2(0.0, 15.0)),
+		"Both axes of border spacing participate in table layout")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = viewport_size
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: layout.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(171.0, 201.0), Color.WHITE, "The interpolated radius clips a corner pixel")
+	_check_pixel(image, Vector2(191.0, 201.0), Color.RED, "The interpolated radius retains the flat top edge")
+	_check_pixel(image, Vector2(159.0, 260.0), Color.BLUE, "The animated outline width extends past its signed offset")
+	layout.clear()
+	viewport.queue_free()
+
+	var scroll_viewport: SubViewport = SubViewport.new()
+	scroll_viewport.size = Vector2i(240, 100)
+	root.add_child(scroll_viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(240.0, 100.0)
+	label.text = """<!doctype html><style>
+		html { scrollbar-width:none; scroll-padding-block-start:8px;
+			transition:scroll-padding-block 120s linear -60s; }
+		html.go { scroll-padding-block-start:20%; }
+		body { margin:0; position:relative; height:400px; }
+		#target { position:absolute; top:160px; width:20px; height:10px; scroll-margin-block-start:-12px;
+			transition:scroll-margin-block 120s linear -60s; }
+		.go #target { scroll-margin-block-start:4px; }
+	</style><div id="target"></div>"""
+	scroll_viewport.add_child(label)
+	await process_frame
+	await process_frame
+	_check(label.scroll_to_anchor("target") and label.get_scroll_offset().y == 164,
+		"Use the initial scroll margin and padding for an anchor")
+	label.query_selector("html").set_attribute("class", "go")
+	await process_frame
+	await process_frame
+	_check(label.scroll_to_anchor("target") and absi(label.get_scroll_offset().y - 150) <= 1,
+		"Anchor navigation uses animated signed scroll margins and mixed-unit scroll padding")
+	scroll_viewport.queue_free()
+
+
+func _check_text_property_motion() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var viewport_size: Vector2i = Vector2i(260, 350)
+	var html: String = """<!doctype html><style>
+		body { margin:0; background:white; font:20px/24px "Courier New", monospace; }
+		.row { white-space:nowrap; }
+		.probe { display:inline-block; }
+		#size { font:400 12px/1 "Courier New", monospace; transition:font 120s linear -60s; }
+		.go #size { font:800 28px/2 "Courier New", monospace; }
+		#size_ref { font:600 20px/1.5 "Courier New", monospace; }
+		.big { font-size:32px; }
+		#track { letter-spacing:normal; word-spacing:-8px;
+			transition:letter-spacing 120s linear -60s, word-spacing 120s linear -60s; }
+		.go #track { letter-spacing:20%; word-spacing:-10%; }
+		#track_ref { letter-spacing:10%; word-spacing:calc(-4px - 5%); }
+		#wrap { width:45px; word-spacing:normal; transition:word-spacing 120s linear -60s; }
+		.go #wrap { word-spacing:24px; }
+		#line_px { line-height:20px; transition:line-height 120s linear -60s; }
+		.go #line_px { line-height:40px; }
+		.line_kind { line-height:1; transition:line-height 120s linear -30s; }
+		#line_hold { transition-behavior:allow-discrete; }
+		.go .line_kind { line-height:40px; }
+		#indent { width:120px; text-indent:-10px each-line; transition:text-indent 120s linear -60s; }
+		.go #indent { text-indent:25% each-line; }
+		#hang { text-indent:10px; transition:text-indent 120s linear -30s allow-discrete; }
+		.go #hang { text-indent:30px hanging each-line; }
+		.tabs { white-space:pre; }
+		@keyframes Tabs { from { tab-size:2; } to { tab-size:6; } }
+		#tabs { animation:Tabs 120s linear -60s paused; }
+		#tabs_ref { tab-size:4; }
+		#tabs_switch { tab-size:2; transition:tab-size 120s linear -30s allow-discrete; }
+		.go #tabs_switch { tab-size:48px; }
+		#tabs_start { tab-size:2; }
+		.decoration { position:absolute; top:310px; line-height:32px; text-decoration-line:underline; }
+		#underline { left:10px; text-decoration-thickness:2px; text-underline-offset:-2px; text-decoration-color:red;
+			transition:text-decoration 120s linear -60s, text-underline-offset 120s linear -60s; }
+		.go #underline { text-decoration-thickness:6px; text-underline-offset:6px; text-decoration-color:blue; }
+		#underline_ref { left:100px; text-decoration-thickness:4px; text-underline-offset:2px;
+			text-decoration-color:rgb(50% 0% 50%); }
+	</style><body id="scene">
+		<div class="row"><span class="probe" id="size">SIZE<br><span class="big" id="large">LARGE</span></span>
+			<span class="probe" id="size_ref">SIZE<br><span class="big" id="large_ref">LARGE</span></span></div>
+		<div class="row" id="track"><span class="probe big" id="track_text">ABC D</span></div>
+		<div class="row" id="track_ref"><span class="probe big" id="track_ref_text">ABC D</span></div>
+		<div id="wrap">X <span id="wrap_end">Y</span></div>
+		<div id="line_px">A<br>B</div>
+		<div class="line_kind" id="line_hold">A</div><div class="line_kind" id="line_jump">A</div>
+		<div id="indent"><span id="first">First</span><br><span id="second">Second</span></div>
+		<div id="hang"><span id="hang_first">First</span><br><span id="hang_second">Second</span></div>
+		<div class="tabs" id="tabs">A	<span id="tabbed">B</span></div>
+		<div class="tabs" id="tabs_ref">A	<span id="tabbed_ref">B</span></div>
+		<div class="tabs" id="tabs_switch">A	<span id="tab_switch_end">B</span></div>
+		<div class="tabs" id="tabs_start">A	<span id="tab_start_end">B</span></div>
+		<div class="decoration" id="underline">ABC</div><div class="decoration" id="underline_ref">ABC</div>
+	</body>"""
+	_check(layout.parse(html) == OK and layout.layout(viewport_size) == OK, "Lay out the initial text and font values")
+	_check(is_equal_approx(_rect(layout, "wrap").size.y, 24.0), "The initial line fits before spacing grows")
+	layout.get_element_by_id("scene").set_attribute("class", "go")
+	_check(layout.layout(viewport_size) == OK, "Apply interpolated text and font values")
+	_check(_rect(layout, "size").size.is_equal_approx(_rect(layout, "size_ref").size)
+		and absf(_rect(layout, "large").position.y - _rect(layout, "large_ref").position.y) < 0.01,
+		"The font shorthand animates size and weight and inherits the sampled line-height multiplier")
+	_check(is_equal_approx(_rect(layout, "track_text").size.x, _rect(layout, "track_ref_text").size.x),
+		"Normal spacing interpolates from zero and inherited percentages use the descendant's font size")
+	_check(is_equal_approx(_rect(layout, "wrap").size.y, 48.0)
+		and _rect(layout, "wrap_end").position.y > _rect(layout, "wrap").position.y + 20.0,
+		"Animated spacing makes the text reflow onto a second line")
+	_check(is_equal_approx(_rect(layout, "line_px").size.y, 60.0)
+		and is_equal_approx(_rect(layout, "line_hold").size.y, 20.0)
+		and is_equal_approx(_rect(layout, "line_jump").size.y, 40.0),
+		"Line-height interpolates lengths and switches discretely between number and length types")
+	_check(is_equal_approx(_rect(layout, "first").position.x, 10.0)
+		and is_equal_approx(_rect(layout, "second").position.x, 10.0)
+		and is_equal_approx(_rect(layout, "hang_first").position.x, 10.0)
+		and is_zero_approx(_rect(layout, "hang_second").position.x),
+		"Text-indent mixes signed lengths and percentages and preserves each-line or switches flags discretely")
+	_check(is_equal_approx(_rect(layout, "tabbed").position.x, _rect(layout, "tabbed_ref").position.x)
+		and is_equal_approx(_rect(layout, "tab_switch_end").position.x, _rect(layout, "tab_start_end").position.x),
+		"Tab stops follow animated space multipliers and keep their type at a discrete sample")
+	var text_position: int = layout.get_plain_text().find("X Y")
+	var selection: Array[Rect2] = layout.get_selection_rects(text_position, text_position + 3)
+	_check(text_position >= 0 and selection.size() == 2 and selection[1].position.y > selection[0].position.y,
+		"Text selection geometry follows the animated line breaks")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = viewport_size
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: layout.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var color: Color = Color(0.5, 0.0, 0.5)
+	var underline: Rect2i = _color_bounds(image, Rect2i(10, 310, 60, 32), color)
+	var underline_reference: Rect2i = _color_bounds(image, Rect2i(100, 310, 60, 32), color)
+	_check(underline.has_area() and underline.size == underline_reference.size
+		and underline.position + Vector2i(90, 0) == underline_reference.position,
+		"Animated decoration color, thickness, and offset match a static midpoint in the painted output")
+	layout.clear()
+	viewport.queue_free()
+
+
+func _check_font_axis_motion() -> void:
+	var source: HTMLDocument = load("{FONT_FACE_UID}")
+	if source == null:
+		return
+	var assets: Dictionary = source.get("_local_fonts")
+	var variable: FontFile = assets["res://fonts/bahnschrift.ttf"]
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_local_fonts", assets)
+	document.text = """<!doctype html><style>
+		@font-face { font-family: Axes; src:url(fonts/bahnschrift.ttf); font-width:75% 100%; font-weight:300 700; }
+		body { margin:0; font:400 40px/1 Axes; }
+		#axis { width:7ch; height:12px; font-width:75%; transition:font-stretch 120s linear -60s; }
+		.go #axis { font-width:100%; }
+	</style><body id="scene"><div id="axis"></div></body>"""
+	var layout: HTMLLayout = document.create_layout()
+	var size: Vector2i = Vector2i(300, 80)
+	_check(layout.layout(size) == OK and absf(_rect(layout, "axis").size.x - _variable_width_metric(variable, 75.0)) <= 1.0,
+		"The variable font starts at its specified width axis")
+	layout.get_element_by_id("scene").set_attribute("class", "go")
+	_check(layout.layout(size) == OK and absf(_rect(layout, "axis").size.x - _variable_width_metric(variable, 87.5)) <= 1.0,
+		"The font-stretch alias animates font-width and recomputes ch from the fractional width axis")
+	layout.clear()
+
+
+func _check_animated_font_cache() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		body { margin:0; font:20px/24px monospace; }
+		span { display:inline-block; }
+		@keyframes Tracking { from { letter-spacing:0px; } to { letter-spacing:var(--end, 0px); } }
+		#changing { animation:Tracking 120s linear -60s paused; }
+	</style><div><span id="changing">TEXT</span><span id="stable">TEXT</span></div>"""
+	var size: Vector2i = Vector2i(350, 80)
+	_check(layout.parse(html) == OK and layout.layout(size) == OK, "Create an animation with a resolved font at each sample")
+	var changing: HTMLElement = layout.get_element_by_id("changing")
+	var base_width: float = _rect(layout, "changing").size.x
+	for step: int in range(1, 291):
+		changing.set_attribute("style", "--end:%spx" % (step * 0.06))
+		if layout.layout(size) != OK:
+			_check(false, "Reflow animated tracking across hundreds of distinct font descriptions")
+			return
+	_check(absf(_rect(layout, "changing").size.x - base_width - 26.1) <= 0.1
+		and is_equal_approx(_rect(layout, "stable").size.x, base_width),
+		"Repeated animated font updates keep the live text metrics after font-cache pruning")
+	layout.clear()
 
 
 func _check_group_opacity() -> void:

@@ -459,6 +459,8 @@ namespace docrender::css {
 
 		const css_text_indent& get_text_indent() const { return m_css_text_indent; }
 		const css_length& get_tab_size() const { return m_tab_size; }
+		const css_length& get_letter_spacing() const { return m_letter_spacing; }
+		const css_length& get_word_spacing() const { return m_word_spacing; }
 
 		const css_line_height_t& line_height() const;
 		css_line_height_t& line_height_w();
@@ -478,6 +480,8 @@ namespace docrender::css {
 		void set_bg(const background &mBg);
 
 		pixel_t get_font_size() const;
+		float get_font_weight() const { return m_font_weight.val(); }
+		float get_font_width() const { return m_font_width; }
 		void set_font_size(pixel_t mFontSize);
 
 		uint_ptr get_font() const;
@@ -572,6 +576,7 @@ namespace docrender::css {
 		int get_text_decoration_line() const;
 		text_decoration_style get_text_decoration_style() const;
 		const css_length& get_text_decoration_thickness() const;
+		const css_length& get_text_underline_offset() const { return m_text_underline_offset; }
 		const web_color& get_text_decoration_color() const;
 
 		string get_text_emphasis_style() const;

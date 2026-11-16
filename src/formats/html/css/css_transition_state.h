@@ -2,12 +2,10 @@
 
 #include "css_animated_property.h"
 
-#include <array>
 #include <functional>
 #include <map>
 #include <memory>
 #include <unordered_map>
-#include <variant>
 
 namespace litehtml { class element; }
 
@@ -15,7 +13,6 @@ namespace docrender::css {
 	class TransitionState {
 		using ElementKey = std::weak_ptr<litehtml::element>;
 		using Value = AnimatedValue;
-		static constexpr std::size_t property_count = animated_property_names.size();
 		using Values = AnimatedValues;
 
 		struct Track {
@@ -30,9 +27,9 @@ namespace docrender::css {
 			bool allow_discrete = false;
 
 			double progress(double now) const;
-			Value sample(double now) const;
+			Value sample(double now, const AnimatedProperty& property) const;
 		};
-		using Running = std::array<std::optional<Track>, property_count>;
+		using Running = std::map<std::size_t, Track>;
 		std::map<ElementKey, Running, std::owner_less<>> running;
 		std::unordered_map<const litehtml::element*, litehtml::props_map> overrides;
 

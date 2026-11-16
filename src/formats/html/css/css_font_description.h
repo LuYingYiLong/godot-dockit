@@ -29,7 +29,7 @@ namespace litehtml
 		css_font_kerning kerning = font_kerning_auto;
 		css_font_optical_sizing optical_sizing = font_optical_sizing_auto;
 		css_font_variations variations;
-		int						weight;	// Font weight.
+		float					weight = 400;	// Font weight.
 		int						decoration_line = text_decoration_line_none;	// Decoration line. A bitset of flags of the enum text_decoration_line
 		css_length				decoration_thickness;	// Decoration line thickness in pixels. See predefined values in enumtext_decoration_thickness
 		text_decoration_style	decoration_style = text_decoration_style_solid;	// Decoration line style. See enum text_decoration_style

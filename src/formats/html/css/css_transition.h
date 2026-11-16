@@ -41,7 +41,7 @@ namespace litehtml {
 		css_transition_easings easings{{}};
 		std::vector<int> behaviors{0};
 
-		std::optional<css_transition> match(std::string_view property) const;
+		std::optional<css_transition> match(string_id property, bool rtl) const;
 	};
 
 	class css_value_parser;

@@ -14,7 +14,7 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Cascade | Named and anonymous layers, specificity, scope proximity, source order, `!important`, custom properties, and `var()`. The `all` shorthand resets properties using the CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, and `revert-layer`. |
 | Style sources | Inline `style`, `<style>`, the extra `stylesheet` string, and local project stylesheets loaded through `<link>` or `@import`. |
 | Nesting | Nested selectors, `&`, relative combinators, interleaved declarations, and nested `@media`, `@supports`, and `@layer` blocks. |
-| At-rules | `@media` queries viewport conditions. `@container` queries ancestor content sizes and computed custom properties. `@supports` tests declarations and selectors. `@layer` supports ordering statements and nested blocks. `@scope` bounds rules to a DOM subtree, with optional limits. `@import` accepts local paths with optional layer, `supports(…)`, and media clauses. `@counter-style` defines document-local counter styles. `@font-face` loads project fonts. `@font-feature-values` names font-specific glyph alternates. `@keyframes` is unsupported. |
+| At-rules | `@media` queries viewport conditions. `@container` queries ancestor content sizes and computed custom properties. `@supports` tests declarations and selectors. `@layer` supports ordering statements and nested blocks. `@scope` bounds rules to a DOM subtree, with optional limits. `@import` accepts local paths with optional layer, `supports(…)`, and media clauses. `@counter-style` defines document-local counter styles. `@font-face` loads project fonts. `@font-feature-values` names font-specific glyph alternates. `@keyframes` defines named CSS animations. |
 
 ## Properties and values
 
@@ -31,7 +31,8 @@ For GDScript queries, element handles, and geometry, see [HTML API and Web stand
 | Lengths | Absolute, font-relative, and viewport-relative lengths. See the length units and math functions sections below. |
 | Colors | Named and hex colors, `rgb()` and `hsl()` variants, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, predefined `color()` spaces, `color-mix()`, and `currentColor` where applicable. |
 | Opacity | `opacity` accepts a number, percentage, or matching CSS math expression. The element and descendants composite as a group, with separate groups for nested values below `1`. |
-| Transitions | `transition` and its five longhands animate changes to supported colors, opacity, dimensions, and transform functions. |
+| Transitions | `transition` and its five longhands animate changes to supported colors, opacity, box geometry, spacing, flex sizing, and transform functions. |
+| Animations | `animation` and its eight Level 1 longhands run named keyframes on the scene clock. See the animation section below for animated properties and playback behavior. |
 | Element blending | `mix-blend-mode` accepts the CSS blend modes and `plus-lighter`. `isolation: isolate` starts a new stacking context with a transparent backdrop. |
 | Filters | `filter` and `backdrop-filter` accept `none` or a chain of the ten CSS filter functions. See the filter effects section below. |
 | Image masks | `mask` and its eight longhands apply local images, gradients, and SVG `<mask>` references. Layers support alpha, luminance, and the four CSS compositing operators. |
@@ -382,7 +383,26 @@ Markdown HTML blocks use the full HTML color pipeline. Markdown's inline `<span 
 
 Use `transition: width 200ms ease-out, opacity 150ms linear`, or set the property, duration, delay, easing, and behavior with separate longhands. Shorter lists repeat to match the property list. Durations and delays accept seconds and milliseconds. A negative delay starts partway through a transition. Easing supports the standard keywords, `cubic-bezier()`, `steps()`, and `linear()` with intermediate stops. Reversing a running transition starts from its current value and shortens its duration. Style changes can also cancel a transition by removing its property from the list. The initial layout uses the authored values immediately. [CSS Transitions](https://www.w3.org/TR/css-transitions-1/) · [CSS Easing](https://www.w3.org/TR/css-easing-2/)
 
-The scene clock samples `opacity`, `color`, `background-color`, the four border colors, `width`, `height`, and `transform`. Dimension transitions preserve mixed lengths and percentages through layout. Colors participate in inheritance and `currentColor` resolution. Matching translate, scale, skew, and rotation functions interpolate their parameters, including rotations with complete turns and interpolation from `none`. At the first unmatched function, the remaining transforms are composed and interpolated through 2D or 3D matrix decomposition. Explicit matrix and perspective functions also use decomposition. Percentage translations use the current reference box, including while its size is changing. Dimensions with intrinsic keywords can switch discretely with `transition-behavior: allow-discrete`. Transitions on generated pseudo-elements and `@keyframes` remain pending. [CSS transform interpolation](https://www.w3.org/TR/css-transforms-1/#interpolation-of-transforms) · [3D interpolation](https://www.w3.org/TR/css-transforms-2/#matrix-interpolation) · [CSS Transitions Level 2](https://www.w3.org/TR/css-transitions-2/)
+Supported values include `opacity`, `color`, `background-color`, border colors, and `transform`, plus the following geometry and spacing properties:
+
+- `width`, `height`, and their minimum and maximum constraints.
+- All four insets, margins, and paddings, both axes of the corner radii, the border widths, and `outline-width` and `outline-offset`.
+- `row-gap`, `column-gap`, both axes of `border-spacing`, `flex-basis`, `flex-grow`, and `flex-shrink`.
+- All four sides of `scroll-padding` and `scroll-margin`.
+
+Shorthand targets such as `inset`, `gap`, `flex`, and `border-left` apply to their supported longhands. Supported logical longhands and shorthands follow the element's direction in horizontal writing. The last matching entry supplies the timing for each longhand. Mixed lengths and percentages resolve during layout, and signed properties retain negative values. Keywords such as `auto` and `normal` switch discretely with `transition-behavior: allow-discrete` when a numeric interpolation is unavailable. [CSS Transitions Level 2](https://www.w3.org/TR/css-transitions-2/)
+
+Colors participate in inheritance and `currentColor` resolution. Matching translate, scale, skew, and rotation functions interpolate their parameters, including rotations with complete turns and interpolation from `none`. At the first unmatched function, the remaining transforms are composed and interpolated through 2D or 3D matrix decomposition. Explicit matrix and perspective functions also use decomposition. Percentage translations use the current reference box, including while its size is changing. Transitions on generated pseudo-elements remain pending. [CSS transform interpolation](https://www.w3.org/TR/css-transforms-1/#interpolation-of-transforms) · [3D interpolation](https://www.w3.org/TR/css-transforms-2/#matrix-interpolation)
+
+## Animations
+
+`@keyframes` accepts case-sensitive names, `from`, `to`, percentages, and comma-separated offset lists. Declarations at the same offset follow source order. Each property uses only its own keyframes and takes its underlying value at omitted endpoints. Keyframes resolve `var()` on the animated element and discard `!important` declarations. When several rules define the same name, the last rule in the highest-priority layer wins. Local `@import`, `@media`, and `@supports` can supply keyframe rules. [CSS Animations keyframes](https://www.w3.org/TR/css-animations-1/#keyframes)
+
+For example, `animation: Pulse 1s ease-in-out 2 alternate both` plays two iterations and keeps the final sampled value. Comma-separated names play in order with replacement, and shorter longhand lists repeat. The eight longhands control the name, duration, delay, easing, iteration count, direction, fill mode, and play state. A keyframe's `animation-timing-function` controls the following segment of the properties declared at that offset. Negative delays start partway through an animation. Fractional counts, `infinite`, all directions and fill modes, and pause and resume are supported. [CSS Animations properties](https://www.w3.org/TR/css-animations-1/#animations)
+
+Animations share the property support and interpolators listed under Transitions. They run on elements and generated `::before` and `::after` boxes. A running transition takes precedence over the animation sample, and author `!important` declarations take precedence over animations. Transition endpoints currently use the underlying authored values when both effects target the same property. Animation events, additional animated properties, non-default composition modes, and scroll-driven timelines remain pending. [CSS Animations cascade](https://www.w3.org/TR/css-animations-1/#animations)
+
+In Markdown HTML blocks, the block's allocation in the surrounding Markdown still uses its initial layout height. Animated geometry is sampled within that allocation.
 
 ## Filter effects
 

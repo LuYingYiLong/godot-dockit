@@ -559,12 +559,7 @@ static props_map parse_property_value(string_id name, const property_definition&
 	return parser.take_properties();
 }
 
-static css_parsed_declaration parse_declaration(string_id name, const css_token_vector& tokens,
-	const string& baseurl, bool important, document_container* container, const css_source& source,
-	const css_token_vector& original_tokens)
-{
-	using status = css_declaration_status;
-	const auto original_name = name;
+string_id css_canonical_property(string_id name) {
 	static const std::map<string_id, string_id> aliases = {
 		{ _id("font-stretch"), _id("font-width") },
 		{ _id("word-wrap"), _id("overflow-wrap") },
@@ -585,7 +580,17 @@ static css_parsed_declaration parse_declaration(string_id name, const css_token_
 		{ _id("min-block-size"), _min_height_ },
 		{ _id("max-block-size"), _max_height_ },
 	};
-	if (const auto alias = aliases.find(name); alias != aliases.end()) name = alias->second;
+	const auto alias = aliases.find(name);
+	return alias == aliases.end() ? name : alias->second;
+}
+
+static css_parsed_declaration parse_declaration(string_id name, const css_token_vector& tokens,
+	const string& baseurl, bool important, document_container* container, const css_source& source,
+	const css_token_vector& original_tokens)
+{
+	using status = css_declaration_status;
+	const auto original_name = name;
+	name = css_canonical_property(name);
 	const auto& spelling = _s(name);
 	const bool custom = spelling.size() > 2 && spelling.compare(0, 2, "--") == 0;
 	const auto* definition = find_property(name);

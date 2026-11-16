@@ -22,6 +22,7 @@ namespace litehtml {
 
 	const css_flow_edges& css_edge_properties(css_edge_group group);
 	string_id css_map_logical_property(string_id name, bool rtl);
+	string_id css_canonical_property(string_id name);
 	const vector<string_id>& css_longhands(string_id name);
 
 	enum class css_declaration_status { unknown, invalid, deferred, parsed };

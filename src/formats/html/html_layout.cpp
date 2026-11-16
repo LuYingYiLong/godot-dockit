@@ -497,6 +497,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	state->content_size = size;
 	DocumentAdapter::remember_content_sizes(*document);
 	record_paint();
+	DocumentAdapter::prune_unused_fonts(*document);
 	for (auto* image : images) image->commit_source();
 	update_transition_subscription();
 	return OK;

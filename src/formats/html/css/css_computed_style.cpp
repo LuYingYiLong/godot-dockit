@@ -842,7 +842,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	descr.kerning = static_cast<css_font_kerning>(m_font_kerning);
 	descr.optical_sizing = static_cast<css_font_optical_sizing>(m_font_optical_sizing);
 	descr.variations = m_font_variations;
-	descr.weight				= (int) m_font_weight.val();
+	descr.weight				= m_font_weight.val();
 	const auto* painted_decoration = boxless ? decorating_parent : this;
 	if (painted_decoration && painted_decoration->m_text_decoration_line)
 	{
@@ -905,6 +905,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 
 	const auto resolve_spacing = [&](string_id name, css_length& spacing, const css_length* inherited_spacing) {
 		auto value = read_property(context, name, true, css_length::predef_value(), inherited_spacing);
+		if (value.is_predefined()) value = 0;
 		context.cvt_units(value, m_font_metrics, font_size);
 		spacing = std::move(value);
 		const auto pixels = spacing.calc_percent(font_size);

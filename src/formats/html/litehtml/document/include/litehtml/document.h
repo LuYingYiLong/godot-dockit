@@ -60,6 +60,7 @@ namespace litehtml
 		std::shared_ptr<render_item>		m_root_render;
 		document_container*					m_container;
 		fonts_map							m_fonts;
+		std::size_t							m_font_prune_threshold = 256;
 		css_text::vector					m_css;
 		litehtml::css						m_styles;
 		litehtml::web_color					m_def_color;

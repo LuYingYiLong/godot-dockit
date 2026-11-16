@@ -36,6 +36,7 @@ namespace litehtml {
 		static void compute_styles(document& p_document);							// 按文档顺序更新计算样式与计数器
 		static void rebuild_render_tree(document& p_document);						// 用现有元素和样式重新建立渲染树
 		static void remember_content_sizes(document& p_document);					// 记录参加排版的元素的自动固有尺寸
+		static void prune_unused_fonts(document& p_document);						// 回收当前文档和渲染树均未引用的字体
 		static ContainerUpdate measure_containers(document& p_document);			// 更新容器内容盒尺寸并检测查询和单位变化
 		static std::array<overflow, 2> propagate_viewport_overflow(document& p_document); // 应用文档视口的 overflow 并更新来源元素的使用值
 		static void restyle(

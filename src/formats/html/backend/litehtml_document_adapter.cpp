@@ -19,6 +19,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_set>
 
 namespace litehtml {
 	using docrender::LiteHTMLContainer;
@@ -287,6 +288,38 @@ namespace litehtml {
 			for (const auto& child : p_item.children()) p_visit(p_visit, *child);
 		};
 		if (p_document.m_root_render) remember(remember, *p_document.m_root_render);
+	}
+
+	void docrender_editor::prune_unused_fonts(document& p_document) {
+		if (p_document.m_fonts.size() <= p_document.m_font_prune_threshold) return;
+
+		std::unordered_set<uint_ptr> used;
+		const auto collect = [&](const element& node) {
+			used.insert(node.css().get_font());
+			const auto* tag = dynamic_cast<const html_tag*>(&node);
+			if (const auto* placeholder = tag ? tag->get_placeholder_style() : nullptr)
+				used.insert(placeholder->get_font());
+		};
+		const auto visit_nodes = [&](const auto& visit, const element& node) -> void {
+			collect(node);
+			for (const auto& child : node.children()) visit(visit, *child);
+		};
+		const auto visit_boxes = [&](const auto& visit, const render_item& box) -> void {
+			collect(*box.src_el());
+			for (const auto& child : box.children()) visit(visit, *child);
+		};
+		if (p_document.m_root) visit_nodes(visit_nodes, *p_document.m_root);
+		if (p_document.m_root_render) visit_boxes(visit_boxes, *p_document.m_root_render);
+
+		for (auto font = p_document.m_fonts.begin(); font != p_document.m_fonts.end();) {
+			if (used.count(font->second.font)) {
+				++font;
+				continue;
+			}
+			p_document.container()->delete_font(font->second.font);
+			font = p_document.m_fonts.erase(font);
+		}
+		p_document.m_font_prune_threshold = std::max<std::size_t>(256, p_document.m_fonts.size() + 128);
 	}
 
 	docrender_editor::ContainerUpdate docrender_editor::measure_containers(document& doc) {

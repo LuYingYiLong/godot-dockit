@@ -437,6 +437,7 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_flex::init()
     convert_inlines();
     children() = new_children;
 
+    src_el()->add_render(shared_from_this());
     return shared_from_this();
 }
 

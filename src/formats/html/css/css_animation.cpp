@@ -128,10 +128,14 @@ namespace docrender::css {
 			raw_rule::vector nested_rules;
 			css_parser parser(rule->block.value);
 			parser.consume_style_block_contents(declarations, nested_rules);
+			declarations.erase(std::remove_if(declarations.begin(), declarations.end(), [](const auto& declaration) {
+				const auto name = detail::lowcase(declaration.name);
+				return declaration.important || name == "animation" ||
+					(name.compare(0, 10, "animation-") == 0 && name != "animation-timing-function");
+			}), declarations.end());
 			for (const auto offset : offsets) {
 				auto& frame = result.frames[offset];
-				for (const auto& declaration : declarations)
-					if (!declaration.important) frame.push_back(declaration);
+				frame.insert(frame.end(), declarations.begin(), declarations.end());
 			}
 		}
 		return result;

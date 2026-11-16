@@ -166,12 +166,17 @@ namespace litehtml {
 		return bezier((lower + upper) / 2, control[1], control[3]);
 	}
 
-	std::optional<css_transition> css_transition_styles::match(std::string_view property) const {
+	std::optional<css_transition> css_transition_styles::match(string_id property, bool rtl) const {
+		const auto targets = [&](const auto& visit, string_id name) -> bool {
+			name = css_canonical_property(name);
+			if (name == property || css_map_logical_property(name, rtl) == property) return true;
+			const auto& expanded = css_longhands(name);
+			return std::any_of(expanded.begin(), expanded.end(), [&](string_id longhand) {
+				return visit(visit, longhand);
+			});
+		};
 		for (std::size_t i = properties.size(); i-- > 0;) {
-			if (properties[i] == property || properties[i] == "all" ||
-				(properties[i] == "background" && property == "background-color") ||
-				((properties[i] == "border" || properties[i] == "border-color") &&
-					property.compare(0, 7, "border-") == 0)) {
+			if (properties[i] == "all" || targets(targets, _id(properties[i]))) {
 				return css_transition{durations[i % durations.size()], delays[i % delays.size()],
 					easings[i % easings.size()], behaviors[i % behaviors.size()] != 0};
 			}

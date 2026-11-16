@@ -524,6 +524,8 @@ namespace docrender {
 				result = font;
 			}
 		}
+		// Font data keeps its own references to the faces it uses.
+		if (installed_fonts.size() >= 512) installed_fonts.clear();
 		installed_fonts.insert(key, result);
 		return result;
 	}
@@ -627,6 +629,7 @@ namespace docrender {
 
 	LiteHTMLFonts::FontStack LiteHTMLFonts::resolve_font_stack(const font_description& p_description) {
 		const bool bold = p_description.weight >= 600;
+		const int installed_weight = static_cast<int>(std::round(p_description.weight));
 		const bool italic = p_description.style.kind == font_style_italic;
 		const bool oblique = p_description.style.kind == font_style_oblique;
 		const float angle = italic ? default_oblique_angle : p_description.style.angle;
@@ -703,7 +706,7 @@ namespace docrender {
 		};
 		const auto append_installed = [&](const char* p_names) {
 			for (const String& name : String(p_names).split("|")) {
-				const auto font = find_installed_font(name, p_description.weight, italic, p_description.width);
+				const auto font = find_installed_font(name, installed_weight, italic, p_description.width);
 				if (font.is_valid()) {
 					append(with_style(font, true, fold_font_family(name)));
 					break;
@@ -734,7 +737,7 @@ namespace docrender {
 				else if (folded == block_name) {
 					append(with_style(fonts.code_block));
 				}
-				else if (const auto font = find_installed_font(name, p_description.weight, italic, p_description.width); font.is_valid()) {
+				else if (const auto font = find_installed_font(name, installed_weight, italic, p_description.width); font.is_valid()) {
 					append(with_style(font, true, folded));
 				}
 				continue;
@@ -802,7 +805,7 @@ namespace docrender {
 
 	uint_ptr LiteHTMLFonts::create_font(const font_description& p_description, font_metrics* r_metrics) {
 		const int32_t size = font_pixel_size(p_description.size);
-		String key = vformat("%d/%d/", p_description.weight, int(p_description.style.kind));
+		String key = String::num(p_description.weight, 9) + vformat("/%d/", int(p_description.style.kind));
 		key += String::num(p_description.style.angle, 9);
 		key += String("/") + String::num(p_description.width, 9);
 		for (const auto& family : p_description.families) {
@@ -817,7 +820,10 @@ namespace docrender {
 			cached = font_stacks.getptr(size_key);
 		}
 		const auto stack = cached ? *cached : std::make_shared<const FontStack>(resolve_font_stack(p_description));
-		if (!cached) font_stacks.insert(stack->size_dependent ? size_key : key, stack);
+		if (!cached) {
+			if (font_stacks.size() >= 512) font_stacks.clear();
+			font_stacks.insert(stack->size_dependent ? size_key : key, stack);
+		}
 		const auto& font = stack->primary;
 
 		const float base_ascent = font->get_ascent(size);

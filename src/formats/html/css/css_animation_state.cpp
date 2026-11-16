@@ -13,16 +13,6 @@ namespace docrender::css {
 	using namespace litehtml;
 
 	namespace {
-		const auto& animated_ids() {
-			static const auto ids = [] {
-				std::array<string_id, animated_property_names.size()> result;
-				std::transform(animated_property_names.begin(), animated_property_names.end(), result.begin(),
-					[](const char* name) { return _id(name); });
-				return result;
-			}();
-			return ids;
-		}
-
 		std::optional<css_easing> keyframe_easing(const style& frame, const html_tag& node) {
 			const auto& declaration = frame.get_property(css_animation_property_names()[3]);
 			if (declaration.is<css_transition_easings>()) return declaration.get<css_transition_easings>().front();
@@ -34,46 +24,46 @@ namespace docrender::css {
 			}
 			return std::nullopt;
 		}
+
+		string_id animation_pseudo(const element& node) {
+			return is_generated_tag(node.tag()) ? node.tag() : empty_id;
+		}
 	}
 
 	double AnimationState::Track::playback_time(double now) const {
 		return elapsed + (animation.paused ? 0 : now - updated_at);
 	}
 
-	bool AnimationState::Track::resolve(const html_tag& node, const std::shared_ptr<document>& doc,
+	void AnimationState::Track::resolve(const html_tag& node, const std::shared_ptr<document>& doc,
 			const css_keyframes& keyframes) {
-		const auto& ids = animated_ids();
+		const auto& supported = animated_properties();
 		for (const auto& [offset, declarations] : keyframes.frames) {
 			style frame = *declarations;
 			frame.resolve_cascade(node, true);
 			props_map properties;
-			for (const auto id : ids) {
-				const auto& value = frame.get_property(id);
+			for (const auto& property : supported) {
+				const auto& value = frame.get_property(property.name);
 				if (!value.is<invalid>() || value.declaration_property != empty_id)
-					properties.emplace(id, value);
+					properties.emplace(property.name, value);
 			}
 			if (properties.empty()) continue;
 			css_properties computed;
 			computed.compute(&node, doc, &properties);
-			const auto values = read_animated_values(computed);
 			const auto easing = keyframe_easing(frame, node);
-			for (std::size_t index = 0; index < ids.size(); ++index) {
-				if (properties.count(ids[index])) stops[index].push_back({offset, values[index], easing});
+			for (std::size_t index = 0; index < supported.size(); ++index) {
+				const auto& property = supported[index];
+				if (properties.count(property.name)) stops[index].push_back({offset, property.read(computed), easing});
 			}
 		}
-		const auto underlying = read_animated_values(node.css());
-		bool animates = false;
-		for (std::size_t index = 0; index < stops.size(); ++index) {
-			auto& series = stops[index];
-			if (series.empty()) continue;
-			animates = true;
-			if (series.front().offset != 0) series.insert(series.begin(), {0, underlying[index], {}, true});
-			if (series.back().offset != 1) series.push_back({1, underlying[index], {}, true});
+		for (auto& [index, series] : stops) {
+			const auto& property = supported[index];
+			if (series.front().offset != 0) series.insert(series.begin(), {0, property.read(node.css()), {}, true});
+			if (series.back().offset != 1) series.push_back({1, property.read(node.css()), {}, true});
 		}
-		return animates;
 	}
 
 	void AnimationState::Track::sample(double now, Sample& output, bool& needs_frames) const {
+		if (stops.empty()) return;
 		const auto& settings = animation;
 		const double local = playback_time(now) - settings.delay;
 		const double duration = settings.duration == 0 ? 0 : settings.duration * settings.iterations;
@@ -93,9 +83,8 @@ namespace docrender::css {
 		const bool reversed = ((settings.direction & 1) != 0) != (settings.direction >= 2 && odd);
 		if (reversed) progress = 1 - progress;
 		const bool before_flag = reversed ? after : before;
-		for (std::size_t index = 0; index < stops.size(); ++index) {
-			const auto& series = stops[index];
-			if (series.empty()) continue;
+		const auto& supported = animated_properties();
+		for (const auto& [index, series] : stops) {
 			auto upper = std::upper_bound(series.begin(), series.end(), progress,
 				[](double offset, const Stop& stop) { return offset < stop.offset; });
 			if (upper == series.end()) --upper;
@@ -103,22 +92,34 @@ namespace docrender::css {
 			const auto& end = *upper;
 			const auto& easing = start.easing ? *start.easing : settings.easing;
 			const auto amount = easing.sample((progress - start.offset) / (end.offset - start.offset), before_flag);
-			const auto& from = start.implicit && output[index] ? *output[index] : start.value;
-			const auto& to = end.implicit && output[index] ? *output[index] : end.value;
-			output[index] = can_interpolate_animated_value(from, to) ?
-				interpolate_animated_value(from, to, amount, true) : amount < 0.5 ? from : to;
+			const auto underlying = output.find(index);
+			const auto& from = start.implicit && underlying != output.end() ? underlying->second : start.value;
+			const auto& to = end.implicit && underlying != output.end() ? underlying->second : end.value;
+			const auto& property = supported[index];
+			auto value = can_interpolate_animated_value(property, from, to) ?
+				interpolate_animated_value(property, from, to, amount, true) : amount < 0.5 ? from : to;
+			output.insert_or_assign(index, std::move(value));
 		}
 	}
 
 	void AnimationState::commit(const std::shared_ptr<document>& doc, double now) {
 		decltype(tracks) updated;
 		const auto visit = [&](const auto& visit, const element::ptr& node) -> void {
-			if (!node || node->css().get_display() == display_none || is_generated_tag(node->tag())) return;
+			if (!node || node->css().get_display() == display_none) return;
 			const auto* settings = node->css().get_animations();
 			const auto* subject = dynamic_cast<const html_tag*>(node.get());
 			if (settings && subject) {
-				const auto old = tracks.find(node);
-				const auto old_count = old == tracks.end() ? 0 : old->second.size();
+				const auto pseudo = animation_pseudo(*node);
+				// Style rebuilds recreate generated boxes. Keep their clocks on the originating element.
+				const auto owner = pseudo == empty_id ? node : node->parent();
+				if (!owner) return;
+				const auto old = tracks.find(owner);
+				const std::vector<Track>* previous_tracks = nullptr;
+				if (old != tracks.end()) {
+					const auto found = old->second.find(pseudo);
+					if (found != old->second.end()) previous_tracks = &found->second;
+				}
+				const auto old_count = previous_tracks ? previous_tracks->size() : 0;
 				std::vector<bool> matched(old_count);
 				std::vector<Track> resolved;
 				// The last occurrence of a repeated name keeps the last matching player.
@@ -131,17 +132,18 @@ namespace docrender::css {
 					track.animation = settings->at(index);
 					track.updated_at = now;
 					for (std::size_t previous = old_count; previous-- > 0;) {
-						const auto& prior = old->second[previous];
+						const auto& prior = (*previous_tracks)[previous];
 						if (matched[previous] || prior.name != *name) continue;
 						matched[previous] = true;
 						track.elapsed = prior.playback_time(now);
 						break;
 					}
-					if (track.resolve(*subject, doc, *rule)) resolved.push_back(std::move(track));
+					track.resolve(*subject, doc, *rule);
+					resolved.push_back(std::move(track));
 				}
 				if (!resolved.empty()) {
 					std::reverse(resolved.begin(), resolved.end());
-					updated.emplace(node, std::move(resolved));
+					updated[owner].emplace(pseudo, std::move(resolved));
 				}
 			}
 			for (const auto& child : node->children()) visit(visit, child);
@@ -154,29 +156,35 @@ namespace docrender::css {
 	void AnimationState::sample(double now) {
 		playing = false;
 		overrides.clear();
+		const auto& supported = animated_properties();
 		for (auto it = tracks.begin(); it != tracks.end();) {
 			const auto node = it->first.lock();
 			if (!node) {
 				it = tracks.erase(it);
 				continue;
 			}
-			Sample sample;
-			for (const auto& track : it->second) track.sample(now, sample, playing);
-			props_map values;
-			const auto& ids = animated_ids();
-			for (std::size_t index = 0; index < sample.size(); ++index) {
-				if (sample[index]) values.emplace(ids[index], std::visit(
-					[](const auto& value) { return property_value(value, false); }, *sample[index]));
+			for (const auto& [pseudo, target_tracks] : it->second) {
+				Sample sample;
+				for (const auto& track : target_tracks) track.sample(now, sample, playing);
+				props_map values;
+				for (const auto& [index, value] : sample) {
+					values.emplace(supported[index].name, std::visit(
+						[](const auto& value) { return property_value(value, false); }, value));
+				}
+				if (!values.empty()) overrides[node.get()].emplace(pseudo, std::move(values));
 			}
-			if (!values.empty()) overrides.emplace(node.get(), std::move(values));
 			++it;
 		}
 	}
 
 	const property_value* AnimationState::find(const element* element, string_id name) const {
-		const auto subject = overrides.find(element);
+		const auto pseudo = animation_pseudo(*element);
+		const auto owner = pseudo == empty_id ? nullptr : element->parent();
+		const auto subject = overrides.find(pseudo == empty_id ? element : owner.get());
 		if (subject == overrides.end()) return nullptr;
-		const auto value = subject->second.find(name);
-		return value == subject->second.end() ? nullptr : &value->second;
+		const auto target = subject->second.find(pseudo);
+		if (target == subject->second.end()) return nullptr;
+		const auto value = target->second.find(name);
+		return value == target->second.end() ? nullptr : &value->second;
 	}
 }
