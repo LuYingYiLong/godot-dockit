@@ -117,6 +117,13 @@ namespace {
 }
 
 void HTMLElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_animations"), &HTMLElement::get_animations);
+	ClassDB::bind_method(D_METHOD("animate", "keyframes", "options"), &HTMLElement::animate, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("get_style_property", "name"), &HTMLElement::get_style_property);
+	ClassDB::bind_method(D_METHOD("get_style_property_priority", "name"), &HTMLElement::get_style_property_priority);
+	ClassDB::bind_method(D_METHOD("get_style_properties"), &HTMLElement::get_style_properties);
+	ClassDB::bind_method(D_METHOD("set_style_property", "name", "value", "priority"), &HTMLElement::set_style_property, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("remove_style_property", "name"), &HTMLElement::remove_style_property);
 	ClassDB::bind_method(D_METHOD("get_tag_name"), &HTMLElement::get_tag_name);
 	ClassDB::bind_method(D_METHOD("has_attribute", "name"), &HTMLElement::has_attribute);
 	ClassDB::bind_method(D_METHOD("get_attribute", "name", "default_value"), &HTMLElement::get_attribute, DEFVAL(String()));

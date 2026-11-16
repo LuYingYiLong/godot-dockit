@@ -90,3 +90,29 @@ Use `HTMLDetailsElement.open` to change disclosure state. A named group opens on
 `HTMLTableElement`, `HTMLTableSectionElement`, `HTMLTableRowElement`, `HTMLTableCellElement`, `HTMLTableColElement`, and `HTMLTableCaptionElement` are typed element handles. The table exposes `caption`, `t_head`, `t_foot`, `get_t_bodies()`, and `get_rows()`. Sections expose `get_rows()`, and rows expose `get_cells()`. These methods return typed array snapshots. Table rows are ordered by head, body and direct rows, then foot. Hidden DOM elements count toward indices. Nested table rows and anonymous layout boxes are outside the collection. [WHATWG table elements](https://html.spec.whatwg.org/multipage/tables.html#the-table-element)
 
 Use `insert_row()` and `insert_cell()` to create a row or a data cell. An empty table uses its last body or creates one. Insert a `th` using `create_element("th")` and `insert_before()` or `append_child()`. Deletion detaches the row or cell and retains its handle. Index `-1` appends on insertion and removes the last item on deletion. Deleting the last item of an empty collection returns `OK`. Invalid insertion returns `null` and invalid deletion returns `ERR_INVALID_PARAMETER`. A table part setter accepts a matching handle from the same layout or `null`. [WHATWG row and cell operations](https://html.spec.whatwg.org/multipage/tables.html#the-tr-element)
+
+## CSSOM
+
+Use `HTMLElement.get_style_property()`, `get_style_property_priority()`, and `get_style_properties()` to inspect inline declarations. `set_style_property(name, value, "important")` sets an important declaration. Use an empty priority for an ordinary declaration. `remove_style_property()` returns the old value. Shorthand expansion can preserve the other longhands when their values can be serialized separately. Use a complete shorthand edit for a pending shorthand such as `margin: var(--sides)`. [CSSOM declaration blocks](https://drafts.csswg.org/cssom/#css-declaration-blocks)
+
+`HTMLLayout` and `HTMLLabel` expose `get_computed_style()` and `get_computed_style_property()`. They return serialized values, including sampled animation values. Percentages that depend on a layout box may still appear as percentages. The optional pseudo argument accepts `::before`, `::after`, `::marker`, `::placeholder`, and `::selection` for the supported properties of those pseudos. Computed properties without a serializer return an empty string. Use the element's rectangle methods to read layout geometry. [CSSOM computed styles](https://drafts.csswg.org/cssom/#dom-window-getcomputedstyle)
+
+`get_stylesheets()` returns author stylesheet records with `id`, `owner`, `source`, `path`, and `media`. The source is `style`, `link`, or `stylesheet` for the additional stylesheet. Pass an ID to `get_css_rules()` to read a snapshot of the top-level rules, or use `insert_rule()` and `delete_rule()` with zero-based indices to edit them. Edits use the sheet's source order, base path, and media conditions. The edits are local to the layout and expire on a new parse. Use `supports_css()`, `supports_selector()`, and `matches_media()` to query the shared CSS parsers and the layout viewport. [CSSOM stylesheets](https://drafts.csswg.org/cssom/#css-style-sheets)
+
+## Animation playback
+
+`HTMLLayout.get_animations()` and `HTMLLabel.get_animations()` return CSS animations, active transitions, and script animations. Pass an element to filter the result, or use `HTMLElement.get_animations()`. A handle identifies the target, the animation name or transition property, and any generated pseudo-element. Use `play()`, `pause()`, `cancel()`, `finish()`, `reverse()`, and `set_current_time()` to control it. Times are in seconds. [Web Animations playback](https://www.w3.org/TR/web-animations-1/#the-animation-interface)
+
+`HTMLElement.animate()` accepts an array of keyframe dictionaries and a timing dictionary. Use CSS names such as `background-color` for the keys. A frame may also specify `offset` from `0.0` to `1.0` and a CSS `easing`. The timing dictionary accepts `duration`, `delay`, `iterations`, `easing`, `direction`, and `fill`. Script animations use the same property interpolators and styling priority as CSS animations. They follow CSS animations on the same element in composition order.
+
+```gdscript
+var frames: Array[Dictionary] = [
+    {"opacity": 0.0},
+    {"opacity": 1.0},
+]
+var animation: HTMLAnimation = element.animate(frames, {"duration": 0.4, "fill": "both"})
+label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+label.advance_animation(0.2)
+```
+
+The label's Idle, Physics, and Manual modes share one timeline. A standalone `HTMLLayout` uses the scene's process frames. Removing a target or replacing the parsed document invalidates its handles.

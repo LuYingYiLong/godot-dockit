@@ -479,6 +479,56 @@
 				Adds the specified delta to the current inner scroll position.
 			</description>
 		</method>
+		<method name="get_style_property" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns the inline CSS value, or an empty string if the property has no serializable inline value.
+			</description>
+		</method>
+		<method name="get_style_property_priority" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns [code]important[/code] for an important inline property, or an empty string otherwise.
+			</description>
+		</method>
+		<method name="get_style_properties" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a snapshot of inline property names and their serialized values.
+			</description>
+		</method>
+		<method name="set_style_property">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="value" type="String" />
+			<param index="2" name="priority" type="String" default="&quot;&quot;" />
+			<description>
+				Sets one inline CSS property. Pass [code]important[/code] separately for high priority. An empty value removes the property. Invalid inputs preserve existing declarations.
+			</description>
+		</method>
+		<method name="remove_style_property">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Removes the inline property and returns its previous value. A longhand can be removed from a shorthand when the remaining declarations can be represented separately.
+			</description>
+		</method>
+		<method name="get_animations">
+			<return type="HTMLAnimation[]" />
+			<description>
+				Returns the animation handles for this element, including its generated pseudo-elements.
+			</description>
+		</method>
+		<method name="animate">
+			<return type="HTMLAnimation" />
+			<param index="0" name="keyframes" type="Dictionary[]" />
+			<param index="1" name="options" type="Dictionary" default="{}" />
+			<description>
+				Creates a scripted animation on this element. See [method HTMLLayout.animate] for keyframes and timing options.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="id" type="String" setter="set_id" getter="get_id">

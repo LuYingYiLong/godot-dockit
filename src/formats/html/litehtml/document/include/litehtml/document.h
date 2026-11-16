@@ -22,6 +22,7 @@ namespace litehtml
 		string	baseurl;
 		string	media;
 		const element* scope_root = nullptr;
+		std::weak_ptr<element> owner;
 
 		css_text() = default;
 
@@ -62,6 +63,12 @@ namespace litehtml
 		fonts_map							m_fonts;
 		std::size_t							m_font_prune_threshold = 256;
 		css_text::vector					m_css;
+		struct cssom_edit {
+			string original;
+			string baseurl;
+			string replacement;
+		};
+		std::map<std::weak_ptr<element>, cssom_edit, std::owner_less<>> m_cssom_overrides;
 		litehtml::css						m_styles;
 		litehtml::web_color					m_def_color;
 		litehtml::css						m_master_css;
@@ -118,7 +125,8 @@ namespace litehtml
 		pixel_t							height() const;
 		pixel_t							content_width() const;
 		pixel_t							content_height() const;
-		void							add_stylesheet(const char* str, const char* baseurl, const char* media, const element* scope_root = nullptr);
+		void							add_stylesheet(const char* str, const char* baseurl, const char* media,
+			const element* scope_root = nullptr, const std::shared_ptr<element>& owner = {});
 		bool							on_mouse_over(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, position::vector& redraw_boxes);
 		std::vector<scroll_values>		on_scroll(pixel_t dx, pixel_t dy, pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y) const;
 		bool							on_lbutton_down(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, position::vector& redraw_boxes);

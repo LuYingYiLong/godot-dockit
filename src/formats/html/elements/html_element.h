@@ -19,6 +19,7 @@ class HTMLLayout;
 class HTMLInputElement;
 class HTMLFormElement;
 class HTMLDocumentFragment;
+class HTMLAnimation;
 
 class HTMLElement : public HTMLNode {
 	GDCLASS(HTMLElement, HTMLNode)
@@ -39,6 +40,16 @@ protected:
 	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
+	godot::TypedArray<HTMLAnimation> get_animations(); // 返回以该元素为目标的动画
+	godot::Ref<HTMLAnimation> animate(const godot::TypedArray<godot::Dictionary>& p_keyframes,
+		const godot::Dictionary& p_options = {}); // 在该元素上创建并播放关键帧动画
+	godot::String get_style_property(const godot::String& p_name) const; // 读取内联 CSS 属性值
+	godot::String get_style_property_priority(const godot::String& p_name) const; // 读取内联属性的优先级
+	godot::Dictionary get_style_properties() const; // 返回内联声明的快照
+	godot::Error set_style_property(const godot::String& p_name, const godot::String& p_value,
+		const godot::String& p_priority = ""); // 设置内联 CSS 属性及其优先级
+	godot::String remove_style_property(const godot::String& p_name); // 删除内联 CSS 属性并返回旧值
+
 	NodeType get_node_type() const override { return ELEMENT_NODE; } // 返回元素节点类型
 	godot::String get_tag_name() const;												// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;							// 检查指定属性是否存在，空属性也视为存在

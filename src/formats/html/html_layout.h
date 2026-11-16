@@ -5,6 +5,7 @@
 #include "elements/html_textarea_element.h"
 #include "dom/html_selection.h"
 #include "formats/html/css/css_types.h"
+#include "formats/html/css/html_animation.h"
 #include "formats/html/layout/html_geometry.h"
 #include "formats/html/text/html_font_config.h"
 #include "formats/html/text/html_text_layout.h"
@@ -70,6 +71,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
 	friend class HTMLRange;
+	friend class HTMLAnimation;
 	friend class docrender::HTMLDOM;
 	int64_t document_text_offset(const docrender::HTMLBoundary& p_boundary, bool p_forward = true) const;
 	docrender::HTMLBoundary text_boundary_at(int64_t p_offset) const;
@@ -120,7 +122,11 @@ class HTMLLayout : public godot::RefCounted {
 	void sample_transition_frame(uint64_t p_version);
 	bool has_active_css_animations() const;
 	void advance_css_animations(double p_delta);
-	void sample_css_animations();
+	void sample_css_animations(bool p_force = false);
+	double animation_clock_time() const;
+	godot::Ref<HTMLAnimation> animation_handle(uint64_t p_track, bool p_transition);
+	std::optional<docrender::css::PlaybackInfo> animation_info(uint64_t p_track, bool p_transition) const;
+	bool control_animation(uint64_t p_track, bool p_transition, docrender::css::PlaybackCommand p_command, double p_value);
 	godot::TypedArray<godot::Rect2> get_element_rects(const std::shared_ptr<litehtml::element>& p_element) const;
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
 		bool p_text_selection = false) const;
@@ -182,12 +188,30 @@ class HTMLLayout : public godot::RefCounted {
 	void mark_styles_pending();
 	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link) const;
 	void record_css_diagnostics();
+	bool refresh_cssom();
+	struct CSSOMSheet;
+	std::vector<CSSOMSheet> collect_stylesheets();
+	godot::Error edit_css_rule(int64_t p_stylesheet, int64_t p_index, const godot::String* p_rule);
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics_for(const litehtml::element& p_element) const;
 	godot::String get_css_diagnostic_tooltip(const godot::Vector2& p_position) const;
 protected:
 	static void _bind_methods();
 
 public:
+	godot::TypedArray<HTMLAnimation> get_animations(const godot::Ref<HTMLElement>& p_element = {}); // 返回 CSS 动画、过渡和脚本动画
+	godot::Ref<HTMLAnimation> animate(const godot::Ref<HTMLElement>& p_element,
+		const godot::TypedArray<godot::Dictionary>& p_keyframes, const godot::Dictionary& p_options = {}); // 创建并播放脚本关键帧动画
+	godot::Dictionary get_computed_style(const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = ""); // 返回计算样式快照
+	godot::String get_computed_style_property(const godot::Ref<HTMLElement>& p_element, const godot::String& p_name,
+		const godot::String& p_pseudo = ""); // 返回指定属性的计算值
+	godot::TypedArray<godot::Dictionary> get_stylesheets(); // 返回作者样式表及其布局内标识
+	godot::PackedStringArray get_css_rules(int64_t p_stylesheet); // 返回样式表顶层规则的快照
+	godot::Error insert_rule(int64_t p_stylesheet, const godot::String& p_rule, int64_t p_index = 0); // 插入一条顶层 CSS 规则
+	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index); // 删除指定的顶层 CSS 规则
+	bool supports_css(const godot::String& p_property_or_condition, const godot::String& p_value = "") const; // 验证 CSS 属性值或支持条件
+	bool supports_selector(const godot::String& p_selector) const; // 验证 CSS 选择器是否受支持
+	bool matches_media(const godot::String& p_query) const; // 查询当前布局是否匹配媒体条件
+
 	void set_css_diagnostics_enabled(bool p_enabled);								// 设置是否收集 CSS 声明诊断
 	bool is_css_diagnostics_enabled() const;										// 返回是否收集 CSS 声明诊断
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;				// 返回最近一轮样式计算的诊断快照

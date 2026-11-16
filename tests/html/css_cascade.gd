@@ -375,6 +375,8 @@ func _run() -> void:
 	await _check_border_image()
 	await _check_group_opacity()
 	await _check_css_transitions()
+	_check_cssom_runtime()
+	await _check_animation_handles()
 	await _check_html_label_animation_process_mode()
 	await _check_transform_matrix_transitions()
 	await _check_css_animations()
@@ -11463,6 +11465,170 @@ body { margin:0; background:white; }
 	_check(absf(label.get_element_by_id("box").get_bounding_rect().size.x - 40.0) < 0.1,
 		"HTMLLabel defers the edit and keeps its intermediate geometry")
 	label_viewport.queue_free()
+
+
+func _check_cssom_runtime() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><style>
+		@layer base { #box { width: 10px } }
+		#box { width: var(--size); --size: 20px; color: red }
+		#box::before { content: "prefix"; color: currentColor }
+		</style><div id="box" style="margin: 4px 8px !important; color: blue">Text</div>"""
+	_check(layout.parse(source, "res://", "#box { --size: 30px }") == OK, "CSSOM parses author sources")
+	_check(layout.layout(Vector2i(420, 200)) == OK, "CSSOM lays out author styles")
+	var box: HTMLElement = layout.get_element_by_id("box")
+	_check(box.get_style_property("COLOR") == "blue", "Inline CSSOM canonicalizes standard names")
+	_check(box.get_style_property("margin") == "4px 8px", "Inline CSSOM serializes box shorthands")
+	_check(box.get_style_property_priority("margin-left") == "important", "Longhand reads shorthand priority")
+	_check(box.set_style_property("margin-left", "16px") == OK, "Inline edit changes a single important longhand")
+	_check(box.get_style_property("margin-left") == "16px" and box.get_style_property_priority("margin-left").is_empty(),
+		"Edited side has the new value and priority")
+	_check(box.get_style_property("margin-right") == "8px" and box.get_style_property_priority("margin-right") == "important",
+		"Other sides retain their own values and priorities")
+	_check(box.remove_style_property("margin-right") == "8px" and box.get_style_property("margin-right").is_empty(),
+		"Deleting a longhand returns its former inline value")
+	_check(box.set_style_property("color", "green; width: 1px") != OK and box.get_style_property("color") == "blue",
+		"Invalid CSSOM values leave other declarations intact")
+	_check(box.set_style_property("--Size", "99px") == OK and box.get_style_properties().has("--Size"),
+		"CSSOM preserves case-sensitive custom property names")
+	_check(layout.get_computed_style_property(box, "width") == "30px", "Computed CSSOM flushes inline edits and resolves variables")
+	_check(layout.get_computed_style_property(box, "color", "::before") == "rgb(0, 0, 255)",
+		"Computed pseudo reads inherited currentColor")
+	_check(layout.get_computed_style(box).get("width") == "30px", "Computed style snapshot includes the resolved width")
+	var stylesheets: Array[Dictionary] = layout.get_stylesheets()
+	_check(stylesheets.size() == 2, "CSSOM exposes document and additional author styles")
+	var sheet: int = stylesheets[0]["id"]
+	var rules: PackedStringArray = layout.get_css_rules(sheet)
+	_check(rules.size() == 3 and rules[0].begins_with("@layer"), "Rule list preserves grouping and source order")
+	_check(layout.insert_rule(sheet, "#box { width: 55px !important }", rules.size()) == OK,
+		"CSSOM inserts at a specified index")
+	_check(layout.get_computed_style_property(box, "width") == "55px", "Inserted rule participates in the existing cascade")
+	_check(layout.insert_rule(sheet, "%%% { width: 1px }", 0) != OK and layout.get_css_rules(sheet).size() == 4,
+		"Invalid rule insertion is atomic")
+	_check(layout.insert_rule(sheet, "#box { width: 99px", 0) != OK and layout.get_css_rules(sheet).size() == 4,
+		"A rule missing closing syntax leaves the stylesheet intact")
+	_check(layout.delete_rule(sheet, rules.size()) == OK and layout.get_computed_style_property(box, "width") == "30px",
+		"Deleting a rule restores the previous cascade")
+	_check(layout.supports_css("display", "grid") and layout.supports_css("(display: grid) and selector(:has(> div))"),
+		"CSSOM supports declaration and feature condition queries")
+	_check(layout.supports_selector("div:has(+ div)") and not layout.supports_selector("div:unsupported-pseudo"),
+		"Selector support uses the shared parser")
+	_check(layout.matches_media("(min-width: 400px)") and not layout.matches_media("(max-width: 399px)"),
+		"Media queries use the current CSS viewport")
+	var other: HTMLLayout = HTMLLayout.new()
+	_check(other.parse(source) == OK and other.get_css_rules(sheet).is_empty(), "Stylesheet identifiers are layout-local")
+	layout.clear()
+	_check(layout.get_css_rules(sheet).is_empty(), "Stylesheet identifiers expire on clear")
+
+	var document: HTMLDocument = HTMLDocument.new()
+	document.text = """<!doctype html><link rel="stylesheet" href="styles/base.css" media="(min-width: 300px)">
+		<div id="target">Target</div>"""
+	document.set("_local_stylesheets", {
+		"res://styles/base.css": "@import 'nested/first.css'; #target { width: var(--size) }",
+		"res://styles/nested/first.css": "#target { --size: 22px }",
+		"res://styles/nested/second.css": "#target { --size: 64px }",
+	})
+	var linked_layout: HTMLLayout = document.create_layout()
+	var original_layout: HTMLLayout = document.create_layout()
+	var target: HTMLElement = linked_layout.get_element_by_id("target")
+	_check(linked_layout.layout(Vector2i(380, 80)) == OK and original_layout.layout(Vector2i(380, 80)) == OK,
+		"Both layouts can read the same linked stylesheet")
+	var linked_sheet: Dictionary = linked_layout.get_stylesheets()[0]
+	var linked_id: int = linked_sheet["id"]
+	_check(linked_sheet["path"] == "res://styles/base.css" and linked_sheet["source"] == "link", "CSSOM records the linked stylesheet path")
+	_check(linked_layout.insert_rule(linked_id, "@import 'nested/second.css';", 1) == OK and
+		linked_layout.get_computed_style_property(target, "width") == "64px", "Edited linked sheet resolves relative imports")
+	_check(linked_layout.insert_rule(linked_id, "@import 'nested/second.css';", 3) != OK,
+		"Linked sheet rejects an import after a style rule")
+	_check(original_layout.get_computed_style_property(original_layout.get_element_by_id("target"), "width") == "22px",
+		"Editing a linked stylesheet does not affect another layout from the same resource")
+	_check(linked_layout.layout(Vector2i(260, 80)) == OK and linked_layout.get_computed_style_property(target, "width") == "auto",
+		"The linked sheet retains its media condition after editing")
+
+
+func _check_animation_handles() -> void:
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(420.0, 180.0)
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	label.text = """<!doctype html><style>
+		@keyframes rise { from { opacity: 0 } to { opacity: 1 } }
+		#css { animation: rise 2s linear .5s both }
+		#transition { width: 40px; transition: width 2s linear }
+		</style><div id="css">CSS</div><div id="transition">Transition</div><div id="script">Script</div>"""
+	root.add_child(label)
+	await process_frame
+	await process_frame
+	var css_target: HTMLElement = label.get_element_by_id("css")
+	var animations: Array[HTMLAnimation] = css_target.get_animations()
+	_check(animations.size() == 1, "CSS animation is exposed as a playback handle")
+	if animations.is_empty():
+		label.queue_free()
+		return
+	var css_player: HTMLAnimation = animations[0]
+	_check(css_player.get_target() == css_target and css_player.get_kind() == "animation" and css_player.get_name() == "rise",
+		"CSS animation handle exposes its target, kind and name")
+	label.advance_animation(0.25)
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_IDLE
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	_check(is_equal_approx(css_player.get_current_time(), 0.25), "Changing clock mode retains the remaining CSS animation delay")
+	label.advance_animation(0.5)
+	_check(is_equal_approx(label.get_computed_style_property(css_target, "opacity").to_float(), 0.125),
+		"Computed CSSOM reads the current animation sample")
+	_check(css_player.pause() and css_player.get_play_state() == "paused", "CSS animation pauses via its handle")
+	_check(css_player.set_current_time(1.5) and
+		is_equal_approx(label.get_computed_style_property(css_target, "opacity").to_float(), 0.5), "Paused CSS animation seeks")
+	_check(css_player.reverse(), "CSS animation reverses from its current time")
+	label.advance_animation(0.5)
+	_check(is_equal_approx(css_player.get_current_time(), 1.0), "Manual time advances a reversed player backwards")
+	_check(css_player.cancel() and css_player.get_play_state() == "idle" and
+		label.get_computed_style_property(css_target, "opacity") == "1", "Cancelling clears the animation override")
+	_check(css_player.play() and label.get_animations(css_target)[0] == css_player, "Restarting retains the animation handle")
+	var transition_target: HTMLElement = label.get_element_by_id("transition")
+	_check(transition_target.set_style_property("width", "100px") == OK, "Inline CSSOM starts a transition")
+	var transitions: Array[HTMLAnimation] = label.get_animations(transition_target)
+	_check(transitions.size() == 1, "CSS transition is exposed as a playback handle")
+	if not transitions.is_empty():
+		var transition_player: HTMLAnimation = transitions[0]
+		_check(transition_player.get_kind() == "transition" and transition_player.get_name() == "width",
+			"Transition handle identifies the animated property")
+		_check(transition_player.pause() and transition_player.set_current_time(1.0) and
+			label.get_computed_style_property(transition_target, "width") == "70px", "A transition can pause and seek")
+		_check(transition_player.finish() and transition_player.get_play_state() == "finished" and
+			label.get_computed_style_property(transition_target, "width") == "100px", "Finishing applies the transition target")
+	var script_target: HTMLElement = label.get_element_by_id("script")
+	var frames: Array[Dictionary] = [
+		{"opacity": 0.0},
+		{"opacity": 0.4},
+		{"opacity": 1.0},
+	]
+	var scripted: HTMLAnimation = script_target.animate(frames, {"duration": 2.0, "fill": "both"})
+	_check(scripted != null and scripted.get_kind() == "script", "Scripts can create a keyframe animation")
+	if scripted != null:
+		label.advance_animation(1.0)
+		_check(is_equal_approx(label.get_computed_style_property(script_target, "opacity").to_float(), 0.4),
+			"Created animation uses the current HTMLLabel clock and implicit offsets")
+		_check(scripted.finish() and label.get_computed_style_property(script_target, "opacity") == "1",
+			"Completing a scripted animation samples its final keyframe")
+		_check(script_target.set_style_property("display", "none") == OK and label.get_animations(script_target).has(scripted),
+			"Connected script animation retains its handle when hidden")
+		_check(script_target.remove_style_property("display") == "none", "Script animation target is visible again")
+	var transforms: Array[Dictionary] = [
+		{"transform": "translateX(10px)"},
+		{"transform": "rotate(90deg)"},
+	]
+	var transform_player: HTMLAnimation = script_target.animate(transforms, {"duration": 1.0})
+	if transform_player != null:
+		label.advance_animation(0.5)
+	_check(transform_player != null and label.get_computed_style_property(script_target, "transform").begins_with("matrix("),
+		"Computed CSSOM resolves interpolated transform lists to a CSS matrix")
+	label.text = "<p>Replacement</p>"
+	await process_frame
+	await process_frame
+	_check(not css_player.is_valid() and (scripted == null or not scripted.is_valid()),
+		"Replacing the document invalidates animation handles")
+	label.queue_free()
+	await process_frame
 
 
 func _check_html_label_animation_process_mode() -> void:

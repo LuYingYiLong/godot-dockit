@@ -248,6 +248,91 @@
 				Returns the live document selection, or [code]null[/code] if the document is unavailable.
 			</description>
 		</method>
+		<method name="get_computed_style">
+			<return type="Dictionary" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="pseudo" type="String" default="&quot;&quot;" />
+			<description>
+				Returns a snapshot of serialized computed CSS properties. Lengths that depend on a layout box can retain percentages. See [method HTMLElement.get_bounding_rect] for geometry.
+			</description>
+		</method>
+		<method name="get_computed_style_property">
+			<return type="String" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="name" type="String" />
+			<param index="2" name="pseudo" type="String" default="&quot;&quot;" />
+			<description>
+				Returns a serialized computed value for a connected element, including sampled animation values. Pass [code]::before[/code], [code]::after[/code], [code]::marker[/code], [code]::placeholder[/code], or [code]::selection[/code] to inspect a supported pseudo-element. Returns an empty string if the value is unavailable.
+			</description>
+		</method>
+		<method name="get_stylesheets">
+			<return type="Dictionary[]" />
+			<description>
+				Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], and [code]media[/code]. The additional stylesheet is last. IDs apply to the current layout generation.
+			</description>
+		</method>
+		<method name="get_css_rules">
+			<return type="PackedStringArray" />
+			<param index="0" name="stylesheet" type="int" />
+			<description>
+				Returns a serialized snapshot of the top-level rules in the stylesheet identified by [param stylesheet]. Grouped and imported rules retain their place in the list.
+			</description>
+		</method>
+		<method name="insert_rule">
+			<return type="int" enum="Error" />
+			<param index="0" name="stylesheet" type="int" />
+			<param index="1" name="rule" type="String" />
+			<param index="2" name="index" type="int" default="0" />
+			<description>
+				Inserts one CSS rule at the given zero-based index. The edit applies to this layout. Invalid rules or indices leave the stylesheet as it was.
+			</description>
+		</method>
+		<method name="delete_rule">
+			<return type="int" enum="Error" />
+			<param index="0" name="stylesheet" type="int" />
+			<param index="1" name="index" type="int" />
+			<description>
+				Deletes the top-level rule at the given zero-based index in this layout.
+			</description>
+		</method>
+		<method name="supports_css" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="property_or_condition" type="String" />
+			<param index="1" name="value" type="String" default="&quot;&quot;" />
+			<description>
+				Tests a CSS property and value, or a [code]@supports[/code] condition when [param value] is empty.
+			</description>
+		</method>
+		<method name="supports_selector" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="selector" type="String" />
+			<description>
+				Tests whether the selector is accepted by the CSS selector parser.
+			</description>
+		</method>
+		<method name="matches_media" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="query" type="String" />
+			<description>
+				Tests the media query against the current CSS viewport and preferences.
+			</description>
+		</method>
+		<method name="get_animations">
+			<return type="HTMLAnimation[]" />
+			<param index="0" name="element" type="HTMLElement" default="null" />
+			<description>
+				Returns CSS animations, CSS transitions, and scripted animations. Pass an element to restrict the snapshot to that target.
+			</description>
+		</method>
+		<method name="animate">
+			<return type="HTMLAnimation" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="keyframes" type="Dictionary[]" />
+			<param index="2" name="options" type="Dictionary" default="{}" />
+			<description>
+				Creates a scripted animation on the current layout clock. Keyframe dictionaries contain CSS property values and optional [code]offset[/code] and [code]easing[/code]. Options include [code]duration[/code], [code]delay[/code], [code]iterations[/code], [code]easing[/code], [code]direction[/code], and [code]fill[/code]. Times are in seconds. Returns [code]null[/code] for invalid input or an empty effect.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">

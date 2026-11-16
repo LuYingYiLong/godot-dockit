@@ -24,6 +24,7 @@
 #include "formats/html/html_document.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/dom/html_mutation_observer.h"
+#include "formats/html/css/html_animation.h"
 #include "formats/html/dom/html_selection.h"
 #include "formats/latex/latex_document.h"
 #include "formats/latex/latex_document_loader.h"
@@ -70,6 +71,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLRange);
 		GDREGISTER_ABSTRACT_CLASS(HTMLSelection);
 		GDREGISTER_CLASS(HTMLMutationObserver);
+		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnchorElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLButtonElement);

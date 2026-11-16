@@ -57,7 +57,7 @@ namespace docrender {
 				}
 				std::string text;
 				get_text(text);
-				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get());
+				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get(), shared_from_this());
 			}
 
 			void compute_styles(bool) override {
@@ -432,8 +432,9 @@ namespace docrender {
 		litehtml::string css;
 		litehtml::string base;
 		import_css(css, href, base);
-		if (!css.empty()) {
-			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"), p_element->parent().get());
+		if (!css.empty() || !base.empty()) {
+			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"),
+				p_element->parent().get(), p_element);
 		}
 	}
 

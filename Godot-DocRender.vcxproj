@@ -140,6 +140,7 @@
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
     <ClCompile Include="src\formats\html\paint\html_depth_sort.cpp" />
     <ClCompile Include="src\formats\html\html_document.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_element_style.cpp" />
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_button_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element.cpp" />
@@ -185,6 +186,8 @@
     <ClCompile Include="src\formats\html\text\html_text_layout.cpp" />
     <ClCompile Include="src\formats\html\text\html_glyph_outline.cpp" />
     <ClCompile Include="src\formats\html\markup\html_markup.cpp" />
+    <ClCompile Include="src\formats\html\css\html_cssom.cpp" />
+    <ClCompile Include="src\formats\html\css\html_animation.cpp" />
     <ClCompile Include="src\formats\html\css\css_shadows.cpp" />
     <ClCompile Include="src\formats\html\paint\html_text_mask.cpp" />
     <ClCompile Include="src\formats\html\text\html_text_spacing.cpp" />
@@ -375,6 +378,9 @@
     <ClInclude Include="src\formats\html\text\html_text_layout.h" />
     <ClInclude Include="src\formats\html\text\html_text_selection.h" />
     <ClInclude Include="src\formats\html\text\html_glyph_outline.h" />
+    <ClInclude Include="src\formats\html\css\html_cssom.h" />
+    <ClInclude Include="src\formats\html\css\html_animation.h" />
+    <ClInclude Include="src\formats\html\css\css_playback.h" />
     <ClInclude Include="src\formats\html\css\css_shadows.h" />
     <ClInclude Include="src\formats\html\paint\html_text_mask.h" />
     <ClInclude Include="src\formats\html\css\css_color.h" />

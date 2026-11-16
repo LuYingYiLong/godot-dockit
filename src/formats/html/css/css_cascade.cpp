@@ -218,6 +218,12 @@ const Cascade::Value& Cascade::get(Property name) const {
 	return unset;
 }
 
+void Cascade::collect_property_names(std::vector<Property>& names) const {
+	for (const auto& entry : winners) names.push_back(entry.first);
+	for (const auto& entry : computed) names.push_back(entry.first);
+	for (const auto& entry : variables) names.push_back(entry.first);
+}
+
 const css_token_vector* Cascade::get_custom_property(Property name, bool& local) const {
 	const auto found = variables.find(name);
 	local = found != variables.end();

@@ -1075,16 +1075,28 @@ namespace docrender {
 		}
 	}
 
+	namespace {
+		Vector2 css_transform_reference_size(const RenderGeometry& entry) {
+			Rect2 box = to_rect(entry.item->get_placement());
+			if (!entry.fragments.empty()) {
+				box = entry.fragments.front().rect;
+				for (size_t i = 1; i < entry.fragments.size(); ++i) box = box.merge(entry.fragments[i].rect);
+			}
+			return transform_reference_box(*entry.item, box).size;
+		}
+	}
+
+	std::optional<Projection> HTMLGeometryIndex::css_transform_matrix(const element& p_element,
+		const css_transform_list& p_transforms) const {
+		const auto* entries = find_element(&p_element);
+		if (!entries || entries->empty()) return std::nullopt;
+		return transform_list_matrix(p_transforms, css_transform_reference_size(*entries->front()));
+	}
+
 	bool HTMLGeometryIndex::can_interpolate_transform(const element& p_element, const css_transform_list& p_sample) const {
 		const auto* entries = find_element(&p_element);
 		if (!entries || entries->empty()) return true;
-		const auto& entry = *entries->front();
-		Rect2 box = to_rect(entry.item->get_placement());
-		if (!entry.fragments.empty()) {
-			box = entry.fragments.front().rect;
-			for (size_t i = 1; i < entry.fragments.size(); ++i) box = box.merge(entry.fragments[i].rect);
-		}
-		const auto size = transform_reference_box(*entry.item, box).size;
+		const auto size = css_transform_reference_size(*entries->front());
 		for (const auto& operation : p_sample) {
 			if (!operation.blend) continue;
 			const auto& blend = *operation.blend;

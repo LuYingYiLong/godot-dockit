@@ -107,6 +107,7 @@ namespace litehtml
 			return std::find(m_pseudo_classes.begin(), m_pseudo_classes.end(), name) != m_pseudo_classes.end();
 		}
 		const property_value& get_cascaded_property(string_id name) const { return m_style.get_property(name); }
+		void collect_property_names(std::vector<string_id>& names) const { m_style.collect_property_names(names); }
 		bool				get_custom_property(string_id name, css_token_vector& result) const;
 
 		elements_list&	children();

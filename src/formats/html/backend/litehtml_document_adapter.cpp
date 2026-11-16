@@ -424,6 +424,24 @@ namespace litehtml {
 		return docrender::forms::button_action(p_element) != docrender::forms::ButtonAction::NONE;
 	}
 
+	css_text::vector docrender_editor::stylesheets(const document& p_document) {
+		auto sheets = p_document.m_css;
+		for (auto& sheet : sheets) {
+			const auto found = p_document.m_cssom_overrides.find(sheet.owner);
+			if (found != p_document.m_cssom_overrides.end()) sheet.text = found->second.replacement;
+		}
+		return sheets;
+	}
+
+	void docrender_editor::edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text) {
+		for (const auto& sheet : p_document.m_css) {
+			if (sheet.owner.lock() == p_owner) {
+				p_document.m_cssom_overrides[p_owner] = {sheet.text, sheet.baseurl, std::move(p_text)};
+				return;
+			}
+		}
+	}
+
 	void docrender_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_additional_styles) {
 		auto& doc = *p_document;

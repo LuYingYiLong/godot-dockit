@@ -236,6 +236,8 @@ namespace docrender {
 		void clear();
 		const ElementGeometry* find_element(const litehtml::element* p_element) const;
 		const RenderGeometry* find_renderer(const litehtml::render_item* p_item) const;
+		std::optional<godot::Projection> css_transform_matrix(const litehtml::element& p_element,
+			const std::vector<litehtml::css_transform_function>& p_transforms) const;
 		bool can_interpolate_transform(const litehtml::element& p_element,
 			const std::vector<litehtml::css_transform_function>& p_sample) const;
 		const std::vector<const RenderGeometry*>& get_snap_areas() const { return snap_areas; }

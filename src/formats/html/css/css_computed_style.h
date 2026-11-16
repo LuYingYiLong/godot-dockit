@@ -488,6 +488,8 @@ namespace docrender::css {
 		pixel_t get_font_size() const;
 		const css_font_size_adjust& get_font_size_adjust() const { return m_font_size_adjust; }
 		float get_font_weight() const { return m_font_weight.val(); }
+		const css_font_families& get_font_families() const { return m_font_families; }
+		const css_font_style& get_font_style() const { return m_font_style; }
 		float get_font_width() const { return m_font_width; }
 		void set_font_size(pixel_t mFontSize);
 

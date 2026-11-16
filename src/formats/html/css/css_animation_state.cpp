@@ -30,12 +30,17 @@ namespace docrender::css {
 		}
 	}
 
-	double AnimationState::Track::playback_time(double now) const {
-		return elapsed + (animation.paused ? 0 : now - updated_at);
+	double AnimationState::Track::duration() const {
+		return animation.duration == 0 ? 0 : animation.duration * animation.iterations;
+	}
+
+	double AnimationState::Track::end() const {
+		return std::max(0.0, animation.delay + duration());
 	}
 
 	void AnimationState::Track::resolve(const html_tag& node, const std::shared_ptr<document>& doc,
 			const css_keyframes& keyframes) {
+		stops.clear();
 		const auto& supported = animated_properties();
 		for (const auto& [offset, declarations] : keyframes.frames) {
 			style frame = *declarations;
@@ -63,13 +68,13 @@ namespace docrender::css {
 	}
 
 	void AnimationState::Track::sample(double now, Sample& output, bool& needs_frames) const {
-		if (stops.empty()) return;
+		if (stops.empty() || playback.cancelled) return;
 		const auto& settings = animation;
-		const double local = playback_time(now) - settings.delay;
-		const double duration = settings.duration == 0 ? 0 : settings.duration * settings.iterations;
+		const double time = playback.time(now, end(), settings.paused);
+		const double local = time - settings.delay;
 		const bool before = local < 0;
-		const bool after = local >= duration;
-		needs_frames |= !settings.paused && !after;
+		const bool after = time >= settings.delay + duration();
+		needs_frames |= playback.state(now, end(), settings.paused) == PlaybackState::running;
 		if ((before && !(settings.fill & 2)) || (after && !(settings.fill & 1))) return;
 
 		const double overall = before ? 0 : after ? settings.iterations : local / settings.duration;
@@ -130,14 +135,17 @@ namespace docrender::css {
 					Track track;
 					track.name = *name;
 					track.animation = settings->at(index);
-					track.updated_at = now;
+					track.playback.updated_at = now;
 					for (std::size_t previous = old_count; previous-- > 0;) {
 						const auto& prior = (*previous_tracks)[previous];
-						if (matched[previous] || prior.name != *name) continue;
+						if (matched[previous] || prior.scripted || prior.name != *name) continue;
 						matched[previous] = true;
-						track.elapsed = prior.playback_time(now);
+						track.playback = prior.playback;
+						track.playback.elapsed = prior.playback.time(now, prior.end(), prior.animation.paused);
+						track.playback.updated_at = now;
 						break;
 					}
+					if (track.playback.id == 0) track.playback.id = next_id++;
 					track.resolve(*subject, doc, *rule);
 					resolved.push_back(std::move(track));
 				}
@@ -149,8 +157,81 @@ namespace docrender::css {
 			for (const auto& child : node->children()) visit(visit, child);
 		};
 		visit(visit, doc->root());
+		for (auto& [weak, targets] : tracks) {
+			const auto previous = targets.find(empty_id);
+			if (previous == targets.end() || std::none_of(previous->second.begin(), previous->second.end(),
+				[](const Track& track) { return bool(track.scripted); })) continue;
+			const auto subject = std::dynamic_pointer_cast<html_tag>(weak.lock());
+			if (!subject) continue;
+			auto root = std::static_pointer_cast<element>(subject);
+			while (const auto parent = root->parent()) root = parent;
+			if (root != doc->root()) continue;
+			for (auto& track : previous->second) {
+				if (!track.scripted) continue;
+				track.resolve(*subject, doc, *track.scripted);
+				updated[subject][empty_id].push_back(std::move(track));
+			}
+		}
 		tracks.swap(updated);
 		sample(now);
+	}
+
+	uint64_t AnimationState::create(const std::shared_ptr<element>& node, const std::shared_ptr<document>& doc,
+			std::shared_ptr<const css_keyframes> frames, const css_animation& settings, double now) {
+		const auto* subject = dynamic_cast<const html_tag*>(node.get());
+		if (!subject) return 0;
+		Track track;
+		track.animation = settings;
+		track.scripted = std::move(frames);
+		track.playback.updated_at = now;
+		track.resolve(*subject, doc, *track.scripted);
+		if (track.stops.empty()) return 0;
+		const auto id = track.playback.id = next_id++;
+		tracks[node][empty_id].push_back(std::move(track));
+		return id;
+	}
+
+	std::vector<uint64_t> AnimationState::list(const element* target) const {
+		std::vector<uint64_t> result;
+		for (const auto& [weak, pseudos] : tracks) {
+			const auto subject = weak.lock();
+			if (!subject || (target && target != subject.get())) continue;
+			for (const auto& [pseudo, entries] : pseudos) {
+				for (const auto& track : entries) {
+					if (!track.playback.cancelled) result.push_back(track.playback.id);
+				}
+			}
+		}
+		return result;
+	}
+
+	std::optional<PlaybackInfo> AnimationState::info(uint64_t id, double now) const {
+		for (const auto& [weak, pseudos] : tracks) {
+			for (const auto& [pseudo, entries] : pseudos) {
+				for (const auto& track : entries) {
+					if (track.playback.id != id) continue;
+					const auto target = weak.lock();
+					if (!target) return std::nullopt;
+					const char* pseudo_name = pseudo == __tag_before_ ? "::before" : pseudo == __tag_after_ ? "::after" :
+						pseudo == marker_tag() ? "::marker" : "";
+					return PlaybackInfo{target, track.name, pseudo_name, track.playback.time(now, track.end(), track.animation.paused),
+						track.duration(), track.playback.state(now, track.end(), track.animation.paused), bool(track.scripted)};
+				}
+			}
+		}
+		return std::nullopt;
+	}
+
+	bool AnimationState::control(uint64_t id, PlaybackCommand command, double value, double now) {
+		for (auto& [weak, pseudos] : tracks) {
+			if (weak.expired()) continue;
+			for (auto& [pseudo, entries] : pseudos) {
+				for (auto& track : entries) {
+					if (track.playback.id == id) return track.playback.control(command, value, now, track.end(), track.animation.paused);
+				}
+			}
+		}
+		return false;
 	}
 
 	void AnimationState::sample(double now) {

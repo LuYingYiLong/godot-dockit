@@ -333,6 +333,19 @@ public:
 	bool is_context_menu_enabled() const; // 返回文本字段是否显示编辑菜单
 	void set_animation_process_mode(AnimationProcessMode p_mode); // 设置 CSS 动画和过渡的帧更新方式
 	AnimationProcessMode get_animation_process_mode() const; // 返回 CSS 动画和过渡的帧更新方式
+	godot::TypedArray<HTMLAnimation> get_animations(const godot::Ref<HTMLElement>& p_element = {}); // 返回当前布局的动画
+	godot::Ref<HTMLAnimation> animate(const godot::Ref<HTMLElement>& p_element,
+		const godot::TypedArray<godot::Dictionary>& p_keyframes, const godot::Dictionary& p_options = {}); // 在当前布局中创建关键帧动画
+	godot::Dictionary get_computed_style(const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = ""); // 返回计算样式快照
+	godot::String get_computed_style_property(const godot::Ref<HTMLElement>& p_element, const godot::String& p_name,
+		const godot::String& p_pseudo = ""); // 返回指定属性的计算值
+	godot::TypedArray<godot::Dictionary> get_stylesheets(); // 返回当前布局的作者样式表
+	godot::PackedStringArray get_css_rules(int64_t p_stylesheet); // 返回指定样式表的顶层规则
+	godot::Error insert_rule(int64_t p_stylesheet, const godot::String& p_rule, int64_t p_index = 0); // 插入 CSS 规则
+	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index); // 删除 CSS 规则
+	bool supports_css(const godot::String& p_property_or_condition, const godot::String& p_value = "") const; // 检查 CSS 声明或条件
+	bool supports_selector(const godot::String& p_selector) const; // 检查 CSS 选择器
+	bool matches_media(const godot::String& p_query) const; // 检查当前视口的媒体条件
 	void advance_animation(double p_delta); // 手动推进 CSS 动画和过渡，时间增量以秒为单位
 	void set_caret_blink_enabled(bool p_enabled); // 设置聚焦文本字段的插入光标是否闪烁
 	bool is_caret_blink_enabled() const; // 返回插入光标是否闪烁

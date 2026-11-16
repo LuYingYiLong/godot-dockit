@@ -139,6 +139,9 @@
     <ClCompile Include="src\formats\html\html_document.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_element_style.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -273,6 +276,12 @@
     </ClCompile>
     <ClCompile Include="src\formats\html\markup\html_markup.cpp">
       <Filter>Source Files\formats\html\markup</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\html_cssom.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\html_animation.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_shadows.cpp">
       <Filter>Source Files\formats\html\css</Filter>
@@ -878,6 +887,15 @@
     </ClInclude>
     <ClInclude Include="src\formats\html\text\html_glyph_outline.h">
       <Filter>Header Files\formats\html\text</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\html_cssom.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\html_animation.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_playback.h">
+      <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_shadows.h">
       <Filter>Header Files\formats\html\css</Filter>

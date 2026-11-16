@@ -762,6 +762,17 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &HTMLLabel::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("set_animation_process_mode", "mode"), &HTMLLabel::set_animation_process_mode);
 	ClassDB::bind_method(D_METHOD("get_animation_process_mode"), &HTMLLabel::get_animation_process_mode);
+	ClassDB::bind_method(D_METHOD("get_animations", "element"), &HTMLLabel::get_animations, DEFVAL(Ref<HTMLElement>()));
+	ClassDB::bind_method(D_METHOD("animate", "element", "keyframes", "options"), &HTMLLabel::animate, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("get_computed_style", "element", "pseudo"), &HTMLLabel::get_computed_style, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("get_computed_style_property", "element", "name", "pseudo"), &HTMLLabel::get_computed_style_property, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("get_stylesheets"), &HTMLLabel::get_stylesheets);
+	ClassDB::bind_method(D_METHOD("get_css_rules", "stylesheet"), &HTMLLabel::get_css_rules);
+	ClassDB::bind_method(D_METHOD("insert_rule", "stylesheet", "rule", "index"), &HTMLLabel::insert_rule, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("delete_rule", "stylesheet", "index"), &HTMLLabel::delete_rule);
+	ClassDB::bind_method(D_METHOD("supports_css", "property_or_condition", "value"), &HTMLLabel::supports_css, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("supports_selector", "selector"), &HTMLLabel::supports_selector);
+	ClassDB::bind_method(D_METHOD("matches_media", "query"), &HTMLLabel::matches_media);
 	ClassDB::bind_method(D_METHOD("advance_animation", "delta"), &HTMLLabel::advance_animation);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_enabled", "enabled"), &HTMLLabel::set_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("is_caret_blink_enabled"), &HTMLLabel::is_caret_blink_enabled);
@@ -1263,6 +1274,59 @@ void HTMLLabel::set_animation_process_mode(AnimationProcessMode p_mode) {
 
 HTMLLabel::AnimationProcessMode HTMLLabel::get_animation_process_mode() const {
 	return animation_process_mode;
+}
+
+TypedArray<HTMLAnimation> HTMLLabel::get_animations(const Ref<HTMLElement>& p_element) {
+	flush_queued_refresh();
+	return layout->get_animations(p_element);
+}
+
+Ref<HTMLAnimation> HTMLLabel::animate(const Ref<HTMLElement>& p_element, const TypedArray<Dictionary>& p_keyframes,
+	const Dictionary& p_options) {
+	flush_queued_refresh();
+	return layout->animate(p_element, p_keyframes, p_options);
+}
+
+Dictionary HTMLLabel::get_computed_style(const Ref<HTMLElement>& p_element, const String& p_pseudo) {
+	flush_queued_refresh();
+	return layout->get_computed_style(p_element, p_pseudo);
+}
+
+String HTMLLabel::get_computed_style_property(const Ref<HTMLElement>& p_element, const String& p_name, const String& p_pseudo) {
+	flush_queued_refresh();
+	return layout->get_computed_style_property(p_element, p_name, p_pseudo);
+}
+
+TypedArray<Dictionary> HTMLLabel::get_stylesheets() {
+	parse_pending_source();
+	return layout->get_stylesheets();
+}
+
+PackedStringArray HTMLLabel::get_css_rules(int64_t p_stylesheet) {
+	parse_pending_source();
+	return layout->get_css_rules(p_stylesheet);
+}
+
+Error HTMLLabel::insert_rule(int64_t p_stylesheet, const String& p_rule, int64_t p_index) {
+	parse_pending_source();
+	return layout->insert_rule(p_stylesheet, p_rule, p_index);
+}
+
+Error HTMLLabel::delete_rule(int64_t p_stylesheet, int64_t p_index) {
+	parse_pending_source();
+	return layout->delete_rule(p_stylesheet, p_index);
+}
+
+bool HTMLLabel::supports_css(const String& p_property_or_condition, const String& p_value) const {
+	return layout->supports_css(p_property_or_condition, p_value);
+}
+
+bool HTMLLabel::supports_selector(const String& p_selector) const {
+	return layout->supports_selector(p_selector);
+}
+
+bool HTMLLabel::matches_media(const String& p_query) const {
+	return !source_dirty && layout->matches_media(p_query);
 }
 
 void HTMLLabel::advance_animation(double p_delta) {

@@ -29,6 +29,7 @@ namespace litehtml {
 		void add_property(string_id name, const string& val,              const string& baseurl = "", bool important = false, document_container* container = nullptr);
 
 		const property_value& get_property(string_id name) const;
+		void collect_property_names(std::vector<string_id>& names) const { cascade.collect_property_names(names); }
 
 		void combine(const style& src, docrender::css::CascadePriority priority = {});
 		void clear(bool keep_variables = false)

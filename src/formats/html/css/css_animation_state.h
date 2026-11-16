@@ -1,6 +1,7 @@
 #pragma once
 
 #include "css_animated_property.h"
+#include "css_playback.h"
 
 #include <memory>
 #include <unordered_map>
@@ -20,11 +21,12 @@ namespace docrender::css {
 		struct Track {
 			std::string name;
 			litehtml::css_animation animation;
-			double elapsed = 0;
-			double updated_at = 0;
+			Playback playback;
+			std::shared_ptr<const litehtml::css_keyframes> scripted;
 			std::map<std::size_t, std::vector<Stop>> stops;
 
-			double playback_time(double now) const;
+			double duration() const;
+			double end() const;
 			void sample(double now, Sample& output, bool& needs_frames) const;
 			void resolve(const litehtml::html_tag& node, const std::shared_ptr<litehtml::document>& doc,
 				const litehtml::css_keyframes& keyframes);
@@ -35,8 +37,14 @@ namespace docrender::css {
 		std::map<ElementKey, ElementTracks, std::owner_less<>> tracks;
 		std::unordered_map<const litehtml::element*, std::map<litehtml::string_id, litehtml::props_map>> overrides;
 		bool playing = false;
+		uint64_t next_id = 1;
 
 	public:
+		uint64_t create(const std::shared_ptr<litehtml::element>& node, const std::shared_ptr<litehtml::document>& doc,
+			std::shared_ptr<const litehtml::css_keyframes> frames, const litehtml::css_animation& settings, double now);
+		std::vector<uint64_t> list(const litehtml::element* target) const;
+		std::optional<PlaybackInfo> info(uint64_t id, double now) const;
+		bool control(uint64_t id, PlaybackCommand command, double value, double now);
 		void commit(const std::shared_ptr<litehtml::document>& doc, double now);
 		void sample(double now);
 		bool active() const { return playing; }

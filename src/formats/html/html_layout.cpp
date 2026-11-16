@@ -16,6 +16,12 @@
 #include "formats/html/backend/litehtml_document_adapter.h"
 #include "formats/html/css/css_transition_state.h"
 #include "formats/html/css/css_animation_state.h"
+#include "formats/html/css/css_declarations.h"
+#include "formats/html/css/css_media_query.h"
+#include "formats/html/css/css_stylesheet_rules.h"
+#include "formats/html/css/css_supports.h"
+#include "formats/html/css/css_syntax_util.h"
+#include "formats/html/css/html_cssom.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
@@ -31,10 +37,12 @@
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <litehtml/css_parser.h>
+#include <litehtml/html_tag.h>
 #include <litehtml/el_image.h>
 #include <litehtml/render_item.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <exception>
 #include <limits>
@@ -54,6 +62,8 @@ using docrender::HTMLGeometryIndex;
 using docrender::HTMLHighlight;
 using docrender::LiteHTMLContainer;
 using DocumentAdapter = litehtml::docrender_editor;
+
+namespace syntax = docrender::css;
 
 namespace {
 	litehtml::element::ptr find_html_ancestor(litehtml::element::ptr p_element) {
@@ -195,10 +205,13 @@ struct HTMLLayout::State {
 	Vector2i content_size;
 	std::string master_styles;
 	std::string user_styles;
+	std::map<std::weak_ptr<litehtml::element>, int64_t, std::owner_less<>> stylesheet_ids;
+	int64_t extra_stylesheet_id = 0;
 	Callable edit_callback;
 	Callable element_scroll_callback;
 	docrender::css::TransitionState transitions;
 	docrender::css::AnimationState animations;
+	std::map<std::pair<bool, uint64_t>, ObjectID> animation_handles;
 	docrender::css::TransitionState::Snapshot animation_underlying;
 	Callable transition_callback;
 	Callable transition_frame;
@@ -222,7 +235,412 @@ struct HTMLLayout::State {
 	}
 };
 
+struct HTMLLayout::CSSOMSheet {
+	int64_t id;
+	std::shared_ptr<litehtml::element> owner;
+	std::string text;
+	std::string base;
+	std::string media;
+};
+
+bool HTMLLayout::refresh_cssom() {
+	const auto& document = state->dom->get_document();
+	if (!document) return false;
+	if (state->pending_update == State::Update::NONE) return true;
+	if (state->viewport_size.x > 0) {
+		return layout_viewport(state->viewport_size, state->media_viewport_size, state->viewport_unit_size) == OK;
+	}
+	if (state->pending_update == State::Update::STYLE) {
+		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
+		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
+		state->pending_update = State::Update::LAYOUT;
+	}
+	return true;
+}
+
+namespace {
+	using namespace litehtml;
+
+	const html_tag* cssom_tag(const element& element, const String& pseudo) {
+		if (pseudo.is_empty()) return dynamic_cast<const html_tag*>(&element);
+		const auto name = pseudo.trim_prefix("::").trim_prefix(":");
+		const auto tag = name == "before" ? __tag_before_ : name == "after" ? __tag_after_ :
+			name == "marker" ? marker_tag() : empty_id;
+		if (tag == empty_id) return nullptr;
+		for (const auto& child : element.children()) {
+			if (child->tag() == tag) return dynamic_cast<const html_tag*>(child.get());
+		}
+		return nullptr;
+	}
+
+	std::string transform_matrix_value(const HTMLGeometryIndex& geometry, const html_tag& target) {
+		const auto& transforms = target.css().get_transforms();
+		if (transforms.empty()) return "none";
+		const auto matrix = geometry.css_transform_matrix(target, transforms);
+		if (!matrix) return {};
+		const bool flat = (*matrix)[0].z == 0.0 && (*matrix)[0].w == 0.0 &&
+			(*matrix)[1].z == 0.0 && (*matrix)[1].w == 0.0 &&
+			(*matrix)[2] == Vector4(0, 0, 1, 0) && (*matrix)[3].z == 0.0 && (*matrix)[3].w == 1.0;
+		using Kind = css_transform_function::kind;
+		css_transform_function value{flat ? Kind::matrix : Kind::matrix3d};
+		if (flat) {
+			value.matrix = {(*matrix)[0].x, (*matrix)[0].y, (*matrix)[1].x, (*matrix)[1].y, (*matrix)[3].x, (*matrix)[3].y};
+		} else {
+			for (int i = 0; i < 4; ++i) {
+				for (int j = 0; j < 4; ++j) value.matrix[i * 4 + j] = (*matrix)[i][j];
+			}
+		}
+		return docrender::css::serialize_value(_transform_, property_value(css_transform_list{value}, false));
+	}
+
+	String read_computed(const HTMLGeometryIndex& geometry, const html_tag& element, const std::string& name, const String& pseudo) {
+		if (name.empty()) return {};
+		const auto canonical = css_canonical_property(_id(name));
+		const auto physical = css_map_logical_property(canonical, element.css().is_right_to_left());
+		const auto id = physical == empty_id ? canonical : physical;
+		if (pseudo == "::selection" || pseudo == ":selection") {
+			const auto colors = element.get_selection_colors(element.css().get_color());
+			const auto& color = id == _color_ ? colors.foreground : colors.background;
+			if (!color || (id != _color_ && id != _background_color_)) return {};
+			return String::utf8(docrender::css::serialize_value(id, property_value(color->to_srgb(), false)).c_str());
+		}
+		const bool placeholder = pseudo == "::placeholder" || pseudo == ":placeholder";
+		const auto* target = placeholder ? &element : cssom_tag(element, pseudo);
+		if (!target) return {};
+		const auto* style = placeholder ? target->get_placeholder_style() : &target->css();
+		if (!style) return {};
+		std::string result;
+		if (name.compare(0, 2, "--") == 0) {
+			css_token_vector tokens;
+			if (target->get_custom_property(id, tokens)) result = get_repr(tokens, 0, -1, true);
+		} else {
+			if (id == _transform_ && !placeholder) result = transform_matrix_value(geometry, *target);
+			if (result.empty()) result = docrender::css::serialize_computed(id, *style);
+			if (result.empty() && !placeholder) {
+				const auto& value = target->get_cascaded_property(id);
+				if (!value.is<inherit>() && !value.is<initial_value>()) result = docrender::css::serialize_value(id, value);
+			}
+		}
+		return String::utf8(result.c_str());
+	}
+}
+
+String HTMLLayout::get_computed_style_property(const Ref<HTMLElement>& p_element, const String& p_name, const String& p_pseudo) {
+	if (!is_element_connected(p_element) || !refresh_cssom()) return {};
+	const auto node = std::dynamic_pointer_cast<litehtml::html_tag>(p_element->lock_element());
+	return node ? read_computed(state->geometry, *node, syntax::property_name(p_name), p_pseudo) : String();
+}
+
+Dictionary HTMLLayout::get_computed_style(const Ref<HTMLElement>& p_element, const String& p_pseudo) {
+	Dictionary result;
+	if (!is_element_connected(p_element) || !refresh_cssom()) return result;
+	const auto node = std::dynamic_pointer_cast<litehtml::html_tag>(p_element->lock_element());
+	if (!node) return result;
+	const auto read = [&](const std::string& name) {
+		const String value = read_computed(state->geometry, *node, name, p_pseudo);
+		if (!value.is_empty()) result[String::utf8(name.c_str())] = value;
+	};
+	for (const auto& property : syntax::animated_properties()) read(litehtml::_s(property.name));
+	for (const char* name : {"display", "position", "visibility", "overflow-x", "overflow-y", "box-sizing", "direction",
+			"font-family", "font-weight", "font-style", "text-align", "line-height", "cursor", "z-index",
+			"grid-template-columns", "grid-template-rows", "grid-auto-flow", "grid-auto-rows", "grid-auto-columns",
+			"align-items", "align-self", "align-content", "justify-items", "justify-self", "justify-content"}) read(name);
+	std::vector<litehtml::string_id> names;
+	if (const auto* tag = cssom_tag(*node, p_pseudo)) tag->collect_property_names(names);
+	for (auto parent = node->parent(); parent; parent = parent->parent()) {
+		if (const auto* tag = dynamic_cast<const litehtml::html_tag*>(parent.get())) tag->collect_property_names(names);
+	}
+	std::sort(names.begin(), names.end());
+	names.erase(std::unique(names.begin(), names.end()), names.end());
+	for (const auto name : names) {
+		const auto& spelling = litehtml::_s(name);
+		if (spelling.compare(0, 2, "__") != 0) read(spelling);
+	}
+	return result;
+}
+
+std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
+	if (!refresh_cssom()) return {};
+	static std::atomic<int64_t> next_id{1};
+	for (auto it = state->stylesheet_ids.begin(); it != state->stylesheet_ids.end();) {
+		if (it->first.expired()) it = state->stylesheet_ids.erase(it);
+		else ++it;
+	}
+	std::vector<CSSOMSheet> result;
+	for (const auto& sheet : DocumentAdapter::stylesheets(*state->dom->get_document())) {
+		auto owner = sheet.owner.lock();
+		if (!owner) continue;
+		auto [entry, added] = state->stylesheet_ids.try_emplace(owner, 0);
+		if (added) entry->second = next_id++;
+		result.push_back({entry->second, std::move(owner), sheet.text, sheet.baseurl, sheet.media});
+	}
+	if (state->extra_stylesheet_id == 0) state->extra_stylesheet_id = next_id++;
+	result.push_back({state->extra_stylesheet_id, {}, state->user_styles, {}, {}});
+	return result;
+}
+
+TypedArray<Dictionary> HTMLLayout::get_stylesheets() {
+	TypedArray<Dictionary> result;
+	for (const auto& sheet : collect_stylesheets()) {
+		Dictionary snapshot;
+		snapshot["id"] = sheet.id;
+		snapshot["owner"] = sheet.owner ? wrap_hit_element(sheet.owner) : Ref<HTMLElement>();
+		snapshot["source"] = !sheet.owner ? "stylesheet" : sheet.owner->tag() == litehtml::_link_ ? "link" : "style";
+		snapshot["path"] = String::utf8(sheet.base.c_str());
+		snapshot["media"] = String::utf8(sheet.media.c_str());
+		result.append(snapshot);
+	}
+	return result;
+}
+
+PackedStringArray HTMLLayout::get_css_rules(int64_t p_stylesheet) {
+	PackedStringArray result;
+	for (const auto& sheet : collect_stylesheets()) {
+		if (sheet.id != p_stylesheet) continue;
+		for (const auto& rule : litehtml::css_parser::parse_stylesheet(sheet.text, true)) {
+			result.append(String::utf8(docrender::css::serialize_rule(*rule).c_str()));
+		}
+		break;
+	}
+	return result;
+}
+
+Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const String* p_rule) {
+	auto sheets = collect_stylesheets();
+	const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
+	if (sheet == sheets.end()) return ERR_INVALID_PARAMETER;
+	auto rules = litehtml::css_parser::parse_stylesheet(sheet->text, true);
+	if (p_index < 0 || p_index > static_cast<int64_t>(rules.size()) ||
+		(!p_rule && p_index == static_cast<int64_t>(rules.size()))) return ERR_INVALID_PARAMETER;
+	if (p_rule) {
+		const auto input = syntax::parse_cssom_rule(*p_rule);
+		if (!input) return ERR_PARSE_ERROR;
+		rules.insert(rules.begin() + p_index, input);
+		bool accepted = false;
+		const auto mode = state->dom->get_document()->mode();
+		syntax::visit_stylesheet_rules(rules, true, [&](const syntax::StylesheetRule& rule) {
+			bool valid = true;
+			if (rule.kind == syntax::StylesheetRuleKind::style) {
+				valid = !syntax::parse_selector_list(rule.syntax.prelude, syntax::strict_mode, litehtml::selector_mode(mode)).empty();
+			} else if (rule.kind == syntax::StylesheetRuleKind::supports) {
+				valid = litehtml::evaluate_css_supports(rule.syntax.prelude, mode).has_value();
+			} else if (rule.kind == syntax::StylesheetRuleKind::keyframes) {
+				valid = syntax::parse_keyframe_rule(rule.syntax.prelude, rule.syntax.block.value).has_value();
+			}
+			if (&rule.syntax == input.get()) accepted = valid;
+			return valid;
+		});
+		if (!accepted) return ERR_PARSE_ERROR;
+		// An insertion must not move existing imports past the allowed prefix.
+		bool past_imports = false;
+		for (const auto& rule : rules) {
+			if (rule->type == syntax::raw_rule::at && syntax::detail::lowcase(rule->name) == "import") {
+				if (past_imports) return ERR_INVALID_DATA;
+			} else if (!(rule->type == syntax::raw_rule::at && rule->block.type != syntax::CURLY_BLOCK &&
+				syntax::detail::lowcase(rule->name) == "layer")) {
+				past_imports = true;
+			}
+		}
+	} else {
+		rules.erase(rules.begin() + p_index);
+	}
+	std::string updated;
+	for (const auto& rule : rules) updated += docrender::css::serialize_rule(*rule) + '\n';
+	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
+	else state->user_styles = std::move(updated);
+	invalidate_styles();
+	return OK;
+}
+
+Error HTMLLayout::insert_rule(int64_t p_stylesheet, const String& p_rule, int64_t p_index) {
+	return edit_css_rule(p_stylesheet, p_index, &p_rule);
+}
+
+Error HTMLLayout::delete_rule(int64_t p_stylesheet, int64_t p_index) {
+	return edit_css_rule(p_stylesheet, p_index, nullptr);
+}
+
+bool HTMLLayout::supports_css(const String& p_property_or_condition, const String& p_value) const {
+	const String input = p_value.is_empty() ? p_property_or_condition : p_property_or_condition + String(": ") + p_value;
+	const auto& doc = state->dom->get_document();
+	return litehtml::evaluate_css_supports(litehtml::normalize(input.utf8().get_data(), syntax::f_componentize),
+		doc ? doc->mode() : litehtml::no_quirks_mode, true).value_or(false);
+}
+
+bool HTMLLayout::supports_selector(const String& p_selector) const {
+	const auto& doc = state->dom->get_document();
+	return litehtml::supports_css_selector(litehtml::normalize(p_selector.utf8().get_data(), syntax::f_componentize),
+		doc ? doc->mode() : litehtml::no_quirks_mode);
+}
+
+bool HTMLLayout::matches_media(const String& p_query) const {
+	const auto& doc = state->dom->get_document();
+	if (!doc || p_query.strip_edges().is_empty()) return false;
+	litehtml::media_features features;
+	doc->container()->get_media_features(features);
+	return litehtml::parse_media_query_list(p_query.utf8().get_data(), doc).check(features);
+}
+
+namespace {
+	std::optional<double> animation_number(const Variant& value) {
+		if (value.get_type() != Variant::FLOAT && value.get_type() != Variant::INT) return std::nullopt;
+		const double number = value;
+		return std::isfinite(number) ? std::optional(number) : std::nullopt;
+	}
+
+	std::optional<litehtml::css_easing> animation_easing(const Variant& value) {
+		if (value.get_type() != Variant::STRING && value.get_type() != Variant::STRING_NAME) return std::nullopt;
+		const auto tokens = litehtml::normalize(String(value).utf8().get_data(), syntax::f_componentize | syntax::f_remove_whitespace);
+		return tokens.size() == 1 ? litehtml::parse_css_easing(tokens.front()) : std::nullopt;
+	}
+
+	std::optional<litehtml::css_animation> animation_options(const Dictionary& options) {
+		litehtml::css_animation result;
+		const auto duration = animation_number(options.get("duration", 0.0));
+		const auto delay = animation_number(options.get("delay", 0.0));
+		const Variant iteration_input = options.get("iterations", 1.0);
+		auto iterations = animation_number(iteration_input);
+		if (iteration_input.get_type() == Variant::FLOAT && double(iteration_input) == std::numeric_limits<double>::infinity()) {
+			iterations = double(iteration_input);
+		}
+		const auto easing = animation_easing(options.get("easing", "linear"));
+		if (!duration || *duration < 0 || !delay || !iterations || *iterations < 0 || !easing) return std::nullopt;
+		const std::array<String, 4> directions{"normal", "reverse", "alternate", "alternate-reverse"};
+		const std::array<String, 4> fills{"none", "forwards", "backwards", "both"};
+		const auto direction = std::find(directions.begin(), directions.end(), String(options.get("direction", "normal")));
+		const auto fill = std::find(fills.begin(), fills.end(), String(options.get("fill", "none")));
+		if (direction == directions.end() || fill == fills.end()) return std::nullopt;
+		result.duration = *duration;
+		result.delay = *delay;
+		result.iterations = *iterations;
+		result.easing = *easing;
+		result.direction = static_cast<int>(direction - directions.begin());
+		result.fill = static_cast<int>(fill - fills.begin());
+		return result;
+	}
+
+	std::shared_ptr<const litehtml::css_keyframes> script_keyframes(const TypedArray<Dictionary>& keyframes) {
+		const auto size = keyframes.size();
+		if (size == 0) return {};
+		std::vector<std::optional<double>> offsets(size);
+		double previous = 0.0;
+		for (int64_t index = 0; index < size; ++index) {
+			const Dictionary frame = keyframes[index];
+			if (!frame.has("offset")) continue;
+			const auto offset = animation_number(frame["offset"]);
+			if (!offset || *offset < previous || *offset > 1.0) return {};
+			previous = *offset;
+			offsets[index] = *offset;
+		}
+		if (!offsets.back()) offsets.back() = 1.0;
+		if (!offsets.front()) offsets.front() = 0.0;
+		for (size_t first = 0; first + 1 < offsets.size();) {
+			size_t last = first + 1;
+			while (!offsets[last]) ++last;
+			for (size_t index = first + 1; index < last; ++index) {
+				offsets[index] = *offsets[first] + (*offsets[last] - *offsets[first]) * double(index - first) / double(last - first);
+			}
+			first = last;
+		}
+		std::map<double, litehtml::style> frames;
+		for (int64_t index = 0; index < size; ++index) {
+			auto& parsed = frames[*offsets[index]];
+			const Dictionary frame = keyframes[index];
+			for (const Variant& key : frame.keys()) {
+				if (key.get_type() != Variant::STRING && key.get_type() != Variant::STRING_NAME) return {};
+				const String name(key);
+				if (name == "offset") continue;
+				const Variant value = frame[key];
+				if (name == "easing" && !animation_easing(value)) return {};
+				if (value.get_type() != Variant::STRING && value.get_type() != Variant::STRING_NAME && !animation_number(value)) return {};
+				const auto property = litehtml::_id(name == "easing" ? "animation-timing-function" : syntax::property_name(name));
+				const auto tokens = litehtml::normalize(value.stringify().utf8().get_data(), syntax::f_componentize | syntax::f_remove_whitespace);
+				const auto status = litehtml::parse_css_declaration(property, tokens, {}, false, nullptr, {}).status;
+				if (status != litehtml::css_declaration_status::parsed && status != litehtml::css_declaration_status::deferred) return {};
+				parsed.add_property(property, tokens);
+			}
+		}
+		auto result = std::make_shared<litehtml::css_keyframes>();
+		for (auto& [offset, frame] : frames) result->frames.emplace(offset, std::make_shared<litehtml::style>(std::move(frame)));
+		return result;
+	}
+}
+
+Ref<HTMLAnimation> HTMLLayout::animation_handle(uint64_t p_track, bool p_transition) {
+	auto& handle_id = state->animation_handles[{p_transition, p_track}];
+	if (auto* cached = Object::cast_to<HTMLAnimation>(ObjectDB::get_instance(handle_id))) return Ref<HTMLAnimation>(cached);
+	Ref<HTMLAnimation> result;
+	result.instantiate();
+	result->owner = ObjectID(get_instance_id());
+	result->version = parse_version;
+	result->track = p_track;
+	result->transition = p_transition;
+	handle_id = result->get_instance_id();
+	return result;
+}
+
+double HTMLLayout::animation_clock_time() const {
+	return uses_owner_animation_clock ? state->animation_time : Time::get_singleton()->get_ticks_usec() / 1'000'000.0;
+}
+
+std::optional<syntax::PlaybackInfo> HTMLLayout::animation_info(uint64_t p_track, bool p_transition) const {
+	const double now = animation_clock_time();
+	auto info = p_transition ? state->transitions.info(p_track, now) : state->animations.info(p_track, now);
+	if (info && !state->dom->is_element_connected(*info->target)) return std::nullopt;
+	return info;
+}
+
+bool HTMLLayout::control_animation(uint64_t p_track, bool p_transition, syntax::PlaybackCommand p_command, double p_value) {
+	if (!refresh_cssom() || !animation_info(p_track, p_transition)) return false;
+	const double now = animation_clock_time();
+	const bool updated = p_transition ? state->transitions.control(p_track, p_command, p_value, now) :
+		state->animations.control(p_track, p_command, p_value, now);
+	if (updated) sample_css_animations(true);
+	return updated;
+}
+
+TypedArray<HTMLAnimation> HTMLLayout::get_animations(const Ref<HTMLElement>& p_element) {
+	TypedArray<HTMLAnimation> result;
+	if ((p_element.is_valid() && !is_element_connected(p_element)) || !refresh_cssom()) return result;
+	const auto target = p_element.is_valid() ? p_element->lock_element() : nullptr;
+	for (auto it = state->animation_handles.begin(); it != state->animation_handles.end();) {
+		if (!ObjectDB::get_instance(it->second)) it = state->animation_handles.erase(it);
+		else ++it;
+	}
+	for (const auto track : state->animations.list(target.get())) result.append(animation_handle(track, false));
+	for (const auto track : state->transitions.list(target.get(), animation_clock_time())) result.append(animation_handle(track, true));
+	return result;
+}
+
+Ref<HTMLAnimation> HTMLLayout::animate(const Ref<HTMLElement>& p_element, const TypedArray<Dictionary>& p_keyframes,
+	const Dictionary& p_options) {
+	if (!is_element_connected(p_element) || !refresh_cssom()) return {};
+	const auto settings = animation_options(p_options);
+	const auto frames = settings ? script_keyframes(p_keyframes) : nullptr;
+	const auto target = p_element->lock_element();
+	if (!frames || !target) return {};
+	const auto& document = state->dom->get_document();
+	const auto track = state->animations.create(target, document, frames, *settings, animation_clock_time());
+	if (!track) return {};
+	const Ref<HTMLAnimation> result = animation_handle(track, false);
+	if (state->animation_underlying.empty()) state->animation_underlying = syntax::TransitionState::capture(document->root());
+	sample_css_animations(true);
+	return result;
+}
+
 void HTMLLayout::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_animations", "element"), &HTMLLayout::get_animations, DEFVAL(Ref<HTMLElement>()));
+	ClassDB::bind_method(D_METHOD("animate", "element", "keyframes", "options"), &HTMLLayout::animate, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("get_computed_style", "element", "pseudo"), &HTMLLayout::get_computed_style, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("get_computed_style_property", "element", "name", "pseudo"),
+		&HTMLLayout::get_computed_style_property, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("get_stylesheets"), &HTMLLayout::get_stylesheets);
+	ClassDB::bind_method(D_METHOD("get_css_rules", "stylesheet"), &HTMLLayout::get_css_rules);
+	ClassDB::bind_method(D_METHOD("insert_rule", "stylesheet", "rule", "index"), &HTMLLayout::insert_rule, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("delete_rule", "stylesheet", "index"), &HTMLLayout::delete_rule);
+	ClassDB::bind_method(D_METHOD("supports_css", "property_or_condition", "value"), &HTMLLayout::supports_css, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("supports_selector", "selector"), &HTMLLayout::supports_selector);
+	ClassDB::bind_method(D_METHOD("matches_media", "query"), &HTMLLayout::matches_media);
 	ClassDB::bind_method(D_METHOD("parse", "html", "base_dir", "stylesheet"), &HTMLLayout::parse,
 		DEFVAL(String("res://")), DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("layout", "viewport_size"), &HTMLLayout::layout);
@@ -403,8 +821,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	const Vector2i& p_viewport_unit_size) {
 	using Update = State::Update;
 	const auto& document = state->dom->get_document();
-	const double transition_time = uses_owner_animation_clock ? state->animation_time :
-		Time::get_singleton()->get_ticks_usec() / 1'000'000.0;
+	const double transition_time = animation_clock_time();
 	docrender::css::TransitionState::Snapshot before_transition;
 	if (!state->sampling_transitions && state->viewport_size.x > 0) {
 		before_transition = state->animation_underlying.empty() ?
@@ -997,14 +1414,14 @@ bool HTMLLayout::has_active_css_animations() const {
 }
 
 void HTMLLayout::advance_css_animations(double p_delta) {
-	if (!has_active_css_animations() || p_delta <= 0.0) return;
+	if (!has_active_css_animations() || !std::isfinite(p_delta) || p_delta <= 0.0) return;
 	state->animation_time += p_delta;
 	sample_css_animations();
 }
 
-void HTMLLayout::sample_css_animations() {
+void HTMLLayout::sample_css_animations(bool p_force) {
 	if (!state->has_layout()) return;
-	if (!state->transitions.active() && !state->animations.active() && state->container->has_gauge_animation()) {
+	if (!p_force && !state->transitions.active() && !state->animations.active() && state->container->has_gauge_animation()) {
 		repaint_input();
 		return;
 	}
@@ -2389,6 +2806,9 @@ String HTMLLayout::get_css_diagnostic_tooltip(const Vector2& p_position) const {
 
 void HTMLLayout::clear() {
 	++parse_version;
+	state->stylesheet_ids.clear();
+	state->extra_stylesheet_id = 0;
+	state->animation_handles.clear();
 	disconnect_transition_frames();
 	state->transitions = {};
 	state->animations = {};

@@ -34,6 +34,7 @@ public:
 		const ParseDeferred& parse_deferred);
 
 	const Value& get(Property name) const;
+	void collect_property_names(std::vector<Property>& names) const;
 	const css_token_vector* get_custom_property(Property name, bool& local) const;
 	const vector<litehtml::css_diagnostic>& get_diagnostics() const { return diagnostics; }
 };
