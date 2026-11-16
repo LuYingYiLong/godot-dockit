@@ -588,27 +588,28 @@ namespace litehtml {
 			return color.css_data ? std::get_if<ColorSample>(&color.css_data->value) : nullptr;
 		}
 
-		ColorSample evaluate(const web_color& color, const ColorSample& current);
+		ColorSample evaluate(const web_color& color, const ColorSample& current, color_scheme scheme = color_scheme::light);
 
-		ColorSample evaluate_mix(const ColorMix& mix, const ColorSample& current) {
+		ColorSample evaluate_mix(const ColorMix& mix, const ColorSample& current, color_scheme scheme = color_scheme::light) {
 			const auto& first = mix.items.front();
-			auto result = convert(evaluate(first.color, current), mix.space, true);
+			auto result = convert(evaluate(first.color, current, scheme), mix.space, true);
 			double total = first.weight;
 			for (size_t i = 1; i < mix.items.size(); ++i) {
 				const auto& item = mix.items[i];
 				total += item.weight;
 				const double progress = total > 0.0 ? item.weight / total : 0.5;
-				result = interpolate(mix, result, evaluate(item.color, current), progress);
+				result = interpolate(mix, result, evaluate(item.color, current, scheme), progress);
 			}
 			result.values[3] *= mix.alpha_multiplier;
 			return result;
 		}
 
-		ColorSample evaluate(const web_color& color, const ColorSample& current) {
+		ColorSample evaluate(const web_color& color, const ColorSample& current, color_scheme scheme) {
 			if (color.is_current_color) return current;
+			if (color.system != system_color::none) return evaluate(system_color_value(color.system, scheme), current, scheme);
 			if (const auto* sample = get_sample(color)) return *sample;
 			if (color.css_data) {
-				return evaluate_mix(std::get<ColorMix>(color.css_data->value), current);
+				return evaluate_mix(std::get<ColorMix>(color.css_data->value), current, scheme);
 			}
 			return { css_color_space::srgb, { color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0 }, 0, true };
 		}
@@ -643,19 +644,20 @@ namespace litehtml {
 	}
 
 	bool web_color::needs_current_color() const {
-		return is_current_color || (css_data && std::holds_alternative<ColorMix>(css_data->value));
+		return is_current_color || system != system_color::none || (css_data && std::holds_alternative<ColorMix>(css_data->value));
 	}
 
 	web_color web_color::resolve(const web_color& current) const {
 		if (!needs_current_color()) return *this;
 		if (is_current_color) return current;
-		const auto result = evaluate(*this, evaluate(current, BLACK));
+		if (system != system_color::none) return system_color_value(system, current.scheme);
+		const auto result = evaluate(*this, evaluate(current, BLACK, current.scheme), current.scheme);
 		return make_css_color(result.space, result.values, result.missing);
 	}
 
 	web_color web_color::to_srgb(const web_color& current) const {
-		if (!css_data && !is_current_color) return *this;
-		const auto sample = evaluate(*this, needs_current_color() ? evaluate(current, BLACK) : BLACK);
+		if (!css_data && !needs_current_color()) return *this;
+		const auto sample = evaluate(*this, needs_current_color() ? evaluate(current, BLACK, current.scheme) : BLACK, current.scheme);
 		const double white_lightness = is_ok_space(sample.space) ? 1.0 : 100.0;
 		if ((is_ok_space(sample.space) || is_cie_lab_space(sample.space)) &&
 			(sample.values[0] <= 0.0 || sample.values[0] >= white_lightness)) {

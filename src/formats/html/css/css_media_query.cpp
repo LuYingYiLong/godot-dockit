@@ -118,6 +118,8 @@ trilean media_feature::check(const media_features& feat, const query_length_envi
 	const auto matches = [&](float value) { return compare(value, feat, lengths); };
 	if (name == "inline-size") return matches(feat.width);
 	if (name == "block-size") return matches(feat.height);
+	if (name == "prefers-color-scheme")
+		return matches(feat.preferred_color_scheme == color_scheme::dark ? _id("dark") : _id("light"));
 	switch (_id(name))
 	{
 	case _width_:
@@ -541,8 +543,9 @@ static const std::map<string, mf_info> container_features = {
 	{ "orientation", { _discrete_, _keyword_, { _portrait_, _landscape_ } } },
 };
 
-static const std::map<string, mf_info> supported_media_features =
+static const std::map<string, mf_info>& supported_media_features()
 {
+	static const std::map<string, mf_info> features = {
 	////////////////////////////////////////////////
 	// 4. Viewport/Page Dimensions Media Features
 	////////////////////////////////////////////////
@@ -558,6 +561,7 @@ static const std::map<string, mf_info> supported_media_features =
 
 	// https://drafts.csswg.org/mediaqueries/#orientation
 	{"orientation", {_discrete_, _keyword_, {_portrait_, _landscape_}}},
+	{"prefers-color-scheme", {_discrete_, _keyword_, {_id("light"), _id("dark")}}},
 
 	////////////////////////////////////////////////
 	// 5. Display Quality Media Features
@@ -591,7 +595,9 @@ static const std::map<string, mf_info> supported_media_features =
 
 	// https://drafts.csswg.org/mediaqueries/#device-aspect-ratio
 	{"device-aspect-ratio", {_range_, _ratio_}},
-};
+	};
+	return features;
+}
 
 static std::optional<media_feature::threshold> parse_threshold(const mf_info& info, const css_token val[2], bool defer_variables)
 {
@@ -680,7 +686,7 @@ std::optional<float> media_feature::resolve_threshold(const threshold& value, co
 bool media_feature::verify_and_convert_units(string_id syntax,
 	css_token val[2], css_token val2[2], document::ptr doc, bool container)
 {
-	const auto& features = container ? container_features : supported_media_features;
+	const auto& features = container ? container_features : supported_media_features();
 	const auto convert = [&](const mf_info& info, const css_token tokens[2], threshold& target)
 	{
 		auto parsed = parse_threshold(info, tokens, container);

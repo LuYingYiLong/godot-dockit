@@ -901,7 +901,7 @@ namespace docrender {
 	}
 
 	bool HTMLScrollbarAppearance::operator==(const HTMLScrollbarAppearance& p_other) const {
-		return width == p_other.width && colors == p_other.colors;
+		return width == p_other.width && colors == p_other.colors && scheme == p_other.scheme;
 	}
 
 	float HTMLScrollbarAppearance::thickness() const {
@@ -917,7 +917,16 @@ namespace docrender {
 
 	Color HTMLScrollbarAppearance::thumb_color(bool p_pressed) const {
 		if (colors) return colors->thumb;
-		return p_pressed ? Color(0, 0, 0, 128.0f / 255.0f) : HTMLScrollbarColors{}.thumb;
+		return html_system_color(p_pressed ? system_color::scrollbar_pressed : system_color::scrollbar_thumb, scheme);
+	}
+
+	Color HTMLScrollbarAppearance::track_color() const {
+		return colors ? colors->track : html_system_color(system_color::scrollbar_track, scheme);
+	}
+
+	Color html_system_color(system_color p_color, color_scheme p_scheme) {
+		const auto value = system_color_value(p_color, p_scheme);
+		return Color::from_rgba8(value.red, value.green, value.blue, value.alpha);
 	}
 
 	Rect2 HTMLScrollbarAppearance::visible_thumb(const Rect2& p_thumb, int p_axis, bool p_hot) const {
@@ -930,7 +939,7 @@ namespace docrender {
 	}
 
 	HTMLScrollbarAppearance html_scrollbar_appearance(const css::ComputedStyle& p_style) {
-		HTMLScrollbarAppearance result{ p_style.get_scrollbar_width(), std::nullopt };
+		HTMLScrollbarAppearance result{ p_style.get_scrollbar_width(), std::nullopt, p_style.get_color_scheme() };
 		if (const auto& colors = p_style.get_scrollbar_colors()) {
 			const auto to_color = [&](const web_color& p_color) {
 				const auto srgb = p_color.to_srgb(p_style.get_color());
@@ -939,6 +948,16 @@ namespace docrender {
 			result.colors = HTMLScrollbarColors{ to_color(colors->thumb), to_color(colors->track) };
 		}
 		return result;
+	}
+
+	HTMLScrollbar make_html_scrollbar(const Rect2& p_track, int p_axis, real_t p_page, real_t p_range, real_t p_offset) {
+		HTMLScrollbar bar{p_track, p_track, p_range};
+		if (p_track.has_area() && p_range > 0) {
+			const real_t length = p_track.size[p_axis];
+			bar.thumb.size[p_axis] = std::clamp(length * p_page / (p_page + p_range), std::min<real_t>(17, length * 0.5), length);
+			bar.thumb.position[p_axis] += (length - bar.thumb.size[p_axis]) * std::clamp(p_offset / p_range, real_t(0), real_t(1));
+		}
+		return bar;
 	}
 
 	std::array<HTMLScrollbar, 2> RenderGeometry::scrollbars() const {
@@ -969,16 +988,7 @@ namespace docrender {
 		}
 		const Vector2 offset(item->get_scroll_left(), item->get_scroll_top());
 		for (int axis = 0; axis < 2; ++axis) {
-			auto& bar = result[axis];
-			if (!bar.track.has_area()) continue;
-			bar.range = range[axis];
-			bar.thumb = bar.track;
-			if (bar.range > 0) {
-				const real_t length = bar.track.size[axis];
-				bar.thumb.size[axis] = std::clamp(length * viewport.size[axis] / (viewport.size[axis] + bar.range),
-					std::min<real_t>(17, length * 0.5), length);
-				bar.thumb.position[axis] += (length - bar.thumb.size[axis]) * std::clamp(offset[axis] / bar.range, real_t(0), real_t(1));
-			}
+			result[axis] = make_html_scrollbar(result[axis].track, axis, viewport.size[axis], range[axis], offset[axis]);
 		}
 		return result;
 	}

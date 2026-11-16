@@ -67,8 +67,16 @@ void ComputedStyle::compute(const ComputeContext& context)
 	const auto* parent = context.parent;
 	const auto& host = context.host;
 	const auto* color_parent = parent;
-	const web_color inherited_color = color_parent ? color_parent->get_color() : web_color::black;
-	m_color = read_property(context, _color_, true, web_color::black, (parent ? &parent->m_color : nullptr)).resolve(inherited_color);
+	m_color_scheme_support = read_property(context, _id("color-scheme"), true, 0,
+		parent ? &parent->m_color_scheme_support : nullptr);
+	const int preferred = context.viewport.preferred_color_scheme == color_scheme::dark ? scheme_dark : scheme_light;
+	const bool dark = m_color_scheme_support & preferred ? preferred == scheme_dark : m_color_scheme_support & scheme_dark_first;
+	const auto scheme = dark ? color_scheme::dark : color_scheme::light;
+	web_color inherited_color = parent ? parent->get_color() : system_color_value(system_color::canvas_text, scheme);
+	inherited_color.scheme = scheme;
+	m_color = read_property(context, _color_, true, web_color(system_color::canvas_text),
+		parent ? &parent->m_color : nullptr).resolve(inherited_color);
+	m_color.scheme = scheme;
 
 	m_el_position	 = (element_position)	read_property<int>(context,  _position_,		false,	element_position_static,	 (parent ? &parent->m_el_position : nullptr));
 	m_display		 = (style_display)		read_property<int>(context,  _display_,			false,	display_inline,			 (parent ? &parent->m_display : nullptr));
@@ -88,7 +96,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 		parent ? &parent->m_fixed_table_layout : nullptr) == 1;
 	m_hide_empty_cells = read_property<int>(context, _id("empty-cells"), true, 0,
 		parent ? &parent->m_hide_empty_cells : nullptr) == 1;
-	m_accent_color = read_property(context, _id("accent-color"), true, web_color(0, 117, 255),
+	m_accent_color = read_property(context, _id("accent-color"), true, web_color(system_color::accent),
 		parent ? &parent->m_accent_color : nullptr);
 	m_caret_color = read_property(context, _id("caret-color"), true, web_color::current_color,
 		parent ? &parent->m_caret_color : nullptr);
@@ -674,18 +682,41 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 {
 	const auto* parent = context.parent;
 	const auto& host = context.host;
-	// initialize font size
+	m_font_families = read_property(context, _font_family_, true, css_font_families(), (parent ? &parent->m_font_families : nullptr));
+	const auto uses_fixed_size = [](const css_font_families& families) {
+		return families.size() == 1 && families.front().generic && families.front().name == "monospace";
+	};
+	const bool fixed = uses_fixed_size(m_font_families);
+	const bool parent_fixed = parent && uses_fixed_size(parent->m_font_families);
+	const auto& declared_size = context.read_declaration(context.declarations, _font_size_);
 	css_length sz = read_property<css_length>(context, _font_size_, true, css_length::predef_value(font_size_medium), (parent ? &parent->m_font_size : nullptr));
 
+	const bool inherits_size = parent && !declared_size.is<css_length>() && !declared_size.is<initial_value>();
+	if (inherits_size) {
+		m_font_size_keyword = parent->m_font_size_keyword;
+		m_relative_font_size = parent->m_relative_font_size;
+		if (fixed != parent_fixed && m_font_size_keyword >= 0) sz = css_length::predef_value(m_font_size_keyword);
+	}
+	else {
+		const bool keyword = sz.is_predefined() && sz.predef() >= font_size_xx_small && sz.predef() <= font_size_xx_large;
+		m_font_size_keyword = keyword ? sz.predef() : -1;
+		const bool relative_unit = !sz.is_predefined() && !sz.expression() &&
+			is_one_of(sz.units(), css_units_percentage, css_units_em, css_units_ex, css_units_ch, css_units_cap, css_units_ic, css_units_lh);
+		const bool relative_keyword = sz.is_predefined() && is_one_of(sz.predef(), int(font_size_smaller), int(font_size_larger));
+		m_relative_font_size = keyword || ((!parent || parent->m_relative_font_size) && (relative_unit || relative_keyword));
+	}
+
 	pixel_t parent_sz = 0;
-	pixel_t doc_font_size = host.default_font_size();
+	const pixel_t standard_size = host.default_font_size();
+	const pixel_t fixed_size = host.default_fixed_font_size();
+	const pixel_t doc_font_size = fixed ? fixed_size : standard_size;
 	const auto* el_parent = parent;
 	if (el_parent)
 	{
 		parent_sz = el_parent->get_font_size();
 	} else
 	{
-		parent_sz = doc_font_size;
+		parent_sz = standard_size;
 	}
 
 	pixel_t font_size = parent_sz;
@@ -749,10 +780,12 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 		font_size = context.to_pixels(sz, metrics, parent_sz, { el_parent ? nullptr : &metrics });
 	}
 
+	if (m_relative_font_size && m_font_size_keyword < 0 && fixed != parent_fixed && fixed_size > 0 && standard_size > 0) {
+		font_size *= fixed ? fixed_size / standard_size : standard_size / fixed_size;
+	}
 	m_font_size = (float)font_size;
 
 	// initialize font
-	m_font_families = read_property(context, _font_family_, true, css_font_families(), (parent ? &parent->m_font_families : nullptr));
 	m_font_weight		=              read_property<css_length>(context, _font_weight_,		true, css_length::predef_value(font_weight_normal), (parent ? &parent->m_font_weight : nullptr));
 	m_font_width = read_property(context, _id("font-width"), true, 100.0f, (parent ? &parent->m_font_width : nullptr));
 	m_font_style = read_property(context, _font_style_, true, css_font_style{}, (parent ? &parent->m_font_style : nullptr));

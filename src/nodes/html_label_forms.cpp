@@ -210,14 +210,16 @@ void HTMLLabel::draw_select_menu() {
 	const auto server = TextServerManager::get_singleton()->get_primary_interface();
 	const Ref<HTMLSelectElement> select = open_select;
 	const int64_t selected = select.is_valid() ? select->get_selected_index() : -1;
-	select_menu->draw_rect(Rect2(Vector2(), size), Color(0.96f, 0.97f, 0.99f));
+	const auto scheme = layout->get_element_color_scheme(open_select);
+	const auto menu_border = docrender::html_system_color(litehtml::system_color::menu_border, scheme);
+	select_menu->draw_rect(Rect2(Vector2(), size), docrender::html_system_color(litehtml::system_color::menu_face, scheme));
 	for (int i = 0; i < select_visible_rows; ++i) {
 		const int index = select_scroll + i;
 		const auto& row = select_rows[index];
 		const float y = i * select_row_height;
 		const Rect2 box(Vector2(0, y), Vector2(size.x, select_row_height));
 		if (row.background.a > 0) select_menu->draw_rect(box, row.background);
-		if (index == select_highlight) select_menu->draw_rect(box, Color(0.29f, 0.51f, 0.89f, 0.32f));
+		if (index == select_highlight) select_menu->draw_rect(box, docrender::html_system_color(litehtml::system_color::menu_hover, scheme));
 		const bool checked = row.option_index >= 0 && row.option_index == selected;
 		if (checked) select_menu->draw_circle(Vector2(9, y + select_row_height * 0.5f), 3, row.color);
 		if (row.text.is_valid() && server.is_valid()) {
@@ -231,9 +233,9 @@ void HTMLLabel::draw_select_menu() {
 	}
 	if (static_cast<int>(select_rows.size()) > select_visible_rows) {
 		const float scale = size.y / select_rows.size();
-		select_menu->draw_rect(Rect2(size.x - 3, select_scroll * scale, 3, select_visible_rows * scale), Color(0.39f, 0.45f, 0.54f));
+		select_menu->draw_rect(Rect2(size.x - 3, select_scroll * scale, 3, select_visible_rows * scale), menu_border);
 	}
-	select_menu->draw_rect(Rect2(Vector2(), size), Color(0.39f, 0.45f, 0.54f), false);
+	select_menu->draw_rect(Rect2(Vector2(), size), menu_border, false);
 }
 
 void HTMLLabel::highlight_select_row(int p_row) {

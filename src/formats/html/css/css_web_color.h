@@ -14,6 +14,13 @@ namespace litehtml
 {
 	class document_container;
 	struct css_color_data;
+	enum class system_color : uint8_t {
+		none, canvas, canvas_text, field, field_text, button_face, button_text, button_border,
+		gray_text, link_text, active_text, visited_text, highlight, highlight_text, accent, accent_text,
+		button_hover, button_active, border_hover, border_active, disabled_face, disabled_border, disabled_text,
+		focus_ring, gauge_track, gauge_border, scrollbar_track, scrollbar_thumb, scrollbar_pressed,
+		menu_face, menu_border, menu_hover, list_selected, list_hover
+	};
 
 	struct web_color
 	{
@@ -22,6 +29,8 @@ namespace litehtml
 		byte blue  = 0;
 		byte alpha = 255;
 		bool is_current_color = false;
+		system_color system = system_color::none;
+		color_scheme scheme = color_scheme::light;
 		// Float samples and deferred mixes are shared across inherited style values.
 		std::shared_ptr<const css_color_data> css_data;
 
@@ -37,13 +46,15 @@ namespace litehtml
 		web_color() {}
 		web_color(byte r, byte g, byte b, byte a = 255) : red(r), green(g), blue(b), alpha(a) {}
 		web_color(bool is_current_color) : is_current_color(is_current_color) {}
+		explicit web_color(system_color value) : system(value) {}
 
-		bool operator==(web_color color) const { return red == color.red && green == color.green && blue == color.blue && alpha == color.alpha; }
+		bool operator==(web_color color) const { return system == color.system && red == color.red && green == color.green && blue == color.blue && alpha == color.alpha; }
 		bool operator!=(web_color color) const { return !(*this == color); }
 
 		web_color darken(double fraction) const;
 		string to_string() const;
 	};
+	web_color system_color_value(system_color value, color_scheme scheme);
 
 	bool parse_color(const css_token& token, web_color& color, document_container* container);
 	bool parse_color_at_depth(const css_token& token, web_color& color, document_container* container, unsigned depth);

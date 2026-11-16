@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <string_view>
+#include <utility>
 
 using namespace godot;
 using namespace litehtml;
@@ -265,6 +266,10 @@ namespace docrender {
 		media_viewport_size = p_media_size;
 	}
 
+	bool LiteHTMLContainer::set_preferred_color_scheme(color_scheme p_scheme) {
+		return std::exchange(preferred_color_scheme, p_scheme) != p_scheme;
+	}
+
 	document::ptr LiteHTMLContainer::get_svg_clip_document(std::string_view p_url, const char* p_base) {
 		if (svg_clip_only) return {};
 		const String path = resources.resolve_svg_clip_source(p_url, p_base);
@@ -391,7 +396,11 @@ namespace docrender {
 	}
 
 	const char* LiteHTMLContainer::get_default_font_name() const {
-		return LiteHTMLFonts::DEFAULT_FAMILY;
+		return fonts.default_family();
+	}
+
+	pixel_t LiteHTMLContainer::get_default_fixed_font_size() const {
+		return fonts.default_fixed_size();
 	}
 
 	void LiteHTMLContainer::draw_list_marker(uint_ptr, const list_marker& p_marker) {
@@ -616,6 +625,7 @@ namespace docrender {
 		r_media.height = r_media.device_height = media_viewport_size.y;
 		r_media.color = 8;
 		r_media.resolution = CSS_DPI;
+		r_media.preferred_color_scheme = preferred_color_scheme;
 	}
 
 	void LiteHTMLContainer::get_language(litehtml::string& r_language, litehtml::string& r_culture) const {

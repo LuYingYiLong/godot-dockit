@@ -8,16 +8,13 @@
 #include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/display_server.hpp>
-#include <godot_cpp/classes/h_scroll_bar.hpp>
-#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/input_event_pan_gesture.hpp>
-#include <godot_cpp/classes/scroll_container.hpp>
-#include <godot_cpp/classes/style_box.hpp>
-#include <godot_cpp/classes/style_box_flat.hpp>
-#include <godot_cpp/classes/v_scroll_bar.hpp>
+#include <godot_cpp/classes/input_event_screen_drag.hpp>
+#include <godot_cpp/classes/input_event_screen_touch.hpp>
+#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -36,6 +33,7 @@ using docrender::HTMLInputNode;
 namespace {
 	constexpr int DRAG_DEADZONE = 6;
 	constexpr int HOVER_PASSES = 2;
+	constexpr const char* DOCUMENT_DEFAULTS = ":root::selection { color: HighlightText; background-color: Highlight; }";
 
 	std::optional<bool> tab_direction(const InputEventKey& p_key) {
 		if (p_key.is_action_pressed("ui_focus_prev", true, true)) {
@@ -79,8 +77,7 @@ void HTMLLabelCanvas::_draw() {
 	const Rect2 visible_rect = label->get_visible_rect();
 	if (visible_rect.has_area()) {
 		const Vector2i selection(std::min(selection_anchor, selection_caret), std::max(selection_anchor, selection_caret));
-		const Color color = label->has_theme_color("selection_color", "HTMLLabel")
-			? label->get_theme_color("selection_color", "HTMLLabel") : Color(0.25f, 0.55f, 0.95f, 0.5f);
+		const Color color = docrender::html_system_color(litehtml::system_color::highlight, label->page_color_scheme);
 		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color, {}, nullptr, visible_rect.position);
 		update_ime();
 	}
@@ -90,14 +87,8 @@ bool HTMLLabelCanvas::_has_point(const Vector2& p_point) const {
 	return label && label->get_visible_rect().has_point(p_point);
 }
 
-String HTMLLabelCanvas::_get_tooltip(const Vector2& p_position) const {
-	return !selecting && _has_point(p_position) ? label->layout->get_css_diagnostic_tooltip(p_position) : String();
-}
-
-Object* HTMLLabelCanvas::_make_custom_tooltip(const String& p_for_text) const {
-	if (p_for_text.is_empty() || !label || !label->is_css_diagnostics_enabled()) {
-		return nullptr;
-	}
+void HTMLLabelCanvas::show_diagnostic_tooltip() {
+	if (diagnostic_panel_text.is_empty() || !label->is_visible_in_tree()) return;
 	const Vector2 viewport_size = get_viewport_rect().size;
 	const int width = std::max(1, int(std::min<real_t>(380.0, viewport_size.x * 0.8)));
 	const int max_height = std::max(1, int(std::min<real_t>(320.0, viewport_size.y * 0.6)));
@@ -108,47 +99,54 @@ Object* HTMLLabelCanvas::_make_custom_tooltip(const String& p_for_text) const {
 		.kind { color: #ffba65; }
 		.source { color: #b8bdc7; font-size: 12px; }
 	)CSS";
-	const String html = "<!doctype html>" + p_for_text;
-	// Size the tooltip from its HTML before Godot shrinks the popup to its minimum size.
+	const String html = "<!doctype html>" + diagnostic_panel_text;
+	// Use the same document layout to size the diagnostic overlay.
 	Ref<HTMLLayout> measure;
 	measure.instantiate();
 	if (measure->parse(html, "res://", css) != OK || measure->layout(Vector2i(width, max_height)) != OK) {
-		return nullptr;
+		return;
 	}
-	HTMLLabel* panel = memnew(HTMLLabel);
-	panel->set_name("CSSDiagnostics");
-	panel->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
-	panel->set_selection_enabled(false);
-	panel->set_stylesheet(css);
-	panel->set_text(html);
-	panel->set_custom_minimum_size(Vector2(width, std::clamp(measure->get_content_size().y, 1, max_height)));
-	diagnostic_panel_id = ObjectID(panel->get_instance_id());
-	diagnostic_panel_text = p_for_text;
-	return panel;
+	if (!diagnostic_panel) {
+		diagnostic_panel = memnew(HTMLLabel);
+		diagnostic_panel->set_name("CSSDiagnostics");
+		diagnostic_panel->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+		diagnostic_panel->set_selection_enabled(false);
+		diagnostic_panel->set_mouse_behavior_recursive(MOUSE_BEHAVIOR_DISABLED);
+		diagnostic_panel->set_z_index(2);
+		label->add_child(diagnostic_panel, false, INTERNAL_MODE_BACK);
+	}
+	diagnostic_panel->set_stylesheet(css);
+	diagnostic_panel->set_text(html);
+	diagnostic_panel->set_size(Vector2(width, std::clamp(measure->get_content_size().y, 1, max_height)));
+	label->place_overlay(*diagnostic_panel, diagnostic_location + Vector2(18, 24));
+	diagnostic_panel->show();
 }
 
 void HTMLLabelCanvas::refresh_diagnostic_tooltip(const std::optional<Vector2>& p_point) {
-	if (diagnostic_panel_id == ObjectID()) {
-		return;
+	const String content = p_point && !selecting && input_menu_target.is_null() && _has_point(*p_point)
+		? label->layout->get_css_diagnostic_tooltip(*p_point) : String();
+	if (content == diagnostic_panel_text) return;
+	diagnostic_panel_text = content;
+	if (diagnostic_panel) diagnostic_panel->hide();
+	if (diagnostic_timer) diagnostic_timer->stop();
+	if (content.is_empty()) return;
+	diagnostic_location = label->get_global_transform_with_canvas().affine_inverse().xform(
+		get_global_transform_with_canvas().xform(*p_point));
+	if (!diagnostic_timer) {
+		diagnostic_timer = memnew(Timer);
+		diagnostic_timer->set_one_shot(true);
+		diagnostic_timer->set_wait_time(0.5);
+		diagnostic_timer->connect("timeout", callable_mp(this, &HTMLLabelCanvas::show_diagnostic_tooltip));
+		add_child(diagnostic_timer, false, INTERNAL_MODE_BACK);
 	}
-	auto* panel = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(diagnostic_panel_id));
-	if (panel && p_point && _get_tooltip(*p_point) == diagnostic_panel_text) {
-		return;
-	}
-	diagnostic_panel_id = ObjectID();
-	diagnostic_panel_text = String();
-	// Godot owns the popup. Hide it when its contents change without mouse motion.
-	if (panel) {
-		if (auto* popup = Object::cast_to<Window>(panel->get_parent())) {
-			popup->hide();
-		}
-	}
+	diagnostic_timer->start();
 }
 
 void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	if (!label) {
 		return;
 	}
+	if (label->viewport_touch_dragged) return;
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
@@ -413,6 +411,22 @@ void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
+	const Ref<InputEventMouseMotion> motion = p_event;
+	if (motion.is_valid() && viewport_control) {
+		const Vector2 point = viewport_control->get_global_transform_with_canvas().affine_inverse().xform(motion->get_position());
+		if (hovered_viewport_bar >= 0 || viewport_scrollbar(0).track.has_point(point) || viewport_scrollbar(1).track.has_point(point)) {
+			queue_interaction();
+		}
+	}
+	if (canvas && canvas->input_menu_target.is_valid()) {
+		const Ref<InputEventMouseButton> button = p_event;
+		if (button.is_valid() && button->is_pressed()) {
+			const Control& menu = *canvas->input_menu;
+			if (!Rect2(Vector2(), menu.get_size()).has_point(menu.get_global_transform_with_canvas().affine_inverse().xform(button->get_position()))) {
+				canvas->close_input_menu();
+			}
+		}
+	}
 	if (open_select.is_valid()) {
 		const Ref<InputEventMouseButton> button = p_event;
 		if (button.is_valid() && button->is_pressed() && button->get_button_index() == MOUSE_BUTTON_LEFT &&
@@ -436,8 +450,9 @@ void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
 
 void HTMLLabel::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventKey> key = p_event;
-	if (canvas && key.is_valid() && !canvas->handle_dom_key(*key.ptr())) {
-		canvas->handle_selection_key(*key.ptr());
+	if (canvas && key.is_valid()) {
+		if (canvas->handle_input_menu_key(*key.ptr())) accept_event();
+		else if (!canvas->handle_dom_key(*key.ptr())) canvas->handle_selection_key(*key.ptr());
 	}
 }
 
@@ -720,6 +735,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_transparent_canvas", "enabled"), &HTMLLabel::set_transparent_canvas);
+	ClassDB::bind_method(D_METHOD("is_transparent_canvas"), &HTMLLabel::is_transparent_canvas);
 	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &HTMLLabel::set_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &HTMLLabel::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("set_animation_process_mode", "mode"), &HTMLLabel::set_animation_process_mode);
@@ -741,6 +758,7 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "transparent_canvas"), "set_transparent_canvas", "is_transparent_canvas");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
@@ -782,17 +800,26 @@ void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
 }
 
 void HTMLLabel::_draw() {
-	const Color background = has_theme_color("background_color", "HTMLLabel")
-		? get_theme_color("background_color", "HTMLLabel") : Color(1, 1, 1);
-	if (background.a > 0) {
-		draw_rect(Rect2(Vector2(), get_size()), background);
+	if (!transparent_canvas) {
+		draw_rect(Rect2(Vector2(), get_size()), docrender::html_system_color(litehtml::system_color::canvas, page_color_scheme));
 	}
+}
+
+void HTMLLabel::set_transparent_canvas(bool p_enabled) {
+	if (transparent_canvas == p_enabled) return;
+	transparent_canvas = p_enabled;
+	queue_redraw();
+}
+
+bool HTMLLabel::is_transparent_canvas() const {
+	return transparent_canvas;
 }
 
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
 	case NOTIFICATION_POST_ENTER_TREE:
 		ensure_controls();
+		if (color_scheme_timer && is_visible_in_tree()) color_scheme_timer->start();
 		queue_refresh();
 		break;
 	case NOTIFICATION_RESIZED:
@@ -800,11 +827,6 @@ void HTMLLabel::_notification(int p_what) {
 		if (canvas) {
 			canvas->cancel_click();
 		}
-		queue_refresh();
-		break;
-	case NOTIFICATION_THEME_CHANGED:
-		queue_redraw();
-		viewport_scrollbar_theme_dirty = true;
 		queue_refresh();
 		break;
 	case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
@@ -851,10 +873,16 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	case NOTIFICATION_VISIBILITY_CHANGED:
 		if (is_visible_in_tree()) {
+			if (color_scheme_timer && color_scheme_timer->is_inside_tree()) color_scheme_timer->start();
+			poll_preferred_color_scheme();
 			gui_hover_dirty = true;
 			request_hover_check();
 		}
 		else if (canvas) {
+			if (color_scheme_timer) color_scheme_timer->stop();
+			viewport_touch_index = -1;
+			viewport_touch_dragged = false;
+			dragging_viewport_scrollbar = {};
 			cancel_viewport_scroll();
 			cancel_viewport_pan_snap();
 			layout->cancel_scroll_activity();
@@ -868,6 +896,8 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE:
+		viewport_touch_index = -1;
+		viewport_touch_dragged = false;
 		set_process_internal(false);
 		set_physics_process_internal(false);
 		dragging_viewport_scrollbar = {};
@@ -879,13 +909,17 @@ void HTMLLabel::_notification(int p_what) {
 		hover_passes_remaining = 0;
 		hover_reflow = false;
 		view_update_pending = false;
-		scroll_sort_pending = false;
 		layout_signal_pending = false;
 		reveal_focused_element = false;
 		break;
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		viewport_touch_index = -1;
+		viewport_touch_dragged = false;
+		dragging_viewport_scrollbar = {};
+		if (viewport_bars) viewport_bars->queue_redraw();
 		close_select_menu();
 		if (canvas) {
+			canvas->close_input_menu();
 			canvas->cancel_press();
 			canvas->caret_window_active = false;
 			canvas->stop_caret_blink();
@@ -984,15 +1018,13 @@ TypedArray<Dictionary> HTMLLabel::get_css_diagnostics() const {
 }
 
 Vector2i HTMLLabel::get_scroll_offset() const {
-	if (!scroll_container) return {};
-	return Vector2i(scroll_container->get_h_scroll(), scroll_container->get_v_scroll()) * viewport_input_axes +
-		hidden_scroll_offset;
+	return scroll_offset;
 }
 
 void HTMLLabel::set_scroll_offset(const Vector2i& p_offset) {
 	cancel_viewport_scroll();
 	cancel_viewport_pan_snap();
-	if (!is_inside_tree() || !scroll_container || refresh_queued || pending_scroll_offset) {
+	if (!is_inside_tree() || !viewport_control || refresh_queued || pending_scroll_offset) {
 		pending_scroll_offset = p_offset;
 		pending_scroll_requested = true;
 		return;
@@ -1234,37 +1266,41 @@ PackedStringArray HTMLLabel::_get_configuration_warnings() const {
 }
 
 void HTMLLabel::ensure_controls() {
-	if (scroll_container) {
+	if (viewport_control) {
 		return;
 	}
 
-	scroll_container = memnew(ScrollContainer);
-	scroll_container->set_name("_HTMLScroll");
-	scroll_container->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_SHOW_NEVER);
-	scroll_container->set_vertical_scroll_mode(ScrollContainer::SCROLL_MODE_SHOW_NEVER);
-	scroll_container->set_deadzone(DRAG_DEADZONE);
-	// Keep the visible rectangle aligned with ScrollContainer's scrollbar page sizes.
-	scroll_container->add_theme_constant_override("scrollbar_h_separation", 0);
-	scroll_container->add_theme_constant_override("scrollbar_v_separation", 0);
-	add_child(scroll_container, false, INTERNAL_MODE_BACK);
-	scroll_container->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-	scroll_container->connect("resized", callable_mp(this, &HTMLLabel::queue_refresh));
-	scroll_container->connect("sort_children", callable_mp(this, &HTMLLabel::on_content_sorted));
-	scroll_container->connect("draw", callable_mp(this, &HTMLLabel::draw_viewport_gutters));
-	scroll_container->connect("gui_input", callable_mp(this, &HTMLLabel::on_viewport_gui_input));
-	scroll_container->connect("scroll_ended", callable_mp(this, &HTMLLabel::settle_viewport_snap).bind(Vector2i(1, 1)));
-	scroll_container->get_h_scroll_bar()->connect("gui_input", callable_mp(this, &HTMLLabel::on_viewport_scrollbar_input).bind(0));
-	scroll_container->get_v_scroll_bar()->connect("gui_input", callable_mp(this, &HTMLLabel::on_viewport_scrollbar_input).bind(1));
-	scroll_container->get_h_scroll_bar()->connect("value_changed", callable_mp(this, &HTMLLabel::on_scroll_changed));
-	scroll_container->get_v_scroll_bar()->connect("value_changed", callable_mp(this, &HTMLLabel::on_scroll_changed));
+	const auto* display = DisplayServer::get_singleton();
+	if (display && display->is_dark_mode_supported()) {
+		color_scheme_timer = memnew(Timer);
+		color_scheme_timer->set_wait_time(0.25);
+		color_scheme_timer->set_ignore_time_scale(true);
+		color_scheme_timer->connect("timeout", callable_mp(this, &HTMLLabel::poll_preferred_color_scheme));
+		add_child(color_scheme_timer, false, INTERNAL_MODE_BACK);
+	}
 
-	// The native range represents direct scrolling. Hidden axes can still move the canvas through navigation.
+	viewport_control = memnew(Control);
+	viewport_control->set_name("_HTMLScroll");
+	viewport_control->set_mouse_filter(MOUSE_FILTER_PASS);
+	add_child(viewport_control, false, INTERNAL_MODE_BACK);
+	viewport_control->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
+	viewport_control->connect("draw", callable_mp(this, &HTMLLabel::draw_viewport_gutters));
+	viewport_control->connect("gui_input", callable_mp(this, &HTMLLabel::on_viewport_gui_input));
+	viewport_control->connect("mouse_entered", callable_mp(this, &HTMLLabel::request_hover_check));
+	viewport_control->connect("mouse_exited", callable_mp(this, &HTMLLabel::set_viewport_bar_hover).bind(-1));
+
 	scroll_content = memnew(Control);
 	scroll_content->set_name("_HTMLContent");
 	scroll_content->set_mouse_filter(MOUSE_FILTER_IGNORE);
-	scroll_content->set_h_size_flags(SIZE_EXPAND_FILL);
-	scroll_content->set_v_size_flags(SIZE_EXPAND_FILL);
-	scroll_container->add_child(scroll_content, false, INTERNAL_MODE_BACK);
+	scroll_content->set_clip_contents(true);
+	viewport_control->add_child(scroll_content, false, INTERNAL_MODE_BACK);
+
+	viewport_bars = memnew(Control);
+	viewport_bars->set_name("_HTMLViewportBars");
+	viewport_bars->set_mouse_filter(MOUSE_FILTER_IGNORE);
+	viewport_bars->set_z_index(1);
+	viewport_control->add_child(viewport_bars, false, INTERNAL_MODE_BACK);
+	viewport_bars->connect("draw", callable_mp(this, &HTMLLabel::draw_viewport_scrollbars));
 
 	canvas = memnew(HTMLLabelCanvas);
 	canvas->set_name("_HTMLCanvas");
@@ -1272,6 +1308,10 @@ void HTMLLabel::ensure_controls() {
 	canvas->set_mouse_filter(MOUSE_FILTER_PASS);
 	canvas->update_focus_mode();
 	scroll_content->add_child(canvas, false, INTERNAL_MODE_BACK);
+}
+
+void HTMLLabel::poll_preferred_color_scheme() {
+	if (layout->update_preferred_color_scheme()) queue_refresh();
 }
 
 void HTMLLabel::queue_refresh() {
@@ -1295,6 +1335,9 @@ void HTMLLabel::queue_interaction_style_refresh() {
 void HTMLLabel::source_changed() {
 	cancel_viewport_scroll();
 	cancel_viewport_pan_snap();
+	viewport_touch_index = -1;
+	viewport_touch_dragged = false;
+	dragging_viewport_scrollbar = {};
 	close_select_menu();
 	source_dirty = true;
 	layout->clear();
@@ -1326,11 +1369,11 @@ void HTMLLabel::parse_pending_source() {
 	source_dirty = false;
 	layout_updated = true;
 	if (document.is_valid()) {
-		document->parse_into(*layout.ptr());
+		document->parse_into(*layout.ptr(), DOCUMENT_DEFAULTS);
 		parsed = layout->get_render_error().is_empty();
 	}
 	else {
-		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false) == OK;
+		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
 	}
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
@@ -1387,81 +1430,53 @@ void HTMLLabel::on_layout_edited() {
 	queue_refresh();
 }
 
-void HTMLLabel::update_viewport_scrollbar_style(const docrender::HTMLScrollbarAppearance& p_style) {
-	const bool theme_dirty = std::exchange(viewport_scrollbar_theme_dirty, false);
-	if (!theme_dirty && viewport_scrollbar_style == p_style) return;
+docrender::HTMLScrollbar HTMLLabel::viewport_scrollbar(int p_axis) const {
+	if (!visible_viewport_bars[p_axis] || viewport_size == Vector2i()) return {};
+	const real_t thickness = viewport_scrollbar_style.thickness();
+	const Rect2 track = p_axis == 0 ?
+		Rect2(viewport_painted_gutters.x, viewport_size.y, viewport_size.x, thickness) :
+		Rect2(is_layout_rtl() ? 0 : get_size().x - thickness, 0, thickness, viewport_size.y);
+	return docrender::make_html_scrollbar(track, p_axis, viewport_size[p_axis],
+		std::max(0, content_size[p_axis] - viewport_size[p_axis]), scroll_offset[p_axis]);
+}
 
-	viewport_scrollbar_style = p_style;
-	const float thickness = p_style.thickness();
-	// All three grabber styleboxes have identical margins. Only the paint rectangle changes.
-	static constexpr const char* icons[] = { "increment", "increment_highlight", "increment_pressed",
-		"decrement", "decrement_highlight", "decrement_pressed" };
-	Ref<ImageTexture> empty;
-	empty.instantiate();
-	for (const bool vertical : { false, true }) {
-		ScrollBar* bar = vertical ? static_cast<ScrollBar*>(scroll_container->get_v_scroll_bar())
-			: static_cast<ScrollBar*>(scroll_container->get_h_scroll_bar());
-		const Side inner = vertical ? SIDE_LEFT : SIDE_TOP;
-		const Side outer = vertical ? SIDE_RIGHT : SIDE_BOTTOM;
-		const Side start = vertical ? SIDE_TOP : SIDE_LEFT;
-		const Side end = vertical ? SIDE_BOTTOM : SIDE_RIGHT;
-		const auto make_thumb = [&](bool p_hot, bool p_pressed) {
-			const int axis = vertical ? 1 : 0;
-			const Rect2 lane(0, 0, vertical ? thickness : 17, vertical ? 17 : thickness);
-			const Rect2 thumb = p_style.visible_thumb(lane, axis, p_hot);
-			Ref<StyleBoxFlat> style;
-			style.instantiate();
-			style->set_bg_color(p_style.thumb_color(p_pressed));
-			style->set_content_margin(start, 8.0f);
-			style->set_content_margin(end, 9.0f);
-			style->set_expand_margin(inner, -thumb.position[1 - axis]);
-			style->set_expand_margin(outer, thumb.get_end()[1 - axis] - thickness);
-			style->set_corner_radius_all(Math::ceil(thumb.size[1 - axis] * 0.5f));
-			return style;
-		};
-		Ref<StyleBoxFlat> track;
-		track.instantiate();
-		track->set_bg_color(p_style.colors.value_or(docrender::HTMLScrollbarColors{}).track);
-		track->set_content_margin(inner, thickness * 0.5f);
-		track->set_content_margin(outer, thickness * 0.5f);
-
-		bar->begin_bulk_theme_override();
-		bar->add_theme_stylebox_override("scroll", track);
-		bar->add_theme_stylebox_override("scroll_focus", track);
-		bar->add_theme_stylebox_override("grabber", make_thumb(false, false));
-		bar->add_theme_stylebox_override("grabber_highlight", make_thumb(true, false));
-		bar->add_theme_stylebox_override("grabber_pressed", make_thumb(true, true));
-		for (const char* icon : icons) bar->add_theme_icon_override(icon, empty);
-		for (const char* padding : { "padding_left", "padding_right", "padding_top", "padding_bottom" }) {
-			bar->add_theme_constant_override(padding, 0);
+void HTMLLabel::draw_viewport_scrollbars() {
+	for (int axis = 0; axis < 2; ++axis) {
+		const auto bar = viewport_scrollbar(axis);
+		if (!bar.track.has_area()) continue;
+		const bool pressed = dragging_viewport_scrollbar[axis];
+		const Rect2 thumb = viewport_scrollbar_style.visible_thumb(bar.thumb, axis, pressed || hovered_viewport_bar == axis);
+		viewport_bars->draw_rect(bar.track, viewport_scrollbar_style.track_color());
+		const auto ink = viewport_scrollbar_style.thumb_color(pressed);
+		const real_t radius = std::min(thumb.size.x, thumb.size.y) / 2.0f;
+		if (radius <= 0 || ink.a == 0) continue;
+		PackedVector2Array outline;
+		for (int end = 0; end < 2; ++end) {
+			Vector2 center = thumb.get_center();
+			center[axis] = end == 0 ? thumb.get_end()[axis] - radius : thumb.position[axis] + radius;
+			for (int step = 0; step <= 8; ++step) {
+				const real_t angle = (end + step / 8.0f) * Math_PI - Math_PI / 2.0f + axis * Math_PI / 2.0f;
+				outline.append(center + Vector2(Math::cos(angle), Math::sin(angle)) * radius);
+			}
 		}
-		bar->end_bulk_theme_override();
+		viewport_bars->draw_colored_polygon(outline, ink);
 	}
 }
 
-void HTMLLabel::update_viewport_gutters(const Vector2& p_gutters) {
-	if (viewport_panel_gutters == p_gutters) return;
-	viewport_panel_gutters = p_gutters;
-	if (p_gutters == Vector2() || viewport_panel.is_null()) {
-		scroll_container->remove_theme_stylebox_override("panel");
-		return;
-	}
-	const Ref<StyleBox> panel(viewport_panel->duplicate());
-	panel->set_content_margin(SIDE_LEFT, viewport_panel->get_margin(SIDE_LEFT) + p_gutters.x);
-	panel->set_content_margin(SIDE_RIGHT, viewport_panel->get_margin(SIDE_RIGHT) + p_gutters.y);
-	scroll_container->add_theme_stylebox_override("panel", panel);
+void HTMLLabel::set_viewport_bar_hover(int p_axis) {
+	if (std::exchange(hovered_viewport_bar, p_axis) != p_axis) viewport_bars->queue_redraw();
 }
 
 void HTMLLabel::draw_viewport_gutters() {
 	if (viewport_painted_gutters == Vector2() || viewport_size == Vector2i()) return;
 	const Vector2 translation = scroll_content->get_position() + canvas->get_position();
-	const Vector2 origin = translation + Vector2(sorted_scroll_offset);
-	layout->draw_viewport_background(*scroll_container, translation,
+	const Vector2 origin = translation + Vector2(scroll_offset);
+	layout->draw_viewport_background(*viewport_control, translation,
 		Rect2(origin - Vector2(viewport_painted_gutters.x, 0), Vector2(viewport_painted_gutters.x, viewport_size.y)),
-		sorted_scroll_offset);
-	layout->draw_viewport_background(*scroll_container, translation,
+		scroll_offset);
+	layout->draw_viewport_background(*viewport_control, translation,
 		Rect2(origin + Vector2(viewport_size.x, 0), Vector2(viewport_painted_gutters.y, viewport_size.y)),
-		sorted_scroll_offset);
+		scroll_offset);
 }
 
 void HTMLLabel::refresh() {
@@ -1483,19 +1498,15 @@ void HTMLLabel::refresh() {
 	}
 	const bool layout_changed = layout_updated || hover_reflow || button_style_changed;
 	layout_updated = false;
-	if (viewport_panel.is_null() || viewport_scrollbar_theme_dirty) {
-		update_viewport_gutters({});
-		viewport_panel = scroll_container->get_theme_stylebox("panel");
-	}
 	if (!parsed) {
-		update_viewport_scrollbar_style({});
+		if (std::exchange(page_color_scheme, litehtml::color_scheme::light) != litehtml::color_scheme::light) queue_redraw();
+		viewport_scrollbar_style = {};
 		update_view({}, {}, {}, {1, 1}, layout_changed, layout->get_render_error());
 		return;
 	}
 
 	using namespace litehtml;
-	const Vector2 available = scroll_container->get_size() -
-		(viewport_panel.is_valid() ? viewport_panel->get_minimum_size() : Vector2());
+	const Vector2 available = get_size();
 	const Vector2i media_size(available.floor());
 	if (media_size.x <= 0 || media_size.y <= 0) {
 		update_view({}, {}, {}, {1, 1}, layout_changed);
@@ -1507,10 +1518,11 @@ void HTMLLabel::refresh() {
 	}
 
 	const auto style = layout->get_viewport_style();
-	update_viewport_scrollbar_style(style.scrollbar);
+	if (std::exchange(page_color_scheme, style.scheme) != style.scheme) queue_redraw();
+	viewport_scrollbar_style = style.scrollbar;
 	const bool show_bars = style.scrollbar.width != scrollbar_width::none;
-	const real_t bar_width = show_bars ? scroll_container->get_v_scroll_bar()->get_combined_minimum_size().x : 0;
-	const real_t bar_height = show_bars ? scroll_container->get_h_scroll_bar()->get_combined_minimum_size().y : 0;
+	const real_t bar_width = style.scrollbar.thickness();
+	const real_t bar_height = bar_width;
 	const bool reserve = style.gutter != scrollbar_gutter::automatic;
 	const real_t opposite_gutter = style.gutter == scrollbar_gutter::both_edges ? bar_width : 0;
 	const Vector2 unconditional_gutters(
@@ -1544,12 +1556,17 @@ void HTMLLabel::refresh() {
 		vertical = visible_bar(style.overflow[1], vertical || size.y > viewport.y);
 		const Vector2i next_viewport = client_size(horizontal, vertical);
 		if (next_viewport == viewport) {
+			if (open_select.is_valid()) {
+				const Ref<HTMLSelectElement> select = open_select;
+				select_rows = select.is_valid() ? layout->select_menu_rows(open_select) : layout->suggestion_menu_rows(open_select);
+				if (select_rows.empty()) close_select_menu();
+			}
 			const real_t empty_gutter = reserve && !vertical ? bar_width : 0;
-			const Vector2 empty_gutters = scroll_container->is_layout_rtl() ?
+			const Vector2 empty_gutters = is_layout_rtl() ?
 				Vector2(empty_gutter, opposite_gutter) : Vector2(opposite_gutter, empty_gutter);
 			Vector2 painted_gutters = empty_gutters;
-			if (vertical) painted_gutters[scroll_container->is_layout_rtl() ? 0 : 1] = bar_width;
-			update_view(viewport, size, {horizontal, vertical}, input_axes, layout_changed, {}, empty_gutters, painted_gutters);
+			if (vertical) painted_gutters[is_layout_rtl() ? 0 : 1] = bar_width;
+			update_view(viewport, size, {horizontal, vertical}, input_axes, layout_changed, {}, painted_gutters);
 			return;
 		}
 		viewport = next_viewport;
@@ -1558,7 +1575,7 @@ void HTMLLabel::refresh() {
 
 void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_content,
 	const Vector2i& p_visible_bars, const Vector2i& p_input_axes, bool p_layout_changed, const String& p_error,
-	const Vector2& p_gutters, const Vector2& p_painted_gutters) {
+	const Vector2& p_painted_gutters) {
 	view_update_pending = true;
 	if (p_viewport == Vector2i()) {
 		layout->update_hover(std::nullopt);
@@ -1587,22 +1604,18 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	update_internal_processing();
 	content_size = p_content;
 	viewport_input_axes = p_input_axes;
-	hidden_scroll_offset = hidden_scroll_offset * (Vector2i(1, 1) - viewport_input_axes);
 	const int64_t text_length = layout->get_plain_text().length();
 	canvas->selection_anchor = std::min(canvas->selection_anchor, text_length);
 	canvas->selection_caret = std::min(canvas->selection_caret, text_length);
 	canvas->set_size(Vector2(content_size.max(viewport_size)));
-	scroll_content->set_custom_minimum_size(Vector2(content_size * viewport_input_axes));
-	update_viewport_gutters(p_gutters);
-	if (viewport_painted_gutters != p_painted_gutters) scroll_container->queue_redraw();
+	scroll_content->set_position(Vector2(p_painted_gutters.x, 0));
+	scroll_content->set_size(Vector2(p_viewport));
+	visible_viewport_bars = p_visible_bars;
 	viewport_painted_gutters = p_painted_gutters;
 	layout->set_viewport_gutters(p_painted_gutters);
-	scroll_container->set_horizontal_scroll_mode(p_visible_bars.x ? ScrollContainer::SCROLL_MODE_SHOW_ALWAYS : ScrollContainer::SCROLL_MODE_SHOW_NEVER);
-	scroll_container->set_vertical_scroll_mode(p_visible_bars.y ? ScrollContainer::SCROLL_MODE_SHOW_ALWAYS : ScrollContainer::SCROLL_MODE_SHOW_NEVER);
-	// ScrollContainer measures its child in get_minimum_size(), even when its own minimum stays unchanged.
-	static_cast<void>(scroll_container->get_minimum_size());
-	scroll_container->queue_sort();
-	// Apply the requested offset after the native container updates its scrollbar ranges.
+	viewport_control->queue_redraw();
+	viewport_bars->queue_redraw();
+	sync_viewport_scroll();
 	callable_mp(this, &HTMLLabel::apply_pending_scroll).call_deferred();
 	if (render_error != p_error) {
 		render_error = p_error;
@@ -1611,22 +1624,18 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 }
 
 Rect2 HTMLLabel::get_visible_rect() const {
-	// Scrollbar values may change before the container moves the content canvas.
-	return Rect2(Vector2(sorted_scroll_offset), Vector2(viewport_size));
+	return Rect2(Vector2(scroll_offset), Vector2(viewport_size));
 }
 
 void HTMLLabel::apply_scroll_offset(const Vector2i& p_offset) {
 	const Vector2i max_offset = (content_size - viewport_size).max(Vector2i());
 	const Vector2i offset = p_offset.clamp(Vector2i(), max_offset);
-	const Vector2i hidden = offset * (Vector2i(1, 1) - viewport_input_axes);
-	if (hidden_scroll_offset != hidden) {
-		hidden_scroll_offset = hidden;
-		on_scroll_changed(0);
-		scroll_container->queue_sort();
-	}
-	const Vector2i native = offset * viewport_input_axes;
-	scroll_container->set_h_scroll(native.x);
-	scroll_container->set_v_scroll(native.y);
+	if (scroll_offset == offset) return;
+	if (!applying_scroll_tween) cancel_viewport_scroll();
+	scroll_offset = offset;
+	canvas->cancel_click();
+	if (!hover_reflow) hover_passes_remaining = HOVER_PASSES;
+	sync_viewport_scroll();
 }
 
 void HTMLLabel::apply_pending_scroll() {
@@ -1648,17 +1657,50 @@ void HTMLLabel::apply_pending_scroll() {
 	queue_interaction();
 }
 
-void HTMLLabel::on_scroll_changed(double) {
-	if (!applying_scroll_tween) cancel_viewport_scroll();
-	canvas->cancel_click();
-	canvas->queue_redraw();
-	scroll_sort_pending = true;
-	if (!hover_reflow) {
-		hover_passes_remaining = HOVER_PASSES;
-	}
-}
-
 void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
+	if (handle_viewport_touch(p_event)) {
+		viewport_control->accept_event();
+		return;
+	}
+	const Ref<InputEventMouseMotion> motion = p_event;
+	const Ref<InputEventMouseButton> button = p_event;
+	const auto move_bar = [&](const Vector2& p_point) {
+		const int hit = viewport_scrollbar(0).track.has_point(p_point) ? 0 : viewport_scrollbar(1).track.has_point(p_point) ? 1 : -1;
+		set_viewport_bar_hover(hit);
+		return hit;
+	};
+	if (motion.is_valid()) {
+		move_bar(motion->get_position());
+		for (int axis = 0; axis < 2; ++axis) {
+			if (dragging_viewport_scrollbar[axis]) {
+				drag_viewport_bar(axis, motion->get_position()[axis]);
+				viewport_control->accept_event();
+			}
+		}
+		return;
+	}
+	if (button.is_valid() && button->get_button_index() == MOUSE_BUTTON_LEFT) {
+		const auto point = button->get_position();
+		const int hit = move_bar(point);
+		if (button->is_pressed() && hit >= 0) {
+			cancel_viewport_scroll();
+			cancel_viewport_pan_snap();
+			const auto bar = viewport_scrollbar(hit);
+			dragging_viewport_scrollbar[hit] = 1;
+			viewport_scrollbar_grab = bar.thumb.has_point(point) ? (point[hit] - bar.thumb.position[hit]) / bar.thumb.size[hit] : 0.5;
+			drag_viewport_bar(hit, point[hit]);
+			viewport_bars->queue_redraw();
+			viewport_control->accept_event();
+		}
+		else if (!button->is_pressed() && dragging_viewport_scrollbar != Vector2i()) {
+			const auto axes = std::exchange(dragging_viewport_scrollbar, Vector2i());
+			if (!button->is_canceled()) settle_viewport_snap(axes);
+			viewport_bars->queue_redraw();
+			viewport_control->accept_event();
+		}
+		return;
+	}
+
 	const Vector2 steps = HTMLLayout::scroll_input_steps(p_event);
 	if (steps == Vector2()) return;
 	cancel_viewport_scroll();
@@ -1666,20 +1708,13 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 	if (pan.is_null()) cancel_viewport_pan_snap();
 	const Vector2 contained = layout->viewport_contained_scroll(steps);
 	const Vector2i snap_axes = layout->viewport_snap_axes() * viewport_input_axes;
-	const Vector2i handled_axes(
-		contained.x != 0 || (snap_axes.x && steps.x != 0),
-		contained.y != 0 || (snap_axes.y && steps.y != 0));
-	if (handled_axes == Vector2i()) return;
-
-	// Match Godot's wheel and pan step before forwarding any axis that can chain.
-	constexpr double SCROLL_PAGE_DIVISOR = 8.0;
-	const Vector2 pages(scroll_container->get_h_scroll_bar()->get_page(), scroll_container->get_v_scroll_bar()->get_page());
+	const Vector2i active_axes = Vector2i(steps.x != 0, steps.y != 0) * viewport_input_axes;
 	const Vector2 current = get_scroll_offset();
 	const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
-	const Vector2 natural = current + pages * steps * Vector2(handled_axes * viewport_input_axes) / SCROLL_PAGE_DIVISOR;
+	const Vector2 natural = current + Vector2(viewport_size) * steps * Vector2(viewport_input_axes) / 8.0f;
 	const auto snap = pan.is_valid() ?
 		docrender::HTMLSnapResult{natural.clamp(Vector2(), limit), {}} :
-		layout->snap_viewport(viewport_size, {current, natural, limit, handled_axes * viewport_input_axes, docrender::HTMLSnapMethod::direction});
+		layout->snap_viewport(viewport_size, {current, natural, limit, active_axes, docrender::HTMLSnapMethod::direction});
 	apply_scroll_offset(Vector2i(snap.offset.round()));
 	const Vector2 applied = get_scroll_offset();
 	Vector2 remaining = steps;
@@ -1692,25 +1727,69 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		if (viewport_pan_snap_timer.is_valid()) viewport_pan_snap_timer->kill();
 		viewport_pan_snap_timer = HTMLLayout::start_snap_timer(*this, callable_mp(this, &HTMLLabel::settle_viewport_pan));
 	}
-	if (!HTMLLayout::forward_scroll_remainder(p_event, remaining)) scroll_container->accept_event();
+	if (!HTMLLayout::forward_scroll_remainder(p_event, remaining)) viewport_control->accept_event();
 }
 
-void HTMLLabel::on_viewport_scrollbar_input(const Ref<InputEvent>& p_event, int p_axis) {
-	const Ref<InputEventMouseButton> button = p_event;
-	if (button.is_null() || button->get_button_index() != MOUSE_BUTTON_LEFT) {
-		if (layout->viewport_snap_axes() != Vector2i()) on_viewport_gui_input(p_event);
-		return;
+void HTMLLabel::place_overlay(Control& p_overlay, const Vector2& p_point) {
+	const Rect2 bounds = get_global_transform_with_canvas().affine_inverse().xform(get_viewport_rect());
+	p_overlay.set_position(p_point.clamp(bounds.position, (bounds.get_end() - p_overlay.get_size()).max(bounds.position)));
+}
+
+bool HTMLLabel::handle_viewport_touch(const Ref<InputEvent>& p_event) {
+	const Ref<InputEventScreenTouch> touch = p_event;
+	const Ref<InputEventScreenDrag> drag = p_event;
+	if (touch.is_valid()) {
+		if (touch->is_pressed() && viewport_touch_index < 0 && viewport_input_axes != Vector2i() &&
+			(content_size - viewport_size).max(Vector2i()) * viewport_input_axes != Vector2i()) {
+			cancel_viewport_scroll();
+			cancel_viewport_pan_snap();
+			viewport_touch_index = touch->get_index();
+			viewport_touch_motion = {};
+			viewport_touch_velocity = {};
+			viewport_touch_dragged = false;
+		}
+		if (!touch->is_pressed() && touch->get_index() == viewport_touch_index) {
+			viewport_touch_index = -1;
+			const bool dragged = std::exchange(viewport_touch_dragged, false);
+			if (dragged && !touch->is_canceled()) {
+				const Vector2 current = scroll_offset;
+				const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
+				const Vector2 projected = (current + viewport_touch_velocity * 0.16f).clamp(Vector2(), limit);
+				const auto snap = layout->snap_viewport(viewport_size, {current, projected, limit, viewport_input_axes,
+					docrender::HTMLSnapMethod::destination});
+				if (viewport_touch_velocity.length() >= 30 && snap.offset.distance_to(current) >= 1) {
+					viewport_scroll_tween = HTMLLayout::start_scroll_tween(*this,
+						callable_mp(this, &HTMLLabel::advance_viewport_scroll).bind(current, snap.offset));
+				}
+				else {
+					settle_viewport_snap(viewport_input_axes);
+				}
+			}
+			return dragged;
+		}
 	}
-	dragging_viewport_scrollbar[p_axis] = button->is_pressed();
-	if (button->is_pressed()) {
-		cancel_viewport_scroll();
-		cancel_viewport_pan_snap();
-	}
-	else if (!button->is_canceled()) {
-		Vector2i axes;
-		axes[p_axis] = 1;
-		callable_mp(this, &HTMLLabel::settle_viewport_snap).call_deferred(axes);
-	}
+	if (drag.is_null() || drag->get_index() != viewport_touch_index) return false;
+	const Vector2 delta = -drag->get_relative() * Vector2(viewport_input_axes);
+	if (!delta.is_finite()) return false;
+	const Vector2 velocity = -drag->get_velocity() * Vector2(viewport_input_axes);
+	if (velocity.is_finite()) viewport_touch_velocity = velocity;
+	viewport_touch_motion += delta;
+	if (!viewport_touch_dragged && viewport_touch_motion.length() < DRAG_DEADZONE) return false;
+	if (!std::exchange(viewport_touch_dragged, true)) canvas->cancel_press();
+	const Vector2 movement = viewport_touch_motion.round();
+	viewport_touch_motion -= movement;
+	apply_scroll_offset(scroll_offset + Vector2i(movement));
+	return true;
+}
+
+void HTMLLabel::drag_viewport_bar(int p_axis, real_t p_position) {
+	const auto bar = viewport_scrollbar(p_axis);
+	const real_t travel = bar.track.size[p_axis] - bar.thumb.size[p_axis];
+	if (travel <= 0 || !std::isfinite(p_position)) return;
+	const real_t fraction = (p_position - bar.track.position[p_axis] - bar.thumb.size[p_axis] * viewport_scrollbar_grab) / travel;
+	Vector2i offset = scroll_offset;
+	offset[p_axis] = Math::round(std::clamp(fraction, real_t(0), real_t(1)) * bar.range);
+	apply_scroll_offset(offset);
 }
 
 void HTMLLabel::settle_viewport_pan() {
@@ -1734,13 +1813,12 @@ void HTMLLabel::settle_viewport_snap(const Vector2i& p_axes) {
 	apply_scroll_offset(Vector2i(snap.offset.round()));
 }
 
-void HTMLLabel::on_content_sorted() {
-	canvas->set_position(-Vector2(hidden_scroll_offset));
-	sorted_scroll_offset = get_scroll_offset();
-	layout->set_viewport_scroll_offset(sorted_scroll_offset);
-	scroll_sort_pending = false;
+void HTMLLabel::sync_viewport_scroll() {
+	canvas->set_position(-Vector2(scroll_offset));
+	layout->set_viewport_scroll_offset(scroll_offset);
 	gui_hover_dirty = true;
-	if (viewport_painted_gutters != Vector2()) scroll_container->queue_redraw();
+	if (viewport_painted_gutters != Vector2()) viewport_control->queue_redraw();
+	viewport_bars->queue_redraw();
 	canvas->queue_redraw();
 	queue_interaction();
 }
@@ -1759,7 +1837,7 @@ void HTMLLabel::queue_interaction() {
 
 void HTMLLabel::update_interaction() {
 	interaction_queued = false;
-	if (!is_inside_tree() || refresh_queued || view_update_pending || scroll_sort_pending) {
+	if (!is_inside_tree() || refresh_queued || view_update_pending) {
 		return;
 	}
 	update_select_menu();
@@ -1768,9 +1846,6 @@ void HTMLLabel::update_interaction() {
 		if (const auto target = layout->scroll_element_into_view(canvas->focused_element, std::nullopt, *this,
 				callable_mp(this, &HTMLLabel::on_nested_scroll_advanced))) {
 			apply_scroll_target(*target, std::nullopt);
-			if (scroll_sort_pending) {
-				return;
-			}
 		}
 	}
 
@@ -1783,12 +1858,21 @@ void HTMLLabel::update_interaction() {
 			updating_gui_hover = true;
 			viewport->update_mouse_cursor_state();
 			updating_gui_hover = false;
-			if (!is_inside_tree() || refresh_queued || scroll_sort_pending) {
+			if (!is_inside_tree() || refresh_queued) {
 				return;
 			}
 		}
+		const auto* hovered = viewport->gui_get_hovered_control();
+		const Vector2 port_mouse = viewport_control->get_local_mouse_position();
+		int hovered_bar = -1;
+		if (hovered == viewport_control) {
+			for (int axis = 0; axis < 2; ++axis) {
+				if (viewport_scrollbar(axis).track.has_point(port_mouse)) hovered_bar = axis;
+			}
+		}
+		set_viewport_bar_hover(hovered_bar);
 		const Vector2 mouse = canvas->get_local_mouse_position();
-		if (viewport->gui_get_hovered_control() == canvas && get_visible_rect().has_point(mouse)) {
+		if (hovered == canvas && get_visible_rect().has_point(mouse)) {
 			point = mouse;
 		}
 	}

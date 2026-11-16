@@ -245,13 +245,72 @@ string resolve_name(const string& name, document_container* container)
 	return "";
 }
 
+namespace {
+	struct PaletteEntry {
+		const char* name;
+		uint32_t light;
+		uint32_t dark;
+	};
+
+	constexpr PaletteEntry palette[] = {
+		{"", 0x000000ff, 0x000000ff},
+		{"canvas", 0xffffffff, 0x121212ff},
+		{"canvastext", 0x000000ff, 0xffffffff},
+		{"field", 0xffffffff, 0x3b3b3bff},
+		{"fieldtext", 0x000000ff, 0xffffffff},
+		{"buttonface", 0xf0f0f0ff, 0x6b6b6bff},
+		{"buttontext", 0x000000ff, 0xffffffff},
+		{"buttonborder", 0x767676ff, 0x939393ff},
+		{"graytext", 0x64748bff, 0xb4b4b4ff},
+		{"linktext", 0x0000eeff, 0x9e9effff},
+		{"activetext", 0xff0000ff, 0xff9e9eff},
+		{"visitedtext", 0x551a8bff, 0xd0adf0ff},
+		{"highlight", 0x3369c2ff, 0x3564acff},
+		{"highlighttext", 0xffffffff, 0xffffffff},
+		{"accentcolor", 0x0075ffff, 0x99c8ffff},
+		{"accentcolortext", 0xffffffff, 0x101010ff},
+		{"-docrender-button-hover", 0xe5e5e5ff, 0x7b7b7bff},
+		{"-docrender-button-active", 0xf5f5f5ff, 0x565656ff},
+		{"-docrender-border-hover", 0x4f4f4fff, 0xabababff},
+		{"-docrender-border-active", 0x8d8d8dff, 0x838383ff},
+		{"-docrender-disabled-face", 0xefefef4d, 0x8d8d8d4d},
+		{"-docrender-disabled-border", 0x7676764d, 0x9b9b9b4d},
+		{"-docrender-disabled-text", 0x1010104d, 0xffffff4d},
+		{"-docrender-focus-ring", 0x101010ff, 0xb8d7ffff},
+		{"-docrender-gauge-track", 0xefefefff, 0x3b3b3bff},
+		{"-docrender-gauge-border", 0xb7b7b7ff, 0x797979ff},
+		{"-docrender-scrollbar-track", 0xf1f1f1ff, 0x2c2c2cff},
+		{"-docrender-scrollbar-thumb", 0x00000072, 0xffffff80},
+		{"-docrender-scrollbar-pressed", 0x00000080, 0xffffff99},
+		{"-docrender-menu-face", 0xf5f7fcff, 0x333333ff},
+		{"-docrender-menu-border", 0x63738aff, 0x8c8c8cff},
+		{"-docrender-menu-hover", 0x4a82e352, 0x85b1ff52},
+		{"-docrender-list-selected", 0x3369c2ff, 0x3564acff},
+		{"-docrender-list-hover", 0xc2d4f5ff, 0x4d5564ff},
+	};
+	static_assert(std::size(palette) == static_cast<size_t>(system_color::list_hover) + 1);
+}
+
+web_color system_color_value(system_color value, color_scheme scheme) {
+	const auto& entry = palette[static_cast<size_t>(value)];
+	const uint32_t rgba = scheme == color_scheme::dark ? entry.dark : entry.light;
+	return web_color(byte(rgba >> 24), byte(rgba >> 16), byte(rgba >> 8), byte(rgba));
+}
+
 bool parse_name_color(const css_token& tok, web_color& color, document_container* container, unsigned depth)
 {
 	if (tok.type != IDENT) return false;
-	if (tok.ident() == "currentcolor")
+	const auto ident = tok.ident();
+	if (ident == "currentcolor")
 	{
 		color = web_color::current_color;
 		return true;
+	}
+	for (size_t i = 1; i < std::size(palette); ++i) {
+		if (ident == palette[i].name) {
+			color = web_color(static_cast<system_color>(i));
+			return true;
+		}
 	}
 	string str = resolve_name(tok.name, container);
 	auto tokens = normalize(str, f_componentize | f_remove_whitespace);
@@ -288,6 +347,7 @@ web_color web_color::darken(double fraction) const
 string web_color::to_string() const
 {
 	if (is_current_color) return "currentcolor";
+	if (system != system_color::none) return palette[static_cast<size_t>(system)].name;
 	if (css_data) return to_srgb().to_string();
 	char str[9];
 	if(alpha)

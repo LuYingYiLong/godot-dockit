@@ -319,8 +319,9 @@ namespace docrender {
 			const real_t thumb = std::min<real_t>(p_box.size.x, std::min<real_t>(p_box.size.y, 14));
 			const real_t offset = (p_box.size.x - thumb) * std::clamp(ratio, 0.0, 1.0);
 			const Rect2 track(p_box.position.x, p_box.get_center().y - 4, p_box.size.x, 8);
-			p_container.draw_input_chrome(p_box, track, Color::hex(0xb7b7b7ff), 4);
-			p_container.draw_input_chrome(p_box, track.grow(-1), Color::hex(0xefefefff), 3);
+			const auto scheme = css().get_color_scheme();
+			p_container.draw_input_chrome(p_box, track, html_system_color(litehtml::system_color::gauge_border, scheme), 4);
+			p_container.draw_input_chrome(p_box, track.grow(-1), html_system_color(litehtml::system_color::gauge_track, scheme), 3);
 			Rect2 fill = track;
 			fill.size.x = css().is_right_to_left() ? track.size.x - offset - thumb / 2 : offset + thumb / 2;
 			if (css().is_right_to_left()) fill.position.x = track.get_end().x - fill.size.x;
@@ -345,7 +346,7 @@ namespace docrender {
 					p_container.draw_input_chrome(p_box, Rect2(p_box.get_center() - size * 0.5, size), p_color, p_diameter * 0.5);
 				};
 				if (automatic) {
-					disc(minimum * 0.82f, Color(1, 1, 1));
+					disc(minimum * 0.82f, mark);
 					disc(minimum * 0.48f, Color(accent.red / 255.0, accent.green / 255.0, accent.blue / 255.0, accent.alpha / 255.0));
 				} else {
 					disc(minimum * 0.45f, mark);

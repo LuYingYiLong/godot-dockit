@@ -15,6 +15,7 @@ Windows x64 MSVC builds with Mermaid support use the Merman `0.9.3` native full 
 ## Built-in dependencies
 
 - godot-cpp provides the C++ bindings for the GDExtension. [MIT license](godot-cpp-LICENSE.md)
+- DocRender embeds the Open Sans Semibold font from Godot's source distribution as a fallback for HTML text. [SIL Open Font License](OpenSans-LICENSE.txt)
 - MicroTeX, TinyXML-2, and the embedded math fonts are used for LaTeX formula rendering. [Licenses and notices](MicroTeX-LICENSES.txt)
 - litehtml v0.10 and its bundled Gumbo parser provide HTML parsing and layout for `HTMLDocument`. Both are compiled into the extension. [litehtml BSD 3-Clause license](LiteHTML-LICENSES/litehtml.txt) · [Gumbo Apache 2.0 license](LiteHTML-LICENSES/gumbo.txt)
 - DocRender uses Unicode 16.0.0 case folding to match CSS font family names, and character categories and normalization for emphasis marks and hyphenation. [Unicode license](LiteHTML-LICENSES/unicode-case-folding.txt) · [Case folding data](https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt) · [Character data](https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt)

@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/vector4.hpp>
 
 #include <array>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -24,6 +25,8 @@ namespace litehtml {
 	struct css_clip_path;
 	struct position;
 	enum class scrollbar_width;
+	enum class color_scheme : uint8_t;
+	enum class system_color : uint8_t;
 	struct css_scroll_snap_type;
 	struct css_transform_function;
 }
@@ -97,22 +100,25 @@ namespace docrender {
 	};
 
 	struct HTMLScrollbarColors {
-		godot::Color thumb{ 0, 0, 0, 114.0f / 255.0f };
-		godot::Color track{ 241.0f / 255.0f, 241.0f / 255.0f, 241.0f / 255.0f, 1 };
+		godot::Color thumb;
+		godot::Color track;
 		bool operator==(const HTMLScrollbarColors& p_other) const;
 	};
 
 	struct HTMLScrollbarAppearance {
 		litehtml::scrollbar_width width{};
 		std::optional<HTMLScrollbarColors> colors;
+		litehtml::color_scheme scheme{};
 		bool operator==(const HTMLScrollbarAppearance& p_other) const;
 		float thickness() const;
 		float thumb_thickness(bool p_hot) const;
 		godot::Color thumb_color(bool p_pressed) const;
+		godot::Color track_color() const;
 		godot::Rect2 visible_thumb(const godot::Rect2& p_thumb, int p_axis, bool p_hot) const;
 	};
 
 	HTMLScrollbarAppearance html_scrollbar_appearance(const css::ComputedStyle& p_style);
+	godot::Color html_system_color(litehtml::system_color p_color, litehtml::color_scheme p_scheme);
 
 	struct HTMLScrollTarget {
 		godot::Rect2 area;
@@ -155,6 +161,8 @@ namespace docrender {
 		godot::Rect2 thumb;
 		godot::real_t range = 0;
 	};
+	HTMLScrollbar make_html_scrollbar(const godot::Rect2& p_track, int p_axis,
+		godot::real_t p_page, godot::real_t p_range, godot::real_t p_offset);
 
 	struct HTMLScrollbarDrag {
 		std::weak_ptr<litehtml::element> element;

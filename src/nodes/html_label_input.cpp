@@ -8,7 +8,10 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_map.hpp>
-#include <godot_cpp/classes/popup_menu.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/classes/sub_viewport_container.hpp>
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/window.hpp>
@@ -322,15 +325,14 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 	if (p_pointer && !has_selection && input->is_editable()) set_input_caret(p_element, p_position, false);
 
 	if (!input_menu) {
-		input_menu = memnew(PopupMenu);
+		input_menu = memnew(Control);
 		input_menu->set_name("_HTMLInputMenu");
-		input_menu->set_hide_on_item_selection(false);
-		input_menu->connect("id_pressed", callable_mp(this, &HTMLLabelCanvas::on_input_menu_selected));
-		input_menu->connect("popup_hide", callable_mp(this, &HTMLLabelCanvas::on_input_menu_hidden));
-		add_child(input_menu, false, INTERNAL_MODE_BACK);
+		input_menu->set_z_index(2);
+		input_menu->set_clip_contents(true);
+		input_menu->connect("draw", callable_mp(this, &HTMLLabelCanvas::draw_input_menu));
+		input_menu->connect("gui_input", callable_mp(this, &HTMLLabelCanvas::input_menu_event));
+		label->add_child(input_menu, false, INTERNAL_MODE_BACK);
 	}
-
-	input_menu->clear();
 	const bool editable = input->is_editable();
 	const auto* field = dynamic_cast<const HTMLInputNode*>(input.get());
 	const bool password = field && field->is_password();
@@ -342,30 +344,124 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 		!editable || DisplayServer::get_singleton()->clipboard_get().is_empty(),
 		editor.get_value().is_empty() || input->user_selection_mode() == litehtml::css_user_select::none,
 	};
-	for (int command = 0; command < static_cast<int>(std::size(INPUT_MENU_ITEMS)); ++command) {
-		if (command == INPUT_CUT || command == INPUT_SELECT_ALL) input_menu->add_separator();
+	real_t width = 156;
+	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
 		const auto& item = INPUT_MENU_ITEMS[command];
-		input_menu->add_item(tr(item.label), command, input_menu_accelerator(item.action));
-		input_menu->set_item_disabled(input_menu->get_item_index(command), disabled[command]);
+		auto& row = input_menu_rows[command];
+		row.caption = label->layout->shape_element_text(p_element, tr(item.label));
+		const Key accelerator = input_menu_accelerator(item.action);
+		row.shortcut = label->layout->shape_element_text(p_element, accelerator == KEY_NONE ?
+			String() : OS::get_singleton()->get_keycode_string(accelerator));
+		row.enabled = !disabled[command];
+		width = std::max(width, real_t(row.caption.width() + row.shortcut.width() + 40));
 	}
 
+	input_menu_hover = input_menu_press = -1;
 	input_menu_target = p_element;
 	close_ime();
-	input_menu->set_position(get_screen_transform().xform(p_position.clamp(visible.position, visible.get_end())));
-	input_menu->reset_size();
-	input_menu->popup();
-	if (input_menu->is_visible()) return true;
-	on_input_menu_hidden();
-	return false;
+	const auto space = label->get_global_transform_with_canvas().affine_inverse().xform(label->get_viewport_rect()).size;
+	input_menu_row_height = std::clamp((space.y - 14) / input_menu_rows.size(), real_t(8), real_t(22));
+	input_menu->set_size(Vector2(std::min(width, space.x), input_menu_row_height * input_menu_rows.size() + 14));
+	const Vector2 anchor = label->get_global_transform_with_canvas().affine_inverse().xform(
+		get_global_transform_with_canvas().xform(p_position.clamp(visible.position, visible.get_end())));
+	label->place_overlay(*input_menu, anchor);
+	input_menu->show();
+	input_menu->queue_redraw();
+	return true;
 }
 
 void HTMLLabelCanvas::close_input_menu() {
-	if (input_menu && input_menu->is_visible()) input_menu->hide();
+	if (input_menu_target.is_null()) return;
+	input_menu_target.unref();
+	input_menu->hide();
+	callable_mp(this, &HTMLLabelCanvas::update_ime).call_deferred();
 }
 
-void HTMLLabelCanvas::on_input_menu_hidden() {
-	input_menu_target.unref();
-	callable_mp(this, &HTMLLabelCanvas::update_ime).call_deferred();
+Rect2 HTMLLabelCanvas::input_menu_row_rect(int p_command) const {
+	const int separator_space = 4 * (int(p_command >= INPUT_CUT) + int(p_command >= INPUT_SELECT_ALL));
+	return Rect2(3, 3 + separator_space + p_command * input_menu_row_height, input_menu->get_size().x - 6, input_menu_row_height);
+}
+
+void HTMLLabelCanvas::draw_input_menu() {
+	const auto scheme = label->layout->get_element_color_scheme(input_menu_target);
+	const auto color = [scheme](litehtml::system_color p_role) { return docrender::html_system_color(p_role, scheme); };
+	const Rect2 bounds(Vector2(), input_menu->get_size());
+	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_face));
+	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_border), false);
+	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
+		const auto& row = input_menu_rows[command];
+		const Rect2 area = input_menu_row_rect(static_cast<int>(command));
+		if (command == INPUT_CUT || command == INPUT_SELECT_ALL) {
+			input_menu->draw_line(area.position - Vector2(0, 2), Vector2(area.get_end().x, area.position.y - 2),
+				color(litehtml::system_color::menu_border));
+		}
+		if (row.enabled && int(command) == input_menu_hover) input_menu->draw_rect(area, color(litehtml::system_color::menu_hover));
+		const auto ink = color(row.enabled ? litehtml::system_color::canvas_text : litehtml::system_color::gray_text);
+		const auto server = TextServerManager::get_singleton()->get_primary_interface();
+		const auto draw = [&](const docrender::HTMLTextLayout& p_line, real_t p_x, real_t p_width) {
+			if (!p_line.is_valid() || p_width <= 0) return;
+			const real_t baseline = area.get_center().y + (p_line.line_ascent() - p_line.line_descent()) / 2;
+			server->shaped_text_draw(p_line.get_rid(), input_menu->get_canvas_item(), Vector2(p_x, baseline), 0, p_width, ink);
+		};
+		const real_t shortcut_x = area.get_end().x - 8 - row.shortcut.width();
+		draw(row.caption, area.position.x + 8, shortcut_x - area.position.x - 14);
+		draw(row.shortcut, shortcut_x, row.shortcut.width() + 1);
+	}
+}
+
+void HTMLLabelCanvas::input_menu_event(const Ref<InputEvent>& p_event) {
+	const Ref<InputEventMouseButton> button = p_event;
+	const Ref<InputEventMouseMotion> motion = p_event;
+	if (button.is_null() && motion.is_null()) return;
+	const Vector2 point = button.is_valid() ? button->get_position() : motion->get_position();
+	int hit = -1;
+	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
+		if (input_menu_rows[command].enabled && input_menu_row_rect(int(command)).has_point(point)) hit = int(command);
+	}
+	input_menu_hover = hit;
+	input_menu->queue_redraw();
+	if (button.is_valid() && button->get_button_index() == MOUSE_BUTTON_LEFT) {
+		if (button->is_pressed()) input_menu_press = hit;
+		else if (hit >= 0 && std::exchange(input_menu_press, -1) == hit && !button->is_canceled()) on_input_menu_selected(hit);
+	}
+	input_menu->accept_event();
+}
+
+bool HTMLLabelCanvas::handle_input_menu_key(const InputEventKey& p_key) {
+	if (input_menu_target.is_null() || !p_key.is_pressed()) return false;
+	if (p_key.is_action("ui_cancel") || p_key.is_action("ui_menu")) {
+		close_input_menu();
+		return true;
+	}
+	if (p_key.is_action("ui_accept")) {
+		if (input_menu_hover >= 0) on_input_menu_selected(input_menu_hover);
+		return true;
+	}
+	const bool up = p_key.is_action("ui_up");
+	const int count = static_cast<int>(input_menu_rows.size());
+	if (up || p_key.is_action("ui_down")) {
+		int next = input_menu_hover < 0 ? (up ? 0 : count - 1) : input_menu_hover;
+		for (int i = 0; i < count; ++i) {
+			next = (next + (up ? count - 1 : 1)) % count;
+			if (input_menu_rows[next].enabled) {
+				input_menu_hover = next;
+				input_menu->queue_redraw();
+				break;
+			}
+		}
+		return true;
+	}
+	if (p_key.is_action("ui_focus_next", true) || p_key.is_action("ui_focus_prev", true)) {
+		close_input_menu();
+		return false;
+	}
+	for (size_t i = 0; i < input_menu_rows.size(); ++i) {
+		if (p_key.is_action(INPUT_MENU_ITEMS[i].action, true)) {
+			if (input_menu_rows[i].enabled) on_input_menu_selected(int(i));
+			return true;
+		}
+	}
+	return true;
 }
 
 void HTMLLabelCanvas::on_input_menu_selected(int p_command) {

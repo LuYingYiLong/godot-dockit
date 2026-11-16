@@ -114,6 +114,8 @@ namespace docrender {
 
 		resize_handle = {};
 		if (resizable) {
+			Color grip = html_system_color(litehtml::system_color::gray_text, css().get_color_scheme());
+			grip.a *= 0.85f;
 			const float size = std::min({14.0f, border_box.size.x, border_box.size.y});
 			resize_handle = Rect2(border_box.get_end() - Vector2(size, size), Vector2(size, size));
 			for (int line = 0; line < 2; ++line) {
@@ -121,7 +123,7 @@ namespace docrender {
 				const int length = std::max(0, int(size) - 5 - line * 4);
 				for (int step = 0; step < length; ++step) {
 					container->draw_input_chrome(border_box, Rect2(end + Vector2(line * 4 - step, step - length + 1),
-						Vector2(1, 1)), Color(0.35f, 0.42f, 0.5f, 0.85f));
+						Vector2(1, 1)), grip);
 				}
 			}
 		}

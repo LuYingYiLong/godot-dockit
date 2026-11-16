@@ -9,13 +9,12 @@
 #include <godot_cpp/core/object_id.hpp>
 
 #include <optional>
+#include <array>
 #include <vector>
 
 namespace godot {
 	class InputEventKey;
 	class InputEventMouseButton;
-	class PopupMenu;
-	class ScrollContainer;
 	class Timer;
 }
 
@@ -61,7 +60,16 @@ class HTMLLabelCanvas : public godot::Control {
 	std::optional<godot::Vector2i> ime_position;
 	godot::Timer* caret_blink_timer = nullptr;
 	bool caret_window_active = true;
-	godot::PopupMenu* input_menu = nullptr;
+	struct InputMenuRow {
+		docrender::HTMLTextLayout caption;
+		docrender::HTMLTextLayout shortcut;
+		bool enabled;
+	};
+	godot::Control* input_menu = nullptr;
+	std::array<InputMenuRow, 6> input_menu_rows;
+	int input_menu_hover = -1;
+	int input_menu_press = -1;
+	godot::real_t input_menu_row_height = 22;
 	godot::Ref<HTMLElement> input_menu_target;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
@@ -76,8 +84,10 @@ class HTMLLabelCanvas : public godot::Control {
 	bool selecting = false;
 	bool selection_dragged = false;
 	bool has_focusable_elements = false;
-	mutable godot::ObjectID diagnostic_panel_id;
-	mutable godot::String diagnostic_panel_text;
+	HTMLLabel* diagnostic_panel = nullptr;
+	godot::Timer* diagnostic_timer = nullptr;
+	godot::String diagnostic_panel_text;
+	godot::Vector2 diagnostic_location;
 
 	void cancel_press();
 	void extend_document_selection(const godot::Vector2& p_point);
@@ -93,8 +103,11 @@ class HTMLLabelCanvas : public godot::Control {
 	bool handle_input_key(const godot::InputEventKey& p_key);
 	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
 	void close_input_menu();
-	void on_input_menu_hidden();
 	void on_input_menu_selected(int p_command);
+	void draw_input_menu();
+	void input_menu_event(const godot::Ref<godot::InputEvent>& p_event);
+	bool handle_input_menu_key(const godot::InputEventKey& p_key);
+	godot::Rect2 input_menu_row_rect(int p_command) const;
 	void run_input_command(const godot::Ref<HTMLElement>& p_element, int p_command);
 	void change_input(const godot::Ref<HTMLElement>& p_input, bool p_update_suggestions = true);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
@@ -118,6 +131,7 @@ class HTMLLabelCanvas : public godot::Control {
 	void update_focus_mode();
 	void update_cursor(const std::optional<godot::Vector2>& p_point);
 	void refresh_diagnostic_tooltip(const std::optional<godot::Vector2>& p_point);
+	void show_diagnostic_tooltip();
 
 protected:
 	static void _bind_methods() {}
@@ -126,8 +140,6 @@ protected:
 public:
 	void _draw() override;
 	bool _has_point(const godot::Vector2& p_point) const override;
-	godot::String _get_tooltip(const godot::Vector2& p_position) const override;
-	godot::Object* _make_custom_tooltip(const godot::String& p_for_text) const override;
 	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
 };
 
@@ -146,9 +158,11 @@ private:
 
 	godot::Ref<HTMLDocument> document;
 	godot::Ref<HTMLLayout> layout;
-	godot::ScrollContainer* scroll_container = nullptr;
+	godot::Control* viewport_control = nullptr;
+	godot::Control* viewport_bars = nullptr;
 	godot::Control* scroll_content = nullptr;
 	HTMLLabelCanvas* canvas = nullptr;
+	godot::Timer* color_scheme_timer = nullptr;
 	godot::Control* select_menu = nullptr;
 	godot::Ref<HTMLElement> open_select;
 	std::vector<docrender::HTMLSelectMenuRow> select_rows;
@@ -162,15 +176,21 @@ private:
 	godot::String stylesheet;
 	godot::Vector2i viewport_size;
 	godot::Vector2i content_size;
-	godot::Vector2i sorted_scroll_offset;
 	godot::Vector2i viewport_input_axes{1, 1};
-	godot::Vector2i hidden_scroll_offset;
+	godot::Vector2i scroll_offset;
 	godot::String render_error;
 	std::optional<godot::Vector2i> pending_scroll_offset;
 	bool pending_scroll_requested = false;
 	godot::Ref<godot::Tween> viewport_scroll_tween;
 	bool applying_scroll_tween = false;
 	godot::Vector2i dragging_viewport_scrollbar;
+	godot::real_t viewport_scrollbar_grab = 0;
+	int hovered_viewport_bar = -1;
+	int viewport_touch_index = -1;
+	godot::Vector2 viewport_touch_motion;
+	godot::Vector2 viewport_touch_velocity;
+	bool viewport_touch_dragged = false;
+	godot::Vector2i visible_viewport_bars;
 	godot::Ref<godot::Tween> viewport_pan_snap_timer;
 	godot::Vector2i viewport_pan_axes;
 	bool source_dirty = true;
@@ -179,12 +199,12 @@ private:
 	bool layout_updated = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
+	bool transparent_canvas = false;
 	bool context_menu_enabled = true;
 	AnimationProcessMode animation_process_mode = ANIMATION_PROCESS_IDLE;
 	bool caret_blink = true;
 	double caret_blink_interval = 0.65;
 	bool view_update_pending = false;
-	bool scroll_sort_pending = false;
 	bool interaction_queued = false;
 	bool gui_hover_dirty = false;
 	bool updating_gui_hover = false;
@@ -193,12 +213,11 @@ private:
 	bool reveal_focused_element = false;
 	int hover_passes_remaining = 0;
 	docrender::HTMLScrollbarAppearance viewport_scrollbar_style;
-	bool viewport_scrollbar_theme_dirty = true;
-	godot::Ref<godot::StyleBox> viewport_panel;
-	godot::Vector2 viewport_panel_gutters;
+	litehtml::color_scheme page_color_scheme = litehtml::color_scheme::light;
 	godot::Vector2 viewport_painted_gutters;
 
 	void ensure_controls();
+	void poll_preferred_color_scheme();
 	void queue_refresh();
 	void flush_queued_refresh();
 	void queue_interaction_style_refresh();
@@ -211,12 +230,15 @@ private:
 	void parse_pending_source();
 	void on_layout_edited();
 	void refresh();
-	void update_viewport_scrollbar_style(const docrender::HTMLScrollbarAppearance& p_style);
-	void update_viewport_gutters(const godot::Vector2& p_gutters);
 	void draw_viewport_gutters();
+	void draw_viewport_scrollbars();
+	docrender::HTMLScrollbar viewport_scrollbar(int p_axis) const;
+	void set_viewport_bar_hover(int p_axis);
+	void place_overlay(godot::Control& p_overlay, const godot::Vector2& p_point);
+	bool handle_viewport_touch(const godot::Ref<godot::InputEvent>& p_event);
 	void update_view(const godot::Vector2i& p_viewport, const godot::Vector2i& p_content,
 		const godot::Vector2i& p_visible_bars, const godot::Vector2i& p_input_axes, bool p_layout_changed,
-		const godot::String& p_error = {}, const godot::Vector2& p_gutters = {}, const godot::Vector2& p_painted_gutters = {});
+		const godot::String& p_error = {}, const godot::Vector2& p_painted_gutters = {});
 	godot::Rect2 get_visible_rect() const;
 	void apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align);
 	void advance_viewport_scroll(double p_fraction, godot::Vector2 p_from, godot::Vector2 p_to);
@@ -224,13 +246,12 @@ private:
 	void on_nested_scroll_advanced();
 	void apply_scroll_offset(const godot::Vector2i& p_offset);
 	void apply_pending_scroll();
-	void on_scroll_changed(double p_value);
 	void on_viewport_gui_input(const godot::Ref<godot::InputEvent>& p_event);
-	void on_viewport_scrollbar_input(const godot::Ref<godot::InputEvent>& p_event, int p_axis);
+	void drag_viewport_bar(int p_axis, godot::real_t p_position);
 	void settle_viewport_snap(const godot::Vector2i& p_axes);
 	void settle_viewport_pan();
 	void cancel_viewport_pan_snap();
-	void on_content_sorted();
+	void sync_viewport_scroll();
 	void request_hover_check();
 	void queue_interaction();
 	void update_interaction();
@@ -259,6 +280,8 @@ public:
 	void _draw() override;
 	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
 	void _input(const godot::Ref<godot::InputEvent>& p_event) override;
+	void set_transparent_canvas(bool p_enabled);
+	bool is_transparent_canvas() const;
 	void set_css_diagnostics_enabled(bool p_enabled); // 设置是否收集 CSS 声明诊断
 	bool is_css_diagnostics_enabled() const; // 返回是否收集 CSS 声明诊断
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const; // 返回 CSS 声明诊断的快照

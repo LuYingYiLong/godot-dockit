@@ -8,8 +8,9 @@
 #include <godot_cpp/classes/system_font.hpp>
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
-#include <godot_cpp/classes/theme.hpp>
-#include <godot_cpp/classes/theme_db.hpp>
+#include "gen/html/html_default_font.gen.h"
+
+#include <cstring>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
@@ -29,6 +30,42 @@ namespace docrender {
 		constexpr uint32_t OPTICAL_SIZE_AXIS = 0x6f70737a; // OpenType tag "opsz".
 		constexpr uint32_t PETITE_CAPS = 0x70636170; // OpenType tag "pcap".
 		constexpr uint32_t UPPERCASE_PETITE_CAPS = 0x63327063; // OpenType tag "c2pc".
+
+#ifdef WINDOWS_ENABLED
+		enum class HanScript { none, simplified, traditional };
+
+		HanScript chinese_script(const String& p_language) {
+			const auto parts = p_language.to_lower().split("-");
+			if (parts.is_empty() || parts[0] != "zh") return HanScript::none;
+			// Explicit script subtags take precedence over the region.
+			for (int64_t i = 1; i < parts.size() && parts[i].length() != 1; ++i) {
+				if (parts[i] == "hans") return HanScript::simplified;
+				if (parts[i] == "hant") return HanScript::traditional;
+				if (parts[i] == "tw" || parts[i] == "hk" || parts[i] == "mo") return HanScript::traditional;
+				if (parts[i].length() == 4) return HanScript::none;
+				if (parts[i].length() == 2) break;
+			}
+			return HanScript::simplified;
+		}
+
+		const char* chinese_generic_fonts(HanScript p_script, const String& p_generic) {
+			if (p_script == HanScript::none) return nullptr;
+			const bool traditional = p_script == HanScript::traditional;
+			if (p_generic == "serif")
+				return traditional ? "Noto Serif TC|Noto Serif CJK TC|PMingLiU" : "Noto Serif SC|Noto Serif CJK SC|SimSun";
+			if (p_generic == "monospace") return traditional ? "MingLiU" : "NSimSun";
+			if (p_generic == "standard" || p_generic == "sans-serif")
+				return traditional ? "Noto Sans TC|Noto Sans CJK TC|Microsoft JhengHei" : "Noto Sans SC|Noto Sans CJK SC|Microsoft YaHei";
+			return nullptr;
+		}
+
+		// Limit the Windows generic preferences to Han and East Asian punctuation.
+		const css_unicode_ranges CHINESE_FONT_RANGES = {
+			{0x2e80, 0x2fff}, {0x3000, 0x303f}, {0x31c0, 0x31ef}, {0x3400, 0x4dbf},
+			{0x4e00, 0x9fff}, {0xf900, 0xfaff}, {0xfe10, 0xfe1f}, {0xfe30, 0xfe4f},
+			{0xff01, 0xff60}, {0xffe0, 0xffe6}, {0x20000, 0x2fa1f}, {0x30000, 0x3ffff},
+		};
+#endif
 
 		int32_t font_pixel_size(pixel_t p_size) {
 			const double size = std::round(static_cast<double>(p_size));
@@ -250,14 +287,23 @@ namespace docrender {
 
 	LiteHTMLFonts::LiteHTMLFonts(const HTMLFontConfig& p_fonts, HTMLResources& p_resources) :
 		fonts(p_fonts), resources(p_resources), default_font(p_fonts.text) {
-		ThemeDB* themes = ThemeDB::get_singleton();
-		const Ref<Theme> project_theme = themes->get_project_theme();
-		if (default_font.is_null() && project_theme.is_valid()) {
-			default_font = project_theme->get_default_font();
-		}
 		if (default_font.is_null()) {
-			default_font = themes->get_fallback_font();
+			PackedByteArray bytes;
+			bytes.resize(sizeof(html_default_font));
+			std::memcpy(bytes.ptrw(), html_default_font, sizeof(html_default_font));
+			Ref<FontFile> bundled;
+			bundled.instantiate();
+			bundled->set_data(bytes);
+			default_font = bundled;
 		}
+	}
+
+	const char* LiteHTMLFonts::default_family() const {
+		return fonts.text.is_valid() ? "sans-serif" : "serif";
+	}
+
+	int32_t LiteHTMLFonts::default_fixed_size() const {
+		return fonts.text.is_valid() ? DEFAULT_SIZE : 13;
 	}
 
 	bool LiteHTMLFonts::set_font_rules(std::vector<css_font_face> p_faces,
@@ -313,17 +359,17 @@ namespace docrender {
 
 	void LiteHTMLFonts::FontStack::add_text(TextLine& r_line, const String& p_text, int32_t p_size) const {
 		if (choices.empty() || p_text.is_empty()) {
-			r_line.add_string(p_text, unrestricted, p_size);
+			r_line.add_string(p_text, unrestricted, p_size, language);
 			return;
 		}
 		const auto server = TextServerManager::get_singleton()->get_primary_interface();
-		const auto breaks = server->string_get_character_breaks(p_text);
+		const auto breaks = server->string_get_character_breaks(p_text, language);
 		int64_t start = 0;
 		int64_t run_start = 0;
 		Ref<Font> run;
 		const auto append = [&](int64_t p_first, const Ref<Font>& p_font) {
 			if (run != p_font) {
-				if (run.is_valid()) r_line.add_string(p_text.substr(run_start, p_first - run_start), run, p_size);
+				if (run.is_valid()) r_line.add_string(p_text.substr(run_start, p_first - run_start), run, p_size, language);
 				run_start = p_first;
 				run = p_font;
 			}
@@ -358,7 +404,7 @@ namespace docrender {
 			const auto remainder = match(p_text, start, p_text.length());
 			append(start, remainder.is_valid() ? remainder : unrestricted);
 		}
-		if (run.is_valid()) r_line.add_string(p_text.substr(run_start), run, p_size);
+		if (run.is_valid()) r_line.add_string(p_text.substr(run_start), run, p_size, language);
 	}
 
 	Vector2 LiteHTMLFonts::FontStack::char_size(char32_t p_character, int32_t p_size) const {
@@ -406,7 +452,7 @@ namespace docrender {
 				features[halt] = 1;
 				Ref<TextLine> line;
 				line.instantiate();
-				if (server->shaped_text_add_string(line->get_rid(), p_text, chosen->get_rids(), font_size, features)) {
+				if (server->shaped_text_add_string(line->get_rid(), p_text, chosen->get_rids(), font_size, features, stack->language)) {
 					HTMLTextLayout candidate{ line, ascent };
 					if (candidate.width() > 0 && candidate.width() < layout.width()) return candidate;
 				}
@@ -515,7 +561,8 @@ namespace docrender {
 			font->set_font_weight(std::clamp(p_weight, 100, 999));
 			font->set_font_stretch(stretch);
 			font->set_font_italic(p_italic);
-			font->set_allow_system_fallback(false);
+			// TextServer tries every face in the CSS stack before its system fallback.
+			font->set_allow_system_fallback(true);
 			PackedStringArray names;
 			names.append(listed_family ? *listed_family : p_family);
 			font->set_font_names(names);
@@ -634,6 +681,7 @@ namespace docrender {
 		const bool oblique = p_description.style.kind == font_style_oblique;
 		const float angle = italic ? default_oblique_angle : p_description.style.angle;
 		const bool adjust_optical = wants_optical_size(p_description);
+		const String language = String::utf8(p_description.language.c_str());
 		bool size_dependent = false;
 		bool has_named_features = false;
 		const auto with_style = [&](const Ref<Font>& p_font, bool p_synthesize = true, const String& p_family = {}) -> Ref<Font> {
@@ -696,25 +744,30 @@ namespace docrender {
 		const Ref<Font>& themed_variant = bold && italic ? fonts.bold_italic : (bold ? fonts.bold : fonts.italic);
 		const Ref<Font> text_font = (bold || italic) && themed_variant.is_valid() ?
 			with_style(themed_variant, false, text_name) : with_style(default_font, true, text_name);
-		if (p_description.families.empty()) {
-			return { text_font, text_font, {}, size_dependent };
-		}
-
 		std::vector<FontChoice> choices;
 		const auto append = [&](const Ref<Font>& p_font) {
 			if (p_font.is_valid()) choices.push_back({ p_font, {} });
 		};
-		const auto append_installed = [&](const char* p_names) {
+		const auto append_installed = [&](const char* p_names, const css_unicode_ranges& p_ranges = {}) {
 			for (const String& name : String(p_names).split("|")) {
 				const auto font = find_installed_font(name, installed_weight, italic, p_description.width);
 				if (font.is_valid()) {
-					append(with_style(font, true, fold_font_family(name)));
-					break;
+					choices.push_back({ with_style(font, true, fold_font_family(name)), p_ranges });
+					return true;
 				}
 			}
+			return false;
 		};
+		constexpr const char* serif_fonts = "Times New Roman|Noto Serif|DejaVu Serif|Liberation Serif|Times|Droid Serif";
 		const String code_name = fonts.code.is_valid() ? fold_font_family(fonts.code->get_font_name()) : String();
 		const String block_name = fonts.code_block.is_valid() ? fold_font_family(fonts.code_block->get_font_name()) : String();
+#ifdef WINDOWS_ENABLED
+		const auto han_script = chinese_script(language);
+		const auto append_chinese_generic = [&](const String& p_generic) {
+			if (const char* candidates = chinese_generic_fonts(han_script, p_generic))
+				append_installed(candidates, CHINESE_FONT_RANGES);
+		};
+#endif
 		for (const auto& family : p_description.families) {
 			const String name = String::utf8(family.name.c_str());
 			if (!family.generic) {
@@ -742,8 +795,14 @@ namespace docrender {
 				}
 				continue;
 			}
+#ifdef WINDOWS_ENABLED
+			append_chinese_generic(name);
+#endif
 			if (name == "sans-serif") {
-				append(text_font);
+				if (fonts.text.is_valid() || !append_installed("Arial|Liberation Sans|Helvetica|Noto Sans|DejaVu Sans")) append(text_font);
+			}
+			else if (name == "serif") {
+				append_installed(serif_fonts);
 			}
 			else if (name == "system-ui" || name == "ui-sans-serif") {
 				append_installed("Segoe UI|.AppleSystemUIFont|Helvetica Neue|Roboto|Cantarell|Noto Sans");
@@ -751,9 +810,11 @@ namespace docrender {
 			else if (name == "monospace" && fonts.code.is_valid()) {
 				append(with_style(fonts.code));
 			}
+			else if (name == "monospace" && fonts.text.is_null() && OS::get_singleton()->get_name() == "Windows") {
+				append_installed("Consolas|Courier New");
+			}
 			else {
 				static constexpr std::pair<const char*, const char*> generic_fonts[] = {
-				{ "serif", "Times New Roman|Noto Serif|DejaVu Serif|Liberation Serif|Times|Droid Serif" },
 				{ "monospace", "Courier New|Menlo|Noto Sans Mono|DejaVu Sans Mono|Liberation Mono|Roboto Mono|Droid Sans Mono" },
 					{ "cursive", "Comic Sans MS|Apple Chancery|URW Chancery L|Dancing Script" },
 					{ "fantasy", "Gabriola|Papyrus|Impact|Copperplate" },
@@ -773,6 +834,12 @@ namespace docrender {
 					}
 				}
 			}
+		}
+		if (choices.empty() && fonts.text.is_null()) {
+#ifdef WINDOWS_ENABLED
+			if (p_description.families.empty()) append_chinese_generic("standard");
+#endif
+			append_installed(serif_fonts);
 		}
 		append(text_font);
 		TypedArray<Font> unrestricted;
@@ -800,7 +867,7 @@ namespace docrender {
 		const bool per_face_features = has_face_features || has_named_features || p_description.kerning == font_kerning_normal ||
 			p_description.variant_features.count(PETITE_CAPS);
 		if (!restricted && !per_face_features) choices.clear();
-		return { primary, combine_fonts(unrestricted, per_face_features ? text_font : Ref<Font>()), std::move(choices), size_dependent };
+		return { primary, combine_fonts(unrestricted, per_face_features ? text_font : Ref<Font>()), std::move(choices), language, size_dependent };
 	}
 
 	uint_ptr LiteHTMLFonts::create_font(const font_description& p_description, font_metrics* r_metrics) {
@@ -812,6 +879,8 @@ namespace docrender {
 			const String name = String::utf8(family.name.c_str());
 			key += vformat("/%d/%d/%s", int(family.generic), name.length(), name);
 		}
+		const String language = String::utf8(p_description.language.c_str());
+		key += vformat("/lang=%d:%s", language.length(), language);
 		key += String::utf8(p_description.opentype_key().c_str());
 		String size_key;
 		const auto* cached = font_stacks.getptr(key);
@@ -834,7 +903,7 @@ namespace docrender {
 		if (!p_description.emphasis_style.empty()) {
 			const auto server = TextServerManager::get_singleton()->get_primary_interface();
 			const String value = String::utf8(p_description.emphasis_style.c_str(), p_description.emphasis_style.size());
-			const auto breaks = server->string_get_character_breaks(value);
+			const auto breaks = server->string_get_character_breaks(value, stack->language);
 			const String mark = breaks.is_empty() ? value : value.substr(0, breaks[0]);
 			if (!mark.is_empty()) {
 				Ref<Font> mark_font = stack->match(mark, 0, mark.length());
@@ -853,7 +922,7 @@ namespace docrender {
 				features["ruby"] = 1;
 				variant->set_opentype_features(features);
 				emphasis.instantiate();
-				emphasis->add_string(mark, variant, std::max(1, size / 2));
+				emphasis->add_string(mark, variant, std::max(1, size / 2), stack->language);
 				const bool under = p_description.emphasis_position & text_emphasis_position_under;
 				const int adjacent_decoration = under ? text_decoration_line_underline : text_decoration_line_overline;
 				r_metrics->emphasis_extent = emphasis->get_size().y + ((p_description.decoration_line & adjacent_decoration) ? 2.0f : 0.0f);

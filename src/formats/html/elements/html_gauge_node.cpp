@@ -31,14 +31,15 @@ void HTMLGaugeNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 	track.size.y *= 0.45f;
 	track.position.y = box.get_center().y - track.size.y * 0.5f;
 	const float radius = track.size.y * 0.5f;
-	container->draw_input_chrome(box, track, Color::hex(0xb7b7b7ff), radius);
-	container->draw_input_chrome(box, track.grow(-1), Color::hex(0xefefefff), std::max(0.0f, radius - 1));
+	const auto scheme = css().get_color_scheme();
+	container->draw_input_chrome(box, track, html_system_color(system_color::gauge_border, scheme), radius);
+	container->draw_input_chrome(box, track.grow(-1), html_system_color(system_color::gauge_track, scheme), std::max(0.0f, radius - 1));
 	const auto reading = read_html_gauge(*this);
 	Color fill = tag() == _progress_ ? Color::hex(0x0075ffff) : Color::hex(0x107c10ff);
 	if (reading.zone == 1) fill = Color::hex(0xe2a500ff);
 	if (reading.zone == 2) fill = Color::hex(0xc50000ff);
 	const auto color = css().get_accent_color().to_srgb(css().get_color());
-	if (color != web_color(0, 117, 255) || has_author_property(_id("accent-color"))) {
+	if (tag() == _progress_ || css().get_accent_color().system != system_color::accent) {
 		fill = Color(color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0);
 	}
 

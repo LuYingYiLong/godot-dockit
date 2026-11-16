@@ -46,6 +46,7 @@ namespace litehtml
 		virtual pixel_t				pt_to_px(float pt) const = 0;
 		virtual pixel_t				get_default_font_size() const = 0;
 		virtual const char*			get_default_font_name() const = 0;
+		virtual pixel_t				get_default_fixed_font_size() const { return get_default_font_size(); }
 		virtual void				draw_list_marker(litehtml::uint_ptr hdc, const litehtml::list_marker& marker) = 0;
 		virtual void				load_image(const char* src, const char* baseurl, bool redraw_on_ready, css_image_orientation orientation = css_image_orientation::from_image) = 0;
 		virtual void				get_image_size(const char* src, const char* baseurl, litehtml::size& sz, css_image_orientation orientation = css_image_orientation::from_image) = 0;

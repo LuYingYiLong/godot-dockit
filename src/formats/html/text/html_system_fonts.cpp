@@ -107,7 +107,6 @@ namespace docrender {
 				font.instantiate();
 				if (font->load_dynamic_font(path) != OK || reference->GetFontFaceIndex() >= font->get_face_count()) continue;
 				font->set_face_index(0, reference->GetFontFaceIndex());
-				font->set_allow_system_fallback(false);
 				return font;
 			}
 		}
@@ -125,7 +124,6 @@ namespace docrender {
 			face->set_data(data);
 			face->set_face_index(0, index);
 			if (matches_font_names(*face, p_name)) {
-				face->set_allow_system_fallback(false);
 				return face;
 			}
 		}

@@ -285,8 +285,8 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 	auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
 	const auto options = get_options();
 	const auto index = selected_index(options);
-	const auto paint = [&](const String& p_text, const Rect2& p_clip_box, litehtml::web_color p_color) {
-		auto line = container->shape_input(css().get_font(), p_text);
+	const auto paint = [&](const String& p_text, const Rect2& p_clip_box, litehtml::web_color p_color, litehtml::uint_ptr p_font) {
+		auto line = container->shape_input(p_font, p_text);
 		if (!line.is_valid() || !p_clip_box.has_area()) return;
 		const Vector2 baseline(p_clip_box.position.x, p_clip_box.get_center().y + (line.line_ascent() - line.line_descent()) * 0.5);
 		container->draw_input(p_clip_box, line, baseline, p_color, {}, {}, {});
@@ -304,16 +304,19 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 			const bool selected = option.is_selected();
 			const Rect2 area(box.position.x, box.position.y + i * row_height, box.size.x, row_height);
 			if (selected || row == active_row) {
-				container->draw_input_chrome(box, area, selected ? Color(0.20, 0.41, 0.76) : Color(0.76, 0.83, 0.96));
+				container->draw_input_chrome(box, area,
+					html_system_color(selected ? litehtml::system_color::list_selected : litehtml::system_color::list_hover,
+						css().get_color_scheme()));
 			}
-			const auto ink = forms::is_disabled(option) ? litehtml::web_color(100, 116, 139) :
-				selected ? litehtml::web_color::white : css().get_color();
-			paint(option.get_label(), area.intersection(box), ink);
+			const auto ink = forms::is_disabled(option) ?
+				litehtml::system_color_value(litehtml::system_color::gray_text, option.css().get_color_scheme()) :
+				selected && !option.has_author_property(litehtml::_color_) ? litehtml::web_color::white : option.css().get_color();
+			paint(option.get_label(), area.intersection(box), ink, option.css().get_font());
 		}
 		return;
 	}
 	const bool arrow = css().get_appearance() != litehtml::appearance_none;
-	if (index >= 0) paint(options[index]->get_label(), Rect2(box.position, Vector2(box.size.x - (arrow ? 16 : 0), box.size.y)), css().get_color());
-	if (arrow) paint(String::chr(0x25be), Rect2(box.get_end().x - 14, box.position.y, 14, box.size.y), css().get_color());
+	if (index >= 0) paint(options[index]->get_label(), Rect2(box.position, Vector2(box.size.x - (arrow ? 16 : 0), box.size.y)), css().get_color(), css().get_font());
+	if (arrow) paint(String::chr(0x25be), Rect2(box.get_end().x - 14, box.position.y, 14, box.size.y), css().get_color(), css().get_font());
 }
 }

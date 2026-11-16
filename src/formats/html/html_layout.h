@@ -46,6 +46,7 @@ namespace docrender {
 		std::array<litehtml::overflow, 2> overflow{litehtml::overflow_auto, litehtml::overflow_auto};
 		std::array<litehtml::overflow, 2> root_overflow{litehtml::overflow_visible, litehtml::overflow_visible};
 		litehtml::scrollbar_gutter gutter = litehtml::scrollbar_gutter::automatic;
+		litehtml::color_scheme scheme = litehtml::color_scheme::light;
 	};
 	struct HTMLSelectMenuRow {
 		HTMLTextLayout text;
@@ -147,6 +148,9 @@ class HTMLLayout : public godot::RefCounted {
 	void draw_viewport_background(godot::CanvasItem& p_canvas, const godot::Vector2& p_position,
 		const godot::Rect2& p_clip, const godot::Vector2& p_viewport_origin);
 	docrender::HTMLViewportStyle get_viewport_style() const;
+	litehtml::color_scheme get_element_color_scheme(const godot::Ref<HTMLElement>& p_element) const;
+	docrender::HTMLTextLayout shape_element_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
+	bool update_preferred_color_scheme();
 	godot::Vector2 viewport_contained_scroll(const godot::Vector2& p_delta) const;
 	static godot::Vector2 scroll_input_steps(const godot::Ref<godot::InputEvent>& p_event);
 	static bool forward_scroll_remainder(const godot::Ref<godot::InputEvent>& p_event, const godot::Vector2& p_remaining);

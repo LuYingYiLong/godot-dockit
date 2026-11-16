@@ -221,3 +221,7 @@ msgstr "启用 CSS 诊断"
 #. src/nodes/html_label.cpp
 msgid "Debug"
 msgstr "调试"
+
+#. src/nodes/html_label.cpp
+msgid "Transparent Canvas"
+msgstr "透明画布"

@@ -468,10 +468,16 @@ func _run() -> void:
 	_check_logical_floats()
 	await _check_layout_and_paint_containment()
 	await _check_page_canvas_background()
+	await _check_html_label_theme_independence()
+	await _check_color_schemes()
+	await _check_control_font_fallback()
+	await _check_language_font_fallback()
+	await _check_windows_chinese_generic_fonts()
 	await _check_viewport_overflow()
 	await _check_scrollbar_gutter()
 	await _check_scrollbar_styles()
 	_check_chromium_element_defaults()
+	_check_chromium_default_fonts()
 	await _check_scroll_insets()
 	await _check_overscroll_behavior()
 	await _check_smooth_scroll_behavior()
@@ -4821,6 +4827,8 @@ func _push_html_wheel(viewport: SubViewport, position: Vector2, index: MouseButt
 	event.global_position = position
 	event.factor = factor
 	viewport.push_input(event, true)
+	event.pressed = false
+	viewport.push_input(event, true)
 
 
 func _write_image_dpi_fixtures() -> bool:
@@ -8851,8 +8859,9 @@ func _check_pointer_events() -> void:
 		_check(layout.get_element_at(restored.get_bounding_rect().get_center()) == restored and
 			layout.get_link_at(restored.get_bounding_rect().get_center()) == "#restore",
 			"An eligible descendant restores hits inside a pointer-transparent box")
-		_check(layout.get_plain_text().contains("Pass through") and layout.hit_test_text(
-			pass_rect.position + Vector2(32.0, 10.0)) >= layout.get_plain_text().find("Pass through"),
+		var text_offset: int = layout.get_plain_text().find("Pass through")
+		var text_rects: Array[Rect2] = layout.get_selection_rects(text_offset, text_offset + 4) if text_offset >= 0 else []
+		_check(not text_rects.is_empty() and layout.hit_test_text(text_rects[0].get_center()) >= text_offset,
 			"Pointer transparency preserves text, layout and text hit testing")
 		layout.get_element_by_id("overlay").set_attribute("style", "position:absolute; inset:0; --hits:auto;")
 		_check(layout.layout(Vector2i(240, 140)) == OK and layout.get_link_at(
@@ -9645,14 +9654,14 @@ func _check_scroll_snap() -> void:
 	await process_frame
 	await process_frame
 	var target: Rect2 = _label_rect(label, "diagonal_target")
-	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
-	var expected: Vector2i = Vector2i(roundi(target.get_center().x - scroller.get_h_scroll_bar().page / 2.0), roundi(target.position.y))
+	var scrollport: Control = label.get_node("_HTMLScroll/_HTMLContent") as Control
+	var expected: Vector2i = Vector2i(roundi(target.get_center().x - scrollport.size.x / 2.0), roundi(target.position.y))
 	label.set_scroll_offset(Vector2i(285, 355))
 	await process_frame
 	await process_frame
 	_check(label.get_scroll_offset() == expected, "Diagonal snap gives %s, expected %s for %s in %s with ranges %s" % [
 		label.get_scroll_offset(), expected, target, label.get_content_size(),
-		Vector2(scroller.get_h_scroll_bar().max_value, scroller.get_v_scroll_bar().max_value),
+		Vector2(label.get_content_size()) - scrollport.size,
 	])
 	label.text = """<!doctype html><style>
 		html { scrollbar-width: none; }
@@ -9662,8 +9671,7 @@ func _check_scroll_snap() -> void:
 	await process_frame
 	await process_frame
 	_check(label.get_scroll_offset() == Vector2i.ZERO and
-		scroller.get_h_scroll_bar().max_value <= scroller.get_h_scroll_bar().page and
-		scroller.get_v_scroll_bar().max_value <= scroller.get_v_scroll_bar().page,
+		Vector2(label.get_content_size()).x <= scrollport.size.x and label.get_content_size().y <= scrollport.size.y,
 		"Replacing an overflowing document refreshes hidden scrollbar ranges before applying a queued offset")
 	viewport.queue_free()
 
@@ -9755,7 +9763,7 @@ func _check_flow_relative_edges() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
-	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	label.transparent_canvas = true
 	label.size = Vector2(viewport.size)
 	label.text = """<!doctype html><style>
 		body { margin: 0; }
@@ -9848,7 +9856,7 @@ func _check_layout_and_paint_containment() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
-	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	label.transparent_canvas = true
 	label.size = Vector2(viewport.size)
 	label.css_diagnostics_enabled = true
 	label.text = """<!doctype html><style>
@@ -9956,10 +9964,327 @@ func _check_page_canvas_background() -> void:
 	_check_pixel(viewport.get_texture().get_image(), sample, Color.RED, "The root background extends over the resized viewport")
 
 	label.text = '<!doctype html><body style="background: transparent">Text</body>'
-	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	label.transparent_canvas = true
 	await process_frame
 	await RenderingServer.frame_post_draw
 	_check(viewport.get_texture().get_image().get_pixelv(Vector2i(sample)).a < 0.01, "A theme override can make the page canvas transparent")
+	viewport.queue_free()
+
+
+func _check_html_label_theme_independence() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(280, 210)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.caret_blink = false
+	label.text = """<!doctype html><style>
+		:root { color-scheme: light; scrollbar-gutter: stable; }
+		body { margin: 8px; height: 600px; }
+	</style><p><span id="text">A document with 中文</span></p><input id="field" value="Editable">"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	label.select_all()
+	await RenderingServer.frame_post_draw
+	var baseline: Image = viewport.get_texture().get_image()
+	var text_rect: Rect2 = _label_rect(label, "text")
+	var size_before: Vector2i = label.get_content_size()
+	var hostile: Theme = Theme.new()
+	var panel: StyleBoxFlat = StyleBoxFlat.new()
+	panel.bg_color = Color.MAGENTA
+	for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM,]:
+		panel.set_content_margin(side, 41.0)
+	hostile.set_stylebox(&"panel", &"ScrollContainer", panel)
+	hostile.set_stylebox(&"panel", &"PopupMenu", panel)
+	hostile.set_stylebox(&"grabber", &"VScrollBar", panel)
+	hostile.set_color(&"background_color", &"HTMLLabel", Color.RED)
+	hostile.set_color(&"selection_color", &"HTMLLabel", Color.LIME)
+	var font: SystemFont = SystemFont.new()
+	font.font_names = PackedStringArray(["Courier New",])
+	hostile.default_font = font
+	hostile.default_font_size = 42
+	label.theme = hostile
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var changed: Image = viewport.get_texture().get_image()
+	_check(changed.get_data() == baseline.get_data(), "Godot Theme cannot change HTML paint or selection")
+	_check(label.get_content_size() == size_before and _label_rect(label, "text") == text_rect and
+		label.get_element_at(text_rect.get_center()) == label.get_element_by_id("text"), "Godot Theme cannot change layout or hit testing")
+
+	var touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	touch.position = Vector2(30.0, 160.0)
+	touch.pressed = true
+	viewport.push_input(touch, true)
+	var drag: InputEventScreenDrag = InputEventScreenDrag.new()
+	drag.position = Vector2(30.0, 101.0)
+	drag.relative = Vector2(0.0, -59.0)
+	viewport.push_input(drag, true)
+	touch.position = drag.position
+	touch.pressed = false
+	viewport.push_input(touch, true)
+	_check(label.get_scroll_offset().y == 59, "Touch dragging scrolls the CSS viewport")
+
+	label.set_scroll_offset(Vector2i.ZERO)
+	var field: HTMLInputElement = label.get_element_by_id("field") as HTMLInputElement
+	_right_click_field(viewport, field)
+	var menu: Control = label.get_node_or_null("_HTMLInputMenu") as Control
+	if menu != null and menu.visible:
+		await RenderingServer.frame_post_draw
+		var styled_menu: Image = viewport.get_texture().get_image()
+		label.theme = null
+		await process_frame
+		await RenderingServer.frame_post_draw
+		_check(viewport.get_texture().get_image().get_data() == styled_menu.get_data(), "The input context menu and field ignore Godot Theme")
+	else:
+		_check(false, "The input context menu opens despite the containing theme")
+	viewport.queue_free()
+
+
+func _check_color_schemes() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(260, 188)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		html { --scheme: dark; color-scheme: var(--scheme); overflow-y: scroll; }
+		body { margin: 0; height: 450px; }
+		#field, #light, #custom { position: absolute; top: 6px; width: 58px; }
+		#field { left: 5px; }
+		#light { left: 80px; color-scheme: only light; }
+		#custom { left: 155px; background: lime; }
+		#button { position: absolute; left: 5px; top: 36px; width: 55px; height: 24px; }
+		#inner { position: absolute; left: 80px; top: 36px; overflow-y: scroll; width: 63px; height: 58px; }
+		#inner > div { height: 240px; }
+		#area { position: absolute; left: 155px; top: 36px; width: 78px; height: 64px; overflow-y: scroll; resize: none; }
+		#system { position: absolute; left: 5px; top: 105px; width: 20px; height: 20px;
+			background: color-mix(in srgb, CanvasText 50%, red); }
+		#media { position: absolute; left: 35px; top: 105px; width: 20px; height: 20px; background: blue; }
+		@media (prefers-color-scheme: dark) { #media { background: lime; } }
+	</style><input id="field"><input id="light"><input id="custom"><button id="button">OK</button>
+	<div id="inner"><div></div></div><textarea id="area">one
+	two
+	three
+	four
+	five
+	six
+	seven
+	eight</textarea><div id="system"></div><div id="media"></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(120.0, 140.0), Color("#121212"), "Dark root controls the canvas")
+	_check_pixel(image, Vector2(15.0, 12.0), Color("#3b3b3b"), "Input inherits the dark scheme")
+	_check_pixel(image, Vector2(90.0, 12.0), Color.WHITE, "An input can choose light inside a dark document")
+	_check_pixel(image, Vector2(165.0, 12.0), Color.LIME, "Author backgrounds override the palette")
+	_check_pixel(image, Vector2(9.0, 43.0), Color("#6b6b6b"), "A native button uses the dark surface")
+	_check_pixel(image, Vector2(131.0, 85.0), Color("#2c2c2c"), "Inner scrollbar uses the element scheme")
+	var area: Rect2 = _label_rect(label, "area")
+	_check_pixel(image, Vector2(area.end.x - 12.0, area.end.y - 10.0), Color("#2c2c2c"), "Textarea scrollbar uses the element scheme")
+	_check_pixel(image, Vector2(247.0, 170.0), Color("#2c2c2c"), "Outer scrollbar uses the root scheme")
+	_check_pixel(image, Vector2(10.0, 110.0), Color("#ff8080"), "A system color resolves inside color-mix")
+	var dark_preferred: bool = DisplayServer.is_dark_mode_supported() and DisplayServer.is_dark_mode()
+	_check_pixel(image, Vector2(40.0, 110.0), Color.LIME if dark_preferred else Color.BLUE, "Media queries read the host preference")
+	var field: HTMLInputElement = label.get_element_by_id("field") as HTMLInputElement
+	field.value = "kept"
+	label.query_selector("html").set_attribute("style", "color-scheme: light")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(120.0, 140.0), Color.WHITE, "Runtime scheme changes refresh the canvas")
+	_check_pixel(image, Vector2(247.0, 170.0), Color("#f1f1f1"), "Runtime scheme changes refresh the outer scrollbar")
+	_check(label.get_element_by_id("field") == field and field.value == "kept", "Scheme changes preserve form and DOM state")
+	viewport.queue_free()
+
+
+func _check_control_font_fallback() -> void:
+	const SAMPLE: String = "Wi中文测试"
+	var font: SystemFont = SystemFont.new()
+	font.font_names = PackedStringArray(["Arial",])
+	var line: TextLine = TextLine.new()
+	line.add_string(SAMPLE, font, 24)
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var glyphs: Array[Dictionary] = server.shaped_text_get_glyphs(line.get_rid())
+	if glyphs.size() != SAMPLE.length():
+		return
+	for glyph: Dictionary in glyphs:
+		var face: RID = glyph.get("font_rid", RID())
+		if not face.is_valid():
+			return
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(400, 280)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>
+		body { margin: 0; color-scheme: light; }
+		.probe { position: absolute; left: 5px; font: 24px Arial; width: 180px; height: 35px;
+			color: red; background: white; border: 0; padding: 1px; }
+		#area { top: 3px; resize: none; font-family: monospace; }
+		#input { top: 40px; }
+		#button { top: 77px; }
+		#push { top: 114px; }
+		#select { top: 151px; }
+		#text { top: 188px; }
+		#options { top: 225px; font-family: monospace; }
+		.probe::placeholder { font-family: Arial; opacity: 1; color: red; }
+	</style><textarea class="probe" id="area" placeholder="%s"></textarea>
+	<input class="probe" id="input" placeholder="%s">
+	<button class="probe" id="button">%s</button>
+	<input class="probe" id="push" type="button" value="%s">
+	<select class="probe" id="select"><option>%s</option></select>
+	<div class="probe" id="text">%s</div>
+	<select class="probe" id="options" multiple><option style="font-family: Arial">%s</option></select>""" % [
+		SAMPLE, SAMPLE, SAMPLE, SAMPLE, SAMPLE, SAMPLE, SAMPLE,
+	]
+	viewport.add_child(label)
+	var reference: Control = Control.new()
+	viewport.add_child(reference)
+	reference.draw.connect(func() -> void: line.draw(reference.get_canvas_item(), Vector2(220.0, 4.0), Color.RED))
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var tolerance: float = 0.25
+	var expected: Rect2i = _color_bounds(image, Rect2i(210, 0, 175, 38), Color.RED, tolerance)
+	_check(expected.has_area(), "Reference Han glyphs render")
+	for id: String in ["area", "input", "button", "push", "select", "text", "options",]:
+		var box: Rect2i = Rect2i(_label_rect(label, id))
+		if id == "select":
+			box.size.x -= 18
+		var painted: Rect2i = _color_bounds(image, box, Color.RED, tolerance)
+		_check(painted.has_area() and abs(painted.size.x - expected.size.x) <= 3 and abs(painted.size.y - expected.size.y) <= 2,
+			"%s uses real fallback glyphs with the requested Latin font (%s and %s)" % [id, painted.size, expected.size,])
+	viewport.queue_free()
+
+
+func _check_language_font_fallback() -> void:
+	const SAMPLE: String = "ABC 骨直令门門体體汉漢，。"
+	const SIMPLIFIED: String = "zh-Hans-CN"
+	const TRADITIONAL: String = "zh-Hant-TW"
+	var font: SystemFont = SystemFont.new()
+	font.font_names = PackedStringArray(["Arial",])
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var simplified: TextLine = TextLine.new()
+	simplified.add_string(SAMPLE, font, 28, SIMPLIFIED)
+	var traditional: TextLine = TextLine.new()
+	traditional.add_string(SAMPLE, font, 28, TRADITIONAL)
+	var simplified_glyphs: Array[Dictionary] = server.shaped_text_get_glyphs(simplified.get_rid())
+	var traditional_glyphs: Array[Dictionary] = server.shaped_text_get_glyphs(traditional.get_rid())
+	if simplified_glyphs.is_empty() or simplified_glyphs == traditional_glyphs:
+		print("Skipping localized font fallback check because system glyphs are identical")
+		return
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(800, 160)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	var html: String = """<!doctype html><html lang="%s"><style>
+		body { margin: 0; color-scheme: light; background: white; }
+		section { position: absolute; top: 0; left: 0; width: 390px; }
+		#traditional { left: 400px; }
+		p, button, textarea { display: block; box-sizing: border-box; width: 100%%; height: 48px;
+			margin: 0; border: 0; padding: 3px; outline: none; color: black; background: white;
+			text-align: left; font: 28px/36px Arial; }
+		textarea { resize: none; font-family: monospace; }
+		textarea::placeholder { font-family: Arial; opacity: 1; color: black; }
+	</style>""" % SIMPLIFIED
+	for column: String in ["simplified", "traditional",]:
+		var lang: String = TRADITIONAL if column == "traditional" else SIMPLIFIED
+		html += """<section id="%s" lang="%s"><p>%s</p>
+			<button lang="%s"><span>%s</span></button><textarea placeholder="%s"></textarea></section>""" % [
+			column, lang, SAMPLE, lang, SAMPLE, SAMPLE,
+		]
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for row: int in range(3):
+		var left: Rect2i = Rect2i(0, row * 48, 390, 48)
+		var right: Rect2i = Rect2i(400, row * 48, 390, 48)
+		_check(image.get_region(left).get_data() != image.get_region(right).get_data(),
+			"Language-specific glyphs paint differently in row %d (paragraph, button, placeholder)" % row)
+
+	var section: HTMLElement = label.get_element_by_id("traditional")
+	var button: HTMLElement = section.query_selector("button")
+	_check(section.remove_attribute("lang") == OK, "Inherit the document language in the second column")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	for row: int in range(3):
+		var left: Rect2i = Rect2i(0, row * 48, 390, 48)
+		var right: Rect2i = Rect2i(400, row * 48, 390, 48)
+		var same_glyphs: bool = image.get_region(left).get_data() == image.get_region(right).get_data()
+		_check(same_glyphs == (row != 1), "An explicit button language survives its ancestor's lang change")
+
+	_check(button.remove_attribute("lang") == OK, "Remove the button language override")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check(image.get_region(Rect2i(0, 48, 390, 48)).get_data() == image.get_region(Rect2i(400, 48, 390, 48)).get_data(),
+		"The button repaints with its inherited language")
+	viewport.queue_free()
+
+
+func _check_windows_chinese_generic_fonts() -> void:
+	const SAMPLE: String = "ABC 骨直令门門体體汉漢，。"
+	if OS.get_name() != "Windows":
+		return
+	var installed: PackedStringArray = OS.get_system_fonts()
+	for family: String in ["Noto Sans SC", "Noto Serif SC", "NSimSun", "Microsoft YaHei",]:
+		if not installed.has(family):
+			print("Skipping Chinese generic font comparison because %s is unavailable" % family)
+			return
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(800, 250)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><html lang="zh-CN"><style>
+		body { margin: 0; background: white; color-scheme: light; }
+		section { position: absolute; left: 0; top: 0; width: 390px; }
+		#reference { left: 400px; }
+		p, button, textarea { display: block; box-sizing: border-box; width: 100%; height: 48px;
+			margin: 0; border: 0; padding: 3px; text-align: left; color: black; background: white;
+			font-size: 26px; line-height: 36px; }
+		textarea { resize: none; }
+		textarea::placeholder { color: black; opacity: 1; }
+	</style><section>
+		<p>{sample}</p><p style="font-family:serif">{sample}</p>
+		<button>{sample}</button><textarea placeholder="{sample}"></textarea>
+		<p style="font-family:'Microsoft YaHei',sans-serif">{sample}</p>
+	</section><section id="reference">
+		<p style="font-family:'Times New Roman','Noto Sans SC'">{sample}</p>
+		<p style="font-family:'Times New Roman','Noto Serif SC'">{sample}</p>
+		<button style="font-family:Arial,'Noto Sans SC'">{sample}</button>
+		<textarea style="font-family:Consolas,NSimSun" placeholder="{sample}"></textarea>
+		<p style="font-family:'Microsoft YaHei'">{sample}</p>
+	</section>""".replace("{sample}", SAMPLE)
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for row: int in range(5):
+		var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
+		var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
+		_check(image.get_region(actual).get_data() == image.get_region(expected).get_data(),
+			"Windows Chinese generic mapping and author font order match the named faces in row %d" % row)
 	viewport.queue_free()
 
 
@@ -9977,9 +10302,9 @@ func _check_viewport_overflow() -> void:
 	viewport.add_child(label)
 	await process_frame
 	await process_frame
-	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
+	var scrollport: Control = label.get_node("_HTMLScroll/_HTMLContent") as Control
 	_check(label.get_content_size() == Vector2i(370, 320), "Body overflow moves to the viewport and leaves its box unclipped")
-	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
+	_check(scrollport.size == Vector2(viewport.size),
 		"Hidden body overflow suppresses both viewport scrollbars")
 	_push_html_wheel(viewport, Vector2(16.0, 16.0), MOUSE_BUTTON_WHEEL_DOWN, 8.0)
 	var pan: InputEventPanGesture = InputEventPanGesture.new()
@@ -9999,15 +10324,15 @@ func _check_viewport_overflow() -> void:
 	body.set_attribute("style", "overflow: auto")
 	await process_frame
 	await process_frame
-	_check(scroller.get_h_scroll_bar().visible and scroller.get_v_scroll_bar().visible and
+	_check(scrollport.size == Vector2(viewport.size) - Vector2(15.0, 15.0) and
 		label.get_scroll_offset() == Vector2i(130, 170),
-		"Changing hidden overflow back to auto transfers the position to the native scrollbars")
+		"Changing hidden overflow back to auto transfers the position to the visible scrollbars")
 	body.set_attribute("style", "overflow: hidden")
 	await process_frame
 	await process_frame
-	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible and
+	_check(scrollport.size == Vector2(viewport.size) and
 		label.get_scroll_offset() == Vector2i(130, 170),
-		"Changing auto overflow to hidden retains the viewport position without native scroll ranges")
+		"Changing auto overflow to hidden retains the viewport position when the bars are hidden")
 
 	label.text = """<!doctype html><style>
 		html { overflow: auto hidden; }
@@ -10015,7 +10340,7 @@ func _check_viewport_overflow() -> void:
 	</style>"""
 	await process_frame
 	await process_frame
-	_check(scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
+	_check(scrollport.size == Vector2(viewport.size) - Vector2(0.0, 15.0),
 		"The root controls the two scrollbars independently")
 	_push_html_wheel(viewport, Vector2(16.0, 16.0), MOUSE_BUTTON_WHEEL_DOWN, 8.0)
 	_check(label.get_scroll_offset() == Vector2i.ZERO, "A blocked vertical wheel leaves the horizontal axis unchanged")
@@ -10032,15 +10357,15 @@ func _check_viewport_overflow() -> void:
 	</style><div></div>"""
 	await process_frame
 	await process_frame
-	_check(scroller.get_h_scroll_bar().visible and scroller.get_v_scroll_bar().visible,
+	_check(scrollport.size == Vector2(viewport.size) - Vector2(15.0, 15.0),
 		"Root overflow scroll forces both viewport scrollbars even when the body fits")
 	label.set_scroll_offset(Vector2i(120, 90))
 	_check(label.get_scroll_offset() == Vector2i.ZERO, "Explicit root overflow leaves the body's local clipping in place")
 	label.query_selector("html").set_attribute("style", "overflow: clip")
 	await process_frame
 	await process_frame
-	_check(not scroller.get_h_scroll_bar().visible and not scroller.get_v_scroll_bar().visible,
-		"Setting root overflow clip updates the native scrollbar policy")
+	_check(scrollport.size == Vector2(viewport.size),
+		"Setting root overflow clip updates the scrollbar visibility")
 	viewport.queue_free()
 
 
@@ -10063,66 +10388,66 @@ func _check_scrollbar_gutter() -> void:
 	viewport.add_child(label)
 	await process_frame
 	await process_frame
-	var scroller: ScrollContainer = label.get_node("_HTMLScroll") as ScrollContainer
-	var bar_width: float = scroller.get_v_scroll_bar().get_combined_minimum_size().x
-	var reserved_width: float = viewport.size.x - 2.0 * bar_width
-	_check(not scroller.get_v_scroll_bar().visible and is_equal_approx(scroller.get_h_scroll_bar().page, reserved_width),
+	var scrollport: Control = label.get_node("_HTMLScroll/_HTMLContent") as Control
+	const BAR_WIDTH: float = 15.0
+	var reserved_width: float = viewport.size.x - 2.0 * BAR_WIDTH
+	_check(scrollport.size.is_equal_approx(Vector2(reserved_width, 150.0)),
 		"Stable both-edges reserves two gutters without displaying a scrollbar")
 	_check(_label_rect(label, "unit").size.x == reserved_width, "Unconditional gutters reduce the viewport unit basis")
 	_check(_label_rect(label, "media").size.x == 120.0, "Media dimensions include the native gutters")
-	var in_gutter: Vector2 = Vector2(bar_width / 2.0, 10.0)
-	var in_content: Vector2 = Vector2(bar_width + 2.0, 10.0)
+	var in_gutter: Vector2 = Vector2(BAR_WIDTH / 2.0, 10.0)
+	var in_content: Vector2 = Vector2(BAR_WIDTH + 2.0, 10.0)
 	_check(label.get_element_at(in_gutter) == null and label.get_element_at(in_content) == label.get_element_by_id("unit"),
 		"Content hit testing starts after the leading gutter")
 	await RenderingServer.frame_post_draw
 	var output: Image = viewport.get_texture().get_image()
 	_check_pixel(output, in_gutter, Color("#35679a"), "The canvas gradient extends to the leading gutter")
-	_check_pixel(output, Vector2(240.0 - bar_width / 2.0, 10.0), Color("#35679a"),
+	_check_pixel(output, Vector2(240.0 - BAR_WIDTH / 2.0, 10.0), Color("#35679a"),
 		"The canvas gradient extends to the trailing gutter")
 	_check_pixel(output, in_content, Color.RED, "Document content paints inside the gutters")
 
 	label.get_element_by_id("extent").set_attribute("style", "height: 320px")
 	await process_frame
 	await process_frame
-	_check(scroller.get_v_scroll_bar().visible and is_equal_approx(scroller.get_h_scroll_bar().page, reserved_width),
+	_check(scrollport.size.is_equal_approx(Vector2(reserved_width, 150.0)),
 		"Showing the scrollbar consumes its reserved gutter without resizing the scrollport")
 	_check(_label_rect(label, "media").size.x == 120.0, "Showing the native scrollbar keeps the media rule matched")
-	_check(not scroller.get_h_scroll_bar().visible, "The stable viewport width avoids a redundant horizontal scrollbar")
+	_check(scrollport.size.y == 150.0, "The stable viewport width avoids a redundant horizontal scrollbar")
 	await RenderingServer.frame_post_draw
 	output = viewport.get_texture().get_image()
-	_check_pixel(output, Vector2(240.0 - bar_width / 2.0, 115.0), Color("#35679a"),
+	_check_pixel(output, Vector2(240.0 - BAR_WIDTH / 2.0, 115.0), Color("#35679a"),
 		"The canvas background also paints under a transparent scrollbar track")
 
 	var html: HTMLElement = label.query_selector("html")
 	html.set_attribute("style", "scrollbar-gutter: auto")
 	await process_frame
 	await process_frame
-	_check(_label_rect(label, "unit").size.x == 240.0 and scroller.get_v_scroll_bar().visible,
+	_check(_label_rect(label, "unit").size.x == 240.0 and scrollport.size.x == 240.0 - BAR_WIDTH,
 		"A conditional scrollbar leaves vw based on the full viewport")
 	_check(_label_rect(label, "media").size.x == 120.0, "A conditional scrollbar still preserves the media viewport")
 	html.set_attribute("style", "scrollbar-gutter: auto; overflow: auto scroll")
 	await process_frame
 	await process_frame
-	_check(_label_rect(label, "unit").size.x == 240.0 - bar_width and not scroller.get_h_scroll_bar().visible,
+	_check(_label_rect(label, "unit").size.x == 240.0 - BAR_WIDTH and scrollport.size.y == 150.0,
 		"A forced scrollbar on the root reduces vw without overflowing an exact viewport fit")
 	var unit: HTMLElement = label.get_element_by_id("unit")
 	unit.set_attribute("style", "width: calc(200vw - 235px)")
 	await process_frame
 	await process_frame
-	_check(not scroller.get_h_scroll_bar().visible, "Conditional bars are decided after the unconditional viewport-unit reduction")
+	_check(scrollport.size.y == 150.0, "Conditional bars are decided after the unconditional viewport-unit reduction")
 	unit.remove_attribute("style")
 
 	html.set_attribute("style", "scrollbar-width: none")
 	await process_frame
 	await process_frame
-	_check(not scroller.get_v_scroll_bar().visible and _label_rect(label, "unit").size.x == 240.0,
+	_check(scrollport.size.x == 240.0 and _label_rect(label, "unit").size.x == 240.0,
 		"Scrollbar-width none removes the stable gutters")
 
 	html.set_attribute("style", "overflow: hidden; scrollbar-gutter: stable")
 	label.layout_direction = Control.LAYOUT_DIRECTION_RTL
 	await process_frame
 	await process_frame
-	_check(_label_rect(label, "unit").size.x == 240.0 - bar_width and not scroller.get_v_scroll_bar().visible,
+	_check(_label_rect(label, "unit").size.x == 240.0 - BAR_WIDTH and scrollport.size.x == 240.0 - BAR_WIDTH,
 		"A hidden axis can reserve a stable gutter")
 	_check(label.get_element_at(in_gutter) == null and label.get_element_at(in_content) == label.get_element_by_id("unit"),
 		"A single stable gutter follows the native scrollbar side in RTL")
@@ -10133,7 +10458,7 @@ func _check_scrollbar_gutter() -> void:
 	</style><div id="unit"></div>"""
 	await process_frame
 	await process_frame
-	_check(scroller.get_v_scroll_bar().visible and scroller.get_h_scroll_bar().page == 240.0 - bar_width and
+	_check(scrollport.size.x == 240.0 - BAR_WIDTH and
 		_label_rect(label, "unit").size.x == 240.0,
 		"Body overflow can force native bars without propagating its gutter or changing viewport units")
 	viewport.queue_free()
@@ -10218,45 +10543,45 @@ Seven</textarea>"""
 	_push_html_wheel(viewport, Vector2(228.0, 24.0), MOUSE_BUTTON_WHEEL_DOWN)
 	_check(moving.get_bounding_rect().position.y < original_y, "Scrollbar-width none preserves scrolling")
 
-	var scroll: ScrollContainer = port.get_node("_HTMLScroll") as ScrollContainer
-	var bar: VScrollBar = scroll.get_v_scroll_bar()
-	var default_width: float = bar.size.x
+	var scrollport: Control = port.get_node("_HTMLScroll/_HTMLContent") as Control
+	_check(scrollport.size.x == 165.0, "The viewport uses Fluent geometry when only body sets scrollbar properties")
 	var html: HTMLElement = port.query_selector("html")
-	var default_track: StyleBoxFlat = bar.get_theme_stylebox("scroll") as StyleBoxFlat
-	_check(bar.visible and is_equal_approx(default_width, 15.0) and default_track != null
-		and default_track.bg_color.is_equal_approx(Color("#f1f1f1")),
-		"The viewport uses Fluent defaults when only body sets scrollbar properties")
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(170.0, 219.0), Color("#f1f1f1"), "The viewport paints the default CSS track")
+
 	html.set_attribute("style", "scrollbar-width: thin; scrollbar-color: #ec34ee #25c9a4;")
 	await process_frame
 	await process_frame
-	var styled_thumb: StyleBoxFlat = bar.get_theme_stylebox("grabber") as StyleBoxFlat
-	var styled_track: StyleBoxFlat = bar.get_theme_stylebox("scroll") as StyleBoxFlat
-	_check(bar.visible and bar.size.x > 0.0 and bar.size.x < default_width and
-		styled_thumb != null and styled_track != null and styled_thumb.bg_color.is_equal_approx(Color("#ec34ee")) and
-		styled_track.bg_color.is_equal_approx(Color("#25c9a4")),
-		"Root styles reduce the viewport scrollbar width and apply the thumb and track colors")
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check(scrollport.size.x == 171.0, "Root CSS reduces the viewport scrollbar width")
+	_check_pixel(pixels, Vector2(176.0, 139.0), Color("#ec34ee"), "The viewport paints the authored thumb")
+	_check_pixel(pixels, Vector2(172.0, 139.0), Color("#25c9a4"), "The idle thumb leaves the rest of the lane visible")
+	var motion_over_bar: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion_over_bar.position = Vector2(172.0, 139.0)
+	motion_over_bar.relative = Vector2(1.0, 0.0)
+	viewport.push_input(motion_over_bar, true)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(173.0, 139.0), Color("#ec34ee"), "The viewport hover widens just the painted thumb")
+	_check(scrollport.size.x == 171.0, "Hover preserves the viewport and scrollbar hit width")
+	_drag_pointer(viewport, Vector2(172.0, 139.0), Vector2(172.0, 183.0))
+	_check(port.get_scroll_offset().y > 0, "The full viewport lane accepts dragging outside the idle thumb")
+	port.set_scroll_offset(Vector2i.ZERO)
 
 	html.set_attribute("style", "scrollbar-width: none")
 	await process_frame
 	await process_frame
 	_push_html_wheel(viewport, Vector2(80.0, 160.0), MOUSE_BUTTON_WHEEL_DOWN)
 	await process_frame
-	_check(not bar.visible and port.get_scroll_offset().y > 0, "Viewport scrolling stays active with its scrollbar hidden")
+	_check(scrollport.size.x == 180.0 and port.get_scroll_offset().y > 0, "Viewport scrolling stays active with its scrollbar hidden")
 
 	html.set_attribute("style", "scrollbar-width: auto; scrollbar-color: auto")
 	await process_frame
 	await process_frame
-	var normal_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber") as StyleBoxFlat
-	var hover_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber_highlight") as StyleBoxFlat
-	var pressed_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber_pressed") as StyleBoxFlat
-	_check(bar.visible and is_equal_approx(bar.size.x, default_width) and normal_grabber != null
-		and normal_grabber.bg_color.is_equal_approx(Color("#00000072")), "CSS auto restores the Fluent viewport palette")
-	_check(normal_grabber != null and hover_grabber != null and pressed_grabber != null
-		and normal_grabber.get_minimum_size() == hover_grabber.get_minimum_size()
-		and normal_grabber.get_minimum_size() == pressed_grabber.get_minimum_size()
-		and hover_grabber.get_expand_margin(SIDE_LEFT) > normal_grabber.get_expand_margin(SIDE_LEFT)
-		and normal_grabber.get_expand_margin(SIDE_RIGHT) == hover_grabber.get_expand_margin(SIDE_RIGHT),
-		"The viewport keeps all grabber hit geometry while widening its visible thumb")
+	_check(scrollport.size.x == 165.0, "CSS auto restores the default scrollbar width")
 	viewport.queue_free()
 
 
@@ -10284,6 +10609,42 @@ func _check_chromium_element_defaults() -> void:
 	_check(_rect(layout, "sized").size.is_equal_approx(Vector2(50.0, 25.0)), "Author CSS overrides a default control size")
 	_check(is_equal_approx(_rect(layout, "progress").size.x, 160.0) and is_equal_approx(_rect(layout, "meter").size.x, 80.0),
 		"Progress and meter use distinct Chromium default widths")
+
+
+func _check_chromium_default_fonts() -> void:
+	if OS.get_name() != "Windows":
+		return
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><style>
+		body { margin: 0; }
+		.probe { display: inline-block; width: max-content; white-space: nowrap; }
+	</style><div>
+		<span class="probe" id="body">WWiiii00a</span>
+		<span class="probe" id="serif" style="font: 16px 'Times New Roman'">WWiiii00a</span>
+		<span class="probe" id="sans" style="font-family: sans-serif">WWiiii00a</span>
+		<span class="probe" id="arial" style="font: 16px Arial">WWiiii00a</span>
+	</div><div>
+		<code class="probe" id="code">WWiiii00a</code>
+		<span class="probe" id="fixed" style="font: 13px Consolas">WWiiii00a</span>
+		<div style="font-size: 16px">
+			<code class="probe" id="sized_code">WWiiii00a</code>
+			<span class="probe" id="sized_fixed" style="font: 16px Consolas">WWiiii00a</span>
+		</div>
+		<h2><code class="probe" id="heading_code">WWiiii00a</code>
+			<span class="probe" id="heading_fixed" style="font: bold 19.5px Consolas">WWiiii00a</span></h2>
+	</div><div>
+		<textarea id="area" rows="2" cols="16"></textarea>
+		<textarea id="area_ref" rows="2" cols="16" style="font: 13.333px Consolas"></textarea>
+		<button id="button">WWiiii00a</button>
+		<button id="button_ref" style="font: 13.333px Arial">WWiiii00a</button>
+	</div>"""
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(900, 450)) == OK, "Lay out the Windows default-font fixture")
+	for pair: Array in [
+		["body", "serif",], ["sans", "arial",], ["code", "fixed",], ["sized_code", "sized_fixed",],
+		["heading_code", "heading_fixed",], ["area", "area_ref",], ["button", "button_ref",],
+	]:
+		_check(is_equal_approx(_rect(layout, pair[0]).size.x, _rect(layout, pair[1]).size.x),
+			"%s uses the same default font and size as %s" % pair)
 
 
 func _check_css_transitions() -> void:
@@ -11019,7 +11380,7 @@ func _check_group_opacity() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
-	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	label.transparent_canvas = true
 	label.size = Vector2(232.0, 128.0)
 	label.text = """<!doctype html><style>
 		body { margin: 0; }
@@ -11094,7 +11455,7 @@ func _check_filters() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
-	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	label.transparent_canvas = true
 	label.size = Vector2(236.0, 132.0)
 	label.css_diagnostics_enabled = true
 	label.text = """<!doctype html><style>
@@ -11404,9 +11765,9 @@ func _check_user_select() -> void:
 	label.size = Vector2(viewport.size)
 	label.css_diagnostics_enabled = true
 	var selection_color: Color = Color("#d200d2")
-	label.add_theme_color_override("selection_color", selection_color)
 	label.text = """<!doctype html><style>
 		html { background: white; } body { margin: 8px; font: 16px/24px monospace; }
+		::selection { background: #d200d2; }
 		#blocked { --policy: none; -webkit-user-select: var(--policy); }
 		#allowed { user-select: text; }
 		#atomic { user-select: all; }
@@ -11485,7 +11846,6 @@ func _check_selection_colors() -> void:
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
 	label.size = Vector2(viewport.size)
-	label.add_theme_color_override("selection_color", Color.MAGENTA)
 	label.text = """<!doctype html><style>
 		html { background: white; } body { margin: 8px; color: black; font: 28px/38px monospace; }
 		:root::selection { color: red; background: lime; }
@@ -14406,36 +14766,36 @@ func _check_input_context_menu() -> void:
 	single.set_selection_range(1, 3)
 
 	_right_click_field(viewport, single)
-	var menu: PopupMenu = label.get_node_or_null("_HTMLScroll/_HTMLContent/_HTMLCanvas/_HTMLInputMenu") as PopupMenu
+	var menu: Control = label.get_node_or_null("_HTMLInputMenu") as Control
 	_check(menu != null and menu.visible and label.get_focused_element() == single,
 		"Right-click opens the popup and focuses the input")
 	if menu == null or not menu.visible:
 		viewport.queue_free()
 		return
-	_check(menu.item_count == 8 and not menu.is_item_disabled(4) and menu.is_item_disabled(0) and menu.is_item_disabled(1),
-		"The menu offers selection commands and disables empty history")
-	_check(menu.get_item_accelerator(4) != KEY_NONE, "Menu accelerators use the Godot Input Map")
+	_click_input_menu(viewport, menu, 0)
+	_check(menu.visible and single.value == "alpha", "The menu disables empty history")
 	_check(single.get_selection_start() == 1 and single.get_selection_end() == 3, "Right-click preserves the field selection")
-	menu.emit_signal("id_pressed", menu.get_item_id(7))
+	_click_input_menu(viewport, menu, 5)
 	_check(not menu.visible and single.get_selection_start() == 0 and single.get_selection_end() == 5,
 		"Select All acts on the field and closes the menu")
 
 	_send_dom_key(viewport, KEY_X, "x".unicode_at(0))
 	await process_frame
 	_right_click_field(viewport, single)
-	_check(menu.visible and not menu.is_item_disabled(0), "An edited input offers Undo in its menu")
-	menu.emit_signal("id_pressed", menu.get_item_id(0))
+	_check(menu.visible, "An edited input reopens its menu")
+	_click_input_menu(viewport, menu, 0)
 	_check(single.value == "alpha" and single.get_selection_end() == 5, "Menu Undo restores text and selection")
 	_right_click_field(viewport, single)
-	_check(menu.visible and not menu.is_item_disabled(1), "Undo makes Redo available in the menu")
-	menu.emit_signal("id_pressed", menu.get_item_id(1))
+	_check(menu.visible, "Undo leaves the context menu available")
+	_click_input_menu(viewport, menu, 1)
 	_check(single.value == "x", "Menu Redo reapplies the edit")
 
 	multi.set_selection_range(1, 4)
 	_right_click_field(viewport, multi)
-	_check(menu.visible and label.get_focused_element() == multi and menu.is_item_disabled(3) and
-		menu.is_item_disabled(5) and not menu.is_item_disabled(4) and not menu.is_item_disabled(7),
-		"Readonly textareas allow Copy and Select All and disable editing")
+	_check(menu.visible and label.get_focused_element() == multi, "Readonly textareas show a context menu")
+	_click_input_menu(viewport, menu, 2)
+	_click_input_menu(viewport, menu, 4)
+	_check(menu.visible and multi.value.strip_edges() == "second field", "Readonly textareas disable Cut and Paste")
 	label.context_menu_enabled = false
 	_check(not menu.visible, "Disabling the context menu closes the popup")
 	_right_click_field(viewport, multi)
@@ -14448,9 +14808,21 @@ func _check_input_context_menu() -> void:
 	menu_key.pressed = true
 	viewport.push_input(menu_key)
 	_check(menu.visible and label.get_focused_element() == multi, "The ui_menu input action opens the focused textarea menu")
+	_send_dom_key(viewport, KEY_UP)
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(not menu.visible and multi.get_selection_start() == 0 and multi.get_selection_end() == multi.value.length(),
+		"Keyboard navigation can activate Select All in the context menu")
+	_right_click_field(viewport, multi)
 	multi.remove()
 	_check(not menu.visible, "Removing the menu target closes the popup")
 	viewport.queue_free()
+
+
+func _click_input_menu(viewport: SubViewport, menu: Control, command: int) -> void:
+	var row_height: float = (menu.size.y - 14.0) / 6.0
+	var separator: float = 4.0 * (int(command >= 2) + int(command >= 5))
+	var point: Vector2 = menu.get_global_transform_with_canvas() * Vector2(18.0, 3.0 + separator + (command + 0.5) * row_height)
+	_drag_pointer(viewport, point, point)
 
 
 func _check_caret_blink() -> void:

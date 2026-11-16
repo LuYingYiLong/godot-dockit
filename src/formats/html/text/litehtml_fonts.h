@@ -27,6 +27,7 @@ namespace docrender {
 			godot::Ref<godot::Font> primary;
 			godot::Ref<godot::Font> unrestricted;
 			std::vector<FontChoice> choices;
+			godot::String language;
 			bool size_dependent = false;
 
 			godot::Ref<godot::Font> match(const godot::String& p_text, int64_t p_start, int64_t p_end) const;
@@ -72,9 +73,9 @@ namespace docrender {
 
 	public:
 		static constexpr int32_t DEFAULT_SIZE = 16;
-		static constexpr const char* DEFAULT_FAMILY = "sans-serif";
-
 		LiteHTMLFonts(const HTMLFontConfig& p_fonts, HTMLResources& p_resources);
+		const char* default_family() const;
+		int32_t default_fixed_size() const;
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);
 

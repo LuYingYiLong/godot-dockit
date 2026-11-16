@@ -12,6 +12,7 @@ namespace docrender::css {
 	public:
 		virtual ~StyleHost() = default;
 		virtual pixel_t default_font_size() const = 0;
+		virtual pixel_t default_fixed_font_size() const { return default_font_size(); }
 		virtual font_metrics initial_font_metrics() const = 0;
 		virtual pixel_t points_to_pixels(float points) const = 0;
 		virtual css_container_units container_units() const = 0;

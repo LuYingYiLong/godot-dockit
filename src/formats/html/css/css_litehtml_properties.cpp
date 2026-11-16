@@ -13,21 +13,34 @@
 
 #include "css_compute_context.h"
 #include "css_image_value.h"
+#include "css_litehtml_dom.h"
+
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/translation_server.hpp>
 
 namespace {
 	using namespace litehtml;
+
+	std::string font_language(const element& subject) {
+		if (const char* language = get_element_language(subject); language && *language) return language;
+		auto locale = godot::TranslationServer::get_singleton()->get_locale();
+		if (locale.is_empty()) locale = godot::OS::get_singleton()->get_locale();
+		return locale.replace("_", "-").utf8().get_data();
+	}
 
 	class DocumentStyleHost final : public docrender::css::StyleHost
 	{
 		document& doc;
 		const element& subject;
 		const bool include_subject;
+		const std::string language;
 
 	public:
 		DocumentStyleHost(document& value, const element& owner, bool include_owner = false) :
-			doc(value), subject(owner), include_subject(include_owner) {}
+			doc(value), subject(owner), include_subject(include_owner), language(font_language(owner)) {}
 
 		pixel_t default_font_size() const override { return doc.container()->get_default_font_size(); }
+		pixel_t default_fixed_font_size() const override { return doc.container()->get_default_fixed_font_size(); }
 		font_metrics initial_font_metrics() const override { return doc.initial_font_metrics(); }
 
 		pixel_t points_to_pixels(float points) const override { return doc.container()->pt_to_px(points); }
@@ -42,7 +55,9 @@ namespace {
 
 		uint_ptr get_font(const font_description& description, font_metrics* metrics) const override
 		{
-			return doc.get_font(description, metrics);
+			auto localized = description;
+			localized.language = language;
+			return doc.get_font(localized, metrics);
 		}
 
 		void load_image(const string& url, const string& base, css_image_orientation orientation) const override

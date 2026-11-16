@@ -78,7 +78,7 @@ center
 a:link
 {
 	text-decoration: underline;
-	color: #0000ee;
+	color: LinkText;
 	cursor: pointer;
 }
 
@@ -363,7 +363,7 @@ input, textarea, select, button {
 	display: inline-block;
 	font: 13.333px Arial, sans-serif;
 	margin: 0;
-	color: black;
+	color: FieldText;
 	line-height: normal;
 	text-transform: none;
 	text-indent: 0;
@@ -375,8 +375,8 @@ input:not(:is([type="checkbox" i], [type="radio" i], [type="range" i], [type="hi
 	[type="color" i], [type="date" i], [type="datetime-local" i], [type="month" i], [type="week" i], [type="time" i])) {
 	width: 169px;
 	height: 1lh;
-	background-color: white;
-	border: 1px solid #767676;
+	background-color: Field;
+	border: 1px solid ButtonBorder;
 	padding: 2px 3px;
 	border-radius: 2px;
 	cursor: text;
@@ -387,37 +387,38 @@ input:is([type="checkbox" i], [type="radio" i]) {
 	height: 13px;
 	box-sizing: border-box;
 	margin: 3px 3px 3px 4px;
-	border: 1px solid #767676;
+	border: 1px solid ButtonBorder;
 	border-radius: 2px;
-	background-color: white;
+	background-color: Field;
 	cursor: default;
 }
 input[type="radio" i] { margin: 3px 3px 0 5px; border-radius: 50%; }
-input:is([type="checkbox" i], [type="radio" i]):checked { color: white; }
+input:is([type="checkbox" i], [type="radio" i]):checked { color: AccentColorText; }
 input[type="range" i] { width: 129px; height: 16px; margin: 2px; cursor: default; }
 
 button, input:is([type="button" i], [type="submit" i], [type="reset" i]) {
 	box-sizing: border-box;
 	padding: 2px 7px;
-	background-color: #f0f0f0;
-	border: 1px solid #767676;
+	background-color: ButtonFace;
+	color: ButtonText;
+	border: 1px solid ButtonBorder;
 	border-radius: 2px;
 	text-align: center;
 	cursor: default;
 }
 input:is([type="button" i], [type="submit" i], [type="reset" i]) { min-height: 21px; }
 :is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):hover {
-	background-color: #e5e5e5;
-	border-color: #4f4f4f;
+	background-color: -docrender-button-hover;
+	border-color: -docrender-border-hover;
 }
 :is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):active {
-	background-color: #f5f5f5;
-	border-color: #8d8d8d;
+	background-color: -docrender-button-active;
+	border-color: -docrender-border-active;
 }
 :is(button, input, select, textarea):disabled {
-	color: rgb(16 16 16 / 30%);
-	background-color: rgb(239 239 239 / 30%);
-	border-color: rgb(118 118 118 / 30%);
+	color: -docrender-disabled-text;
+	background-color: -docrender-disabled-face;
+	border-color: -docrender-disabled-border;
 	cursor: default;
 }
 
@@ -425,15 +426,15 @@ select {
 	box-sizing: border-box;
 	height: 19px;
 	padding-inline: 3px 1px;
-	background-color: white;
-	border: 1px solid #767676;
+	background-color: Field;
+	border: 1px solid ButtonBorder;
 	cursor: default;
 }
 select[multiple] { border-radius: 2px; }
 textarea {
 	font-family: monospace;
-	background-color: white;
-	border: 1px solid #767676;
+	background-color: Field;
+	border: 1px solid ButtonBorder;
 	padding: 2px;
 	white-space: pre-wrap;
 	overflow: auto;
@@ -441,7 +442,7 @@ textarea {
 	cursor: text;
 }
 :is(button, textarea, input, select)[hidden] { display: none; }
-:is(button, input, select, textarea, a[href], [tabindex]):focus-visible { outline: 2px solid #101010; }
+:is(button, input, select, textarea, a[href], [tabindex]):focus-visible { outline: 2px solid -docrender-focus-ring; }
 input[type="hidden" i] { display: none !important; }
 
 
@@ -455,7 +456,7 @@ details > summary:first-of-type { display: list-item; list-style: disclosure-clo
 details:open > summary:first-of-type { list-style-type: disclosure-open; }
 details:not(:has(> summary))::before { display: block; content: "▸ Details"; }
 details:open:not(:has(> summary))::before { content: "▾ Details"; }
-details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid #101010; }
+details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid -docrender-focus-ring; }
 
 ruby { display: inline; }
 ruby > rt { display: block; font-size: 50%; white-space: nowrap; }

@@ -147,6 +147,8 @@ namespace docrender::css {
 		bool m_svg_interpolates_linear_rgb = false;
 		uint_ptr				m_font;
 		css_length				m_font_size;
+		int m_font_size_keyword = font_size_medium;
+		bool m_relative_font_size = true;
 		css_font_families		m_font_families;
 		css_length				m_font_weight;
 		float					m_font_width = 100.0f;
@@ -175,6 +177,7 @@ namespace docrender::css {
 		font_metrics			m_font_metrics;
 		text_transform			m_text_transform;
 		web_color				m_color;
+		int m_color_scheme_support = 0;
 		string					m_cursor;
 		css_generated_content	m_content;
 		css_quotes				m_quotes;
@@ -496,6 +499,7 @@ namespace docrender::css {
 		void set_text_transform(text_transform mTextTransform);
 
 		web_color get_color() const;
+		color_scheme get_color_scheme() const { return m_color.scheme; }
 		void set_color(web_color color);
 
 		const std::vector<box_shadow>& get_text_shadows() const { return m_text_shadows; }

@@ -40,6 +40,7 @@ namespace docrender {
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);		// 更新文档的字体声明和命名特性并报告是否变化
 		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size); // 更新排版和媒体查询各自使用的视口尺寸
+		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);
 		std::shared_ptr<litehtml::document> get_svg_clip_document(std::string_view p_url, const char* p_base); // 读取并缓存独立 SVG 裁剪文档
 		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const; // 读取保留原始拼写的属性
 		godot::String resolve_image_source(std::string_view p_source) const {
@@ -122,6 +123,7 @@ namespace docrender {
 		LiteHTMLFonts fonts;
 		godot::Vector2i viewport_size;
 		godot::Vector2i media_viewport_size;
+		litehtml::color_scheme preferred_color_scheme = litehtml::color_scheme::light;
 		godot::HashMap<godot::String, std::shared_ptr<HTMLSVGClipDocument>> svg_clip_documents;
 		HTMLPaintRecorder paint;
 
@@ -149,6 +151,7 @@ namespace docrender {
 		litehtml::pixel_t pt_to_px(float p_points) const override;
 		litehtml::pixel_t get_default_font_size() const override;
 		const char* get_default_font_name() const override;
+		litehtml::pixel_t get_default_fixed_font_size() const override;
 		void draw_list_marker(litehtml::uint_ptr, const litehtml::list_marker& p_marker) override;
 		void load_image(const char* p_src, const char* p_css_base, bool, litehtml::css_image_orientation p_orientation) override;
 		void get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size,

@@ -26,6 +26,7 @@
 #include <godot_cpp/classes/method_tweener.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -138,6 +139,21 @@ namespace {
 	}
 
 } // namespace
+
+namespace {
+	litehtml::color_scheme system_preference() {
+		static auto scheme = litehtml::color_scheme::light;
+		static uint64_t next_poll = 0;
+		const auto now = Time::get_singleton()->get_ticks_msec();
+		if (now >= next_poll) {
+			const auto* display = DisplayServer::get_singleton();
+			scheme = display && display->is_dark_mode_supported() && display->is_dark_mode()
+				? litehtml::color_scheme::dark : litehtml::color_scheme::light;
+			next_poll = now + 250;
+		}
+		return scheme;
+	}
+}
 
 struct HTMLLayout::State {
 	enum class Update { NONE, LAYOUT, STYLE };
@@ -264,6 +280,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
+		state->container->set_preferred_color_scheme(system_preference());
 		state->master_styles = litehtml::master_css;
 		if (!p_default_stylesheet.is_empty()) {
 			state->master_styles += '\n';
@@ -331,6 +348,7 @@ Error HTMLLayout::layout_viewport(const Vector2i& p_viewport_size, const Vector2
 		return ERR_UNCONFIGURED;
 	}
 	state->error = String();
+	update_preferred_color_scheme();
 	if (state->has_layout() && state->viewport_size == p_viewport_size &&
 		state->media_viewport_size == p_media_size && state->viewport_unit_size == p_viewport_unit_size) {
 		return OK;
@@ -1448,9 +1466,28 @@ docrender::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
 	// Read the computed values, before viewport propagation changes the root box's used overflow.
 	const docrender::css::ComputedStyle& css = root->css();
 	return {docrender::html_scrollbar_appearance(css), state->viewport_overflow,
-		{css.get_overflow_x(), css.get_overflow_y()}, css.get_scrollbar_gutter()};
+		{css.get_overflow_x(), css.get_overflow_y()}, css.get_scrollbar_gutter(), css.get_color_scheme()};
 }
 
+litehtml::color_scheme HTMLLayout::get_element_color_scheme(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_valid() && p_element->get_owner() == this) {
+		if (const auto element = p_element->lock_element()) return element->css().get_color_scheme();
+	}
+	return litehtml::color_scheme::light;
+}
+
+bool HTMLLayout::update_preferred_color_scheme() {
+	if (!state->container || !state->container->set_preferred_color_scheme(system_preference())) return false;
+	mark_styles_pending();
+	return true;
+}
+
+docrender::HTMLTextLayout HTMLLayout::shape_element_text(const Ref<HTMLElement>& p_element, const String& p_text) const {
+	if (state->container && p_element.is_valid() && p_element->get_owner() == this) {
+		if (const auto element = p_element->lock_element()) return state->container->shape_input(element->css().get_font(), p_text);
+	}
+	return {};
+}
 std::optional<docrender::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vector2& p_position) const {
 	if (!state->has_layout() || !p_position.is_finite()) return {};
 	return state->container->get_paint_recorder().scrollbar_at(p_position);
@@ -1624,7 +1661,9 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const
 		if (value.is_empty() || (!query.is_empty() && value.to_lower().find(query) < 0 && label.to_lower().find(query) < 0)) return false;
 		if (!input->is_suggestion_valid(value) || !seen.insert(value).second) return false;
 		const auto text = label.is_empty() || label == value ? value : value + String("  ") + label;
-		rows.push_back({state->container->shape_input(input->css().get_font(), text), Color(0.1, 0.13, 0.19), {}, -1, true, value});
+		const auto color = input->css().get_color().to_srgb();
+		rows.push_back({state->container->shape_input(input->css().get_font(), text),
+			Color::from_rgba8(color.red, color.green, color.blue, color.alpha), {}, -1, true, value});
 		return false;
 	});
 	return rows;
@@ -1641,9 +1680,9 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref
 	const auto make_row = [&](const litehtml::element& p_node, const String& p_text, int64_t p_index, bool p_enabled) {
 		const auto& style = p_node.css();
 		const auto font = style.get_font() ? style.get_font() : select->css().get_font();
-		const auto& bg = style.get_bg().m_color;
-		result.push_back({state->container->shape_input(font, p_text), to_color(style.get_color()),
-			to_color(bg.alpha ? bg : select->css().get_bg().m_color), p_index, p_enabled});
+		const auto bg = style.get_bg().m_color.to_srgb(style.get_color());
+		result.push_back({state->container->shape_input(font, p_text), to_color(style.get_color().to_srgb()),
+			to_color(bg.alpha ? bg : select->css().get_bg().m_color.to_srgb(select->css().get_color())), p_index, p_enabled});
 	};
 	litehtml::element::ptr previous_group;
 	int64_t index = 0;

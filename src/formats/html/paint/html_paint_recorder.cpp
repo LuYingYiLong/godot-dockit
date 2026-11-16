@@ -2161,7 +2161,7 @@ void fragment() {
 		};
 		const bool pressed = matches(scrollbar_pressed);
 		const bool hot = pressed || matches(scrollbar_hovered);
-		fill_rect(p_track, p_appearance.colors.value_or(HTMLScrollbarColors{}).track);
+		fill_rect(p_track, p_appearance.track_color());
 		const Rect2 thumb = p_appearance.visible_thumb(p_thumb, p_axis, hot);
 		fill_rounded_color(thumb, p_appearance.thumb_color(pressed), std::min(thumb.size.x, thumb.size.y) * 0.5);
 	}

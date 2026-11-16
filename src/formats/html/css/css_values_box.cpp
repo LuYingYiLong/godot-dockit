@@ -160,6 +160,28 @@ namespace {
 
 void css_value_parser::parse_box(string_id name, const css_token_vector& value, const string& baseurl, bool important)
 {
+	if (name == _id("color-scheme")) {
+		if (value.empty()) return;
+		if (value.size() == 1 && value.front().ident() == "normal") {
+			add_parsed_property(name, property_value(0, important));
+			return;
+		}
+		int schemes = 0;
+		bool only = false;
+		for (size_t i = 0; i < value.size(); ++i) {
+			if (value[i].type != IDENT) return;
+			const auto ident = value[i].ident();
+			if (ident == "only") {
+				if (only || value.size() == 1 || (i != 0 && i + 1 != value.size())) return;
+				only = true;
+			}
+			else if (ident == "light") schemes |= scheme_light;
+			else if (ident == "dark") schemes |= schemes ? scheme_dark : scheme_dark | scheme_dark_first;
+			else if (is_one_of(ident, "normal", "initial", "inherit", "unset", "revert", "revert-layer", "default")) return;
+		}
+		add_parsed_property(name, property_value(schemes, important));
+		return;
+	}
 	if (name == _id("will-change")) {
 		if (const auto hints = parse_will_change(value)) add_parsed_property(name, property_value(*hints, important));
 		return;

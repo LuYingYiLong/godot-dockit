@@ -18,6 +18,7 @@ namespace litehtml
 	struct font_description
 	{
 		css_font_families		families;	// Font Family
+		std::string				language;	// Effective BCP 47 language for shaping and fallback
 		pixel_t					size = 0;	// Font size
 		css_font_style			style;	// Font style and oblique angle
 		float					width = 100.0f;	// Font width in percent
@@ -70,6 +71,7 @@ namespace litehtml
 			out += ":st=" + std::to_string(style.kind) + ':' + std::to_string(style.angle);
 			out += ":w=" + std::to_string(weight);
 			out += ":wd=" + std::to_string(width);
+			out += ":lang=" + std::to_string(language.size()) + ':' + language;
 			out += opentype_key();
 			out += ":ls=" + std::to_string(letter_spacing);
 			out += ":ws=" + std::to_string(word_spacing);

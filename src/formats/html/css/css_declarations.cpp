@@ -339,6 +339,7 @@ namespace {
 			{ _id("overscroll-behavior-y"), { property_family::keyword, {}, overscroll_behavior_keywords } },
 			{ _id("scrollbar-width"), { property_family::keyword, {}, "auto;thin;none" } },
 			{ _id("scrollbar-color"), { property_family::background } },
+			{ _id("color-scheme"), { property_family::box } },
 			{ _id("scrollbar-gutter"), { property_family::box } },
 			{ _id("ruby-position"), { property_family::keyword, {}, "over;under" } },
 			{ _id("text-overflow"), { property_family::keyword, {}, "clip;ellipsis" } },

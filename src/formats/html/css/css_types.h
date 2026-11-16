@@ -864,6 +864,9 @@ namespace litehtml {
 		media_type_first_deprecated
 	};
 
+	enum class color_scheme : uint8_t { light, dark };
+	enum color_scheme_support { scheme_light = 1, scheme_dark = 2, scheme_dark_first = 4 };
+
 	struct media_features
 	{
 		media_type	type;
@@ -875,6 +878,7 @@ namespace litehtml {
 		int			color_index;	// The number of entries in the color lookup table of the output device. If the device does not use a color lookup table, the value is zero.
 		int			monochrome;		// The number of bits per pixel in a monochrome frame buffer. If the device is not a monochrome device, the output device value will be 0.
 		pixel_t		resolution;		// The resolution of the output device (in DPI)
+		color_scheme preferred_color_scheme = color_scheme::light;
 
 		media_features()
 		{
