@@ -414,20 +414,6 @@ namespace litehtml {
 		return docrender::forms::button_action(p_element) != docrender::forms::ButtonAction::NONE;
 	}
 
-	const std::vector<box_shadow>* docrender_editor::get_box_shadows(const html_tag& p_element) {
-		static const auto property = _id("box-shadow");
-		for (auto tag = &p_element; tag; tag = dynamic_cast<html_tag*>(tag->parent().get())) {
-			const auto& value = tag->m_style.get_property(property);
-			if (value.is<std::vector<box_shadow>>()) {
-				return &value.get<std::vector<box_shadow>>();
-			}
-			if (!value.is<inherit>()) {
-				break;
-			}
-		}
-		return nullptr;
-	}
-
 	void docrender_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_additional_styles) {
 		auto& doc = *p_document;

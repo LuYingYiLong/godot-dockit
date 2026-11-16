@@ -199,6 +199,7 @@ public:
 	godot::Error layout_embedded_block(const godot::Vector2i& p_viewport_size);	// 为外层排版器保留完整块的几何和文字
 	godot::Vector2i get_content_size() const;										// 返回最近一次成功排版的内容尺寸
 	godot::String get_plain_text() const;											// 返回排版后的可复制文本
+	godot::String get_accessible_text() const;									// 返回应用 CSS 替代文本后的无障碍文本
 	int64_t hit_test_text(const godot::Vector2& p_position) const;					// 返回离指定文档坐标最近的文本光标偏移
 	docrender::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
 	godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;

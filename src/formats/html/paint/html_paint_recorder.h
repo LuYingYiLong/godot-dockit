@@ -111,6 +111,7 @@ namespace docrender {
 		void visit_pointer_targets(const godot::Vector2& p_point, const std::function<bool(const PointerTarget&)>& p_visitor) const;
 		godot::Rect2 scrollbar_bounds;
 		godot::String plain_text;
+		godot::String accessible_text;
 		std::vector<godot::Vector2i> excluded_selection;
 		std::unordered_map<const litehtml::element*, godot::Vector2i> selection_scopes;
 		std::vector<int64_t> selection_scope_starts;
@@ -130,9 +131,16 @@ namespace docrender {
 		void prepare_text_overflow(const litehtml::render_item& p_root, const OverflowTextShaper& p_shaper);
 		void prepare_inline_overflow(const litehtml::render_item_inline_context& p_context, const OverflowTextShaper& p_shaper);
 		bool has_elided_ancestor(const litehtml::render_item& p_item) const;
+		struct AccessibleTextIndex {
+			godot::String& text;
+			godot::String separator;
+			void append(const godot::String& p_value);
+			void space();
+		};
 		void index_text(const std::shared_ptr<litehtml::element>& p_element, const TextShaper& p_shape_text,
-			godot::String& r_separator, bool p_unlaid = false, bool p_selectable = true);
-		int64_t index_source_text(const godot::String& p_text, godot::String& r_separator, bool p_selectable);
+			godot::String& r_separator, AccessibleTextIndex* p_accessible, bool p_unlaid = false, bool p_selectable = true);
+		int64_t index_source_text(const godot::String& p_text, godot::String& r_separator, bool p_selectable,
+			AccessibleTextIndex* p_accessible);
 		void exclude_from_selection(int64_t p_from, int64_t p_to);
 		godot::Ref<godot::ShaderMaterial> create_material(const RoundedRect* p_shape = nullptr, bool p_composite = false,
 			const TransformedClip* p_path = nullptr, bool p_include_clips = true);
@@ -176,6 +184,7 @@ namespace docrender {
 		const std::vector<HTMLPaintRun>& get_diagnostic_runs() const { return diagnostic_runs; }
 		std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_point, bool p_text_selection = false) const;
 		const godot::String& get_plain_text() const;
+		const godot::String& get_accessible_text() const { return accessible_text; }
 		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 		bool has_selectable_text(int64_t p_from, int64_t p_to) const;
 		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target) const;

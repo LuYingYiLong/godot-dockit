@@ -72,6 +72,28 @@ namespace docrender {
 		return slice ? slice->descent : line->get_line_descent();
 	}
 
+	void HTMLTextLayout::set_run_metrics(std::vector<HTMLTextRunMetrics> p_runs) {
+		if (p_runs.empty()) return;
+		layout_metrics = std::make_shared<const LayoutMetrics>(LayoutMetrics{ascent, descent, std::move(p_runs)});
+		for (const auto& run : layout_metrics->runs) {
+			ascent = std::max(ascent, run.ascent);
+			descent = std::max(descent, run.descent);
+		}
+	}
+
+	Vector2 HTMLTextLayout::metrics_in_range(int64_t p_start, int64_t p_end) const {
+		if (!layout_metrics) return Vector2(ascent, descent);
+		const auto& runs = layout_metrics->runs;
+		auto run = std::lower_bound(runs.begin(), runs.end(), p_start,
+			[](const HTMLTextRunMetrics& item, int64_t start) { return item.end <= start; });
+		Vector2 result(layout_metrics->ascent, layout_metrics->descent);
+		for (; run != runs.end() && run->start < p_end; ++run) {
+			result.x = std::max<real_t>(result.x, run->ascent);
+			result.y = std::max<real_t>(result.y, run->descent);
+		}
+		return result;
+	}
+
 	float HTMLTextLayout::underline_position() const {
 		return line->get_line_underline_position();
 	}
@@ -121,7 +143,10 @@ namespace docrender {
 		const auto range = server->shaped_text_get_range(get_rid());
 		if (p_end > int64_t(range.y) - range.x) return {};
 		if (p_start == 0 && p_end == int64_t(range.y) - range.x) return *this;
-		HTMLTextLayout result(line, ascent);
+		const auto metrics = metrics_in_range(range.x + p_start, range.x + p_end);
+		HTMLTextLayout result(line, metrics.x);
+		result.descent = metrics.y;
+		result.layout_metrics = layout_metrics;
 		result.slice = std::make_shared<HTMLTextSlice>(server, line, range.x + p_start, range.x + p_end);
 		return result.slice->rid.is_valid() ? result : HTMLTextLayout{};
 	}

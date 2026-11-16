@@ -338,6 +338,10 @@ namespace docrender {
 		return fonts.text_width(p_text, p_font);
 	}
 
+	pixel_t LiteHTMLContainer::measure_text(const char* p_text, uint_ptr p_font, font_metrics& r_metrics) {
+		return fonts.measure_text(String::utf8(p_text), p_font, r_metrics);
+	}
+
 	pixel_t LiteHTMLContainer::trimmed_punctuation_width(const char* p_text, uint_ptr p_font, punctuation_trim p_trim) {
 		return fonts.trimmed_punctuation_width(p_text, p_font, p_trim);
 	}
@@ -517,8 +521,9 @@ namespace docrender {
 
 	void LiteHTMLContainer::draw_box_shadows(const html_tag& p_element, const litehtml::position& p_box,
 		const borders& p_borders, bool p_inset) {
-		if (const auto* shadows = docrender_editor::get_box_shadows(p_element); shadows && !shadows->empty()) {
-			paint.draw_box_shadows(p_element, p_box, p_borders, p_inset, *shadows);
+		const auto& shadows = p_element.css().get_box_shadows();
+		if (!shadows.empty()) {
+			paint.draw_box_shadows(p_element, p_box, p_borders, p_inset, shadows);
 		}
 	}
 

@@ -13,7 +13,7 @@ namespace litehtml {
 	using docrender::css::detail::lowcase;
 	namespace {
 		enum class MathOp {
-			LITERAL, ADD, SUBTRACT, MULTIPLY, DIVIDE,
+			LITERAL, INPUT, ADD, SUBTRACT, MULTIPLY, DIVIDE,
 			MIN, MAX, CLAMP, ROUND, MOD, REM, SIN, COS, TAN, ASIN, ACOS, ATAN, ATAN2,
 			POW, SQRT, HYPOT, LOG, EXP, ABS, SIGN,
 		};
@@ -128,6 +128,7 @@ namespace litehtml {
 			int depth;
 			int& budget;
 			size_t cursor = 0;
+			const css_math_input_names* names = nullptr;
 
 			css_math_node_ptr sum() { return parse_binary(false); }
 
@@ -166,11 +167,16 @@ namespace litehtml {
 			css_math_node_ptr term() {
 				if (cursor >= tokens.size() || --budget < 0) return {};
 				const auto& token = tokens[cursor++];
-				if (token.type == CV_FUNCTION || token.type == ROUND_BLOCK) return function(token, options, depth + 1, budget);
+				if (token.type == CV_FUNCTION || token.type == ROUND_BLOCK) return function(token, options, depth + 1, budget, names);
 				if (token.type == NUMBER) return std::isfinite(token.n.number) ? literal(token.n.number) : nullptr;
 				if (token.type == PERCENTAGE && std::isfinite(token.n.number)) return literal(token.n.number, css_units_percentage);
 				if (token.type == IDENT) {
 					const auto name = token.ident();
+					if (names) {
+						const auto input = std::find(names->begin(), names->end(), name);
+						if (input != names->end()) return std::make_shared<css_math_node>(css_math_node{
+							MathOp::INPUT, NUMBER_TYPE, double(input - names->begin()), css_units_none, {}});
+					}
 					if (name == "pi") return literal(PI);
 					if (name == "e") return literal(E);
 					if (name == "infinity") return literal(std::numeric_limits<double>::infinity());
@@ -194,9 +200,10 @@ namespace litehtml {
 				return {};
 			}
 
-			static css_math_node_ptr function(const css_token& p_token, int p_options, int p_depth, int& r_budget) {
+			static css_math_node_ptr function(const css_token& p_token, int p_options, int p_depth, int& r_budget,
+				const css_math_input_names* p_names = nullptr) {
 				if (p_depth > MAX_DEPTH || p_token.value.empty()) return {};
-				MathParser parser{ p_token.value, p_options, p_depth, r_budget };
+				MathParser parser{ p_token.value, p_options, p_depth, r_budget, 0, p_names };
 				const auto name = p_token.type == ROUND_BLOCK ? "calc" : lowcase(p_token.name);
 				if (name == "calc") {
 					auto result = parser.sum();
@@ -281,10 +288,11 @@ namespace litehtml {
 			return std::signbit(remainder) == std::signbit(p_step) ? remainder : remainder + p_step;
 		}
 
-		double evaluate_node(const css_math_node& p_node, double p_basis) {
-			const auto at = [&](size_t p_index) { return evaluate_node(*p_node.args[p_index], p_basis); };
+		double evaluate_node(const css_math_node& p_node, double p_basis, const css_math_input_values* p_inputs = nullptr) {
+			const auto at = [&](size_t p_index) { return evaluate_node(*p_node.args[p_index], p_basis, p_inputs); };
 			switch (p_node.op) {
 				case MathOp::LITERAL: return p_node.unit == css_units_percentage ? p_node.number * p_basis / 100.0 : p_node.number;
+				case MathOp::INPUT: return p_inputs ? (*p_inputs)[static_cast<size_t>(p_node.number)] : 0.0;
 				case MathOp::ADD: return at(0) + at(1);
 				case MathOp::SUBTRACT: return at(0) - at(1);
 				case MathOp::MULTIPLY: return at(0) * at(1);
@@ -369,6 +377,7 @@ namespace litehtml {
 		string serialize_node(const css_math_node& p_node) {
 			char binary_operator = '\0';
 			switch (p_node.op) {
+				case MathOp::INPUT: return "input(" + std::to_string(static_cast<size_t>(p_node.number)) + ')';
 				case MathOp::LITERAL: {
 					if (std::isnan(p_node.number)) return "NaN";
 					if (std::isinf(p_node.number)) return p_node.number < 0 ? "-infinity" : "infinity";
@@ -425,23 +434,35 @@ namespace litehtml {
 		});
 	}
 
-	std::optional<double> evaluate_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
-		double p_percentage_basis) {
-		if (p_token.type != CV_FUNCTION) return std::nullopt;
+	css_math_node_ptr parse_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
+		const css_math_input_names* p_names) {
+		if (p_token.type != CV_FUNCTION) return {};
 		int budget = MAX_COMPONENTS;
-		const auto root = MathParser::function(p_token, f_percentage, 0, budget);
-		if (!root || requires_lengths(root)) return std::nullopt;
+		auto root = MathParser::function(p_token, f_percentage, 0, budget, p_names);
+		if (!root || requires_lengths(root)) return {};
 		const bool allow_number = p_type == css_math_scalar::number || p_type == css_math_scalar::number_or_percentage ||
 			p_type == css_math_scalar::number_or_angle;
 		const bool allow_percent = p_type == css_math_scalar::percentage || p_type == css_math_scalar::number_or_percentage;
 		const bool allow_angle = p_type == css_math_scalar::angle || p_type == css_math_scalar::number_or_angle;
 		if ((root->type == NUMBER_TYPE && !allow_number) || (root->type == PERCENT_TYPE && !allow_percent) ||
-			(root->type == ANGLE_TYPE && !allow_angle) || root->type == RESOLUTION_TYPE) return std::nullopt;
-		double value = evaluate_node(*root, p_percentage_basis);
+			(root->type == ANGLE_TYPE && !allow_angle) || root->type == RESOLUTION_TYPE) return {};
+		return root;
+	}
+
+	double evaluate_css_scalar_math(const css_math_node& p_node, css_math_scalar p_type,
+		double p_percentage_basis, const css_math_input_values* p_inputs) {
+		double value = evaluate_node(p_node, p_percentage_basis, p_inputs);
 		if (std::isnan(value)) value = 0.0;
-		if (p_type == css_math_scalar::number_or_angle && root->type == ANGLE_TYPE)
+		if (p_type == css_math_scalar::number_or_angle && p_node.type == ANGLE_TYPE)
 			value *= 180.0 / PI;
 		return value;
+	}
+
+	std::optional<double> evaluate_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
+		double p_percentage_basis) {
+		const auto root = parse_css_scalar_math(p_token, p_type);
+		if (!root) return std::nullopt;
+		return evaluate_css_scalar_math(*root, p_type, p_percentage_basis);
 	}
 
 	std::optional<double> parse_css_angle(const css_token& p_token, bool p_allow_unitless_zero, bool p_normalize) {

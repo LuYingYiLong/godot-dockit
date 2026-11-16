@@ -30,6 +30,25 @@ namespace litehtml {
 		}
 	};
 
+	struct css_font_metric_override {
+		std::optional<double> horizontal;
+		std::optional<double> vertical;
+
+		bool operator==(const css_font_metric_override& other) const {
+			return horizontal == other.horizontal && vertical == other.vertical;
+		}
+	};
+
+	struct css_font_metric_overrides {
+		css_font_metric_override ascent;
+		css_font_metric_override descent;
+		css_font_metric_override line_gap;
+
+		bool operator==(const css_font_metric_overrides& other) const {
+			return ascent == other.ascent && descent == other.descent && line_gap == other.line_gap;
+		}
+	};
+
 	struct css_font_face {
 		string family;
 		string base_url;
@@ -43,13 +62,15 @@ namespace litehtml {
 		std::optional<std::pair<float, float>> width_range;
 		css_font_features features;
 		css_font_variations variations;
+		css_font_metric_overrides metrics;
+		double size_adjust = 1.0;
 
 		bool operator==(const css_font_face& other) const {
 			return family == other.family && base_url == other.base_url && sources == other.sources &&
 				unicode_ranges == other.unicode_ranges &&
 				style == other.style && min_angle == other.min_angle && max_angle == other.max_angle &&
 				min_weight == other.min_weight && max_weight == other.max_weight && width_range == other.width_range &&
-				features == other.features && variations == other.variations;
+				features == other.features && variations == other.variations && metrics == other.metrics && size_adjust == other.size_adjust;
 		}
 	};
 

@@ -10,6 +10,13 @@ namespace docrender { class HTMLImageAltText; }
 
 namespace litehtml
 {
+	class css_replaced_image {
+		background source;
+	public:
+		void set(const image& value, const string& base);
+		size natural_size(document_container& container) const;
+		void draw(html_tag& owner, uint_ptr hdc, const position& box, render_item& render);
+	};
 
 	class el_image : public html_tag
 	{
@@ -18,11 +25,12 @@ namespace litehtml
 		string m_current_src;
 		std::optional<docrender::HTMLImageSelection> m_selection;
 		std::shared_ptr<docrender::HTMLImageAltText> m_alt_text;
-		bool m_decorative;
+		std::unique_ptr<css_replaced_image> m_generated_image;
+		bool m_list_marker = false;
 		const string& image_source() const;
-		css_image_orientation image_orientation() const;
 	public:
-		el_image(const document::ptr& doc, const string& baseurl = {}, bool decorative = false);
+		el_image(const document::ptr& doc, const string& baseurl = {});
+		void set_generated_image(const image& value, const string& base, bool list_marker); // 更新匿名图片的 CSS 来源
 		bool select_source(docrender::HTMLImageSelection p_selection); // 更新本轮选图并报告尺寸提示是否变化
 		void commit_source(); // 发布最近一次成功排版的图片来源
 		const string& get_current_src() const { return m_current_src; }

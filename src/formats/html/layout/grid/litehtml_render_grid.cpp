@@ -257,7 +257,7 @@ namespace litehtml {
 			cell.render_width = cell.width;
 			if (height) cell.height = { *height, context::cbc_value_type_absolute };
 			const auto& margins = item.css().get_margins();
-			const bool replaced = item.src_el()->is_replaced();
+			const bool replaced = item.css().is_replaced();
 			const auto& css_width = item.css().get_width();
 			const bool stretch_height = height && stretches_grid_height(item, align);
 			const bool width_from_height = item.has_preferred_aspect_ratio() &&

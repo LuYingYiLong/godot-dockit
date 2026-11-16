@@ -20,6 +20,11 @@ namespace litehtml {
 		std::vector<Option> options;
 	};
 
+	struct css_light_dark_image {
+		image light;
+		image dark;
+	};
+
 	bool supports_image_mime(const string& p_type) {
 		const string mime = lowcase(trim(p_type.substr(0, p_type.find(';'))));
 		return is_one_of(mime, "image/png", "image/jpeg", "image/webp", "image/svg+xml");
@@ -27,6 +32,25 @@ namespace litehtml {
 
 	namespace {
 		std::optional<image> parse_image(const css_token& p_token, document_container* p_container, bool p_allow_set, int p_depth);
+
+		std::optional<image> parse_light_dark_image(const css_token& p_token, document_container* p_container, bool p_allow_set, int p_depth) {
+			const auto& tokens = p_token.value;
+			if (tokens.size() != 3 || tokens[1].type != ',') return std::nullopt;
+			const auto parse_branch = [&](const css_token& token) -> std::optional<image> {
+				if (token.ident() != "none") return parse_image(token, p_container, p_allow_set, p_depth + 1);
+				image value;
+				value.type = image::type_solid;
+				value.fallback_color = web_color::transparent;
+				return value;
+			};
+			auto light = parse_branch(tokens[0]);
+			auto dark = parse_branch(tokens[2]);
+			if (!light || !dark) return std::nullopt;
+			image result;
+			result.type = image::type_light_dark;
+			result.m_light_dark = std::make_shared<css_light_dark_image>(css_light_dark_image{std::move(*light), std::move(*dark)});
+			return result;
+		}
 
 		std::optional<image> parse_image_function(const css_token& p_token, document_container* p_container) {
 			const auto& tokens = p_token.value;
@@ -173,6 +197,8 @@ namespace litehtml {
 					return p_allow_set ? parse_image_set(p_token, p_container, p_depth) : std::nullopt;
 				if (equal_i(p_token.name, "cross-fade"))
 					return parse_cross_fade(p_token, p_container, p_allow_set, p_depth);
+				if (equal_i(p_token.name, "light-dark"))
+					return parse_light_dark_image(p_token, p_container, p_allow_set, p_depth);
 			}
 			return parse_basic_image(p_token, p_container);
 		}
@@ -236,13 +262,23 @@ namespace litehtml {
 	}
 
 	void compute_css_image(image& r_image, const string& p_base, document& p_doc, const font_metrics& p_font,
-		const css_image_resolution& p_resolution, css_image_orientation p_orientation, css_length_context p_units) {
+		const css_image_resolution& p_resolution, css_image_orientation p_orientation, color_scheme p_scheme, css_length_context p_units) {
 		auto* container = p_doc.container();
-		if (r_image.type == image::type_set) {
-			media_features output;
-			container->get_media_features(output);
-			select_css_image(r_image, output.resolution > 0 ? output.resolution / CSS_DPI_PER_DPPX : 1.0);
+		while (r_image.type == image::type_set || r_image.type == image::type_light_dark) {
+			if (r_image.type == image::type_set) {
+				media_features output;
+				container->get_media_features(output);
+				select_css_image(r_image, output.resolution > 0 ? output.resolution / CSS_DPI_PER_DPPX : 1.0);
+			} else {
+				auto selected = p_scheme == color_scheme::dark ? r_image.m_light_dark->dark : r_image.m_light_dark->light;
+				if (r_image.from_image_set) {
+					selected.from_image_set = true;
+					selected.candidate_density = r_image.candidate_density;
+				}
+				r_image = std::move(selected);
+			}
 		}
+		if (r_image.fallback_color) r_image.fallback_color = r_image.fallback_color->compute_for_scheme(p_scheme);
 		switch (r_image.type) {
 			case image::type_url:
 				r_image.orientation = p_orientation;
@@ -261,8 +297,10 @@ namespace litehtml {
 				auto& gradient = r_image.m_gradient;
 				for (auto* length : { &gradient.radial_radius_x, &gradient.radial_radius_y, &gradient.position_x, &gradient.position_y })
 					p_doc.cvt_units(*length, p_font, 0, p_units);
-				for (auto& stop : gradient.m_colors)
+				for (auto& stop : gradient.m_colors) {
+					stop.color = stop.color.compute_for_scheme(p_scheme);
 					if (stop.length) p_doc.cvt_units(*stop.length, p_font, 0, p_units);
+				}
 				break;
 			}
 			case image::type_cross_fade: {
@@ -270,7 +308,7 @@ namespace litehtml {
 				for (const auto& layer : r_image.m_cross_fade->layers) {
 					if (layer.weight <= 0) continue;
 					auto value = layer.value;
-					compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation, p_units);
+					compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation, p_scheme, p_units);
 					if (value.type == image::type_cross_fade) {
 						for (const auto& nested : value.m_cross_fade->layers)
 							mixture->layers.push_back({ nested.value, nested.weight * layer.weight });

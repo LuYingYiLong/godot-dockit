@@ -77,13 +77,30 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_color = read_property(context, _color_, true, web_color(system_color::canvas_text),
 		parent ? &parent->m_color : nullptr).resolve(inherited_color);
 	m_color.scheme = scheme;
+	const auto& content_declaration = context.read_declaration(context.declarations, _content_);
+	static const css_generated_content no_content;
+	m_content = read_property(context, _content_, false, no_content, parent ? &parent->m_content : nullptr);
+	m_content_replacement = context.allow_content_replacement && m_content.is_single_image();
+	m_replaced = context.is_replaced || m_content_replacement;
+	const auto ignore_image_hint = [&](string_id name) {
+		return context.replacement_ignores_size_hints && m_content_replacement &&
+			context.read_declaration(context.declarations, name).priority.layer == css_default_layer;
+	};
 
 	m_el_position	 = (element_position)	read_property<int>(context,  _position_,		false,	element_position_static,	 (parent ? &parent->m_el_position : nullptr));
 	m_display		 = (style_display)		read_property<int>(context,  _display_,			false,	display_inline,			 (parent ? &parent->m_display : nullptr));
-	if (m_display == display_contents && context.is_root)
+	if (m_display == display_contents && m_content_replacement)
+		m_display = display_none;
+	else if (m_display == display_contents && context.is_root)
 		m_display = display_block;
 	else if (m_display == display_contents && context.suppress_contents_display)
 		m_display = display_none;
+	if (m_content_replacement) {
+		if (is_one_of(m_display, display_table, display_grid, display_flex, display_flow_root))
+			m_display = display_block;
+		else if (!is_one_of(m_display, display_none, display_block, display_list_item))
+			m_display = display_inline_block;
+	}
 	m_visibility	 = (visibility)			read_property<int>(context,  _visibility_,		true,	visibility_visible,		 (parent ? &parent->m_visibility : nullptr));
 	m_pointer_events_none = read_property<int>(context, _id("pointer-events"), true, 0,
 		parent ? &parent->m_pointer_events_none : nullptr) != 0;
@@ -97,9 +114,9 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_hide_empty_cells = read_property<int>(context, _id("empty-cells"), true, 0,
 		parent ? &parent->m_hide_empty_cells : nullptr) == 1;
 	m_accent_color = read_property(context, _id("accent-color"), true, web_color(system_color::accent),
-		parent ? &parent->m_accent_color : nullptr);
+		parent ? &parent->m_accent_color : nullptr).compute_for_scheme(scheme);
 	m_caret_color = read_property(context, _id("caret-color"), true, web_color::current_color,
-		parent ? &parent->m_caret_color : nullptr);
+		parent ? &parent->m_caret_color : nullptr).compute_for_scheme(scheme);
 	m_opacity = read_property(context, _id("opacity"), false, 1.0f, parent ? &parent->m_opacity : nullptr);
 	static const std::array transition_names{
 		_id("transition-property"), _id("transition-duration"), _id("transition-delay"),
@@ -178,9 +195,12 @@ void ComputedStyle::compute(const ComputeContext& context)
 		static_cast<int>(container_type::normal), parent ? &parent->m_container_type : nullptr));
 	m_container_names = read_property(context, _id("container-name"), false, string_vector{},
 		parent ? &parent->m_container_names : nullptr);
-	m_replaced = context.is_replaced;
 	m_scrollbar_colors = read_property(context, _id("scrollbar-color"), true, std::optional<css_scrollbar_colors>{},
 		parent ? &parent->m_scrollbar_colors : nullptr);
+	if (m_scrollbar_colors) {
+		m_scrollbar_colors->thumb = m_scrollbar_colors->thumb.compute_for_scheme(scheme);
+		m_scrollbar_colors->track = m_scrollbar_colors->track.compute_for_scheme(scheme);
+	}
 	m_ruby_position = read_property<int>(context, _id("ruby-position"), true, 0, parent ? &parent->m_ruby_position : nullptr);
 	m_text_overflow_ellipsis = read_property<int>(context, _id("text-overflow"), false, 0,
 		parent ? &parent->m_text_overflow_ellipsis : nullptr) != 0;
@@ -319,6 +339,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_will_change = read_property(context, _id("will-change"), false, 0, parent ? &parent->m_will_change : nullptr);
 	for (auto* filters : { &m_filters, &m_backdrop_filters }) {
 		for (auto& filter : *filters) {
+			filter.color = filter.color.compute_for_scheme(scheme);
 			context.cvt_units(filter.x, m_font_metrics, 0);
 			context.cvt_units(filter.y, m_font_metrics, 0);
 			context.cvt_units(filter.blur, m_font_metrics, 0);
@@ -327,9 +348,13 @@ void ComputedStyle::compute(const ComputeContext& context)
 
 	static const std::vector<box_shadow> no_shadows;
 	static const auto text_shadow_property = _id("text-shadow");
+	static const auto box_shadow_property = _id("box-shadow");
+	m_box_shadows = read_property(context, box_shadow_property, false, no_shadows, parent ? &parent->m_box_shadows : nullptr);
+	for (auto& shadow : m_box_shadows) shadow.color = shadow.color.compute_for_scheme(scheme);
 	m_text_shadows = read_property(context, text_shadow_property, true, no_shadows, (parent ? &parent->m_text_shadows : nullptr));
 	for (auto& shadow : m_text_shadows)
 	{
+		shadow.color = shadow.color.compute_for_scheme(scheme);
 		context.cvt_units(shadow.x, m_font_metrics, 0);
 		context.cvt_units(shadow.y, m_font_metrics, 0);
 		context.cvt_units(shadow.blur, m_font_metrics, 0);
@@ -337,7 +362,8 @@ void ComputedStyle::compute(const ComputeContext& context)
 	const css_length _auto = css_length::predef_value(0);
 	const css_length none = _auto;
 
-	m_aspect_ratio   = read_property(context, _aspect_ratio_, false, css_aspect_ratio{}, (parent ? &parent->m_aspect_ratio : nullptr));
+	m_aspect_ratio = ignore_image_hint(_aspect_ratio_) ? css_aspect_ratio{} :
+		read_property(context, _aspect_ratio_, false, css_aspect_ratio{}, (parent ? &parent->m_aspect_ratio : nullptr));
 	m_object_fit = read_property(context, _id("object-fit"), false, object_fit::fill, (parent ? &parent->m_object_fit : nullptr));
 	m_image_resolution = read_property(context, _id("image-resolution"), true, css_image_resolution{}, (parent ? &parent->m_image_resolution : nullptr));
 	m_image_orientation = read_property(context, _id("image-orientation"), true, css_image_orientation::from_image, (parent ? &parent->m_image_orientation : nullptr));
@@ -405,8 +431,10 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_object_position.y.resolve_flow_direction(false);
 	context.cvt_units(m_object_position.x.offset, m_font_metrics, 0);
 	context.cvt_units(m_object_position.y.offset, m_font_metrics, 0);
-	m_css_width      = read_property<css_length>(context, _width_,      false, _auto, (parent ? &parent->m_css_width : nullptr));
-	m_css_height     = read_property<css_length>(context, _height_,     false, _auto, (parent ? &parent->m_css_height : nullptr));
+	m_css_width = ignore_image_hint(_width_) ? _auto :
+		read_property<css_length>(context, _width_, false, _auto, parent ? &parent->m_css_width : nullptr);
+	m_css_height = ignore_image_hint(_height_) ? _auto :
+		read_property<css_length>(context, _height_, false, _auto, parent ? &parent->m_css_height : nullptr);
 
 	m_css_min_width  = read_property<css_length>(context, _min_width_,  false, _auto, (parent ? &parent->m_css_min_width : nullptr));
 	m_css_min_height = read_property<css_length>(context, _min_height_, false, _auto, (parent ? &parent->m_css_min_height : nullptr));
@@ -450,7 +478,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	for (size_t side = 0; side < border_sides.size(); ++side) {
 		auto& border = m_css_borders.*border_sides[side];
 		border.color = read_flow_property(context, css_edge_group::border_color, side, web_color::current_color, rtl,
-			[&](size_t index) -> const web_color& { return parent_border(index).color; });
+			[&](size_t index) -> const web_color& { return parent_border(index).color; }).compute_for_scheme(scheme);
 		border.style = static_cast<border_style>(read_flow_property(context, css_edge_group::border_style, side,
 			static_cast<int>(border_style_none), rtl, [&](size_t index) { return parent_border(index).style; }));
 		border.width = read_flow_property(context, css_edge_group::border_width, side, css_length(border_width_medium_value), rtl,
@@ -463,6 +491,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_outline.width = read_property(context, _id("outline-width"), false, css_length(border_width_medium_value), (parent ? &parent->m_outline.width : nullptr));
 	m_outline.offset = read_property(context, _id("outline-offset"), false, css_length(), (parent ? &parent->m_outline.offset : nullptr));
 	m_outline.color = read_property(context, _id("outline-color"), false, std::optional<web_color>(), (parent ? &parent->m_outline.color : nullptr));
+	if (m_outline.color) m_outline.color = m_outline.color->compute_for_scheme(scheme);
 	if (!m_outline.color && m_outline.style != outline_style_auto) m_outline.color = web_color::current_color;
 	snap_border_width(m_outline.width, context);
 	context.cvt_units(m_outline.offset, m_font_metrics, 0);
@@ -488,9 +517,15 @@ void ComputedStyle::compute(const ComputeContext& context)
 
 	m_z_index = read_property<css_length>(context, _z_index_, false, _auto, (parent ? &parent->m_z_index : nullptr));
 	static const auto quotes = _id("quotes");
-	static const css_generated_content no_content;
 	static const css_quotes automatic_quotes;
-	m_content = read_property(context, _content_, false, no_content, (parent ? &parent->m_content : nullptr));
+	if (content_declaration.is<css_generated_content>()) {
+		for (auto& item : m_content.items) {
+			if (!item.image_value) continue;
+			auto image = *item.image_value;
+			host.compute_image(image, m_content.base_url, m_font_metrics, m_image_resolution, m_image_orientation, scheme);
+			item.image_value = std::make_shared<const litehtml::image>(std::move(image));
+		}
+	}
 	m_quotes = read_property(context, quotes, true, automatic_quotes, (parent ? &parent->m_quotes : nullptr));
 	m_cursor = read_property<string>(context, _cursor_, true, "auto", (parent ? &parent->m_cursor : nullptr));
 
@@ -511,11 +546,14 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_list_marker_type = read_property(context, _list_style_type_, true, default_list_marker, (parent ? &parent->m_list_marker_type : nullptr));
 	m_list_style_position = (list_style_position) read_property<int>(context, _list_style_position_, true, list_style_position_outside, (parent ? &parent->m_list_style_position : nullptr));
 
-	m_list_style_image = read_property<string>(context, _list_style_image_, true, "", (parent ? &parent->m_list_style_image : nullptr));
-	if (!m_list_style_image.empty())
-	{
-		m_list_style_image_baseurl = read_property<string>(context, _list_style_image_baseurl_, true, "", (parent ? &parent->m_list_style_image_baseurl : nullptr));
-		host.load_image(m_list_style_image, m_list_style_image_baseurl, decorative_image_orientation(m_image_orientation));
+	m_list_style_image = read_property(context, _list_style_image_, true, css_image_ptr{}, parent ? &parent->m_list_style_image : nullptr);
+	m_list_style_image_baseurl = read_property<string>(context, _list_style_image_baseurl_, true, "",
+		parent ? &parent->m_list_style_image_baseurl : nullptr);
+	if (m_list_style_image && context.read_declaration(context.declarations, _list_style_image_).is<css_image_ptr>()) {
+		auto value = *m_list_style_image;
+		host.compute_image(value, m_list_style_image_baseurl, m_font_metrics, m_image_resolution,
+			decorative_image_orientation(m_image_orientation), scheme);
+		m_list_style_image = value.is_empty() ? nullptr : std::make_shared<const image>(std::move(value));
 	}
 
 	m_order = read_property<int>(context, _order_, false, 0, (parent ? &parent->m_order : nullptr));
@@ -802,6 +840,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	m_font_kerning = read_property(context, _id("font-kerning"), true, int(font_kerning_auto), (parent ? &parent->m_font_kerning : nullptr));
 	m_font_optical_sizing = read_property(context, _id("font-optical-sizing"), true, int(font_optical_sizing_auto), (parent ? &parent->m_font_optical_sizing : nullptr));
 	m_font_variations = read_property(context, _id("font-variation-settings"), true, css_font_variations{}, (parent ? &parent->m_font_variations : nullptr));
+	m_font_size_adjust = read_property(context, _id("font-size-adjust"), true, css_font_size_adjust{}, (parent ? &parent->m_font_size_adjust : nullptr));
 	const bool boxless = m_display == display_contents;
 	const auto* decorating_parent = context.box_parent;
 	const bool propagate_decoration = !boxless &&
@@ -821,7 +860,8 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 		m_text_decoration_line |= decorating_parent->get_text_decoration_line();
 	}
 
-	m_text_decoration_color = read_decoration(_text_decoration_color_, web_color::current_color, &ComputedStyle::m_text_decoration_color);
+	m_text_decoration_color = read_decoration(_text_decoration_color_, web_color::current_color,
+		&ComputedStyle::m_text_decoration_color).compute_for_scheme(m_color.scheme);
 	m_text_decoration_thickness = read_decoration(_text_decoration_thickness_,
 		css_length::predef_value(text_decoration_thickness_auto), &ComputedStyle::m_text_decoration_thickness);
 	m_text_decoration_style = static_cast<text_decoration_style>(read_decoration(
@@ -830,7 +870,8 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	// text-emphasis
 	m_text_emphasis_style = read_property<string>(context, _text_emphasis_style_, true, "", (parent ? &parent->m_text_emphasis_style : nullptr));
 	m_text_emphasis_position = read_property<int>(context, _text_emphasis_position_, true, text_emphasis_position_right, (parent ? &parent->m_text_emphasis_position : nullptr));
-	m_text_emphasis_color = read_property(context, _text_emphasis_color_, true, web_color::current_color, (parent ? &parent->m_text_emphasis_color : nullptr));
+	m_text_emphasis_color = read_property(context, _text_emphasis_color_, true, web_color::current_color,
+		parent ? &parent->m_text_emphasis_color : nullptr).compute_for_scheme(m_color.scheme);
 
 
 	if(m_font_weight.is_predefined())
@@ -862,9 +903,12 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 		}
 	}
 
+	m_line_height.css_value = read_property<css_length>(context, _line_height_, true, css_length::predef_value(),
+		(parent ? &parent->m_line_height.css_value : nullptr));
 	font_description descr;
 	descr.families				= m_font_families;
-	descr.size					= std::round(font_size);
+	descr.size					= font_size;
+	descr.use_font_line_gap = m_line_height.css_value.is_predefined();
 	descr.style					= m_font_style;
 	descr.width = m_font_width;
 	descr.features = m_font_features;
@@ -876,6 +920,7 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	descr.kerning = static_cast<css_font_kerning>(m_font_kerning);
 	descr.optical_sizing = static_cast<css_font_optical_sizing>(m_font_optical_sizing);
 	descr.variations = m_font_variations;
+	descr.size_adjust = m_font_size_adjust;
 	descr.weight				= m_font_weight.val();
 	const auto* painted_decoration = boxless ? decorating_parent : this;
 	if (painted_decoration && painted_decoration->m_text_decoration_line)
@@ -899,14 +944,29 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 
 	m_font_metrics = {};
 	m_font = host.get_font(descr, &m_font_metrics);
+	if (m_font_size_adjust.mode == css_font_size_adjust::Mode::from_font)
+	{
+		auto reference = m_font_metrics.size_adjust_reference;
+		if (!m_font && !reference) {
+			auto probe = descr;
+			probe.size = host.default_font_size();
+			font_metrics probe_metrics;
+			host.get_font(probe, &probe_metrics);
+			reference = probe_metrics.size_adjust_reference;
+		}
+		if (reference) {
+			m_font_size_adjust.mode = css_font_size_adjust::Mode::number;
+			m_font_size_adjust.value = *reference;
+		} else {
+			m_font_size_adjust = {};
+		}
+	}
 	m_font_metrics.font_size = font_size;
 	if (!m_font)
 	{
 		m_font_metrics.draw_spaces = false;
 	}
 
-	m_line_height.css_value = read_property<css_length>(context, _line_height_, true, css_length::predef_value(),
-		(parent ? &parent->m_line_height.css_value : nullptr));
 	if (m_line_height.css_value.is_predefined())
 	{
 		m_line_height.computed_value = m_font_metrics.height;
@@ -984,7 +1044,8 @@ void ComputedStyle::compute_background(const ComputeContext& context)
 {
 	const auto* parent = context.parent;
 	const auto& host = context.host;
-	m_bg.m_color		= read_property(context, _background_color_, false, web_color::transparent, (parent ? &parent->m_bg.m_color : nullptr));
+	m_bg.m_color = read_property(context, _background_color_, false, web_color::transparent,
+		parent ? &parent->m_bg.m_color : nullptr).compute_for_scheme(m_color.scheme);
 	m_bg.m_current_color = m_color;
 
 	const css_size auto_auto(css_length::predef_value(background_size_auto), css_length::predef_value(background_size_auto));
@@ -1022,7 +1083,8 @@ void ComputedStyle::compute_background(const ComputeContext& context)
 	m_bg.m_baseurl = read_property<string>(context, _background_image_baseurl_, false, "",   (parent ? &parent->m_bg.m_baseurl : nullptr));
 
 	for (auto& image : m_bg.m_image)
-		host.compute_image(image, m_bg.m_baseurl, m_font_metrics, m_image_resolution, decorative_image_orientation(m_image_orientation));
+		host.compute_image(image, m_bg.m_baseurl, m_font_metrics, m_image_resolution,
+			decorative_image_orientation(m_image_orientation), m_color.scheme);
 
 	static const css_border_image defaults;
 	m_border_image.source = read_property(context, _id("border-image-source"), false, defaults.source, (parent ? &parent->m_border_image.source : nullptr));
@@ -1035,7 +1097,7 @@ void ComputedStyle::compute_background(const ComputeContext& context)
 			if (auto* length = std::get_if<css_length>(&side))
 				context.cvt_units(*length, m_font_metrics, 0);
 	host.compute_image(m_border_image.source.value, m_border_image.source.baseurl, m_font_metrics,
-		m_image_resolution, decorative_image_orientation(m_image_orientation));
+		m_image_resolution, decorative_image_orientation(m_image_orientation), m_color.scheme);
 }
 
 void ComputedStyle::compute_mask(const ComputeContext& context)
@@ -1092,7 +1154,7 @@ void ComputedStyle::compute_mask(const ComputeContext& context)
 	if (!image_declaration.is<inherit>()) {
 		for (auto& image : layers.m_image)
 			context.host.compute_image(image, layers.m_baseurl, m_font_metrics, m_image_resolution,
-				decorative_image_orientation(m_image_orientation));
+				decorative_image_orientation(m_image_orientation), m_color.scheme);
 	}
 	m_mask = std::move(mask);
 }

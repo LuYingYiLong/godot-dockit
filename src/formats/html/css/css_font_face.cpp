@@ -238,6 +238,29 @@ namespace litehtml {
 		return {};
 	}
 
+	static std::optional<double> parse_nonnegative_percentage(const css_token& token) {
+		if (token.type == PERCENTAGE && std::isfinite(token.n.number) && token.n.number >= 0) {
+			return token.n.number / 100.0;
+		}
+		if (const auto value = evaluate_css_scalar_math(token, css_math_scalar::percentage); value && std::isfinite(*value)) {
+			return std::max(0.0, *value);
+		}
+		return {};
+	}
+
+	static std::optional<css_font_metric_override> parse_metric_override(const css_token_vector& tokens) {
+		if (tokens.empty() || tokens.size() > 2) return {};
+		const auto parse = [](const css_token& token, std::optional<double>& ratio) {
+			if (token.ident() == "normal") return true;
+			ratio = parse_nonnegative_percentage(token);
+			return ratio.has_value();
+		};
+		css_font_metric_override result;
+		if (!parse(tokens.front(), result.horizontal)) return {};
+		if (tokens.size() == 2 && !parse(tokens.back(), result.vertical)) return {};
+		return result;
+	}
+
 	std::optional<css_font_face> parse_font_face_rule(const css_token_vector& prelude, const css_token_vector& block,
 		const string& base_url) {
 		if (std::any_of(prelude.begin(), prelude.end(), [](const css_token& token) { return token.type != WHITESPACE; }))
@@ -298,6 +321,18 @@ namespace litehtml {
 			}
 			else if (name == "font-variation-settings") {
 				if (auto settings = parse_css_font_variations(value)) face.variations = std::move(*settings);
+			}
+			else if (name == "ascent-override") {
+				if (auto metrics = parse_metric_override(value)) face.metrics.ascent = *metrics;
+			}
+			else if (name == "descent-override") {
+				if (auto metrics = parse_metric_override(value)) face.metrics.descent = *metrics;
+			}
+			else if (name == "line-gap-override") {
+				if (auto metrics = parse_metric_override(value)) face.metrics.line_gap = *metrics;
+			}
+			else if (name == "size-adjust" && value.size() == 1) {
+				if (auto ratio = parse_nonnegative_percentage(value.front())) face.size_adjust = *ratio;
 			}
 			else if (is_one_of(name, "font-width", "font-stretch") && value.size() <= 2) {
 				if (value.size() == 1 && value.front().ident() == "auto") {

@@ -332,6 +332,7 @@ public:
 	void select_all();																// 选中全部可复制文本
 	void clear_selection();															// 清除当前文本选区
 	godot::String get_selected_text() const;										// 返回当前选中的文本
+	godot::String get_accessible_text() const;									// 返回发布给 Godot 无障碍接口的文本
 };
 
 VARIANT_ENUM_CAST(HTMLLabel::AnimationProcessMode);

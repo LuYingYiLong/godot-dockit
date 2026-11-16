@@ -749,6 +749,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("select_all"), &HTMLLabel::select_all);
 	ClassDB::bind_method(D_METHOD("clear_selection"), &HTMLLabel::clear_selection);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &HTMLLabel::get_selected_text);
+	ClassDB::bind_method(D_METHOD("get_accessible_text"), &HTMLLabel::get_accessible_text);
 
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
@@ -817,6 +818,13 @@ bool HTMLLabel::is_transparent_canvas() const {
 
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
+	case NOTIFICATION_ACCESSIBILITY_UPDATE:
+		if (const RID accessible = get_accessibility_element(); accessible.is_valid()) {
+			auto* display = DisplayServer::get_singleton();
+			display->accessibility_update_set_role(accessible, DisplayServer::ROLE_STATIC_TEXT);
+			display->accessibility_update_set_value(accessible, get_accessible_text());
+		}
+		break;
 	case NOTIFICATION_POST_ENTER_TREE:
 		ensure_controls();
 		if (color_scheme_timer && is_visible_in_tree()) color_scheme_timer->start();
@@ -1248,6 +1256,10 @@ void HTMLLabel::clear_selection() {
 	}
 }
 
+String HTMLLabel::get_accessible_text() const {
+	return viewport_size.x > 0 && viewport_size.y > 0 ? layout->get_accessible_text() : String();
+}
+
 String HTMLLabel::get_selected_text() const {
 	if (!canvas) {
 		return {};
@@ -1601,6 +1613,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	layout_signal_pending |= p_layout_changed || viewport_size != p_viewport ||
 		content_size != p_content || render_error != p_error;
 	viewport_size = p_viewport;
+	queue_accessibility_update();
 	update_internal_processing();
 	content_size = p_content;
 	viewport_input_axes = p_input_axes;

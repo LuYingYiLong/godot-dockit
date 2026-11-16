@@ -227,6 +227,7 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("layout", "viewport_size"), &HTMLLayout::layout);
 	ClassDB::bind_method(D_METHOD("get_content_size"), &HTMLLayout::get_content_size);
 	ClassDB::bind_method(D_METHOD("get_plain_text"), &HTMLLayout::get_plain_text);
+	ClassDB::bind_method(D_METHOD("get_accessible_text"), &HTMLLayout::get_accessible_text);
 	ClassDB::bind_method(D_METHOD("hit_test_text", "position"), &HTMLLayout::hit_test_text);
 	ClassDB::bind_method(D_METHOD("get_selection_rects", "from", "to"), &HTMLLayout::get_selection_rects);
 	ClassDB::bind_method(D_METHOD("draw", "canvas", "position", "clip"), &HTMLLayout::draw,
@@ -630,6 +631,10 @@ void HTMLLayout::draw(CanvasItem* p_canvas, const Vector2& p_position, const Rec
 
 String HTMLLayout::get_plain_text() const {
 	return state->has_layout() ? state->container->get_paint_recorder().get_plain_text() : String();
+}
+
+String HTMLLayout::get_accessible_text() const {
+	return state->has_layout() ? state->container->get_paint_recorder().get_accessible_text() : String();
 }
 
 int64_t HTMLLayout::hit_test_text(const Vector2& p_position) const {

@@ -4,6 +4,7 @@
 // See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_value_parser.h"
+#include "css_image_value.h"
 #include "css_position_values.h"
 #include <litehtml/html.h>
 
@@ -64,7 +65,7 @@ namespace {
 		return result;
 	}
 
-	std::optional<css_content_item> parse_content_item(const css_token& token) {
+	std::optional<css_content_item> parse_content_item(const css_token& token, document_container* container) {
 		using kind = css_content_kind;
 		if (token.type == STRING) return css_content_item{ kind::text, token.str, {} };
 		if (token.type == IDENT) {
@@ -76,8 +77,8 @@ namespace {
 			return std::nullopt;
 		}
 
-		string url;
-		if (parse_url(token, url) && !url.empty()) return css_content_item{ kind::image, std::move(url), {} };
+		if (auto image = parse_css_image(token, container); image && !image->is_empty())
+			return css_content_item{kind::image, {}, {}, {}, std::make_shared<const litehtml::image>(std::move(*image))};
 		if (token.type != CV_FUNCTION || token.value.empty()) return std::nullopt;
 
 		const auto function = lowcase(token.name);
@@ -114,17 +115,32 @@ namespace {
 		return css_content_item{ plural ? kind::counters : kind::counter, args[0][0].name, plural ? args[1][0].str : string(), std::move(style) };
 	}
 
-	std::optional<css_generated_content> parse_generated_content(const css_token_vector& tokens, const string& baseurl) {
+	std::optional<css_generated_content> parse_generated_content(const css_token_vector& tokens, const string& baseurl,
+		document_container* container) {
 		css_generated_content result;
 		if (tokens.size() == 1 && tokens[0].ident() == "normal") return result;
 		result.normal = false;
 		if (tokens.size() == 1 && tokens[0].ident() == "none") return result;
 		result.base_url = baseurl;
+		bool alternative = false;
 		for (const auto& token : tokens) {
-			auto item = parse_content_item(token);
+			if (token.type == '/') {
+				if (alternative || result.items.empty()) return std::nullopt;
+				alternative = true;
+				continue;
+			}
+			auto item = parse_content_item(token, container);
 			if (!item) return std::nullopt;
-			result.items.push_back(std::move(*item));
+			if (alternative) {
+				using kind = css_content_kind;
+				if (!is_one_of(item->kind, kind::text, kind::attribute, kind::counter, kind::counters))
+					return std::nullopt;
+				result.alternative.push_back(std::move(*item));
+			} else {
+				result.items.push_back(std::move(*item));
+			}
 		}
+		if (alternative && result.alternative.empty()) return std::nullopt;
 		return result;
 	}
 
@@ -153,7 +169,8 @@ namespace {
 
 }
 
-void css_value_parser::parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important)
+void css_value_parser::parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important,
+	document_container* container)
 {
 	static const auto perspective = _id("perspective");
 	static const auto perspective_origin = _id("perspective-origin");
@@ -381,7 +398,7 @@ void css_value_parser::parse_layout(string_id name, const css_token_vector& valu
 	//  =============================  COUNTER, CONTENT  =============================
 
 	case _content_:
-		if (auto content = parse_generated_content(value, baseurl))
+		if (auto content = parse_generated_content(value, baseurl, container))
 			add_parsed_property(name, property_value(std::move(*content), important));
 		break;
 

@@ -99,8 +99,9 @@ void litehtml::el_text::compute_styles(bool /*recursive*/)
 		m_size.width	= 0;
 	} else
 	{
+		m_size.width	= is_preserved_tab() ? 0 : get_document()->container()->measure_text(get_rendered_text().c_str(), font, fm);
 		m_size.height	= fm.height;
-		m_size.width	= is_preserved_tab() ? 0 : get_document()->container()->text_width(get_rendered_text().c_str(), font);
+		css_w().set_font_metrics(fm);
 	}
 	m_draw_spaces = fm.draw_spaces;
 }

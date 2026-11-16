@@ -548,6 +548,31 @@ void css_value_parser::parse_text(string_id name, const css_token_vector& value,
 			add_parsed_property(name, property_value(*settings, important));
 		return;
 	}
+	if (name == _id("font-size-adjust")) {
+		if (value.empty() || value.size() > 2) return;
+		css_font_size_adjust adjust;
+		if (value.size() == 1 && val.ident() == "none") {
+			add_parsed_property(name, property_value(adjust, important));
+			return;
+		}
+		if (value.size() == 2) {
+			const int metric = value_index(value.front().ident(), "ex-height;cap-height;ch-width;ic-width;ic-height", -1);
+			if (metric < 0) return;
+			adjust.metric = static_cast<css_font_size_adjust::Metric>(metric);
+		}
+		const auto& factor = value.back();
+		if (factor.ident() == "from-font") {
+			adjust.mode = css_font_size_adjust::Mode::from_font;
+		} else {
+			auto number = evaluate_css_scalar_math(factor, css_math_scalar::number);
+			if (factor.type == NUMBER && factor.n.number >= 0) number = factor.n.number;
+			if (!number || !std::isfinite(*number)) return;
+			adjust.mode = css_font_size_adjust::Mode::number;
+			adjust.value = std::max(0.0, *number);
+		}
+		add_parsed_property(name, property_value(adjust, important));
+		return;
+	}
 	static const auto underline_position = _id("text-underline-position");
 	static const auto underline_offset = _id("text-underline-offset");
 	if (name == underline_position)

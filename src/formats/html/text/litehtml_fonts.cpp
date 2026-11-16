@@ -36,16 +36,21 @@ namespace docrender {
 
 		HanScript chinese_script(const String& p_language) {
 			const auto parts = p_language.to_lower().split("-");
-			if (parts.is_empty() || parts[0] != "zh") return HanScript::none;
+			if (parts.is_empty()) return HanScript::none;
+			const String primary = parts[0];
+			if (primary != "zh" && primary != "cmn" && primary != "yue") return HanScript::none;
+			// Chinese tags can also use the older zh-cmn and zh-yue forms.
+			const bool has_extlang = primary == "zh" && parts.size() > 1 && (parts[1] == "cmn" || parts[1] == "yue");
+			const bool cantonese = primary == "yue" || (has_extlang && parts[1] == "yue");
 			// Explicit script subtags take precedence over the region.
-			for (int64_t i = 1; i < parts.size() && parts[i].length() != 1; ++i) {
+			for (int64_t i = has_extlang ? 2 : 1; i < parts.size() && parts[i].length() != 1; ++i) {
 				if (parts[i] == "hans") return HanScript::simplified;
 				if (parts[i] == "hant") return HanScript::traditional;
 				if (parts[i] == "tw" || parts[i] == "hk" || parts[i] == "mo") return HanScript::traditional;
 				if (parts[i].length() == 4) return HanScript::none;
 				if (parts[i].length() == 2) break;
 			}
-			return HanScript::simplified;
+			return cantonese ? HanScript::traditional : HanScript::simplified;
 		}
 
 		const char* chinese_generic_fonts(HanScript p_script, const String& p_generic) {
@@ -54,6 +59,7 @@ namespace docrender {
 			if (p_generic == "serif")
 				return traditional ? "Noto Serif TC|Noto Serif CJK TC|PMingLiU" : "Noto Serif SC|Noto Serif CJK SC|SimSun";
 			if (p_generic == "monospace") return traditional ? "MingLiU" : "NSimSun";
+			if (p_generic == "cursive") return traditional ? "DFKai-SB" : "KaiTi";
 			if (p_generic == "standard" || p_generic == "sans-serif")
 				return traditional ? "Noto Sans TC|Noto Sans CJK TC|Microsoft JhengHei" : "Noto Sans SC|Noto Sans CJK SC|Microsoft YaHei";
 			return nullptr;
@@ -73,6 +79,27 @@ namespace docrender {
 				? static_cast<int32_t>(std::max(1.0, size)) : LiteHTMLFonts::DEFAULT_SIZE;
 		}
 
+		int32_t adjusted_font_size(double p_size, double p_ratio) {
+			if (p_ratio == 0.0) return 0;
+			if (p_ratio == 1.0) return font_pixel_size(p_size);
+			// TextServer stores font sizes in a signed 26.6 coordinate.
+			constexpr double limit = std::numeric_limits<int32_t>::max() / 64;
+			return font_pixel_size(std::min(p_size * p_ratio, limit));
+		}
+
+		float resolve_font_metric(const std::optional<double>& p_ratio, float p_native, double p_size) {
+			if (!p_ratio) return p_native;
+			// Keep sums of author-provided metrics within the layout coordinate range.
+			constexpr double limit = std::numeric_limits<int32_t>::max() / 4.0;
+			return static_cast<float>(std::min(*p_ratio * std::min(p_size, std::numeric_limits<double>::max()), limit));
+		}
+
+		bool is_shaping_control(char32_t p_character) {
+			return p_character == 0x200c || p_character == 0x200d ||
+				(p_character >= 0xfe00 && p_character <= 0xfe0f) ||
+				(p_character >= 0xe0100 && p_character <= 0xe01ef);
+		}
+
 		float glyph_height(const Ref<TextServer>& p_server, const RID& p_font, int32_t p_size, char32_t p_char, float p_fallback) {
 			const int64_t glyph = p_server->font_get_glyph_index(p_font, p_size, p_char, 0);
 			if (glyph == 0) {
@@ -85,6 +112,33 @@ namespace docrender {
 				height = std::max(height, -points[index].y);
 			}
 			return std::isfinite(height) && height > 0.0f ? height : p_fallback;
+		}
+
+		std::optional<double> measure_font_aspect(const Ref<TextServer>& p_server, const RID& p_face,
+			css_font_size_adjust::Metric p_metric) {
+			using Metric = css_font_size_adjust::Metric;
+			if (!p_face.is_valid()) return {};
+			// Measure an outline at a size large enough to limit integer hinting error.
+			constexpr int sample_size = 1024;
+			float measure = 0.0f;
+			if (p_metric == Metric::ex_height || p_metric == Metric::cap_height) {
+				const char32_t character = p_metric == Metric::ex_height ? U'x' : U'H';
+				measure = glyph_height(p_server, p_face, sample_size, character, 0.0f);
+			} else {
+				const char32_t character = p_metric == Metric::ch_width ? U'0' : U'\u6c34';
+				const auto glyph = p_server->font_get_glyph_index(p_face, sample_size, character, 0);
+				if (!glyph) return {};
+				const auto advance = p_server->font_get_glyph_advance(p_face, sample_size, glyph);
+				measure = p_metric == Metric::ic_height ? std::abs(advance.y) : advance.x;
+			}
+			if (!std::isfinite(measure) || measure <= 0) return {};
+			return measure / double(sample_size);
+		}
+
+		std::optional<double> measure_font_aspect(const Ref<TextServer>& p_server, const Ref<Font>& p_font,
+			css_font_size_adjust::Metric p_metric) {
+			const auto rids = p_font->get_rids();
+			return rids.is_empty() ? std::nullopt : measure_font_aspect(p_server, RID(rids[0]), p_metric);
 		}
 
 		struct CaseFoldRange {
@@ -199,9 +253,9 @@ namespace docrender {
 			return p_description.optical_sizing == font_optical_sizing_auto && !p_description.variations.count(OPTICAL_SIZE_AXIS);
 		}
 
-		void apply_optical_size(Dictionary& r_axes, const Dictionary& p_supported, const font_description& p_description) {
+		void apply_optical_size(Dictionary& r_axes, const Dictionary& p_supported, const font_description& p_description, double p_ratio = 1.0) {
 			constexpr float points_per_css_pixel = 72.0f / 96.0f;
-			merge_axis_settings(r_axes, p_supported, { { OPTICAL_SIZE_AXIS, font_pixel_size(p_description.size) * points_per_css_pixel } });
+			merge_axis_settings(r_axes, p_supported, { { OPTICAL_SIZE_AXIS, adjusted_font_size(p_description.size, p_ratio) * points_per_css_pixel } });
 		}
 
 		bool has_feature_settings(const font_description& p_description) {
@@ -348,18 +402,21 @@ namespace docrender {
 		return font->has_char(p_character);
 	}
 
-	Ref<Font> LiteHTMLFonts::FontStack::match(const String& p_text, int64_t p_start, int64_t p_end) const {
+	const LiteHTMLFonts::FontChoice* LiteHTMLFonts::FontStack::match(const String& p_text, int64_t p_start, int64_t p_end,
+		bool p_ignore_joiners) const {
 		for (const auto& choice : choices) {
 			int64_t index = p_start;
-			while (index < p_end && choice.covers(p_text[index])) ++index;
-			if (index == p_end) return choice.font;
+			while (index < p_end && ((p_ignore_joiners && is_shaping_control(p_text[index])) || choice.covers(p_text[index]))) ++index;
+			if (index == p_end) return &choice;
 		}
-		return {};
+		return nullptr;
 	}
 
-	void LiteHTMLFonts::FontStack::add_text(TextLine& r_line, const String& p_text, int32_t p_size) const {
+	void LiteHTMLFonts::FontStack::add_text(TextLine& r_line, const String& p_text, double p_size,
+		std::vector<ShapingRun>* r_runs) const {
+		const int32_t base_size = font_pixel_size(p_size);
 		if (choices.empty() || p_text.is_empty()) {
-			r_line.add_string(p_text, unrestricted, p_size, language);
+			r_line.add_string(p_text, unrestricted, base_size, language);
 			return;
 		}
 		const auto server = TextServerManager::get_singleton()->get_primary_interface();
@@ -367,52 +424,132 @@ namespace docrender {
 		int64_t start = 0;
 		int64_t run_start = 0;
 		Ref<Font> run;
-		const auto append = [&](int64_t p_first, const Ref<Font>& p_font) {
-			if (run != p_font) {
-				if (run.is_valid()) r_line.add_string(p_text.substr(run_start, p_first - run_start), run, p_size, language);
+		const FontChoice* run_choice = nullptr;
+		int32_t run_size = base_size;
+		const auto add_zero = [&](int64_t p_start, int64_t p_end) {
+			// A zero-sized face still occupies the original source offsets in TextServer.
+			int64_t offset = p_start;
+			if (!breaks.is_empty()) {
+				const auto* end = breaks.ptr() + breaks.size();
+				for (auto* next = std::upper_bound(breaks.ptr(), end, offset); next != end && *next < p_end; ++next) {
+					r_line.add_object(offset, {}, INLINE_ALIGNMENT_TOP, *next - offset);
+					offset = *next;
+				}
+			}
+			r_line.add_object(offset, {}, INLINE_ALIGNMENT_TOP, p_end - offset);
+		};
+		const auto add_system_fallback = [&](int64_t p_end) {
+			const String value = p_text.substr(run_start, p_end - run_start);
+			// Let TextServer choose installed fallback faces with the original language and shaping context.
+			Ref<TextLine> probe;
+			probe.instantiate();
+			probe->add_string(value, unrestricted, base_size, language);
+			const auto glyphs = server->shaped_text_sort_logical(probe->get_rid());
+			const Dictionary features = unrestricted->get_opentype_features();
+			const auto emit = [&](int64_t p_first, int64_t p_last, const RID& p_face) {
+				if (p_last <= p_first) return;
+				const String span = value.substr(p_first, p_last - p_first);
+				const auto aspect = measure_font_aspect(server, p_face, size_adjust_metric);
+				if (!aspect) {
+					r_line.add_string(span, unrestricted, base_size, language);
+					return;
+				}
+				const int32_t size = adjusted_font_size(p_size, *size_adjust_reference / *aspect);
+				if (size == 0) {
+					add_zero(run_start + p_first, run_start + p_last);
+				} else {
+					TypedArray<RID> faces;
+					faces.append(p_face);
+					if (!server->shaped_text_add_string(r_line.get_rid(), span, faces, size, features, language)) {
+						r_line.add_string(span, unrestricted, base_size, language);
+					}
+				}
+			};
+			int64_t first = 0;
+			int64_t covered = 0;
+			RID face;
+			for (const Dictionary& glyph : glyphs) {
+				const int64_t from = glyph["start"];
+				const int64_t to = glyph["end"];
+				if (from < covered || to <= from || to > value.length()) continue;
+				const RID next = glyph["font_rid"];
+				if (from != covered || next != face) {
+					emit(first, covered, face);
+					emit(covered, from, {});
+					first = from;
+					face = next;
+				}
+				covered = to;
+			}
+			emit(first, covered, face);
+			emit(covered, value.length(), {});
+		};
+		const auto flush = [&](int64_t p_end) {
+			if (run.is_null() || p_end <= run_start) return;
+			if (r_runs) r_runs->push_back({run_start, run_choice});
+			if (run_size == 0) add_zero(run_start, p_end);
+			else if (!run_choice && size_adjust_reference) add_system_fallback(p_end);
+			else r_line.add_string(p_text.substr(run_start, p_end - run_start), run, run_size, language);
+		};
+		const auto append = [&](int64_t p_first, const FontChoice* p_choice) {
+			const auto& font = p_choice ? p_choice->font : unrestricted;
+			const int32_t next_size = p_choice ? adjusted_font_size(p_size, p_choice->size_adjust) : base_size;
+		if (run != font || run_size != next_size || ((r_runs || size_adjust_reference) && run_choice != p_choice)) {
+				flush(p_first);
 				run_start = p_first;
-				run = p_font;
+				run = font;
+				run_choice = p_choice;
+				run_size = next_size;
 			}
 		};
 		for (const auto end : breaks) {
 			if (end <= start || end > p_text.length()) continue;
-			const auto font = match(p_text, start, end);
-			if (font.is_valid()) {
-				append(start, font);
+			if (const auto* choice = match(p_text, start, end)) {
+				append(start, choice);
 			}
 			else {
 				// Leave variation selectors and joined emoji sequences to the shaper.
 				bool needs_sequence = false;
 				for (int64_t index = start; index < end && !needs_sequence; ++index) {
-					const char32_t character = p_text[index];
-					needs_sequence = character == 0x200d || (character >= 0xfe00 && character <= 0xfe0f) ||
-						(character >= 0xe0100 && character <= 0xe01ef);
+					needs_sequence = is_shaping_control(p_text[index]);
 				}
 				if (needs_sequence) {
-					append(start, unrestricted);
+					append(start, has_size_adjust ? match(p_text, start, end, true) : nullptr);
 				}
 				else {
 					for (int64_t index = start; index < end; ++index) {
-						const auto fallback = match(p_text, index, index + 1);
-						append(index, fallback.is_valid() ? fallback : unrestricted);
+						append(index, match(p_text, index, index + 1));
 					}
 				}
 			}
 			start = end;
 		}
 		if (start < p_text.length()) {
-			const auto remainder = match(p_text, start, p_text.length());
-			append(start, remainder.is_valid() ? remainder : unrestricted);
+			append(start, match(p_text, start, p_text.length()));
 		}
-		if (run.is_valid()) r_line.add_string(p_text.substr(run_start), run, p_size, language);
+		flush(p_text.length());
 	}
 
-	Vector2 LiteHTMLFonts::FontStack::char_size(char32_t p_character, int32_t p_size) const {
-		if (choices.empty()) return unrestricted->get_char_size(p_character, p_size);
+	std::optional<float> LiteHTMLFonts::FontStack::char_advance(char32_t p_character, double p_size) const {
 		for (const auto& choice : choices) {
-			if (choice.covers(p_character)) return choice.font->get_char_size(p_character, p_size);
+			if (!choice.covers(p_character)) continue;
+			const auto size = adjusted_font_size(p_size, choice.size_adjust);
+			return size > 0 ? choice.font->get_char_size(p_character, size).x : 0.0f;
 		}
-		return unrestricted->get_char_size(p_character, p_size);
+		if (size_adjust_reference) {
+			Ref<TextLine> line;
+			line.instantiate();
+			add_text(*line.ptr(), String::chr(p_character), p_size);
+			const auto server = TextServerManager::get_singleton()->get_primary_interface();
+			for (const Dictionary& glyph : server->shaped_text_get_glyphs(line->get_rid())) {
+				const RID face = glyph["font_rid"];
+				const int flags = glyph["flags"];
+				if (face.is_valid() || (flags & TextServer::GRAPHEME_IS_EMBEDDED_OBJECT)) return line->get_line_width();
+			}
+			return {};
+		}
+		const float advance = unrestricted->get_char_size(p_character, font_pixel_size(p_size)).x;
+		return advance > 0 ? std::optional<float>(advance) : std::nullopt;
 	}
 
 	HTMLTextLayout LiteHTMLFonts::FontData::shape(const String& p_text) {
@@ -421,11 +558,70 @@ namespace docrender {
 		}
 		Ref<TextLine> line;
 		line.instantiate();
-		stack->add_text(*line.ptr(), p_text, size);
+		std::vector<FontStack::ShapingRun> runs;
+		const bool needs_run_metrics = stack->has_size_adjust && description.use_font_line_gap;
+		stack->add_text(*line.ptr(), p_text, description.size, needs_run_metrics ? &runs : nullptr);
 		HTMLTextLayout layout{ line, ascent };
+		layout.descent = descent;
+		if (!runs.empty()) adjust_normal_line_metrics(layout, runs);
 		layout.spacing = HTMLTextSpacing::create(layout, p_text, description.letter_spacing, description.word_spacing);
 		lines.insert(p_text, layout);
 		return layout;
+	}
+
+	void LiteHTMLFonts::FontData::adjust_normal_line_metrics(HTMLTextLayout& r_layout,
+		const std::vector<FontStack::ShapingRun>& p_runs) const {
+		const auto server = TextServerManager::get_singleton()->get_primary_interface();
+		const auto glyphs = server->shaped_text_sort_logical(r_layout.get_rid());
+		const auto primary_rids = stack->primary->get_rids();
+		const FontStack::ShapingRun* last_run = nullptr;
+		RID last_face;
+		float top = 0.0f;
+		float bottom = 0.0f;
+		std::vector<HTMLTextRunMetrics> metrics;
+		for (const Dictionary& glyph : glyphs) {
+			const RID face = glyph["font_rid"];
+			if (!face.is_valid()) continue;
+			const int64_t start = glyph["start"];
+			const auto end = std::upper_bound(p_runs.begin(), p_runs.end(), start,
+				[](int64_t p_offset, const FontStack::ShapingRun& p_run) { return p_offset < p_run.start; });
+			if (end == p_runs.begin()) continue;
+			const auto& run = *std::prev(end);
+			if (last_face != face || last_run != &run) {
+				last_face = face;
+				last_run = &run;
+				const auto* choice = run.choice;
+				if (choice && choice->font == stack->primary && choice->size_adjust == stack->primary_size_adjust &&
+					choice->metrics == stack->primary_metrics && primary_rids.has(face)) {
+					top = r_layout.ascent;
+					bottom = r_layout.descent;
+				} else {
+					const int64_t glyph_size = glyph["font_size"];
+					top = server->font_get_ascent(face, glyph_size) + server->font_get_spacing(face, TextServer::SPACING_TOP);
+					bottom = server->font_get_descent(face, glyph_size) + server->font_get_spacing(face, TextServer::SPACING_BOTTOM);
+					if (choice && choice->font->get_rids().has(face)) {
+						const double size = description.size * choice->size_adjust;
+						const float half_gap = resolve_font_metric(choice->metrics.line_gap.horizontal, 0, size) / 2;
+						top = resolve_font_metric(choice->metrics.ascent.horizontal, top, size) + half_gap;
+						bottom = resolve_font_metric(choice->metrics.descent.horizontal, bottom, size) + half_gap;
+					}
+				}
+			}
+			if (top <= r_layout.ascent && bottom <= r_layout.descent) continue;
+			const int64_t glyph_end = glyph["end"];
+			if (glyph_end <= start) continue;
+			// Several glyphs can share one cluster. Merge their extents for range queries.
+			if (!metrics.empty() && (start < metrics.back().end ||
+				(start == metrics.back().end && top == metrics.back().ascent && bottom == metrics.back().descent))) {
+				auto& previous = metrics.back();
+				previous.end = std::max(previous.end, glyph_end);
+				previous.ascent = std::max(previous.ascent, top);
+				previous.descent = std::max(previous.descent, bottom);
+			} else {
+				metrics.push_back({start, glyph_end, top, bottom});
+			}
+		}
+		r_layout.set_run_metrics(std::move(metrics));
 	}
 
 	HTMLTextLayout LiteHTMLFonts::FontData::shape_punctuation(const String& p_text, punctuation_trim p_trim) {
@@ -443,8 +639,8 @@ namespace docrender {
 			if (!font.is_valid() || index <= 0 || font_size <= 0) return layout;
 
 			constexpr uint32_t halt = 0x68616c74;
-			const auto choice = stack->match(p_text, 0, p_text.length());
-			const auto& chosen = choice.is_valid() ? choice : stack->unrestricted;
+			const auto* choice = stack->match(p_text, 0, p_text.length());
+			const auto& chosen = choice ? choice->font : stack->unrestricted;
 			Dictionary features = chosen->get_opentype_features().duplicate();
 			// Explicit font features already determine this glyph's advance.
 			if (features.has(int64_t(halt)) || features.has("halt")) return layout;
@@ -453,7 +649,8 @@ namespace docrender {
 				Ref<TextLine> line;
 				line.instantiate();
 				if (server->shaped_text_add_string(line->get_rid(), p_text, chosen->get_rids(), font_size, features, stack->language)) {
-					HTMLTextLayout candidate{ line, ascent };
+					HTMLTextLayout candidate{ line, layout.ascent };
+					candidate.descent = layout.descent;
 					if (candidate.width() > 0 && candidate.width() < layout.width()) return candidate;
 				}
 			}
@@ -643,7 +840,9 @@ namespace docrender {
 				if (face.style == font_style_italic && axes_supported.has(italic_axis)) axes[italic_axis] = 1;
 				merge_axis_settings(axes, axes_supported, face.variations);
 				if (wants_optical_size(p_description) && axes_supported.has(int64_t(OPTICAL_SIZE_AXIS))) {
-					apply_optical_size(axes, axes_supported, p_description);
+					// A numeric adjustment normalizes the face independently of its authored multiplier.
+					const auto ratio = p_description.size_adjust.mode == css_font_size_adjust::Mode::number ? 1.0 : face.size_adjust;
+					apply_optical_size(axes, axes_supported, p_description, ratio);
 					r_size_dependent = true;
 				}
 				merge_axis_settings(axes, axes_supported, p_description.variations);
@@ -668,7 +867,7 @@ namespace docrender {
 					selected = variation;
 				}
 				if (!best) best = &candidate;
-				r_choices.push_back({ selected, face.unicode_ranges, face_has_features });
+				r_choices.push_back({ selected, face.unicode_ranges, face_has_features, face.metrics, face.size_adjust });
 				break;
 			}
 		}
@@ -763,10 +962,7 @@ namespace docrender {
 		const String block_name = fonts.code_block.is_valid() ? fold_font_family(fonts.code_block->get_font_name()) : String();
 #ifdef WINDOWS_ENABLED
 		const auto han_script = chinese_script(language);
-		const auto append_chinese_generic = [&](const String& p_generic) {
-			if (const char* candidates = chinese_generic_fonts(han_script, p_generic))
-				append_installed(candidates, CHINESE_FONT_RANGES);
-		};
+		const bool localize_whole_font = p_description.language_is_declared && fonts.text.is_null();
 #endif
 		for (const auto& family : p_description.families) {
 			const String name = String::utf8(family.name.c_str());
@@ -796,7 +992,16 @@ namespace docrender {
 				continue;
 			}
 #ifdef WINDOWS_ENABLED
-			append_chinese_generic(name);
+			if (const char* candidates = chinese_generic_fonts(han_script, name)) {
+				// A standalone generic resolves to a whole font. If it is absent,
+				// try the rest of the author's list before the document default.
+				if (localize_whole_font) {
+					append_installed(candidates);
+					continue;
+				}
+				// Untagged text and Markdown keep their usual Latin fonts.
+				append_installed(candidates, CHINESE_FONT_RANGES);
+			}
 #endif
 			if (name == "sans-serif") {
 				if (fonts.text.is_valid() || !append_installed("Arial|Liberation Sans|Helvetica|Noto Sans|DejaVu Sans")) append(text_font);
@@ -837,37 +1042,61 @@ namespace docrender {
 		}
 		if (choices.empty() && fonts.text.is_null()) {
 #ifdef WINDOWS_ENABLED
-			if (p_description.families.empty()) append_chinese_generic("standard");
+			if (const char* candidates = chinese_generic_fonts(han_script, "standard")) {
+				if (localize_whole_font) append_installed(candidates);
+				else if (p_description.families.empty()) append_installed(candidates, CHINESE_FONT_RANGES);
+			}
 #endif
-			append_installed(serif_fonts);
+			if (choices.empty() || !choices.front().ranges.empty()) append_installed(serif_fonts);
 		}
 		append(text_font);
+		// Font-relative metrics use the first face whose range includes space.
+		const auto primary = std::find_if(choices.begin(), choices.end(), [](const FontChoice& choice) {
+			return choice.ranges.empty() || std::any_of(choice.ranges.begin(), choice.ranges.end(), [](const auto& range) {
+				return range.first <= U' ' && U' ' <= range.second;
+			});
+		});
+		const auto& adjust = p_description.size_adjust;
+		std::optional<double> reference;
+		if (adjust.mode != css_font_size_adjust::Mode::none) {
+			const auto server = TextServerManager::get_singleton()->get_primary_interface();
+			if (adjust.mode == css_font_size_adjust::Mode::number) reference = adjust.value;
+			else if (const auto aspect = measure_font_aspect(server, primary->font, adjust.metric)) {
+				reference = std::min(*aspect * primary->size_adjust, std::numeric_limits<double>::max());
+			}
+			if (reference) {
+				for (auto& choice : choices) {
+					if (const auto aspect = measure_font_aspect(server, choice.font, adjust.metric)) {
+						// The descriptor multiplies both the glyph size and the aspect being normalized.
+						choice.size_adjust = std::min(*reference / *aspect, std::numeric_limits<double>::max());
+					}
+				}
+			}
+		}
 		TypedArray<Font> unrestricted;
-		Ref<Font> primary;
+		bool has_size_adjust = reference.has_value();
 		bool restricted = false;
 		bool has_face_features = false;
 		for (const auto& choice : choices) {
 			has_face_features |= choice.has_face_features;
-			if (choice.ranges.empty()) {
+			has_size_adjust |= choice.size_adjust != 1.0;
+			// TextServer can only apply one size per span, so scaled faces are matched explicitly.
+			if (choice.ranges.empty() && choice.size_adjust == 1.0) {
 				if (!unrestricted.has(choice.font)) unrestricted.append(choice.font);
 			}
 			else {
 				restricted = true;
-			}
-			// Font-relative metrics use the first face whose range includes space.
-			if (primary.is_null() && (choice.ranges.empty() ||
-				std::any_of(choice.ranges.begin(), choice.ranges.end(), [](const auto& range) {
-					return range.first <= U' ' && U' ' <= range.second;
-				}))) {
-				primary = choice.font;
 			}
 		}
 		// TextLine applies a span's feature dictionary to every font in its fallback list.
 		// Split runs when feature defaults, kerning, or petite-cap fallback varies by face.
 		const bool per_face_features = has_face_features || has_named_features || p_description.kerning == font_kerning_normal ||
 			p_description.variant_features.count(PETITE_CAPS);
-		if (!restricted && !per_face_features) choices.clear();
-		return { primary, combine_fonts(unrestricted, per_face_features ? text_font : Ref<Font>()), std::move(choices), language, size_dependent };
+		if (unrestricted.is_empty()) unrestricted.append(text_font);
+		FontStack stack{ primary->font, combine_fonts(unrestricted, per_face_features ? text_font : Ref<Font>()),
+			{}, language, size_dependent, primary->metrics, primary->size_adjust, has_size_adjust, reference, adjust.metric };
+		if (restricted || per_face_features || has_size_adjust) stack.choices = std::move(choices);
+		return stack;
 	}
 
 	uint_ptr LiteHTMLFonts::create_font(const font_description& p_description, font_metrics* r_metrics) {
@@ -881,11 +1110,12 @@ namespace docrender {
 		}
 		const String language = String::utf8(p_description.language.c_str());
 		key += vformat("/lang=%d:%s", language.length(), language);
+		if (p_description.language_is_declared) key += "/declared-lang";
 		key += String::utf8(p_description.opentype_key().c_str());
 		String size_key;
 		const auto* cached = font_stacks.getptr(key);
 		if (!cached) {
-			size_key = key + vformat("/size=%d", size);
+			size_key = key + "/size=" + String::num(p_description.size, 9);
 			cached = font_stacks.getptr(size_key);
 		}
 		const auto stack = cached ? *cached : std::make_shared<const FontStack>(resolve_font_stack(p_description));
@@ -894,10 +1124,18 @@ namespace docrender {
 			font_stacks.insert(stack->size_dependent ? size_key : key, stack);
 		}
 		const auto& font = stack->primary;
+		r_metrics->size_adjust_reference = stack->size_adjust_reference;
+		const auto primary_size = adjusted_font_size(p_description.size, stack->primary_size_adjust);
 
-		const float base_ascent = font->get_ascent(size);
-		float ascent = base_ascent;
-		float descent = font->get_descent(size);
+		const float base_ascent = primary_size > 0 ? font->get_ascent(primary_size) : 0.0f;
+		const float base_descent = primary_size > 0 ? font->get_descent(primary_size) : 0.0f;
+		const auto& overrides = stack->primary_metrics;
+		const double effective_size = p_description.size * stack->primary_size_adjust;
+		const float half_gap = p_description.use_font_line_gap ? resolve_font_metric(overrides.line_gap.horizontal, 0, effective_size) / 2 : 0;
+		float ascent = resolve_font_metric(overrides.ascent.horizontal, base_ascent, effective_size) + half_gap;
+		float descent = resolve_font_metric(overrides.descent.horizontal, base_descent, effective_size) + half_gap;
+		r_metrics->half_line_gap = half_gap;
+		r_metrics->has_metric_overrides = overrides.ascent.horizontal || overrides.descent.horizontal || half_gap != 0;
 		r_metrics->emphasis_extent = 0;
 		Ref<TextLine> emphasis;
 		if (!p_description.emphasis_style.empty()) {
@@ -905,9 +1143,11 @@ namespace docrender {
 			const String value = String::utf8(p_description.emphasis_style.c_str(), p_description.emphasis_style.size());
 			const auto breaks = server->string_get_character_breaks(value, stack->language);
 			const String mark = breaks.is_empty() ? value : value.substr(0, breaks[0]);
-			if (!mark.is_empty()) {
-				Ref<Font> mark_font = stack->match(mark, 0, mark.length());
-				if (mark_font.is_null()) mark_font = stack->unrestricted;
+			const auto* choice = mark.is_empty() ? nullptr : stack->match(mark, 0, mark.length());
+			const int mark_size = choice && choice->size_adjust != 1.0 ?
+				adjusted_font_size(p_description.size / 2.0, choice->size_adjust) : std::max(1, size / 2);
+			if (!mark.is_empty() && mark_size > 0) {
+				const Ref<Font>& mark_font = choice ? choice->font : stack->unrestricted;
 				const Ref<FontVariation> mark_variation = mark_font;
 				Ref<FontVariation> variant;
 				if (mark_variation.is_valid()) {
@@ -922,7 +1162,7 @@ namespace docrender {
 				features["ruby"] = 1;
 				variant->set_opentype_features(features);
 				emphasis.instantiate();
-				emphasis->add_string(mark, variant, std::max(1, size / 2), stack->language);
+				emphasis->add_string(mark, variant, mark_size, stack->language);
 				const bool under = p_description.emphasis_position & text_emphasis_position_under;
 				const int adjacent_decoration = under ? text_decoration_line_underline : text_decoration_line_overline;
 				r_metrics->emphasis_extent = emphasis->get_size().y + ((p_description.decoration_line & adjacent_decoration) ? 2.0f : 0.0f);
@@ -930,29 +1170,27 @@ namespace docrender {
 				else ascent += r_metrics->emphasis_extent;
 			}
 		}
-		auto* data = new FontData{ stack, size, ascent, p_description, emphasis, {}, {} };
+		auto* data = new FontData{ stack, size, primary_size, ascent, descent, p_description, emphasis, {}, {} };
 		r_metrics->font_size = size;
 		r_metrics->ascent = ascent;
 		r_metrics->descent = descent;
-		const float underline_position = font->get_underline_position(size);
+		const float underline_position = primary_size > 0 ? font->get_underline_position(primary_size) : 0.0f;
 		r_metrics->underline_position = std::isfinite(underline_position) ? underline_position : 0.0f;
 		r_metrics->height = r_metrics->ascent + r_metrics->descent;
 		const auto rids = font->get_rids();
 		const auto server = TextServerManager::get_singleton()->get_primary_interface();
-		r_metrics->x_height = size * 0.5f;
+		r_metrics->x_height = primary_size * 0.5f;
 		r_metrics->cap_height = base_ascent;
-		if (!rids.is_empty() && server.is_valid()) {
+		if (primary_size > 0 && !rids.is_empty() && server.is_valid()) {
 			const RID primary = rids[0];
-			r_metrics->x_height = glyph_height(server, primary, size, U'x', r_metrics->x_height);
-			r_metrics->cap_height = glyph_height(server, primary, size, U'H', r_metrics->cap_height);
+			r_metrics->x_height = glyph_height(server, primary, primary_size, U'x', r_metrics->x_height);
+			r_metrics->cap_height = glyph_height(server, primary, primary_size, U'H', r_metrics->cap_height);
 		}
-		const float zero_advance = stack->char_size(U'0', size).x;
-		const float ideograph_advance = stack->char_size(U'\u6c34', size).x;
-		r_metrics->ch_width = zero_advance > 0.0f ? zero_advance : size * 0.5f;
-		r_metrics->ic_width = ideograph_advance > 0.0f ? ideograph_advance : static_cast<float>(size);
+		r_metrics->ch_width = stack->char_advance(U'0', p_description.size).value_or(primary_size * 0.5f);
+		r_metrics->ic_width = stack->char_advance(U'\u6c34', p_description.size).value_or(static_cast<float>(primary_size));
 		r_metrics->draw_spaces = p_description.decoration_line != text_decoration_line_none;
-		r_metrics->sub_shift = size * 0.2f;
-		r_metrics->super_shift = size * 0.35f;
+		r_metrics->sub_shift = primary_size * 0.2f;
+		r_metrics->super_shift = primary_size * 0.35f;
 		return reinterpret_cast<uint_ptr>(data);
 	}
 
@@ -962,6 +1200,15 @@ namespace docrender {
 
 	pixel_t LiteHTMLFonts::text_width(const char* p_text, uint_ptr p_font) {
 		return reinterpret_cast<FontData*>(p_font)->shape(String::utf8(p_text)).width();
+	}
+
+	pixel_t LiteHTMLFonts::measure_text(const String& p_text, uint_ptr p_font, font_metrics& r_metrics) {
+		auto& font = *reinterpret_cast<FontData*>(p_font);
+		const auto layout = font.shape(p_text);
+		r_metrics.ascent = layout.ascent;
+		r_metrics.descent = layout.descent;
+		r_metrics.height = layout.ascent + layout.descent;
+		return layout.width();
 	}
 
 	pixel_t LiteHTMLFonts::trimmed_punctuation_width(const char* p_text, uint_ptr p_font, punctuation_trim p_trim) {
@@ -1018,8 +1265,8 @@ namespace docrender {
 			if (!specified.is_predefined()) {
 				thickness = specified.calc_percent(font.size);
 			}
-			else if (specified.predef() == text_decoration_thickness_from_font) {
-				const float metric = font.stack->primary->get_underline_thickness(font.size);
+			else if (specified.predef() == text_decoration_thickness_from_font && font.primary_size > 0) {
+				const float metric = font.stack->primary->get_underline_thickness(font.primary_size);
 				if (std::isfinite(metric) && metric > 0.0f) {
 					thickness = metric;
 				}

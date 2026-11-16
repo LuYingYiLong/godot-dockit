@@ -18,7 +18,7 @@ namespace litehtml {
 		constexpr double PI = 3.14159265358979323846;
 		constexpr unsigned COMPONENTS = 0b0111;
 		constexpr unsigned ALPHA = 0b1000;
-		constexpr unsigned MAX_MIX_DEPTH = 64;
+		constexpr unsigned MAX_COLOR_DEPTH = 64;
 
 		using Components = std::array<double, 4>;
 		using Channels = std::array<double, 3>;
@@ -31,7 +31,8 @@ namespace litehtml {
 			bool legacy_srgb = false;
 		};
 
-		constexpr ColorSample BLACK{ css_color_space::srgb, { 0.0, 0.0, 0.0, 1.0 } };
+		constexpr ColorSample BLACK{ css_color_space::srgb, { 0.0, 0.0, 0.0, 1.0 }, 0, true };
+		constexpr ColorSample WHITE{ css_color_space::srgb, { 1.0, 1.0, 1.0, 1.0 }, 0, true };
 
 		enum class HueInterpolation { shorter, longer, increasing, decreasing };
 
@@ -45,6 +46,40 @@ namespace litehtml {
 			HueInterpolation hue = HueInterpolation::shorter;
 			std::vector<MixItem> items;
 			double alpha_multiplier = 1.0;
+		};
+
+		struct ColorFunction {
+			css_color_space space;
+			bool rgb;
+			Channels scales;
+			Channels units;
+			css_math_input_names names;
+		};
+
+		struct RelativeChannel {
+			int source = -1;
+			bool missing = false;
+			double constant = 0.0;
+			css_math_node_ptr calculation;
+		};
+
+		struct RelativeColor {
+			web_color origin;
+			ColorFunction function;
+			std::array<RelativeChannel, 4> channels;
+		};
+
+		struct LightDarkColor {
+			web_color light;
+			web_color dark;
+
+			const web_color& select(color_scheme scheme) const {
+				return scheme == color_scheme::dark ? dark : light;
+			}
+		};
+
+		struct ContrastColor {
+			web_color background;
 		};
 
 		bool parse_component(const css_token& token, double percent_scale, double& value,
@@ -535,6 +570,55 @@ namespace litehtml {
 			return std::nullopt;
 		}
 
+		std::optional<ColorFunction> color_function(const string& name, const css_token& space_token) {
+			using Space = css_color_space;
+			const bool rgb = name == "rgb" || name == "rgba";
+			const bool hsl = name == "hsl" || name == "hsla";
+			const bool predefined = name == "color";
+			const auto space = rgb ? std::optional(Space::srgb) : hsl ? std::optional(Space::hsl) :
+				parse_color_space(predefined ? space_token.ident() : name);
+			if (!space) return {};
+			const bool lab = is_cie_lab_space(*space);
+			const bool ok = is_ok_space(*space);
+			const bool xyz = *space == Space::xyz_d50 || *space == Space::xyz_d65;
+			if (predefined ? !predefined_rgb(*space) && !xyz : !rgb && !hsl && !lab && !ok && *space != Space::hwb) return {};
+			ColorFunction result{*space, rgb, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {"r", "g", "b", "alpha"}};
+			if (xyz) result.names = {"x", "y", "z", "alpha"};
+			if (rgb) result.scales = result.units = {255.0, 255.0, 255.0};
+			if (lab) result.scales = {100.0, *space == Space::lab ? 125.0 : 150.0, 125.0};
+			if (ok) result.scales = {1.0, 0.4, 0.4};
+			if (lab || ok) result.names = is_lch_space(*space) ? css_math_input_names{"l", "c", "h", "alpha"} :
+				css_math_input_names{"l", "a", "b", "alpha"};
+			if (is_srgb_polar(*space)) {
+				result.scales = result.units = {1.0, 100.0, 100.0};
+				result.names = hsl ? css_math_input_names{"h", "s", "l", "alpha"} : css_math_input_names{"h", "w", "b", "alpha"};
+			}
+			return result;
+		}
+
+		bool parse_relative_channel(const css_token& token, const ColorFunction& function, unsigned index,
+			RelativeChannel& channel) {
+			const auto keyword = token.ident();
+			if (keyword == "none") {
+				channel.missing = true;
+				return true;
+			}
+			if (!keyword.empty()) {
+				const auto match = std::find(function.names.begin(), function.names.end(), keyword);
+				if (match == function.names.end()) return false;
+				channel.source = static_cast<int>(match - function.names.begin());
+				return true;
+			}
+			const bool hue = static_cast<int>(index) == hue_index(function.space);
+			if (token.type == CV_FUNCTION) {
+				channel.calculation = parse_css_scalar_math(token,
+					hue ? css_math_scalar::number_or_angle : css_math_scalar::number_or_percentage, &function.names);
+				return bool(channel.calculation);
+			}
+			return hue ? parse_hue(token, channel.constant) :
+				parse_component(token, index < 3 ? function.scales[index] : 1.0, channel.constant);
+		}
+
 		bool parse_mix_space(const css_token_vector& tokens, ColorMix& mix) {
 			if ((tokens.size() != 2 && tokens.size() != 4) || tokens[0].ident() != "in") return false;
 			const auto space = parse_color_space(tokens[1].ident());
@@ -574,13 +658,28 @@ namespace litehtml {
 			return parse_color_at_depth(tokens[color_index], item.color, container, depth);
 		}
 
+		Components display_srgb(const ColorSample& sample) {
+			Components values;
+			const double white_lightness = is_ok_space(sample.space) ? 1.0 : 100.0;
+			if ((is_ok_space(sample.space) || is_cie_lab_space(sample.space)) &&
+				(sample.values[0] <= 0.0 || sample.values[0] >= white_lightness)) {
+				const double gray = sample.values[0] <= 0.0 ? 0.0 : 1.0;
+				values = {gray, gray, gray, sample.values[3]};
+			} else {
+				values = convert(sample, css_color_space::srgb).values;
+			}
+			for (double& value : values) value = std::isnan(value) ? 0.0 : std::clamp(value, 0.0, 1.0);
+			return values;
+		}
+
 		byte to_byte(double value) {
-			return static_cast<byte>(std::lround(std::clamp(value, 0.0, 1.0) * 255.0));
+			return static_cast<byte>(std::lround(value * 255.0));
 		}
 	}
 
 	struct css_color_data {
-		const std::variant<ColorSample, ColorMix> value;
+		const std::variant<ColorSample, ColorMix, RelativeColor, LightDarkColor, ContrastColor> value;
+		bool uses_scheme = false;
 	};
 
 	namespace {
@@ -588,7 +687,20 @@ namespace litehtml {
 			return color.css_data ? std::get_if<ColorSample>(&color.css_data->value) : nullptr;
 		}
 
+		bool uses_scheme(const web_color& color) {
+			return color.system != system_color::none || (color.css_data && color.css_data->uses_scheme);
+		}
+
 		ColorSample evaluate(const web_color& color, const ColorSample& current, color_scheme scheme = color_scheme::light);
+
+		ColorSample evaluate_contrast(const ColorSample& input) {
+			// Compare opaque sRGB colors with the maximum relative luminance contrast.
+			const auto srgb = display_srgb(input);
+			const double luminance = 0.2126 * to_linear(srgb[0]) + 0.7152 * to_linear(srgb[1]) + 0.0722 * to_linear(srgb[2]);
+			const double black_contrast = (luminance + 0.05) / 0.05;
+			const double white_contrast = 1.05 / (luminance + 0.05);
+			return black_contrast > white_contrast ? BLACK : WHITE;
+		}
 
 		ColorSample evaluate_mix(const ColorMix& mix, const ColorSample& current, color_scheme scheme = color_scheme::light) {
 			const auto& first = mix.items.front();
@@ -604,12 +716,49 @@ namespace litehtml {
 			return result;
 		}
 
+		ColorSample evaluate_relative(const RelativeColor& relative, const ColorSample& current, color_scheme scheme) {
+			const auto& function = relative.function;
+			const auto origin = convert(evaluate(relative.origin, current, scheme), function.space, true);
+			Components inputs = origin.values;
+			for (size_t i = 0; i < inputs.size(); ++i) {
+				if (origin.missing & (1u << i)) inputs[i] = 0.0;
+				else if (i < 3) inputs[i] *= function.units[i];
+			}
+			ColorSample result{function.space, {}};
+			const int hue = hue_index(function.space);
+			for (size_t i = 0; i < relative.channels.size(); ++i) {
+				const auto& channel = relative.channels[i];
+				if (channel.missing || (channel.source >= 0 && (origin.missing & (1u << channel.source)))) {
+					result.missing |= 1u << i;
+					continue;
+				}
+				double value = channel.source >= 0 ? inputs[channel.source] : channel.constant;
+				if (channel.calculation) {
+					value = evaluate_css_scalar_math(*channel.calculation,
+						static_cast<int>(i) == hue ? css_math_scalar::number_or_angle : css_math_scalar::number_or_percentage,
+						i < 3 ? function.scales[i] : 1.0, &inputs);
+				}
+				if (i == 3) result.values[i] = std::clamp(value, 0.0, 1.0);
+				else if (static_cast<int>(i) == hue) result.values[i] = normalize_hue(value);
+				else {
+					constexpr double limit = std::numeric_limits<float>::max();
+					result.values[i] = std::clamp(value / function.units[i], -limit, limit);
+				}
+			}
+			return result;
+		}
+
 		ColorSample evaluate(const web_color& color, const ColorSample& current, color_scheme scheme) {
 			if (color.is_current_color) return current;
+			scheme = color.computed_scheme.value_or(scheme);
 			if (color.system != system_color::none) return evaluate(system_color_value(color.system, scheme), current, scheme);
 			if (const auto* sample = get_sample(color)) return *sample;
 			if (color.css_data) {
-				return evaluate_mix(std::get<ColorMix>(color.css_data->value), current, scheme);
+				const auto& value = color.css_data->value;
+				if (const auto* mix = std::get_if<ColorMix>(&value)) return evaluate_mix(*mix, current, scheme);
+				if (const auto* relative = std::get_if<RelativeColor>(&value)) return evaluate_relative(*relative, current, scheme);
+				if (const auto* conditional = std::get_if<LightDarkColor>(&value)) return evaluate(conditional->select(scheme), current, scheme);
+				return evaluate_contrast(evaluate(std::get<ContrastColor>(value).background, current, scheme));
 			}
 			return { css_color_space::srgb, { color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0 }, 0, true };
 		}
@@ -644,7 +793,20 @@ namespace litehtml {
 	}
 
 	bool web_color::needs_current_color() const {
-		return is_current_color || system != system_color::none || (css_data && std::holds_alternative<ColorMix>(css_data->value));
+		return is_current_color || system != system_color::none || (css_data && !get_sample(*this));
+	}
+
+	web_color web_color::compute_for_scheme(color_scheme used_scheme) const {
+		if (!css_data || !css_data->uses_scheme || computed_scheme) return *this;
+		if (const auto* conditional = std::get_if<LightDarkColor>(&css_data->value)) {
+			const auto& selected = conditional->select(used_scheme);
+			if (selected.system != system_color::none) return system_color_value(selected.system, used_scheme);
+			return selected.compute_for_scheme(used_scheme);
+		}
+		// Preserve currentColor inside inherited expressions while fixing their scheme.
+		auto computed = *this;
+		computed.computed_scheme = used_scheme;
+		return computed;
 	}
 
 	web_color web_color::resolve(const web_color& current) const {
@@ -652,19 +814,13 @@ namespace litehtml {
 		if (is_current_color) return current;
 		if (system != system_color::none) return system_color_value(system, current.scheme);
 		const auto result = evaluate(*this, evaluate(current, BLACK, current.scheme), current.scheme);
-		return make_css_color(result.space, result.values, result.missing);
+		return store_sample(result);
 	}
 
 	web_color web_color::to_srgb(const web_color& current) const {
 		if (!css_data && !needs_current_color()) return *this;
 		const auto sample = evaluate(*this, needs_current_color() ? evaluate(current, BLACK, current.scheme) : BLACK, current.scheme);
-		const double white_lightness = is_ok_space(sample.space) ? 1.0 : 100.0;
-		if ((is_ok_space(sample.space) || is_cie_lab_space(sample.space)) &&
-			(sample.values[0] <= 0.0 || sample.values[0] >= white_lightness)) {
-			const byte gray = sample.values[0] <= 0.0 ? 0 : 255;
-			return web_color(gray, gray, gray, to_byte(sample.values[3]));
-		}
-		const auto srgb = convert(sample, css_color_space::srgb).values;
+		const auto srgb = display_srgb(sample);
 		return web_color(to_byte(srgb[0]), to_byte(srgb[1]), to_byte(srgb[2]), to_byte(srgb[3]));
 	}
 
@@ -673,35 +829,23 @@ namespace litehtml {
 		const auto name = lowcase(token.name);
 		const auto& values = token.value;
 		const bool predefined = name == "color";
-		const bool rgb = name == "rgb" || name == "rgba";
-		const bool hsl = name == "hsl" || name == "hsla";
 		const size_t offset = predefined ? 1 : 0;
 		if (values.empty()) return false;
-		const auto space = rgb ? std::optional(css_color_space::srgb) :
-			(hsl ? std::optional(css_color_space::hsl) : parse_color_space(predefined ? values[0].ident() : name));
-		if (!space) return false;
+		const auto function = color_function(name, values.front());
+		if (!function) return false;
 
 		using Space = css_color_space;
-		const bool lab = is_cie_lab_space(*space);
-		const bool ok = is_ok_space(*space);
-		if (predefined) {
-			if (!predefined_rgb(*space) && *space != Space::xyz_d50 && *space != Space::xyz_d65) return false;
-		} else if (!rgb && !hsl && !lab && !ok && *space != Space::hwb) {
-			return false;
-		}
-
-		Channels scales{ 1.0, 1.0, 1.0 };
-		if (lab) scales = { 100.0, *space == Space::lab ? 125.0 : 150.0, 125.0 };
-		if (ok) scales = { 1.0, 0.4, 0.4 };
-		if (hsl || *space == Space::hwb) scales = { 1.0, 100.0, 100.0 };
-		if (rgb) scales = { 255.0, 255.0, 255.0 };
-		const int hue = hue_index(*space);
+		const auto space = function->space;
+		const bool rgb = function->rgb;
+		const bool hsl = space == Space::hsl;
+		const auto& scales = function->scales;
+		const int hue = hue_index(space);
 		Components components{ 0.0, 0.0, 0.0, 1.0 };
 		unsigned missing = 0;
 		const bool legacy = (rgb || hsl) && std::any_of(values.begin(), values.end(),
 			[](const css_token& value) { return value.type == ','; });
 		if (legacy) {
-			if (!parse_legacy_components(values, *space, components)) return false;
+			if (!parse_legacy_components(values, space, components)) return false;
 		} else {
 			if (values.size() != offset + 3 &&
 				(values.size() != offset + 5 || values[offset + 3].type != '/')) return false;
@@ -723,23 +867,51 @@ namespace litehtml {
 			}
 		}
 		if (hue >= 0) components[hue] = normalize_hue(components[hue]);
-		if (lab || ok) components[0] = std::clamp(components[0], 0.0, scales[0]);
-		if (is_lch_space(*space)) components[1] = std::max(components[1], 0.0);
-		if (hsl || *space == Space::hwb) {
-			components[1] /= 100.0;
-			components[2] /= 100.0;
-		}
+		if (is_cie_lab_space(space) || is_ok_space(space)) components[0] = std::clamp(components[0], 0.0, scales[0]);
+		if (is_lch_space(space)) components[1] = std::max(components[1], 0.0);
+		for (size_t i = 0; i < 3; ++i) components[i] /= function->units[i];
 		if (hsl) components[1] = std::max(0.0, components[1]);
 		if (rgb) {
-			for (size_t i = 0; i < 3; ++i) components[i] = std::clamp(components[i] / 255.0, 0.0, 1.0);
+			for (size_t i = 0; i < 3; ++i) components[i] = std::clamp(components[i], 0.0, 1.0);
 		}
 		components[3] = std::clamp(components[3], 0.0, 1.0);
-		color = store_sample({*space, components, missing, !predefined && (rgb || hsl || *space == Space::hwb)});
+		color = store_sample({space, components, missing, !predefined && (rgb || hsl || space == Space::hwb)});
+		return true;
+	}
+
+	bool parse_relative_color(const css_token& token, web_color& color, document_container* container, unsigned depth) {
+		if (token.type != CV_FUNCTION || depth >= MAX_COLOR_DEPTH) return false;
+		const auto& values = token.value;
+		const auto name = lowcase(token.name);
+		const size_t offset = name == "color" ? 3 : 2;
+		if ((values.size() != offset + 3 && (values.size() != offset + 5 || values[offset + 3].type != '/')) ||
+			values.front().ident() != "from" || !values[1].preceded_by_space ||
+			(offset == 3 && !values[2].preceded_by_space)) return false;
+		const auto function = color_function(name, values[2]);
+		if (!function) return false;
+		RelativeColor relative{{}, *function, {}};
+		if (!parse_color_at_depth(values[1], relative.origin, container, depth + 1)) return false;
+		for (size_t i = 0; i < 3; ++i) {
+			const auto& channel = values[offset + i];
+			if (!channel.preceded_by_space || !parse_relative_channel(channel, *function, i, relative.channels[i])) return false;
+		}
+		if (values.size() == offset + 5) {
+			if (!parse_relative_channel(values.back(), *function, 3, relative.channels[3])) return false;
+		} else {
+			relative.channels[3].source = 3;
+		}
+		if (relative.origin.needs_current_color()) {
+			const bool depends_on_scheme = uses_scheme(relative.origin);
+			color = web_color();
+			color.css_data = std::make_shared<css_color_data>(css_color_data{std::move(relative), depends_on_scheme});
+		} else {
+			color = store_sample(evaluate_relative(relative, BLACK, color_scheme::light));
+		}
 		return true;
 	}
 
 	bool parse_color_mix(const css_token& token, web_color& color, document_container* container, unsigned depth) {
-		if (token.type != CV_FUNCTION || lowcase(token.name) != "color-mix" || depth >= MAX_MIX_DEPTH) return false;
+		if (token.type != CV_FUNCTION || lowcase(token.name) != "color-mix" || depth >= MAX_COLOR_DEPTH) return false;
 		const auto arguments = parse_comma_separated_list(token.value);
 		ColorMix mix;
 		size_t first = 0;
@@ -773,11 +945,38 @@ namespace litehtml {
 		mix.alpha_multiplier = std::min(total / 100.0, 1.0);
 		if (std::any_of(mix.items.begin(), mix.items.end(),
 			[](const MixItem& item) { return item.color.needs_current_color(); })) {
+			const bool depends_on_scheme = std::any_of(mix.items.begin(), mix.items.end(),
+				[](const MixItem& item) { return uses_scheme(item.color); });
 			color = web_color();
-			color.css_data = std::make_shared<css_color_data>(css_color_data{ std::move(mix) });
+			color.css_data = std::make_shared<css_color_data>(css_color_data{std::move(mix), depends_on_scheme});
 		} else {
 			const auto result = evaluate_mix(mix, BLACK);
 			color = make_css_color(result.space, result.values, result.missing);
+		}
+		return true;
+	}
+
+	bool parse_adaptive_color(const css_token& token, web_color& color, document_container* container, unsigned depth) {
+		if (token.type != CV_FUNCTION || depth >= MAX_COLOR_DEPTH) return false;
+		const auto& values = token.value;
+		if (equal_i(token.name, "light-dark")) {
+			LightDarkColor pair;
+			if (values.size() != 3 || values[1].type != ',' ||
+				!parse_color_at_depth(values[0], pair.light, container, depth + 1) ||
+				!parse_color_at_depth(values[2], pair.dark, container, depth + 1)) return false;
+			color = web_color();
+			color.css_data = std::make_shared<css_color_data>(css_color_data{std::move(pair), true});
+			return true;
+		}
+		if (!equal_i(token.name, "contrast-color")) return false;
+		ContrastColor contrast;
+		if (values.size() != 1 || !parse_color_at_depth(values[0], contrast.background, container, depth + 1)) return false;
+		if (contrast.background.needs_current_color()) {
+			const bool depends_on_scheme = uses_scheme(contrast.background);
+			color = web_color();
+			color.css_data = std::make_shared<css_color_data>(css_color_data{std::move(contrast), depends_on_scheme});
+		} else {
+			color = store_sample(evaluate_contrast(evaluate(contrast.background, BLACK)));
 		}
 		return true;
 	}

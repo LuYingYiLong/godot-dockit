@@ -224,7 +224,7 @@ namespace {
 				_id("font-variant-ligatures"), _id("font-variant-numeric"), _id("font-variant-east-asian"), _id("font-variant-caps"),
 				_id("font-variant-alternates"),
 				_font_family_, _id("font-feature-settings"), _id("font-variation-settings"), _id("font-kerning"),
-				_id("font-optical-sizing") } } },
+				_id("font-optical-sizing"), _id("font-size-adjust") } } },
 			{ _font_variant_, { property_family::text, { _id("font-variant-ligatures"), _id("font-variant-numeric"),
 				_id("font-variant-east-asian"), _id("font-variant-caps"), _id("font-variant-alternates") } } },
 			{ _id("font-variant-ligatures"), { property_family::text } },
@@ -239,6 +239,7 @@ namespace {
 			{ _id("font-variation-settings"), { property_family::text } },
 			{ _id("font-kerning"), { property_family::keyword, {}, "auto;normal;none" } },
 			{ _id("font-optical-sizing"), { property_family::keyword, {}, "auto;none" } },
+			{ _id("font-size-adjust"), { property_family::text } },
 			{ _id("letter-spacing"), { property_family::text } },
 			{ _id("word-spacing"), { property_family::text } },
 			{ _text_decoration_, { property_family::text, { _text_decoration_color_, _text_decoration_line_, _text_decoration_style_, _text_decoration_thickness_ } } },
@@ -502,7 +503,7 @@ static props_map parse_property_value(string_id name, const property_definition&
 		parser.parse_text(name, tokens, important, container);
 		break;
 	case property_family::layout:
-		parser.parse_layout(name, tokens, baseurl, important);
+		parser.parse_layout(name, tokens, baseurl, important, container);
 		break;
 	case property_family::transition:
 		parse_css_transition(parser, name, tokens, important);

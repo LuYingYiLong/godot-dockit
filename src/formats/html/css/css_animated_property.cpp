@@ -161,6 +161,7 @@ namespace docrender::css {
 			{_id("outline-width"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().width; }},
 			{_id("outline-offset"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().offset; }, Range::unrestricted},
 			{_font_size_, [](const ComputedStyle& css) -> AnimatedValue { return css_length(css.get_font_size()); }},
+			{_id("font-size-adjust"), read_computed<&ComputedStyle::get_font_size_adjust>},
 			{_font_weight_, [](const ComputedStyle& css) -> AnimatedValue {
 				return css_length(css.get_font_weight(), css_units_none);
 			}, Range::font_weight},
@@ -196,6 +197,7 @@ namespace docrender::css {
 	bool equal_animated_value(const AnimatedProperty& property, const AnimatedValue& a, const AnimatedValue& b) {
 		if (a.index() != b.index()) return false;
 		if (const auto* value = std::get_if<float>(&a)) return *value == std::get<float>(b);
+		if (const auto* value = std::get_if<css_font_size_adjust>(&a)) return *value == std::get<css_font_size_adjust>(b);
 		if (const auto* value = std::get_if<web_color>(&a)) return equal_css_colors(*value, std::get<web_color>(b));
 		if (const auto* value = std::get_if<css_length>(&a)) {
 			const auto& other = std::get<css_length>(b);
@@ -212,6 +214,10 @@ namespace docrender::css {
 
 	bool can_interpolate_animated_value(const AnimatedProperty& property, const AnimatedValue& a, const AnimatedValue& b) {
 		if (a.index() != b.index()) return false;
+		if (const auto* from = std::get_if<css_font_size_adjust>(&a)) {
+			const auto& to = std::get<css_font_size_adjust>(b);
+			return from->mode == css_font_size_adjust::Mode::number && to.mode == from->mode && from->metric == to.metric;
+		}
 		if (const auto* from = std::get_if<css_length>(&a)) {
 			const auto& to = std::get<css_length>(b);
 			return length_is_numeric(*from) && length_is_numeric(to) && same_length_type(property, *from, to);
@@ -224,6 +230,16 @@ namespace docrender::css {
 			const AnimatedValue& b, double progress, bool allow_discrete) {
 		if (progress == 0) return a;
 		if (progress == 1) return b;
+		if (const auto* from = std::get_if<css_font_size_adjust>(&a)) {
+			const auto& to = std::get<css_font_size_adjust>(b);
+			if (from->mode != css_font_size_adjust::Mode::number || to.mode != from->mode || from->metric != to.metric) {
+				return allow_discrete && progress >= 0.5 ? b : a;
+			}
+			auto result = *from;
+			const double sample = from->value + (to.value - from->value) * progress;
+			result.value = std::clamp(sample, 0.0, std::numeric_limits<double>::max());
+			return result;
+		}
 		if (const auto* value = std::get_if<float>(&a)) {
 			const double sample = *value + (double(std::get<float>(b)) - *value) * progress;
 			const double upper = property.range == AnimatedRange::unit_interval ? 1.0 : std::numeric_limits<float>::max();

@@ -49,9 +49,6 @@ namespace litehtml {
 		static unsigned selector_state_dependencies(const document& p_document);	// 收集已解析样式表使用的交互状态
 		static void set_hover(element& p_element, bool p_hovered);					// 更新元素的悬停伪类状态
 		static bool is_command_button(const element& p_element);					// 判断元素是否有按钮激活行为
-		static const std::vector<box_shadow>* get_box_shadows(
-			const html_tag& p_element
-		);																			// 读取层叠后的阴影列表
 
 		static bool set_attribute(
 			element& p_element,

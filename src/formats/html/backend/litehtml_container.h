@@ -136,6 +136,7 @@ namespace docrender {
 			litehtml::font_metrics* r_metrics) override;
 		void delete_font(litehtml::uint_ptr p_font) override;
 		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font) override;
+		litehtml::pixel_t measure_text(const char* p_text, litehtml::uint_ptr p_font, litehtml::font_metrics& r_metrics) override;
 		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim) override;
 		litehtml::text_justify_info get_text_justify_info(const char* p_text, litehtml::uint_ptr p_font,
 			litehtml::text_justify p_method) override;

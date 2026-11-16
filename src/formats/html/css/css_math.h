@@ -2,9 +2,11 @@
 
 #include "css_length.h"
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string_view>
 
 namespace litehtml {
 	struct css_math_node;
@@ -22,6 +24,12 @@ namespace litehtml {
 
 	std::shared_ptr<const css_math_expression> parse_css_math(const css_token& p_token, int p_options);
 	enum class css_math_scalar { number, percentage, number_or_percentage, angle, number_or_angle };
+	using css_math_input_names = std::array<std::string_view, 4>;
+	using css_math_input_values = std::array<double, 4>;
+	css_math_node_ptr parse_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
+		const css_math_input_names* p_names = nullptr);
+	double evaluate_css_scalar_math(const css_math_node& p_node, css_math_scalar p_type,
+		double p_percentage_basis, const css_math_input_values* p_inputs = nullptr);
 	// Evaluate a context-free calculation. Angles are returned in radians.
 	std::optional<double> evaluate_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
 		double p_percentage_basis = 1.0);

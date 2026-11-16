@@ -7,6 +7,7 @@
 #include "formats/html/layout/grid/litehtml_render_grid.h"
 #include "formats/html/elements/html_details_node.h"
 #include "render_flex.h"
+#include "render_image.h"
 #include "render_inline.h"
 #include "render_table.h"
 #include "el_before_after.h"
@@ -136,6 +137,11 @@ void element::dump(dumper& cout)
 
 std::shared_ptr<render_item> element::create_render_item(const std::shared_ptr<render_item>& parent_ri)
 {
+	if (css().get_content_image() && css().get_display() != display_none) {
+		auto item = std::make_shared<render_item_image>(shared_from_this());
+		item->parent(parent_ri);
+		return item;
+	}
 	std::shared_ptr<render_item> ret;
 
 	if(css().get_display() == display_table_column ||
@@ -205,7 +211,7 @@ void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
 			if (!folded || child == summary || is_generated_tag(child->tag())) child->append_render_items(parent_ri);
 		}
 	}
-	else if (auto item = create_render_item(parent_ri))
+	else if (auto item = css().get_content_image() ? element::create_render_item(parent_ri) : create_render_item(parent_ri))
 	{
 		parent_ri->add_child(item);
 	}

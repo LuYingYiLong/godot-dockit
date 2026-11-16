@@ -13,6 +13,7 @@
 #include "internal.h"
 #include "document_container.h"
 #include "el_before_after.h"
+#include "el_image.h"
 
 namespace litehtml
 {
@@ -21,6 +22,8 @@ static bool is_generated_content(const element& el)
 {
 	return is_generated_tag(el.tag());
 }
+
+html_tag::~html_tag() = default;
 
 static bool is_selector_tree_element(const element& el)
 {
@@ -319,6 +322,13 @@ void litehtml::html_tag::compute_styles(bool recursive)
 		doc->container()->report_css_diagnostic(diagnostic, this);
 
 	m_css.compute(this, doc);
+	m_content_alternative.reset();
+	if (const auto* image = m_css.get_content_image()) {
+		if (!m_content_image) m_content_image = std::make_unique<css_replaced_image>();
+		m_content_image->set(*image, m_css.get_content().base_url);
+	} else {
+		m_content_image.reset();
+	}
 	if (m_auxiliary_pseudos)
 	{
 		const auto resolve = [&](style& declarations) {
@@ -335,12 +345,52 @@ void litehtml::html_tag::compute_styles(bool recursive)
 		}
 	}
 	compute_selection_colors();
-	if (!is_generated_content(*this)) handle_counter_properties();
+	if (!is_generated_content(*this)) {
+		handle_counter_properties();
+		if (m_content_image) compute_content_alternative();
+	}
 
 	if (recursive)
 	{
 		compute_child_styles();
 	}
+}
+
+bool html_tag::append_content_text(const css_content_item& item, string& text)
+{
+	using kind = css_content_kind;
+	if (item.kind == kind::text) {
+		text += item.value;
+		return true;
+	}
+	if (item.kind == kind::attribute) {
+		const auto origin = is_generated_content(*this) ? parent() : nullptr;
+		const char* value = (origin ? *origin : *this).get_attr(item.value.c_str());
+		text += value ? value : item.fallback_or_separator;
+		return true;
+	}
+	if (!is_one_of(item.kind, kind::counter, kind::marker_counter, kind::counters)) return false;
+	const auto doc = get_document();
+	const auto lookup = [&](const string& name) { return doc->find_counter_style(name); };
+	const auto counter = _id(item.value);
+	if (item.kind == kind::counters) {
+		const auto values = get_counter_values(counter);
+		for (size_t i = 0; i < values.size(); ++i) {
+			if (i != 0) text += item.fallback_or_separator;
+			text += format_css_counter(values[i], item.counter_style, lookup);
+		}
+	} else {
+		text += format_css_counter(get_counter_value(counter), item.counter_style, lookup, item.kind == kind::marker_counter);
+	}
+	return true;
+}
+
+void html_tag::compute_content_alternative()
+{
+	const auto& alternative = css().get_content().alternative;
+	if (alternative.empty()) return;
+	auto& text = m_content_alternative.emplace();
+	for (const auto& item : alternative) append_content_text(item, text);
 }
 
 const css_properties* html_tag::get_placeholder_style() const
@@ -369,9 +419,10 @@ void html_tag::compute_selection_colors()
 
 	auto colors = std::make_shared<cascaded_selection_colors>(m_selection_colors ? *m_selection_colors : cascaded_selection_colors{});
 	colors->author |= author;
-	if (foreground.is<web_color>()) colors->foreground = foreground.get<web_color>();
+	const auto scheme = css().get_color().scheme;
+	if (foreground.is<web_color>()) colors->foreground = foreground.get<web_color>().compute_for_scheme(scheme);
 	else if (foreground.is<initial_value>()) colors->foreground = web_color::black;
-	if (background.is<web_color>()) colors->background = background.get<web_color>();
+	if (background.is<web_color>()) colors->background = background.get<web_color>().compute_for_scheme(scheme);
 	else if (background.is<initial_value>()) colors->background = web_color::transparent;
 	m_selection_colors = std::move(colors);
 }
@@ -868,7 +919,7 @@ void litehtml::html_tag::handle_counter_properties()
 	if (css().get_display() == display_none) return;
 	for (auto ancestor = parent(); ancestor; ancestor = ancestor->parent())
 	{
-		if (ancestor->css().get_display() == display_none) return;
+		if (ancestor->css().get_display() == display_none || ancestor->css().get_content_image()) return;
 	}
 	static const auto set = _id("counter-set");
 	static const auto list_item = _id("list-item");

@@ -11,6 +11,7 @@
 
 namespace litehtml
 {
+	class css_replaced_image;
 
 	class html_tag : public element
 	{
@@ -47,6 +48,8 @@ namespace litehtml
 		void compute_selection_colors();
 		string_map				m_attrs;
 		vector<string_id>		m_pseudo_classes;
+		std::unique_ptr<css_replaced_image> m_content_image;
+		std::optional<string> m_content_alternative;
 
 		void			apply_inline_style();
 		void			select_all(const css_selector& selector, elements_list& res) override;
@@ -55,6 +58,7 @@ namespace litehtml
 		explicit html_tag(const shared_ptr<document>& doc);
 		// constructor for anonymous wrapper boxes
 		explicit html_tag(const element::ptr& parent, const string& style = "display: block");
+		~html_tag() override;
 
 		bool				appendChild(const element::ptr& el) override;
 		bool				removeChild(const element::ptr& el) override;
@@ -88,6 +92,8 @@ namespace litehtml
 		void				draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri) override;
 		void				draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip,
 									const std::shared_ptr<render_item> &ri) override;
+		css_replaced_image* content_image() const { return m_content_image.get(); }
+		const std::optional<string>& get_content_alternative() const { return m_content_alternative; }
 
 		const css_properties* get_placeholder_style() const;
 		bool has_placeholder_color() const;
@@ -138,6 +144,8 @@ namespace litehtml
 	protected:
 		void handle_counter_properties();
 		void compute_child_styles();
+		bool append_content_text(const css_content_item& item, string& text);
+		void compute_content_alternative();
 
 	};
 

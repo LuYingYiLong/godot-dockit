@@ -19,6 +19,8 @@ namespace litehtml
 	{
 		css_font_families		families;	// Font Family
 		std::string				language;	// Effective BCP 47 language for shaping and fallback
+		bool					language_is_declared = false;
+		bool					use_font_line_gap = true;
 		pixel_t					size = 0;	// Font size
 		css_font_style			style;	// Font style and oblique angle
 		float					width = 100.0f;	// Font width in percent
@@ -30,6 +32,7 @@ namespace litehtml
 		css_font_kerning kerning = font_kerning_auto;
 		css_font_optical_sizing optical_sizing = font_optical_sizing_auto;
 		css_font_variations variations;
+		css_font_size_adjust size_adjust;
 		float					weight = 400;	// Font weight.
 		int						decoration_line = text_decoration_line_none;	// Decoration line. A bitset of flags of the enum text_decoration_line
 		css_length				decoration_thickness;	// Decoration line thickness in pixels. See predefined values in enumtext_decoration_thickness
@@ -45,6 +48,13 @@ namespace litehtml
 			if (letter_spacing != 0) key += ":tracking";
 			if (kerning != font_kerning_auto) key += ":kern=" + std::to_string(kerning);
 			if (optical_sizing == font_optical_sizing_none) key += ":opsz=none";
+			if (size_adjust.mode != css_font_size_adjust::Mode::none) {
+				uint64_t bits;
+				static_assert(sizeof(bits) == sizeof(size_adjust.value));
+				std::memcpy(&bits, &size_adjust.value, sizeof(bits));
+				key += ":fsa=" + std::to_string(static_cast<int>(size_adjust.metric)) + ':' +
+					std::to_string(static_cast<int>(size_adjust.mode)) + ':' + std::to_string(bits);
+			}
 			for (const auto& [tag, value] : variant_features)
 				key += ":vf=" + std::to_string(tag) + ':' + std::to_string(value);
 			for (const auto& [tag, value] : features)
@@ -72,6 +82,8 @@ namespace litehtml
 			out += ":w=" + std::to_string(weight);
 			out += ":wd=" + std::to_string(width);
 			out += ":lang=" + std::to_string(language.size()) + ':' + language;
+			if (language_is_declared) out += ":declared-lang";
+			if (!use_font_line_gap) out += ":fixed-line-height";
 			out += opentype_key();
 			out += ":ls=" + std::to_string(letter_spacing);
 			out += ":ws=" + std::to_string(word_spacing);

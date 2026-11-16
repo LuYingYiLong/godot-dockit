@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <typeinfo>
 #include "document_container.h"
+#include "el_image.h"
 #include "types.h"
 
 litehtml::render_item::render_item(std::shared_ptr<element>  _src_el) :
@@ -341,6 +342,16 @@ void litehtml::render_item::paint(uint_ptr hdc, pixel_t x, pixel_t y, const posi
 		const auto item = shared_from_this();
 		if (css().skips_contents())
 			src_el()->draw_background(hdc, x, y, clip, item);
+		else if (css().get_content_image()) {
+			auto& tag = static_cast<html_tag&>(*src_el());
+			tag.draw_background(hdc, x, y, clip, item);
+			auto box = pos();
+			box.x += x;
+			box.y += y;
+			box.round();
+			if (box.width > 0 && box.height > 0 && box.does_intersect(clip))
+				tag.content_image()->draw(tag, hdc, box, *this);
+		}
 		else
 			src_el()->draw(hdc, x, y, clip, item);
 	}
@@ -587,7 +598,7 @@ void litehtml::render_item::render_positioned(render_type rt)
 				containing_block_size.width.type = containing_block_size.height.type = context::cbc_value_type_absolute;
 				containing_block_size.render_width = containing_block_size.width;
 				const bool has_insets = !css_left.is_predefined() && !css_right.is_predefined();
-				const bool replaced = el->src_el()->is_replaced();
+				const bool replaced = el->css().is_replaced();
 				const bool auto_width = el_width.is_predefined() && el_width.intrinsic_size() == css_intrinsic_size::none;
 				const bool auto_height = el_height.is_predefined();
 				// If only the vertical axis has two insets, it determines the ratio for two auto sizes.

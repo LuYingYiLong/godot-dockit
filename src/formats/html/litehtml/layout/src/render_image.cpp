@@ -21,7 +21,10 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
 
     m_pos.move_to(x, y);
 
-	if (auto* alt = static_cast<const el_image&>(*src_el()).get_alt_text())
+	const auto* html_image = dynamic_cast<const el_image*>(src_el().get());
+	const auto* tag = dynamic_cast<const html_tag*>(src_el().get());
+	const auto* replacement = tag ? tag->content_image() : nullptr;
+	if (auto* alt = html_image && !replacement ? html_image->get_alt_text() : nullptr)
 	{
 		pixel_t measure_width = alt->get_width();
 		if (!(containing_block_size.size_mode & (containing_block_context::size_mode_intrinsic_inline_probe |
@@ -41,10 +44,13 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
     document::ptr doc = src_el()->get_document();
 
     litehtml::size sz;
-	if (!css().skips_contents()) src_el()->get_content_size(sz, containing_block_size.width);
+	if (!css().skips_contents()) {
+		if (replacement) sz = replacement->natural_size(*doc->container());
+		else src_el()->get_content_size(sz, containing_block_size.width);
+	}
 	sz = use_contained_size(sz);
 
-	if (contain_width || has_preferred_aspect_ratio() || is_grid_item() ||
+	if (replacement || contain_width || has_preferred_aspect_ratio() || is_grid_item() ||
 		(containing_block_size.size_mode & containing_block_context::size_mode_intrinsic_inline_probe) ||
 		containing_block_size.intrinsic_inline.preferred || containing_block_size.intrinsic_inline.minimum ||
 		containing_block_size.intrinsic_inline.maximum || css().get_width().intrinsic_size() != css_intrinsic_size::none)

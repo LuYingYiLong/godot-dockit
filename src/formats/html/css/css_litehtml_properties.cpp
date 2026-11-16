@@ -21,11 +21,16 @@
 namespace {
 	using namespace litehtml;
 
-	std::string font_language(const element& subject) {
-		if (const char* language = get_element_language(subject); language && *language) return language;
+	struct FontLanguage {
+		std::string tag;
+		bool declared;
+	};
+
+	FontLanguage font_language(const element& subject) {
+		if (const char* language = get_element_language(subject); language && *language) return {language, true};
 		auto locale = godot::TranslationServer::get_singleton()->get_locale();
 		if (locale.is_empty()) locale = godot::OS::get_singleton()->get_locale();
-		return locale.replace("_", "-").utf8().get_data();
+		return {locale.replace("_", "-").utf8().get_data(), false};
 	}
 
 	class DocumentStyleHost final : public docrender::css::StyleHost
@@ -33,7 +38,7 @@ namespace {
 		document& doc;
 		const element& subject;
 		const bool include_subject;
-		const std::string language;
+		const FontLanguage language;
 
 	public:
 		DocumentStyleHost(document& value, const element& owner, bool include_owner = false) :
@@ -56,19 +61,15 @@ namespace {
 		uint_ptr get_font(const font_description& description, font_metrics* metrics) const override
 		{
 			auto localized = description;
-			localized.language = language;
+			localized.language = language.tag;
+			localized.language_is_declared = language.declared;
 			return doc.get_font(localized, metrics);
 		}
 
-		void load_image(const string& url, const string& base, css_image_orientation orientation) const override
-		{
-			doc.container()->load_image(url.c_str(), base.c_str(), true, orientation);
-		}
-
 		void compute_image(image& value, const string& base, const font_metrics& metrics,
-			const css_image_resolution& resolution, css_image_orientation orientation) const override
+			const css_image_resolution& resolution, css_image_orientation orientation, color_scheme scheme) const override
 		{
-			compute_css_image(value, base, doc, metrics, resolution, orientation, {nullptr, nullptr, container_units()});
+			compute_css_image(value, base, doc, metrics, resolution, orientation, scheme, {nullptr, nullptr, container_units()});
 		}
 	};
 
@@ -149,14 +150,17 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 	const auto root = doc->root();
 	const bool control = docrender::css::detail::is_one_of(element->tag(), _input_, _textarea_, _select_, _button_);
 	const bool native = control && uses_native_chrome(*element, parent.get());
+	const bool toggle = is_toggle(*element);
+	const bool replace_content = (!control || toggle) &&
+		!docrender::css::detail::is_one_of(element->tag(), marker_tag(), _progress_, _meter_);
 	const ElementStyleInput input{*element, control && !native, *doc->container(), keyframe};
 	const auto viewport = doc->get_viewport_unit_features();
 	ComputedStyle::compute({&input, read_declaration, parent ? &parent->css() : nullptr, host,
 		viewport, root ? &root->css().get_font_metrics() : nullptr,
 		element->is_root(), element->is_replaced(), box_parent ? &box_parent->css() : nullptr,
-		suppress_contents_display(*element)});
+		suppress_contents_display(*element), replace_content, element->tag() == _img_ || toggle});
 
-	if (native && is_toggle(*element) && element->has_pseudo_class(_id("checked")) && !element->has_pseudo_class(_id("disabled")) &&
+	if (native && toggle && element->has_pseudo_class(_id("checked")) && !element->has_pseudo_class(_id("disabled")) &&
 		!element->has_author_property(_background_color_) &&
 		(keyframe ? !keyframe->count(_background_color_) : !doc->container()->transition_override(element, _background_color_) &&
 			!doc->container()->animation_override(element, _background_color_)))

@@ -9,6 +9,7 @@
 #include "css_token_compat.h"
 #include "css_types.h"
 #include <memory>
+#include <optional>
 
 namespace litehtml
 {
@@ -31,10 +32,12 @@ namespace litehtml
 		bool is_current_color = false;
 		system_color system = system_color::none;
 		color_scheme scheme = color_scheme::light;
-		// Float samples and deferred mixes are shared across inherited style values.
+		// Share floating-point samples and deferred color expressions across inherited styles.
 		std::shared_ptr<const css_color_data> css_data;
+		std::optional<color_scheme> computed_scheme;
 
 		bool needs_current_color() const;
+		web_color compute_for_scheme(color_scheme used_scheme) const;
 		web_color resolve(const web_color& current) const;
 		web_color to_srgb(const web_color& current = black) const;
 

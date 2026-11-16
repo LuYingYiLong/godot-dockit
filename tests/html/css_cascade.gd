@@ -414,7 +414,11 @@ func _run() -> void:
 	await _check_hidden_content_visibility()
 	await _check_auto_content_visibility()
 	await _check_generated_image()
+	await _check_generated_css_images()
+	await _check_css_content_replacement()
+	await _check_css_content_alternative()
 	await _check_list_markers()
+	await _check_list_marker_images()
 	_check_counter_styles()
 	await _check_font_faces()
 	await _check_oblique_angles()
@@ -493,6 +497,8 @@ func _run() -> void:
 	await _check_text_emphasis()
 	await _check_underline_position()
 	await _check_color_spaces()
+	await _check_relative_colors()
+	await _check_adaptive_colors_and_images()
 	print("CSS cascade checks finished with %d failure(s)" % _failures)
 	quit(0 if _failures == 0 else 1)
 
@@ -5676,6 +5682,226 @@ func _check_generated_image() -> void:
 	viewport.queue_free()
 
 
+func _check_generated_css_images() -> void:
+	var document: HTMLDocument = load("{GENERATED_CSS_IMAGES_UID}")
+	_check(document != null, "Load imported generated CSS images")
+	if document == null:
+		return
+	var textures: Dictionary = document.get("_textures")
+	_check(textures.has("res://marker-light.png") and textures.has("res://marker-dark.png"),
+		"The import contains both light-dark() image alternatives from the stylesheet")
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(250, 200)) == OK, "Lay out CSS generated images")
+	var text: String = layout.get_plain_text()
+	_check(text.find("prefix") >= 0 and text.find("suffix") > text.find("prefix") and "Initial text" in text,
+		"Generated text stays in order around valid and unavailable images")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(260, 180)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var rendered: Image = viewport.get_texture().get_image()
+	var sized_region: Rect2i = Rect2i(_label_rect(label, "sized"))
+	var gradient: Color = Color("#a33683")
+	_check(_color_bounds(rendered, sized_region, gradient).size == Vector2i(44, 20),
+		"A single generated gradient uses the pseudo-element's explicit dimensions")
+	_check_pixel(rendered, Vector2(0.0, 0.0), Color.WHITE, "The generated image follows the pseudo-element's border radius")
+	var raster: Color = Color("#d03a73")
+	var mixed_region: Rect2i = Rect2i(_label_rect(label, "mixed"))
+	var mixed: Rect2i = _color_bounds(rendered, mixed_region, raster)
+	_check(mixed.size == Vector2i(18, 10) and mixed.position.x > mixed_region.position.x,
+		"Text before an anonymous image advances its position and the URL retains its size")
+	var marker_box: Rect2 = _label_rect(label, "marker")
+	var gutter: Rect2i = Rect2i(0, floori(marker_box.position.y), floori(marker_box.position.x), 30)
+	_check(_color_bounds(rendered, gutter, raster).size == Vector2i(9, 5),
+		"Generated ::marker content supports mixed text and a scaled image")
+	var blend: Rect2i = _color_bounds(rendered, Rect2i(_label_rect(label, "blend")), Color("#008080"))
+	_check(blend.size == Vector2i(30, 18) and blend.position.x == 4, "The generated cross-fade follows its CSS transform")
+	_check(label.query_selector("img") == null and label.get_element_at(Vector2(mixed.get_center())) == label.get_element_by_id("mixed"),
+		"Generated images stay out of DOM queries and report their origin on hit")
+	var root_element: HTMLElement = label.query_selector("html")
+	var switch_element: HTMLElement = label.get_element_by_id("switch")
+	_check(root_element.set_attribute("style", "color-scheme: dark") == OK and switch_element.set_attribute("class", "image") == OK,
+		"Change generated content and color scheme at runtime")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	rendered = viewport.get_texture().get_image()
+	_check(_color_bounds(rendered, sized_region, Color("#2174ae")).size == Vector2i(44, 20), "The explicit image changes color in dark mode")
+	_check(_color_bounds(rendered, mixed_region, Color("#3a57d0")).size == Vector2i(14, 7), "Mixed content selects the imported dark image and density")
+	_check(_color_bounds(rendered, Rect2i(_label_rect(label, "switch")), Color("#aa7318")).size == Vector2i(24, 9),
+		"A text pseudo-element is rebuilt as a single image")
+	viewport.queue_free()
+
+
+func _check_css_content_replacement() -> void:
+	var assets: HTMLDocument = load("{LIST_MARKER_IMAGES_UID}")
+	_check(assets != null, "Load imported replacement image assets")
+	if assets == null:
+		return
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_textures", assets.get("_textures"))
+	document.text = """<!doctype html><html style="color-scheme: light"><style>
+		body { margin: 0; color: black; background: white; font: 16px/20px sans-serif; }
+		#element { --icon: light-dark(url(marker-light.png), image-set("marker-dark.png" 2x)); content: var(--icon); }
+		#element::before { content: "Before "; }
+		#element::after { content: " After"; }
+		#link { content: image(#2174ae); width: 28px; height: 11px; }
+		#native { content: url(marker-light.png); }
+		#boxless { display: contents; content: url(marker-light.png); }
+		#grid { display: grid; grid-template-columns: 150px; justify-items: start; }
+		#grid_item { display: flex; content: url(marker-light.png); }
+		#fit { content: url(marker-dark.png); width: 56px; height: 44px; object-fit: contain; object-position: bottom; }
+		#checkbox { content: url(marker-light.png); padding: 0; margin: 0; border: 0; }
+		#textbox { content: image(#9326d0); width: 100px; height: 24px; }
+		#text_only { content: "CSS ignored"; }
+		#replaced_item { content: url(marker-light.png); }
+		#hidden_increment { counter-increment: list-item 5; }
+	</style>
+	<div id="element"><span id="child">Original subtree</span></div>
+	<div><a id="link" href="#target">Original link</a></div>
+	<div><img id="native" src="marker-dark.png" width="80" height="45"></div>
+	<div id="boxless"><span id="boxless_child">No box</span></div>
+	<div id="grid"><div id="grid_item">Grid child</div></div><div id="fit"></div>
+	<div><input type="checkbox" id="checkbox"></div><input id="textbox" value="Native text">
+	<div id="text_only">Visible text</div>
+	<ol start="8"><li id="replaced_item"><span id="hidden_increment">Replaced item</span></li><li>Following item</li></ol>
+	<div id="target"></div>"""
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(285, 250)) == OK, "Lay out ordinary and replaced elements")
+	var sizes: Dictionary[String, Vector2] = {
+		"element": Vector2(18.0, 10.0),
+		"link": Vector2(28.0, 11.0),
+		"native": Vector2(18.0, 10.0),
+		"grid_item": Vector2(18.0, 10.0),
+		"checkbox": Vector2(18.0, 10.0),
+	}
+	for id: String in sizes:
+		_check(_rect(layout, id).size == sizes[id], "%s uses the replacement's natural or explicit CSS size" % id)
+	var element: HTMLElement = layout.get_element_by_id("element")
+	var child: HTMLElement = layout.get_element_by_id("child")
+	_check(child != null and child.get_client_rects().is_empty() and "Original subtree" == element.get_text_content(),
+		"Replacement suppresses layout while retaining the original DOM subtree")
+	_check(layout.get_element_by_id("boxless_child").get_client_rects().is_empty(), "A replaced display: contents element hides its descendants")
+	var displayed: String = layout.get_plain_text()
+	_check("Visible text" in displayed and "Before" not in displayed and "After" not in displayed and "Original subtree" not in displayed,
+		"Rendered text respects replacement and retains ordinary text-only content")
+	_check("9. Following item" in displayed and "Replaced item" not in displayed,
+		"A replaced list item keeps its ordinal and its hidden descendants do not affect counters")
+	_check(layout.get_link_at(_rect(layout, "link").get_center()) == "#target", "A replaced anchor keeps its link target")
+	_check(element.set_attribute("style", "content: none") == OK and layout.layout(Vector2i(285, 250)) == OK,
+		"Clear CSS replacement on the same DOM element")
+	_check(layout.get_element_by_id("child") == child and child.get_bounding_rect().has_area() and
+		"Before Original subtree After" in layout.get_plain_text(), "Clearing replacement restores existing descendants and pseudo-content")
+	var native: HTMLElement = layout.get_element_by_id("native")
+	_check(native.set_attribute("style", "width: 36px") == OK and layout.layout(Vector2i(285, 250)) == OK and
+		native.get_bounding_rect().size == Vector2(36.0, 20.0), "Author CSS width scales the replacement image's own ratio")
+	_check(native.set_attribute("style", "content: normal") == OK and layout.layout(Vector2i(285, 250)) == OK and
+		native.get_bounding_rect().size == Vector2(80.0, 45.0), "Restoring the native image also restores its HTML dimension hints")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(285, 250)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var rendered: Image = viewport.get_texture().get_image()
+	var element_box: Rect2 = _label_rect(label, "element")
+	_check_pixel(rendered, element_box.get_center(), Color("#d03a73"), "An imported raster replaces the ordinary element")
+	_check(label.get_element_at(element_box.get_center()) == label.get_element_by_id("element"), "Hit testing returns the original element")
+	_check_pixel(rendered, _label_rect(label, "link").get_center(), Color("#2174ae"), "An inline replacement paints its CSS color")
+	var fit_box: Rect2i = Rect2i(_label_rect(label, "fit"))
+	var fitted: Rect2i = _color_bounds(rendered, fit_box, Color("#3a57d0"))
+	_check(fitted.size == Vector2i(56, 28) and fitted.end.y == fit_box.end.y, "Object-fit and object-position shape the replacement image")
+	_check(not _color_bounds(rendered, Rect2i(_label_rect(label, "textbox")), Color("#9326d0")).has_area(),
+		"The text input retains its native rendering")
+	var checkbox: HTMLInputElement = label.get_element_by_id("checkbox") as HTMLInputElement
+	_check(checkbox != null and label.activate_element(checkbox) and checkbox.checked, "A replaced checkbox remains interactive")
+	var html: HTMLElement = label.query_selector("html")
+	_check(html.set_attribute("style", "color-scheme: dark") == OK, "Switch the ordinary replacement image scheme")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var dark_box: Rect2 = _label_rect(label, "element")
+	_check(dark_box.size == Vector2(14.0, 7.0), "The dark replacement uses the candidate's density for layout")
+	_check_pixel(viewport.get_texture().get_image(), dark_box.get_center(), Color("#3a57d0"),
+		"The dark image paints from the imported assets")
+	viewport.queue_free()
+
+
+func _check_css_content_alternative() -> void:
+	var html: String = """<!doctype html><style>
+		body { margin: 0; }
+		#decor::before { content: "STAR " / ""; }
+		#info::before { content: image(#34a56c) / attr(data-description, "Unnamed") " badge "; width: 16px; height: 8px; }
+		#combined::before { content: ">" (bad); content: image(blue) " VIS " / "Spoken "; }
+		li::marker { content: "# " / "Step " counter(list-item) ": "; }
+		#nested::before { content: "" / counters(list-item, ".") " "; }
+		#replacement { content: image(#b12330) / attr(data-name) " map"; display: block; width: 20px; height: 12px; }
+		#hidden { display: none; content: image(red) / "Hidden alternative"; }
+		#invisible { visibility: hidden; }
+		#invisible::before { content: "Hidden glyph " / "Invisible alternative"; }
+		#invalid::before { content: "Valid " / "Kept "; content: "Bad" / image(red); content: "Bad2" / ;
+			content: "Bad3" / "Bad4" / "Bad5"; }
+		@supports (content: "V" / "A") { #support::before { content: "visual " / "accessible "; } }
+		@supports (content: "V" / open-quote) { #support::after { content: "BAD"; } }
+	</style>
+	<div id="decor">Topic</div><div id="info" data-description="Green">Label</div>
+	<div id="combined">Mixed</div>
+	<ol start="4"><li>First<ol start="7"><li id="nested">Nested</li></ol></li><li>Second</li></ol>
+	<div id="replacement" data-name="Trail"><span>Old content</span></div>
+	<div><img src="missing.png" alt="Native alternative"> Suffix</div>
+	<div id="hidden"></div><div id="invisible"></div>
+	<div id="invalid">Body</div><div id="support">Support</div>"""
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse(html) == OK and layout.get_accessible_text().is_empty() and layout.layout(Vector2i(290, 280)) == OK,
+		"Compute alternative text after layout")
+	var visual: String = layout.get_plain_text()
+	var accessible: String = layout.get_accessible_text()
+	for fragment: String in ["STAR Topic", "VIS Mixed", "# First", "Valid Body", "visual Support",]:
+		_check(fragment in visual, "The visible stream contains %s" % fragment)
+	for fragment: String in ["Topic", "Green badge Label", "Spoken Mixed", "Step 4: First", "Step 7: 4.7 Nested",
+			"Step 5: Second", "Trail map", "Native alternative Suffix", "Kept Body", "accessible Support",]:
+		_check(fragment in accessible, "The accessible stream contains %s" % fragment)
+	_check("STAR" not in accessible and "Hidden alternative" not in accessible and "Invisible alternative" not in accessible and
+		"Trail map" not in visual and "BAD" not in visual and "Old content" not in accessible,
+		"Alternative text is separate from visual text and suppressed nodes stay out of the accessible stream")
+	var info: HTMLElement = layout.get_element_by_id("info")
+	_check(info.remove_attribute("data-description") == OK and layout.layout(Vector2i(290, 280)) == OK and
+		"Unnamed badge Label" in layout.get_accessible_text(), "A dynamic attribute change refreshes its fallback alternative text")
+	layout.clear()
+	_check(layout.get_accessible_text().is_empty(), "Clearing the layout clears its accessible text")
+
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(300.0, 300.0)
+	label.text = html
+	root.add_child(label)
+	await process_frame
+	await process_frame
+	label.select_all()
+	_check("Green badge Label" in label.get_accessible_text() and "STAR Topic" in label.get_selected_text() and
+		"Trail map" not in label.get_selected_text(), "HTMLLabel exposes alternatives separately from selection")
+	var replacement: HTMLElement = label.get_element_by_id("replacement")
+	_check(replacement.set_attribute("style", "content: none") == OK, "Restore the original subtree")
+	await process_frame
+	await process_frame
+	_check("Old content" in label.get_accessible_text() and "Trail map" not in label.get_accessible_text(),
+		"HTMLLabel refreshes the accessible text after ending CSS replacement")
+	label.queue_free()
+
+
 func _check_list_markers() -> void:
 	var viewport: SubViewport = SubViewport.new()
 	viewport.size = Vector2i(320, 310)
@@ -5747,6 +5973,62 @@ li::before { content: '|'; }
 	var block_pixels: Rect2i = _color_bounds(image, Rect2i(Vector2i.ZERO, viewport.size), Color("#1735cd"))
 	_check(block_pixels.has_area() and block_pixels.end.x < _label_rect(label, "block_child").position.x,
 		"An outside marker also paints beside block content")
+	viewport.queue_free()
+
+
+func _check_list_marker_images() -> void:
+	var document: HTMLDocument = load("{LIST_MARKER_IMAGES_UID}")
+	_check(document != null, "Load imported list-marker images by UID")
+	if document == null:
+		return
+	var textures: Dictionary = document.get("_textures")
+	_check(textures.has("res://marker-light.png") and textures.has("res://marker-dark.png"),
+		"The importer retains both local candidates from the nested stylesheet")
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(250, 240)) == OK, "Lay out imported image markers")
+	var rendered_text: String = layout.get_plain_text()
+	_check("Missing: Unavailable" in rendered_text and "Custom: Override" in rendered_text,
+		"An unavailable image falls back to its list style and custom marker content overrides images")
+	_check("Fallback: Transparent" not in rendered_text and "Fallback: Theme" not in rendered_text,
+		"Valid image markers suppress the text fallback, including a transparent branch")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(265, 240)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var area: Rect2i = Rect2i(Vector2i.ZERO, viewport.size)
+	var light: Rect2i = _color_bounds(image, area, Color("#d03a73"))
+	_check(light.size == Vector2i(18, 10), "The inherited light image paints at its intrinsic dimensions")
+	_check(_color_bounds(image, area, Color("#18aa61")).size == Vector2i(20, 20),
+		"A gradient accepted through @supports and var() uses the 1em default size")
+	var outside: Rect2i = _color_bounds(image, area, Color("#af7321"))
+	_check(outside.size == Vector2i(20, 20) and outside.end.x <= _label_rect(label, "outside").position.x,
+		"An outside solid-image marker paints in the gutter")
+	_check(_color_bounds(image, area, Color("#008080")).size == Vector2i(20, 20), "A cross-fade marker is blended and drawn")
+	_check(_label_rect(label, "transparent_word").position.x >= _label_rect(label, "transparent").position.x + 20.0,
+		"A transparent image still occupies a 1em marker box")
+	_check(label.query_selector("img") == null, "Image markers stay out of DOM queries")
+	var origin: HTMLElement = label.get_element_at(Vector2(light.get_center()))
+	_check(origin == label.get_element_by_id("themed"), "Hit on an anonymous image returns its list item")
+	var root_element: HTMLElement = label.query_selector("html")
+	_check(root_element.set_attribute("style", "color-scheme: dark") == OK, "Switch the imported marker's color scheme")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	_check(not _color_bounds(image, area, Color("#d03a73")).has_area(), "The old marker image disappears after a scheme change")
+	_check(_color_bounds(image, area, Color("#3a57d0")).size == Vector2i(14, 7),
+		"The dark candidate uses its declared density with only the imported resources")
+	_check(_color_bounds(image, area, Color("#d78015")).size == Vector2i(20, 20),
+		"A transparent marker switches to a visible image without changing its default size")
 	viewport.queue_free()
 
 
@@ -5850,6 +6132,9 @@ func _check_font_faces() -> void:
 		"Reactivating the narrow face restores its metrics")
 	_check_font_ranges(assets, regular, narrow, bold, italic)
 	_check_local_font_faces(assets, regular, narrow, bold, italic)
+	await _check_font_metric_overrides(assets, narrow)
+	await _check_font_face_size_adjust(assets, narrow)
+	_check_font_size_adjust(assets, narrow, regular)
 	var viewport: SubViewport = SubViewport.new()
 	viewport.size = Vector2i(320, 320)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -5869,6 +6154,272 @@ func _check_font_faces() -> void:
 		"The variable font paints thicker glyphs at the higher weight (%s vs %s)" % [heavy, light])
 	_check(absf(heavy - above) < 1.0, "The variable weight is clamped to the descriptor range")
 	viewport.queue_free()
+
+
+func _check_font_metric_overrides(assets: Dictionary, font: FontFile) -> void:
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_local_fonts", assets)
+	document.text = """<!doctype html><style id="faces">
+		@font-face { font-family: Adjusted; src: url(fonts/cour.ttf);
+			ascent-override: calc(75% + 20%) 150%; ascent-override: -10%;
+			descent-override: 25%; descent-override: 50% 7px;
+			line-gap-override: 30%; line-gap-override: 80% normal normal; }
+		@font-face { font-family: Low; src: url(fonts/cour.ttf);
+			ascent-override: 75%; descent-override: 45%; }
+		@font-face { font-family: Native; src: url(fonts/cour.ttf);
+			ascent-override: 90%; ascent-override: normal 150%; descent-override: normal;
+			line-gap-override: 25%; line-gap-override: normal; }
+	</style><style>
+		body { margin: 0; background: white; font: 40px Adjusted; }
+		#small { font-size: 20.5px; }
+		#native { font-family: Native; }
+		#explicit { line-height: 52px; }
+		#unit { width: 1lh; height: 1px; }
+		#width { display: inline-block; width: 3ch; height: 1px; }
+		section { position: absolute; top: 220px; left: 0; width: 140px; }
+		#compare { left: 150px; }
+		textarea, input, section div { display: block; box-sizing: border-box; appearance: none;
+			width: 140px; height: 64px; border: 0; padding: 0; margin: 0; resize: none;
+			background: white; color: red; font: 40px/64px Adjusted; }
+		textarea::placeholder, input::placeholder { color: red; opacity: 1; }
+		#compare textarea::placeholder, #compare input::placeholder, #compare div { font-family: Low; }
+	</style>
+	<div id="normal">HH</div><div id="small">HH</div><div id="explicit">HH</div>
+	<div id="native">HH</div><div id="unit"></div><div id="width"></div>
+	<section><div>HH</div><input placeholder="HH"><textarea placeholder="HH"></textarea></section>
+	<section id="compare"><div>HH</div><input placeholder="HH"><textarea placeholder="HH"></textarea></section>"""
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(320, 460)) == OK, "Lay out the metric override fixture")
+	var expected: Dictionary[String, float] = {
+		"normal": 60.0,
+		"small": 30.75,
+		"explicit": 52.0,
+		"native": font.get_ascent(40) + font.get_descent(40),
+	}
+	for id: String in expected:
+		var height: float = _rect(layout, id).size.y
+		_check(absf(height - expected[id]) < 0.05, "Metric override height for %s is %s, expected %s" % [id, height, expected[id]])
+	_check(is_equal_approx(_rect(layout, "unit").size.x, 60.0), "The lh unit uses the overridden normal line height")
+	_check(is_equal_approx(_rect(layout, "width").size.x, 3.0 * font.get_char_size(48, 40).x),
+		"Vertical metric overrides leave the ch unit unchanged")
+	var faces: HTMLElement = layout.get_element_by_id("faces")
+	_check(faces.set_text_content(faces.get_text_content().replace("line-gap-override: 30%", "line-gap-override: 10%")) == OK
+		and layout.layout(Vector2i(320, 460)) == OK and is_equal_approx(_rect(layout, "normal").size.y, 52.0),
+		"Editing only a vertical descriptor invalidates cached line metrics")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 460)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for row: int in range(3):
+		var top: int = 220 + row * 64
+		var high: Rect2i = _color_bounds(image, Rect2i(0, top, 140, 64), Color.RED, 0.25)
+		var low: Rect2i = _color_bounds(image, Rect2i(150, top, 140, 64), Color.RED, 0.25)
+		_check(high.has_area() and high.size == low.size and high.position.y - low.position.y == 8,
+			"Metric overrides shift the baseline without scaling the glyphs in row %d (%s and %s)" % [row, high, low])
+	viewport.queue_free()
+
+
+func _check_font_face_size_adjust(assets: Dictionary, font: FontFile) -> void:
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_local_fonts", assets)
+	document.text = """<!doctype html><style id="faces">
+		@font-face { font-family: Base; src: url(fonts/cour.ttf); }
+		@font-face { font-family: Scaled; src: url(fonts/cour.ttf); size-adjust: calc(100% + 50%);
+			size-adjust: -10%; size-adjust: 110% 120%; }
+		@font-face { font-family: Range; src: url(fonts/cour.ttf); size-adjust: 150%; unicode-range: U+20, U+41-5A; }
+		@font-face { font-family: Tall; src: url(fonts/cour.ttf); size-adjust: 150%; unicode-range: U+41-5A; }
+		@font-face { font-family: HiddenFace; src: url(fonts/cour.ttf); size-adjust: 0%; unicode-range: U+20, U+41-5A; }
+		@font-face { font-family: Metrics; src: url(fonts/cour.ttf); size-adjust: 150%;
+			ascent-override: 75%; descent-override: 25%; line-gap-override: 25%; }
+	</style><style>
+		body { margin: 0; background: white; font: 40px Scaled; }
+		.measure { width: max-content; }
+		#mixed { font-family: Range, Base; }
+		#invisible { font-family: HiddenFace, Base; line-height: 40px; }
+		#zero_normal { font-family: HiddenFace, Base; }
+		#tall { font-family: Tall, Base; }
+		#wrap { font-family: Tall, Base; width: 40px; overflow-wrap: anywhere; }
+		#metrics { font-family: Metrics; }
+		#em { width: 1em; }
+		#ch { width: 1ch; }
+		#ex { width: 1ex; }
+		#ex_ref { width: 1ex; font: 60px Base; }
+		#fixed { line-height: 1.25; }
+		section { position: absolute; top: 440px; left: 0; width: 140px; color: red; }
+		#compare { left: 160px; font: 60px Base; }
+	</style>
+	<div class="measure" id="scaled">AA</div><div class="measure" id="mixed">AaBb</div>
+	<div class="measure" id="invisible">AaBb</div><div id="metrics">AA</div><div id="fixed">AA</div>
+	<div id="zero_normal">Zz</div><div id="tall">Zz</div><div id="wrap">Zz</div>
+	<div id="em"></div><div id="ch"></div><div id="ex"></div><div id="ex_ref"></div>
+	<section>AA</section><section id="compare">AA</section>"""
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(320, 550)) == OK, "Lay out the size-adjust fixture")
+	var small: float = font.get_char_size(65, 40).x
+	var large: float = font.get_char_size(65, 60).x
+	_check(is_equal_approx(_rect(layout, "scaled").size.x, large * 2.0), "Size-adjust scales glyph advances")
+	_check(is_equal_approx(_rect(layout, "mixed").size.x, (small + large) * 2.0), "Fallback glyphs retain their own face size")
+	_check(is_equal_approx(_rect(layout, "invisible").size.x, small * 2.0) and layout.get_plain_text().count("AaBb") == 2,
+		"A zero adjustment collapses only the matching glyphs, preserving document text")
+	var small_height: float = font.get_ascent(40) + font.get_descent(40)
+	var large_height: float = font.get_ascent(60) + font.get_descent(60)
+	_check(is_equal_approx(_rect(layout, "zero_normal").size.y, small_height),
+		"Visible fallback glyphs contribute to a line with a zero-sized primary face")
+	_check(is_equal_approx(_rect(layout, "tall").size.y, large_height),
+		"A scaled glyph can grow a normal line even when excluded from selection of the first available face")
+	_check(is_equal_approx(_rect(layout, "wrap").size.y, small_height + large_height),
+		"Only the line with the scaled glyph receives the taller metrics after wrapping")
+	_check(is_equal_approx(_rect(layout, "metrics").size.y, 75.0), "Vertical overrides use the adjusted size")
+	_check(is_equal_approx(_rect(layout, "fixed").size.y, 50.0) and is_equal_approx(_rect(layout, "em").size.x, 40.0),
+		"Unitless line height and em units use the declared size")
+	_check(is_equal_approx(_rect(layout, "ch").size.x, large) and
+		is_equal_approx(_rect(layout, "ex").size.x, _rect(layout, "ex_ref").size.x), "Glyph-relative units use the scaled font")
+	var face_rules: HTMLElement = layout.get_element_by_id("faces")
+	_check(face_rules.set_text_content(face_rules.get_text_content().replace("calc(100% + 50%)", "50%")) == OK
+		and layout.layout(Vector2i(320, 550)) == OK and
+		is_equal_approx(_rect(layout, "scaled").size.x, 2.0 * font.get_char_size(65, 20).x),
+		"Changing only the adjustment refreshes shaped glyph advances")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(320, 550)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var scaled: Rect2i = _color_bounds(image, Rect2i(0, 440, 140, 108), Color.RED, 0.25)
+	var reference: Rect2i = _color_bounds(image, Rect2i(160, 440, 140, 108), Color.RED, 0.25)
+	_check(scaled.has_area() and scaled == Rect2i(reference.position - Vector2i(160, 0), reference.size),
+		"Size-adjust renders the same glyph bounds as the effective font size (%s versus %s)" % [scaled, reference])
+	viewport.queue_free()
+
+
+func _check_font_size_adjust(assets: Dictionary, mono: FontFile, serif: FontFile) -> void:
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var mono_rid: RID = mono.get_rids()[0]
+	var serif_rid: RID = serif.get_rids()[0]
+	var mono_zero: int = server.font_get_glyph_index(mono_rid, 1024, 48, 0)
+	var serif_zero: int = server.font_get_glyph_index(serif_rid, 1024, 48, 0)
+	var mono_aspect: float = server.font_get_glyph_advance(mono_rid, 1024, mono_zero).x / 1024.0
+	var serif_aspect: float = server.font_get_glyph_advance(serif_rid, 1024, serif_zero).x / 1024.0
+	_check(mono_aspect > 0.0 and serif_aspect > 0.0, "Reference faces expose zero advances")
+	if mono_aspect <= 0.0 or serif_aspect <= 0.0:
+		return
+	var cap: float = 0.0
+	var x_height: float = 0.0
+	var cap_glyph: int = server.font_get_glyph_index(mono_rid, 1024, 72, 0)
+	var x_glyph: int = server.font_get_glyph_index(mono_rid, 1024, 120, 0)
+	for point: Vector3 in server.font_get_glyph_contours(mono_rid, 1024, cap_glyph).points:
+		cap = maxf(cap, -point.y / 1024.0)
+	for point: Vector3 in server.font_get_glyph_contours(mono_rid, 1024, x_glyph).points:
+		x_height = maxf(x_height, -point.y / 1024.0)
+
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_local_fonts", assets)
+	document.text = """<!doctype html><style>
+		@font-face { font-family: Mono; src: url(fonts/cour.ttf); }
+		@font-face { font-family: SerifFace; src: url(fonts/times.ttf); }
+		@font-face { font-family: Scaled; src: url(fonts/cour.ttf); size-adjust: 200%%;
+			ascent-override: 75%%; descent-override: 25%%; }
+		@font-face { font-family: Caps; src: url(fonts/cour.ttf); unicode-range: U+20,U+41-5A; }
+		body { margin: 0; font: 40px Mono; --target: %.12f; }
+		div { width: max-content; }
+		#capped { font-size-adjust: cap-height %.12f; }
+		#ex { font-size-adjust: %.12f; }
+		#numeric { font-size-adjust: ch-width var(--target); font-size-adjust: ch-width 93%%; }
+		#font_face { font-family: Scaled; font-size-adjust: ch-width var(--target); }
+		#from { font-family: Scaled; font-size-adjust: ch-width from-font; }
+		#child, #local_reference { font-family: SerifFace; }
+		#local_reference { font-size-adjust: ch-width from-font; }
+		#mixed { font-family: Caps, SerifFace; font-size-adjust: ch-width from-font; }
+		#fixed { font-size-adjust: ch-width var(--target); line-height: 1.25; }
+		#em { width: 1em; }
+		#ch { width: 1ch; }
+		#reset { font-size-adjust: ch-width var(--target); font: 40px Mono; }
+		#zero { font-size-adjust: 0; }
+		#animated { animation: match-height 8s -4s linear paused both; }
+		@keyframes match-height { from { font-size-adjust: ch-width %.12f; }
+			to { font-size-adjust: ch-width %.12f; } }
+	</style>
+	<div id="capped">AA</div><div id="ex">AA</div><div id="numeric">AA</div><div id="font_face">AA</div>
+	<section id="from"><div id="child">aa</div><div id="local_reference">aa</div></section>
+	<div id="mixed">AaAa</div><div id="fixed">AA<span id="em" style="display:inline-block;height:1px"></span>
+		<span id="ch" style="display:inline-block;height:1px"></span></div>
+	<div id="reset">AA</div><div id="zero">AA</div><div id="animated">AA</div>""" % [
+		mono_aspect * 1.5, cap * 1.5, x_height * 1.5, mono_aspect, mono_aspect * 2.0,
+	]
+	var layout: HTMLLayout = document.create_layout()
+	_check(layout.layout(Vector2i(450, 800)) == OK, "Lay out the font-size-adjust fixture")
+	var mono_large: float = mono.get_char_size(65, 60).x
+	var mono_base: float = mono.get_char_size(65, 40).x
+	for id: String in ["capped", "ex", "numeric", "font_face", "animated",]:
+		var width: float = _rect(layout, id).size.x
+		_check(is_equal_approx(width, 2.0 * mono_large), "%s adjusts to the intended glyph size (%s)" % [id, width,])
+	_check(is_equal_approx(_rect(layout, "reset").size.x, 2.0 * mono_base) and is_zero_approx(_rect(layout, "zero").size.x),
+		"The font shorthand resets the adjustment, and the numeric zero collapses the face")
+	var inherited_size: int = roundi(80.0 * mono_aspect / serif_aspect)
+	var matched_size: int = roundi(40.0 * mono_aspect / serif_aspect)
+	var child_width: float = _rect(layout, "child").size.x
+	var child_reference: TextLine = TextLine.new()
+	child_reference.add_string("aa", serif, inherited_size)
+	var expected_child: float = child_reference.get_line_width()
+	_check(is_equal_approx(child_width, expected_child),
+		"From-font inherits the adjusted ratio (%s versus %s at %dpx)" % [child_width, expected_child, inherited_size,])
+	_check(is_equal_approx(_rect(layout, "local_reference").size.x, 2.0 * serif.get_char_size(97, 40).x),
+		"An explicit from-font on a descendant samples its own face")
+	_check(is_equal_approx(_rect(layout, "mixed").size.x, 2.0 * (mono_base + serif.get_char_size(97, matched_size).x)),
+		"Two faces in the same text normalize to the same typographic proportion")
+	_check(is_equal_approx(_rect(layout, "font_face").size.y, 60.0), "Metric overrides use the normalized size")
+	_check(is_equal_approx(_rect(layout, "fixed").size.y, 50.0) and is_equal_approx(_rect(layout, "em").size.x, 40.0),
+		"The computed font size still determines em and unitless line-height")
+	_check(is_equal_approx(_rect(layout, "ch").size.x, mono_large), "The adjusted glyph advance determines ch")
+	_check_font_size_adjust_system_fallback(server)
+
+
+func _check_font_size_adjust_system_fallback(server: TextServer) -> void:
+	var base_font: SystemFont = SystemFont.new()
+	base_font.font_names = PackedStringArray(["Arial",])
+	if base_font.get_rids().is_empty() or base_font.has_char(0x6c34):
+		return
+	var reference: TextLine = TextLine.new()
+	reference.add_string("水", base_font, 64, "zh-Hans-CN")
+	var glyphs: Array[Dictionary] = server.shaped_text_get_glyphs(reference.get_rid())
+	if glyphs.is_empty():
+		return
+	var face: RID = glyphs[0]["font_rid"]
+	if not face.is_valid():
+		return
+	var glyph: int = server.font_get_glyph_index(face, 1024, 0x6c34, 0)
+	var advances: Vector2 = server.font_get_glyph_advance(face, 1024, glyph) / 1024.0
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse("""<!doctype html><html lang="zh-Hans-CN"><style>
+		body { margin: 0; font: 64px Arial; }
+		div { width: max-content; }
+		#width { font-size-adjust: ic-width 1.5; }
+		#height { font-size-adjust: ic-height 1.5; }
+	</style><div id="width">水</div><div id="height">水</div>""") == OK
+		and layout.layout(Vector2i(450, 600)) == OK, "Lay out system CJK fallback with normalization")
+	for probe: String in ["width", "height",]:
+		var aspect: float = advances.x if probe == "width" else absf(advances.y)
+		if aspect <= 0.0:
+			continue
+		var effective_size: int = roundi(96.0 / aspect)
+		var width: float = server.font_get_glyph_advance(face, effective_size, glyph).x
+		_check(absf(_rect(layout, probe).size.x - width) <= 1.0, "Normalize CJK system fallback using ic-%s" % probe)
 
 
 func _check_local_font_faces(assets: Dictionary, regular: FontFile, narrow: FontFile, bold: FontFile,
@@ -10250,7 +10801,7 @@ func _check_windows_chinese_generic_fonts() -> void:
 			return
 
 	var viewport: SubViewport = SubViewport.new()
-	viewport.size = Vector2i(800, 250)
+	viewport.size = Vector2i(800, 300)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
@@ -10264,27 +10815,71 @@ func _check_windows_chinese_generic_fonts() -> void:
 			font-size: 26px; line-height: 36px; }
 		textarea { resize: none; }
 		textarea::placeholder { color: black; opacity: 1; }
-	</style><section>
+	</style><section id="localized">
 		<p>{sample}</p><p style="font-family:serif">{sample}</p>
 		<button>{sample}</button><textarea placeholder="{sample}"></textarea>
 		<p style="font-family:'Microsoft YaHei',sans-serif">{sample}</p>
+		<p style="font-family:cursive">{sample}</p>
 	</section><section id="reference">
-		<p style="font-family:'Times New Roman','Noto Sans SC'">{sample}</p>
-		<p style="font-family:'Times New Roman','Noto Serif SC'">{sample}</p>
+		<p style="font-family:'Noto Sans SC'">{sample}</p>
+		<p style="font-family:'Noto Serif SC'">{sample}</p>
 		<button style="font-family:Arial,'Noto Sans SC'">{sample}</button>
-		<textarea style="font-family:Consolas,NSimSun" placeholder="{sample}"></textarea>
+		<textarea style="font-family:NSimSun" placeholder="{sample}"></textarea>
 		<p style="font-family:'Microsoft YaHei'">{sample}</p>
+		<p style="font-family:KaiTi">{sample}</p>
 	</section>""".replace("{sample}", SAMPLE)
 	viewport.add_child(label)
 	await process_frame
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var image: Image = viewport.get_texture().get_image()
-	for row: int in range(5):
+	var row_count: int = 6 if installed.has("KaiTi") else 5
+	for row: int in range(row_count):
 		var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
 		var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
 		_check(image.get_region(actual).get_data() == image.get_region(expected).get_data(),
 			"Windows Chinese generic mapping and author font order match the named faces in row %d" % row)
+	var reference: HTMLElement = label.get_element_by_id("reference")
+	var localized: HTMLElement = label.get_element_by_id("localized")
+	var document_root: HTMLElement = label.query_selector("html")
+	for language: String in ["cmn-Hans-CN", "yue-Hans-CN",]:
+		_check(document_root.set_attribute("lang", language) == OK, "Use inherited language %s" % language)
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		image = viewport.get_texture().get_image()
+		for row: int in range(row_count):
+			var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
+			var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
+			_check(image.get_region(actual).get_data() == image.get_region(expected).get_data(),
+				"%s keeps the Simplified Chinese font in row %d" % [language, row,])
+	if (installed.has("Microsoft JhengHei") and not installed.has("Noto Sans TC")
+			and not installed.has("Noto Sans CJK TC") and not installed.has("MingLiU")):
+		_check(reference.query_selector("p").set_attribute("style", "font-family:'Microsoft JhengHei'") == OK,
+			"Set the Traditional Chinese standard font reference")
+		_check(reference.query_selector("textarea").set_attribute("style", "font-family:'Microsoft JhengHei'") == OK,
+			"Set the standard font reference when the Traditional Chinese monospace face is unavailable")
+		for language: String in ["zh-Hant-HK", "yue-Hant-HK", "zh-yue-HK",]:
+			_check(document_root.set_attribute("lang", language) == OK, "Use inherited language %s" % language)
+			await process_frame
+			await process_frame
+			await RenderingServer.frame_post_draw
+			image = viewport.get_texture().get_image()
+			for row: int in [0, 3,]:
+				var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
+				var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
+				_check(image.get_region(actual).get_data() == image.get_region(expected).get_data(),
+					"%s uses the Traditional Chinese font in row %d" % [language, row,])
+		_check(localized.query_selector("textarea").set_attribute("style", "font-family:monospace,'Microsoft YaHei'") == OK,
+			"Put an installed author font after the unavailable generic")
+		_check(reference.query_selector("textarea").set_attribute("style", "font-family:'Microsoft YaHei'") == OK,
+			"Set the installed author font reference")
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		image = viewport.get_texture().get_image()
+		_check(image.get_region(Rect2i(0, 144, 390, 48)).get_data() == image.get_region(Rect2i(400, 144, 390, 48)).get_data(),
+			"An unavailable Chinese generic leaves the next author font eligible")
 	viewport.queue_free()
 
 
@@ -11848,8 +12443,8 @@ func _check_selection_colors() -> void:
 	label.size = Vector2(viewport.size)
 	label.text = """<!doctype html><style>
 		html { background: white; } body { margin: 8px; color: black; font: 28px/38px monospace; }
-		:root::selection { color: red; background: lime; }
-		#child { --selected-ink: blue; }
+		:root::selection { color: red; background: light-dark(lime, magenta); }
+		#child { --selected-ink: blue; color-scheme: dark; }
 		#child::selection { color: var(--selected-ink); }
 		#clear::selection { color: currentColor; background-color: initial; }
 		#skip { user-select: none; }
@@ -15304,6 +15899,160 @@ func _check_color_spaces() -> void:
 		_check_pixel(image, points[expression], Color(swatches[expression]), expression)
 	_check_pixel(image, Vector2(5.0, 80.0), Color.LIME, "Feature query accepts a predefined color space")
 	_check_pixel(image, Vector2(20.0, 80.0), Color.LIME, "Invalid color declaration preserves the earlier valid value")
+	viewport.queue_free()
+
+
+func _check_relative_colors() -> void:
+	var swatches: Dictionary[String, String] = {
+		"rgb(from #604020 calc(r + 32) b g)": "#802040",
+		"rgba(from rgba(128, 64, 32, .25) r g b)": "#201008",
+		"rgb(from rgb(20 40 80 / 50%) b g r / calc(alpha / 2))": "#140a05",
+		"rgb(from red min(50%, 75%) calc(10 + (r / 5)) 0 / calc(alpha * 4))": "#803d00",
+		"hsl(from red calc(h + 120) s l)": "#00ff00",
+		"hsla(from hsl(0 100% 50% / .5) calc(.5turn) s l)": "#008080",
+		"hwb(from red calc(h - 120) w b)": "#0000ff",
+		"hwb(from black 30 0 0)": "#ff8000",
+		"lab(from lab(57.9 11.4 -53.7) l a b)": "#6c88ea",
+		"lch(from lab(57.9 11.4 -53.7) l c h)": "#6c88ea",
+		"oklab(from oklch(65% .15 270) l a b)": "#6c88ea",
+		"oklch(from oklab(65% 0 -.15) l c h)": "#6c88ea",
+		"color(from color(display-p3 .445 .529 .891) srgb r g b)": "#6c88ea",
+		"color(from color(display-p3 .445 .529 .891) display-p3 r g b)": "#6c88ea",
+		"color(from color(xyz-d50 .2004941 .140872 .4470838) xyz-d50 x y z)": "#7654cd",
+		"color(from color(srgb .5 .3 .1 / none) srgb r g b / calc(1 - alpha))": "#804d1a",
+		"color-mix(in srgb, rgb(from color(srgb 2 0 0) r g b), black)": "#ff0000",
+		"rgb(from rgb(from color(srgb 1.5 0 0) r g b) calc(r / 2) g b)": "#bf0000",
+		"color-mix(in srgb, rgb(from color(srgb none .4 0) r g b), rgb(204 0 0))": "#cc3300",
+		"rgb(from color(srgb none .4 0) calc(r + 51) g b)": "#336600",
+		"rgb(from currentColor g b r)": "#345612",
+		"rgb(from var(--base) b g r)": "#563412",
+		"rgb(from color-mix(in srgb, black, currentColor) calc(r * 2) calc(g * 2) calc(b * 2))": "#123456",
+	}
+	var html: String = """<!doctype html><style>
+		body { margin: 0; background: black; color: #123456; --base: #123456; }
+		.swatch { position: absolute; width: 12px; height: 12px; }
+		@supports (color: rgb(from red calc(r / 2) g b)) { #supports { background: lime; } }
+		@supports (color: rgb(from red unknown g b)) { #invalid { background: red; } }
+	</style>"""
+	var points: Dictionary[String, Vector2] = {}
+	var index: int
+	for expression: String in swatches:
+		var position: Vector2i = Vector2i((index % 8) * 15, floori(float(index) / 8.0) * 15)
+		html += '<div class="swatch" style="left:%dpx;top:%dpx;background:%s"></div>' % [
+			position.x, position.y, expression,
+		]
+		points[expression] = Vector2(position + Vector2i(5, 5))
+		index += 1
+	html += """<div class="swatch" id="supports" style="left:0;top:60px"></div>
+		<div class="swatch" id="invalid" style="left:15px;top:60px;background:lime;
+			background:rgb(from red, r, g, b);background:rgb(from red calc(r + 1px) g b);
+			background:color(from red xyz r g b)"></div>
+		<div class="swatch" style="left:30px;top:60px;color:rgb(from currentColor b r g);background:currentColor"></div>
+		<div class="swatch" id="system" style="left:45px;top:60px;color-scheme:dark;
+			background:rgb(from Canvas calc(r + 16) g b)"></div>"""
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(140, 88)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = html
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	for expression: String in swatches:
+		_check_pixel(image, points[expression], Color(swatches[expression]), expression)
+	_check_pixel(image, Vector2(5.0, 65.0), Color.LIME, "Feature queries accept valid relative colors")
+	_check_pixel(image, Vector2(20.0, 65.0), Color.LIME, "Invalid channels and comma syntax leave earlier declarations intact")
+	_check_pixel(image, Vector2(35.0, 65.0), Color("#561234"), "Relative currentColor in color uses the inherited color")
+	_check_pixel(image, Vector2(50.0, 65.0), Color("#221212"), "Relative system colors honor the element's dark scheme")
+	var system: HTMLElement = label.get_element_by_id("system")
+	_check(system.set_attribute("style", "left:45px;top:60px;color-scheme:light;background:rgb(from Canvas r g b)") == OK,
+		"Switch the relative system color to the light scheme")
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(50.0, 65.0), Color.WHITE, "Relative system colors follow scheme changes")
+	viewport.queue_free()
+
+
+func _check_adaptive_colors_and_images() -> void:
+	var source: Image = Image.create_empty(16, 16, false, Image.FORMAT_RGBA8)
+	source.fill(Color.LIME)
+	var document: HTMLDocument = HTMLDocument.new()
+	document.set("_textures", {"res://adaptive.png": ImageTexture.create_from_image(source),})
+	document.text = """<!doctype html><style>
+		body { margin: 0; background: #224466; color: #113355; }
+		#scheme { color-scheme: dark; --light: red; --dark: rgb(from currentColor b g r); }
+		.row { display: grid; grid-template-columns: repeat(6, 20px); }
+		.row > div { width: 16px; height: 16px; }
+		.fill { display: block; width: 100%; height: 100%; color-scheme: light; }
+		#pair { background: light-dark(var(--light), var(--dark)); }
+		#darkgray { background: contrast-color(#757575); }
+		#lightgray { background: contrast-color(#767676); }
+		#contrast { background: contrast-color(light-dark(white, Canvas)); }
+		#text { color: light-dark(red, currentColor); background: currentColor; }
+		#absolute { background: contrast-color(color(srgb-linear 1 0 0 / 0)); }
+		#mix { background: color-mix(in srgb, light-dark(red, blue), currentColor); }
+		#mix > i { color: lime; background: inherit; }
+		#inheritcontrast { color: black; background: contrast-color(currentColor); }
+		#inheritcontrast > i { color: white; background: inherit; }
+		#gradient { background: linear-gradient(light-dark(lime, blue), light-dark(lime, blue)); }
+		#invalid { background: lime; background: light-dark(red, url(adaptive.png));
+			background: light-dark(red, blue, green); background: contrast-color(red, blue); }
+		@supports (color: contrast-color(light-dark(black, white))) and
+			(background-image: light-dark(url(adaptive.png), none)) {
+			#supports { background: lime; }
+		}
+		#url { background: light-dark(url(adaptive.png), none) no-repeat; }
+		#set { background-image: image-set(light-dark(image(red), image(blue)) 1x); }
+		#mask { background: red; mask-image: light-dark(image(white), none); mask-mode: alpha; }
+		#border { box-sizing: border-box; border: 4px solid red;
+			border-image: light-dark(image(lime), image(blue)) 4 fill; }
+		#inheritimage { background-image: light-dark(image(lime), image(blue)); }
+		#inheritedimage { position: relative; top: 16px; background-image: inherit; }
+		#fade { background-image: cross-fade(light-dark(image(red), image(blue)), image(lime)); }
+	</style><div id="scheme"><div class="row">
+		<div id="pair"></div><div id="darkgray"></div><div id="lightgray"></div>
+		<div id="contrast"></div><div id="text"></div><div id="absolute"></div>
+	</div><div class="row">
+		<div id="mix"><i class="fill"></i></div><div id="inheritcontrast"><i class="fill"></i></div>
+		<div id="gradient"></div><div id="invalid"></div><div id="supports"></div>
+	</div><div class="row">
+		<div id="url"></div><div id="set"></div><div id="mask"></div>
+		<div id="border"></div><div id="inheritimage"><i class="fill" id="inheritedimage"></i></div><div id="fade"></div>
+	</div></div>"""
+	var expectations: Dictionary[String, String] = {
+		"pair": "553311,ff0000", "darkgray": "ffffff,ffffff", "lightgray": "000000,000000",
+		"contrast": "ffffff,000000", "text": "113355,ff0000", "absolute": "000000,000000",
+		"mix": "008080,808000", "inheritcontrast": "000000,000000", "gradient": "0000ff,00ff00",
+		"invalid": "00ff00,00ff00", "supports": "00ff00,00ff00", "url": "224466,00ff00",
+		"set": "0000ff,ff0000", "mask": "224466,ff0000", "border": "0000ff,00ff00",
+		"inheritimage": "0000ff,00ff00", "inheritedimage": "0000ff,00ff00", "fade": "008080,808000",
+	}
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(128, 64)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.document = document
+	viewport.add_child(label)
+	for scheme_index: int in range(2):
+		if scheme_index == 1:
+			var scheme: HTMLElement = label.get_element_by_id("scheme")
+			_check(scheme.set_attribute("style", "color-scheme: light") == OK, "Switch the used scheme by editing the DOM")
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var rendered: Image = viewport.get_texture().get_image()
+		for id: String in expectations:
+			var colors: String = expectations[id]
+			var expected: Color = Color("#" + colors.get_slice(",", scheme_index))
+			var center: Vector2 = _label_rect(label, id).get_center()
+			_check_pixel(rendered, center, expected, "%s adapts to scheme %d" % [id, scheme_index,])
 	viewport.queue_free()
 
 

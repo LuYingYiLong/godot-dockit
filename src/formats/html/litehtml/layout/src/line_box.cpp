@@ -248,10 +248,11 @@ litehtml::pixel_t litehtml::line_box::calc_va_baseline(const va_context& current
 		case va_middle:
 			return current.baseline - current.fm.x_height / 2;
 		case va_text_top:
-			return current.baseline - (current.fm.height - current.fm.base_line()) +
-										new_font.height - new_font.base_line();
+			return current.baseline - (current.fm.ascent - current.fm.half_line_gap) +
+				(new_font.ascent - new_font.half_line_gap);
 		case va_text_bottom:
-			return current.baseline + current.fm.base_line() - new_font.base_line();
+			return current.baseline + (current.fm.descent - current.fm.half_line_gap) -
+				(new_font.descent - new_font.half_line_gap);
 		case va_bottom:
 			return bottom - new_font.base_line();
 		case va_top:
@@ -471,12 +472,12 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
 				break;
 
 			case va_text_bottom:
-				lbi->pos().y = bl + current_context.fm.base_line() - lbi->get_el()->height() + content_offset;
+				lbi->pos().y = bl + current_context.fm.descent - current_context.fm.half_line_gap - lbi->get_el()->height() + content_offset;
 				ignore = true;
 				break;
 
 			case va_text_top:
-				lbi->pos().y = bl - current_context.fm.ascent + content_offset;
+				lbi->pos().y = bl - current_context.fm.ascent + current_context.fm.half_line_gap + content_offset;
 				ignore = true;
 				break;
 

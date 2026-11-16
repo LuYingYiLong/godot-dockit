@@ -363,40 +363,31 @@ void css_value_parser::parse_background_and_border(string_id name, const css_tok
 		break;
 
 	case _list_style_image_:
-		if (string url; parse_list_style_image(val, url))
-		{
-			add_parsed_property(_list_style_image_,			property_value(url,     important));
+		if (val.ident() == "none") {
+			add_parsed_property(_list_style_image_, property_value(css_image_ptr{}, important));
+			add_parsed_property(_list_style_image_baseurl_, property_value(baseurl, important));
+		} else if (auto value = parse_css_image(val, container)) {
+			add_parsed_property(_list_style_image_, property_value(css_image_ptr(std::make_shared<image>(std::move(*value))), important));
 			add_parsed_property(_list_style_image_baseurl_, property_value(baseurl, important));
 		}
 		break;
 
 	case _list_style_:
-		parse_list_style(value, baseurl, important);
+		parse_list_style(value, baseurl, important, container);
 		break;
 	default:
 		break;
 	}
 }
 
-bool css_value_parser::parse_list_style_image(const css_token& tok, string& url)
-{
-	if (tok.ident() == "none")
-	{
-		url = "";
-		return true;
-	}
-
-	return parse_url(tok, url);
-}
-
 // https://drafts.csswg.org/css-lists/#list-style-property
 // <'list-style-position'> || <'list-style-image'> || <'list-style-type'>
-void css_value_parser::parse_list_style(const css_token_vector& tokens, string baseurl, bool important)
+void css_value_parser::parse_list_style(const css_token_vector& tokens, const string& baseurl, bool important, document_container* container)
 {
 	// initial values:  https://developer.mozilla.org/en-US/docs/Web/CSS/list-style#formal_definition
 	css_list_marker_type type;
 	int position = list_style_position_outside;
-	string image = ""; // none
+	css_image_ptr marker_image;
 
 	bool type_found = false;
 	bool position_found = false;
@@ -411,11 +402,18 @@ void css_value_parser::parse_list_style(const css_token_vector& tokens, string b
 			none_count++;
 			continue;
 		}
-		if (!position_found && parse_keyword(token, position, list_style_position_strings))
+		if (!position_found && parse_keyword(token, position, list_style_position_strings)) {
 			position_found = true;
-		else if (!image_found && parse_list_style_image(token, image))
-			image_found = true;
-		else if (!type_found && token.type == STRING)
+			continue;
+		}
+		if (!image_found) {
+			if (auto value = parse_css_image(token, container)) {
+				marker_image = std::make_shared<image>(std::move(*value));
+				image_found = true;
+				continue;
+			}
+		}
+		if (!type_found && token.type == STRING)
 		{
 			type_found = true;
 			type.text = token.str;
@@ -449,7 +447,7 @@ void css_value_parser::parse_list_style(const css_token_vector& tokens, string b
 
 	add_parsed_property(_list_style_type_,			property_value(type,	 important));
 	add_parsed_property(_list_style_position_,		property_value(position, important));
-	add_parsed_property(_list_style_image_,			property_value(image,	 important));
+	add_parsed_property(_list_style_image_,			property_value(std::move(marker_image), important));
 	add_parsed_property(_list_style_image_baseurl_,	property_value(baseurl,	 important));
 }
 

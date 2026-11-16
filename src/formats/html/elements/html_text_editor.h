@@ -104,7 +104,7 @@ namespace docrender {
 		void hit_single(float p_x, bool p_extend);
 		void move_single(int p_direction, bool p_extend);
 		void layout_lines(LiteHTMLContainer& p_container, const css::ComputedStyle& p_style,
-			const godot::String& p_text, uintptr_t p_font, float p_width, float p_line_height);
+			const css::ComputedStyle& p_text_style, const godot::String& p_text, float p_width, float p_line_height);
 		godot::Rect2 scrollbar_thumb(const godot::Rect2& p_track, bool p_vertical) const;
 
 	public:

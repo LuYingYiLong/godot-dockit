@@ -183,6 +183,7 @@ namespace litehtml
 
 	struct css_image_set;
 	struct css_cross_fade;
+	struct css_light_dark_image;
 	enum class css_direction { ltr, rtl };
 	inline constexpr char direction_keywords[] = "ltr;rtl";
 
@@ -197,12 +198,14 @@ namespace litehtml
 			type_gradient,
 			type_set,
 			type_cross_fade,
+			type_light_dark,
 		};
 		type type;
 		string url;
 		gradient m_gradient;
 		std::shared_ptr<const css_image_set> m_set;
 		std::shared_ptr<const css_cross_fade> m_cross_fade;
+		std::shared_ptr<const css_light_dark_image> m_light_dark;
 		double density = 1.0;
 		css_image_orientation orientation = css_image_orientation::from_image;
 		bool from_image_set = false;
@@ -226,11 +229,14 @@ namespace litehtml
 				return m_gradient.is_empty();
 			case type_set:
 			case type_cross_fade:
+			case type_light_dark:
 				return false;
 			}
 			return true;
 		}
 	};
+
+	using css_image_ptr = std::shared_ptr<const image>;
 
 	bool parse_gradient(const css_token& token, gradient& gradient, document_container* container);
 }

@@ -17,9 +17,8 @@ namespace docrender::css {
 		virtual pixel_t points_to_pixels(float points) const = 0;
 		virtual css_container_units container_units() const = 0;
 		virtual uint_ptr get_font(const font_description& description, font_metrics* metrics) const = 0;
-		virtual void load_image(const string& url, const string& base, css_image_orientation orientation) const = 0;
 		virtual void compute_image(image& value, const string& base, const font_metrics& metrics,
-			const css_image_resolution& resolution, css_image_orientation orientation) const = 0;
+			const css_image_resolution& resolution, css_image_orientation orientation, color_scheme scheme) const = 0;
 	};
 
 	struct ComputeContext {
@@ -33,6 +32,8 @@ namespace docrender::css {
 		bool is_replaced;
 		const ComputedStyle* box_parent = nullptr;
 		bool suppress_contents_display = false;
+		bool allow_content_replacement = false;
+		bool replacement_ignores_size_hints = false;
 
 		pixel_t to_pixels(const css_length& length, const font_metrics& metrics,
 			pixel_t basis, css_length_context overrides = {}) const;

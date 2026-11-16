@@ -409,8 +409,9 @@ namespace docrender {
 		const String display = showing_placeholder ? p_placeholder :
 			has_preedit() ? value.substr(0, from) + preedit + value.substr(to) : value;
 		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
+		const auto& text_style = placeholder_style ? *placeholder_style : p_style;
 		const String masked = p_password && !showing_placeholder ? String::chr(0x2022).repeat(display.length()) : display;
-		shaped = p_container.shape_input(placeholder_style ? placeholder_style->get_font() : p_style.get_font(), masked);
+		shaped = p_container.shape_input(text_style.get_font(), masked);
 		const int64_t display_caret = has_preedit() ?
 			from + std::clamp<int64_t>(preedit_selection.x, 0, preedit.length()) : caret;
 		const float x = caret_x(display_caret);
@@ -424,9 +425,10 @@ namespace docrender {
 			if (p_style.get_text_align() == litehtml::text_align_right)
 				align = p_box.size.x - width;
 		}
-		const auto metrics = p_style.get_font_metrics();
-		const float ascent = shaped.is_valid() ? shaped.line_ascent() : metrics.ascent;
-		const float descent = shaped.is_valid() ? shaped.line_descent() : metrics.descent;
+		const auto& metrics = text_style.get_font_metrics();
+		const bool use_shaped_metrics = shaped.is_valid() && !metrics.has_metric_overrides;
+		const float ascent = use_shaped_metrics ? shaped.line_ascent() : metrics.ascent;
+		const float descent = use_shaped_metrics ? shaped.line_descent() : metrics.descent;
 		const float baseline = p_box.get_center().y + (ascent - descent) * 0.5f;
 		text_origin = Vector2(p_box.position.x + align - horizontal_scroll, baseline);
 		caret_rect = Rect2(text_origin.x + x, baseline - ascent, 1.0f, ascent + descent);
@@ -587,15 +589,16 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::layout_lines(LiteHTMLContainer& p_container, const css::ComputedStyle& p_style,
-		const String& p_text, uintptr_t p_font, float p_width, float p_line_height) {
+		const css::ComputedStyle& p_text_style, const String& p_text, float p_width, float p_line_height) {
 		lines.clear();
 		full_size = {};
 		const auto server = text_server();
+		const auto& font = p_text_style.get_font_metrics();
 		const auto add_line = [&](int64_t p_start, int64_t p_end, const HTMLTextLayout& p_layout) {
 			const float width = p_layout.is_valid() ? p_layout.width() : 0.0f;
-			const auto& font = p_style.get_font_metrics();
-			const float ascent = p_layout.is_valid() ? p_layout.line_ascent() : font.ascent;
-			const float descent = p_layout.is_valid() ? p_layout.line_descent() : font.descent;
+			const bool use_shaped_metrics = p_layout.is_valid() && !font.has_metric_overrides;
+			const float ascent = use_shaped_metrics ? p_layout.line_ascent() : font.ascent;
+			const float descent = use_shaped_metrics ? p_layout.line_descent() : font.descent;
 			float x = 0;
 			if (width < p_width) {
 				if (p_style.get_text_align() == litehtml::text_align_center) x = (p_width - width) * 0.5f;
@@ -609,7 +612,7 @@ namespace docrender {
 		for (int64_t start = 0; start <= p_text.length();) {
 			const auto newline = p_text.find("\n", start);
 			const auto end = newline < 0 ? p_text.length() : newline;
-			const auto paragraph = p_container.shape_input(p_font, p_text.substr(start, end - start));
+			const auto paragraph = p_container.shape_input(p_text_style.get_font(), p_text.substr(start, end - start));
 			if (paragraph.is_valid() && p_style.get_text_wrap_mode() == litehtml::text_wrap_wrap && paragraph.width() > p_width) {
 				const auto ranges = server->shaped_text_get_line_breaks(paragraph.get_rid(), std::max(1.0f, p_width), 0,
 					TextServer::BREAK_MANDATORY | TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE);
@@ -711,7 +714,7 @@ namespace docrender {
 			for (int pass = 0; pass < 3; ++pass) {
 				const float width = p_box.size.x - (vertical_scrollbar ? bar_width : 0);
 				const float box_height = p_box.size.y - (horizontal_scrollbar ? bar_height : 0);
-				layout_lines(p_container, p_style, display, layout_font, width, height);
+				layout_lines(p_container, p_style, text_style, display, width, height);
 				const bool need_vertical = vertical_scrollbar || (show_scrollbars && overflow_y == litehtml::overflow_auto && full_size.y > box_height);
 				const bool need_horizontal = horizontal_scrollbar || (show_scrollbars && overflow_x == litehtml::overflow_auto && full_size.x > width);
 				if (need_vertical == vertical_scrollbar && need_horizontal == horizontal_scrollbar) break;

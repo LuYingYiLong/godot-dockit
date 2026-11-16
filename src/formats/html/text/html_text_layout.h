@@ -20,13 +20,27 @@ namespace docrender {
 		float width;
 	};
 
+	struct HTMLTextRunMetrics {
+		int64_t start;
+		int64_t end;
+		float ascent;
+		float descent;
+	};
+
 	class HTMLTextLayout {
+		struct LayoutMetrics {
+			float ascent;
+			float descent;
+			std::vector<HTMLTextRunMetrics> runs;
+		};
 		godot::Ref<godot::TextLine> line;
 		std::shared_ptr<const HTMLTextSlice> slice;
+		std::shared_ptr<const LayoutMetrics> layout_metrics;
 		godot::Vector2 inline_trim;
 
 	public:
 		float ascent = 0;
+		float descent = 0;
 		std::shared_ptr<const HTMLTextSpacing> spacing;
 
 		HTMLTextLayout() = default;
@@ -43,6 +57,8 @@ namespace docrender {
 		float height() const;
 		float line_ascent() const;
 		float line_descent() const;
+		void set_run_metrics(std::vector<HTMLTextRunMetrics> p_runs);
+		godot::Vector2 metrics_in_range(int64_t p_start, int64_t p_end) const;
 		float underline_position() const;
 		float underline_thickness() const;
 		std::vector<HTMLTextCluster> clusters(const godot::String& p_text) const;

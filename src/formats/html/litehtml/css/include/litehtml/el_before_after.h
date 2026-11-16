@@ -5,20 +5,22 @@
 
 namespace litehtml
 {
+	class el_image;
+
 	class el_before_after_base : public html_tag
 	{
 	public:
 		el_before_after_base(const std::shared_ptr<document>& doc, string_id tag);
-
 		void compute_styles(bool recursive) override;
 	protected:
-		void resolve_content(const css_generated_content& content);
+		void resolve_content(const css_generated_content& content, bool list_marker = false);
 	private:
 		// Keep generated nodes when only the viewport changes.
-		std::vector<std::pair<css_content_kind, string>> materialized_content;
-		string materialized_base;
+		using ContentPart = std::variant<string, css_image_ptr>;
+		std::vector<ContentPart> materialized_content;
+		std::vector<std::weak_ptr<el_image>> materialized_images;
 		void add_text(const string& text);
-		void add_image(const string& url, const string& base);
+		void add_image(const image& value, const string& base, bool list_marker);
 	};
 
 	class el_before : public el_before_after_base

@@ -769,6 +769,7 @@ void fragment() {
 		has_depth_scene = false;
 		diagnostic_runs.clear();
 		plain_text = String();
+		accessible_text = String();
 		excluded_selection.clear();
 		selection_scopes.clear();
 		selection_scope_starts.clear();
@@ -827,7 +828,8 @@ void fragment() {
 			}
 		}
 		String separator;
-		index_text(p_root, p_shape_text, separator);
+		AccessibleTextIndex accessibility{accessible_text, {}};
+		index_text(p_root, p_shape_text, separator, &accessibility);
 		// Paint order can differ from document order for positioned or floating text.
 		// The DOM pass assigns offsets while the paint runs retain the exact clip geometry.
 		painted_text.clear();
@@ -992,7 +994,20 @@ void fragment() {
 		}
 	}
 
-	int64_t HTMLPaintRecorder::index_source_text(const String& p_text, String& r_separator, bool p_selectable) {
+	void HTMLPaintRecorder::AccessibleTextIndex::append(const String& p_value) {
+		if (p_value.is_empty()) return;
+		if (!text.is_empty()) text += separator;
+		text += p_value;
+		separator = String();
+	}
+
+	void HTMLPaintRecorder::AccessibleTextIndex::space() {
+		if (separator.is_empty() && !text.is_empty()) separator = " ";
+	}
+
+	int64_t HTMLPaintRecorder::index_source_text(const String& p_text, String& r_separator, bool p_selectable,
+		AccessibleTextIndex* p_accessible) {
+		if (p_accessible) p_accessible->append(p_text);
 		const int64_t separator_start = plain_text.length();
 		plain_text += r_separator;
 		r_separator = String();
@@ -1009,7 +1024,7 @@ void fragment() {
 	}
 
 	void HTMLPaintRecorder::index_text(const element::ptr& p_element, const TextShaper& p_shape_text,
-		String& r_separator, bool p_unlaid, bool p_selectable) {
+		String& r_separator, AccessibleTextIndex* p_accessible, bool p_unlaid, bool p_selectable) {
 		if (!p_element || litehtml::is_one_of(p_element->tag(), litehtml::_textarea_, litehtml::_progress_, litehtml::_meter_) ||
 			p_element->css().get_display() == display_none ||
 			p_element->css().hides_contents()) {
@@ -1025,19 +1040,24 @@ void fragment() {
 		const bool visible = p_element->css().get_visibility() == visibility_visible;
 		if (p_element->is_break()) {
 			// A trimmed source line feed stays in the DOM but has no render item.
-			if (visible && !plain_text.is_empty() && (p_unlaid || !p_element->is_text() || p_element->get_render_item())) {
-				if (r_separator == " " || r_separator == "\t") {
-					r_separator = String();
+			if (visible && (p_unlaid || !p_element->is_text() || p_element->get_render_item())) {
+				if (!plain_text.is_empty()) {
+					if (r_separator == " " || r_separator == "\t") r_separator = String();
+					r_separator += "\n";
+					separator_selectable = selectable;
 				}
-				r_separator += "\n";
-				separator_selectable = selectable;
+				if (p_accessible && !p_accessible->text.is_empty()) {
+					auto& separator = p_accessible->separator;
+					if (separator == " " || separator == "\t") separator = String();
+					separator += "\n";
+				}
 			}
 			return;
 		}
 		if (display == display_inline_text) {
 			const auto elided = elided_text_offsets.find(p_element.get());
 			const auto append = [&](const String& p_source) {
-				const int64_t start = index_source_text(p_source, r_separator, p_selectable);
+				const int64_t start = index_source_text(p_source, r_separator, p_selectable, p_accessible);
 				if (elided != elided_text_offsets.end()) elided->second = { start, p_source.length() };
 				return start;
 			};
@@ -1045,6 +1065,7 @@ void fragment() {
 				const auto whitespace = p_text.css().get_white_space_collapse();
 				if (p_text.is_white_space() && whitespace == white_space_discard) return;
 				if (p_text.is_white_space() && litehtml::is_one_of(whitespace, white_space_collapse_spaces, white_space_preserve_breaks)) {
+					if (p_accessible) p_accessible->space();
 					if (r_separator.is_empty() && !plain_text.is_empty()) r_separator = " ";
 					if (r_separator == " " && !separator_selectable.has_value()) separator_selectable = p_selectable;
 				}
@@ -1082,6 +1103,7 @@ void fragment() {
 				const auto* space = dynamic_cast<const litehtml::el_space*>(p_element.get());
 				const bool replaced = space && space->has_autospace_width();
 				if (!replaced || item->skip() || item->width() <= 0) {
+					if (p_accessible) p_accessible->space();
 					if (r_separator.is_empty() && !plain_text.is_empty() && (!replaced || !plain_text.ends_with(" "))) {
 						r_separator = " ";
 						separator_selectable = p_selectable;
@@ -1095,11 +1117,11 @@ void fragment() {
 				return;
 			}
 			if (litehtml::is_explicit_wrap_point(*node) || litehtml::is_soft_hyphen(*node)) {
-				index_source_text(String::utf8(node->get_source_text().c_str()), r_separator, p_selectable);
+				index_source_text(String::utf8(node->get_source_text().c_str()), r_separator, p_selectable, p_accessible);
 				return;
 			}
 			if (node->is_preserved_tab() && item->pos().width <= 0) {
-				index_source_text("\t", r_separator, p_selectable);
+				index_source_text("\t", r_separator, p_selectable, p_accessible);
 				return;
 			}
 			auto* candidates = painted_text_by_renderer.getptr(item.get());
@@ -1143,13 +1165,31 @@ void fragment() {
 			r_separator = "\n";
 			separator_selectable.reset();
 		}
+		const int64_t accessible_start = p_accessible ? p_accessible->text.length() : 0;
+		const String accessible_separator = p_accessible ? p_accessible->separator : String();
+		AccessibleTextIndex* child_accessibility = p_accessible;
+		if (p_accessible) {
+			if (block && accessible_start > 0 && !p_accessible->separator.begins_with("\n")) p_accessible->separator = "\n";
+			if (visible) {
+				const auto* tag = dynamic_cast<const html_tag*>(p_element.get());
+				if (tag && tag->get_content_alternative()) {
+					p_accessible->append(String::utf8(tag->get_content_alternative()->c_str()));
+					child_accessibility = nullptr;
+				} else if (p_element->tag() == _img_) {
+					p_accessible->append(String::utf8(p_element->get_attr("alt", "")));
+				}
+			}
+		}
 		const bool has_scope = selection == css_user_select::none || selection == css_user_select::all;
 		if (has_scope) selection_scope_starts.push_back(-1);
 		const bool folded = p_element->tag() == litehtml::_details_ && !p_element->get_attr("open");
 		const auto summary = folded ? details_summary(*p_element) : element::ptr();
-		for (const auto& child : p_element->children()) {
-			if (folded && child != summary && !litehtml::is_generated_tag(child->tag())) continue;
-			index_text(child, p_shape_text, r_separator, p_unlaid || p_element->css().has_auto_content_visibility(), selectable);
+		if (!p_element->css().get_content_image()) {
+			for (const auto& child : p_element->children()) {
+				if (folded && child != summary && !litehtml::is_generated_tag(child->tag())) continue;
+				index_text(child, p_shape_text, r_separator, child_accessibility,
+					p_unlaid || p_element->css().has_auto_content_visibility(), selectable);
+			}
 		}
 		if (has_scope) {
 			const int64_t scope_start = selection_scope_starts.back();
@@ -1171,6 +1211,13 @@ void fragment() {
 		} else if (block) {
 			r_separator = preceding_separator;
 			separator_selectable = preceding_separator_selection;
+		}
+		if (p_accessible) {
+			if (p_accessible->text.length() == accessible_start && block) p_accessible->separator = accessible_separator;
+			else if (!p_accessible->separator.begins_with("\n") && p_accessible->text.length() > accessible_start) {
+				if (block) p_accessible->separator = "\n";
+				else if (display == display_table_cell) p_accessible->separator = "\t";
+			}
 		}
 	}
 

@@ -27,7 +27,27 @@ namespace docrender {
 		css_w() = source.css();
 		m_text = is_automatic_hyphen() ? "\xc2\xad" : rendered->substr(start - run_start, end - start).utf8().get_data();
 		set_hyphenation_allowed(is_automatic_hyphen());
-		m_size = { p_cluster.width, css().get_font_metrics().height };
+		auto metrics = css().get_font_metrics();
+		auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
+		const auto owner = parent();
+		if (is_automatic_hyphen() && owner) {
+			metrics = owner->css().get_font_metrics();
+			const auto layout = container->shape_input(css().get_font(), String::utf8(owner->css().get_hyphenate_character().c_str()));
+			if (layout.is_valid()) {
+				metrics.ascent = layout.ascent;
+				metrics.descent = layout.descent;
+			}
+		} else {
+			const auto layout = container->shape_input(css().get_font(), *rendered);
+			if (layout.is_valid()) {
+				const auto extents = layout.metrics_in_range(start - run_start, end - run_start);
+				metrics.ascent = extents.x;
+				metrics.descent = extents.y;
+			}
+		}
+		metrics.height = metrics.ascent + metrics.descent;
+		css_w().set_font_metrics(metrics);
+		m_size = { p_cluster.width, metrics.height };
 	}
 
 	void HTMLInlineTextFragment::draw(uint_ptr, pixel_t p_x, pixel_t p_y, const litehtml::position* p_clip,

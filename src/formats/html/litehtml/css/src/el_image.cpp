@@ -6,8 +6,8 @@
 
 #include <utility>
 
-litehtml::el_image::el_image(const document::ptr& doc, const string& baseurl, bool decorative) :
-	html_tag(doc), m_baseurl(baseurl), m_decorative(decorative)
+litehtml::el_image::el_image(const document::ptr& doc, const string& baseurl) :
+	html_tag(doc), m_baseurl(baseurl)
 {
 	m_css.set_display(display_inline_block);
 }
@@ -30,19 +30,40 @@ const litehtml::string& litehtml::el_image::image_source() const
 	return m_selection ? m_selection->source : m_src;
 }
 
-litehtml::css_image_orientation litehtml::el_image::image_orientation() const
+void litehtml::css_replaced_image::set(const image& value, const string& base)
 {
-	const auto orientation = css().get_image_orientation();
-	return m_decorative ? decorative_image_orientation(orientation) : orientation;
+	source.m_baseurl = base;
+	if (source.m_image.empty()) source.m_image.push_back(value);
+	else source.m_image.front() = value;
+}
+
+litehtml::size litehtml::css_replaced_image::natural_size(document_container& container) const
+{
+	return get_css_image_natural_size(source.m_image.front(), source.m_baseurl, container);
+}
+
+void litehtml::el_image::set_generated_image(const image& value, const string& base, bool list_marker)
+{
+	if (!m_generated_image) m_generated_image = std::make_unique<css_replaced_image>();
+	m_generated_image->set(value, base);
+	m_list_marker = list_marker;
 }
 
 void litehtml::el_image::get_content_size( size& sz, pixel_t /*max_width*/ )
 {
 	auto* container = get_document()->container();
+	if (m_generated_image) {
+		sz = m_generated_image->natural_size(*container);
+		if (m_list_marker && (sz.width <= 0 || sz.height <= 0)) {
+			const auto em = css().get_font_size();
+			sz = {em, em};
+		}
+		return;
+	}
 	const auto& source = image_source();
 	const auto source_density = m_selection ? m_selection->density : std::nullopt;
 	const double density = resolve_image_dppx(source, m_baseurl, *container, css().get_image_resolution(), false, source_density);
-	container->get_css_image_size(source.c_str(), m_baseurl.c_str(), density, sz, image_orientation());
+	container->get_css_image_size(source.c_str(), m_baseurl.c_str(), density, sz, css().get_image_orientation());
 }
 
 bool litehtml::el_image::is_replaced() const
@@ -95,6 +116,48 @@ namespace
 			scale = std::min(scale, 1.0f);
 		return { natural.width * scale, natural.height * scale };
 	}
+
+	// Reuse the object sizing and clip for HTML images and CSS replaced content.
+	litehtml::background_layer make_image_layer(litehtml::html_tag& owner, const litehtml::position& pos,
+		litehtml::render_item& render, const litehtml::css_replaced_image* replacement = nullptr)
+	{
+		using namespace litehtml;
+		background_layer layer;
+		layer.clip_box = pos;
+		layer.origin_box = pos;
+		const auto& style = owner.css();
+		const auto fit = style.get_object_fit();
+		if (fit != object_fit::fill) {
+			size natural;
+			if (replacement) natural = replacement->natural_size(*owner.get_document()->container());
+			else owner.get_content_size(natural, pos.width);
+			const auto extent = fit_object({pos.width, pos.height}, natural, fit);
+			layer.origin_box.width = extent.width;
+			layer.origin_box.height = extent.height;
+		}
+		const auto& object_position = style.get_object_position();
+		layer.origin_box.x += object_position.x.resolve(pos.width - layer.origin_box.width);
+		layer.origin_box.y += object_position.y.resolve(pos.height - layer.origin_box.height);
+		layer.border_box = pos;
+		layer.border_box += render.get_paddings();
+		layer.border_box += render.get_borders();
+		layer.repeat = {background_repeat::no_repeat, background_repeat::no_repeat};
+		layer.border_radius = style.get_borders().radius.calc_percents(layer.border_box.width, layer.border_box.height);
+		return layer;
+	}
+}
+
+void litehtml::css_replaced_image::draw(html_tag& owner, uint_ptr hdc, const position& box, render_item& render)
+{
+	if (source.m_image.front().is_empty()) return;
+	auto layer = make_image_layer(owner, box, render, this);
+	const auto& value = source.m_image.front();
+	source.m_current_color = owner.css().get_color();
+	source.m_direction = owner.css().get_bg().m_direction;
+	layer.image_orientation = value.orientation;
+	layer.flip_image_x = value.direction && static_cast<int>(*value.direction) != source.m_direction;
+	layer.fill_image_tile = value.type == image::type_solid;
+	source.draw_layer(hdc, 0, layer, owner.get_document()->container());
 }
 
 void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri)
@@ -110,45 +173,24 @@ void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 		return;
 	}
 	pos.round();
-
-	// Reuse the image crop path with the element content box as its clip.
-	if(pos.does_intersect(clip))
-	{
-		if (pos.width > 0 && pos.height > 0)
-		{
-			background_layer layer;
-			layer.image_orientation = image_orientation();
-			layer.clip_box = pos;
-			layer.origin_box = pos;
-			const auto fit = css().get_object_fit();
-			if (fit != object_fit::fill)
-			{
-				size natural;
-				get_content_size(natural, pos.width);
-				const auto extent = fit_object({pos.width, pos.height}, natural, fit);
-				layer.origin_box.width = extent.width;
-				layer.origin_box.height = extent.height;
-			}
-			const auto& object_position = css().get_object_position();
-			layer.origin_box.x += object_position.x.resolve(pos.width - layer.origin_box.width);
-			layer.origin_box.y += object_position.y.resolve(pos.height - layer.origin_box.height);
-			layer.border_box = pos;
-			layer.border_box += ri->get_paddings();
-			layer.border_box += ri->get_borders();
-			layer.repeat = { background_repeat::no_repeat, background_repeat::no_repeat };
-			layer.border_radius = css().get_borders().radius.calc_percents(layer.border_box.width, layer.border_box.height);
-			get_document()->container()->draw_image(hdc, layer, image_source(), m_baseurl);
-		}
+	if (pos.width <= 0 || pos.height <= 0 || !pos.does_intersect(clip)) return;
+	if (m_generated_image) {
+		m_generated_image->draw(*this, hdc, pos, *ri);
+	} else {
+		auto layer = make_image_layer(*this, pos, *ri);
+		layer.image_orientation = css().get_image_orientation();
+		get_document()->container()->draw_image(hdc, layer, image_source(), m_baseurl);
 	}
 }
 
 void litehtml::el_image::compute_styles(bool recursive)
 {
 	html_tag::compute_styles(recursive);
+	if (m_generated_image) return;
 
 	const auto& source = image_source();
 	auto* container = get_document()->container();
-	const auto orientation = image_orientation();
+	const auto orientation = css().get_image_orientation();
 	m_alt_text.reset();
 	const char* alt = get_attr("alt", "");
 	if (*alt && !css().skips_contents())

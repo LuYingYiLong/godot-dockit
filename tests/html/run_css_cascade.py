@@ -183,6 +183,57 @@ def main():
             '<!doctype html><link rel="stylesheet" href="styles/border-image.css"><div id="imported_border"></div>',
             encoding="utf-8", newline="\n",
         )
+        for name, width, height, color in (
+            ("marker-light.png", 18, 10, b"\xd0\x3a\x73\xff"),
+            ("marker-dark.png", 28, 14, b"\x3a\x57\xd0\xff"),
+        ):
+            write_rgba_png(project / name, width, height, (b"\0" + color * width) * height)
+        (styles / "nested/list-markers.css").write_text(
+            '''body { margin: 0; background: white; }
+ul { margin: 0; padding-left: 56px; font: 20px/30px sans-serif;
+    list-style: inside "Fallback: " light-dark(url(../../marker-light.png), image-set("../../marker-dark.png" 2x)); }
+li { height: 32px; }
+#themed { color-scheme: dark; }
+@supports (list-style-image: linear-gradient(red, red)) {
+    #gradient { --shape: linear-gradient(#18aa61, #18aa61); list-style: inside var(--shape);
+        list-style-image: light-dark(red, url(../../marker-dark.png)); }
+}
+#outside { list-style: outside image(#af7321); }
+#fade { list-style-image: cross-fade(image(blue), image(lime)); }
+#missing { list-style: inside url(../../marker-missing.png) "Missing: "; }
+#transparent { list-style-image: light-dark(none, image(#d78015)); }
+#custom::marker { content: "Custom: "; }
+''', encoding="utf-8", newline="\n",
+        )
+        (project / "list_marker_images.html").write_text(
+            '<!doctype html><html style="color-scheme: light"><link rel="stylesheet" href="styles/nested/list-markers.css">'
+            '<ul><li id="themed"><span id="themed_word">Theme</span></li><li id="gradient">Gradient</li>'
+            '<li id="outside"><span id="outside_word">Outside</span></li><li id="fade">Blend</li>'
+            '<li id="missing">Unavailable</li><li id="transparent"><span id="transparent_word">Transparent</span></li>'
+            '<li id="custom">Override</li></ul>', encoding="utf-8", newline="\n",
+        )
+        (styles / "nested/generated-images.css").write_text(
+            '''body { margin: 0; color: #111; background: white; }
+div, li { height: 30px; }
+ul { margin: 0; padding-left: 60px; }
+@supports (content: light-dark(linear-gradient(red, blue), image(red))) {
+    #sized::before { content: light-dark(linear-gradient(#a33683, #a33683), image(#2174ae));
+        display: block; width: 44px; height: 20px; border-radius: 4px; }
+}
+#mixed::after { --icon: light-dark(url(../../marker-light.png), image-set("../../marker-dark.png" 2x));
+    content: "prefix " var(--icon) url(../../marker-missing.png) " suffix"; }
+#marker::marker { content: "mark" image-set(url(../../marker-light.png) 2x); }
+#blend::after { content: cross-fade(image(blue), image(lime)); display: block; width: 30px; height: 18px;
+    transform: translateX(4px); }
+#switch::before { content: "Initial text"; }
+#switch.image::before { content: image(#aa7318); width: 24px; height: 9px; }
+''', encoding="utf-8", newline="\n",
+        )
+        (project / "generated_css_images.html").write_text(
+            '<!doctype html><html style="color-scheme: light"><link rel="stylesheet" href="styles/nested/generated-images.css">'
+            '<div id="sized"></div><div id="mixed"></div><ul><li id="marker">Item</li></ul>'
+            '<div id="blend"></div><div id="switch"></div>', encoding="utf-8", newline="\n",
+        )
         shutil.copyfile(project / "border-image.png", project / "mask-import.png")
         (styles / "mask.css").write_text(
             '@import "nested/mask.css";', encoding="utf-8", newline="\n",
@@ -369,6 +420,8 @@ def main():
             "IMAGE_TEMPLATE_UID": project / "image_template.html.import",
             "RESPONSIVE_PICTURE_UID": project / "responsive_picture.html.import",
             "BORDER_IMAGE_UID": project / "border_image.html.import",
+            "LIST_MARKER_IMAGES_UID": project / "list_marker_images.html.import",
+            "GENERATED_CSS_IMAGES_UID": project / "generated_css_images.html.import",
             "MASK_IMAGE_UID": project / "mask_image.html.import",
             "SVG_MASK_UID": project / "svg_mask.html.import",
             "EXTERNAL_CLIP_UID": project / "external_clip.html.import",
@@ -382,6 +435,7 @@ def main():
             styles / "font-faces.css", styles / "nested/font-regular.css",
             styles / "image-set.css", styles / "nested/candidates.css",
             styles / "image-function.css", styles / "border-image.css",
+            styles / "nested/list-markers.css", styles / "nested/generated-images.css",
             styles / "mask.css", styles / "nested/mask.css",
             styles / "nested/svg-mask.css",
             styles / "clip-path.css", styles / "nested/clip-path.css",
@@ -390,6 +444,8 @@ def main():
         (project / "density-import.png").unlink()
         (project / "orientation-import.png").unlink()
         (project / "border-import.png").unlink()
+        (project / "marker-light.png").unlink()
+        (project / "marker-dark.png").unlink()
         (project / "mask-import.png").unlink()
         (project / "svg-mask-import.svg").unlink()
         (clip_assets / "import.svg").unlink()

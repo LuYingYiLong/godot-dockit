@@ -228,7 +228,9 @@ float clamp(float x, float min, float max)
 bool parse_func_color(const css_token& tok, web_color& color, document_container* container, unsigned depth)
 {
 	return parse_absolute_color(tok, color) ||
-		parse_color_mix(tok, color, container, depth);
+		parse_relative_color(tok, color, container, depth) ||
+		parse_color_mix(tok, color, container, depth) ||
+		parse_adaptive_color(tok, color, container, depth);
 }
 
 string resolve_name(const string& name, document_container* container)

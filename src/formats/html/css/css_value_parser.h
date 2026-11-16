@@ -19,7 +19,7 @@ namespace litehtml {
 		void parse_mask(string_id name, const css_token_vector& tokens, const string& baseurl,
 			bool important, document_container* container);
 		void parse_text(string_id name, const css_token_vector& value, bool important, document_container* container);
-		void parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important);
+		void parse_layout(string_id name, const css_token_vector& value, const string& baseurl, bool important, document_container* container);
 		props_map take_properties() { return std::move(properties); }
 
 	private:
@@ -42,8 +42,7 @@ namespace litehtml {
 		void parse_border_side(string_id name, const css_token_vector& tokens, bool important, document_container* container);
 		void parse_border_radius(const css_token_vector& tokens, bool important);
 
-		static bool parse_list_style_image(const css_token& tok, string& url);
-		void parse_list_style(const css_token_vector& tokens, string baseurl, bool important);
+		void parse_list_style(const css_token_vector& tokens, const string& baseurl, bool important, document_container* container);
 
 		void parse_font(css_token_vector tokens, bool important);
 		void parse_text_decoration(const css_token_vector& tokens, bool important, document_container* container);

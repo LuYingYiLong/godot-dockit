@@ -3,6 +3,7 @@
 #include "css_counter_style.h"
 #include "css_font_face.h"
 #include "css_font_feature_values.h"
+#include "css_gradient.h"
 
 #include "css_length.h"
 #include "css_string_id.h"
@@ -117,6 +118,18 @@ namespace litehtml {
 	enum css_font_kerning { font_kerning_auto, font_kerning_normal, font_kerning_none };
 	enum css_font_optical_sizing { font_optical_sizing_auto, font_optical_sizing_none };
 
+	struct css_font_size_adjust {
+		enum class Metric { ex_height, cap_height, ch_width, ic_width, ic_height };
+		enum class Mode { none, number, from_font };
+		Metric metric = Metric::ex_height;
+		Mode mode = Mode::none;
+		double value = 0.0;
+
+		bool operator==(const css_font_size_adjust& other) const {
+			return metric == other.metric && mode == other.mode && value == other.value;
+		}
+	};
+
 	struct css_font_family {
 		string name;
 		bool generic = false;
@@ -132,12 +145,16 @@ namespace litehtml {
 		string value;
 		string fallback_or_separator;
 		css_counter_style_reference counter_style{};
+		css_image_ptr image_value;
 	};
 
 	struct css_generated_content {
 		bool normal = true;
 		std::vector<css_content_item> items;
 		string base_url;
+		std::vector<css_content_item> alternative;
+
+		bool is_single_image() const { return items.size() == 1 && items.front().kind == css_content_kind::image; }
 	};
 
 	struct css_list_marker_type {

@@ -19,26 +19,41 @@ namespace docrender {
 			godot::Ref<godot::Font> font;
 			litehtml::css_unicode_ranges ranges;
 			bool has_face_features = false;
+			litehtml::css_font_metric_overrides metrics{};
+			double size_adjust = 1.0;
 
 			bool covers(char32_t p_character) const;
 		};
 
 		struct FontStack {
+			struct ShapingRun {
+				int64_t start;
+				const FontChoice* choice;
+			};
+
 			godot::Ref<godot::Font> primary;
 			godot::Ref<godot::Font> unrestricted;
 			std::vector<FontChoice> choices;
 			godot::String language;
 			bool size_dependent = false;
+			litehtml::css_font_metric_overrides primary_metrics;
+			double primary_size_adjust = 1.0;
+			bool has_size_adjust = false;
+			std::optional<double> size_adjust_reference;
+			litehtml::css_font_size_adjust::Metric size_adjust_metric = litehtml::css_font_size_adjust::Metric::ex_height;
 
-			godot::Ref<godot::Font> match(const godot::String& p_text, int64_t p_start, int64_t p_end) const;
-			void add_text(godot::TextLine& r_line, const godot::String& p_text, int32_t p_size) const;
-			godot::Vector2 char_size(char32_t p_character, int32_t p_size) const;
+			const FontChoice* match(const godot::String& p_text, int64_t p_start, int64_t p_end, bool p_ignore_joiners = false) const;
+			void add_text(godot::TextLine& r_line, const godot::String& p_text, double p_size,
+				std::vector<ShapingRun>* r_runs = nullptr) const;
+			std::optional<float> char_advance(char32_t p_character, double p_size) const;
 		};
 
 		struct FontData {
 			std::shared_ptr<const FontStack> stack;
 			int32_t size;
+			int32_t primary_size;
 			float ascent;
+			float descent;
 			litehtml::font_description description;
 			godot::Ref<godot::TextLine> emphasis;
 			godot::HashMap<godot::String, HTMLTextLayout> lines;
@@ -47,6 +62,7 @@ namespace docrender {
 			std::array<godot::HashMap<godot::String, HTMLTextLayout>, 3> punctuation_lines;
 
 			HTMLTextLayout shape(const godot::String& p_text);
+			void adjust_normal_line_metrics(HTMLTextLayout& r_layout, const std::vector<FontStack::ShapingRun>& p_runs) const;
 			HTMLTextLayout shape_punctuation(const godot::String& p_text, litehtml::punctuation_trim p_trim);
 			const std::vector<float>* get_emphasis_centers(const godot::String& p_text, const HTMLTextLayout& p_layout);
 		};
@@ -82,6 +98,7 @@ namespace docrender {
 		litehtml::uint_ptr create_font(const litehtml::font_description& p_description, litehtml::font_metrics* r_metrics);
 		void delete_font(litehtml::uint_ptr p_font);
 		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font);
+		litehtml::pixel_t measure_text(const godot::String& p_text, litehtml::uint_ptr p_font, litehtml::font_metrics& r_metrics);
 		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim);
 		HTMLTextLayout shape_text(litehtml::uint_ptr p_font, const godot::String& p_text);
 		HTMLTextLayout shape_text_for_outline(litehtml::uint_ptr p_font, const godot::String& p_text,

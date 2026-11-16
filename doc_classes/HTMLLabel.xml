@@ -109,6 +109,12 @@
 				Returns the horizontal and vertical scroll offset in pixels from the start of the document.
 			</description>
 		</method>
+		<method name="get_accessible_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the document text published as this control's accessibility text value. CSS alternatives in [code]content[/code] are applied. See [method HTMLLayout.get_accessible_text].
+			</description>
+		</method>
 		<method name="get_selected_text" qualifiers="const">
 			<return type="String" />
 			<description>

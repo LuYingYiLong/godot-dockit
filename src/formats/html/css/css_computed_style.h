@@ -45,6 +45,7 @@ namespace docrender::css {
 	{
 	private:
 		std::vector<box_shadow> m_text_shadows;
+		std::vector<box_shadow> m_box_shadows;
 		element_position		m_el_position;
 		text_align				m_text_align;
 		text_align				m_text_align_last = text_align_auto;
@@ -74,6 +75,7 @@ namespace docrender::css {
 		string_vector m_container_names;
 		bool m_auto_content_skipped = false;
 		bool m_replaced = false;
+		bool m_content_replacement = false;
 		css_contain_intrinsic_size m_contain_intrinsic_width;
 		css_contain_intrinsic_size m_contain_intrinsic_height;
 		std::optional<pixel_t> m_remembered_content_width;
@@ -138,7 +140,7 @@ namespace docrender::css {
 		css_line_height_t		m_line_height {{}, 0};
 		css_list_marker_type	m_list_marker_type;
 		list_style_position		m_list_style_position;
-		string					m_list_style_image;
+		css_image_ptr			m_list_style_image;
 		string					m_list_style_image_baseurl;
 		background				m_bg;
 		css_border_image m_border_image;
@@ -164,6 +166,7 @@ namespace docrender::css {
 		int m_font_kerning = font_kerning_auto;
 		int m_font_optical_sizing = font_optical_sizing_auto;
 		css_font_variations m_font_variations;
+		css_font_size_adjust m_font_size_adjust;
 		int						m_text_decoration_line = text_decoration_line_none;
 		text_decoration_style	m_text_decoration_style = text_decoration_style_solid;
 		css_length				m_text_decoration_thickness;
@@ -475,16 +478,15 @@ namespace docrender::css {
 		list_style_position get_list_style_position() const;
 		void set_list_style_position(list_style_position mListStylePosition);
 
-		const string& get_list_style_image() const;
-		void set_list_style_image(const string& url);
+		const css_image_ptr& get_list_style_image() const;
 
 		const string& get_list_style_image_baseurl() const;
-		void set_list_style_image_baseurl(const string& url);
 
 		const background &get_bg() const;
 		void set_bg(const background &mBg);
 
 		pixel_t get_font_size() const;
+		const css_font_size_adjust& get_font_size_adjust() const { return m_font_size_adjust; }
 		float get_font_weight() const { return m_font_weight.val(); }
 		float get_font_width() const { return m_font_width; }
 		void set_font_size(pixel_t mFontSize);
@@ -503,11 +505,16 @@ namespace docrender::css {
 		void set_color(web_color color);
 
 		const std::vector<box_shadow>& get_text_shadows() const { return m_text_shadows; }
+		const std::vector<box_shadow>& get_box_shadows() const { return m_box_shadows; }
 
 		const string& get_cursor() const;
 		void set_cursor(const string& cursor);
 
 		const css_generated_content& get_content() const { return m_content; }
+		bool is_replaced() const { return m_replaced; }
+		const image* get_content_image() const {
+			return m_content_replacement ? m_content.items.front().image_value.get() : nullptr;
+		}
 		void prepare_marker(bool outside);
 		const css_quotes& get_quotes() const { return m_quotes; }
 
@@ -810,11 +817,9 @@ namespace docrender::css {
 		m_list_style_position = mListStylePosition;
 	}
 
-	inline const string& ComputedStyle::get_list_style_image() const { return m_list_style_image; }
-	inline void ComputedStyle::set_list_style_image(const string& url) { m_list_style_image = url; }
+	inline const css_image_ptr& ComputedStyle::get_list_style_image() const { return m_list_style_image; }
 
 	inline const string& ComputedStyle::get_list_style_image_baseurl() const { return m_list_style_image_baseurl; }
-	inline void ComputedStyle::set_list_style_image_baseurl(const string& url) { m_list_style_image_baseurl = url; }
 
 	inline const background &ComputedStyle::get_bg() const
 	{

@@ -326,6 +326,9 @@ namespace litehtml {
 		pixel_t		line_height = 0;		// Computed CSS line height, excluding emphasis.
 		pixel_t		word_spacing = 0;
 		pixel_t		letter_spacing = 0;	// Tracking at boundaries between inline fragments.
+		pixel_t		half_line_gap = 0;	// Leading contributed by the font when line-height is normal.
+		bool		has_metric_overrides = false;
+		std::optional<double> size_adjust_reference;
 
 		pixel_t base_line() const	{ return descent; }
 	};

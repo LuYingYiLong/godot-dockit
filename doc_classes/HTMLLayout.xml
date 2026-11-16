@@ -101,6 +101,12 @@
 				Returns the diagnostic message from the last failed parse or layout. A successful parse or layout clears the message.
 			</description>
 		</method>
+		<method name="get_accessible_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns text in document order for assistive technologies. CSS alternatives specified after the slash in [code]content[/code] replace the spoken content, including explicit empty alternatives. Image [code]alt[/code] attributes supply text when no CSS alternative applies. Returns an empty string before layout.
+			</description>
+		</method>
 		<method name="get_plain_text" qualifiers="const">
 			<return type="String" />
 			<description>

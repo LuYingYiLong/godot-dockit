@@ -285,10 +285,13 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 	auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
 	const auto options = get_options();
 	const auto index = selected_index(options);
-	const auto paint = [&](const String& p_text, const Rect2& p_clip_box, litehtml::web_color p_color, litehtml::uint_ptr p_font) {
-		auto line = container->shape_input(p_font, p_text);
+	const auto paint = [&](const String& p_text, const Rect2& p_clip_box, litehtml::web_color p_color, const css::ComputedStyle& p_style) {
+		auto line = container->shape_input(p_style.get_font(), p_text);
 		if (!line.is_valid() || !p_clip_box.has_area()) return;
-		const Vector2 baseline(p_clip_box.position.x, p_clip_box.get_center().y + (line.line_ascent() - line.line_descent()) * 0.5);
+		const auto& font = p_style.get_font_metrics();
+		const float ascent = font.has_metric_overrides ? font.ascent : line.line_ascent();
+		const float descent = font.has_metric_overrides ? font.descent : line.line_descent();
+		const Vector2 baseline(p_clip_box.position.x, p_clip_box.get_center().y + (ascent - descent) * 0.5f);
 		container->draw_input(p_clip_box, line, baseline, p_color, {}, {}, {});
 	};
 	if (is_list_box()) {
@@ -311,12 +314,12 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 			const auto ink = forms::is_disabled(option) ?
 				litehtml::system_color_value(litehtml::system_color::gray_text, option.css().get_color_scheme()) :
 				selected && !option.has_author_property(litehtml::_color_) ? litehtml::web_color::white : option.css().get_color();
-			paint(option.get_label(), area.intersection(box), ink, option.css().get_font());
+			paint(option.get_label(), area.intersection(box), ink, option.css());
 		}
 		return;
 	}
 	const bool arrow = css().get_appearance() != litehtml::appearance_none;
-	if (index >= 0) paint(options[index]->get_label(), Rect2(box.position, Vector2(box.size.x - (arrow ? 16 : 0), box.size.y)), css().get_color(), css().get_font());
-	if (arrow) paint(String::chr(0x25be), Rect2(box.get_end().x - 14, box.position.y, 14, box.size.y), css().get_color(), css().get_font());
+	if (index >= 0) paint(options[index]->get_label(), Rect2(box.position, Vector2(box.size.x - (arrow ? 16 : 0), box.size.y)), css().get_color(), css());
+	if (arrow) paint(String::chr(0x25be), Rect2(box.get_end().x - 14, box.position.y, 14, box.size.y), css().get_color(), css());
 }
 }

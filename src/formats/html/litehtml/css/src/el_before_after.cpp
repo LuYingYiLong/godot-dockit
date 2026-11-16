@@ -55,24 +55,25 @@ void el_marker::compute_styles(bool recursive)
 	html_tag::compute_styles(false);
 	const auto list_item = parent();
 	css_w().set_display(display_none);
-	if (!list_item || list_item->css().get_display() != display_list_item) return;
+	if (!list_item || list_item->css().get_display() != display_list_item || list_item->css().get_content_image()) return;
 	for (auto ancestor = list_item->parent(); ancestor; ancestor = ancestor->parent())
-		if (ancestor->css().get_display() == display_none) return;
+		if (ancestor->css().get_display() == display_none || ancestor->css().get_content_image()) return;
 
 	const auto& content = css().get_content();
 	css_generated_content fallback;
+	bool list_marker = false;
 	if (content.normal)
 	{
 		const auto& list_css = list_item->css();
-		const auto& url = list_css.get_list_style_image();
-		size extent;
-		if (!url.empty())
-			get_document()->container()->get_image_size(url.c_str(), list_css.get_list_style_image_baseurl().c_str(), extent,
-				decorative_image_orientation(css().get_image_orientation()));
-		if (extent.width > 0 && extent.height > 0)
+		const auto& value = list_css.get_list_style_image();
+		const auto& base = list_css.get_list_style_image_baseurl();
+		auto* container = get_document()->container();
+		if (value && (value->type != image::type_url ||
+			container->is_image_available(value->url.c_str(), base.c_str(), value->orientation)))
 		{
-			fallback.base_url = list_css.get_list_style_image_baseurl();
-			fallback.items.push_back({ css_content_kind::image, url, {} });
+			list_marker = true;
+			fallback.base_url = base;
+			fallback.items.push_back({css_content_kind::image, {}, {}, {}, value});
 			fallback.items.push_back({ css_content_kind::text, " ", {} });
 		}
 		else
@@ -87,7 +88,8 @@ void el_marker::compute_styles(bool recursive)
 	const auto& effective = content.normal ? fallback : content;
 	if (effective.items.empty()) return;
 	css_w().prepare_marker(list_item->css().get_list_style_position() == list_style_position_outside);
-	resolve_content(effective);
+	compute_content_alternative();
+	resolve_content(effective, list_marker);
 	if (recursive) compute_child_styles();
 }
 
@@ -101,53 +103,38 @@ void el_before_after_base::compute_styles(bool recursive)
 	if (css().get_display() == display_none) return;
 	for (auto ancestor = parent(); ancestor; ancestor = ancestor->parent())
 	{
-		if (ancestor->css().get_display() == display_none || ancestor->is_replaced()) return;
+		if (ancestor->css().get_display() == display_none || ancestor->css().is_replaced()) return;
 	}
 	handle_counter_properties();
+	compute_content_alternative();
+	if (content_image()) {
+		if (!materialized_content.empty()) {
+			clearRecursive();
+			materialized_content.clear();
+			materialized_images.clear();
+		}
+		return;
+	}
 	resolve_content(content);
 	if (recursive) compute_child_styles();
 }
 
-void el_before_after_base::resolve_content(const css_generated_content& content)
+void el_before_after_base::resolve_content(const css_generated_content& content, bool list_marker)
 {
 	using kind = css_content_kind;
 	const auto doc = get_document();
-	const auto origin = parent();
-	const auto lookup = [&](const string& name) { return doc->find_counter_style(name); };
-	std::vector<std::pair<kind, string>> parts;
+	std::vector<ContentPart> parts;
 	string text;
 	for (const auto& item : content.items)
 	{
+		if (append_content_text(item, text)) continue;
 		switch (item.kind)
 		{
-		case kind::text:
-			text += item.value;
-			break;
-		case kind::attribute:
-		{
-			const char* value = origin ? origin->get_attr(item.value.c_str()) : nullptr;
-			text += value ? value : item.fallback_or_separator;
-			break;
-		}
 		case kind::image:
-			if (!text.empty()) parts.emplace_back(kind::text, std::move(text));
+			if (!text.empty()) parts.emplace_back(std::move(text));
 			text.clear();
-			parts.emplace_back(kind::image, item.value);
+			parts.emplace_back(item.image_value);
 			break;
-		case kind::counter:
-		case kind::marker_counter:
-			text += format_css_counter(get_counter_value(_id(item.value)), item.counter_style, lookup, item.kind == kind::marker_counter);
-			break;
-		case kind::counters:
-		{
-			const auto values = get_counter_values(_id(item.value));
-			for (size_t i = 0; i < values.size(); ++i)
-			{
-				if (i != 0) text += item.fallback_or_separator;
-				text += format_css_counter(values[i], item.counter_style, lookup);
-			}
-			break;
-		}
 		case kind::open_quote:
 		case kind::close_quote:
 		case kind::no_open_quote:
@@ -163,18 +150,33 @@ void el_before_after_base::resolve_content(const css_generated_content& content)
 			}
 			break;
 		}
+		default: break;
 		}
 	}
-	if (!text.empty()) parts.emplace_back(kind::text, std::move(text));
+	if (!text.empty()) parts.emplace_back(std::move(text));
 
-	if (parts == materialized_content && content.base_url == materialized_base) return;
+	if (std::equal(parts.begin(), parts.end(), materialized_content.begin(), materialized_content.end(),
+		[](const ContentPart& first, const ContentPart& second) {
+			if (const auto* text = std::get_if<string>(&first))
+				return std::holds_alternative<string>(second) && *text == std::get<string>(second);
+			return std::holds_alternative<css_image_ptr>(second);
+		})) {
+		size_t index = 0;
+		for (const auto& part : parts) {
+			if (const auto* value = std::get_if<css_image_ptr>(&part)) {
+				if (const auto node = materialized_images[index++].lock())
+					node->set_generated_image(**value, content.base_url, list_marker);
+			}
+		}
+		return;
+	}
 	materialized_content = std::move(parts);
-	materialized_base = content.base_url;
+	materialized_images.clear();
 	clearRecursive();
-	for (const auto& [type, value] : materialized_content)
+	for (const auto& part : materialized_content)
 	{
-		if (type == kind::image) add_image(value, materialized_base);
-		else add_text(value);
+		if (const auto* value = std::get_if<css_image_ptr>(&part)) add_image(**value, content.base_url, list_marker);
+		else add_text(std::get<string>(part));
 	}
 }
 
@@ -184,14 +186,13 @@ void el_before_after_base::add_text(const string& text)
 		appendChild(run);
 }
 
-void el_before_after_base::add_image(const string& url, const string& base)
+void el_before_after_base::add_image(const image& value, const string& base, bool list_marker)
 {
-	const bool list_style_image = tag() == marker_tag() && css().get_content().normal;
-	const auto image = std::make_shared<el_image>(get_document(), base, list_style_image);
-	image->set_attr("src", url.c_str());
-	image->set_attr("style", "display:inline-block");
-	image->set_tagName("img");
-	appendChild(image);
-	image->parse_attributes();
+	const auto node = std::make_shared<el_image>(get_document());
+	node->set_generated_image(value, base, list_marker);
+	node->set_attr("style", "display:inline-block");
+	node->set_tagName("img");
+	appendChild(node);
+	materialized_images.emplace_back(node);
 }
 } // namespace litehtml
