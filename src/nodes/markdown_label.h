@@ -133,6 +133,7 @@ private:
 	bool dragging_selection = false;
 	bool selection_dragged = false;
 	bool selection_drag_attempt = false;
+	bool pointer_update_queued = false;
 	bool internal_processing_enabled = false;
 	PopupMenu* menu = nullptr;
 	int64_t selection_anchor = 0;
@@ -203,6 +204,9 @@ private:
 	docrender::HTMLSelectionPoint selection_point_at(const Vector2& p_position) const;
 	void extend_document_selection(const Vector2& p_position);
 	void scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event);
+	void update_pointer(const Vector2& p_position);
+	void queue_pointer_update();
+	void refresh_pointer();
 	int64_t hit_test_document(const Vector2& p_position) const;
 	String link_uri_at_position(const Vector2& p_position) const;
 	String link_uri_at_character(int64_t p_character) const;

@@ -29,6 +29,7 @@
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/classes/theme.hpp>
+#include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -1908,8 +1909,10 @@ float MarkdownLabelCanvas::get_anchor_offset(const String& p_anchor) const {
 std::optional<float> MarkdownLabelCanvas::scroll_to_html_anchor(const String& p_anchor, float p_align) {
 	const auto* source = html_anchor_sources.getptr(p_anchor);
 	if (!source) return std::nullopt;
-	const auto target = source->layout->scroll_anchor_into_view(p_anchor, p_align, *this);
+	const auto target = source->layout->scroll_anchor_into_view(p_anchor, p_align, *this,
+		callable_mp(this, &MarkdownLabelCanvas::queue_pointer_update));
 	if (!target) return std::nullopt;
+	queue_pointer_update();
 	return source->top + target->area.position.y;
 }
 
@@ -2938,6 +2941,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	}
 	layout_prefix_reuse_requested = false;
 	update_internal_processing();
+	queue_pointer_update();
 	if (label != nullptr) {
 		label->notify_canvas_layout_changed();
 	}
@@ -3324,6 +3328,9 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_MOUSE_EXIT) {
 		update_html_scrollbar_hover({});
 		pressed_html_link = 0;
+		if (!dragging_selection || !selection_dragged) {
+			set_default_cursor_shape(CURSOR_ARROW);
+		}
 	}
 
 	if (p_what == NOTIFICATION_EXIT_TREE || (p_what == NOTIFICATION_VISIBILITY_CHANGED && !is_visible_in_tree())) {
@@ -3345,6 +3352,7 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 			clear_selection();
 		}
 		selection_drag_attempt = false;
+		queue_pointer_update();
 	}
 
 	if (p_what == NOTIFICATION_DRAG_END) {
@@ -3862,10 +3870,106 @@ void MarkdownLabelCanvas::scroll_html_input(const Vector2& p_position, const Ref
 	Vector2 html_position;
 	const auto html = html_at_position(p_position, html_position);
 	if (html.is_null()) return;
-	const auto result = html->scroll_overflow_from_input(html_position, p_event, *this);
+	const auto result = html->scroll_overflow_from_input(html_position, p_event, *this,
+		callable_mp(this, &MarkdownLabelCanvas::queue_pointer_update));
 	if (result == docrender::HTMLScrollInput::ignored) return;
 	pressed_html_link = 0;
+	queue_pointer_update();
 	if (result == docrender::HTMLScrollInput::handled) accept_event();
+}
+
+namespace {
+	enum class ParagraphHit { OUTSIDE, TEXT, OBJECT };
+
+	ParagraphHit hit_test_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_rect, const Vector2& p_position) {
+		if (p_paragraph.is_null() || !p_rect.has_point(p_position)) return ParagraphHit::OUTSIDE;
+		const Vector2 local = p_position - p_rect.position;
+		float y = 0.0f;
+		for (int32_t line = 0; line < p_paragraph->get_line_count(); ++line) {
+			const Vector2 size = p_paragraph->get_line_size(line);
+			if (local.y < y + size.y) {
+				const float x = get_alignment_offset(p_paragraph, line, p_rect.size.x);
+				if (!Rect2(Vector2(x, y), size).has_point(local)) return ParagraphHit::OUTSIDE;
+				const Array objects = p_paragraph->get_line_objects(line);
+				for (int64_t index = 0; index < objects.size(); ++index) {
+					const Rect2 object = p_paragraph->get_line_object_rect(line, objects[index]);
+					if (local.x >= object.position.x && local.x < object.get_end().x) {
+						return object.has_point(local) ? ParagraphHit::OBJECT : ParagraphHit::OUTSIDE;
+					}
+				}
+				return ParagraphHit::TEXT;
+			}
+			y += size.y + p_paragraph->get_line_spacing();
+		}
+		return ParagraphHit::OUTSIDE;
+	}
+
+	ParagraphHit hit_test_markdown_text(const std::vector<MarkdownCanvasItem>& p_items, const Vector2& p_position) {
+		const auto next = std::upper_bound(p_items.begin(), p_items.end(), p_position.y,
+			[](real_t p_y, const MarkdownCanvasItem& p_item) { return p_y < p_item.rect.position.y; });
+		if (next == p_items.begin()) return ParagraphHit::OUTSIDE;
+		const auto& item = *std::prev(next);
+		if (!item.rect.has_point(p_position)) return ParagraphHit::OUTSIDE;
+		for (const MarkdownTableCell& cell : item.cells) {
+			if (cell.rect.has_point(p_position)) return hit_test_paragraph(cell.paragraph, cell.text_rect, p_position);
+		}
+		for (const MarkdownContainerLine& line : item.container_lines) {
+			if (line.rect.has_point(p_position)) return hit_test_paragraph(line.paragraph, line.text_rect, p_position);
+		}
+		return hit_test_paragraph(item.paragraph, item.text_rect, p_position);
+	}
+}
+
+void MarkdownLabelCanvas::update_pointer(const Vector2& p_position) {
+	if (html_scrollbar_drag || selection_drag_attempt) return;
+	if (dragging_selection) {
+		if (selection_dragged && label->is_selection_enabled()) {
+			set_default_cursor_shape(CURSOR_IBEAM);
+			set_tooltip_text(String());
+		}
+		return;
+	}
+
+	const bool visible = get_html_visible_rect().has_point(p_position);
+	Vector2 html_position;
+	const auto html = visible ? html_at_position(p_position, html_position) : Ref<HTMLLayout>();
+	update_html_scrollbar_hover(html, html_position);
+
+	String tooltip;
+	bool over_link = false;
+	bool over_text = false;
+	if (html.is_valid()) {
+		if (!html->scrollbar_at(html_position)) {
+			tooltip = html->get_link_at(html_position);
+			over_link = !tooltip.is_empty();
+			over_text = !over_link && label->is_selection_enabled() && html->hit_test_selectable_text(html_position);
+		}
+	}
+	else if (visible) {
+		const auto hit = hit_test_markdown_text(items, p_position);
+		if (hit != ParagraphHit::OUTSIDE) {
+			tooltip = link_uri_at_character(hit_test_document(p_position));
+			if (tooltip.is_empty()) tooltip = image_tooltip_at_position(p_position);
+			over_link = !tooltip.is_empty() || footnote_target_at_position(p_position) >= 0.0f;
+			over_text = label->is_selection_enabled() && hit == ParagraphHit::TEXT;
+		}
+	}
+	set_default_cursor_shape(over_link ? CURSOR_POINTING_HAND : (over_text ? CURSOR_IBEAM : CURSOR_ARROW));
+	set_tooltip_text(tooltip);
+}
+
+void MarkdownLabelCanvas::queue_pointer_update() {
+	if (is_inside_tree() && !pointer_update_queued) {
+		pointer_update_queued = true;
+		callable_mp(this, &MarkdownLabelCanvas::refresh_pointer).call_deferred();
+	}
+}
+
+void MarkdownLabelCanvas::refresh_pointer() {
+	pointer_update_queued = false;
+	if (is_inside_tree() && is_visible_in_tree() && get_viewport()->gui_get_hovered_control() == this) {
+		update_pointer(get_local_mouse_position());
+	}
 }
 
 void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
@@ -3894,6 +3998,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		}
 
 		if (mouse_button->get_button_index() == MOUSE_BUTTON_LEFT) {
+			if (!mouse_button->is_pressed()) queue_pointer_update();
 			if (!mouse_button->is_pressed() && html_scrollbar_drag) {
 				const auto drag = std::move(*html_scrollbar_drag);
 				html_scrollbar_drag.reset();
@@ -4062,6 +4167,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			if (selection_dragged || pressed_html_layout.is_null()) {
 				extend_document_selection(current_position);
 			}
+			update_pointer(current_position);
 			internal_processing_enabled = true;
 			set_process_internal(true);
 			queue_redraw();
@@ -4069,31 +4175,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			return;
 		}
 
-		Vector2 html_position;
-		const auto html = get_html_visible_rect().has_point(mouse_motion->get_position())
-			? html_at_position(mouse_motion->get_position(), html_position) : Ref<HTMLLayout>();
-		update_html_scrollbar_hover(html, html_position);
-		if (html.is_valid() && html->scrollbar_at(html_position)) {
-			set_default_cursor_shape(CURSOR_ARROW);
-			set_tooltip_text(String());
-			return;
-		}
-		const String uri = link_uri_at_position(mouse_motion->get_position());
-		const String img_tip = image_tooltip_at_position(mouse_motion->get_position());
-		const float footnote_target = footnote_target_at_position(mouse_motion->get_position());
-		set_default_cursor_shape((!uri.is_empty() || !img_tip.is_empty() || footnote_target >= 0.0f) ? CURSOR_POINTING_HAND : (label->is_selection_enabled() ? CURSOR_IBEAM : CURSOR_ARROW));
-		if (!uri.is_empty()) {
-			set_tooltip_text(uri);
-		}
-		else if (!img_tip.is_empty()) {
-			set_tooltip_text(img_tip);
-		}
-		else if (footnote_target >= 0.0f) {
-			set_tooltip_text(String());
-		}
-		else {
-			set_tooltip_text(String());
-		}
+		update_pointer(mouse_motion->get_position());
 		return;
 	}
 
@@ -4315,6 +4397,7 @@ void MarkdownLabel::on_scroll_value_changed(double p_value) {
 	update_scroll_following();
 	if (canvas != nullptr) {
 		canvas->pressed_html_link = 0;
+		canvas->queue_pointer_update();
 		canvas->queue_redraw();
 	}
 }
@@ -4708,6 +4791,7 @@ int32_t MarkdownLabel::get_extra_font_size() const {
 
 void MarkdownLabel::set_selection_enabled(bool p_enabled) {
 	selection_enabled = p_enabled;
+	if (canvas != nullptr) canvas->queue_pointer_update();
 }
 
 bool MarkdownLabel::is_selection_enabled() const {

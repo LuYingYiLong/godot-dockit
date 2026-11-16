@@ -493,6 +493,7 @@ func _run() -> void:
 	await _check_sticky_positioning()
 	await _check_author_hover()
 	await _check_selectable_cursor()
+	await _check_markdown_selectable_cursor()
 	await _check_focus_within()
 	await _check_dom_input()
 	await _check_text_input_batch()
@@ -14460,6 +14461,101 @@ func _check_selectable_cursor() -> void:
 		var hovered: Control = viewport.gui_get_hovered_control()
 		_check(hovered != null and hovered.mouse_default_cursor_shape == fixture["shape"],
 			"HTML cursor at %s + %s matches selectable geometry and CSS" % [id, offset])
+	viewport.queue_free()
+
+
+func _check_markdown_selectable_cursor() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(260, 200)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: MarkdownLabel = MarkdownLabel.new()
+	label.size = Vector2(viewport.size)
+	label.content_margin = 0
+	label.parse_html = true
+	label.add_theme_color_override(&"text_font_color", Color("#25b756"))
+	label.add_theme_color_override(&"link_color", Color("#db4c4c"))
+	var test_icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		label.add_theme_icon_override(icon, test_icon)
+	label.text = """Example
+
+[Markdown link](#native-absent)
+
+<div>
+<style>body { margin: 0; }</style>
+<div style="color: #5469d4; transform: translateX(35px)">Shifted</div>
+<div style="color: #a758c8; user-select: none">Blocked</div>
+<div><a href="#html-absent" style="color: #ed9134">HTML link</a></div>
+<div style="height: 300px"></div>
+</div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	viewport.notify_mouse_entered()
+	var image: Image = viewport.get_texture().get_image()
+	var visible: Rect2i = Rect2i(Vector2i.ZERO, viewport.size)
+	var native_text: Rect2i = _color_bounds(image, visible, Color("#25b756"))
+	var native_link: Rect2i = _color_bounds(image, visible, Color("#db4c4c"))
+	var html_text: Rect2i = _color_bounds(image, visible, Color("#5469d4"))
+	var html_blocked: Rect2i = _color_bounds(image, visible, Color("#a758c8"))
+	var html_link: Rect2i = _color_bounds(image, visible, Color("#ed9134"))
+	if not (native_text.has_area() and native_link.has_area() and html_text.has_area() and html_blocked.has_area() and html_link.has_area()):
+		_check(false, "Markdown cursor fixture paints native and HTML text and links")
+		viewport.queue_free()
+		return
+	var cases: Array[Dictionary] = [
+		{"point": Vector2(native_text.get_center()), "shape": Control.CURSOR_IBEAM},
+		{"point": Vector2(210.0, float(native_text.get_center().y)), "shape": Control.CURSOR_ARROW},
+		{"point": Vector2(native_link.get_center()), "shape": Control.CURSOR_POINTING_HAND},
+		{"point": Vector2(210.0, float(native_link.get_center().y)), "shape": Control.CURSOR_ARROW},
+		{"point": Vector2(html_text.get_center()), "shape": Control.CURSOR_IBEAM},
+		{"point": Vector2(5.0, float(html_text.get_center().y)), "shape": Control.CURSOR_ARROW},
+		{"point": Vector2(html_blocked.get_center()), "shape": Control.CURSOR_ARROW},
+		{"point": Vector2(html_link.get_center()), "shape": Control.CURSOR_POINTING_HAND},
+	]
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	for sample: Dictionary in cases:
+		motion.position = sample["point"]
+		viewport.push_input(motion, true)
+		await process_frame
+		var hovered: Control = viewport.gui_get_hovered_control()
+		_check(hovered != null and hovered.mouse_default_cursor_shape == sample["shape"],
+			"Markdown cursor at %s matches visible text or a link" % motion.position)
+	var uris: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: uris.append(uri))
+	_drag_pointer(viewport, Vector2(native_link.get_center()), Vector2(native_link.get_center()))
+	_drag_pointer(viewport, Vector2(html_link.get_center()), Vector2(html_link.get_center()))
+	_check(uris == ["#native-absent", "#html-absent"], "Markdown links and HTML block links still activate")
+
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = Vector2(native_text.position.x, native_text.get_center().y)
+	click.pressed = true
+	viewport.push_input(click, true)
+	motion.position = Vector2(210.0, click.position.y)
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	viewport.push_input(motion, true)
+	var canvas: Control = viewport.gui_get_hovered_control()
+	_check(canvas != null and canvas.mouse_default_cursor_shape == Control.CURSOR_IBEAM,
+		"Markdown keeps the IBeam while dragging over blank space")
+	click.position = motion.position
+	click.pressed = false
+	viewport.push_input(click, true)
+	await process_frame
+	await process_frame
+	_check(canvas != null and canvas.mouse_default_cursor_shape == Control.CURSOR_ARROW and not label.get_selected_text().is_empty(),
+		"Markdown restores the arrow after dragging and keeps the selection")
+
+	motion.button_mask = 0
+	motion.position = Vector2(html_text.get_center())
+	viewport.push_input(motion, true)
+	label.get_v_scroll_bar().value += 145.0
+	await process_frame
+	await process_frame
+	_check(canvas != null and canvas.mouse_default_cursor_shape == Control.CURSOR_ARROW,
+		"Markdown refreshes the cursor when scrolling under a stationary pointer")
 	viewport.queue_free()
 
 
