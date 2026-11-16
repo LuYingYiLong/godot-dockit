@@ -327,6 +327,7 @@ func _run() -> void:
 	_check_layout()
 	_check_inline_reflow()
 	_check_css_features()
+	_check_godot_resource_paths()
 	_check_selector_semantics()
 	await _check_css_nesting()
 	await _check_css_scope()
@@ -1535,6 +1536,41 @@ func _check_fragment_reflow() -> void:
 	_check(updates.size() == 1 and target.get_children() == children and children[0].get_bounding_rect().has_area(),
 		"A nonempty batch triggers exactly one layout update and the empty batch triggers none")
 	viewport.queue_free()
+
+
+func _check_godot_resource_paths() -> void:
+	var image: Image = Image.create_empty(13, 17, false, Image.FORMAT_RGBA8)
+	image.fill(Color.RED)
+	_check(image.save_png("user://docrender-protocol.png") == OK, "Save a runtime image under user://")
+	var css_file: FileAccess = FileAccess.open("user://docrender-protocol.css", FileAccess.WRITE)
+	if css_file == null:
+		_check(false, "Create a user:// stylesheet")
+		return
+	css_file.store_string('#styled { width: 61px; background-image: url("docrender-protocol.png"); }')
+	css_file.close()
+	var uid: String = ResourceUID.id_to_text(ResourceLoader.get_resource_uid("res://template-icon.png"))
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><link rel="stylesheet" href="user://docrender-protocol.css">
+		<img id="by_uid" src="%s"><img id="by_user_path" src="user://docrender-protocol.png">
+		<img id="outside" src="user://%%2e%%2e/docrender-protocol.png">
+		<img id="invalid_uid" src="uid://"><div id="styled"></div>""" % uid
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(320, 200)) == OK,
+		"Resolve Godot resource URLs from HTML and CSS")
+	var uid_image: HTMLImageElement = layout.get_element_by_id("by_uid") as HTMLImageElement
+	var local_image: HTMLImageElement = layout.get_element_by_id("by_user_path") as HTMLImageElement
+	_check(uid_image.current_src == "res://template-icon.png" and uid_image.get_intrinsic_size() == Vector2(8.0, 8.0),
+		"Resolve a resource UID to its imported texture")
+	_check(local_image.current_src == "user://docrender-protocol.png" and local_image.get_intrinsic_size() == Vector2(13.0, 17.0),
+		"Decode an unimported runtime image from user://")
+	_check(_rect(layout, "styled").size.x == 61.0, "Apply a user:// CSS file")
+	var outside: HTMLImageElement = layout.get_element_by_id("outside") as HTMLImageElement
+	var invalid: HTMLImageElement = layout.get_element_by_id("invalid_uid") as HTMLImageElement
+	_check(outside.current_src.is_empty() and invalid.current_src.is_empty(),
+		"Reject root traversal and an incomplete UID")
+	_check(layout.parse('<img id="relative" src="docrender-protocol.png">', "user://") == OK and
+		layout.layout(Vector2i(320, 200)) == OK, "Accept user:// as a base directory")
+	var relative: HTMLImageElement = layout.get_element_by_id("relative") as HTMLImageElement
+	_check(relative.current_src == "user://docrender-protocol.png", "Resolve a relative image in user://")
 
 
 func _check_imported_template() -> void:
@@ -15795,6 +15831,15 @@ First &amp; line
 		return
 	_check(field.default_value == "First & line\n第二行" and field.value == field.default_value,
 		"Textarea initial value decodes entities and keeps newlines after the opening newline")
+	await RenderingServer.frame_post_draw
+	var grip_frame: Image = viewport.get_texture().get_image()
+	var grip_origin: Vector2i = Vector2i(field.get_bounding_rect().end) - Vector2i(14, 14)
+	var rising_ink: float = 0.0
+	var falling_ink: float = 0.0
+	for x: int in range(3, 12):
+		rising_ink += 1.0 - grip_frame.get_pixelv(grip_origin + Vector2i(x, 13 - x)).r
+		falling_ink += 1.0 - grip_frame.get_pixelv(grip_origin + Vector2i(x, x)).r
+	_check(rising_ink > falling_ink + 0.5, "Resize icon is mirrored towards the lower right")
 	label.select_all()
 	_check("First" not in label.get_selected_text(), "Textarea text belongs to the field's own selection")
 	var detached: HTMLTextAreaElement = label.create_element("textarea") as HTMLTextAreaElement

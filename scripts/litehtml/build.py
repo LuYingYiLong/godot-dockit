@@ -65,6 +65,16 @@ def embed_default_font(target, source, env):
         output.write("};\n}\n")
 
 
+def embed_html_control_icons(target, source, env):
+    with Path(str(target[0])).open("w", encoding="utf-8", newline="\n") as output:
+        output.write("#pragma once\n\nnamespace docrender::control_icons {\n")
+        for icon in source:
+            path = Path(str(icon))
+            svg = path.read_text(encoding="utf-8-sig").strip()
+            output.write(f'inline constexpr char {path.stem}[] = R"svg({svg})svg";\n')
+        output.write("}\n")
+
+
 def build_litehtml(env, html_sources, enable_cpp_exceptions):
     litehtml = "src/thirdparty/litehtml"
     gumbo = f"{litehtml}/src/gumbo"
@@ -92,6 +102,11 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
                                    "src/thirdparty/html-fonts/OpenSans_SemiBold.woff2",
                                    html_env.Action(embed_default_font, "Embedding the default HTML font"))
     html_env.Depends([obj for obj in html_objects if obj.name.startswith("litehtml_fonts.")], font_header)
+    icon_files = [f"addons/docrender/icons/material_icons/{name}.svg"
+                  for name in ("play_arrow", "pause", "volume_up", "volume_off", "resize_window")]
+    icon_header = html_env.Command(f"{staged_dir}/html_control_icons.gen.h", icon_files,
+                                   html_env.Action(embed_html_control_icons, "Embedding HTML control icons"))
+    html_env.Depends([obj for obj in html_objects if obj.name.startswith("html_paint_recorder.")], icon_header)
     patterns = sorted(html_env.Glob("src/thirdparty/hyphenation-patterns/hyph-*.hyb"))
     if not patterns:
         raise UserError("Missing DocRender hyphenation patterns.")

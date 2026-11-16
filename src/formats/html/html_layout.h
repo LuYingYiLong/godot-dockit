@@ -71,7 +71,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLAudioElement;
 	godot::ObjectID audio_host;
 	godot::PackedStringArray audio_sources(const HTMLAudioElement& p_element) const;
-	godot::Ref<godot::Resource> audio_resource(const godot::String& p_path) const;
+	godot::Ref<godot::Resource> audio_resource(const godot::String& p_path, bool p_fmod) const;
 	godot::TypedArray<HTMLAudioElement> audio_elements() const;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;

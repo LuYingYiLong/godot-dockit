@@ -49,6 +49,7 @@ namespace docrender {
 		godot::Ref<godot::Texture2D> texture;
 		godot::Rect2 destination;
 		godot::Rect2 source;
+		godot::Color modulate{1, 1, 1, 1};
 	};
 
 	enum class HTMLTextureFilter { inherited, nearest, linear, linear_mipmaps };

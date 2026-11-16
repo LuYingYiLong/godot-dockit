@@ -69,6 +69,9 @@ namespace docrender {
 			paint.draw_input_chrome(p_clip, p_rect, p_color, p_radius);
 		}
 		void clear_recording() { paint.clear(); }
+		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color) {
+			paint.draw_input_icon(p_icon, p_clip, p_rect, p_color);
+		}
 		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color) {
 			paint.draw_input_check(p_box, p_color);
 		}

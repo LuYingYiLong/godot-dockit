@@ -38,7 +38,7 @@ namespace docrender {
 
 		void add_image_path(HashSet<String>& r_paths, const char* p_src, const String& p_base_dir) {
 			const String path = resolve_html_image_path(String::utf8(p_src), p_base_dir);
-			if (!path.is_empty()) {
+			if (path.begins_with("res://")) {
 				r_paths.insert(path);
 			}
 		}
@@ -51,10 +51,10 @@ namespace docrender {
 				const String url = String::utf8(p_url);
 				if (r_fonts) {
 					const String font = resolve_html_font_path(url, p_base_dir);
-					if (!font.is_empty()) r_fonts->insert(font);
+					if (font.begins_with("res://")) r_fonts->insert(font);
 				}
 				const String clip = resolve_html_svg_clip_path(url, p_base_dir);
-				if (!clip.is_empty()) r_svg_clips.insert(clip);
+				if (clip.begins_with("res://")) r_svg_clips.insert(clip);
 			};
 			const auto add_string_source = [&](const css_token& p_source) {
 				const css_token* source = &p_source;
@@ -103,7 +103,7 @@ namespace docrender {
 
 			void add_stylesheet(const String& p_url, const String& p_dir) {
 				const String path = resolve_html_stylesheet_path(p_url, p_dir);
-				if (path.is_empty() || checked_stylesheets.has(path) || checked_stylesheets.size() >= MAX_STYLESHEETS) {
+				if (!path.begins_with("res://") || checked_stylesheets.has(path) || checked_stylesheets.size() >= MAX_STYLESHEETS) {
 					return;
 				}
 				checked_stylesheets.insert(path);
@@ -175,7 +175,7 @@ namespace docrender {
 				node->parent->v.element.tag == GUMBO_TAG_AUDIO)) {
 				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
 					const String path = resolve_html_audio_path(String::utf8(source->value), p_base_dir);
-					if (!path.is_empty()) audio_paths.insert(path);
+					if (path.begins_with("res://")) audio_paths.insert(path);
 				}
 			}
 			if (element.tag == GUMBO_TAG_LINK) {

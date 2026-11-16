@@ -11,6 +11,7 @@
 #include <litehtml/background.h>
 #include <litehtml/borders.h>
 
+#include <array>
 #include <functional>
 #include <unordered_map>
 
@@ -22,6 +23,8 @@ namespace litehtml {
 }
 
 namespace docrender {
+	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, count };
+
 	struct HTMLInputPaintColors {
 		std::optional<litehtml::web_color> selection_foreground;
 		std::optional<litehtml::web_color> selection_background;
@@ -79,6 +82,7 @@ namespace docrender {
 		using OverflowTextShaper = std::function<HTMLTextLayout(litehtml::uint_ptr, const godot::String&,
 			int64_t, int64_t, const litehtml::render_item*)>;
 
+		std::array<godot::Ref<godot::Texture2D>, static_cast<size_t>(HTMLControlIcon::count)> control_icon_textures;
 		std::vector<HTMLPaintRun> paint_runs;
 		std::vector<HTMLPaintRun> viewport_background_runs;
 		std::vector<HTMLPaintGroup> viewport_background_groups;
@@ -176,6 +180,7 @@ namespace docrender {
 		void record_viewport_background(const litehtml::render_item& p_root, const std::function<void()>& p_draw);
 		void draw_text_overflow(const litehtml::render_item& p_context);
 		void draw_scrollbars(const litehtml::render_item& p_item);
+		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
 		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color);
 		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,
 			int p_axis, const HTMLScrollbarAppearance& p_appearance);

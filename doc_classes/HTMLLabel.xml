@@ -339,7 +339,7 @@
 			Chooses when CSS animations and transitions advance. Idle uses the idle frame delta, Physics uses the physics frame delta, and Manual uses calls to [method advance_animation]. Switching modes preserves the current progress and any remaining delay.
 		</member>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
-			Project resource directory used to resolve relative image paths for [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
+			The base directory in [code]res://[/code] or [code]user://[/code] for relative asset paths in [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
 		</member>
 		<member name="caret_blink" type="bool" setter="set_caret_blink_enabled" getter="is_caret_blink_enabled" default="true">
 			If [code]true[/code], the caret in a focused text field blinks. If [code]false[/code], it stays visible while the field is focused.

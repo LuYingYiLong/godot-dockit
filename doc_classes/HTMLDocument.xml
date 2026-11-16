@@ -19,7 +19,7 @@
 	</methods>
 	<members>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
-			The project directory used for relative image paths. Imported resources use the source file's directory.
+			The base directory in [code]res://[/code] or [code]user://[/code] used for relative asset paths. Imported resources use the source file's directory.
 		</member>
 		<member name="stylesheet" type="String" setter="set_stylesheet" getter="get_stylesheet" default="&quot;&quot;">
 			Additional CSS for this document. The rules share the document stylesheets' author origin and follow them in source order. See [method HTMLLayout.parse].

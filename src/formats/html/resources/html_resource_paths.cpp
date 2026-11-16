@@ -2,6 +2,7 @@
 
 #include "formats/html/markup/html_markup.h"
 
+#include <godot_cpp/classes/resource_uid.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <litehtml/html.h>
 
@@ -14,15 +15,21 @@ namespace docrender {
 			if (source.is_empty() || source.begins_with("/")) {
 				return {};
 			}
-			return normalize_html_resource_path(source.begins_with("res://") ? source : p_base_dir.path_join(source)).value_or(String());
+			if (source.begins_with("uid://")) {
+				auto* uids = ResourceUID::get_singleton();
+				const int64_t id = uids->text_to_id(source);
+				if (id == ResourceUID::INVALID_ID || uids->id_to_text(id) != source || !uids->has_id(id)) return {};
+				return normalize_html_resource_path(uids->get_id_path(id)).value_or(String());
+			}
+			const String absolute = source.begins_with("res://") || source.begins_with("user://") ? source : p_base_dir.path_join(source);
+			return normalize_html_resource_path(absolute).value_or(String());
 		}
 	}
 
 	std::optional<String> normalize_html_resource_path(const String& p_path) {
-		if (!p_path.begins_with("res://")) {
-			return std::nullopt;
-		}
-		const String relative = p_path.substr(6).replace("\\", "/");
+		const int64_t prefix = p_path.begins_with("res://") ? 6 : p_path.begins_with("user://") ? 7 : 0;
+		if (prefix == 0) return std::nullopt;
+		const String relative = p_path.substr(prefix).replace("\\", "/");
 		if (relative.begins_with("/") || relative.contains(":") || relative.contains("?") || relative.contains("#")) {
 			return std::nullopt;
 		}
@@ -48,7 +55,7 @@ namespace docrender {
 				components.append(component);
 			}
 		}
-		return "res://" + String("/").join(components);
+		return p_path.substr(0, prefix) + String("/").join(components);
 	}
 
 	String resolve_html_audio_path(const String& p_src, const String& p_base_dir) {
@@ -59,7 +66,7 @@ namespace docrender {
 		const int64_t fragment = p_src.find("#");
 		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);
 		const String extension = path.get_extension().to_lower();
-		if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "webp" && extension != "svg") {
+		if (!litehtml::is_one_of(extension, "png", "jpg", "jpeg", "webp", "svg", "res", "tres")) {
 			return {};
 		}
 		return path;
@@ -74,7 +81,7 @@ namespace docrender {
 		const int64_t fragment = p_src.find("#");
 		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);
 		const String extension = path.get_extension().to_lower();
-		return litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2") ? path : String();
+		return litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2", "res", "tres") ? path : String();
 	}
 
 	String resolve_html_svg_clip_path(const String& p_url, const String& p_base_dir) {

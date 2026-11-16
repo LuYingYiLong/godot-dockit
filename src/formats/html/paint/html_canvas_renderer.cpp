@@ -390,7 +390,7 @@ void fragment() {
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLImage>) {
 					const Rect2 rect = translate_rect(p_draw.destination, p_offset);
-					p_draw.texture->draw_rect_region(p_canvas, rect, p_draw.source, Color(1, 1, 1), false, !sampling.repeat);
+					p_draw.texture->draw_rect_region(p_canvas, rect, p_draw.source, p_draw.modulate, false, !sampling.repeat);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLCircle>) {
 					const Vector2 center = p_draw.center + p_offset;

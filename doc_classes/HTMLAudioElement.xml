@@ -46,7 +46,7 @@
 			Whether playback is paused or stopped.
 		</member>
 		<member name="src" type="String" setter="set_src" getter="get_src" default="&quot;&quot;">
-			The audio source path, relative to the HTML document or starting with [code]res://[/code]. When the attribute is omitted, sources are tried in child order.
+			The audio source URL, relative to the HTML document or using [code]res://[/code], [code]user://[/code], or [code]uid://[/code]. When the attribute is omitted, sources are tried in child order.
 		</member>
 		<member name="volume" type="float" setter="set_volume" getter="get_volume" default="1.0">
 			The linear playback volume from [code]0.0[/code] to [code]1.0[/code].

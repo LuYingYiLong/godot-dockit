@@ -126,3 +126,9 @@ Use an audio asset imported by Godot or the optional FMOD plugin. For example, `
 Set `HTMLLabel.bus` to the output bus. When the FMOD extension is loaded, enable `use_fmod_bus` to select the FMOD player and its bus list. Choose the respective importer for each candidate in Godot's Import dock. A candidate has the resource type produced by its importer, either `AudioStream` or `FmodAudioStream`.
 
 The HTML importer records the audio resources as dependencies. Selected-scene exports can resolve their original `res://` paths through Godot's import remaps in the PCK. Include the DocRender extension descriptor in the preset's resource filter, along with the FMOD descriptor when that backend is selected. For audio paths assigned only at runtime, include the resources in the export preset or reference them from an exported resource. [Godot resource loading after export](https://docs.godotengine.org/en/stable/classes/class_fileaccess.html#description)
+
+## Godot resource URLs
+
+HTML and CSS asset URLs accept `res://`, `user://`, and `uid://`. A resource UID resolves to its registered Godot path before the asset type is checked. Relative URLs use the containing stylesheet's directory or the HTML base directory. Both `res://` and `user://` support relative traversal within their own root. [Godot resource UIDs](https://docs.godotengine.org/en/stable/classes/class_resourceuid.html)
+
+Importing HTML records project assets, including those addressed by UID, as export dependencies. Assets under `user://` are loaded at runtime and belong to the running project's user data. This supports local stylesheets, PNG, JPEG, WebP and SVG images, fonts, and WAV, Ogg Vorbis and MP3 audio. The selected image or audio source reports its resolved path.

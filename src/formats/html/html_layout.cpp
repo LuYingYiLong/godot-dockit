@@ -1,5 +1,9 @@
 #include "html_layout.h"
 #include "elements/html_audio_element.h"
+#include <godot_cpp/classes/audio_stream_mp3.hpp>
+#include <godot_cpp/classes/audio_stream_ogg_vorbis.hpp>
+#include <godot_cpp/classes/audio_stream_wav.hpp>
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 
 #include "elements/html_form_state.h"
@@ -715,7 +719,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 	clear();
 	const std::optional<String> base_dir = docrender::normalize_html_resource_path(p_base_dir);
 	if (!base_dir) {
-		state->error = "The base directory must be a project resource path (res://).";
+		state->error = "The base directory must use res:// or user://.";
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
 	state->resource_base = *base_dir;
@@ -2840,11 +2844,22 @@ PackedStringArray HTMLLayout::audio_sources(const HTMLAudioElement& p_element) c
 	return result;
 }
 
-Ref<Resource> HTMLLayout::audio_resource(const String& p_path) const {
+Ref<Resource> HTMLLayout::audio_resource(const String& p_path, bool p_fmod) const {
 	const Ref<Resource> stored = state->audio_streams.get(p_path, Variant());
 	if (stored.is_valid()) return stored;
 	auto* loader = ResourceLoader::get_singleton();
-	return loader->exists(p_path) ? loader->load(p_path) : Ref<Resource>();
+	const StringName type = p_fmod ? "FmodAudioStream" : "AudioStream";
+	if (loader->exists(p_path, type)) return loader->load(p_path, type);
+	if (!p_path.begins_with("user://") || !FileAccess::file_exists(p_path)) return {};
+	const auto format = p_path.get_extension().to_lower();
+	if (format != "wav" && format != "ogg" && format != "mp3") return {};
+	if (p_fmod) {
+		if (!ClassDB::class_has_method(type, "load_from_file")) return {};
+		return ClassDB::class_call_static(type, "load_from_file", p_path);
+	}
+	if (format == "wav") return AudioStreamWAV::load_from_file(p_path);
+	if (format == "ogg") return AudioStreamOggVorbis::load_from_file(p_path);
+	return AudioStreamMP3::load_from_file(p_path);
 }
 
 void HTMLLayout::clear() {

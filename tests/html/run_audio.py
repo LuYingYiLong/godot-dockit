@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
@@ -183,6 +184,12 @@ filesystem/on_save/safe_save_on_backup_then_rename = false
             expected_type = "FmodAudioStream" if backend == "fmod" else "AudioStreamWAV"
             if f'type="{expected_type}"' not in sidecar:
                 raise SystemExit(f"Wrong audio import type in {backend}:\n{sidecar}")
+            uid = re.search(r'^uid="(uid://[^"]+)"', sidecar, re.MULTILINE)
+            if not uid:
+                raise SystemExit(f"No UID for the {backend} audio fixture")
+            html = project / "pages/player.html"
+            write(html, html.read_text(encoding="utf-8").replace("../media/tone.wav", uid[1]))
+            run([godot, "--headless", "--path", str(project), "--import"], workspace)
             if not args.skip_editor:
                 for renderer in ("gl_compatibility", "forward_plus"):
                     run([godot, "--path", str(project), "--rendering-method", renderer, "--quit-after", "600"], workspace, SUCCESS)

@@ -57,10 +57,25 @@ func _run() -> void:
 	_check(is_equal_approx(audio.get_bounding_rect().size.y, 54.0), "Chrome height applies by default")
 	_check(hidden_audio.get_bounding_rect().size == Vector2.ZERO, "Audio without controls has no layout box")
 	_check(not hidden_audio.paused and hidden_audio.current_src == TONE, "Runtime autoplay works with no controls")
+	await RenderingServer.frame_post_draw
+	var still: Image = get_viewport().get_texture().get_image()
+	var icon: Vector2i = Vector2i(audio.get_bounding_rect().position + Vector2(22.0, 27.0))
+	_check(still.get_pixelv(icon).r < 0.4, "Draw the embedded Material play icon")
 	hidden_audio.pause()
 	_check(unavailable.play() != OK and unavailable.current_src.is_empty(), "Missing source reports an error")
+	var sample: AudioStreamWAV = AudioStreamWAV.new()
+	sample.format = AudioStreamWAV.FORMAT_16_BITS
+	sample.mix_rate = 8000
+	var frames: PackedByteArray
+	frames.resize(8000)
+	sample.data = frames
+	_check(sample.save_to_wav("user://docrender-tone.wav") == OK, "Create a user:// audio file")
+	unavailable.src = "user://docrender-tone.wav"
+	_check(unavailable.play() == OK and unavailable.current_src == "user://docrender-tone.wav" and
+		is_equal_approx(unavailable.duration, 0.5), "Play an unimported user:// WAV")
+	unavailable.pause()
 	_check(audio.play() == OK and not audio.paused and audio.current_src == TONE and audio.duration > 2.0,
-		"Source fallback opens the imported resource")
+		"Source fallback opens the imported resource through its UID")
 	await get_tree().create_timer(0.25).timeout
 	_check(audio.current_time > 0.05, "Media time advances with CSS animation in Manual mode")
 	var player: Node = _find_player(expected_class, &"HTML Test", 0.05)

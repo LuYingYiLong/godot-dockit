@@ -17,6 +17,7 @@ using namespace godot;
 using namespace litehtml;
 using docrender::HTMLAudioNode;
 using docrender::HTMLAudioPart;
+using docrender::HTMLControlIcon;
 
 namespace {
 	String format_time(double p_time) {
@@ -117,17 +118,13 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 		}
 	}
 	const auto play = part_rect(HTMLAudioPart::play);
-	if (play.has_area()) {
-		const Vector2 center = play.get_center();
-		if (paused) {
-			for (int row = -5; row <= 5; ++row) {
-				draw(Rect2(center.x - 4.0f, center.y + row, 10.0f - 1.6f * std::abs(row), 1.0f), foreground);
-			}
-		} else {
-			draw(Rect2(center.x - 5.0f, center.y - 6.0f, 3.0f, 12.0f), foreground, 1.0f);
-			draw(Rect2(center.x + 2.0f, center.y - 6.0f, 3.0f, 12.0f), foreground, 1.0f);
-		}
-	}
+	const auto draw_icon = [&](HTMLControlIcon p_icon, const Rect2& p_part) {
+		if (!p_part.has_area()) return;
+		const float extent = std::min({20.0f, p_part.size.x, p_part.size.y});
+		const Vector2 size(extent, extent);
+		container->draw_input_icon(p_icon, content_box, Rect2(p_part.get_center() - size * 0.5f, size), foreground);
+	};
+	draw_icon(paused ? HTMLControlIcon::play : HTMLControlIcon::pause, play);
 	if (content_box.size.x >= 210.0f) {
 		const String time_text = format_time(time) + String(" / ") + format_time(duration);
 		const auto line = container->shape_input(css().get_font(), time_text);
@@ -138,23 +135,8 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 			ink, {}, {}, {});
 	}
 	draw_track(part_rect(HTMLAudioPart::position), duration > 0 ? time / duration : 0, duration > 0);
-	const auto mute = part_rect(HTMLAudioPart::mute);
-	if (mute.has_area()) {
-		const auto center = mute.get_center();
-		draw(Rect2(center.x - 6.0f, center.y - 3.0f, 5.0f, 6.0f), foreground, 1.0f);
-		for (int x = -1; x <= 2; ++x) {
-			draw(Rect2(center.x + x, center.y - 3.0f - x * 0.5f, 1.0f, 6.0f + x), foreground);
-		}
-		if (is_muted() || volume == 0.0) {
-			for (int i = -2; i <= 2; ++i) {
-				draw(Rect2(center.x + 6.0f + i, center.y + i, 1.0f, 1.0f), foreground);
-				draw(Rect2(center.x + 6.0f + i, center.y - i, 1.0f, 1.0f), foreground);
-			}
-		} else {
-			draw(Rect2(center.x + 5.0f, center.y - 2.0f, 1.0f, 4.0f), foreground);
-			draw(Rect2(center.x + 8.0f, center.y - 4.0f, 1.0f, 8.0f), foreground);
-		}
-	}
+	draw_icon(is_muted() || volume == 0.0 ? HTMLControlIcon::volume_off : HTMLControlIcon::volume_up,
+		part_rect(HTMLAudioPart::mute));
 	draw_track(part_rect(HTMLAudioPart::volume), is_muted() ? 0 : volume, true);
 }
 

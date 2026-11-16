@@ -723,6 +723,14 @@ namespace {
 			}
 		}
 
+		if (p_uri.begins_with("user://")) {
+			MarkdownImageCacheEntry entry;
+			entry.texture = docrender::load_html_image_file(p_uri);
+			entry.status = entry.texture.is_valid() ? MARKDOWN_IMAGE_READY : MARKDOWN_IMAGE_FAILED;
+			if (entry.texture.is_valid()) s_image_cache[p_uri] = entry;
+			return entry;
+		}
+
 		if (is_remote_image_uri(p_uri)) {
 			MarkdownImageCacheEntry entry;
 			if (is_gif_image_uri(p_uri) && !has_gif_plugin_support()) {
@@ -1272,7 +1280,14 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) const {
 	if (p_html) {
 		const String path = docrender::resolve_html_image_path(p_uri, label ? label->get_html_base_dir() : String("res://"));
-		return !path.is_empty() && ResourceLoader::get_singleton()->exists(path, "Texture2D") ? path : String();
+		if (path.is_empty()) return {};
+		const bool available = ResourceLoader::get_singleton()->exists(path, "Texture2D") ||
+			(path.begins_with("user://") && FileAccess::file_exists(path));
+		return available ? path : String();
+	}
+	if (p_uri.begins_with("user://") || (label && label->image_base_dir.begins_with("user://") &&
+		!p_uri.is_absolute_path() && !p_uri.contains(":"))) {
+		return docrender::resolve_html_image_path(p_uri, label ? label->image_base_dir : String("user://"));
 	}
 	if (label == nullptr || label->image_base_dir.is_empty() || p_uri.is_absolute_path() || p_uri.contains(":")) {
 		return p_uri;

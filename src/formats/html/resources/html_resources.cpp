@@ -293,13 +293,23 @@ namespace docrender {
 		return texture;
 	}
 
+	Ref<Texture2D> load_html_image_file(const String& p_path) {
+		auto* loader = ResourceLoader::get_singleton();
+		if (loader->exists(p_path, "Texture2D")) {
+			const Ref<Texture2D> texture = loader->load(p_path, "Texture2D");
+			if (texture.is_valid()) return texture;
+		}
+		const auto extension = p_path.get_extension().to_lower();
+		if (!p_path.begins_with("user://") || !litehtml::is_one_of(extension, "png", "jpg", "jpeg", "webp", "svg") ||
+			!FileAccess::file_exists(p_path)) return {};
+		const auto image = Image::load_from_file(p_path);
+		return image.is_valid() && !image->is_empty() ? ImageTexture::create_from_image(image) : Ref<ImageTexture>();
+	}
+
 	Ref<Texture2D> HTMLResources::load_texture_file(const String& p_path) {
 		if (const auto* cached = images.getptr(p_path)) return *cached;
 		Ref<Texture2D> texture = textures.get(p_path, Variant());
-		if (texture.is_null()) {
-			ResourceLoader* loader = ResourceLoader::get_singleton();
-			if (loader->exists(p_path, "Texture2D")) texture = loader->load(p_path, "Texture2D");
-		}
+		if (texture.is_null()) texture = load_html_image_file(p_path);
 		images.insert(p_path, texture);
 		return texture;
 	}
@@ -358,6 +368,12 @@ namespace docrender {
 		ResourceLoader* loader = ResourceLoader::get_singleton();
 		if (font.is_null() && loader->exists(p_path, "FontFile")) {
 			font = loader->load(p_path, "FontFile");
+		}
+		const auto extension = p_path.get_extension().to_lower();
+		if (font.is_null() && p_path.begins_with("user://") &&
+			litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2") && FileAccess::file_exists(p_path)) {
+			font.instantiate();
+			if (font->load_dynamic_font(p_path) != OK) font.unref();
 		}
 		if (font.is_valid() && !font->get_data().is_empty() && font->get_face_count() > 0) {
 			// Let shaping try the CSS font stack before using implicit system fallbacks.

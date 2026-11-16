@@ -160,7 +160,7 @@ Error HTMLLabel::prepare_audio(AudioPlayback& p_audio) {
 	if (!node || !is_inside_tree() || !layout->is_element_connected(p_audio.element)) return ERR_UNCONFIGURED;
 	const bool fmod = uses_fmod_audio();
 	for (const String& path : p_audio.sources) {
-		const auto stream = private_audio_stream(layout->audio_resource(path), fmod);
+		const auto stream = private_audio_stream(layout->audio_resource(path, fmod), fmod);
 		if (stream.is_null()) continue;
 		Node* player = nullptr;
 		if (fmod) {

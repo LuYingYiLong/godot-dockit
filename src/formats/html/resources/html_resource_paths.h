@@ -1,14 +1,18 @@
 #pragma once
 
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 #include <optional>
 
+namespace godot { class Texture2D; }
+
 namespace docrender {
+	godot::Ref<godot::Texture2D> load_html_image_file(const godot::String& p_path); // 读取已解析的本地纹理路径
 	godot::String resolve_html_audio_path(const godot::String& p_src, const godot::String& p_base_dir);
 	std::optional<godot::String> normalize_html_resource_path(
 		const godot::String& p_path
-	);																				// 规范化项目内的 res:// 路径并拒绝越界路径
+	);																				// 规范化 res:// 或 user:// 路径并拒绝越界路径
 	godot::String resolve_html_image_path(
 		const godot::String& p_src,
 		const godot::String& p_base_dir

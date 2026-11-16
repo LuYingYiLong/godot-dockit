@@ -20,7 +20,7 @@
 			The source [code]alt[/code] attribute. If the selected texture is unavailable, nonempty alternative text is drawn inside the image box. Text can wrap and determine automatic dimensions.
 		</member>
 		<member name="current_src" type="String" setter="" getter="get_current_src">
-			The selected [code]res://[/code] path, including any fragment, from the last successful layout. Empty before the first selection, when no source is selected, or for invalid or detached handles. A selected path can point to an unavailable image.
+			The selected Godot resource path, including any fragment, from the last successful layout. Empty before the first selection, when no source is selected, or for invalid or detached handles. A selected path can point to an unavailable image.
 		</member>
 		<member name="height_hint" type="int" setter="set_height_hint" getter="get_height_hint">
 			The nonnegative integer pixel hint from the HTML [code]height[/code] attribute, or [code]0[/code] if it is absent or invalid as an integer. CSS can override the hint.

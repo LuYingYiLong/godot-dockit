@@ -14,6 +14,8 @@ Windows x64 MSVC builds with Mermaid support use the Merman `0.9.3` native full 
 
 ## Built-in dependencies
 
+- The HTML audio controls and textarea grip use the supplied Google Material Icons SVGs. DocRender renders them in the control color and mirrors the resize icon horizontally. [Upstream icons and license](https://github.com/google/material-design-icons) · [Apache 2.0 license](icons/material_icons/LICENSE.txt)
+
 - godot-cpp provides the C++ bindings for the GDExtension. [MIT license](godot-cpp-LICENSE.md)
 - DocRender embeds the Open Sans Semibold font from Godot's source distribution as a fallback for HTML text. [SIL Open Font License](OpenSans-LICENSE.txt)
 - MicroTeX, TinyXML-2, and the embedded math fonts are used for LaTeX formula rendering. [Licenses and notices](MicroTeX-LICENSES.txt)

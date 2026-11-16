@@ -118,14 +118,7 @@ namespace docrender {
 			grip.a *= 0.85f;
 			const float size = std::min({14.0f, border_box.size.x, border_box.size.y});
 			resize_handle = Rect2(border_box.get_end() - Vector2(size, size), Vector2(size, size));
-			for (int line = 0; line < 2; ++line) {
-				const auto end = resize_handle.get_end() - Vector2(3 + line * 4, 3);
-				const int length = std::max(0, int(size) - 5 - line * 4);
-				for (int step = 0; step < length; ++step) {
-					container->draw_input_chrome(border_box, Rect2(end + Vector2(line * 4 - step, step - length + 1),
-						Vector2(1, 1)), grip);
-				}
-			}
+			container->draw_input_icon(HTMLControlIcon::resize, border_box, resize_handle, grip);
 		}
 	}
 }

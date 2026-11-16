@@ -10,6 +10,8 @@
 
 #include <godot_cpp/classes/atlas_texture.hpp>
 #include <godot_cpp/classes/display_server.hpp>
+#include "gen/html/html_control_icons.gen.h"
+
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/shader.hpp>
@@ -1607,6 +1609,31 @@ void fragment() {
 		radii.bottom_left_x = radii.bottom_left_y = radii.bottom_right_x = radii.bottom_right_y = p_radius;
 		push_clip(RoundedRect(p_rect, radii), active_geometry ? active_geometry->matrix : Transform2D());
 		fill_rect(p_rect, p_color);
+		del_clip();
+	}
+
+	void HTMLPaintRecorder::draw_input_icon(HTMLControlIcon p_icon, const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
+		static constexpr std::array svg{control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
+			control_icons::volume_off, control_icons::resize_window};
+		const auto index = static_cast<size_t>(p_icon);
+		auto& texture = control_icon_textures[index];
+		if (texture.is_null()) {
+			Ref<godot::Image> image;
+			image.instantiate();
+			// Keep the SVG's alpha and use the computed control color for RGB.
+			if (image->load_svg_from_string(String::utf8(svg[index]), 3.0f) != OK || image->is_empty()) return;
+			image->convert(godot::Image::FORMAT_RGBA8);
+			auto pixels = image->get_data();
+			auto* bytes = pixels.ptrw();
+			for (int64_t offset = 0; offset < pixels.size(); offset += 4) {
+				bytes[offset] = bytes[offset + 1] = bytes[offset + 2] = 255;
+			}
+			image->set_data(image->get_width(), image->get_height(), false, godot::Image::FORMAT_RGBA8, pixels);
+			if (p_icon == HTMLControlIcon::resize) image->flip_x();
+			texture = ImageTexture::create_from_image(image);
+		}
+		if (texture.is_null() || !p_rect.has_area() || !push_content_clip(p_clip)) return;
+		add_image(Image{texture, p_rect, Rect2(Vector2(), texture->get_size()), p_color});
 		del_clip();
 	}
 
