@@ -2722,6 +2722,15 @@ msgstr "如果为 [code]true[/code]，聚焦的文本字段会显示闪烁的插
 msgid "The time in seconds between changes in caret visibility when [member caret_blink] is enabled."
 msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态的间隔，单位为秒。"
 
+msgid "Chooses whether CSS animations and transitions advance with the idle or physics frame delta. Switching modes preserves the current progress and any remaining delay."
+msgstr "选择 CSS 动画和过渡使用空闲帧还是物理帧的时间增量推进。切换模式时保留当前进度和剩余延迟。"
+
+msgid "Advances CSS animations and transitions during idle processing."
+msgstr "在空闲处理阶段推进 CSS 动画和过渡。"
+
+msgid "Advances CSS animations and transitions during physics processing."
+msgstr "在物理处理阶段推进 CSS 动画和过渡。"
+
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Shows an editing menu for text inputs and textareas on right-click or with the [code]ui_menu[/code] input action. "

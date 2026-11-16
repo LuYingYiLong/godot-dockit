@@ -70,6 +70,7 @@ class HTMLLayout : public godot::RefCounted {
 	std::unique_ptr<State> state;
 	uint64_t parse_version = 0;
 	bool uses_document_viewport = false;
+	bool uses_owner_animation_clock = false;
 
 	bool initialize_document(const godot::CharString& p_html);
 	bool ensure_document_for_editing();
@@ -94,6 +95,9 @@ class HTMLLayout : public godot::RefCounted {
 	void update_transition_subscription();
 	void disconnect_transition_frames();
 	void sample_transition_frame(uint64_t p_version);
+	bool has_active_css_animations() const;
+	void advance_css_animations(double p_delta);
+	void sample_css_animations();
 	godot::TypedArray<godot::Rect2> get_element_rects(const std::shared_ptr<litehtml::element>& p_element) const;
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
 		bool p_text_selection = false) const;

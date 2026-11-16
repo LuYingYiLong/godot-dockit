@@ -672,6 +672,7 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 HTMLLabel::HTMLLabel() {
 	layout.instantiate();
 	layout->uses_document_viewport = true;
+	layout->uses_owner_animation_clock = true;
 	set_mouse_filter(MOUSE_FILTER_IGNORE);
 }
 
@@ -707,6 +708,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
 	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &HTMLLabel::set_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &HTMLLabel::is_context_menu_enabled);
+	ClassDB::bind_method(D_METHOD("set_animation_process_mode", "mode"), &HTMLLabel::set_animation_process_mode);
+	ClassDB::bind_method(D_METHOD("get_animation_process_mode"), &HTMLLabel::get_animation_process_mode);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_enabled", "enabled"), &HTMLLabel::set_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("is_caret_blink_enabled"), &HTMLLabel::is_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_interval", "interval"), &HTMLLabel::set_caret_blink_interval);
@@ -715,12 +718,17 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_selection"), &HTMLLabel::clear_selection);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &HTMLLabel::get_selected_text);
 
+	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
+	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics"),
+		"set_animation_process_mode", "get_animation_process_mode");
 	ADD_GROUP("Caret", "caret_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_interval", PROPERTY_HINT_RANGE, "0.1,10,0.01,suffix:s"),
@@ -787,7 +795,17 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_INTERNAL_PROCESS:
-		if (canvas) canvas->update_ime();
+		if (animation_process_mode == ANIMATION_PROCESS_IDLE && viewport_size.x > 0) {
+			layout->advance_css_animations(get_process_delta_time());
+			update_internal_processing();
+		}
+		if (canvas && canvas->ime_window) canvas->update_ime();
+		break;
+	case NOTIFICATION_INTERNAL_PHYSICS_PROCESS:
+		if (animation_process_mode == ANIMATION_PROCESS_PHYSICS && viewport_size.x > 0) {
+			layout->advance_css_animations(get_physics_process_delta_time());
+			update_internal_processing();
+		}
 		break;
 	case NOTIFICATION_FOCUS_ENTER:
 		if (canvas && canvas->tab_entry_backward) {
@@ -824,6 +842,8 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE:
+		set_process_internal(false);
+		set_physics_process_internal(false);
 		dragging_viewport_scrollbar = {};
 		cancel_viewport_scroll();
 		cancel_viewport_pan_snap();
@@ -1108,6 +1128,17 @@ bool HTMLLabel::is_context_menu_enabled() const {
 	return context_menu_enabled;
 }
 
+void HTMLLabel::set_animation_process_mode(AnimationProcessMode p_mode) {
+	ERR_FAIL_COND(p_mode != ANIMATION_PROCESS_IDLE && p_mode != ANIMATION_PROCESS_PHYSICS);
+	if (animation_process_mode == p_mode) return;
+	animation_process_mode = p_mode;
+	update_internal_processing();
+}
+
+HTMLLabel::AnimationProcessMode HTMLLabel::get_animation_process_mode() const {
+	return animation_process_mode;
+}
+
 void HTMLLabel::set_caret_blink_enabled(bool p_enabled) {
 	if (caret_blink == p_enabled) return;
 	caret_blink = p_enabled;
@@ -1226,6 +1257,7 @@ void HTMLLabel::source_changed() {
 	close_select_menu();
 	source_dirty = true;
 	layout->clear();
+	update_internal_processing();
 	pending_scroll_offset = Vector2i();
 	pending_scroll_requested = false;
 	if (canvas) {
@@ -1273,6 +1305,14 @@ void HTMLLabel::on_auto_content_update() {
 void HTMLLabel::on_transition_frame(bool p_size_changed) {
 	if (p_size_changed) queue_refresh();
 	request_hover_check();
+}
+
+void HTMLLabel::update_internal_processing() {
+	const bool in_tree = is_inside_tree();
+	const bool animate = in_tree && viewport_size.x > 0 && layout->has_active_css_animations();
+	const bool track_ime = in_tree && canvas && canvas->ime_window.has_value();
+	set_process_internal(track_ime || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
+	set_physics_process_internal(animate && animation_process_mode == ANIMATION_PROCESS_PHYSICS);
 }
 
 Vector2i HTMLLabel::get_content_selection_range() const {
@@ -1516,6 +1556,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	layout_signal_pending |= p_layout_changed || viewport_size != p_viewport ||
 		content_size != p_content || render_error != p_error;
 	viewport_size = p_viewport;
+	update_internal_processing();
 	content_size = p_content;
 	viewport_input_axes = p_input_axes;
 	hidden_scroll_offset = hidden_scroll_offset * (Vector2i(1, 1) - viewport_input_axes);

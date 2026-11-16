@@ -160,6 +160,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">
+			Chooses whether CSS animations and transitions advance with the idle or physics frame delta. Switching modes preserves the current progress and any remaining delay.
+		</member>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
 			Project resource directory used to resolve relative image paths for [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
 		</member>
@@ -264,4 +267,12 @@
 			</description>
 		</signal>
 	</signals>
+	<constants>
+		<constant name="ANIMATION_PROCESS_IDLE" value="0" enum="AnimationProcessMode">
+			Advances CSS animations and transitions during idle processing.
+		</constant>
+		<constant name="ANIMATION_PROCESS_PHYSICS" value="1" enum="AnimationProcessMode">
+			Advances CSS animations and transitions during physics processing.
+		</constant>
+	</constants>
 </class>

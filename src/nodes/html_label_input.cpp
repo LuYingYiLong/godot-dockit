@@ -432,7 +432,7 @@ void HTMLLabelCanvas::close_ime() {
 		const auto window = *ime_window;
 		ime_window.reset();
 		ime_position.reset();
-		label->set_process_internal(false);
+		label->update_internal_processing();
 		auto* display = DisplayServer::get_singleton();
 		display->window_set_ime_position(Vector2i(), window);
 		display->window_set_ime_active(false, window);
@@ -472,7 +472,7 @@ void HTMLLabelCanvas::update_ime() {
 		if (ime_window) close_ime();
 		ime_window = id;
 		// A window stretch or embedded-window move can change the anchor without redrawing the field.
-		label->set_process_internal(true);
+		label->update_internal_processing();
 		display->window_set_ime_active(true, id);
 	}
 

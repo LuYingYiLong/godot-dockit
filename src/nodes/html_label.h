@@ -131,6 +131,13 @@ public:
 class HTMLLabel : public godot::Control {
 	GDCLASS(HTMLLabel, godot::Control)
 
+public:
+	enum AnimationProcessMode {
+		ANIMATION_PROCESS_IDLE,
+		ANIMATION_PROCESS_PHYSICS,
+	};
+
+private:
 	friend class HTMLLabelCanvas;
 
 	godot::Ref<HTMLDocument> document;
@@ -169,6 +176,7 @@ class HTMLLabel : public godot::Control {
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
 	bool context_menu_enabled = true;
+	AnimationProcessMode animation_process_mode = ANIMATION_PROCESS_IDLE;
 	bool caret_blink = true;
 	double caret_blink_interval = 0.65;
 	bool view_update_pending = false;
@@ -191,6 +199,7 @@ class HTMLLabel : public godot::Control {
 	void queue_interaction_style_refresh();
 	void on_auto_content_update();
 	void on_transition_frame(bool p_size_changed);
+	void update_internal_processing();
 	godot::Vector2i get_content_selection_range() const;
 	void source_changed();
 	void document_changed(uint64_t p_document_id);
@@ -281,6 +290,8 @@ public:
 	bool is_selection_enabled() const;												// 返回是否允许选择文本
 	void set_context_menu_enabled(bool p_enabled); // 设置文本字段是否显示编辑菜单
 	bool is_context_menu_enabled() const; // 返回文本字段是否显示编辑菜单
+	void set_animation_process_mode(AnimationProcessMode p_mode); // 设置 CSS 动画和过渡的帧更新方式
+	AnimationProcessMode get_animation_process_mode() const; // 返回 CSS 动画和过渡的帧更新方式
 	void set_caret_blink_enabled(bool p_enabled); // 设置聚焦文本字段的插入光标是否闪烁
 	bool is_caret_blink_enabled() const; // 返回插入光标是否闪烁
 	void set_caret_blink_interval(double p_interval); // 设置插入光标切换显示状态的间隔，单位为秒
@@ -289,3 +300,5 @@ public:
 	void clear_selection();															// 清除当前文本选区
 	godot::String get_selected_text() const;										// 返回当前选中的文本
 };
+
+VARIANT_ENUM_CAST(HTMLLabel::AnimationProcessMode);

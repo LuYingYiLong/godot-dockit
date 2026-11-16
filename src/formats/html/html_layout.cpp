@@ -185,6 +185,7 @@ struct HTMLLayout::State {
 	Callable transition_callback;
 	Callable transition_frame;
 	ObjectID transition_tree;
+	double animation_time = 0.0;
 	bool sampling_transitions = false;
 	Callable content_update_callback;
 	Callable content_selection_callback;
@@ -363,7 +364,8 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	const Vector2i& p_viewport_unit_size) {
 	using Update = State::Update;
 	const auto& document = state->dom->get_document();
-	const double transition_time = Time::get_singleton()->get_ticks_usec() / 1'000'000.0;
+	const double transition_time = uses_owner_animation_clock ? state->animation_time :
+		Time::get_singleton()->get_ticks_usec() / 1'000'000.0;
 	docrender::css::TransitionState::Snapshot before_transition;
 	if (!state->sampling_transitions && state->viewport_size.x > 0) {
 		before_transition = state->animation_underlying.empty() ?
@@ -737,7 +739,8 @@ void HTMLLayout::set_transition_callback(const Callable& p_callback) {
 }
 
 void HTMLLayout::update_transition_subscription() {
-	if (!state->transitions.active() && !state->animations.active()) {
+	if (uses_owner_animation_clock) return;
+	if (!has_active_css_animations()) {
 		disconnect_transition_frames();
 		return;
 	}
@@ -758,7 +761,21 @@ void HTMLLayout::disconnect_transition_frames() {
 }
 
 void HTMLLayout::sample_transition_frame(uint64_t p_version) {
-	if (parse_version != p_version || !state->has_layout()) return;
+	if (parse_version == p_version) sample_css_animations();
+}
+
+bool HTMLLayout::has_active_css_animations() const {
+	return state->error.is_empty() && (state->transitions.active() || state->animations.active());
+}
+
+void HTMLLayout::advance_css_animations(double p_delta) {
+	if (!has_active_css_animations() || p_delta <= 0.0) return;
+	state->animation_time += p_delta;
+	sample_css_animations();
+}
+
+void HTMLLayout::sample_css_animations() {
+	if (!state->has_layout()) return;
 	Ref<HTMLLayout> keep_alive(this);
 	auto& current = *state;
 	const auto previous_size = current.content_size;
@@ -1921,6 +1938,7 @@ void HTMLLayout::clear() {
 	state->transitions = {};
 	state->animations = {};
 	state->animation_underlying.clear();
+	state->animation_time = 0.0;
 	cancel_scroll_activity();
 	state->nested_snap_memory.clear();
 	state->skipped_scroll_offsets.clear();

@@ -374,6 +374,7 @@ func _run() -> void:
 	await _check_border_image()
 	await _check_group_opacity()
 	await _check_css_transitions()
+	await _check_html_label_animation_process_mode()
 	await _check_transform_matrix_transitions()
 	await _check_css_animations()
 	await _check_layout_property_motion()
@@ -10249,6 +10250,83 @@ body { margin:0; background:white; }
 	_check(absf(label.get_element_by_id("box").get_bounding_rect().size.x - 40.0) < 0.1,
 		"HTMLLabel defers the edit and keeps its intermediate geometry")
 	label_viewport.queue_free()
+
+
+func _check_html_label_animation_process_mode() -> void:
+	var label: HTMLLabel = HTMLLabel.new()
+	_check(label.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_IDLE, "HTMLLabel defaults to the Idle animation mode")
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
+	var packed: PackedScene = PackedScene.new()
+	_check(packed.pack(label) == OK, "Pack an HTMLLabel with Physics selected")
+	var restored: HTMLLabel = packed.instantiate() as HTMLLabel
+	_check(restored.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_PHYSICS, "The animation mode survives scene serialization")
+	restored.free()
+
+	var previous_rate: int = Engine.physics_ticks_per_second
+	var previous_scale: float = Engine.time_scale
+	Engine.physics_ticks_per_second = 10
+	Engine.time_scale = 0.5
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(480, 100)
+	root.add_child(viewport)
+	label.size = Vector2(480.0, 100.0)
+	label.text = """<!doctype html><style>
+		body { margin:0; }
+		div { width:20px; height:10px; }
+		#transition { transition:width 4s linear .4s; }
+		@keyframes Expand { from { width:20px; } to { width:420px; } }
+		.go #animation { animation:Expand 4s linear .4s both; }
+		.go #transition { width:420px; }
+	</style><body id="scene"><div id="animation"></div><div id="transition"></div></body>"""
+	viewport.add_child(label)
+	await label.layout_changed
+	label.get_element_by_id("scene").set_attribute("class", "go")
+	await label.layout_changed
+
+	var elapsed: Array[float] = [0.0,]
+	var idle_tick: Callable = func() -> void:
+		if label.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_IDLE:
+			elapsed[0] += root.get_process_delta_time()
+	var physics_tick: Callable = func() -> void:
+		if label.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_PHYSICS:
+			elapsed[0] += root.get_physics_process_delta_time()
+	var animation: HTMLElement = label.get_element_by_id("animation")
+	var transition: HTMLElement = label.get_element_by_id("transition")
+	var check_widths: Callable = func(expected: float, message: String) -> void:
+		var animation_width: float = animation.get_bounding_rect().size.x
+		var transition_width: float = transition.get_bounding_rect().size.x
+		_check(absf(animation_width - expected) < 0.2 and absf(transition_width - expected) < 0.2,
+			"%s (animation %s, transition %s, expected %s)" % [message, animation_width, transition_width, expected])
+	process_frame.connect(idle_tick)
+	physics_frame.connect(physics_tick)
+	_check(label.is_physics_processing_internal() and not label.is_processing_internal(),
+		"Physics mode ticks CSS effects only in physics processing")
+	while elapsed[0] < 0.11:
+		await RenderingServer.frame_post_draw
+	check_widths.call(20.0, "The starting width is held during the physics-driven delay")
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_IDLE
+	_check(label.is_processing_internal() and not label.is_physics_processing_internal(),
+		"Idle mode switches the active frame callback")
+	while elapsed[0] < 0.30:
+		await RenderingServer.frame_post_draw
+	check_widths.call(20.0, "Switching to Idle preserves the remaining delay")
+	while elapsed[0] < 0.52:
+		await RenderingServer.frame_post_draw
+	var before_switch: float = 20.0 + (elapsed[0] - 0.4) * 100.0
+	check_widths.call(before_switch, "Both effects advance with the selected idle frame deltas")
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
+	check_widths.call(before_switch, "Switching to Physics preserves the sampled progress")
+	var next_sample: float = elapsed[0] + 0.15
+	while elapsed[0] < next_sample:
+		await RenderingServer.frame_post_draw
+	check_widths.call(20.0 + (elapsed[0] - 0.4) * 100.0,
+		"Both effects resume from the same time and advance with the scaled physics step")
+
+	process_frame.disconnect(idle_tick)
+	physics_frame.disconnect(physics_tick)
+	viewport.queue_free()
+	Engine.time_scale = previous_scale
+	Engine.physics_ticks_per_second = previous_rate
 
 
 func _check_transform_matrix_transitions() -> void:
