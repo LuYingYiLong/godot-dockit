@@ -396,7 +396,7 @@ Colors participate in inheritance and `currentColor` resolution. Matching transl
 
 ## Animations
 
-In `HTMLLabel`, the Inspector's `animation_process_mode` sets the frame delta for both CSS animations and transitions. `Idle` is the default, and `Physics` uses the physics step. Changing modes preserves playback progress and remaining delays.
+In `HTMLLabel`, the Inspector's `animation_process_mode` controls how both CSS animations and transitions advance. `Idle` is the default, `Physics` uses the physics step, and `Manual` advances with calls to `advance_animation(delta)` in seconds. Changing modes preserves playback progress and remaining delays. Pass `0.0` to apply pending layout changes at the current time.
 
 `@keyframes` accepts case-sensitive names, `from`, `to`, percentages, and comma-separated offset lists. Declarations at the same offset follow source order. Each property uses only its own keyframes and takes its underlying value at omitted endpoints. Keyframes resolve `var()` on the animated element and discard `!important` declarations. When several rules define the same name, the last rule in the highest-priority layer wins. Local `@import`, `@media`, and `@supports` can supply keyframe rules. [CSS Animations keyframes](https://www.w3.org/TR/css-animations-1/#keyframes)
 

@@ -135,6 +135,7 @@ public:
 	enum AnimationProcessMode {
 		ANIMATION_PROCESS_IDLE,
 		ANIMATION_PROCESS_PHYSICS,
+		ANIMATION_PROCESS_MANUAL,
 	};
 
 private:
@@ -196,6 +197,7 @@ private:
 
 	void ensure_controls();
 	void queue_refresh();
+	void flush_queued_refresh();
 	void queue_interaction_style_refresh();
 	void on_auto_content_update();
 	void on_transition_frame(bool p_size_changed);
@@ -292,6 +294,7 @@ public:
 	bool is_context_menu_enabled() const; // 返回文本字段是否显示编辑菜单
 	void set_animation_process_mode(AnimationProcessMode p_mode); // 设置 CSS 动画和过渡的帧更新方式
 	AnimationProcessMode get_animation_process_mode() const; // 返回 CSS 动画和过渡的帧更新方式
+	void advance_animation(double p_delta); // 手动推进 CSS 动画和过渡，时间增量以秒为单位
 	void set_caret_blink_enabled(bool p_enabled); // 设置聚焦文本字段的插入光标是否闪烁
 	bool is_caret_blink_enabled() const; // 返回插入光标是否闪烁
 	void set_caret_blink_interval(double p_interval); // 设置插入光标切换显示状态的间隔，单位为秒

@@ -10255,12 +10255,13 @@ body { margin:0; background:white; }
 func _check_html_label_animation_process_mode() -> void:
 	var label: HTMLLabel = HTMLLabel.new()
 	_check(label.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_IDLE, "HTMLLabel defaults to the Idle animation mode")
-	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
 	var packed: PackedScene = PackedScene.new()
-	_check(packed.pack(label) == OK, "Pack an HTMLLabel with Physics selected")
+	_check(packed.pack(label) == OK, "Pack an HTMLLabel with Manual selected")
 	var restored: HTMLLabel = packed.instantiate() as HTMLLabel
-	_check(restored.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_PHYSICS, "The animation mode survives scene serialization")
+	_check(restored.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_MANUAL, "Manual mode survives scene serialization")
 	restored.free()
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
 
 	var previous_rate: int = Engine.physics_ticks_per_second
 	var previous_scale: float = Engine.time_scale
@@ -10290,11 +10291,9 @@ func _check_html_label_animation_process_mode() -> void:
 	var physics_tick: Callable = func() -> void:
 		if label.animation_process_mode == HTMLLabel.ANIMATION_PROCESS_PHYSICS:
 			elapsed[0] += root.get_physics_process_delta_time()
-	var animation: HTMLElement = label.get_element_by_id("animation")
-	var transition: HTMLElement = label.get_element_by_id("transition")
 	var check_widths: Callable = func(expected: float, message: String) -> void:
-		var animation_width: float = animation.get_bounding_rect().size.x
-		var transition_width: float = transition.get_bounding_rect().size.x
+		var animation_width: float = label.get_element_by_id("animation").get_bounding_rect().size.x
+		var transition_width: float = label.get_element_by_id("transition").get_bounding_rect().size.x
 		_check(absf(animation_width - expected) < 0.2 and absf(transition_width - expected) < 0.2,
 			"%s (animation %s, transition %s, expected %s)" % [message, animation_width, transition_width, expected])
 	process_frame.connect(idle_tick)
@@ -10304,6 +10303,12 @@ func _check_html_label_animation_process_mode() -> void:
 	while elapsed[0] < 0.11:
 		await RenderingServer.frame_post_draw
 	check_widths.call(20.0, "The starting width is held during the physics-driven delay")
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	_check(not label.is_processing_internal() and not label.is_physics_processing_internal(),
+		"Manual mode disables both automatic animation callbacks")
+	label.advance_animation(0.08)
+	elapsed[0] += 0.08
+	check_widths.call(20.0, "Entering Manual and stepping part of the remaining delay holds the starting values")
 	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_IDLE
 	_check(label.is_processing_internal() and not label.is_physics_processing_internal(),
 		"Idle mode switches the active frame callback")
@@ -10314,16 +10319,37 @@ func _check_html_label_animation_process_mode() -> void:
 		await RenderingServer.frame_post_draw
 	var before_switch: float = 20.0 + (elapsed[0] - 0.4) * 100.0
 	check_widths.call(before_switch, "Both effects advance with the selected idle frame deltas")
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	await physics_frame
+	await process_frame
+	check_widths.call(before_switch, "Idle and physics frames leave the Manual sample in place")
+	label.advance_animation(0.2)
+	elapsed[0] += 0.2
+	check_widths.call(before_switch + 20.0, "Manual advancement samples keyframes and transitions synchronously")
 	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_PHYSICS
-	check_widths.call(before_switch, "Switching to Physics preserves the sampled progress")
+	check_widths.call(before_switch + 20.0, "Switching from Manual to Physics preserves the sampled progress")
 	var next_sample: float = elapsed[0] + 0.15
 	while elapsed[0] < next_sample:
 		await RenderingServer.frame_post_draw
 	check_widths.call(20.0 + (elapsed[0] - 0.4) * 100.0,
 		"Both effects resume from the same time and advance with the scaled physics step")
+	label.advance_animation(0.05)
+	elapsed[0] += 0.05
+	check_widths.call(20.0 + (elapsed[0] - 0.4) * 100.0, "An explicit step can supplement Physics updates")
 
 	process_frame.disconnect(idle_tick)
 	physics_frame.disconnect(physics_tick)
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	label.text = label.text.replace("420px", "620px")
+	label.advance_animation(0.0)
+	check_widths.call(20.0, "A zero step applies pending source changes")
+	label.get_element_by_id("scene").set_attribute("class", "go")
+	label.advance_animation(0.5)
+	check_widths.call(35.0, "The first manual step includes the delay of a pending style change")
+	label.advance_animation(4.0)
+	check_widths.call(620.0, "A large manual step reaches the final values of both effects")
+	_check(label.get_content_size().x >= 620, "Manual advancement refreshes the content size before returning")
+
 	viewport.queue_free()
 	Engine.time_scale = previous_scale
 	Engine.physics_ticks_per_second = previous_rate

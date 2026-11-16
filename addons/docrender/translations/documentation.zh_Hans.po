@@ -2722,14 +2722,20 @@ msgstr "如果为 [code]true[/code]，聚焦的文本字段会显示闪烁的插
 msgid "The time in seconds between changes in caret visibility when [member caret_blink] is enabled."
 msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态的间隔，单位为秒。"
 
-msgid "Chooses whether CSS animations and transitions advance with the idle or physics frame delta. Switching modes preserves the current progress and any remaining delay."
-msgstr "选择 CSS 动画和过渡使用空闲帧还是物理帧的时间增量推进。切换模式时保留当前进度和剩余延迟。"
+msgid "Chooses when CSS animations and transitions advance. Idle uses the idle frame delta, Physics uses the physics frame delta, and Manual uses calls to [method advance_animation]. Switching modes preserves the current progress and any remaining delay."
+msgstr "选择 CSS 动画和过渡的推进方式。Idle 使用空闲帧的时间增量，Physics 使用物理帧的时间增量，Manual 通过调用 [method advance_animation] 推进。切换模式时保留当前进度和剩余延迟。"
+
+msgid "Applies pending layout changes and advances CSS animations and transitions by [param delta] seconds while this label is in the scene tree. The delta must be finite and non-negative. Pass [code]0.0[/code] to apply pending changes at the current time. In Idle or Physics mode, this step adds to automatic updates."
+msgstr "控件在场景树中时，应用待处理的布局变更并将 CSS 动画和过渡推进 [param delta] 秒。时间增量必须为有限非负数。传入 [code]0.0[/code] 可在当前时间应用待处理的变更。在 Idle 或 Physics 模式下，本次推进会叠加到自动更新。"
 
 msgid "Advances CSS animations and transitions during idle processing."
 msgstr "在空闲处理阶段推进 CSS 动画和过渡。"
 
 msgid "Advances CSS animations and transitions during physics processing."
 msgstr "在物理处理阶段推进 CSS 动画和过渡。"
+
+msgid "Advances CSS animations and transitions through calls to [method advance_animation]."
+msgstr "通过调用 [method advance_animation] 推进 CSS 动画和过渡。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""

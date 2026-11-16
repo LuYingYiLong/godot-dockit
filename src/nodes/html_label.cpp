@@ -710,6 +710,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &HTMLLabel::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("set_animation_process_mode", "mode"), &HTMLLabel::set_animation_process_mode);
 	ClassDB::bind_method(D_METHOD("get_animation_process_mode"), &HTMLLabel::get_animation_process_mode);
+	ClassDB::bind_method(D_METHOD("advance_animation", "delta"), &HTMLLabel::advance_animation);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_enabled", "enabled"), &HTMLLabel::set_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("is_caret_blink_enabled"), &HTMLLabel::is_caret_blink_enabled);
 	ClassDB::bind_method(D_METHOD("set_caret_blink_interval", "interval"), &HTMLLabel::set_caret_blink_interval);
@@ -720,6 +721,7 @@ void HTMLLabel::_bind_methods() {
 
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
+	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
@@ -727,7 +729,7 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics"),
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
 		"set_animation_process_mode", "get_animation_process_mode");
 	ADD_GROUP("Caret", "caret_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
@@ -1129,7 +1131,7 @@ bool HTMLLabel::is_context_menu_enabled() const {
 }
 
 void HTMLLabel::set_animation_process_mode(AnimationProcessMode p_mode) {
-	ERR_FAIL_COND(p_mode != ANIMATION_PROCESS_IDLE && p_mode != ANIMATION_PROCESS_PHYSICS);
+	ERR_FAIL_COND(p_mode < ANIMATION_PROCESS_IDLE || p_mode > ANIMATION_PROCESS_MANUAL);
 	if (animation_process_mode == p_mode) return;
 	animation_process_mode = p_mode;
 	update_internal_processing();
@@ -1137,6 +1139,17 @@ void HTMLLabel::set_animation_process_mode(AnimationProcessMode p_mode) {
 
 HTMLLabel::AnimationProcessMode HTMLLabel::get_animation_process_mode() const {
 	return animation_process_mode;
+}
+
+void HTMLLabel::advance_animation(double p_delta) {
+	ERR_FAIL_COND_MSG(!std::isfinite(p_delta) || p_delta < 0.0, "Animation delta must be finite and non-negative.");
+	if (!is_inside_tree()) return;
+	// Commit pending style changes at the current time before moving the clock.
+	flush_queued_refresh();
+	if (viewport_size.x <= 0) return;
+	layout->advance_css_animations(p_delta);
+	flush_queued_refresh();
+	update_internal_processing();
 }
 
 void HTMLLabel::set_caret_blink_enabled(bool p_enabled) {
@@ -1242,8 +1255,12 @@ void HTMLLabel::queue_refresh() {
 	hover_passes_remaining = HOVER_PASSES;
 	if (canvas && is_inside_tree() && !refresh_queued) {
 		refresh_queued = true;
-		callable_mp(this, &HTMLLabel::refresh).call_deferred();
+		callable_mp(this, &HTMLLabel::flush_queued_refresh).call_deferred();
 	}
+}
+
+void HTMLLabel::flush_queued_refresh() {
+	if (refresh_queued) refresh();
 }
 
 void HTMLLabel::queue_interaction_style_refresh() {

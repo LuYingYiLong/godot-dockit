@@ -23,6 +23,13 @@
 				Activates a visible link or a form control in this label. A fragment link requests an anchor scroll before emitting [signal link_pressed]. A command button emits [signal button_pressed]. Form buttons, labels, toggles, and dropdowns perform their corresponding actions. Returns [code]true[/code] if activation was dispatched.
 			</description>
 		</method>
+		<method name="advance_animation">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Applies pending layout changes and advances CSS animations and transitions by [param delta] seconds while this label is in the scene tree. The delta must be finite and non-negative. Pass [code]0.0[/code] to apply pending changes at the current time. In Idle or Physics mode, this step adds to automatic updates.
+			</description>
+		</method>
 		<method name="focus_element">
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
@@ -161,7 +168,7 @@
 	</methods>
 	<members>
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">
-			Chooses whether CSS animations and transitions advance with the idle or physics frame delta. Switching modes preserves the current progress and any remaining delay.
+			Chooses when CSS animations and transitions advance. Idle uses the idle frame delta, Physics uses the physics frame delta, and Manual uses calls to [method advance_animation]. Switching modes preserves the current progress and any remaining delay.
 		</member>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
 			Project resource directory used to resolve relative image paths for [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
@@ -273,6 +280,9 @@
 		</constant>
 		<constant name="ANIMATION_PROCESS_PHYSICS" value="1" enum="AnimationProcessMode">
 			Advances CSS animations and transitions during physics processing.
+		</constant>
+		<constant name="ANIMATION_PROCESS_MANUAL" value="2" enum="AnimationProcessMode">
+			Advances CSS animations and transitions through calls to [method advance_animation].
 		</constant>
 	</constants>
 </class>
