@@ -492,6 +492,7 @@ func _run() -> void:
 	await _check_scroll_snap()
 	await _check_sticky_positioning()
 	await _check_author_hover()
+	await _check_selectable_cursor()
 	await _check_focus_within()
 	await _check_dom_input()
 	await _check_text_input_batch()
@@ -14406,6 +14407,59 @@ func _check_author_hover() -> void:
 	var second: HTMLElement = label.get_element_by_id("hover_second")
 	_check(not card.matches(":hover") and second.matches(":hover"), "Scrolling updates the hover match under a stationary pointer")
 	_check(is_equal_approx(second.get_bounding_rect().size.x, 110.0), "Scrolling activates the newly hovered rule")
+	viewport.queue_free()
+
+
+func _check_selectable_cursor() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(260, 240)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(260.0, 240.0)
+	label.text = """<style>
+		body { margin: 0; }
+		div { height: 30px; }
+		#blocked { user-select: none; }
+		#crosshair { cursor: crosshair; }
+		#stack { position: relative; }
+		#cover { position: absolute; inset: 0; background: white; }
+		#shifted { display: inline-block; transform: translateX(60px); }
+		#clip { width: 25px; overflow: hidden; white-space: nowrap; }
+		</style>
+		<div><span id="plain">Example</span></div>
+		<div><span id="blocked">Blocked</span></div>
+		<div><a id="link" href="#plain">Link</a></div>
+		<div><span id="crosshair">Custom</span></div>
+		<div id="stack"><span id="covered">Covered</span><div id="cover"></div></div>
+		<div><span id="shifted">Shifted</span></div>
+		<div id="clip"><span id="clipped">Overflowing</span></div>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	viewport.notify_mouse_entered()
+	var cases: Array[Dictionary] = [
+		{"target": "plain", "shape": Control.CURSOR_IBEAM},
+		{"target": "plain", "offset": Vector2(100.0, 0.0), "shape": Control.CURSOR_ARROW},
+		{"target": "blocked", "shape": Control.CURSOR_ARROW},
+		{"target": "link", "shape": Control.CURSOR_POINTING_HAND},
+		{"target": "crosshair", "shape": Control.CURSOR_CROSS},
+		{"target": "covered", "shape": Control.CURSOR_ARROW},
+		{"target": "shifted", "shape": Control.CURSOR_IBEAM},
+		{"target": "clipped", "shape": Control.CURSOR_ARROW},
+	]
+	for fixture: Dictionary in cases:
+		var id: String = fixture["target"]
+		var target: HTMLElement = label.get_element_by_id(id)
+		var offset: Vector2 = fixture.get("offset", Vector2.ZERO)
+		var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+		motion.position = target.get_bounding_rect().get_center() + offset
+		motion.global_position = motion.position
+		viewport.push_input(motion, true)
+		await process_frame
+		await process_frame
+		var hovered: Control = viewport.gui_get_hovered_control()
+		_check(hovered != null and hovered.mouse_default_cursor_shape == fixture["shape"],
+			"HTML cursor at %s + %s matches selectable geometry and CSS" % [id, offset])
 	viewport.queue_free()
 
 

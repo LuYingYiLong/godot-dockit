@@ -52,6 +52,8 @@ namespace docrender {
 			HTMLPlaneTransform inverse;
 			std::vector<TransformedClip> clips;
 			int8_t ellipsis_direction = 0;
+			const litehtml::element* selection_owner = nullptr;
+			bool selectable = false;
 		};
 
 		struct ElidedSource {
@@ -205,6 +207,7 @@ namespace docrender {
 		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target) const;
 		const auto& get_auto_content_text() const { return auto_content_text; }
 		int64_t hit_test_text(const godot::Vector2& p_point) const;
+		bool hit_test_selectable_text(const godot::Vector2& p_point, const litehtml::element& p_target) const;
 		godot::TypedArray<godot::Rect2> get_selection_rects(int64_t p_from, int64_t p_to) const;
 
 		void clear_diagnostics() { diagnostic_runs.clear(); }

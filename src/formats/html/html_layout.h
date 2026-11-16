@@ -193,7 +193,7 @@ class HTMLLayout : public godot::RefCounted {
 	void repaint_input();
 	bool set_interaction_pseudo(const godot::Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled);
 	void mark_styles_pending();
-	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link) const;
+	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const;
 	void record_css_diagnostics();
 	bool refresh_cssom();
 	struct CSSOMSheet;

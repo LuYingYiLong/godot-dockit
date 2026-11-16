@@ -866,7 +866,7 @@ void fragment() {
 					const Rect2 visible = run.clips.empty() && run.clip ? run.matrix.xform(rect).intersection(*run.clip) :
 						clipped_visual_bounds(rect, run.matrix, run.clips);
 					text_runs.push_back({ text->layout, rect, visible, text->offset, text->length,
-						run.matrix, run.matrix.inverse(), run.clips, ellipsis_direction });
+						run.matrix, run.matrix.inverse(), run.clips, ellipsis_direction, text->selection_owner, text->selectable });
 				}
 			}
 		}
@@ -1157,6 +1157,7 @@ void fragment() {
 							(source == "\t" || source == "\n"));
 						text->offset = append(replaced ? String(" ") : String::utf8(source.c_str()));
 						text->selectable = p_selectable;
+						text->selection_owner = p_element->parent().get();
 						return;
 					}
 				}
@@ -1286,6 +1287,25 @@ void fragment() {
 			result.offset = CLAMP(result.offset, int64_t(result.scope.x), int64_t(result.scope.y));
 		}
 		return result;
+	}
+
+	bool HTMLPaintRecorder::hit_test_selectable_text(const Vector2& p_point, const element& p_target) const {
+		for (auto run = text_runs.rbegin(); run != text_runs.rend(); ++run) {
+			if (run->length <= 0 || !run->selection_owner || !run->visible_rect.has_point(p_point)) continue;
+			const Vector2 local = run->inverse.xform(p_point);
+			if (!local.is_finite() || !run->rect.has_point(local)) continue;
+
+			int remaining = MAX_ROUNDED_CLIPS;
+			const bool clipped = std::any_of(run->clips.rbegin(), run->clips.rend(), [&](const auto& clip) {
+				return !clip.contains_point(p_point, use_precise_clip(clip, remaining));
+			});
+			if (clipped) continue;
+			if (run->selection_owner == &p_target) return run->selectable;
+			for (auto owner = run->selection_owner->parent(); owner; owner = owner->parent()) {
+				if (owner.get() == &p_target) return run->selectable;
+			}
+		}
+		return false;
 	}
 
 	int64_t HTMLPaintRecorder::hit_test_text(const Vector2& p_point) const {
@@ -1490,6 +1510,7 @@ void fragment() {
 		if (fragment) p_source = fragment->original_renderer()->src_el().get();
 		const auto parent = p_source && p_source->is_text() ? p_source->parent() : nullptr;
 		const auto* tag = dynamic_cast<const html_tag*>(parent ? parent.get() : p_source);
+		p_text.selection_owner = tag;
 		if (tag) {
 			const auto colors = tag->get_selection_colors(p_color);
 			if (colors.background) p_text.selection_background = to_color(*colors.background);

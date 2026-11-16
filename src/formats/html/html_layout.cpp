@@ -2386,9 +2386,13 @@ String HTMLLayout::get_activatable_link_uri(const Ref<HTMLElement>& p_element) c
 	return href && get_element_scroll_bounds(p_element) ? String::utf8(href) : String();
 }
 
-std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_over_link) const {
+std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const {
 	const auto element = find_html_ancestor(hit_test_element(p_position));
 	r_over_link = bool(find_link_element(element));
+	if (r_over_selectable_text) {
+		*r_over_selectable_text = element && !r_over_link &&
+			state->container->get_paint_recorder().hit_test_selectable_text(p_position, *element);
+	}
 	return element ? std::string_view(element->css().get_cursor()) : std::string_view();
 }
 

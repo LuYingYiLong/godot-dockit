@@ -43,6 +43,7 @@ namespace docrender {
 		bool selectable = true;
 		std::optional<godot::Color> selection_foreground;
 		std::optional<godot::Color> selection_background;
+		const litehtml::element* selection_owner = nullptr;
 	};
 
 	struct HTMLImage {

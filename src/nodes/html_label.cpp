@@ -725,9 +725,11 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 		return;
 	}
 	bool over_link = false;
-	const auto css_cursor = get_css_cursor(label->layout->get_cursor_at(*p_point, over_link));
+	bool over_selectable_text = false;
+	const auto css_cursor = get_css_cursor(label->layout->get_cursor_at(*p_point, over_link,
+		label->selection_enabled ? &over_selectable_text : nullptr));
 	set_default_cursor_shape(css_cursor.value_or(over_link ? CURSOR_POINTING_HAND :
-		(label->selection_enabled ? CURSOR_IBEAM : CURSOR_ARROW)));
+		(over_selectable_text ? CURSOR_IBEAM : CURSOR_ARROW)));
 }
 
 HTMLLabel::HTMLLabel() {
