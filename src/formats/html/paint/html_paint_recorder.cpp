@@ -1540,9 +1540,41 @@ void fragment() {
 		del_clip();
 	}
 
-	void HTMLPaintRecorder::draw_input_chrome(const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
-		if (!push_content_clip(p_clip)) return;
+	void HTMLPaintRecorder::fill_rounded_color(const Rect2& p_rect, const Color& p_color, float p_radius) {
+		if (!p_rect.has_area() || p_color.a == 0) return;
+		if (p_radius <= 0) {
+			fill_rect(p_rect, p_color);
+			return;
+		}
+		border_radiuses radii;
+		radii.top_left_x = radii.top_left_y = radii.top_right_x = radii.top_right_y = p_radius;
+		radii.bottom_left_x = radii.bottom_left_y = radii.bottom_right_x = radii.bottom_right_y = p_radius;
+		push_clip(RoundedRect(p_rect, radii), active_geometry ? active_geometry->matrix : Transform2D());
 		fill_rect(p_rect, p_color);
+		del_clip();
+	}
+
+	void HTMLPaintRecorder::draw_input_check(const Rect2& p_box, const Color& p_color) {
+		if (!push_content_clip(p_box)) return;
+		const float extent = std::min(p_box.size.x, p_box.size.y);
+		const Vector2 origin = p_box.get_center() - Vector2(extent, extent) * 0.5;
+		auto polygon = std::make_shared<HTMLClipPolygon>();
+		auto& points = polygon->outlines.emplace_back().contours.emplace_back();
+		for (const auto& point : std::array{
+			Vector2(0.18, 0.49), Vector2(0.29, 0.38), Vector2(0.45, 0.55),
+			Vector2(0.74, 0.24), Vector2(0.86, 0.35), Vector2(0.45, 0.78),
+		}) points.push_back(origin + point * extent);
+		const auto boundary = polygon->bounds();
+		push_clip({ RoundedRect(boundary, {}), active_geometry ? active_geometry->matrix : Transform2D(),
+			ClipAxes::both, true, polygon });
+		fill_rect(boundary, p_color);
+		del_clip();
+		del_clip();
+	}
+
+	void HTMLPaintRecorder::draw_input_chrome(const Rect2& p_clip, const Rect2& p_rect, const Color& p_color, float p_radius) {
+		if (!push_content_clip(p_clip)) return;
+		fill_rounded_color(p_rect, p_color, p_radius);
 		del_clip();
 	}
 
@@ -2104,19 +2136,54 @@ void fragment() {
 		active_geometry = nullptr;
 	}
 
+	namespace {
+		bool update_scrollbar_target(std::optional<HTMLScrollbarDrag>& r_target, const std::optional<HTMLScrollbarDrag>& p_target) {
+			if (r_target.has_value() == p_target.has_value() &&
+				(!p_target || (r_target->axis == p_target->axis && r_target->element.lock() == p_target->element.lock()))) return false;
+			r_target = p_target;
+			return true;
+		}
+	}
+
+	bool HTMLPaintRecorder::set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target) {
+		return update_scrollbar_target(scrollbar_hovered, p_target);
+	}
+
+	bool HTMLPaintRecorder::set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target) {
+		return update_scrollbar_target(scrollbar_pressed, p_target);
+	}
+
+	void HTMLPaintRecorder::paint_scrollbar(const Rect2& p_track, const Rect2& p_thumb, int p_axis,
+		const HTMLScrollbarAppearance& p_appearance) {
+		const auto matches = [&](const auto& p_target) {
+			return p_target && p_target->axis == p_axis && active_geometry &&
+				p_target->element.lock() == active_geometry->item->src_el();
+		};
+		const bool pressed = matches(scrollbar_pressed);
+		const bool hot = pressed || matches(scrollbar_hovered);
+		fill_rect(p_track, p_appearance.colors.value_or(HTMLScrollbarColors{}).track);
+		const Rect2 thumb = p_appearance.visible_thumb(p_thumb, p_axis, hot);
+		fill_rounded_color(thumb, p_appearance.thumb_color(pressed), std::min(thumb.size.x, thumb.size.y) * 0.5);
+	}
+
+	void HTMLPaintRecorder::draw_input_scrollbar(const Rect2& p_clip, const Rect2& p_track, const Rect2& p_thumb,
+		int p_axis, const HTMLScrollbarAppearance& p_appearance) {
+		if (!push_content_clip(p_clip)) return;
+		paint_scrollbar(p_track, p_thumb, p_axis, p_appearance);
+		del_clip();
+	}
+
 	void HTMLPaintRecorder::draw_scrollbars(const render_item& p_item) {
 		if (!recording_geometry->has_scrollbars() || has_elided_ancestor(p_item)) return;
 		const auto* geometry = recording_geometry->find_renderer(&p_item);
 		if (!geometry) return;
 		const auto bars = geometry->scrollbars();
 		active_geometry = geometry;
-		const auto colors = html_scrollbar_appearance(p_item.css()).colors.value_or(HTMLScrollbarColors{});
+		const auto appearance = html_scrollbar_appearance(p_item.css());
 		for (int axis = 0; axis < 2; ++axis) {
 			const auto& bar = bars[axis];
 			if (!bar.track.has_area()) continue;
-			fill_rect(bar.track, colors.track);
-			const Rect2 thumb = bar.thumb.grow(-1);
-			fill_rect(thumb.has_area() ? thumb : bar.thumb, colors.thumb);
+			paint_scrollbar(bar.track, bar.thumb, axis, appearance);
 			pointer_targets.push_back({ geometry, axis, bar.track });
 			const Rect2 bounds = geometry->matrix.xform(bar.track);
 			scrollbar_bounds = scrollbar_bounds.has_area() ? scrollbar_bounds.merge(bounds) : bounds;

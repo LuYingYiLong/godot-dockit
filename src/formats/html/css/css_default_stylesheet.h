@@ -46,20 +46,20 @@ body {
 }
 
 p {
-	display:block; 
-	margin-top:1em; 
-	margin-bottom:1em;
+	display: block;
+	margin-block: 1em;
+	margin-inline: 0;
 }
 
 b, strong {
 	display:inline; 
-	font-weight:bold;
+	font-weight:bolder;
 }
 
-i, em, cite {
-	display:inline; 
-	font-style:italic;
-}
+i, em, cite, dfn, var, address { font-style: italic; }
+address { display: block; }
+small { font-size: smaller; }
+abbr[title] { text-decoration: underline dotted; }
 
 ins, u {
 	text-decoration:underline
@@ -78,12 +78,12 @@ center
 a:link
 {
 	text-decoration: underline;
-	color: #00f;
+	color: #0000ee;
 	cursor: pointer;
 }
 
 h1, h2, h3, h4, h5, h6, div {
-	display:block;
+	display: block;
 }
 
 h1 {
@@ -108,6 +108,7 @@ h3 {
 }
 
 h4 {
+	font-size: 1em;
 	font-weight:bold; 
 	margin-top:1.33em; 
 	margin-bottom:1.33em
@@ -166,12 +167,11 @@ img[align="left"]
 
 hr {
 	display: block;
-	margin-top: 0.5em;
-	margin-bottom: 0.5em;
-	margin-left: auto;
-	margin-right: auto;
-	border-style: inset;
-	border-width: 1px
+	margin-block: 0.5em;
+	margin-inline: auto;
+	overflow: hidden;
+	color: gray;
+	border: 1px inset currentColor
 }
 
 
@@ -181,17 +181,15 @@ table {
 	display: table;
 	border-collapse: separate;
 	border-spacing: 2px;
-	border-top-color:gray;
-	border-left-color:gray;
-	border-bottom-color:black;
-	border-right-color:black;
+	border-color: gray;
 	font-size: medium;
 	font-weight: normal;
 	font-style: normal;
 }
 
 tbody, tfoot, thead {
-	vertical-align:middle;
+	vertical-align: middle;
+	border-color: inherit;
 }
 tbody { display: table-row-group; }
 thead { display: table-header-group; }
@@ -214,6 +212,7 @@ td, th {
 
 th {
 	font-weight: bold;
+	text-align: center;
 }
 
 table[border] {
@@ -251,6 +250,7 @@ table[align=center] {
 
 caption {
 	display: table-caption;
+	text-align: center;
 }
 
 td[nowrap], th[nowrap] {
@@ -273,63 +273,53 @@ pre, xmp, plaintext, listing {
 ul, menu, dir {
 	display: block;
 	list-style-type: disc;
-	margin-top: 1em;
-	margin-bottom: 1em;
-	margin-left: 0;
-	margin-right: 0;
-	padding-left: 40px
+	margin-block: 1em;
+	margin-inline: 0;
+	padding-inline-start: 40px
 }
 
 ol {
 	display: block;
 	list-style-type: decimal;
-	margin-top: 1em;
-	margin-bottom: 1em;
-	margin-left: 0;
-	margin-right: 0;
-	padding-left: 40px
+	margin-block: 1em;
+	margin-inline: 0;
+	padding-inline-start: 40px
 }
 
 li {
 	display: list-item;
 }
 
-ul ul, ol ul {
+:is(ul, ol, menu, dir) :is(ul, menu, dir) {
 	list-style-type: circle;
 }
 
-ol ol ul, ol ul ul, ul ol ul, ul ul ul {
+:is(ul, ol, menu, dir) :is(ul, ol, menu, dir) :is(ul, menu, dir) {
 	list-style-type: square;
 }
 
 dd {
 	display: block;
-	margin-left: 40px;
+	margin-inline-start: 40px;
 }
 
 dl {
 	display: block;
-	margin-top: 1em;
-	margin-bottom: 1em;
-	margin-left: 0;
-	margin-right: 0;
+	margin-block: 1em;
+	margin-inline: 0;
 }
 
-dt {
-	display: block;
-}
+dt { display: block; }
 
-ol ul, ul ol, ul ul, ol ol {
-	margin-top: 0;
-	margin-bottom: 0
+:is(ul, ol, menu, dl, dir) :is(ul, ol, menu, dl, dir) {
+	margin-block: 0;
 }
 
 blockquote {
 	display: block;
 	margin-top: 1em;
 	margin-bottom: 1em;
-	margin-left: 40px;
-	margin-right: 40px;
+	margin-inline: 40px;
 }
 
 /*********** FORM ELEMENTS ************/
@@ -343,65 +333,116 @@ option, optgroup, datalist {
 	display: none;
 }
 
-fieldset { display: block; border: 1px solid #64748b; padding: 0.5em 0.75em; margin: 0.5em 0; }
-legend { display: block; font-weight: bold; }
-label { cursor: pointer; }
+fieldset {
+	display: block;
+	margin-inline: 2px;
+	border: 2px groove #f0f0f0;
+	padding-block: 0.35em 0.625em;
+	padding-inline: 0.75em;
+}
+legend { display: block; padding-inline: 2px; }
+label { cursor: default; }
 
-button, meter, progress, select, input[type=reset], input[type=button], input[type=submit], input[type=checkbox], input[type=radio] {
+button, meter, progress, select,
+input:is([type="reset" i], [type="button" i], [type="submit" i], [type="checkbox" i], [type="radio" i]) {
 	user-select: none;
 }
-progress, meter { appearance: auto; display: inline-block; width: 10em; height: 1em; vertical-align: -0.2em; }
-input, textarea, keygen, select, button, isindex {
+
+progress, meter {
+	display: inline-block;
 	appearance: auto;
-	margin: 0em;
-	color: initial;
+	box-sizing: border-box;
+	width: 10em;
+	height: 1em;
+	vertical-align: -0.2em;
+}
+meter { width: 5em; }
+
+input, textarea, select, button {
+	appearance: auto;
+	display: inline-block;
+	font: 13.333px Arial, sans-serif;
+	margin: 0;
+	color: black;
 	line-height: normal;
 	text-transform: none;
 	text-indent: 0;
 	text-shadow: none;
-	display: inline-block;
 }
-input:not([type]), input[type="text" i], input[type="" i], input:is([type="search" i], [type="password" i], [type="email" i], [type="url" i], [type="tel" i], [type="number" i]), input[type="checkbox" i], input[type="radio" i], select {
-	display: inline-block; box-sizing: border-box; font: inherit;
-	background-color: #ffffff; color: #182230; border: 1px solid #64748b; border-radius: 4px;
+
+input:not(:is([type="checkbox" i], [type="radio" i], [type="range" i], [type="hidden" i],
+	[type="button" i], [type="submit" i], [type="reset" i], [type="image" i], [type="file" i],
+	[type="color" i], [type="date" i], [type="datetime-local" i], [type="month" i], [type="week" i], [type="time" i])) {
+	width: 169px;
+	height: 1lh;
+	background-color: white;
+	border: 1px solid #767676;
+	padding: 2px 3px;
+	border-radius: 2px;
+	cursor: text;
 }
-input:not([type]), input[type="text" i], input[type="" i], input:is([type="search" i], [type="password" i], [type="email" i], [type="url" i], [type="tel" i], [type="number" i]) {
-	width: 12em; height: 1.75em; padding: 0 0.4em; cursor: text;
+
+input:is([type="checkbox" i], [type="radio" i]) {
+	width: 13px;
+	height: 13px;
+	box-sizing: border-box;
+	margin: 3px 3px 3px 4px;
+	border: 1px solid #767676;
+	border-radius: 2px;
+	background-color: white;
+	cursor: default;
 }
-input[type="checkbox" i], input[type="radio" i] {
-	width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
+input[type="radio" i] { margin: 3px 3px 0 5px; border-radius: 50%; }
+input:is([type="checkbox" i], [type="radio" i]):checked { color: white; }
+input[type="range" i] { width: 129px; height: 16px; margin: 2px; cursor: default; }
+
+button, input:is([type="button" i], [type="submit" i], [type="reset" i]) {
+	box-sizing: border-box;
+	padding: 2px 7px;
+	background-color: #f0f0f0;
+	border: 1px solid #767676;
+	border-radius: 2px;
+	text-align: center;
+	cursor: default;
 }
-input[type="range" i] { width: 12em; height: 1.75em; font: inherit; cursor: pointer; }
-input:is([type="button" i], [type="submit" i], [type="reset" i]) {
-	width: 7em; height: 1.8em; font: inherit; padding: 0.15em 0.4em; box-sizing: border-box; cursor: pointer;
+input:is([type="button" i], [type="submit" i], [type="reset" i]) { min-height: 21px; }
+:is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):hover {
+	background-color: #e5e5e5;
+	border-color: #4f4f4f;
 }
-input:is([type="button" i], [type="submit" i], [type="reset" i]):not(:disabled) { background: #e2e8f0; color: #182230; border: 1px solid #64748b; border-radius: 4px; }
-input:is([type="button" i], [type="submit" i], [type="reset" i]):active { background-color: #cbd5e1; }
-input[type="radio" i] { border-radius: 50%; }
-input[type="checkbox" i]:checked, input[type="radio" i]:checked { color: #ffffff; }
-select { width: 12em; height: 1.75em; padding: 0 0.4em; cursor: pointer; }
-select:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
-select:focus-visible { outline: 2px solid #2563eb; }
-input:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
+:is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):active {
+	background-color: #f5f5f5;
+	border-color: #8d8d8d;
+}
+:is(button, input, select, textarea):disabled {
+	color: rgb(16 16 16 / 30%);
+	background-color: rgb(239 239 239 / 30%);
+	border-color: rgb(118 118 118 / 30%);
+	cursor: default;
+}
+
+select {
+	box-sizing: border-box;
+	height: 19px;
+	padding-inline: 3px 1px;
+	background-color: white;
+	border: 1px solid #767676;
+	cursor: default;
+}
+select[multiple] { border-radius: 2px; }
 textarea {
-	font: inherit;
-	background-color: #ffffff;
-	color: #182230;
-	border: 1px solid #64748b;
-	border-radius: 4px;
-	padding: 0.2em 0.4em;
+	font-family: monospace;
+	background-color: white;
+	border: 1px solid #767676;
+	padding: 2px;
 	white-space: pre-wrap;
 	overflow: auto;
 	resize: both;
 	cursor: text;
 }
-textarea:disabled { background-color: #e2e8f0; color: #64748b; cursor: default; }
-textarea[hidden], input[hidden], select[hidden] { display: none; }
-textarea:focus-visible { outline: 2px solid #2563eb; }
-input:focus-visible, a[href]:focus-visible, [tabindex]:focus-visible { outline: 2px solid #2563eb; }
-input[type="hidden" i] {
-	display: none !important;
-}
+:is(button, textarea, input, select)[hidden] { display: none; }
+:is(button, input, select, textarea, a[href], [tabindex]):focus-visible { outline: 2px solid #101010; }
+input[type="hidden" i] { display: none !important; }
 
 
 article, aside, footer, header, hgroup, main, nav, search, section
@@ -409,12 +450,12 @@ article, aside, footer, header, hgroup, main, nav, search, section
 	display: block;
 }
 
-details { display: block; }
-details > summary:first-of-type { display: list-item; list-style: disclosure-closed inside; cursor: pointer; }
+details, summary { display: block; }
+details > summary:first-of-type { display: list-item; list-style: disclosure-closed inside; }
 details:open > summary:first-of-type { list-style-type: disclosure-open; }
-details:not(:has(> summary))::before { display: block; content: "▸ Details"; cursor: pointer; }
+details:not(:has(> summary))::before { display: block; content: "▸ Details"; }
 details:open:not(:has(> summary))::before { content: "▾ Details"; }
-details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid #2563eb; }
+details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid #101010; }
 
 ruby { display: inline; }
 ruby > rt { display: block; font-size: 50%; white-space: nowrap; }
@@ -438,8 +479,7 @@ figure {
 	display: block;
 	margin-top: 1em;
 	margin-bottom: 1em;
-	margin-left: 40px;
-	margin-right: 40px;
+	margin-inline: 40px;
 }
 
 figcaption {

@@ -1456,8 +1456,34 @@ std::optional<docrender::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vecto
 	return state->container->get_paint_recorder().scrollbar_at(p_position);
 }
 
+void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position) {
+	if (!state->container) return;
+	std::optional<docrender::HTMLScrollbarDrag> target;
+	if (p_position && state->has_layout()) {
+		target = scrollbar_at(*p_position);
+		if (!target) {
+			const auto element = get_element_at(*p_position);
+			const auto input = text_control(element);
+			if (const auto textarea = std::dynamic_pointer_cast<HTMLTextAreaNode>(input)) {
+				if (const auto local = input_local_point(*element.ptr(), *p_position)) {
+					const auto resize = textarea->resize_axes() != Vector2i() && textarea->get_resize_handle().has_point(*local);
+					if (const auto axis = textarea->editor.scrollbar_at(*local); axis && !resize) {
+						target = docrender::HTMLScrollbarDrag{textarea, *axis ? 1 : 0, 0};
+					}
+				}
+			}
+		}
+	}
+	if (state->container->get_paint_recorder().set_scrollbar_hover(target)) repaint_input();
+}
+
+void HTMLLayout::set_scrollbar_pressed(const std::optional<docrender::HTMLScrollbarDrag>& p_drag) {
+	if (state->container && state->container->get_paint_recorder().set_scrollbar_pressed(p_drag)) repaint_input();
+}
+
 void HTMLLayout::drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, const Vector2& p_position) {
 	if (!state->has_layout() || !p_position.is_finite()) return;
+	set_scrollbar_pressed(p_drag);
 	const auto node = p_drag.element.lock();
 	const auto* renderers = node ? state->geometry.find_element(node.get()) : nullptr;
 	if (!renderers) return;
@@ -1481,6 +1507,7 @@ void HTMLLayout::drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, cons
 }
 
 void HTMLLayout::finish_scrollbar_drag(const docrender::HTMLScrollbarDrag& p_drag) {
+	set_scrollbar_pressed(std::nullopt);
 	const auto node = p_drag.element.lock();
 	if (!node) return;
 	Vector2i axes;

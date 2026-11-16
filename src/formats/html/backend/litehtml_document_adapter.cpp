@@ -471,7 +471,7 @@ namespace litehtml {
 			if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
 				if (const auto* select = dynamic_cast<const docrender::HTMLSelectNode*>(tag); select && select->is_list_box()) {
 					const auto rows = std::min<int64_t>(select->display_size(), 1000);
-					tag->m_style.add_property(_height_, "calc(" + std::to_string(rows) + "lh + " + std::to_string(rows * 4 + 2) + "px)");
+					tag->m_style.add_property(_height_, "calc(" + std::to_string(rows) + "lh + " + std::to_string(rows * 2 + 2) + "px)");
 				}
 				if (const auto direction = lowcase(tag->get_attr("dir", "")); is_one_of(direction, "ltr", "rtl")) {
 					tag->m_style.add_property(_id("direction"), direction);

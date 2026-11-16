@@ -36,25 +36,6 @@ using docrender::HTMLInputNode;
 namespace {
 	constexpr int DRAG_DEADZONE = 6;
 	constexpr int HOVER_PASSES = 2;
-	constexpr const char* BUTTON_STYLES = R"CSS(
-button {
-	color: #1f2937;
-	background-color: #f3f4f6;
-	border: 1px solid #64748b;
-	border-radius: 4px;
-	padding: 4px 10px;
-	cursor: pointer;
-}
-button:active { background-color: #cbd5e1; }
-button:focus-visible { box-shadow: inset 0 0 0 2px #2563eb; }
-button:disabled {
-	color: #4b5563;
-	background-color: #e5e7eb;
-	border-color: #9ca3af;
-	cursor: default;
-}
-button[hidden] { display: none; }
-)CSS";
 
 	std::optional<bool> tab_direction(const InputEventKey& p_key) {
 		if (p_key.is_action_pressed("ui_focus_prev", true, true)) {
@@ -271,6 +252,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			label->layout->finish_scrollbar_drag(*scrollbar_drag);
 		}
 		scrollbar_drag.reset();
+		label->layout->set_scrollbar_pressed(std::nullopt);
 		label->request_hover_check();
 		accept_event();
 		return;
@@ -289,6 +271,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (!button->is_canceled()) move_textarea_drag(point);
 		flush_textarea_resize();
 		textarea_drag.reset();
+		label->layout->set_scrollbar_pressed(std::nullopt);
 		label->request_hover_check();
 		accept_event();
 		return;
@@ -641,6 +624,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 }
 
 void HTMLLabelCanvas::cancel_press() {
+	if (label && (textarea_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
 	textarea_drag.reset();
 	scrollbar_drag.reset();
 	resize_pending.reset();
@@ -1332,11 +1316,11 @@ void HTMLLabel::parse_pending_source() {
 	source_dirty = false;
 	layout_updated = true;
 	if (document.is_valid()) {
-		document->parse_into(*layout.ptr(), BUTTON_STYLES);
+		document->parse_into(*layout.ptr());
 		parsed = layout->get_render_error().is_empty();
 	}
 	else {
-		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, BUTTON_STYLES) == OK;
+		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false) == OK;
 	}
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
@@ -1397,62 +1381,49 @@ void HTMLLabel::update_viewport_scrollbar_style(const docrender::HTMLScrollbarAp
 	const bool theme_dirty = std::exchange(viewport_scrollbar_theme_dirty, false);
 	if (!theme_dirty && viewport_scrollbar_style == p_style) return;
 
-	const auto needs_chrome = [](const docrender::HTMLScrollbarAppearance& p_appearance) {
-		return p_appearance.width != litehtml::scrollbar_width::none &&
-			(p_appearance.width == litehtml::scrollbar_width::thin || p_appearance.colors.has_value());
-	};
-	const bool previous_custom = needs_chrome(viewport_scrollbar_style);
-	const bool next_custom = needs_chrome(p_style);
-	const bool previous_thin = viewport_scrollbar_style.width == litehtml::scrollbar_width::thin;
-	const bool next_thin = p_style.width == litehtml::scrollbar_width::thin;
 	viewport_scrollbar_style = p_style;
-	if (!previous_custom && !next_custom) return;
-
-	static constexpr const char* styles[] = { "scroll", "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed" };
+	const float thickness = p_style.thickness();
+	// All three grabber styleboxes have identical margins. Only the paint rectangle changes.
 	static constexpr const char* icons[] = { "increment", "increment_highlight", "increment_pressed",
 		"decrement", "decrement_highlight", "decrement_pressed" };
+	Ref<ImageTexture> empty;
+	empty.instantiate();
 	for (const bool vertical : { false, true }) {
 		ScrollBar* bar = vertical ? static_cast<ScrollBar*>(scroll_container->get_v_scroll_bar())
 			: static_cast<ScrollBar*>(scroll_container->get_h_scroll_bar());
-		const auto leading = vertical ? SIDE_LEFT : SIDE_TOP;
-		const auto trailing = vertical ? SIDE_RIGHT : SIDE_BOTTOM;
-		const auto padding_before = vertical ? "padding_left" : "padding_top";
-		const auto padding_after = vertical ? "padding_right" : "padding_bottom";
+		const Side inner = vertical ? SIDE_LEFT : SIDE_TOP;
+		const Side outer = vertical ? SIDE_RIGHT : SIDE_BOTTOM;
+		const Side start = vertical ? SIDE_TOP : SIDE_LEFT;
+		const Side end = vertical ? SIDE_BOTTOM : SIDE_RIGHT;
+		const auto make_thumb = [&](bool p_hot, bool p_pressed) {
+			const int axis = vertical ? 1 : 0;
+			const Rect2 lane(0, 0, vertical ? thickness : 17, vertical ? 17 : thickness);
+			const Rect2 thumb = p_style.visible_thumb(lane, axis, p_hot);
+			Ref<StyleBoxFlat> style;
+			style.instantiate();
+			style->set_bg_color(p_style.thumb_color(p_pressed));
+			style->set_content_margin(start, 8.0f);
+			style->set_content_margin(end, 9.0f);
+			style->set_expand_margin(inner, -thumb.position[1 - axis]);
+			style->set_expand_margin(outer, thumb.get_end()[1 - axis] - thickness);
+			style->set_corner_radius_all(Math::ceil(thumb.size[1 - axis] * 0.5f));
+			return style;
+		};
+		Ref<StyleBoxFlat> track;
+		track.instantiate();
+		track->set_bg_color(p_style.colors.value_or(docrender::HTMLScrollbarColors{}).track);
+		track->set_content_margin(inner, thickness * 0.5f);
+		track->set_content_margin(outer, thickness * 0.5f);
 
 		bar->begin_bulk_theme_override();
-		if (previous_custom) {
-			for (const char* style : styles) bar->remove_theme_stylebox_override(style);
-		}
-		if (previous_thin) {
-			for (const char* icon : icons) bar->remove_theme_icon_override(icon);
-			bar->remove_theme_constant_override(padding_before);
-			bar->remove_theme_constant_override(padding_after);
-		}
-		if (next_custom) {
-			const Ref<StyleBox> track = bar->get_theme_stylebox("scroll");
-			const float default_width = track->get_margin(leading) + track->get_margin(trailing) +
-				std::max<int64_t>(0, bar->get_theme_constant(padding_before)) + std::max<int64_t>(0, bar->get_theme_constant(padding_after));
-			const float half_width = p_style.thickness(std::max(6.0f, default_width)) * 0.5f;
-			const auto colors = p_style.colors.value_or(docrender::HTMLScrollbarColors{});
-			for (const char* key : styles) {
-				const bool is_track = StringName(key) == StringName("scroll") || StringName(key) == StringName("scroll_focus");
-				const Ref<StyleBox> source = bar->get_theme_stylebox(key);
-				const Ref<StyleBoxFlat> flat_source = source;
-				Ref<StyleBoxFlat> box;
-				box.instantiate();
-				box->set_bg_color(!p_style.colors && flat_source.is_valid() ? flat_source->get_bg_color() :
-					(is_track ? colors.track : colors.thumb));
-				for (const Side side : { SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM })
-					box->set_content_margin(side, next_thin && (side == leading || side == trailing) ? half_width : source->get_margin(side));
-				bar->add_theme_stylebox_override(key, box);
-			}
-			if (next_thin) {
-				Ref<ImageTexture> empty;
-				empty.instantiate();
-				for (const char* icon : icons) bar->add_theme_icon_override(icon, empty);
-				bar->add_theme_constant_override(padding_before, 0);
-				bar->add_theme_constant_override(padding_after, 0);
-			}
+		bar->add_theme_stylebox_override("scroll", track);
+		bar->add_theme_stylebox_override("scroll_focus", track);
+		bar->add_theme_stylebox_override("grabber", make_thumb(false, false));
+		bar->add_theme_stylebox_override("grabber_highlight", make_thumb(true, false));
+		bar->add_theme_stylebox_override("grabber_pressed", make_thumb(true, true));
+		for (const char* icon : icons) bar->add_theme_icon_override(icon, empty);
+		for (const char* padding : { "padding_left", "padding_right", "padding_top", "padding_bottom" }) {
+			bar->add_theme_constant_override(padding, 0);
 		}
 		bar->end_bulk_theme_override();
 	}
@@ -1812,6 +1783,7 @@ void HTMLLabel::update_interaction() {
 		}
 	}
 
+	layout->update_scrollbar_hover(point);
 	if (!canvas->selection_dragged && !canvas->scrollbar_drag && hover_passes_remaining > 0 && layout->update_hover(point)) {
 		// A hover rule can move or hide its own target. Allow one correction after sorting.
 		--hover_passes_remaining;

@@ -100,7 +100,7 @@ namespace docrender::css {
 		appearance				m_appearance;
 		bool m_fixed_table_layout = false;
 		bool m_hide_empty_cells = false;
-		web_color m_accent_color{37, 99, 235};
+		web_color m_accent_color{0, 117, 255};
 		web_color m_caret_color;
 		double m_opacity = 1.0;
 		std::shared_ptr<const css_transition_styles> m_transitions;

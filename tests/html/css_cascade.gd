@@ -470,6 +470,7 @@ func _run() -> void:
 	await _check_viewport_overflow()
 	await _check_scrollbar_gutter()
 	await _check_scrollbar_styles()
+	_check_chromium_element_defaults()
 	await _check_scroll_insets()
 	await _check_overscroll_behavior()
 	await _check_smooth_scroll_behavior()
@@ -4155,6 +4156,7 @@ func _check_encoded_image_orientation() -> void:
 
 func _check_border_image() -> void:
 	var source: String = """<!doctype html><style>
+		html { scrollbar-width: none; }
 		body { margin: 0; background: #303030; display: grid; grid-template-columns: repeat(5, 72px);
 			grid-auto-rows: 60px; justify-items: start; align-items: start; }
 		.box { width: 26px; height: 24px; margin: 6px; border: 4px solid #008855;
@@ -4663,7 +4665,7 @@ func _check_background_attachment() -> void:
 	nested.size = Vector2(290.0, 150.0)
 	nested.text = """<!doctype html><style>
 		body { margin: 0; background: #303030; }
-		.inner { position: absolute; top: 10px; width: 72px; height: 46px; overflow: auto; }
+		.inner { position: absolute; top: 10px; width: 72px; height: 46px; overflow: auto; scrollbar-width: none; }
 		.content { width: 132px; height: 142px; }
 		#local { left: 10px; background: image(red) 10px 55px / 20% 8px local no-repeat; }
 		#scroll_inner { left: 100px; background: image(blue) 10px 19px / 20% 8px scroll no-repeat; }
@@ -8473,8 +8475,8 @@ func _check_controls() -> void:
 	var reverted: Rect2 = _label_rect(label, "reverted")
 	var reference: Rect2 = _label_rect(label, "reference")
 	_check(reverted.has_area() and reverted.size.is_equal_approx(reference.size), "Button rollback restores default geometry")
-	_check_pixel(image, reverted.position + Vector2(5.0, 5.0), Color("#f3f4f6"), "Button rollback restores the default fill")
-	_check_pixel(image, reference.position + Vector2(5.0, 5.0), Color("#f3f4f6"), "Button default fill")
+	_check_pixel(image, reverted.position + Vector2(5.0, 5.0), Color("#f0f0f0"), "Button rollback restores the default fill")
+	_check_pixel(image, reference.position + Vector2(5.0, 5.0), Color("#f0f0f0"), "Button default fill")
 	_check_pixel(image, _label_rect(label, "layered_pixel").position + Vector2(5.0, 5.0),
 		Color("#2196f3"), "HTMLLabel paints the highest priority layer")
 	_check_pixel(image, _label_rect(label, "specific_pixel").position + Vector2(5.0, 5.0),
@@ -10141,13 +10143,37 @@ Seven</textarea>"""
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var pixels: Image = viewport.get_texture().get_image()
-	_check_pixel(pixels, Vector2(85.0, 16.0), Color("#252525"), "Thin leaves the original outer part of the track clear")
+	_check_pixel(pixels, Vector2(82.0, 16.0), Color("#252525"), "Thin limits the track to the outer 9 pixels")
 	_check_pixel(pixels, Vector2(89.0, 16.0), Color("#ff481e"), "Thin still paints a usable currentColor thumb")
 	_check_pixel(pixels, Vector2(89.0, 41.0), Color("#2855d8"), "The second scrollbar color paints the track")
-	_check_pixel(pixels, Vector2(184.0, 16.0), Color("#39ed35"), "Color inherits and resolves on the scroller, while width uses auto")
+	_check_pixel(pixels, Vector2(186.0, 16.0), Color("#39ed35"), "Color inherits and resolves on the scroller, while width uses auto")
 	_check_pixel(pixels, Vector2(285.0, 16.0), Color("#252525"), "Scrollbar-width none hides the inner track")
 	_check_pixel(pixels, Vector2(341.0, 16.0), Color("#ee25c9"), "Textarea thumb uses its CSS color")
 	_check_pixel(pixels, Vector2(341.0, 41.0), Color("#79dc33"), "Textarea track uses its CSS color")
+	var normal: HTMLElement = label.get_element_by_id("normal")
+	var initial_box: Rect2 = normal.get_bounding_rect()
+	var normal_child: HTMLElement = normal.get_children()[0]
+	var initial_child: Rect2 = normal_child.get_bounding_rect()
+	var hover: InputEventMouseMotion = InputEventMouseMotion.new()
+	hover.position = Vector2(176.0, 16.0)
+	viewport.push_input(hover, true)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	pixels = viewport.get_texture().get_image()
+	_check_pixel(pixels, Vector2(181.0, 16.0), Color("#39ed35"), "Hovering the logical lane widens the painted thumb")
+	_check_pixel(pixels, Vector2(181.0, 41.0), Color("#2855d8"), "Hover leaves the track color unchanged")
+	_check(normal.get_bounding_rect() == initial_box and normal_child.get_bounding_rect() == initial_child,
+		"Scrollbar hover keeps layout and scroll offset stable")
+	_drag_pointer(viewport, Vector2(176.0, 16.0), Vector2(176.0, 36.0))
+	_check(normal_child.get_bounding_rect().position.y < initial_child.position.y,
+		"The logical lane can start a thumb drag outside the visible thumb")
+	hover = InputEventMouseMotion.new()
+	hover.position = Vector2(337.0, 16.0)
+	viewport.push_input(hover, true)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), Vector2(339.0, 16.0), Color("#ee25c9"),
+		"Textarea enlarges only its painted thumb when the logical lane is hovered")
 	var moving: HTMLElement = label.get_element_by_id("moving")
 	var original_y: float = moving.get_bounding_rect().position.y
 	_push_html_wheel(viewport, Vector2(228.0, 24.0), MOUSE_BUTTON_WHEEL_DOWN)
@@ -10157,8 +10183,10 @@ Seven</textarea>"""
 	var bar: VScrollBar = scroll.get_v_scroll_bar()
 	var default_width: float = bar.size.x
 	var html: HTMLElement = port.query_selector("html")
-	_check(bar.visible and not bar.has_theme_stylebox_override("scroll"),
-		"Viewport scrollbar settings come from html rather than body")
+	var default_track: StyleBoxFlat = bar.get_theme_stylebox("scroll") as StyleBoxFlat
+	_check(bar.visible and is_equal_approx(default_width, 15.0) and default_track != null
+		and default_track.bg_color.is_equal_approx(Color("#f1f1f1")),
+		"The viewport uses Fluent defaults when only body sets scrollbar properties")
 	html.set_attribute("style", "scrollbar-width: thin; scrollbar-color: #ec34ee #25c9a4;")
 	await process_frame
 	await process_frame
@@ -10179,9 +10207,44 @@ Seven</textarea>"""
 	html.set_attribute("style", "scrollbar-width: auto; scrollbar-color: auto")
 	await process_frame
 	await process_frame
-	_check(bar.visible and is_equal_approx(bar.size.x, default_width) and not bar.has_theme_stylebox_override("scroll"),
-		"CSS auto restores the native viewport scrollbar theme")
+	var normal_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber") as StyleBoxFlat
+	var hover_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber_highlight") as StyleBoxFlat
+	var pressed_grabber: StyleBoxFlat = bar.get_theme_stylebox("grabber_pressed") as StyleBoxFlat
+	_check(bar.visible and is_equal_approx(bar.size.x, default_width) and normal_grabber != null
+		and normal_grabber.bg_color.is_equal_approx(Color("#00000072")), "CSS auto restores the Fluent viewport palette")
+	_check(normal_grabber != null and hover_grabber != null and pressed_grabber != null
+		and normal_grabber.get_minimum_size() == hover_grabber.get_minimum_size()
+		and normal_grabber.get_minimum_size() == pressed_grabber.get_minimum_size()
+		and hover_grabber.get_expand_margin(SIDE_LEFT) > normal_grabber.get_expand_margin(SIDE_LEFT)
+		and normal_grabber.get_expand_margin(SIDE_RIGHT) == hover_grabber.get_expand_margin(SIDE_RIGHT),
+		"The viewport keeps all grabber hit geometry while widening its visible thumb")
 	viewport.queue_free()
+
+
+func _check_chromium_element_defaults() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = """<!doctype html><style>
+		body { font-size: 16px; margin: 0; }
+		#sized { width: 50px; height: 25px; appearance: none; }
+	</style><address id="address">Address</address><hr id="rule">
+	<input id="text" value="One"><textarea id="area" rows="2" cols="20">Two</textarea>
+	<div><input type="button" id="short_button" value="Go">
+	<input type="button" id="long_button" value="A much longer action"></div>
+	<div><select id="short_select"><option>A</option></select>
+	<select id="long_select"><option>A</option><option>A much longer option</option></select>
+	<select id="sized"><option>An even longer override</option></select></div>
+	<progress id="progress" value=".5"></progress><meter id="meter" value=".5"></meter>"""
+	_check(layout.parse(source) == OK and layout.layout(Vector2i(620, 320)) == OK, "Layout uses the Chromium element defaults")
+	_check(is_equal_approx(_rect(layout, "address").size.x, 620.0)
+		and is_equal_approx(_rect(layout, "rule").size.y, 2.0), "Address and hr use their default block geometry")
+	_check(is_equal_approx(_rect(layout, "text").size.x, 177.0) and _rect(layout, "area").size.y > 20.0,
+		"Text fields and textarea have their light default dimensions")
+	_check(_rect(layout, "long_button").size.x > _rect(layout, "short_button").size.x
+		and _rect(layout, "long_select").size.x > _rect(layout, "short_select").size.x,
+		"Default native button and select widths follow their labels")
+	_check(_rect(layout, "sized").size.is_equal_approx(Vector2(50.0, 25.0)), "Author CSS overrides a default control size")
+	_check(is_equal_approx(_rect(layout, "progress").size.x, 160.0) and is_equal_approx(_rect(layout, "meter").size.x, 80.0),
+		"Progress and meter use distinct Chromium default widths")
 
 
 func _check_css_transitions() -> void:
@@ -13452,7 +13515,8 @@ func _check_gauge_and_ruby_paint() -> void:
 	var image: Image = viewport.get_texture().get_image()
 	var gauge_region: Rect2i = Rect2i(0, 0, 180, 40)
 	var first: Rect2i = _color_bounds(image, gauge_region, Color("#0f6b34"))
-	_check(first.size.x > 0 and _color_bounds(image, gauge_region, Color("#124ca0")).size.x == 70
+	var meter_fill: Vector2i = _color_bounds(image, gauge_region, Color("#124ca0")).size
+	_check(first.size.x > 0 and absi(meter_fill.x - 70) <= 2 and meter_fill.y < 12
 		and _color_bounds(image, gauge_region, Color("#a120bb")).size.x == 140,
 		"Gauge tracks paint determinate fill and respect native appearance and accent color")
 	label.advance_animation(0.5)
@@ -14107,7 +14171,7 @@ func _check_form_css() -> void:
 	var area: HTMLElement = label.get_element_by_id("area")
 	var field_box: Rect2 = field.get_bounding_rect()
 	var plain_box: Rect2 = plain.get_bounding_rect()
-	_check(_color_bounds(image, Rect2i(area.get_bounding_rect()), Color("#aa00aa")).size.y > 18,
+	_check(_color_bounds(image, Rect2i(area.get_bounding_rect()).grow(-2), Color("#aa00aa"), 0.32).size.y > 18,
 		"The multiline placeholder wraps with its pseudo-element font and color restored by a variable rollback")
 	_check(_color_bounds(image, Rect2i(field_box), Color.RED).has_area(), "Layered placeholder color is painted")
 	_check(_color_bounds(image, Rect2i(_label_rect(label, "check")), Color("#00ee44")).has_area() and
@@ -14853,19 +14917,18 @@ func _check_pixel(image: Image, position: Vector2, expected: Color, description:
 	_check(_same_color(actual, expected), "%s at %s is %s, expected %s" % [description, position, actual, expected])
 
 
-func _color_bounds(image: Image, region: Rect2i, expected: Color) -> Rect2i:
+func _color_bounds(image: Image, region: Rect2i, expected: Color, tolerance: float = 2.1 / 255.0) -> Rect2i:
 	var bounds: Rect2i
 	for y: int in range(region.position.y, region.end.y):
 		for x: int in range(region.position.x, region.end.x):
-			if _same_color(image.get_pixel(x, y), expected):
+			if _same_color(image.get_pixel(x, y), expected, tolerance):
 				var pixel: Rect2i = Rect2i(x, y, 1, 1)
 				bounds = bounds.merge(pixel) if bounds.has_area() else pixel
 	return bounds
 
 
-func _same_color(first: Color, second: Color) -> bool:
-	const TOLERANCE: float = 2.1 / 255.0
-	return absf(first.r - second.r) <= TOLERANCE and absf(first.g - second.g) <= TOLERANCE and absf(first.b - second.b) <= TOLERANCE
+func _same_color(first: Color, second: Color, tolerance: float = 2.1 / 255.0) -> bool:
+	return absf(first.r - second.r) <= tolerance and absf(first.g - second.g) <= tolerance and absf(first.b - second.b) <= tolerance
 
 
 func _check(condition: bool, description: String) -> void:

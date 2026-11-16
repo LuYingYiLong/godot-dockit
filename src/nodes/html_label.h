@@ -193,7 +193,7 @@ private:
 	bool reveal_focused_element = false;
 	int hover_passes_remaining = 0;
 	docrender::HTMLScrollbarAppearance viewport_scrollbar_style;
-	bool viewport_scrollbar_theme_dirty = false;
+	bool viewport_scrollbar_theme_dirty = true;
 	godot::Ref<godot::StyleBox> viewport_panel;
 	godot::Vector2 viewport_panel_gutters;
 	godot::Vector2 viewport_painted_gutters;

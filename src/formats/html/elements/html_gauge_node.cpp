@@ -5,6 +5,7 @@
 #include <litehtml/document.h>
 #include <litehtml/render_item.h>
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -26,17 +27,22 @@ void HTMLGaugeNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 	const Rect2 box(pos.x + p_x, pos.y + p_y, pos.width, pos.height);
 	if (!box.has_area()) return;
 	auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
-	container->draw_input_chrome(box, box, Color(0.79, 0.83, 0.88));
+	Rect2 track = box;
+	track.size.y *= 0.45f;
+	track.position.y = box.get_center().y - track.size.y * 0.5f;
+	const float radius = track.size.y * 0.5f;
+	container->draw_input_chrome(box, track, Color::hex(0xb7b7b7ff), radius);
+	container->draw_input_chrome(box, track.grow(-1), Color::hex(0xefefefff), std::max(0.0f, radius - 1));
 	const auto reading = read_html_gauge(*this);
-	Color fill = tag() == _progress_ ? Color(0.15, 0.39, 0.92) : Color(0.14, 0.62, 0.34);
-	if (reading.zone == 1) fill = Color(0.88, 0.57, 0.12);
-	if (reading.zone == 2) fill = Color(0.82, 0.20, 0.20);
+	Color fill = tag() == _progress_ ? Color::hex(0x0075ffff) : Color::hex(0x107c10ff);
+	if (reading.zone == 1) fill = Color::hex(0xe2a500ff);
+	if (reading.zone == 2) fill = Color::hex(0xc50000ff);
 	const auto color = css().get_accent_color().to_srgb(css().get_color());
-	if (color != web_color(37, 99, 235) || has_author_property(_id("accent-color"))) {
+	if (color != web_color(0, 117, 255) || has_author_property(_id("accent-color"))) {
 		fill = Color(color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0);
 	}
 
-	Rect2 amount = box;
+	Rect2 amount = track;
 	double start = 0;
 	double fraction = reading.fraction;
 	if (reading.indeterminate) {
@@ -45,8 +51,8 @@ void HTMLGaugeNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 		start = (phase <= 1 ? phase : 2 - phase) * (1 - fraction);
 	}
 	if (css().is_right_to_left()) start = 1 - start - fraction;
-	amount.position.x += box.size.x * start;
+	amount.position.x += track.size.x * start;
 	amount.size.x *= fraction;
-	if (amount.has_area()) container->draw_input_chrome(box, amount, fill);
+	if (amount.has_area()) container->draw_input_chrome(box, amount, fill, radius);
 }
 }

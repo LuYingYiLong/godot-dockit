@@ -12,6 +12,7 @@ namespace docrender {
 		bool dirty_checked = false;
 		godot::Rect2 range_box;
 
+		const char* button_text() const;
 		void paint_contents(LiteHTMLContainer& p_container, const godot::Rect2& p_box);
 
 	public:

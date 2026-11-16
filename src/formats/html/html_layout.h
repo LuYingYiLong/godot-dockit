@@ -240,6 +240,8 @@ public:
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
 	std::optional<docrender::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
+	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position); // 更新滚动条的可见悬停状态
+	void set_scrollbar_pressed(const std::optional<docrender::HTMLScrollbarDrag>& p_drag); // 更新滚动条的可见按压状态
 	void drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, const godot::Vector2& p_position); // 按文档坐标移动滑块
 	void finish_scrollbar_drag(const docrender::HTMLScrollbarDrag& p_drag);
 	docrender::HTMLScrollInput scroll_overflow_from_input(const godot::Vector2& p_position, const godot::Ref<godot::InputEvent>& p_event,

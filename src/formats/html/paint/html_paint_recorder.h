@@ -96,6 +96,11 @@ namespace docrender {
 		HTMLPlaneTransform clip_material_matrix;
 		const HTMLGeometryIndex* recording_geometry = nullptr;
 		const RenderGeometry* active_geometry = nullptr;
+		void fill_rounded_color(const godot::Rect2& p_rect, const godot::Color& p_color, float p_radius);
+		std::optional<HTMLScrollbarDrag> scrollbar_hovered;
+		std::optional<HTMLScrollbarDrag> scrollbar_pressed;
+		void paint_scrollbar(const godot::Rect2& p_track, const godot::Rect2& p_thumb, int p_axis,
+			const HTMLScrollbarAppearance& p_appearance);
 		bool active_decoration = false;
 		struct PointerTarget {
 			const RenderGeometry* geometry;
@@ -156,6 +161,11 @@ namespace docrender {
 		void record_viewport_background(const litehtml::render_item& p_root, const std::function<void()>& p_draw);
 		void draw_text_overflow(const litehtml::render_item& p_context);
 		void draw_scrollbars(const litehtml::render_item& p_item);
+		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color);
+		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,
+			int p_axis, const HTMLScrollbarAppearance& p_appearance);
+		bool set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target);
+		bool set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target);
 		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;
 		void finish(const std::shared_ptr<litehtml::element>& p_root, const TextShaper& p_shape_text);
 
@@ -181,7 +191,7 @@ namespace docrender {
 		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
 			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
 			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent, float p_descent, const HTMLInputPaintColors& p_colors);
-		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
+		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color, float p_radius = 0);
 		void draw_image_alt(const godot::Rect2& p_box, const std::vector<HTMLTextLayout>& p_lines,
 			float p_line_height, litehtml::web_color p_color, litehtml::text_align p_align);
 		void draw_list_marker(const litehtml::list_marker& p_marker, const godot::Ref<godot::Texture2D>& p_texture);

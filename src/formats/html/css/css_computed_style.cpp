@@ -88,7 +88,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 		parent ? &parent->m_fixed_table_layout : nullptr) == 1;
 	m_hide_empty_cells = read_property<int>(context, _id("empty-cells"), true, 0,
 		parent ? &parent->m_hide_empty_cells : nullptr) == 1;
-	m_accent_color = read_property(context, _id("accent-color"), true, web_color(37, 99, 235),
+	m_accent_color = read_property(context, _id("accent-color"), true, web_color(0, 117, 255),
 		parent ? &parent->m_accent_color : nullptr);
 	m_caret_color = read_property(context, _id("caret-color"), true, web_color::current_color,
 		parent ? &parent->m_caret_color : nullptr);

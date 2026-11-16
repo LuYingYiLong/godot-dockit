@@ -575,6 +575,7 @@ bool HTMLLabelCanvas::begin_textarea_drag(const Ref<HTMLElement>& p_element, con
 	} else {
 		drag.vertical_scrollbar = *scrollbar;
 		drag.scrollbar_grab = textarea->editor.scrollbar_grab_offset(*scrollbar, local);
+		label->layout->set_scrollbar_pressed(docrender::HTMLScrollbarDrag{node, *scrollbar ? 1 : 0, 0});
 		move_textarea_drag(p_point);
 	}
 	update_cursor(p_point);
@@ -588,6 +589,7 @@ void HTMLLabelCanvas::move_textarea_drag(const Vector2& p_point) {
 	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
 	if (!textarea || docrender::forms::is_disabled(*textarea)) {
 		textarea_drag.reset();
+		label->layout->set_scrollbar_pressed(std::nullopt);
 		resize_pending.reset();
 		return;
 	}

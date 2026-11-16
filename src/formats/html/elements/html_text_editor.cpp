@@ -449,7 +449,6 @@ namespace docrender {
 	}
 
 	namespace {
-		constexpr float SCROLLBAR_WIDTH = 10;
 		constexpr float RESIZE_SIZE = 14;
 	}
 
@@ -689,7 +688,7 @@ namespace docrender {
 		const auto wrap = p_style.get_text_wrap_mode();
 		const auto align = p_style.get_text_align();
 		const auto scrollbar = html_scrollbar_appearance(p_style);
-		const float thickness = scrollbar.thickness(SCROLLBAR_WIDTH);
+		const float thickness = scrollbar.thickness();
 		const bool show_scrollbars = thickness > 0;
 		const float bar_width = std::min(thickness, p_box.size.x);
 		const float bar_height = std::min(thickness, p_box.size.y);
@@ -723,8 +722,8 @@ namespace docrender {
 
 		viewport = Rect2(p_box.position, Vector2(p_box.size.x - (vertical_scrollbar ? bar_width : 0),
 			p_box.size.y - (horizontal_scrollbar ? bar_height : 0)));
-		const float vertical_corner = horizontal_scrollbar || p_resize_handle ? RESIZE_SIZE : 0;
-		const float horizontal_corner = vertical_scrollbar || p_resize_handle ? RESIZE_SIZE : 0;
+		const float vertical_corner = std::max(horizontal_scrollbar ? bar_height : 0.0f, p_resize_handle ? RESIZE_SIZE : 0.0f);
+		const float horizontal_corner = std::max(vertical_scrollbar ? bar_width : 0.0f, p_resize_handle ? RESIZE_SIZE : 0.0f);
 		vertical_track = vertical_scrollbar ? Rect2(viewport.get_end().x, p_box.position.y, bar_width,
 			std::max(0.0f, p_box.size.y - vertical_corner)) : Rect2();
 		horizontal_track = horizontal_scrollbar ? Rect2(p_box.position.x, viewport.get_end().y,
@@ -776,14 +775,9 @@ namespace docrender {
 				composing ? geometry(from, from + preedit.length()) : PackedVector2Array{},
 				p_focused && caret_visible && index == caret_index ? caret_rect : Rect2(), ascent, height - ascent, colors);
 		}
-		const auto scrollbar_colors = scrollbar.colors.value_or(HTMLScrollbarColors{});
 		for (const bool axis : {false, true}) {
 			const Rect2& track = axis ? vertical_track : horizontal_track;
-			if (!track.has_area()) continue;
-			p_container.draw_input_chrome(p_box, track, scrollbar_colors.track);
-			const Rect2 thumb = scrollbar_thumb(track, axis);
-			const Rect2 inset = thumb.grow(-1);
-			p_container.draw_input_chrome(p_box, inset.has_area() ? inset : thumb, scrollbar_colors.thumb);
+			if (track.has_area()) p_container.draw_input_scrollbar(p_box, track, scrollbar_thumb(track, axis), axis, scrollbar);
 		}
 	}
 }

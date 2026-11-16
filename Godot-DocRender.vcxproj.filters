@@ -711,6 +711,9 @@
     <ClInclude Include="src\formats\html\elements\html_button_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_control_render_item.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_element_types.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>

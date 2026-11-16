@@ -1,4 +1,5 @@
 #include "html_select_node.h"
+#include "html_control_render_item.h"
 
 #include "html_form_state.h"
 #include "formats/html/backend/litehtml_container.h"
@@ -207,6 +208,20 @@ bool HTMLSelectNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode
 }
 
 std::shared_ptr<litehtml::render_item> HTMLSelectNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
+	const auto display = css().get_display();
+	if (display == litehtml::display_inline_block || display == litehtml::display_block) {
+		auto* container = get_document()->container();
+		litehtml::pixel_t width = 0;
+		for (const auto& option : get_options()) {
+			const auto text = option->get_label().utf8();
+			width = std::max(width, container->text_width(text.get_data(), css().get_font()));
+		}
+		if (!is_list_box() && css().get_appearance() != litehtml::appearance_none) width += 18;
+		auto item = std::make_shared<HTMLControlRenderItem>(shared_from_this(),
+			litehtml::size(width, css().line_height().computed_value));
+		item->parent(p_parent);
+		return item;
+	}
 	struct RestoreChildren {
 		litehtml::elements_list& target;
 		litehtml::elements_list children;
@@ -280,7 +295,7 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 		list_box = box;
 		const auto list_options = get_list_options();
 		const int count = static_cast<int>(list_options.size());
-		row_height = std::max(1.0, static_cast<double>(css().line_height().computed_value) + 4.0);
+		row_height = std::max(1.0, static_cast<double>(css().line_height().computed_value) + 2.0);
 		scroll_list(0);
 		const int visible = std::min(count - scroll_row, static_cast<int>(std::ceil(box.size.y / row_height)));
 		for (int i = 0; i < visible; ++i) {

@@ -63,10 +63,19 @@ namespace docrender {
 			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent = 0, float p_descent = 0, const HTMLInputPaintColors& p_colors = {}) {
 			paint.draw_input(p_box, p_text, p_origin, p_color, p_selection, p_preedit, p_caret, p_ascent, p_descent, p_colors);
 		}
-		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color) {
-			paint.draw_input_chrome(p_clip, p_rect, p_color);
+		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color,
+			float p_radius = 0) {
+			paint.draw_input_chrome(p_clip, p_rect, p_color, p_radius);
 		}
 		void clear_recording() { paint.clear(); }
+		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color) {
+			paint.draw_input_check(p_box, p_color);
+		}
+		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,
+			int p_axis, const HTMLScrollbarAppearance& p_appearance) {
+			paint.draw_input_scrollbar(p_clip, p_track, p_thumb, p_axis, p_appearance);
+		}
+		HTMLPaintRecorder& get_paint_recorder() { return paint; }
 		const HTMLPaintRecorder& get_paint_recorder() const { return paint; }
 		void record_css_diagnostic(const RenderGeometry& p_geometry, const godot::Rect2& p_box) {
 			paint.record_css_diagnostic(p_geometry, p_box);

@@ -1596,7 +1596,17 @@ void MarkdownLabelCanvas::update_internal_processing() {
 	}
 }
 
+void MarkdownLabelCanvas::update_html_scrollbar_hover(const Ref<HTMLLayout>& p_layout, const Vector2& p_point) {
+	if (hovered_html_scrollbar_layout != p_layout) {
+		if (hovered_html_scrollbar_layout.is_valid()) hovered_html_scrollbar_layout->update_scrollbar_hover(std::nullopt);
+		hovered_html_scrollbar_layout = p_layout;
+	}
+	if (p_layout.is_valid()) p_layout->update_scrollbar_hover(p_point);
+}
+
 void MarkdownLabelCanvas::mark_layout_dirty() {
+	update_html_scrollbar_hover({});
+	if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 	html_scrollbar_drag.reset();
 	layout_dirty = true;
 	queue_redraw();
@@ -3297,16 +3307,20 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	}
 
 	if (p_what == NOTIFICATION_MOUSE_EXIT) {
+		update_html_scrollbar_hover({});
 		pressed_html_link = 0;
 	}
 
 	if (p_what == NOTIFICATION_EXIT_TREE || (p_what == NOTIFICATION_VISIBILITY_CHANGED && !is_visible_in_tree())) {
+		update_html_scrollbar_hover({});
+		if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 		for (const auto& anchor : html_anchor_sources) anchor.value.layout->cancel_scroll_activity();
 	}
 
 	if (p_what == NOTIFICATION_FOCUS_EXIT || p_what == NOTIFICATION_EXIT_TREE) {
 		pressed_html_link = 0;
 		pressed_html_layout.unref();
+		if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 		html_scrollbar_drag.reset();
 		dragging_selection = false;
 	}
@@ -3872,6 +3886,11 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 					drag.layout->drag_scrollbar(drag.drag, mouse_button->get_position() - drag.origin);
 					drag.layout->finish_scrollbar_drag(drag.drag);
 				}
+				drag.layout->set_scrollbar_pressed(std::nullopt);
+				Vector2 html_position;
+				const auto html = get_html_visible_rect().has_point(mouse_button->get_position())
+					? html_at_position(mouse_button->get_position(), html_position) : Ref<HTMLLayout>();
+				update_html_scrollbar_hover(html, html_position);
 				accept_event();
 				return;
 			}
@@ -4038,6 +4057,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		Vector2 html_position;
 		const auto html = get_html_visible_rect().has_point(mouse_motion->get_position())
 			? html_at_position(mouse_motion->get_position(), html_position) : Ref<HTMLLayout>();
+		update_html_scrollbar_hover(html, html_position);
 		if (html.is_valid() && html->scrollbar_at(html_position)) {
 			set_default_cursor_shape(CURSOR_ARROW);
 			set_tooltip_text(String());

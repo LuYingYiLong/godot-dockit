@@ -97,8 +97,8 @@ namespace docrender {
 	};
 
 	struct HTMLScrollbarColors {
-		godot::Color thumb{ 0.38f, 0.45f, 0.55f, 0.7f };
-		godot::Color track{ 0.38f, 0.45f, 0.55f, 0.2f };
+		godot::Color thumb{ 0, 0, 0, 114.0f / 255.0f };
+		godot::Color track{ 241.0f / 255.0f, 241.0f / 255.0f, 241.0f / 255.0f, 1 };
 		bool operator==(const HTMLScrollbarColors& p_other) const;
 	};
 
@@ -106,7 +106,10 @@ namespace docrender {
 		litehtml::scrollbar_width width{};
 		std::optional<HTMLScrollbarColors> colors;
 		bool operator==(const HTMLScrollbarAppearance& p_other) const;
-		float thickness(float p_default) const;
+		float thickness() const;
+		float thumb_thickness(bool p_hot) const;
+		godot::Color thumb_color(bool p_pressed) const;
+		godot::Rect2 visible_thumb(const godot::Rect2& p_thumb, int p_axis, bool p_hot) const;
 	};
 
 	HTMLScrollbarAppearance html_scrollbar_appearance(const css::ComputedStyle& p_style);

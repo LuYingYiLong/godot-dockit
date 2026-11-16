@@ -152,6 +152,8 @@ private:
 		Vector2 origin;
 	};
 	std::optional<HTMLScrollbarGesture> html_scrollbar_drag;
+	godot::Ref<HTMLLayout> hovered_html_scrollbar_layout;
+	void update_html_scrollbar_hover(const godot::Ref<HTMLLayout>& p_layout, const godot::Vector2& p_point = {});
 	Ref<HTMLLayout> pressed_html_layout;
 	uintptr_t pressed_html_link = 0;
 	Dictionary anchor_offsets;

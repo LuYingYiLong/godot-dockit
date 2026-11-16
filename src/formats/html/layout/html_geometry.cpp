@@ -904,10 +904,29 @@ namespace docrender {
 		return width == p_other.width && colors == p_other.colors;
 	}
 
-	float HTMLScrollbarAppearance::thickness(float p_default) const {
+	float HTMLScrollbarAppearance::thickness() const {
 		if (width == scrollbar_width::none) return 0;
-		if (width == scrollbar_width::thin) return std::min(p_default, std::max(5.0f, std::round(p_default * 0.6f)));
-		return p_default;
+		return width == scrollbar_width::thin ? 9.0f : 15.0f;
+	}
+
+	float HTMLScrollbarAppearance::thumb_thickness(bool p_hot) const {
+		if (width == scrollbar_width::none) return 0;
+		if (width == scrollbar_width::thin) return p_hot ? 5.0f : 2.0f;
+		return p_hot ? 9.0f : 3.0f;
+	}
+
+	Color HTMLScrollbarAppearance::thumb_color(bool p_pressed) const {
+		if (colors) return colors->thumb;
+		return p_pressed ? Color(0, 0, 0, 128.0f / 255.0f) : HTMLScrollbarColors{}.thumb;
+	}
+
+	Rect2 HTMLScrollbarAppearance::visible_thumb(const Rect2& p_thumb, int p_axis, bool p_hot) const {
+		Rect2 visible = p_thumb;
+		const int cross = 1 - p_axis;
+		const real_t gutter = std::min<real_t>(2, visible.size[cross] / 4);
+		visible.size[cross] = std::min<real_t>(thumb_thickness(p_hot), visible.size[cross] - gutter);
+		visible.position[cross] = p_thumb.get_end()[cross] - gutter - visible.size[cross];
+		return visible;
 	}
 
 	HTMLScrollbarAppearance html_scrollbar_appearance(const css::ComputedStyle& p_style) {
@@ -929,7 +948,7 @@ namespace docrender {
 		if (!content) return result;
 
 		const auto& css = item->css();
-		const real_t thickness = HTMLScrollbarAppearance{ css.get_scrollbar_width(), std::nullopt }.thickness(8.0f);
+		const real_t thickness = HTMLScrollbarAppearance{ css.get_scrollbar_width(), std::nullopt }.thickness();
 		if (thickness <= 0) return result;
 		const Rect2 viewport = child_overflow->shape.rect;
 		if (!viewport.has_area()) return result;
@@ -957,7 +976,7 @@ namespace docrender {
 			if (bar.range > 0) {
 				const real_t length = bar.track.size[axis];
 				bar.thumb.size[axis] = std::clamp(length * viewport.size[axis] / (viewport.size[axis] + bar.range),
-					std::min<real_t>(12, length * 0.5), length);
+					std::min<real_t>(17, length * 0.5), length);
 				bar.thumb.position[axis] += (length - bar.thumb.size[axis]) * std::clamp(offset[axis] / bar.range, real_t(0), real_t(1));
 			}
 		}
