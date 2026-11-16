@@ -256,6 +256,7 @@ protected:
 
 public:
 	HTMLLabel();
+	void _draw() override;
 	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
 	void _input(const godot::Ref<godot::InputEvent>& p_event) override;
 	void set_css_diagnostics_enabled(bool p_enabled); // 设置是否收集 CSS 声明诊断

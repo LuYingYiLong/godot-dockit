@@ -781,6 +781,14 @@ void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
 	}
 }
 
+void HTMLLabel::_draw() {
+	const Color background = has_theme_color("background_color", "HTMLLabel")
+		? get_theme_color("background_color", "HTMLLabel") : Color(1, 1, 1);
+	if (background.a > 0) {
+		draw_rect(Rect2(Vector2(), get_size()), background);
+	}
+}
+
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
 	case NOTIFICATION_POST_ENTER_TREE:
@@ -788,12 +796,14 @@ void HTMLLabel::_notification(int p_what) {
 		queue_refresh();
 		break;
 	case NOTIFICATION_RESIZED:
+		queue_redraw();
 		if (canvas) {
 			canvas->cancel_click();
 		}
 		queue_refresh();
 		break;
 	case NOTIFICATION_THEME_CHANGED:
+		queue_redraw();
 		viewport_scrollbar_theme_dirty = true;
 		queue_refresh();
 		break;

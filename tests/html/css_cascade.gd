@@ -467,6 +467,7 @@ func _run() -> void:
 	await _check_flow_relative_edges()
 	_check_logical_floats()
 	await _check_layout_and_paint_containment()
+	await _check_page_canvas_background()
 	await _check_viewport_overflow()
 	await _check_scrollbar_gutter()
 	await _check_scrollbar_styles()
@@ -9754,6 +9755,7 @@ func _check_flow_relative_edges() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
+	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
 	label.size = Vector2(viewport.size)
 	label.text = """<!doctype html><style>
 		body { margin: 0; }
@@ -9846,6 +9848,7 @@ func _check_layout_and_paint_containment() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
+	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
 	label.size = Vector2(viewport.size)
 	label.css_diagnostics_enabled = true
 	label.text = """<!doctype html><style>
@@ -9921,6 +9924,42 @@ func _check_layout_and_paint_containment() -> void:
 		_push_html_wheel(viewport, Vector2(15.0, 25.0), MOUSE_BUTTON_WHEEL_DOWN)
 		_check(label.get_scroll_offset() == Vector2i.ZERO and _label_rect(label, "extra").position.y < previous_y,
 			"%s containment keeps body overflow and scrolling local" % mode)
+	viewport.queue_free()
+
+
+func _check_page_canvas_background() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(160, 120)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(100.0, 80.0)
+	viewport.add_child(label)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var sample: Vector2 = Vector2(90.0, 70.0)
+	_check_pixel(image, sample, Color.WHITE, "An empty HTMLLabel has a white canvas")
+	_check(image.get_pixel(120, 90).a < 0.01, "The page canvas stays within the control")
+
+	label.text = '<!doctype html><body style="background: blue">Text</body>'
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), sample, Color.BLUE, "The body background paints over the page canvas")
+
+	label.text = '<!doctype html><html style="background: red"><body style="background: blue">Text</body></html>'
+	label.size = Vector2(viewport.size)
+	sample = Vector2(150.0, 110.0)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check_pixel(viewport.get_texture().get_image(), sample, Color.RED, "The root background extends over the resized viewport")
+
+	label.text = '<!doctype html><body style="background: transparent">Text</body>'
+	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	_check(viewport.get_texture().get_image().get_pixelv(Vector2i(sample)).a < 0.01, "A theme override can make the page canvas transparent")
 	viewport.queue_free()
 
 
@@ -10980,6 +11019,7 @@ func _check_group_opacity() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
+	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
 	label.size = Vector2(232.0, 128.0)
 	label.text = """<!doctype html><style>
 		body { margin: 0; }
@@ -11054,6 +11094,7 @@ func _check_filters() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
+	label.add_theme_color_override(&"background_color", Color.TRANSPARENT)
 	label.size = Vector2(236.0, 132.0)
 	label.css_diagnostics_enabled = true
 	label.text = """<!doctype html><style>
