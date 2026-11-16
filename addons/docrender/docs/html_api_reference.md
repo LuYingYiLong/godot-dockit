@@ -57,6 +57,10 @@ Text inputs, checkboxes, radios, hidden inputs, textareas, and single-select dro
 
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)
 
+## Lists and preformatted text
+
+`HTMLPreElement` and `HTMLUListElement` expose the shared `HTMLElement` API. `HTMLOListElement` reflects `start`, `reversed`, and `type`. `HTMLLIElement` reflects `value` and the legacy `type` attribute. When `start` is absent, the property reads as `1`, and a reversed list starts numbering from its item count. `<aside>` uses `HTMLElement`. [WHATWG grouping content](https://html.spec.whatwg.org/multipage/grouping-content.html)
+
 ## Tables
 
 `HTMLTableElement`, `HTMLTableSectionElement`, `HTMLTableRowElement`, `HTMLTableCellElement`, `HTMLTableColElement`, and `HTMLTableCaptionElement` are typed element handles. The table exposes `caption`, `t_head`, `t_foot`, `get_t_bodies()`, and `get_rows()`. Sections expose `get_rows()`, and rows expose `get_cells()`. These methods return typed array snapshots. Table rows are ordered by head, body and direct rows, then foot. Hidden DOM elements count toward indices. Nested table rows and anonymous layout boxes are outside the collection. [WHATWG table elements](https://html.spec.whatwg.org/multipage/tables.html#the-table-element)

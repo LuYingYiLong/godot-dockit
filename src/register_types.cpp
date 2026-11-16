@@ -13,6 +13,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
+#include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_image_element.h"
 #include "formats/html/elements/html_template_element.h"
@@ -74,6 +75,10 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLInputElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLParagraphElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLSpanElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLPreElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLOListElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLUListElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLLIElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTextAreaElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDocumentFragment);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTemplateElement);

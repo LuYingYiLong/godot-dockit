@@ -22,3 +22,10 @@ class HTMLSpanElement : public HTMLElement {
 protected:
 	static void _bind_methods() {}
 };
+
+class HTMLPreElement : public HTMLElement {
+	GDCLASS(HTMLPreElement, HTMLElement)
+
+protected:
+	static void _bind_methods() {}
+};

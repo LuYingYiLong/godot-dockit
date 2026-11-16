@@ -151,6 +151,9 @@
     <ClCompile Include="src\formats\html\elements\html_heading_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_list_elements.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -700,6 +703,9 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_heading_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_list_elements.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_image_element.h">

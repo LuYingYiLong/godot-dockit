@@ -3141,6 +3141,58 @@ msgstr ""
 "查询 [code]<div>[/code] 或通过 [method HTMLLayout.create_element] 创建它时返回此句柄。"
 "使用继承自 [HTMLElement] 的方法访问子元素、属性和排版几何。"
 
+#. doc_classes/HTMLPreElement.xml
+msgid "A handle to an HTML preformatted text element."
+msgstr "HTML 预格式化文本元素的句柄。"
+
+#. doc_classes/HTMLPreElement.xml
+msgid "Represents a [code]<pre>[/code] element. Its default CSS preserves spaces and line breaks."
+msgstr "表示 [code]<pre>[/code] 元素。默认 CSS 保留空格和换行。"
+
+#. doc_classes/HTMLOListElement.xml
+msgid "A handle to an HTML ordered list."
+msgstr "HTML 有序列表的句柄。"
+
+#. doc_classes/HTMLOListElement.xml
+msgid "Represents an [code]<ol>[/code] element. Changing its reflected attributes updates the markers on the next layout."
+msgstr "表示 [code]<ol>[/code] 元素。修改映射的 HTML 属性后，列表标记将在下一次排版时更新。"
+
+#. doc_classes/HTMLOListElement.xml
+msgid "If [code]true[/code], the [code]reversed[/code] attribute is present and numbering counts down."
+msgstr "为 [code]true[/code] 时存在 [code]reversed[/code] 属性，编号按降序排列。"
+
+#. doc_classes/HTMLOListElement.xml
+msgid "The first item number. Reading a missing or invalid [code]start[/code] attribute returns [code]1[/code]. A reversed list with no explicit start counts down from its number of items when rendered."
+msgstr "首项编号。[code]start[/code] 属性缺失或无效时读取为 [code]1[/code]。未指定起始值的倒序列表在渲染时从项目总数开始递减。"
+
+#. doc_classes/HTMLOListElement.xml
+msgid "The reflected marker type. Values [code]1[/code], [code]a[/code], [code]A[/code], [code]i[/code], and [code]I[/code] set the default numbering style. CSS can override it."
+msgstr "映射的列表标记类型。[code]1[/code]、[code]a[/code]、[code]A[/code]、[code]i[/code] 和 [code]I[/code] 用于设置默认编号样式。CSS 可覆盖该样式。"
+
+#. doc_classes/HTMLUListElement.xml
+msgid "A handle to an HTML unordered list."
+msgstr "HTML 无序列表的句柄。"
+
+#. doc_classes/HTMLUListElement.xml
+msgid "Represents a [code]<ul>[/code] element. Use the inherited [method HTMLElement.get_children] method to access its list items."
+msgstr "表示 [code]<ul>[/code] 元素。通过继承的 [method HTMLElement.get_children] 方法访问列表项。"
+
+#. doc_classes/HTMLLIElement.xml
+msgid "A handle to an HTML list item."
+msgstr "HTML 列表项的句柄。"
+
+#. doc_classes/HTMLLIElement.xml
+msgid "Represents a [code]<li>[/code] element in a list."
+msgstr "表示列表中的 [code]<li>[/code] 元素。"
+
+#. doc_classes/HTMLLIElement.xml
+msgid "The reflected legacy marker type for this item. CSS can override it."
+msgstr "映射的旧版列表项标记类型。CSS 可覆盖该样式。"
+
+#. doc_classes/HTMLLIElement.xml
+msgid "The explicit item number in an ordered list. Reading a missing or invalid [code]value[/code] attribute returns [code]0[/code]. Use [method HTMLElement.remove_attribute] to resume automatic numbering."
+msgstr "有序列表中此项的显式编号。[code]value[/code] 属性缺失或无效时读取为 [code]0[/code]。调用 [method HTMLElement.remove_attribute] 恢复自动编号。"
+
 #. doc_classes/HTMLParagraphElement.xml
 msgid "A handle to an HTML paragraph element."
 msgstr "HTML 段落元素的句柄。"

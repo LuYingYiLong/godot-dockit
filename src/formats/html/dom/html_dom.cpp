@@ -7,6 +7,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_heading_element.h"
+#include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_form_state.h"
 #include "formats/html/elements/html_select_node.h"
@@ -138,6 +139,10 @@ namespace {
 			case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
 			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
 			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
+			case litehtml::_pre_: return instantiate_element_handle<HTMLPreElement>();
+			case litehtml::_ol_: return instantiate_element_handle<HTMLOListElement>();
+			case litehtml::_ul_: return instantiate_element_handle<HTMLUListElement>();
+			case litehtml::_li_: return instantiate_element_handle<HTMLLIElement>();
 			case litehtml::_h1_:
 			case litehtml::_h2_:
 			case litehtml::_h3_:

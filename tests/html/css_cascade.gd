@@ -331,6 +331,7 @@ func _run() -> void:
 	await _check_css_nesting()
 	await _check_css_scope()
 	_check_element_subclasses()
+	_check_list_element_subclasses()
 	_check_detached_subtrees()
 	await _check_dom_layout_isolation()
 	await _check_dom_child_edits()
@@ -840,6 +841,66 @@ func _check_element_subclasses() -> void:
 		"Hit testing after reflow returns the same typed heading handle")
 	_check(layout.parse("<h3>Replacement</h3>") == OK and not heading.is_valid() and heading.get_level() == 0 and
 		layout.query_selector("h3") != heading, "Reparsing invalidates the old heading handle")
+
+
+func _check_list_element_subclasses() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><pre id="code">  X
+  Y</pre><aside id="sidebar"></aside>
+<ol id="ordered" reversed="false"><li>Alpha</li><li>Bravo</li><li>Charlie</li></ol>
+<ul id="unordered"><li>Delta</li></ul>"""
+	_check(layout.parse(html) == OK, "Parse preformatted text and list elements")
+	var pre: HTMLPreElement = layout.get_element_by_id("code") as HTMLPreElement
+	var aside: HTMLElement = layout.get_element_by_id("sidebar")
+	var ordered: HTMLOListElement = layout.get_element_by_id("ordered") as HTMLOListElement
+	var unordered: HTMLUListElement = layout.get_element_by_id("unordered") as HTMLUListElement
+	var middle: HTMLLIElement = layout.query_selector("#ordered > li:nth-child(2)") as HTMLLIElement
+	var last: HTMLLIElement = layout.query_selector("#ordered > li:last-child") as HTMLLIElement
+	_check(pre != null and pre.get_text_content() == "  X\n  Y", "Preformatted elements preserve spaces and line breaks")
+	_check(aside != null and aside.get_class() == "HTMLElement", "Aside uses the shared element type")
+	_check(unordered != null and unordered.get_children()[0] is HTMLLIElement,
+		"Unordered lists return typed items through child traversal")
+	_check(ordered != null and middle != null and last != null, "Ordered lists and their items have typed handles")
+	if ordered == null or middle == null or last == null:
+		return
+
+	var viewport_size: Vector2i = Vector2i(320, 600)
+	_check(ordered.start == 1 and ordered.reversed and ordered.type == "" and middle.value == 0 and last.type == "",
+		"List properties reflect defaults and boolean attribute presence")
+	_check(layout.layout(viewport_size) == OK and "3. Alpha" in layout.get_plain_text(),
+		"Reversed lists without a start attribute render from the item count")
+	ordered.start = 6
+	ordered.type = "A"
+	middle.value = 3
+	last.type = "i"
+	_check(ordered.get_attribute("start") == "6" and ordered.get_attribute("type") == "A"
+		and middle.get_attribute("value") == "3" and last.get_attribute("type") == "i",
+		"List property setters update their HTML attributes")
+	_check(layout.layout(viewport_size) == OK, "Reflow after changing list properties")
+	var text: String = layout.get_plain_text()
+	_check("F. Alpha" in text and "C. Bravo" in text and "ii. Charlie" in text,
+		"List properties update start, value and marker styles")
+	ordered.reversed = false
+	_check(not ordered.has_attribute("reversed") and layout.layout(viewport_size) == OK
+		and "iv. Charlie" in layout.get_plain_text(), "Clearing reversed restores increasing numbering")
+	_check(middle.get_parent() == ordered and ordered.get_children()[1] == middle,
+		"Reflow keeps the original list and item handles")
+
+	var detached: HTMLOListElement = layout.create_element("OL") as HTMLOListElement
+	var detached_item: HTMLLIElement = layout.create_element("li") as HTMLLIElement
+	_check(layout.create_element("pre") is HTMLPreElement and layout.create_element("ul") is HTMLUListElement
+		and detached != null and detached_item != null, "Detached elements use the same type mapping")
+	if detached != null and detached_item != null:
+		detached.start = -4
+		detached.reversed = true
+		detached_item.value = -8
+		_check(detached.start == -4 and detached.has_attribute("reversed") and detached_item.value == -8,
+			"Detached list attributes reflect signed numbers and boolean presence")
+		_check(detached.set_attribute("start", " \t+3suffix") == OK and detached.start == 3
+			and detached_item.set_attribute("value", "+-2") == OK and detached_item.value == 0
+			and detached.set_attribute("start", "2147483648") == OK and detached.start == 1,
+			"Integer reflection handles HTML number parsing and out-of-range values")
+	_check(ordered.clone_node(true) is HTMLOListElement, "List clones use the same typed handle factory")
 
 
 func _check_detached_subtrees() -> void:
