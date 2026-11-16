@@ -36,6 +36,7 @@ class HTMLLabelCanvas : public godot::Control {
 
 	HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
+	bool pressed_blank = false;
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
 	godot::Ref<HTMLElement> pressed_form_target;

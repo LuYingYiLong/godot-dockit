@@ -14426,6 +14426,7 @@ func _check_selectable_cursor() -> void:
 		#cover { position: absolute; inset: 0; background: white; }
 		#shifted { display: inline-block; transform: translateX(60px); }
 		#clip { width: 25px; overflow: hidden; white-space: nowrap; }
+		#empty_link { display: inline-block; width: 25px; height: 18px; }
 		</style>
 		<div><span id="plain">Example</span></div>
 		<div><span id="blocked">Blocked</span></div>
@@ -14433,7 +14434,8 @@ func _check_selectable_cursor() -> void:
 		<div><span id="crosshair">Custom</span></div>
 		<div id="stack"><span id="covered">Covered</span><div id="cover"></div></div>
 		<div><span id="shifted">Shifted</span></div>
-		<div id="clip"><span id="clipped">Overflowing</span></div>"""
+		<div id="clip"><span id="clipped">Overflowing</span></div>
+		<div><a id="empty_link" href="#plain"></a></div>"""
 	viewport.add_child(label)
 	await process_frame
 	await process_frame
@@ -14461,6 +14463,28 @@ func _check_selectable_cursor() -> void:
 		var hovered: Control = viewport.gui_get_hovered_control()
 		_check(hovered != null and hovered.mouse_default_cursor_shape == fixture["shape"],
 			"HTML cursor at %s + %s matches selectable geometry and CSS" % [id, offset])
+	var text: Rect2 = label.get_element_by_id("plain").get_bounding_rect()
+	var blank: Vector2 = Vector2(180.0, text.get_center().y)
+	_drag_pointer(viewport, blank, text.get_center())
+	_check(label.get_selected_text().is_empty(), "HTML selection cannot start in the blank part of a text row")
+	var hidden: Vector2 = label.get_element_by_id("clipped").get_bounding_rect().get_center()
+	_drag_pointer(viewport, hidden, text.get_center())
+	_check(label.get_selected_text().is_empty(), "HTML selection cannot start on clipped text")
+	_drag_pointer(viewport, Vector2(text.position.x + 0.5, text.get_center().y), blank)
+	_check(label.get_selected_text() == "Example", "HTML selection can end in blank space when it starts on text")
+	var blocked: Vector2 = label.get_element_by_id("blocked").get_bounding_rect().get_center()
+	_drag_pointer(viewport, blocked, blocked)
+	_check(label.get_selected_text() == "Example", "Clicking unselectable HTML text leaves the selection intact")
+	_drag_pointer(viewport, blank, text.get_center())
+	_check(label.get_selected_text() == "Example", "Dragging from blank HTML space leaves the selection intact")
+	_drag_pointer(viewport, blank, blank)
+	_check(label.get_selected_text().is_empty() and label.get_selection().get_range_count() == 0,
+		"Clicking blank HTML space clears the document selection")
+	var uris: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: uris.append(uri))
+	var empty_link: Vector2 = label.get_element_by_id("empty_link").get_bounding_rect().get_center()
+	_drag_pointer(viewport, empty_link, empty_link)
+	_check(uris == ["#plain"], "An HTML link with a hit box and no selectable text still activates")
 	viewport.queue_free()
 
 
@@ -14525,9 +14549,34 @@ func _check_markdown_selectable_cursor() -> void:
 			"Markdown cursor at %s matches visible text or a link" % motion.position)
 	var uris: Array[String] = []
 	label.link_pressed.connect(func(uri: String) -> void: uris.append(uri))
+	label.selection_enabled = false
 	_drag_pointer(viewport, Vector2(native_link.get_center()), Vector2(native_link.get_center()))
 	_drag_pointer(viewport, Vector2(html_link.get_center()), Vector2(html_link.get_center()))
-	_check(uris == ["#native-absent", "#html-absent"], "Markdown links and HTML block links still activate")
+	_check(uris == ["#native-absent", "#html-absent"], "Markdown and HTML block links activate with selection disabled")
+	label.selection_enabled = true
+	var blank_points: Array[Vector2] = [
+		Vector2(210.0, float(native_text.get_center().y)),
+		Vector2(5.0, float(html_text.get_center().y)),
+		Vector2(html_blocked.get_center()),
+	]
+	for blank: Vector2 in blank_points:
+		_drag_pointer(viewport, blank, Vector2(native_text.get_center()))
+		_check(label.get_selected_text().is_empty(), "Markdown selection cannot start at %s without selectable text" % blank)
+	for blank: Vector2 in blank_points.slice(0, 2):
+		label.select_all()
+		var selected: String = label.get_selected_text()
+		_drag_pointer(viewport, blank, Vector2(native_text.get_center()))
+		_check(label.get_selected_text() == selected, "Dragging from Markdown blank space leaves the selection intact")
+		_drag_pointer(viewport, blank, blank)
+		_check(label.get_selected_text().is_empty(), "Clicking blank space in Markdown or an HTML block clears the selection")
+	_drag_pointer(viewport, Vector2(html_text.position.x, html_text.get_center().y),
+		Vector2(210.0, float(html_text.get_center().y)))
+	_check(label.get_selected_text() == "Shifted", "Markdown HTML selection can extend from transformed text into blank space")
+	label.clear_selection()
+	_drag_pointer(viewport, Vector2(native_link.get_center()), Vector2(210.0, float(native_link.get_center().y)))
+	_check(not label.get_selected_text().is_empty() and uris == ["#native-absent", "#html-absent"],
+		"Dragging from a Markdown text link selects text without activating the link")
+	label.clear_selection()
 
 	var click: InputEventMouseButton = InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
@@ -14556,6 +14605,13 @@ func _check_markdown_selectable_cursor() -> void:
 	await process_frame
 	_check(canvas != null and canvas.mouse_default_cursor_shape == Control.CURSOR_ARROW,
 		"Markdown refreshes the cursor when scrolling under a stationary pointer")
+	label.content_margin = 16
+	label.select_all()
+	await process_frame
+	await process_frame
+	var margin: Vector2 = Vector2(5.0, 40.0)
+	_drag_pointer(viewport, margin, margin)
+	_check(label.get_selected_text().is_empty(), "Clicking the Markdown content margin clears the selection")
 	viewport.queue_free()
 
 

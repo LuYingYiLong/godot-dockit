@@ -1289,7 +1289,8 @@ void fragment() {
 		return result;
 	}
 
-	bool HTMLPaintRecorder::hit_test_selectable_text(const Vector2& p_point, const element& p_target) const {
+	bool HTMLPaintRecorder::hit_test_selectable_text(const Vector2& p_point, const element& p_target, bool* r_text_hit) const {
+		if (r_text_hit) *r_text_hit = false;
 		for (auto run = text_runs.rbegin(); run != text_runs.rend(); ++run) {
 			if (run->length <= 0 || !run->selection_owner || !run->visible_rect.has_point(p_point)) continue;
 			const Vector2 local = run->inverse.xform(p_point);
@@ -1300,10 +1301,13 @@ void fragment() {
 				return !clip.contains_point(p_point, use_precise_clip(clip, remaining));
 			});
 			if (clipped) continue;
-			if (run->selection_owner == &p_target) return run->selectable;
-			for (auto owner = run->selection_owner->parent(); owner; owner = owner->parent()) {
-				if (owner.get() == &p_target) return run->selectable;
+			bool matches = run->selection_owner == &p_target;
+			for (auto owner = run->selection_owner->parent(); !matches && owner; owner = owner->parent()) {
+				matches = owner.get() == &p_target;
 			}
+			if (!matches) continue;
+			if (r_text_hit) *r_text_hit = true;
+			return run->selectable;
 		}
 		return false;
 	}

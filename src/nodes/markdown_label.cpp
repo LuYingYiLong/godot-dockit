@@ -41,6 +41,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <utility>
 #include <vector>
 
 using namespace godot;
@@ -1265,6 +1266,7 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 	dragging_selection = false;
 	selection_dragged = false;
 	selection_drag_attempt = false;
+	pressed_markdown = false;
 	parser_state.reset();
 	cached_blocks.clear();
 	// A streaming append before the next redraw must start with a fresh layout.
@@ -1369,6 +1371,8 @@ void MarkdownLabelCanvas::clear_document() {
 	dragging_selection = false;
 	selection_dragged = false;
 	selection_drag_attempt = false;
+	pressed_markdown = false;
+	pressed_blank = false;
 	internal_processing_enabled = false;
 	set_process_internal(false);
 	content_height = 1.0f;
@@ -1624,6 +1628,7 @@ void MarkdownLabelCanvas::mark_layout_dirty() {
 	update_html_scrollbar_hover({});
 	if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 	html_scrollbar_drag.reset();
+	pressed_blank = false;
 	layout_dirty = true;
 	queue_redraw();
 }
@@ -3328,6 +3333,8 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_MOUSE_EXIT) {
 		update_html_scrollbar_hover({});
 		pressed_html_link = 0;
+		pressed_markdown = false;
+		pressed_blank = false;
 		if (!dragging_selection || !selection_dragged) {
 			set_default_cursor_shape(CURSOR_ARROW);
 		}
@@ -3335,6 +3342,7 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_EXIT_TREE || (p_what == NOTIFICATION_VISIBILITY_CHANGED && !is_visible_in_tree())) {
 		update_html_scrollbar_hover({});
+		pressed_blank = false;
 		if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 		for (const auto& anchor : html_anchor_sources) anchor.value.layout->cancel_scroll_activity();
 	}
@@ -3342,6 +3350,8 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_FOCUS_EXIT || p_what == NOTIFICATION_EXIT_TREE) {
 		pressed_html_link = 0;
 		pressed_html_layout.unref();
+		pressed_markdown = false;
+		pressed_blank = false;
 		if (html_scrollbar_drag) html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
 		html_scrollbar_drag.reset();
 		dragging_selection = false;
@@ -3874,11 +3884,14 @@ void MarkdownLabelCanvas::scroll_html_input(const Vector2& p_position, const Ref
 		callable_mp(this, &MarkdownLabelCanvas::queue_pointer_update));
 	if (result == docrender::HTMLScrollInput::ignored) return;
 	pressed_html_link = 0;
+	pressed_blank = false;
 	queue_pointer_update();
 	if (result == docrender::HTMLScrollInput::handled) accept_event();
 }
 
 namespace {
+	constexpr float DRAG_DEADZONE_SQUARED = 4.0f * 4.0f;
+
 	enum class ParagraphHit { OUTSIDE, TEXT, OBJECT };
 
 	ParagraphHit hit_test_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_rect, const Vector2& p_position) {
@@ -3972,6 +3985,27 @@ void MarkdownLabelCanvas::refresh_pointer() {
 	}
 }
 
+void MarkdownLabelCanvas::on_margin_gui_input(const Ref<InputEvent>& p_event) {
+	const Transform2D to_canvas = get_transform().affine_inverse();
+	const Ref<InputEventMouseMotion> motion = p_event;
+	if (motion.is_valid() && pressed_blank &&
+		to_canvas.xform(motion->get_position()).distance_squared_to(press_position) > DRAG_DEADZONE_SQUARED) {
+		pressed_blank = false;
+	}
+	const Ref<InputEventMouseButton> button = p_event;
+	if (button.is_null() || button->get_button_index() != MOUSE_BUTTON_LEFT) return;
+	const Vector2 point = to_canvas.xform(button->get_position());
+	if (button->is_pressed()) {
+		press_position = point;
+		pressed_blank = true;
+		return;
+	}
+	if (std::exchange(pressed_blank, false) && !button->is_canceled() &&
+		point.distance_squared_to(press_position) <= DRAG_DEADZONE_SQUARED && !get_html_visible_rect().has_point(point)) {
+		clear_selection();
+	}
+}
+
 void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	if (label == nullptr) {
 		return;
@@ -4016,17 +4050,20 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			}
 			if (mouse_button->is_pressed()) {
 				press_position = mouse_button->get_position();
+				pressed_blank = false;
 				selection_dragged = false;
+				selection_drag_attempt = false;
+				dragging_selection = false;
+				const bool visible = get_html_visible_rect().has_point(press_position);
 				Vector2 html_position;
-				pressed_html_layout = label->is_parsing_html() && get_html_visible_rect().has_point(press_position)
-					? html_at_position(press_position, html_position) : Ref<HTMLLayout>();
+				pressed_html_layout = visible ? html_at_position(press_position, html_position) : Ref<HTMLLayout>();
+				pressed_markdown = visible && pressed_html_layout.is_null();
+				bool over_selectable_text = false;
 				if (pressed_html_layout.is_valid()) {
 					if (const auto drag = pressed_html_layout->scrollbar_at(html_position)) {
 						html_scrollbar_drag = HTMLScrollbarGesture{ pressed_html_layout, *drag, press_position - html_position };
 						pressed_html_link = 0;
 						pressed_html_layout.unref();
-						dragging_selection = false;
-						selection_drag_attempt = false;
 						update_internal_processing();
 						html_scrollbar_drag->layout->drag_scrollbar(*drag, html_position);
 						set_default_cursor_shape(CURSOR_ARROW);
@@ -4035,57 +4072,64 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 						return;
 					}
 					pressed_html_link = pressed_html_layout->find_link_at(html_position).id;
-					if (!label->is_selection_enabled()) {
-						dragging_selection = false;
-						selection_drag_attempt = false;
-						accept_event();
-						return;
-					}
+					over_selectable_text = pressed_html_layout->hit_test_selectable_text(html_position, &pressed_blank);
+					pressed_blank = pressed_blank && pressed_html_link == 0;
 				}
-				if (pressed_html_layout.is_null() && label->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
+				else if (pressed_markdown) {
+					const auto content = hit_test_markdown_text(items, press_position);
+					over_selectable_text = content == ParagraphHit::TEXT;
+					pressed_blank = content == ParagraphHit::OUTSIDE;
+				}
+				const bool selectable = label->is_selection_enabled() && over_selectable_text;
+				if (selectable && pressed_markdown && label->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
 					selection_drag_attempt = true;
-					dragging_selection = false;
+					pressed_markdown = false;
 					if (!has_focus()) {
 						grab_focus();
 					}
 					accept_event();
 					return;
 				}
-				selection_drag_attempt = false;
-				selection_origin = selection_point_at(press_position);
-				dragging_selection = !selection_origin.excluded;
-				if (!dragging_selection) {
-					accept_event();
-					return;
-				}
-				const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
-				selection_anchor = selection.x;
-				selection_caret = selection.y;
-				queue_redraw();
-				if (!has_focus()) {
-					grab_focus();
+				if (selectable) {
+					selection_origin = selection_point_at(press_position);
+					dragging_selection = !selection_origin.excluded;
+					if (dragging_selection) {
+						const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
+						selection_anchor = selection.x;
+						selection_caret = selection.y;
+						queue_redraw();
+						if (!has_focus()) grab_focus();
+					}
 				}
 				accept_event();
 				return;
 			}
 
-			if (pressed_html_layout.is_valid()) {
-				Vector2 html_position;
-				const Ref<HTMLLayout> html = html_at_position(mouse_button->get_position(), html_position);
-				const HTMLLayout::LinkHit hit = html == pressed_html_layout && get_html_visible_rect().has_point(mouse_button->get_position())
-					? html->find_link_at(html_position) : HTMLLayout::LinkHit{};
-				const bool clicked = !selection_dragged && pressed_html_link != 0 && pressed_html_link == hit.id && !mouse_button->is_canceled() &&
-					mouse_button->get_position().distance_to(press_position) <= 4.0f;
-				if (dragging_selection && selection_dragged && !mouse_button->is_canceled()) {
+			const Vector2 up_position = mouse_button->get_position();
+			const bool clicked = !selection_dragged && !mouse_button->is_canceled() &&
+				up_position.distance_squared_to(press_position) <= DRAG_DEADZONE_SQUARED && get_html_visible_rect().has_point(up_position);
+			const bool blank_clicked = std::exchange(pressed_blank, false) && clicked;
+			if (blank_clicked) clear_selection();
+
+			if (std::exchange(dragging_selection, false)) {
+				if (selection_dragged && !mouse_button->is_canceled()) {
 					extend_document_selection(mouse_button->get_position());
 					queue_redraw();
 				}
-				pressed_html_link = 0;
-				pressed_html_layout.unref();
-				dragging_selection = false;
 				update_internal_processing();
 				accept_event();
-				if (clicked) {
+			}
+
+			if (pressed_html_layout.is_valid()) {
+				Vector2 html_position;
+				const Ref<HTMLLayout> html = clicked ? html_at_position(up_position, html_position) : Ref<HTMLLayout>();
+				const HTMLLayout::LinkHit hit = html == pressed_html_layout
+					? html->find_link_at(html_position) : HTMLLayout::LinkHit{};
+				const bool link_clicked = pressed_html_link != 0 && pressed_html_link == hit.id;
+				pressed_html_link = 0;
+				pressed_html_layout.unref();
+				accept_event();
+				if (link_clicked) {
 					label->activate_link_uri(hit.uri);
 				}
 				return;
@@ -4100,33 +4144,21 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 				return;
 			}
 
-			if (dragging_selection) {
-				dragging_selection = false;
-				update_internal_processing();
-				if (!selection_dragged) {
-					const Vector2 up_position = mouse_button->get_position();
-					Vector2 html_position;
-					if (html_at_position(up_position, html_position).is_valid()) {
-						accept_event();
-						return;
-					}
-					const String uri = link_uri_at_position(up_position);
-					if (!uri.is_empty()) {
-						label->activate_link_uri(uri);
-					}
-					else {
-						const float footnote_target = footnote_target_at_position(up_position);
-						if (footnote_target >= 0.0f) {
-							VScrollBar* v_scroll = label->get_v_scroll_bar();
-							if (v_scroll != nullptr) {
-								const float max_scroll = std::max<float>(0.0f, v_scroll->get_max() - v_scroll->get_page());
-								v_scroll->set_value(std::min<float>(std::max<float>(0.0f, footnote_target - 8.0f), max_scroll));
-							}
-						}
-					}
-				}
+			if (std::exchange(pressed_markdown, false) && clicked && !blank_clicked) {
 				accept_event();
-				return;
+				Vector2 html_position;
+				if (html_at_position(up_position, html_position).is_valid()) return;
+				const String uri = link_uri_at_position(up_position);
+				if (!uri.is_empty()) {
+					label->activate_link_uri(uri);
+					return;
+				}
+				const float footnote_target = footnote_target_at_position(up_position);
+				VScrollBar* v_scroll = label->get_v_scroll_bar();
+				if (footnote_target >= 0.0f && v_scroll != nullptr) {
+					const float max_scroll = std::max<float>(0.0f, v_scroll->get_max() - v_scroll->get_page());
+					v_scroll->set_value(std::min<float>(std::max<float>(0.0f, footnote_target - 8.0f), max_scroll));
+				}
 			}
 			return;
 		}
@@ -4152,18 +4184,19 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			accept_event();
 			return;
 		}
-		if (pressed_html_layout.is_valid() && mouse_motion->get_position().distance_to(press_position) > 4.0f) {
+		const Vector2 current_position = mouse_motion->get_position();
+		const bool moved = current_position.distance_squared_to(press_position) > DRAG_DEADZONE_SQUARED;
+		if (moved) {
+			pressed_blank = false;
 			pressed_html_link = 0;
+			pressed_markdown = false;
 		}
 		if (selection_drag_attempt) {
 			return;
 		}
 
 		if (dragging_selection) {
-			const Vector2 current_position = mouse_motion->get_position();
-			if (current_position.distance_to(press_position) > 4.0f) {
-				selection_dragged = true;
-			}
+			selection_dragged |= moved;
 			if (selection_dragged || pressed_html_layout.is_null()) {
 				extend_document_selection(current_position);
 			}
@@ -4387,6 +4420,7 @@ void MarkdownLabel::ensure_controls() {
 	canvas->set_layout_flush_interval_msec(layout_flush_interval_msec);
 	canvas->set_markdown_text(raw_text);
 	margin_container->add_child(canvas, false, Node::INTERNAL_MODE_BACK);
+	margin_container->connect("gui_input", callable_mp(canvas, &MarkdownLabelCanvas::on_margin_gui_input));
 
 	apply_theme_settings();
 	apply_scroll_settings();
@@ -4397,6 +4431,7 @@ void MarkdownLabel::on_scroll_value_changed(double p_value) {
 	update_scroll_following();
 	if (canvas != nullptr) {
 		canvas->pressed_html_link = 0;
+		canvas->pressed_blank = false;
 		canvas->queue_pointer_update();
 		canvas->queue_redraw();
 	}

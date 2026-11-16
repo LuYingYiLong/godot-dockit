@@ -255,7 +255,7 @@ public:
 	godot::String get_plain_text() const;											// 返回排版后的可复制文本
 	godot::String get_accessible_text() const;									// 返回应用 CSS 替代文本后的无障碍文本
 	int64_t hit_test_text(const godot::Vector2& p_position) const;					// 返回离指定文档坐标最近的文本光标偏移
-	bool hit_test_selectable_text(const godot::Vector2& p_position) const;		// 检查指定文档坐标是否命中可见的可选择文字
+	bool hit_test_selectable_text(const godot::Vector2& p_position, bool* r_blank = nullptr) const;	// 检查是否命中可选择的文字，并可选地报告空白命中
 	docrender::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
 	godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 	godot::TypedArray<godot::Rect2> get_selection_rects(

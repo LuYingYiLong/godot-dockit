@@ -206,6 +206,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		}
 		else {
 			if (moved) {
+				pressed_blank = false;
 				pressed_link = 0;
 				pressed_element.unref();
 			}
@@ -334,7 +335,14 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		pressed_link = hit.id;
 		pressed_element = element;
 		pressed_form_target = form_target;
-		selecting = label->selection_enabled && visible_rect.has_point(point);
+		pressed_blank = false;
+		selecting = visible_rect.has_point(point) && label->layout->hit_test_selectable_text(point, &pressed_blank) &&
+			label->selection_enabled;
+		pressed_blank = pressed_blank && hit.id == 0 && target_button.is_null() && form_target.is_null();
+		if (selecting) {
+			selection_origin = label->layout->selection_point_at(point);
+			selecting = !selection_origin.excluded;
+		}
 		selection_dragged = false;
 		const Ref<HTMLElement> target_focus = label->layout->get_focus_ancestor(element);
 		if (target_focus.is_valid()) label->grab_focus();
@@ -342,6 +350,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		const auto control = label->layout->text_control(element);
 		if (control) {
 			selecting = false;
+			pressed_blank = false;
 			pressed_element.unref();
 			pressed_link = 0;
 			if (target_focus == element) {
@@ -363,18 +372,14 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			set_element_pseudo(pressed_button, "active", true);
 		}
 		if (selecting) {
-			selection_origin = label->layout->selection_point_at(point);
-			selecting = !selection_origin.excluded;
-			if (selecting) {
-				const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
-				selection_anchor = selection.x;
-				selection_caret = selection.y;
-				label->capture_node_selection();
-				if (target_button.is_null()) label->grab_focus();
-				queue_redraw();
-			}
+			const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
+			selection_anchor = selection.x;
+			selection_caret = selection.y;
+			label->capture_node_selection();
+			if (target_button.is_null()) label->grab_focus();
+			queue_redraw();
 		}
-		if (selecting || target_button.is_valid() || form_target.is_valid()) {
+		if (selecting || hit.id != 0 || target_button.is_valid() || form_target.is_valid()) {
 			accept_event();
 		}
 		return;
@@ -391,6 +396,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 
 	const bool clicked = !selection_dragged && !button->is_canceled() &&
 		(point - visible_rect.position).distance_squared_to(pressed_position) <= DRAG_DEADZONE * DRAG_DEADZONE;
+	const bool blank_clicked = clicked && pressed_blank && visible_rect.has_point(point);
 	const bool link_clicked = clicked && pressed_link != 0 && pressed_link == hit.id;
 	const bool element_clicked = clicked && element.is_valid() && pressed_element == element;
 	const uint64_t click_version = element_clicked ? element->adoption_version : 0;
@@ -403,11 +409,12 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			queue_redraw();
 		}
 	}
-	if (selecting || pressed_button.is_valid() || form_clicked) {
+	if (selecting || link_clicked || pressed_button.is_valid() || form_clicked) {
 		accept_event();
 	}
 	const bool was_dragging = selection_dragged;
 	cancel_press();
+	if (blank_clicked) label->clear_selection();
 	if (was_dragging) {
 		label->request_hover_check();
 		callable_mp(label->layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
@@ -686,6 +693,7 @@ void HTMLLabelCanvas::cancel_press() {
 }
 
 void HTMLLabelCanvas::cancel_click() {
+	pressed_blank = false;
 	if (pressed_checkbox.is_valid()) {
 		set_element_pseudo(pressed_checkbox, "active", false);
 		pressed_checkbox.unref();

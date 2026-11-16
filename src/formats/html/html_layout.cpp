@@ -1091,9 +1091,13 @@ int64_t HTMLLayout::hit_test_text(const Vector2& p_position) const {
 	return state->has_layout() ? state->container->get_paint_recorder().hit_test_text(p_position) : 0;
 }
 
-bool HTMLLayout::hit_test_selectable_text(const Vector2& p_position) const {
+bool HTMLLayout::hit_test_selectable_text(const Vector2& p_position, bool* r_blank) const {
 	const auto element = find_html_ancestor(hit_test_element(p_position));
-	return element && state->container->get_paint_recorder().hit_test_selectable_text(p_position, *element);
+	bool over_text = false;
+	const bool selectable = element && state->container->get_paint_recorder().hit_test_selectable_text(
+		p_position, *element, r_blank ? &over_text : nullptr);
+	if (r_blank) *r_blank = state->has_layout() && !over_text && (!element || !element->is_replaced());
+	return selectable;
 }
 
 docrender::HTMLSelectionPoint HTMLLayout::selection_point_at(const Vector2& p_position) const {

@@ -142,6 +142,8 @@ private:
 	int64_t search_match_start = -1;
 	int64_t search_match_end = -1;
 	Vector2 press_position;
+	bool pressed_markdown = false;
+	bool pressed_blank = false;
 	int32_t rendered_block_count = 0;
 	float content_height = 1.0f;
 	float layout_width = 0.0f;
@@ -204,6 +206,7 @@ private:
 	docrender::HTMLSelectionPoint selection_point_at(const Vector2& p_position) const;
 	void extend_document_selection(const Vector2& p_position);
 	void scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event);
+	void on_margin_gui_input(const Ref<InputEvent>& p_event);
 	void update_pointer(const Vector2& p_position);
 	void queue_pointer_update();
 	void refresh_pointer();
