@@ -61,7 +61,7 @@ string_id css_map_logical_property(string_id name, bool rtl) {
 }
 
 namespace {
-	enum class property_family { wide_only, keyword, box, background, mask, text, layout, transition, scroll_padding, scroll_margin, logical, logical_pair };
+	enum class property_family { wide_only, keyword, box, background, mask, text, layout, transition, animation, scroll_padding, scroll_margin, logical, logical_pair };
 
 	struct property_definition {
 		property_family family;
@@ -113,6 +113,17 @@ namespace {
 			{ _id("transition-delay"), { property_family::transition } },
 			{ _id("transition-timing-function"), { property_family::transition } },
 			{ _id("transition-behavior"), { property_family::transition } },
+			{ _id("animation"), { property_family::animation, { _id("animation-name"), _id("animation-duration"),
+				_id("animation-delay"), _id("animation-timing-function"), _id("animation-iteration-count"),
+				_id("animation-direction"), _id("animation-fill-mode"), _id("animation-play-state") } } },
+			{ _id("animation-name"), { property_family::animation } },
+			{ _id("animation-duration"), { property_family::animation } },
+			{ _id("animation-delay"), { property_family::animation } },
+			{ _id("animation-timing-function"), { property_family::animation } },
+			{ _id("animation-iteration-count"), { property_family::animation } },
+			{ _id("animation-direction"), { property_family::animation } },
+			{ _id("animation-fill-mode"), { property_family::animation } },
+			{ _id("animation-play-state"), { property_family::animation } },
 			{ _id("filter"), { property_family::background } },
 			{ _id("backdrop-filter"), { property_family::background } },
 			{ _id("will-change"), { property_family::box } },
@@ -493,6 +504,9 @@ static props_map parse_property_value(string_id name, const property_definition&
 		break;
 	case property_family::transition:
 		parse_css_transition(parser, name, tokens, important);
+		break;
+	case property_family::animation:
+		parse_css_animation(parser, name, tokens, important);
 		break;
 	case property_family::scroll_padding:
 	case property_family::scroll_margin: {

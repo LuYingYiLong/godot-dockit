@@ -203,6 +203,9 @@
     <ClCompile Include="src\formats\html\css\css_values.cpp" />
     <ClCompile Include="src\formats\html\css\css_math.cpp" />
     <ClCompile Include="src\formats\html\css\css_transform.cpp" />
+    <ClCompile Include="src\formats\html\css\css_animated_property.cpp" />
+    <ClCompile Include="src\formats\html\css\css_animation.cpp" />
+    <ClCompile Include="src\formats\html\css\css_animation_state.cpp" />
     <ClCompile Include="src\formats\html\css\css_transition.cpp" />
     <ClCompile Include="src\formats\html\css\css_transition_state.cpp" />
     <ClCompile Include="src\formats\html\css\css_clip_path.cpp" />
@@ -371,6 +374,9 @@
     <ClInclude Include="src\formats\html\css\css_values.h" />
     <ClInclude Include="src\formats\html\css\css_math.h" />
     <ClInclude Include="src\formats\html\css\css_transform.h" />
+    <ClInclude Include="src\formats\html\css\css_animated_property.h" />
+    <ClInclude Include="src\formats\html\css\css_animation.h" />
+    <ClInclude Include="src\formats\html\css\css_animation_state.h" />
     <ClInclude Include="src\formats\html\css\css_transition.h" />
     <ClInclude Include="src\formats\html\css\css_transition_state.h" />
     <ClInclude Include="src\formats\html\css\css_clip_path.h" />

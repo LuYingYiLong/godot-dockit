@@ -119,6 +119,21 @@ void css::parse_rules(const raw_rule::vector& rules, const RuleContext& context,
 					return true;
 				}
 				return false;
+			case Kind::keyframes:
+				if (in_style_rule || containers) return false;
+				if (auto parsed = syntax::parse_keyframe_rule(prelude, rule.syntax.block.value)) {
+					if (media_matches(*doc, media)) {
+						css_keyframes keyframes;
+						for (const auto& [offset, declarations] : parsed->frames) {
+							auto frame = make_shared<style>();
+							frame->add_declarations(declarations, baseurl, doc->container());
+							keyframes.frames.emplace(offset, std::move(frame));
+						}
+						m_keyframe_rules.push_back({std::move(parsed->name), std::move(keyframes), layer_id});
+					}
+					return true;
+				}
+				return false;
 		}
 		return false;
 	});
@@ -244,6 +259,13 @@ void css::sort_selectors(bool author)
 		const auto found = m_counter_styles.find(rule.name);
 		if (found == m_counter_styles.end() || found->second.first <= rank)
 			m_counter_styles.insert_or_assign(rule.name, std::make_pair(rank, rule.style));
+	}
+	m_keyframes.clear();
+	for (const auto& rule : m_keyframe_rules) {
+		const int rank = author ? cascade_layers.rank(rule.layer_id) : css_default_layer;
+		const auto found = m_keyframes.find(rule.name);
+		if (found == m_keyframes.end() || found->second.first <= rank)
+			m_keyframes.insert_or_assign(rule.name, std::make_pair(rank, rule.value));
 	}
 	for (const auto& selector : m_selectors)
 		selector->m_layer = author ? cascade_layers.rank(selector->m_layer_id) : css_default_layer;

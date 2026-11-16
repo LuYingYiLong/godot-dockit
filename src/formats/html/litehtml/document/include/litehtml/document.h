@@ -100,6 +100,10 @@ namespace litehtml
 			return m_master_css.find_counter_style(name);
 		}
 		bool							has_author_layers() const { return m_styles.has_layers(); }
+		const css_keyframes* find_keyframes(const string& name) const {
+			if (const auto* frames = m_styles.find_keyframes(name)) return frames;
+			return m_master_css.find_keyframes(name);
+		}
 		bool matches_container_query(const container_query& query, const element& subject, bool include_subject) const;
 		std::optional<pixel_t> resolve_container_unit(const element& subject, bool block_axis, bool include_subject);
 		uint_ptr						get_font(const font_description& descr, font_metrics* fm);

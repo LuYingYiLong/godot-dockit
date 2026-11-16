@@ -374,7 +374,8 @@ func _run() -> void:
 	await _check_border_image()
 	await _check_group_opacity()
 	await _check_css_transitions()
-	_check_transform_matrix_transitions()
+	await _check_transform_matrix_transitions()
+	await _check_css_animations()
 	await _check_filters()
 	await _check_backdrop_filters()
 	await _check_will_change()
@@ -10215,9 +10216,15 @@ body { margin:0; background:white; }
 	short_transition.get_element_by_id("short_body").set_attribute("class", "changed")
 	_check(short_transition.layout(Vector2i(100, 80)) == OK and is_equal_approx(_rect(short_transition, "short").size.x, 20.0),
 		"A positive delay holds the starting value")
+	var parallel_transition: HTMLLayout = HTMLLayout.new()
+	_check(parallel_transition.parse(short_html) == OK and parallel_transition.layout(Vector2i(100, 80)) == OK,
+		"Lay out a second document with an independent transition")
+	parallel_transition.get_element_by_id("short_body").set_attribute("class", "changed")
+	_check(parallel_transition.layout(Vector2i(100, 80)) == OK, "Start concurrent transitions in two layouts")
 	await create_timer(0.25).timeout
-	_check(is_equal_approx(_rect(short_transition, "short").size.x, 60.0),
-		"The scene timeline applies the final style without another edit")
+	_check(is_equal_approx(_rect(short_transition, "short").size.x, 60.0)
+		and is_equal_approx(_rect(parallel_transition, "short").size.x, 60.0),
+		"The scene timeline completes independent layout transitions without another edit")
 
 	var label_viewport: SubViewport = SubViewport.new()
 	label_viewport.size = Vector2i(100, 80)
@@ -10243,18 +10250,19 @@ body { margin:0; background:white; }
 func _check_transform_matrix_transitions() -> void:
 	var layout: HTMLLayout = HTMLLayout.new()
 	var html: String = """<!doctype html><style>
-		body { margin:0; }
+		body { margin:0; background:white; }
 		.box { position:absolute; display:block; left:60px; top:20px; width:20px; height:10px;
 			transform-origin:0 0; transition:transform 120s linear -60s; }
-		#different { width:40px; transform:translateX(50%) rotate(0deg);
+		#different { width:40px; background:red; transform:translateX(50%) rotate(0deg);
 			transition:transform 120s linear -60s, width 120s linear -60s; }
 		#prefix { top:95px; transform:rotate(0deg) scale(1); }
 		#matrix { left:140px; top:50px; transform:matrix(1, 0, 0, 1, 0, 0) rotate(0deg); }
 		#reflection { left:220px; top:55px; transform:matrix(-1, 0, 0, 1, 0, 0); }
 		#axes { top:110px; transform:rotateX(90deg); }
 		#spatial { left:140px; top:110px; transform:perspective(200px) translateZ(0px); }
-		#singular { left:220px; top:85px; transform:scale(0); transition-delay:-30s; }
-		#discrete { left:220px; top:110px; transform:scale(0); transition-delay:-30s;
+		#projective { left:140px; top:135px; transform:matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1); }
+		#singular { left:220px; top:85px; transform:translateX(5px) scale(0); transition-delay:60s; }
+		#discrete { left:220px; top:110px; transform:translateX(5px) scale(0); transition-delay:-30s;
 			transition-behavior:allow-discrete; }
 		.changed #different { width:80px; transform:rotate(90deg); }
 		.changed #prefix { transform:rotate(1turn) translateX(40px); }
@@ -10262,12 +10270,13 @@ func _check_transform_matrix_transitions() -> void:
 		.changed #reflection { transform:matrix(1, 0, 0, -1, 0, 0); }
 		.changed #axes { transform:rotateY(90deg); }
 		.changed #spatial { transform:translateZ(100px); }
-		.changed #singular, .changed #discrete { transform:translateX(25px); }
+		.changed #projective { transform:matrix3d(1,0,0,0, 1,1,0,0, 0,0,1,-.01, 10,0,20,.8); }
+		.changed #singular, .changed #discrete { transform:translateX(25px) translateY(0); }
 	</style><body id="scene">
 		<a class="box" id="different" href="#transformed"></a>
 		<div class="box" id="prefix"></div><div class="box" id="matrix"></div>
 		<div class="box" id="reflection"></div><div class="box" id="axes"></div>
-		<div class="box" id="spatial"></div>
+		<div class="box" id="spatial"></div><div class="box" id="projective"></div>
 		<a class="box" id="singular" href="#jump"></a><a class="box" id="discrete" href="#hold"></a>
 	</body>"""
 	var viewport_size: Vector2i = Vector2i(300, 160)
@@ -10292,13 +10301,134 @@ func _check_transform_matrix_transitions() -> void:
 	_check(_rect(layout, "axes").size.is_equal_approx(Vector2(50.0 / 3.0, 40.0 / 3.0))
 		and _rect(layout, "spatial").size.is_equal_approx(Vector2(20.0, 10.0) / 0.875),
 		"3D decomposition applies quaternion rotation and projective translation")
+	var projective: Rect2 = _rect(layout, "projective")
+	_check(projective.position.is_equal_approx(Vector2(140.0 + 6.25 / 1.0625, 135.0))
+		and projective.size.is_equal_approx(Vector2(28.125, 11.25) / 1.0625),
+		"Explicit matrix3d interpolation normalizes perspective and preserves shear")
 	_check(layout.get_link_at(Vector2(250.0, 90.0)) == "#jump"
 		and layout.get_link_at(Vector2(250.0, 115.0)).is_empty(),
-		"A singular matrix endpoint only holds the source with allow-discrete")
+		"A singular matrix skips the transition and its delay unless allow-discrete is set")
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = viewport_size
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas: Node2D = Node2D.new()
+	canvas.draw.connect(func() -> void: layout.draw(canvas))
+	viewport.add_child(canvas)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	_check_pixel(image, Vector2(90.0, 43.0), Color.RED, "The interpolated matrix paints inside the rotated link")
+	_check_pixel(image, Vector2(113.0, 22.0), Color.WHITE, "The rotated link leaves the corner of its bounds clear")
 	scene.remove_attribute("class")
-	_check(layout.layout(viewport_size) == OK and absf(_rect(layout, "prefix").position.x - 50.0) < 0.1,
+	_check(layout.layout(viewport_size) == OK and absf(_rect(layout, "prefix").position.x - 50.0) < 0.5,
 		"Reversing a matrix transition samples the currently interpolated transform")
 	layout.clear()
+	viewport.queue_free()
+
+
+func _check_css_animations() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+		body { margin:0; background:white; }
+		.box { width:20px; height:12px; }
+		@keyframes Grow {
+			-5% { width:500px; }
+			50% { width:35px; color:blue; animation-timing-function:steps(2,end); }
+			50.0% { width:var(--mid); width:500px !important; }
+			to { width:100px; }
+		}
+		@keyframes Range { from { width:10px; } to { width:110px; } }
+		@keyframes Solid { from, to { width:100px; } }
+		@keyframes "none" { to { width:65px; } }
+		@keyframes Move { to { transform:translateX(40px); } }
+		@layer low, high;
+		@layer high { @keyframes Layered { to { width:73px; } } }
+		@layer low { @keyframes Layered { to { width:89px; } } }
+		@media (min-width:260px) { @keyframes Responsive { to { width:95px; } } }
+		@supports (animation:3s ease-in Zoom) { @keyframes Feature { to { width:75px; } } }
+		#middle { --mid:60px; animation:Grow 120s linear -30s paused; }
+		#steps { --mid:60px; animation:Grow 120s linear -75s paused; }
+		#stack { --mid:60px; animation: Solid 0s both, Grow 120s linear -30s paused; }
+		#direction { animation:Range 120s linear -150s 2 alternate paused; }
+		#fraction { animation:Range 120s linear -240s 1.25 alternate forwards paused; }
+		#backwards { animation:Range 120s linear 15s backwards reverse paused; }
+		#quoted { animation:0s forwards "none"; }
+		#case_sensitive { animation:range 0s forwards; }
+		#important { width:33px !important; animation:Range 0s forwards; }
+		#layered { animation:Layered 0s forwards; }
+		#media { animation:Responsive 0s forwards; }
+		#feature { animation:Feature 0s forwards; }
+		#none { animation: Range 0s; }
+		#zero { animation:Range 120s linear 0s 0 both paused; }
+		#longhands { animation-name:Solid, Range; animation-duration:120s; animation-delay:-60s;
+			animation-timing-function:linear; animation-play-state:paused; }
+		#moving { display:block; transform:rotate(0deg); --motion:120s linear -60s Move paused;
+			animation:var(--motion); }
+		#cancel { animation:Solid 0s forwards; transition:width 120s 60s; }
+		.cancelled #cancel { animation-name:none; }
+		@supports (animation-duration:-1s) { #none { width:45px; } }
+	</style><body id="scene">
+		<div class="box" id="middle"></div><div class="box" id="steps"></div><div class="box" id="stack"></div>
+		<div class="box" id="direction"></div><div class="box" id="fraction"></div><div class="box" id="backwards"></div>
+		<div class="box" id="quoted"></div><div class="box" id="case_sensitive"></div><div class="box" id="important"></div>
+		<div class="box" id="layered"></div><div class="box" id="media"></div><div class="box" id="feature"></div>
+		<div class="box" id="none"></div><div class="box" id="zero"></div><div class="box" id="longhands"></div>
+		<a class="box" id="moving" href="#motion"></a><div class="box" id="cancel"></div>
+	</body>"""
+	layout.css_diagnostics_enabled = true
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(300, 250)) == OK, "Apply CSS keyframes on first layout")
+	_check(layout.get_css_diagnostics().is_empty(), "Recognize animation shorthand, all longhands and keyframe syntax")
+	_check(is_equal_approx(_rect(layout, "middle").size.x, 40.0)
+		and is_equal_approx(_rect(layout, "steps").size.x, 60.0)
+		and is_equal_approx(_rect(layout, "stack").size.x, 80.0),
+		"Keyframes merge repeated offsets, resolve custom properties and use per-segment easing and underlying values")
+	_check(is_equal_approx(_rect(layout, "direction").size.x, 85.0)
+		and is_equal_approx(_rect(layout, "fraction").size.x, 85.0)
+		and is_equal_approx(_rect(layout, "backwards").size.x, 110.0)
+		and is_equal_approx(_rect(layout, "zero").size.x, 10.0),
+		"Direction, backwards fill, and fractional and zero iteration counts control sampling")
+	_check(is_equal_approx(_rect(layout, "quoted").size.x, 65.0)
+		and is_equal_approx(_rect(layout, "case_sensitive").size.x, 20.0)
+		and is_equal_approx(_rect(layout, "important").size.x, 33.0)
+		and is_equal_approx(_rect(layout, "none").size.x, 20.0)
+		and is_equal_approx(_rect(layout, "longhands").size.x, 60.0),
+		"Animation names preserve case and quoted keywords, list values repeat, and important styles win")
+	_check(is_equal_approx(_rect(layout, "layered").size.x, 73.0)
+		and is_equal_approx(_rect(layout, "media").size.x, 95.0)
+		and is_equal_approx(_rect(layout, "feature").size.x, 75.0)
+		and is_equal_approx(_rect(layout, "cancel").size.x, 100.0),
+		"Layer order, media and feature queries pick among named keyframe rules")
+	var moving: Rect2 = _rect(layout, "moving")
+	_check(is_equal_approx(moving.position.x, 20.0) and layout.get_link_at(moving.get_center()) == "#motion",
+		"Animation transform samples also move link hit geometry")
+	layout.get_element_by_id("scene").set_attribute("class", "cancelled")
+	_check(layout.layout(Vector2i(250, 250)) == OK and is_equal_approx(_rect(layout, "media").size.x, 20.0)
+		and is_equal_approx(_rect(layout, "cancel").size.x, 20.0),
+		"Removing the matching rule or animation name restores the underlying value without starting a transition")
+	layout.clear()
+
+	var timed: HTMLLayout = HTMLLayout.new()
+	var timed_html: String = """<!doctype html><style>
+		@keyframes Timer { from { width:10px; } to { width:110px; } }
+		#clock { width:20px; height:12px; animation:Timer 600ms linear -150ms both paused; }
+		.play #clock { animation-play-state:running; }
+	</style><body id="scene"><div id="clock"></div></body>"""
+	var viewport_size: Vector2i = Vector2i(180, 80)
+	_check(timed.parse(timed_html) == OK and timed.layout(viewport_size) == OK, "Create a paused scene animation")
+	await create_timer(0.10).timeout
+	_check(is_equal_approx(_rect(timed, "clock").size.x, 35.0), "Paused time stays at the negative delay sample")
+	timed.get_element_by_id("scene").set_attribute("class", "play")
+	_check(timed.layout(viewport_size) == OK and is_equal_approx(_rect(timed, "clock").size.x, 35.0),
+		"Playing a paused animation resumes from the same time")
+	await create_timer(0.1).timeout
+	_check(_rect(timed, "clock").size.x > 35.0 and _rect(timed, "clock").size.x < 110.0,
+		"The scene advances keyframes without a new edit")
+	await create_timer(0.55).timeout
+	_check(is_equal_approx(_rect(timed, "clock").size.x, 110.0),
+		"The final keyframe remains applied with forwards fill")
+	timed.clear()
 
 
 func _check_group_opacity() -> void:

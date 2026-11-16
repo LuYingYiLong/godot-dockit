@@ -2,6 +2,7 @@
 #include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_textarea_node.h"
 #include "litehtml_container.h"
+#include "formats/html/css/css_animation_state.h"
 #include "formats/html/css/css_transition_state.h"
 
 #include "formats/html/dom/html_dom.h"
@@ -27,6 +28,9 @@ namespace docrender {
 
 	const property_value* LiteHTMLContainer::transition_override(const element* p_element, string_id p_name) const {
 		return transition_state ? transition_state->find(p_element, p_name) : nullptr;
+	}
+	const property_value* LiteHTMLContainer::animation_override(const element* p_element, string_id p_name) const {
+		return animation_state ? animation_state->find(p_element, p_name) : nullptr;
 	}
 	namespace {
 		constexpr float CSS_DPI = 96.0f;

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "css_property_value.h"
+#include "css_animated_property.h"
 
 #include <array>
+#include <functional>
 #include <map>
 #include <memory>
 #include <unordered_map>
@@ -13,9 +14,9 @@ namespace litehtml { class element; }
 namespace docrender::css {
 	class TransitionState {
 		using ElementKey = std::weak_ptr<litehtml::element>;
-		using Value = std::variant<float, litehtml::web_color, litehtml::css_length, litehtml::css_transform_list>;
-		static constexpr std::size_t property_count = 10;
-		using Values = std::array<Value, property_count>;
+		using Value = AnimatedValue;
+		static constexpr std::size_t property_count = animated_property_names.size();
+		using Values = AnimatedValues;
 
 		struct Track {
 			Value from;
@@ -35,16 +36,13 @@ namespace docrender::css {
 		std::map<ElementKey, Running, std::owner_less<>> running;
 		std::unordered_map<const litehtml::element*, litehtml::props_map> overrides;
 
-		static Values values(const litehtml::element& element);
-		static bool equal(const Value& a, const Value& b);
-		static bool interpolable(const Value& a, const Value& b);
-		static Value interpolate(const Value& a, const Value& b, double progress, bool allow_discrete);
-
 	public:
 		using Snapshot = std::map<ElementKey, Values, std::owner_less<>>;
+		using TransformInterpolationCheck = std::function<bool(const litehtml::element&, const litehtml::css_transform_list&)>;
 
 		static Snapshot capture(const std::shared_ptr<litehtml::element>& root);
-		void commit(const std::shared_ptr<litehtml::element>& root, const Snapshot& before, double now);
+		void commit(const std::shared_ptr<litehtml::element>& root, const Snapshot& before, double now,
+			const TransformInterpolationCheck& can_interpolate_transform);
 		void sample(double now);
 		bool active() const { return !running.empty(); }
 		bool has_overrides() const { return !overrides.empty(); }

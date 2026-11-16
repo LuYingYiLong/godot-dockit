@@ -93,7 +93,7 @@ class HTMLLayout : public godot::RefCounted {
 	void set_transition_callback(const godot::Callable& p_callback);
 	void update_transition_subscription();
 	void disconnect_transition_frames();
-	static void sample_transition_frame(uint64_t p_id, uint64_t p_version);
+	void sample_transition_frame(uint64_t p_version);
 	godot::TypedArray<godot::Rect2> get_element_rects(const std::shared_ptr<litehtml::element>& p_element) const;
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
 		bool p_text_selection = false) const;

@@ -18,8 +18,11 @@ namespace litehtml {
 		int steps = 1;
 		std::vector<std::pair<double, double>> stops;
 
-		double sample(double progress) const;
+		double sample(double progress, bool before = false) const;
 	};
+
+	std::optional<double> parse_css_time(const css_token& token);
+	std::optional<css_easing> parse_css_easing(const css_token& token);
 
 	using css_transition_times = std::vector<double>;
 	using css_transition_easings = std::vector<css_easing>;

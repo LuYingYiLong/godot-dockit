@@ -4,6 +4,7 @@
 #include "css_selector.h"
 #include "formats/html/css/css_parser.h"
 #include "formats/html/css/css_font_face.h"
+#include "formats/html/css/css_animation.h"
 
 namespace docrender::css { struct StylesheetImport; }
 
@@ -39,6 +40,13 @@ class css
 	};
 	std::vector<font_feature_values_rule> m_font_feature_values_rules;
 	std::vector<css_font_feature_values_rule> m_font_feature_values;
+	struct keyframes_rule {
+		string name;
+		css_keyframes value;
+		size_t layer_id;
+	};
+	std::vector<keyframes_rule> m_keyframe_rules;
+	std::map<string, std::pair<int, css_keyframes>> m_keyframes;
 public:
 
 	const css_selector::vector& selectors() const
@@ -57,6 +65,10 @@ public:
 	}
 	const std::vector<css_font_face>& font_faces() const { return m_font_faces; }
 	const std::vector<css_font_feature_values_rule>& font_feature_values() const { return m_font_feature_values; }
+	const css_keyframes* find_keyframes(const string& name) const {
+		const auto found = m_keyframes.find(name);
+		return found == m_keyframes.end() ? nullptr : &found->second.second;
+	}
 	bool	has_layers() const { return cascade_layers.has_layers(); }
 	bool	has_container_queries() const { return m_has_container_queries; }
 

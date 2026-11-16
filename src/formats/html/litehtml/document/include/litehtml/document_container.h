@@ -85,6 +85,7 @@ namespace litehtml
 		virtual css_source get_css_source(const string&, bool) const { return {}; }
 		virtual void report_css_diagnostic(const css_diagnostic&, const html_tag* = nullptr) {}
 		virtual const property_value* transition_override(const element*, string_id) const { return nullptr; }
+		virtual const property_value* animation_override(const element*, string_id) const { return nullptr; }
 
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;

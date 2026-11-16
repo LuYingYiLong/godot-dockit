@@ -24,14 +24,6 @@ namespace litehtml {
 			return names;
 		}
 
-		std::optional<double> time_value(const css_token& token) {
-			if (token.type != DIMENSION || !std::isfinite(token.n.number)) return std::nullopt;
-			const auto unit = lowcase(token.unit);
-			if (unit == "s") return token.n.number;
-			if (unit == "ms") return token.n.number / 1000.0;
-			return std::nullopt;
-		}
-
 		std::optional<std::string> property_name(const css_token& token) {
 			if (token.type != IDENT) return std::nullopt;
 			const auto name = token.ident();
@@ -86,7 +78,17 @@ namespace litehtml {
 			return result;
 		}
 
-		std::optional<css_easing> easing_value(const css_token& token) {
+	}
+
+	std::optional<double> parse_css_time(const css_token& token) {
+		if (token.type != DIMENSION || !std::isfinite(token.n.number)) return std::nullopt;
+		const auto unit = lowcase(token.unit);
+		if (unit == "s") return token.n.number;
+		if (unit == "ms") return token.n.number / 1000.0;
+		return std::nullopt;
+	}
+
+	std::optional<css_easing> parse_css_easing(const css_token& token) {
 			css_easing result;
 			const auto name = token.ident();
 			if (name == "ease") return result;
@@ -128,14 +130,15 @@ namespace litehtml {
 				} else return std::nullopt;
 			} else return std::nullopt;
 			return result;
-		}
 	}
 
-	double css_easing::sample(double progress) const {
+	double css_easing::sample(double progress, bool before) const {
 		if (type == kind::steps) {
 			const int jumps = steps + (position == step_position::both) - (position == step_position::none);
-			const auto current = std::floor(progress * steps) +
+			const double scaled = progress * steps;
+			double current = std::floor(scaled) +
 				(position == step_position::both || position == step_position::start);
+			if (before && scaled == std::floor(scaled)) --current;
 			return std::clamp(current, 0.0, double(jumps)) / jumps;
 		}
 		if (type == kind::linear) {
@@ -194,13 +197,13 @@ namespace litehtml {
 			std::optional<css_easing> easing;
 			std::optional<int> behavior;
 			for (const auto& token : group) {
-				if (const auto time = time_value(token); time && (shorthand || name == fields.duration || name == fields.delay)) {
+				if (const auto time = parse_css_time(token); time && (shorthand || name == fields.duration || name == fields.delay)) {
 					if (!duration && name != fields.delay) {
 						if (*time < 0) return;
 						duration = time;
 					} else if (!delay) delay = time;
 					else return;
-				} else if (const auto timing = easing_value(token); timing && !easing && (shorthand || name == fields.easing)) {
+				} else if (const auto timing = parse_css_easing(token); timing && !easing && (shorthand || name == fields.easing)) {
 					easing = timing;
 				} else if (const auto mode = behavior_value(token); mode && !behavior && (shorthand || name == fields.behavior)) {
 					behavior = mode;

@@ -25,6 +25,7 @@ namespace litehtml {
 	struct position;
 	enum class scrollbar_width;
 	struct css_scroll_snap_type;
+	struct css_transform_function;
 }
 
 namespace docrender::css { class ComputedStyle; }
@@ -215,6 +216,8 @@ namespace docrender {
 		void clear();
 		const ElementGeometry* find_element(const litehtml::element* p_element) const;
 		const RenderGeometry* find_renderer(const litehtml::render_item* p_item) const;
+		bool can_interpolate_transform(const litehtml::element& p_element,
+			const std::vector<litehtml::css_transform_function>& p_sample) const;
 		const std::vector<const RenderGeometry*>& get_snap_areas() const { return snap_areas; }
 		const std::vector<const RenderGeometry*>& get_auto_content_boxes() const { return auto_content_boxes; }
 		const std::vector<std::shared_ptr<litehtml::render_item>>& get_snap_containers() const { return snap_containers; }

@@ -80,13 +80,22 @@ namespace {
 		const html_tag& element;
 		bool suppress_chrome;
 		const document_container& container;
+		const props_map* keyframe;
 	};
 
 	const property_value& read_declaration(const void* declarations, string_id name)
 	{
 		const auto& input = *static_cast<const ElementStyleInput*>(declarations);
-		if (const auto* animated = input.container.transition_override(&input.element, name)) return *animated;
 		const auto& value = input.element.get_cascaded_property(name);
+		if (input.keyframe) {
+			const auto override = input.keyframe->find(name);
+			if (override != input.keyframe->end()) return override->second;
+		} else {
+			if (const auto* transition = input.container.transition_override(&input.element, name)) return *transition;
+			if (!value.m_important) {
+				if (const auto* animation = input.container.animation_override(&input.element, name)) return *animation;
+			}
+		}
 		if (input.suppress_chrome && value.priority.layer == css_default_layer &&
 			docrender::css::detail::is_one_of(name, _background_color_,
 				_border_top_width_, _border_right_width_, _border_bottom_width_, _border_left_width_,
@@ -114,7 +123,7 @@ namespace {
 	}
 }
 
-void litehtml::css_properties::compute(const html_tag* element, const document::ptr& doc)
+void litehtml::css_properties::compute(const html_tag* element, const document::ptr& doc, const props_map* keyframe)
 {
 	viewport_overflow_source = false;
 	const auto parent = element->parent();
@@ -125,7 +134,7 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 	const auto root = doc->root();
 	const bool control = docrender::css::detail::is_one_of(element->tag(), _input_, _textarea_, _select_, _button_);
 	const bool native = control && uses_native_chrome(*element, parent.get());
-	const ElementStyleInput input{*element, control && !native, *doc->container()};
+	const ElementStyleInput input{*element, control && !native, *doc->container(), keyframe};
 	const auto viewport = doc->get_viewport_unit_features();
 	ComputedStyle::compute({&input, read_declaration, parent ? &parent->css() : nullptr, host,
 		viewport, root ? &root->css().get_font_metrics() : nullptr,
@@ -133,7 +142,9 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 		suppress_contents_display(*element)});
 
 	if (native && is_toggle(*element) && element->has_pseudo_class(_id("checked")) && !element->has_pseudo_class(_id("disabled")) &&
-		!element->has_author_property(_background_color_) && !doc->container()->transition_override(element, _background_color_))
+		!element->has_author_property(_background_color_) &&
+		(keyframe ? !keyframe->count(_background_color_) : !doc->container()->transition_override(element, _background_color_) &&
+			!doc->container()->animation_override(element, _background_color_)))
 	{
 		auto background = get_bg();
 		background.m_color = get_accent_color();

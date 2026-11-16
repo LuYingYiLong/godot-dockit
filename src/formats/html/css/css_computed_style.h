@@ -13,6 +13,7 @@
 #include "css_offsets.h"
 #include "css_transform.h"
 #include "css_transition.h"
+#include "css_animation.h"
 #include "css_motion_path.h"
 #include "css_grid_values.h"
 #include "css_shadows.h"
@@ -102,6 +103,7 @@ namespace docrender::css {
 		web_color m_caret_color;
 		double m_opacity = 1.0;
 		std::shared_ptr<const css_transition_styles> m_transitions;
+		std::shared_ptr<const css_animation_styles> m_animations;
 		int m_mix_blend_mode = 0;
 		int m_isolation = 0;
 		css_filter_list m_filters;
@@ -379,6 +381,7 @@ namespace docrender::css {
 		const web_color& get_caret_color() const { return m_caret_color; }
 		double get_opacity() const { return m_opacity; }
 		const css_transition_styles* get_transitions() const { return m_transitions.get(); }
+		const css_animation_styles* get_animations() const { return m_animations.get(); }
 		css_blend_mode get_mix_blend_mode() const { return static_cast<css_blend_mode>(m_mix_blend_mode); }
 		bool mixes_with_backdrop() const { return get_mix_blend_mode() != css_blend_mode::normal; }
 		bool isolates_blending() const { return m_isolation == 1; }

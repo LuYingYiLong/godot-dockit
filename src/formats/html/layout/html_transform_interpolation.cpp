@@ -3,9 +3,9 @@
 #include <godot_cpp/variant/basis.hpp>
 #include <godot_cpp/variant/quaternion.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
 #include <cmath>
-#include <numbers>
 
 namespace docrender {
 	using namespace godot;
@@ -51,7 +51,7 @@ namespace docrender {
 			auto a = decompose_2d(from);
 			auto b = decompose_2d(to);
 			if (!a || !b) return std::nullopt;
-			constexpr double pi = std::numbers::pi;
+			constexpr double pi = 3.14159265358979323846;
 			if ((a->scale.x < 0 && b->scale.y < 0) || (a->scale.y < 0 && b->scale.x < 0)) {
 				a->scale = -a->scale;
 				a->angle += a->angle < 0 ? pi : -pi;
@@ -59,13 +59,13 @@ namespace docrender {
 			if (a->angle == 0) a->angle = 2 * pi;
 			if (b->angle == 0) b->angle = 2 * pi;
 			if (a->angle - b->angle > pi) a->angle -= 2 * pi;
-			if (b->angle - a->angle > pi) b->angle -= 2 * pi;
+			else if (b->angle - a->angle > pi) b->angle -= 2 * pi;
 
 			const auto translation = a->translation.lerp(b->translation, progress);
 			const auto scale = a->scale.lerp(b->scale, progress);
 			const auto rx = a->residual_x.lerp(b->residual_x, progress);
 			const auto ry = a->residual_y.lerp(b->residual_y, progress);
-			const double angle = std::lerp(a->angle, b->angle, progress);
+			const double angle = a->angle + (b->angle - a->angle) * progress;
 			const double cosine = std::cos(angle), sine = std::sin(angle);
 			const auto x = (rx * cosine + ry * sine) * scale.x;
 			const auto y = (ry * cosine - rx * sine) * scale.y;
@@ -98,6 +98,8 @@ namespace docrender {
 			if (determinant == 0 || !std::isfinite(determinant)) return std::nullopt;
 			const Vector3 projective_row(matrix[0].w / w, matrix[1].w / w, matrix[2].w / w);
 			const auto p = linear.transposed().inverse().xform(projective_row);
+			const auto perspective_w = 1 - p.dot(translation);
+			if (perspective_w == 0) return std::nullopt;
 
 			// Separate scale and XY, XZ, YZ shear from the orthonormal rotation columns.
 			const auto sx = x.length();
@@ -119,7 +121,7 @@ namespace docrender {
 			const real_t sign = determinant < 0 ? -1 : 1;
 			const auto rotation = Basis(x * sign, y * sign, z * sign).get_quaternion().normalized();
 			return Decomposed3D{translation, Vector3(sx, sy, sz) * sign, Vector3(xy / sy, xz / sz, yz / sz),
-				rotation, Vector4(p.x, p.y, p.z, 1 - p.dot(translation))};
+				rotation, Vector4(p.x, p.y, p.z, perspective_w)};
 		}
 
 		std::optional<Projection> interpolate_3d(const Projection& from, const Projection& to, double progress) {

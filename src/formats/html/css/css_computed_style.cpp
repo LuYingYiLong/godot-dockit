@@ -112,6 +112,25 @@ void ComputedStyle::compute(const ComputeContext& context)
 	} else {
 		m_transitions.reset();
 	}
+	const auto& animation_names = css_animation_property_names();
+	if (std::any_of(animation_names.begin(), animation_names.end(), [&](auto name) {
+		return !context.read_declaration(context.declarations, name).is<invalid>();
+	})) {
+		static const css_animation_styles defaults;
+		const auto& previous = parent && parent->m_animations ? *parent->m_animations : defaults;
+		m_animations = std::make_shared<css_animation_styles>(css_animation_styles{
+			read_property(context, animation_names[0], false, defaults.names, &previous.names),
+			read_property(context, animation_names[1], false, defaults.durations, &previous.durations),
+			read_property(context, animation_names[2], false, defaults.delays, &previous.delays),
+			read_property(context, animation_names[3], false, defaults.easings, &previous.easings),
+			read_property(context, animation_names[4], false, defaults.iterations, &previous.iterations),
+			read_property(context, animation_names[5], false, defaults.directions, &previous.directions),
+			read_property(context, animation_names[6], false, defaults.fills, &previous.fills),
+			read_property(context, animation_names[7], false, defaults.play_states, &previous.play_states)
+		});
+	} else {
+		m_animations.reset();
+	}
 	m_mix_blend_mode = read_property(context, _id("mix-blend-mode"), false, 0, parent ? &parent->m_mix_blend_mode : nullptr);
 	m_isolation = read_property(context, _id("isolation"), false, 0, parent ? &parent->m_isolation : nullptr);
 	m_box_sizing	 = (box_sizing)			read_property<int>(context,  _box_sizing_,		false,	box_sizing_content_box,	 (parent ? &parent->m_box_sizing : nullptr));

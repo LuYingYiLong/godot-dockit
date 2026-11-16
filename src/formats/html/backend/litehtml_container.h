@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace docrender {
-	namespace css { class TransitionState; }
+	namespace css { class AnimationState; class TransitionState; }
 	class HTMLDOM;
 	struct HTMLSVGClipDocument;
 
@@ -74,7 +74,9 @@ namespace docrender {
 		void reset_stylesheet_reads();												// 重置本轮外部样式表的读取计数
 		void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
 		void set_transition_state(const css::TransitionState* p_state) { transition_state = p_state; }
+		void set_animation_state(const css::AnimationState* p_state) { animation_state = p_state; }
 		const litehtml::property_value* transition_override(const litehtml::element* p_element, litehtml::string_id p_name) const override;
+		const litehtml::property_value* animation_override(const litehtml::element* p_element, litehtml::string_id p_name) const override;
 		void begin_css_diagnostics();												// 清空上一轮样式诊断
 		void set_css_source_kind(litehtml::css_source_kind p_kind);					// 设置当前样式表来源
 		godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;			// 返回诊断快照
@@ -94,6 +96,7 @@ namespace docrender {
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;
 		const css::TransitionState* transition_state = nullptr;
+		const css::AnimationState* animation_state = nullptr;
 		litehtml::css_source_kind css_source_kind = litehtml::css_source_kind::none;
 		std::vector<godot::Dictionary> css_diagnostics;
 		godot::HashMap<godot::String, int64_t> css_diagnostic_keys;

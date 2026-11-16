@@ -14,6 +14,7 @@
 #include "formats/html/backend/litehtml_container.h"
 #include "formats/html/backend/litehtml_document_adapter.h"
 #include "formats/html/css/css_transition_state.h"
+#include "formats/html/css/css_animation_state.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
@@ -179,6 +180,8 @@ struct HTMLLayout::State {
 	std::string user_styles;
 	Callable edit_callback;
 	docrender::css::TransitionState transitions;
+	docrender::css::AnimationState animations;
+	docrender::css::TransitionState::Snapshot animation_underlying;
 	Callable transition_callback;
 	Callable transition_frame;
 	ObjectID transition_tree;
@@ -361,11 +364,18 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	using Update = State::Update;
 	const auto& document = state->dom->get_document();
 	const double transition_time = Time::get_singleton()->get_ticks_usec() / 1'000'000.0;
-	const auto before_transition = !state->sampling_transitions && state->viewport_size.x > 0 ?
-		docrender::css::TransitionState::capture(document->root()) : docrender::css::TransitionState::Snapshot{};
+	docrender::css::TransitionState::Snapshot before_transition;
+	if (!state->sampling_transitions && state->viewport_size.x > 0) {
+		before_transition = state->animation_underlying.empty() ?
+			docrender::css::TransitionState::capture(document->root()) : std::move(state->animation_underlying);
+	}
 	bool transitions_committed = state->sampling_transitions;
-	if (state->sampling_transitions) state->transitions.sample(transition_time);
+	if (state->sampling_transitions) {
+		state->transitions.sample(transition_time);
+		state->animations.sample(transition_time);
+	}
 	state->container->set_transition_state(state->sampling_transitions && state->transitions.has_overrides() ? &state->transitions : nullptr);
+	state->container->set_animation_state(state->sampling_transitions && state->animations.has_overrides() ? &state->animations : nullptr);
 	state->container->set_viewport(p_viewport_size, p_media_size);
 	DocumentAdapter::set_viewport_unit_size(*document, p_viewport_unit_size);
 	litehtml::media_features image_media;
@@ -456,9 +466,16 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 		if (!update_auto_content_visibility(p_viewport_size, selected_content, revealed)) {
 			if (transitions_committed) break;
 			transitions_committed = true;
-			state->transitions.commit(document->root(), before_transition, transition_time);
-			if (!state->transitions.has_overrides()) break;
+			state->transitions.commit(document->root(), before_transition, transition_time,
+				[this](const litehtml::element& element, const litehtml::css_transform_list& sample) {
+					return state->geometry.can_interpolate_transform(element, sample);
+				});
+			state->animations.commit(document, transition_time);
+			if (state->animations.has_overrides() || state->animations.active())
+				state->animation_underlying = docrender::css::TransitionState::capture(document->root());
+			if (!state->transitions.has_overrides() && !state->animations.has_overrides()) break;
 			state->container->set_transition_state(&state->transitions);
+			state->container->set_animation_state(&state->animations);
 			container_states.clear();
 			state->geometry.clear();
 			DocumentAdapter::compute_styles(*document);
@@ -719,14 +736,14 @@ void HTMLLayout::set_transition_callback(const Callable& p_callback) {
 }
 
 void HTMLLayout::update_transition_subscription() {
-	if (!state->transitions.active()) {
+	if (!state->transitions.active() && !state->animations.active()) {
 		disconnect_transition_frames();
 		return;
 	}
 	if (state->transition_frame.is_valid()) return;
 	auto* tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
 	if (!tree) return;
-	state->transition_frame = callable_mp_static(&HTMLLayout::sample_transition_frame).bind(get_instance_id(), parse_version);
+	state->transition_frame = callable_mp(this, &HTMLLayout::sample_transition_frame).bind(parse_version);
 	state->transition_tree = tree->get_instance_id();
 	tree->connect("process_frame", state->transition_frame);
 }
@@ -739,18 +756,17 @@ void HTMLLayout::disconnect_transition_frames() {
 	state->transition_tree = ObjectID();
 }
 
-void HTMLLayout::sample_transition_frame(uint64_t p_id, uint64_t p_version) {
-	auto* owner = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_id)));
-	if (!owner || owner->parse_version != p_version || !owner->state->has_layout()) return;
-	Ref<HTMLLayout> keep_alive(owner);
-	auto& current = *owner->state;
+void HTMLLayout::sample_transition_frame(uint64_t p_version) {
+	if (parse_version != p_version || !state->has_layout()) return;
+	Ref<HTMLLayout> keep_alive(this);
+	auto& current = *state;
 	const auto previous_size = current.content_size;
 	current.sampling_transitions = true;
 	current.pending_update = State::Update::LAYOUT;
-	const auto result = owner->layout_viewport(current.viewport_size, current.media_viewport_size, current.viewport_unit_size);
+	const auto result = layout_viewport(current.viewport_size, current.media_viewport_size, current.viewport_unit_size);
 	current.sampling_transitions = false;
 	if (result != OK) {
-		owner->disconnect_transition_frames();
+		disconnect_transition_frames();
 		return;
 	}
 	if (current.canvas_renderer.is_valid()) current.canvas_renderer->queue_redraws();
@@ -1902,6 +1918,8 @@ void HTMLLayout::clear() {
 	++parse_version;
 	disconnect_transition_frames();
 	state->transitions = {};
+	state->animations = {};
+	state->animation_underlying.clear();
 	cancel_scroll_activity();
 	state->nested_snap_memory.clear();
 	state->skipped_scroll_offsets.clear();

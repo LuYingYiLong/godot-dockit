@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "formats/html/css/css_computed_style.h"
+#include "formats/html/css/css_property_value.h"
 
 namespace litehtml
 {
@@ -26,7 +27,7 @@ namespace litehtml
 		overflow get_overflow_y() const { return used_overflow(ComputedStyle::get_overflow_y()); }
 		bool clips_overflow() const { return get_overflow_x() != overflow_visible || get_overflow_y() != overflow_visible; }
 		bool is_scroll_container() const { return !viewport_overflow_source && ComputedStyle::is_scroll_container(); }
-		void compute(const html_tag* element, const std::shared_ptr<document>& doc);
+		void compute(const html_tag* element, const std::shared_ptr<document>& doc, const props_map* keyframe = nullptr);
 		void compute_placeholder(const html_tag& element, const style& declarations, document& doc);
 	};
 }

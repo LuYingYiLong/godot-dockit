@@ -328,6 +328,15 @@
     <ClCompile Include="src\formats\html\css\css_transform.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_animated_property.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_animation.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_animation_state.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\css\css_transition.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
@@ -865,6 +874,15 @@
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_transform.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_animated_property.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_animation.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_animation_state.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_transition.h">

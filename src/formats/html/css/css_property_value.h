@@ -15,6 +15,7 @@
 #include "css_string_id.h"
 #include "formats/html/css/css_transform.h"
 #include "css_transition.h"
+#include "css_animation.h"
 #include "css_grid_values.h"
 #include "formats/html/css/css_shadows.h"
 #include "formats/html/css/css_values.h"
@@ -77,6 +78,7 @@ namespace litehtml {
 		css_individual_transform,
 		css_transition_times,
 		css_transition_easings,
+		css_animation_names,
 		css_filter_list,
 		grid_track_template,
 		grid_area_template,
