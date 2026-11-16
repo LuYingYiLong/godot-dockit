@@ -172,6 +172,70 @@
 				Submits a connected form in this label and emits [signal form_submitted] on success. An optional submitter must be an enabled submit button associated with the form. Returns [constant ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid argument.
 			</description>
 		</method>
+		<method name="get_elements_at" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="position" type="Vector2" />
+			<description>
+				Returns the elements under a label-local point in front-to-back hit order. Scrollbars and points outside the visible document are skipped.
+			</description>
+		</method>
+		<method name="get_plain_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the indexed document text used for selection and search.
+			</description>
+		</method>
+		<method name="get_selection_range" qualifiers="const">
+			<return type="Vector2i" />
+			<description>
+				Returns the ordered selection endpoints as offsets into [method get_plain_text].
+			</description>
+		</method>
+		<method name="set_selection_range">
+			<return type="void" />
+			<param index="0" name="from" type="int" />
+			<param index="1" name="to" type="int" />
+			<description>
+				Sets the document selection using character offsets. Endpoints are clamped to the document text length.
+			</description>
+		</method>
+		<method name="get_selection_rects" qualifiers="const">
+			<return type="Rect2[]" />
+			<description>
+				Returns the visible selection rectangles in document coordinates.
+			</description>
+		</method>
+		<method name="copy_selection" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Copies selectable text to the system clipboard. Returns whether there was text to copy.
+			</description>
+		</method>
+		<method name="find_text" qualifiers="const">
+			<return type="Vector2i" />
+			<param index="0" name="text" type="String" />
+			<param index="1" name="from" type="int" default="0" />
+			<param index="2" name="case_sensitive" type="bool" default="false" />
+			<description>
+				Searches document text from the given offset and returns the matching range, or [code]Vector2i(-1, -1)[/code] when absent.
+			</description>
+		</method>
+		<method name="scroll_element_into_view">
+			<return type="bool" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="options" type="Dictionary" default="{}" />
+			<description>
+				Scrolls inner containers and the viewport to reveal an element. Options are [code]block[/code], [code]inline[/code], and [code]behavior[/code]. The alignment values are [code]start[/code], [code]center[/code], [code]end[/code], and [code]nearest[/code]. Behavior accepts [code]auto[/code], [code]instant[/code], or [code]smooth[/code]. The defaults are [code]start[/code], [code]nearest[/code], and [code]auto[/code].
+			</description>
+		</method>
+		<method name="scroll_to_text_range">
+			<return type="bool" />
+			<param index="0" name="from" type="int" />
+			<param index="1" name="to" type="int" />
+			<description>
+				Scrolls the viewport to the first available selection rectangle for character offsets [param from] and [param to]. Returns [code]false[/code] if the range has no visible rectangle in the laid-out document.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">

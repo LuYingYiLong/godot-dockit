@@ -170,6 +170,107 @@
 				Returns matching elements from the litehtml element tree in document order, with each element included once. Tags, classes, IDs, attributes, combinators, and comma-separated lists are supported. Queries include hidden elements and are available after parsing. Invalid or unsupported selectors report an error and return an empty array.
 			</description>
 		</method>
+		<method name="get_document_node" qualifiers="const">
+			<return type="HTMLDocumentNode" />
+			<description>
+				Returns the live document node, or [code]null[/code] before a document exists.
+			</description>
+		</method>
+		<method name="get_document_element" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the root element of the live document.
+			</description>
+		</method>
+		<method name="get_head" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the document's head element, if present.
+			</description>
+		</method>
+		<method name="get_body" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the document's body or frameset element, if present.
+			</description>
+		</method>
+		<method name="get_title" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the HTML document title with runs of ASCII whitespace collapsed.
+			</description>
+		</method>
+		<method name="set_title">
+			<return type="int" enum="Error" />
+			<param index="0" name="title" type="String" />
+			<description>
+				Edits the title of this layout's live document.
+			</description>
+		</method>
+		<method name="get_elements_by_tag_name" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns a snapshot of elements with the given tag name in tree order. Pass [code]*[/code] for all elements.
+			</description>
+		</method>
+		<method name="get_elements_by_class_name" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="names" type="String" />
+			<description>
+				Returns a snapshot of elements matching all of the whitespace-separated class names.
+			</description>
+		</method>
+		<method name="get_elements_by_name" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns a snapshot of elements whose HTML [code]name[/code] attribute matches exactly.
+			</description>
+		</method>
+		<method name="create_text_node">
+			<return type="HTMLTextNode" />
+			<param index="0" name="data" type="String" />
+			<description>
+				Creates a detached text node in this layout.
+			</description>
+		</method>
+		<method name="create_comment">
+			<return type="HTMLCommentNode" />
+			<param index="0" name="data" type="String" />
+			<description>
+				Creates a detached comment in this layout.
+			</description>
+		</method>
+		<method name="parse_fragment">
+			<return type="HTMLDocumentFragment" />
+			<param index="0" name="html" type="String" />
+			<param index="1" name="context" type="HTMLElement" default="null" />
+			<description>
+				Parses a detached fragment in the specified element's context. The default context is [code]body[/code].
+			</description>
+		</method>
+		<method name="import_fragment">
+			<return type="HTMLDocumentFragment" />
+			<param index="0" name="fragment" type="HTMLDocumentFragment" />
+			<description>
+				Deep-copies the source fragment into this layout.
+			</description>
+		</method>
+		<method name="adopt_fragment">
+			<return type="HTMLDocumentFragment" />
+			<param index="0" name="fragment" type="HTMLDocumentFragment" />
+			<description>
+				Transfers an independent fragment and its existing handles into this layout. A fragment owned by a template can be transferred with its template element.
+			</description>
+		</method>
+		<method name="get_elements_at" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="position" type="Vector2" />
+			<description>
+				Returns the elements at the given document position in front-to-back hit order, with each element included once.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="css_diagnostics_enabled" type="bool" setter="set_css_diagnostics_enabled" getter="is_css_diagnostics_enabled" default="false">

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLDocumentNode" inherits="HTMLNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		The root node of a live HTMLLayout document.
+	</brief_description>
+</class>

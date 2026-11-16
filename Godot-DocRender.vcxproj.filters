@@ -208,6 +208,9 @@
     <ClCompile Include="src\formats\html\dom\html_dom.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_node.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
@@ -793,6 +796,9 @@
       <Filter>Header Files\formats\html\text</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_dom.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_node.h">
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_document_fragment.h">

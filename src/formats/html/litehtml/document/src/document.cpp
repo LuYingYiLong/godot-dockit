@@ -342,10 +342,13 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 			break;
 		}
 		string str = node->v.text.text;
+		elements_list parts;
 		for (size_t i = 0; i < str.length(); i++)
 		{
-			elements.push_back(std::make_shared<el_space>(str.substr(i, 1).c_str(), shared_from_this()));
+			parts.push_back(std::make_shared<el_space>(str.substr(i, 1).c_str(), shared_from_this()));
 		}
+		docrender_editor::mark_text_node(parts, str.c_str());
+		elements.splice(elements.end(), parts);
 	}
 	break;
 	default:

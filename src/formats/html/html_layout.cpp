@@ -196,6 +196,7 @@ struct HTMLLayout::State {
 	std::string master_styles;
 	std::string user_styles;
 	Callable edit_callback;
+	Callable element_scroll_callback;
 	docrender::css::TransitionState transitions;
 	docrender::css::AnimationState animations;
 	docrender::css::TransitionState::Snapshot animation_underlying;
@@ -236,12 +237,27 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_anchor_rect", "id"), &HTMLLayout::get_anchor_rect);
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLayout::create_element);
 	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLayout::create_document_fragment);
+	ClassDB::bind_method(D_METHOD("get_document_node"), &HTMLLayout::get_document_node);
+	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLLayout::get_document_element);
+	ClassDB::bind_method(D_METHOD("get_head"), &HTMLLayout::get_head);
+	ClassDB::bind_method(D_METHOD("get_body"), &HTMLLayout::get_body);
+	ClassDB::bind_method(D_METHOD("get_title"), &HTMLLayout::get_title);
+	ClassDB::bind_method(D_METHOD("set_title", "title"), &HTMLLayout::set_title);
+	ClassDB::bind_method(D_METHOD("get_elements_by_tag_name", "name"), &HTMLLayout::get_elements_by_tag_name);
+	ClassDB::bind_method(D_METHOD("get_elements_by_class_name", "names"), &HTMLLayout::get_elements_by_class_name);
+	ClassDB::bind_method(D_METHOD("get_elements_by_name", "name"), &HTMLLayout::get_elements_by_name);
+	ClassDB::bind_method(D_METHOD("create_text_node", "data"), &HTMLLayout::create_text_node);
+	ClassDB::bind_method(D_METHOD("create_comment", "data"), &HTMLLayout::create_comment);
+	ClassDB::bind_method(D_METHOD("parse_fragment", "html", "context"), &HTMLLayout::parse_fragment, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("import_fragment", "fragment"), &HTMLLayout::import_fragment);
+	ClassDB::bind_method(D_METHOD("adopt_fragment", "fragment"), &HTMLLayout::adopt_fragment);
 	ClassDB::bind_method(D_METHOD("import_node", "element", "deep"), &HTMLLayout::import_node, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("adopt_node", "element"), &HTMLLayout::adopt_node);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLayout::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLayout::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLayout::get_element_by_id);
 	ClassDB::bind_method(D_METHOD("get_element_at", "position"), &HTMLLayout::get_element_at);
+	ClassDB::bind_method(D_METHOD("get_elements_at", "position"), &HTMLLayout::get_elements_at);
 	ClassDB::bind_method(D_METHOD("get_render_error"), &HTMLLayout::get_render_error);
 	ClassDB::bind_method(D_METHOD("set_css_diagnostics_enabled", "enabled"), &HTMLLayout::set_css_diagnostics_enabled);
 	ClassDB::bind_method(D_METHOD("is_css_diagnostics_enabled"), &HTMLLayout::is_css_diagnostics_enabled);
@@ -633,6 +649,10 @@ String HTMLLayout::get_plain_text() const {
 	return state->has_layout() ? state->container->get_paint_recorder().get_plain_text() : String();
 }
 
+bool HTMLLayout::has_current_layout() const {
+	return state->has_layout();
+}
+
 String HTMLLayout::get_accessible_text() const {
 	return state->has_layout() ? state->container->get_paint_recorder().get_accessible_text() : String();
 }
@@ -719,6 +739,93 @@ Ref<HTMLDocumentFragment> HTMLLayout::create_document_fragment() {
 	return {};
 }
 
+Ref<HTMLDocumentNode> HTMLLayout::get_document_node() const {
+	return state->dom->get_document_node();
+}
+
+Ref<HTMLElement> HTMLLayout::get_document_element() const {
+	const auto& document = state->dom->get_document();
+	return document ? state->dom->make_element(document->root()) : Ref<HTMLElement>();
+}
+
+Ref<HTMLElement> HTMLLayout::get_head() const {
+	return query_selector("html > head");
+}
+
+Ref<HTMLElement> HTMLLayout::get_body() const {
+	return query_selector("html > body, html > frameset");
+}
+
+String HTMLLayout::get_title() const {
+	const auto title = query_selector("title:not(svg title)");
+	if (title.is_null()) return {};
+	const String value = title->get_text_content().replace("\t", " ").replace("\r", " ").replace("\n", " ").replace("\f", " ");
+	return String(" ").join(value.split(" ", false));
+}
+
+Error HTMLLayout::set_title(const String& p_title) {
+	if (!ensure_document_for_editing()) return ERR_UNCONFIGURED;
+	if (const auto title = query_selector("title:not(svg title)"); title.is_valid()) return title->set_text_content(p_title);
+	auto head = get_head();
+	const bool needs_head = head.is_null();
+	if (needs_head) head = create_element("head");
+	const auto title = create_element("title");
+	if (title.is_null() || head.is_null()) return ERR_CANT_CREATE;
+	const Error error = title->set_text_content(p_title);
+	if (error != OK) return error;
+	const Error inserted = head->append_child(title);
+	return inserted == OK && needs_head ? get_document_element()->prepend(Array::make(head)) : inserted;
+}
+
+TypedArray<HTMLElement> HTMLLayout::get_elements_by_tag_name(const String& p_name) const {
+	return state->dom->get_elements(p_name, HTMLDOM::Lookup::TAG);
+}
+
+TypedArray<HTMLElement> HTMLLayout::get_elements_by_class_name(const String& p_names) const {
+	return state->dom->get_elements(p_names, HTMLDOM::Lookup::CLASS);
+}
+
+TypedArray<HTMLElement> HTMLLayout::get_elements_by_name(const String& p_name) const {
+	return state->dom->get_elements(p_name, HTMLDOM::Lookup::NAME);
+}
+
+Ref<HTMLTextNode> HTMLLayout::create_text_node(const String& p_data) {
+	return ensure_document_for_editing() ? Ref<HTMLTextNode>(state->dom->create_character_node(p_data, false)) : Ref<HTMLTextNode>();
+}
+
+Ref<HTMLCommentNode> HTMLLayout::create_comment(const String& p_data) {
+	return ensure_document_for_editing() ? Ref<HTMLCommentNode>(state->dom->create_character_node(p_data, true)) : Ref<HTMLCommentNode>();
+}
+
+Ref<HTMLDocumentFragment> HTMLLayout::parse_fragment(const String& p_html, const Ref<HTMLElement>& p_context) {
+	const auto context = p_context.is_valid() ? p_context->lock_element() : nullptr;
+	if (p_context.is_valid() && (!context || p_context->get_owner() != this)) return {};
+	try {
+		if (ensure_document_for_editing()) return state->dom->parse_fragment(p_html, context);
+	} catch (const std::exception&) {
+		return {};
+	}
+	return {};
+}
+
+Ref<HTMLDocumentFragment> HTMLLayout::import_fragment(const Ref<HTMLDocumentFragment>& p_fragment) {
+	try {
+		if (p_fragment.is_valid() && ensure_document_for_editing()) return state->dom->import_fragment(*p_fragment.ptr());
+	} catch (const std::exception&) {
+		return {};
+	}
+	return {};
+}
+
+Ref<HTMLDocumentFragment> HTMLLayout::adopt_fragment(const Ref<HTMLDocumentFragment>& p_fragment) {
+	try {
+		if (p_fragment.is_valid() && ensure_document_for_editing() && state->dom->adopt_fragment(*p_fragment.ptr())) return p_fragment;
+	} catch (const std::exception&) {
+		return {};
+	}
+	return {};
+}
+
 Ref<HTMLElement> HTMLLayout::import_node(const Ref<HTMLElement>& p_element, bool p_deep) {
 	const auto node = p_element.is_valid() ? p_element->lock_element() : nullptr;
 	if (!node) {
@@ -758,6 +865,10 @@ Ref<HTMLElement> HTMLLayout::adopt_node(const Ref<HTMLElement>& p_element) {
 
 void HTMLLayout::set_edit_callback(const Callable& p_callback) {
 	state->edit_callback = p_callback;
+}
+
+void HTMLLayout::set_element_scroll_callback(const Callable& p_callback) {
+	state->element_scroll_callback = p_callback;
 }
 
 void HTMLLayout::set_transition_callback(const Callable& p_callback) {
@@ -886,8 +997,148 @@ TypedArray<Rect2> HTMLLayout::get_element_rects(const litehtml::element::ptr& p_
 	return result;
 }
 
+const docrender::RenderGeometry* HTMLLayout::element_geometry(const HTMLElement& p_element) const {
+	if (p_element.get_owner() != this || !state->has_layout()) return nullptr;
+	const auto element = p_element.lock_element();
+	const auto* boxes = element ? state->geometry.find_element(element.get()) : nullptr;
+	if (!boxes) return nullptr;
+	for (const auto* box : *boxes) {
+		if (!box->item->skip() && (!box->fragments.empty() || box->anchor_fallback)) return box;
+	}
+	return nullptr;
+}
+
+namespace {
+	Vector2 layout_content_origin(const litehtml::render_item& p_item) {
+		const auto unscrolled = [](const litehtml::render_item& p_box) {
+			const auto placement = p_box.calc_placement();
+			return Vector2(placement.x + p_box.get_scroll_left(), placement.y + p_box.get_scroll_top());
+		};
+		Vector2 result = unscrolled(p_item);
+		const litehtml::render_item* item = &p_item;
+		for (auto parent = item->parent(); parent && !item->is_viewport_fixed(); parent = item->parent()) {
+			item = parent.get();
+			result += unscrolled(*item);
+		}
+		return result;
+	}
+
+	bool uses_viewport_dimensions(const litehtml::element& p_element) {
+		return p_element.tag() == litehtml::_html_ || (p_element.tag() == litehtml::_body_ &&
+			p_element.get_document()->mode() == litehtml::quirks_mode);
+	}
+
+	Vector2 padding_box_size(const litehtml::render_item& p_item) {
+		const auto size = p_item.calc_placement();
+		return {size.width + p_item.padding_left() + p_item.padding_right(),
+			size.height + p_item.padding_top() + p_item.padding_bottom()};
+	}
+}
+
+std::shared_ptr<litehtml::render_item> HTMLLayout::offset_parent_of(const litehtml::render_item& p_item) const {
+	if (p_item.src_el()->tag() == litehtml::_body_ || p_item.is_root() || p_item.is_viewport_fixed()) return {};
+	const bool static_position = p_item.css().get_position() == litehtml::element_position_static;
+	for (auto parent = p_item.parent(); parent; parent = parent->parent()) {
+		const auto node = parent->src_el();
+		if (!HTMLDOM::is_element(*node)) continue;
+		const auto tag = node->tag();
+		if (tag == litehtml::_body_ || parent->establishes_positioned_containing_block() ||
+			(static_position && (tag == litehtml::_table_ || tag == litehtml::_td_ || tag == litehtml::_th_))) return parent;
+	}
+	return {};
+}
+
+Vector2 HTMLLayout::element_client_size(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	if (!box) return {};
+	const auto& item = *box->item;
+	if (uses_viewport_dimensions(*item.src_el())) return Vector2(state->viewport_size);
+	if (item.css().get_display() == litehtml::display_inline && !item.src_el()->is_replaced()) return {};
+	return padding_box_size(item);
+}
+
+Vector2 HTMLLayout::element_client_offset(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	if (!box || uses_viewport_dimensions(*box->item->src_el()) ||
+		(box->item->css().get_display() == litehtml::display_inline && !box->item->src_el()->is_replaced())) return {};
+	return {box->item->border_left(), box->item->border_top()};
+}
+
+Ref<HTMLElement> HTMLLayout::element_offset_parent(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	const auto parent = box ? offset_parent_of(*box->item) : nullptr;
+	return parent ? state->dom->make_element(parent->src_el()) : Ref<HTMLElement>();
+}
+
+Rect2 HTMLLayout::element_offset_rect(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	if (!box) return {};
+	const auto parent = offset_parent_of(*box->item);
+	const Vector2 origin = parent ? layout_content_origin(*parent) - Vector2(parent->padding_left(), parent->padding_top()) : Vector2();
+	std::optional<Rect2> bounds;
+	Vector2 first;
+	for (const auto* geometry : *state->geometry.find_element(box->item->src_el().get())) {
+		if (geometry->item->skip()) continue;
+		const auto old = geometry->item->get_placement();
+		const Vector2 correction = layout_content_origin(*geometry->item) - Vector2(old.x, old.y);
+		for (const auto& fragment : geometry->fragments) {
+			const Rect2 rect(fragment.rect.position + correction, fragment.rect.size);
+			if (!bounds) first = rect.position;
+			bounds = bounds ? bounds->merge(rect) : rect;
+		}
+	}
+	return bounds ? Rect2(first - origin, bounds->size) : Rect2();
+}
+
+Vector2 HTMLLayout::element_scroll_size(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	if (!box) return {};
+	if (uses_viewport_dimensions(*box->item->src_el())) return Vector2(state->viewport_size.max(state->content_size));
+	const Vector2 client = element_client_size(p_element);
+	const auto limit = box->item->scrollable_content_size();
+	if (!limit) return client;
+	const auto& size = box->item->pos();
+	return client + Vector2(limit->width - size.width, limit->height - size.height).max(Vector2());
+}
+
+Vector2 HTMLLayout::element_scroll_offset(const HTMLElement& p_element) const {
+	const auto* box = element_geometry(p_element);
+	return box ? Vector2(box->item->get_scroll_left(), box->item->get_scroll_top()) : Vector2();
+}
+
+Error HTMLLayout::set_element_scroll_offset(const HTMLElement& p_element, const Vector2& p_offset) {
+	const auto* box = element_geometry(p_element);
+	if (!box || !p_offset.is_finite()) return ERR_INVALID_PARAMETER;
+	const auto item = box->item;
+	if (!item->scrollable_content_size() || item->is_root() || item->src_el()->is_replaced()) return OK;
+	const Vector2 delta = p_offset - Vector2(item->get_scroll_left(), item->get_scroll_top());
+	cancel_nested_scroll(*item->src_el());
+	cancel_nested_snap(*item->src_el());
+	const auto dx = litehtml::is_scrollable_overflow(item->css().get_overflow_x()) ? item->h_scroll(delta.x) : 0;
+	const auto dy = litehtml::is_scrollable_overflow(item->css().get_overflow_y()) ? item->v_scroll(delta.y) : 0;
+	if (dx || dy) {
+		refresh_overflow_paint(true);
+		if (state->element_scroll_callback.is_valid()) state->element_scroll_callback.call();
+	}
+	return OK;
+}
+
 Ref<HTMLElement> HTMLLayout::get_element_at(const Vector2& p_position) const {
 	return wrap_hit_element(hit_test_element(p_position));
+}
+
+TypedArray<HTMLElement> HTMLLayout::get_elements_at(const Vector2& p_position) const {
+	TypedArray<HTMLElement> result;
+	const auto first = get_element_at(p_position);
+	if (first.is_null()) return result;
+	std::unordered_set<const HTMLElement*> visited{first.ptr()};
+	result.append(first);
+	state->container->get_paint_recorder().visit_hit_elements(p_position, false, [&](const auto& p_node) {
+		const auto handle = wrap_hit_element(p_node);
+		if (handle.is_valid() && visited.insert(handle.ptr()).second) result.append(handle);
+		return false;
+	});
+	return result;
 }
 
 Ref<HTMLElement> HTMLLayout::wrap_hit_element(litehtml::element::ptr p_element) const {
@@ -1366,20 +1617,21 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_anchor_into_view(c
 }
 
 std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const Ref<HTMLElement>& p_element,
-	std::optional<float> p_align, Node& p_owner, const Callable& p_changed) {
+	std::optional<float> p_align, Node& p_owner, const Callable& p_changed, const docrender::HTMLScrollOptions* p_options) {
 	if (p_element.is_null() || p_element->get_owner() != this) return std::nullopt;
 	const auto element = p_element->element.lock();
-	return element ? scroll_element_into_view(*element, p_align, false, p_owner, p_changed) : std::nullopt;
+	return element ? scroll_element_into_view(*element, p_align, false, p_owner, p_changed, p_options) : std::nullopt;
 }
 
 std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const litehtml::element& p_element,
-	std::optional<float> p_align, bool p_allow_fallback, Node& p_owner, const Callable& p_changed) {
+	std::optional<float> p_align, bool p_allow_fallback, Node& p_owner, const Callable& p_changed,
+	const docrender::HTMLScrollOptions* p_options) {
 	if (!state->has_layout()) return std::nullopt;
 	const auto* renderers = state->geometry.find_element(&p_element);
 	const auto* renderer = scroll_target_renderer(renderers, p_allow_fallback);
 	if (!renderer) {
 		const auto* placeholder = auto_content_placeholder(p_element);
-		return placeholder ? scroll_element_into_view(*placeholder, p_align, true, p_owner, p_changed) : std::nullopt;
+		return placeholder ? scroll_element_into_view(*placeholder, p_align, true, p_owner, p_changed, p_options) : std::nullopt;
 	}
 
 	const bool viewport_fixed = renderer->viewport_fixed_subtree;
@@ -1403,7 +1655,7 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 		const auto& css = item->css();
 		const Rect2 target = docrender::html_scroll_margin_area(*bounds, p_element.css());
 		const Rect2 port = docrender::html_scroll_padding_area(scroller->child_overflow->shape.rect, css);
-		Vector2 delta = docrender::html_scroll_delta(target, port, p_align);
+		Vector2 delta = docrender::html_scroll_delta(target, port, p_align, p_options);
 		cancel_nested_scroll(*item->src_el());
 		cancel_nested_snap(*item->src_el());
 		const Vector2 from(item->get_scroll_left(), item->get_scroll_top());
@@ -1417,7 +1669,8 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 		const auto dy = litehtml::is_scrollable_overflow(css.get_overflow_y()) ? item->v_scroll(delta.y) : 0;
 		if (dx != 0 || dy != 0) {
 			moved = true;
-			if (css.uses_smooth_scroll() && p_owner.is_inside_tree()) {
+			const bool smooth = p_options ? p_options->smooth(css.uses_smooth_scroll()) : css.uses_smooth_scroll();
+			if (smooth && p_owner.is_inside_tree()) {
 				animated.push_back({item, from, Vector2(item->get_scroll_left(), item->get_scroll_top())});
 			}
 			rebuild_scroll_geometry();

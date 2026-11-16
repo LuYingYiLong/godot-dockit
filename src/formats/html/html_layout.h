@@ -62,11 +62,13 @@ class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
 
 	friend class HTMLElement;
+	friend class HTMLNode;
 	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
+	void set_element_scroll_callback(const godot::Callable& p_callback);
 
 	struct State;
 	std::unique_ptr<State> state;
@@ -77,6 +79,16 @@ class HTMLLayout : public godot::RefCounted {
 	bool initialize_document(const godot::CharString& p_html);
 	bool ensure_document_for_editing();
 	docrender::HTMLDOM& get_dom() const;
+	bool has_current_layout() const;
+	const docrender::RenderGeometry* element_geometry(const HTMLElement& p_element) const;
+	std::shared_ptr<litehtml::render_item> offset_parent_of(const litehtml::render_item& p_item) const;
+	godot::Vector2 element_client_size(const HTMLElement& p_element) const;
+	godot::Vector2 element_client_offset(const HTMLElement& p_element) const;
+	godot::Ref<HTMLElement> element_offset_parent(const HTMLElement& p_element) const;
+	godot::Rect2 element_offset_rect(const HTMLElement& p_element) const;
+	godot::Vector2 element_scroll_size(const HTMLElement& p_element) const;
+	godot::Vector2 element_scroll_offset(const HTMLElement& p_element) const;
+	godot::Error set_element_scroll_offset(const HTMLElement& p_element, const godot::Vector2& p_offset);
 	godot::Error layout_viewport(const godot::Vector2i& p_viewport_size, const godot::Vector2i& p_media_size,
 		const godot::Vector2i& p_viewport_unit_size);
 	godot::Error reflow(const godot::Vector2i& p_viewport_size, const godot::Vector2i& p_media_size,
@@ -127,7 +139,8 @@ class HTMLLayout : public godot::RefCounted {
 	void refresh_overflow_paint(bool p_moved_boxes);
 	void rebuild_scroll_geometry();
 	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const litehtml::element& p_element,
-		std::optional<float> p_align, bool p_allow_fallback, godot::Node& p_owner, const godot::Callable& p_changed);
+		std::optional<float> p_align, bool p_allow_fallback, godot::Node& p_owner, const godot::Callable& p_changed,
+		const docrender::HTMLScrollOptions* p_options = nullptr);
 	bool viewport_uses_smooth_scroll() const;
 	godot::Vector2i viewport_snap_axes() const;
 	docrender::HTMLSnapResult snap_viewport(const godot::Vector2& p_viewport, docrender::HTMLSnapRequest p_request);
@@ -232,10 +245,25 @@ public:
 	std::optional<docrender::HTMLScrollTarget> scroll_anchor_into_view(const godot::String& p_id, float p_align,
 		godot::Node& p_owner, const godot::Callable& p_changed = {});
 	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const godot::Ref<HTMLElement>& p_element,
-		std::optional<float> p_align, godot::Node& p_owner, const godot::Callable& p_changed);
+		std::optional<float> p_align, godot::Node& p_owner, const godot::Callable& p_changed,
+		const docrender::HTMLScrollOptions* p_options = nullptr);
 	void cancel_scroll_activity();
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建同一布局中尚未插入文档的元素
 	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建属于当前布局的空片段
+	godot::Ref<HTMLDocumentNode> get_document_node() const; // 返回实时文档的节点句柄
+	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
+	godot::Ref<HTMLElement> get_head() const; // 返回文档的 head 元素
+	godot::Ref<HTMLElement> get_body() const; // 返回文档的 body 或 frameset 元素
+	godot::String get_title() const; // 返回归并空白后的文档标题
+	godot::Error set_title(const godot::String& p_title); // 设置当前布局中的文档标题
+	godot::TypedArray<HTMLElement> get_elements_by_tag_name(const godot::String& p_name) const; // 按标签名查找文档元素
+	godot::TypedArray<HTMLElement> get_elements_by_class_name(const godot::String& p_names) const; // 按类名查找文档元素
+	godot::TypedArray<HTMLElement> get_elements_by_name(const godot::String& p_name) const; // 按 name 属性查找文档元素
+	godot::Ref<HTMLTextNode> create_text_node(const godot::String& p_data); // 创建分离文本节点
+	godot::Ref<HTMLCommentNode> create_comment(const godot::String& p_data); // 创建分离注释节点
+	godot::Ref<HTMLDocumentFragment> parse_fragment(const godot::String& p_html, const godot::Ref<HTMLElement>& p_context = {}); // 解析可独立插入的片段
+	godot::Ref<HTMLDocumentFragment> import_fragment(const godot::Ref<HTMLDocumentFragment>& p_fragment); // 深复制片段到当前布局
+	godot::Ref<HTMLDocumentFragment> adopt_fragment(const godot::Ref<HTMLDocumentFragment>& p_fragment); // 将分离片段迁到当前布局
 	godot::Ref<HTMLElement> import_node(const godot::Ref<HTMLElement>& p_element, bool p_deep = false);	// 在当前布局中创建分离副本，可选复制后代
 	godot::Ref<HTMLElement> adopt_node(const godot::Ref<HTMLElement>& p_element);	// 将整棵子树迁到当前布局，保持分离并保留原句柄
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const;	// 按文档顺序返回第一个匹配元素
@@ -244,6 +272,7 @@ public:
 	) const;																		// 按文档顺序返回所有匹配元素的去重数组
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
+	godot::TypedArray<HTMLElement> get_elements_at(const godot::Vector2& p_position) const; // 按命中顺序返回文档坐标下的元素
 	std::optional<docrender::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
 	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position); // 更新滚动条的可见悬停状态
 	void set_scrollbar_pressed(const std::optional<docrender::HTMLScrollbarDrag>& p_drag); // 更新滚动条的可见按压状态

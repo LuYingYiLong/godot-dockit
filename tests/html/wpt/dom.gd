@@ -16,6 +16,9 @@ func _initialize() -> void:
 	_test_form_dom_associations()
 	_test_selector_snapshot()
 	_test_relational_selectors()
+	_test_node_navigation_and_data()
+	_test_mixed_tree_edits()
+	_test_fragment_import_and_adoption()
 	if _failures == 0:
 		print("DocRender DOM WPT ports passed.")
 	quit(int(_failures != 0))
@@ -26,6 +29,99 @@ func _check(condition: bool, message: String) -> bool:
 		_failures += 1
 		push_error("DOM WPT port: " + message)
 	return condition
+
+
+func _test_node_navigation_and_data() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	if not _check(layout.parse('<!doctype html><title>  Draft   title </title><main id="root">hello world<!-- note --><b name="item">tail</b></main>') == OK,
+			"parse the document and character-node fixture"):
+		return
+	var document: HTMLDocumentNode = layout.get_document_node()
+	var main: HTMLElement = layout.get_element_by_id("root")
+	if not _check(document != null and main != null, "expose the document and its main element"):
+		return
+	_check(document.get_first_child() == layout.get_document_element() and main.get_root_node() == document,
+			"the document and root use stable handles")
+	_check(layout.get_head().get_parent() == layout.get_document_element() and layout.get_body().contains(main),
+			"head and body are direct document-element children")
+	_check(layout.get_title() == "Draft title" and layout.set_title("New title") == OK and layout.get_title() == "New title",
+			"read a normalized title and replace it in the runtime DOM")
+	var children: Array[HTMLNode] = main.get_child_nodes()
+	if not _check(children.size() == 3, "native text parts appear as one logical DOM text node"):
+		return
+	var text: HTMLTextNode = children[0] as HTMLTextNode
+	var comment: HTMLCommentNode = children[1] as HTMLCommentNode
+	var element: HTMLElement = children[2] as HTMLElement
+	if not _check(text != null and comment != null and element != null, "use typed text, comment, and element handles"):
+		return
+	_check(text.data == "hello world" and comment.data == " note " and element == main.get_first_element_child(),
+			"typed nodes preserve source data")
+	_check(text.get_next_sibling() == comment and text.get_parent_node() == main and document.contains(text),
+			"node navigation includes comments and text")
+	_check(text.compare_document_position(element) == HTMLNode.POSITION_FOLLOWING
+			and main.compare_document_position(text) == (HTMLNode.POSITION_FOLLOWING | HTMLNode.POSITION_CONTAINED_BY),
+			"document position flags distinguish following and contained nodes")
+	_check(text.set_data("new words 中文") == OK and comment.set_data("edited") == OK
+			and main.get_first_child() == text and main.get_text_content() == "new words 中文tail",
+			"character edits preserve identity and update raw DOM text")
+	_check(main.get_outer_html().contains("<!--edited-->") and layout.get_elements_by_name("item") == [element,],
+			"serialize comments and query name attributes")
+	element.css_class_name = "one two three"
+	_check(element.replace_class("one", "three") and element.css_class_name == "three two"
+			and main.get_elements_by_class_name("two\tthree") == [element,], "replace and query ordered class tokens")
+	_check(element.set_dataset_value("questName", "forest") == OK and element.get_attribute("data-quest-name") == "forest"
+			and element.get_attribute_names().has("data-quest-name"), "reflect dataset keys through source attributes")
+	_check(element.toggle_attribute("hidden") and element.hidden and not element.toggle_attribute("hidden", false),
+			"toggle a boolean attribute and read its reflected property")
+	_check(layout.parse("<p>Replacement</p>") == OK and not text.is_valid() and not document.is_valid(),
+			"reparsing invalidates text and document handles")
+
+
+func _test_mixed_tree_edits() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	if not _check(layout.parse('<main id="root"><b id="a">A</b><i id="b">B</i></main>') == OK, "parse the mixed edit fixture"):
+		return
+	var main: HTMLElement = layout.get_element_by_id("root")
+	var a: HTMLElement = layout.get_element_by_id("a")
+	var b: HTMLElement = layout.get_element_by_id("b")
+	var fragment: HTMLDocumentFragment = layout.create_document_fragment()
+	var text: HTMLTextNode = layout.create_text_node("two words")
+	if not _check(fragment != null and text != null, "create detached fragment and text handles"):
+		return
+	_check(fragment.append_child(text) == OK and fragment.get_first_child() == text and text.get_parent_node() == fragment,
+			"a fragment can hold a logical text node")
+	_check(main.prepend([fragment, main,]) == ERR_INVALID_PARAMETER and fragment.get_first_child() == text,
+			"a failed batch does not consume its fragment")
+	_check(a.after([b, " ", fragment, a,]) == OK and main.get_children() == [b, a,]
+			and fragment.get_child_nodes().is_empty() and text.get_parent_node() == main,
+			"one batch moves siblings and consumes a mixed fragment")
+	_check(main.normalize() == OK and main.get_child_nodes().size() == 3 and text.is_valid() and text.get_parent_node() == null,
+			"normalize merges neighboring text into the first node and detaches the rest")
+	_check(text.set_data("detached again") == OK and text.data == "detached again", "detached text remains editable")
+	_check(b.insert_adjacent_html("beforebegin", '<em id="new">&amp;</em>') == OK
+			and main.get_first_element_child() == layout.get_element_by_id("new"), "parse adjacent markup in the parent context")
+	_check(b.set_outer_html("<strong>next</strong>") == OK and b.is_valid() and not b.is_connected()
+			and main.get_first_element_child().get_next_element_sibling().get_tag_name() == "strong", "outer HTML replaces and detaches")
+	_check(main.set_inner_text("one\r\ntwo") == OK and main.get_inner_html() == "one<br>two", "set inner text with structural line breaks")
+	_check(layout.layout(Vector2i(160, 100)) == OK and main.get_inner_text() == "one\ntwo", "read rendered structural line breaks")
+
+
+func _test_fragment_import_and_adoption() -> void:
+	var source: HTMLLayout = HTMLLayout.new()
+	var target: HTMLLayout = HTMLLayout.new()
+	_check(source.parse('<table id="table"></table>') == OK and target.parse('<div id="target"></div>') == OK, "parse fragment layouts")
+	var fragment: HTMLDocumentFragment = source.parse_fragment("<tr><td>anchor text</td></tr>", source.get_element_by_id("table"))
+	if not _check(fragment != null and fragment.query_selector("tbody > tr > td") != null, "parse fragment in a table context"):
+		return
+	var cell: HTMLElement = fragment.query_selector("td")
+	var text: HTMLTextNode = cell.get_first_child() as HTMLTextNode
+	var copy: HTMLDocumentFragment = target.import_fragment(fragment)
+	_check(copy != null and copy.is_equal_node(fragment) and copy.query_selector("td") != cell, "import creates a separate fragment tree")
+	_check(target.adopt_fragment(fragment) == fragment and fragment.query_selector("td") == cell, "adopt retains fragment and element identity")
+	source.clear()
+	_check(target.get_element_by_id("target").append([fragment,]) == OK and text.is_valid()
+			and text.is_connected() and cell.get_first_child() == text and text.data == "anchor text",
+			"adopted text identity survives source clear and fragment insertion")
 
 
 # Port the fragment addition and removal cases to element children and check the resulting tree.

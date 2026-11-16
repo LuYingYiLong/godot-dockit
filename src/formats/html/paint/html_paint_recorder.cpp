@@ -924,17 +924,24 @@ void fragment() {
 
 	std::shared_ptr<litehtml::element> HTMLPaintRecorder::hit_test_element(const Vector2& p_point, bool p_text_selection) const {
 		std::shared_ptr<litehtml::element> element;
+		visit_hit_elements(p_point, p_text_selection, [&](const auto& p_element) {
+			element = p_element;
+			return true;
+		});
+		return element;
+	}
+
+	void HTMLPaintRecorder::visit_hit_elements(const Vector2& p_point, bool p_text_selection,
+		const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit) const {
 		visit_pointer_targets(p_point, [&](const PointerTarget& p_target) {
 			if (p_target.axis >= 0) return false;
 			const auto* geometry = p_target.geometry;
 			if (geometry->item->is_visible() && (p_text_selection || geometry->item->css().accepts_pointer_events()) &&
 				geometry->contains_visible_point(p_point)) {
-				element = geometry->item->src_el();
-				return true;
+				return p_visit(geometry->item->src_el());
 			}
 			return false;
 		});
-		return element;
 	}
 
 	std::optional<HTMLScrollbarDrag> HTMLPaintRecorder::scrollbar_at(const Vector2& p_point) const {

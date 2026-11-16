@@ -2607,10 +2607,6 @@ msgstr "按文档顺序连接解析后的文本节点，包含隐藏内容，跳
 msgid "Returns whether the element has an attribute with the given name, including an empty attribute."
 msgstr "返回元素是否具有指定名称的属性，空属性也视为存在。"
 
-#. doc_classes/HTMLElement.xml
-msgid "Returns whether the handle still refers to an element in its owning layout."
-msgstr "返回句柄是否仍指向所属布局中的元素。"
-
 #. doc_classes/HTMLLayout.xml
 msgid "Returns the frontmost element at the given document pixel position, accounting for overflow clipping. Returns [code]null[/code] when there is no hit or no layout."
 msgstr "返回指定文档像素位置处最上层的元素，并考虑溢出裁剪。未命中或尚未排版时返回 [code]null[/code]。"
@@ -3356,12 +3352,6 @@ msgid ""
 msgstr ""
 "将此元素从父元素分离，并保留整棵子树的已有句柄。持有其中任意一个句柄，即可继续在同一布局中编辑和重新插入该子树。元素已分离且没有父元素时返回 [constant OK]，文档根元素或无效句柄返回"
 " [constant ERR_INVALID_PARAMETER]。"
-
-#. doc_classes/HTMLElement.xml
-msgid ""
-"Returns whether the element belongs to the current document tree. A detached or invalid element "
-"returns [code]false[/code]. The result updates immediately when the tree changes."
-msgstr "返回元素是否属于当前文档树。已分离或无效的元素返回 [code]false[/code]。树发生变化时立即更新结果。"
 
 #. doc_classes/HTMLElement.xml
 msgid ""
@@ -4153,3 +4143,407 @@ msgstr "指定的可见行数。默认值为 0。"
 #. doc_classes/HTMLLabel.xml
 msgid "If [code]true[/code], the default canvas is transparent. Authored CSS backgrounds still paint over the scene."
 msgstr "为 [code]true[/code] 时，默认画布透明。CSS 指定的背景仍会绘制在场景上。"
+
+#. doc_classes/HTMLNode.xml
+msgid "A live DOM node owned by an HTML layout."
+msgstr "由 HTML 布局拥有的实时 DOM 节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns the node's type, including for an invalidated handle."
+msgstr "返回节点类型，句柄失效后仍可查询。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns whether the handle still refers to a node in its current layout."
+msgstr "返回句柄是否仍指向当前布局中的节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns whether the node is connected to its document tree. A detached node can stay valid."
+msgstr "返回节点是否连接到所属文档树。分离的节点仍可有效。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns the parent node, including a document or fragment. Returns [code]null[/code] for a root."
+msgstr "返回父节点，包括文档或片段。根节点返回 [code]null[/code]。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns a snapshot of the direct child nodes in tree order, including text and comments."
+msgstr "按树顺序返回直接子节点的快照，包括文本和注释。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns the first direct child node, or [code]null[/code]."
+msgstr "返回首个直接子节点，无子节点时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns the next sibling node, or [code]null[/code]."
+msgstr "返回下一个同父节点，无后续节点时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns the root of the current tree. A detached node may be its own root."
+msgstr "返回当前树的根节点。分离节点可以是自己的根节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns whether [param node] is this node or one of its descendants."
+msgstr "返回 [param node] 是否是自身或其后代节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns an OR of [enum DocumentPosition] flags describing the position of [param node] relative to this node."
+msgstr "返回 [enum DocumentPosition] 标志的按位或，描述 [param node] 相对本节点的位置。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Compares node types, attributes, character data, and child nodes recursively."
+msgstr "递归比较节点类型、属性、字符数据和子节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Merges adjacent text nodes and detaches empty text nodes. The first nonempty text node retains its identity."
+msgstr "合并相邻文本节点并分离空文本。第一个非空文本节点保留句柄。"
+
+#. doc_classes/HTMLNode.xml
+msgid "An element node."
+msgstr "元素节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "A text node."
+msgstr "文本节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "A comment node."
+msgstr "注释节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The live document node."
+msgstr "实时文档节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "A detached document fragment."
+msgstr "分离的文档片段。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The nodes belong to separate trees."
+msgstr "节点属于不同的树。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The other node comes before this one."
+msgstr "对方节点排在本节点之前。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The other node comes after this one."
+msgstr "对方节点排在本节点之后。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The other node contains this one."
+msgstr "对方节点包含本节点。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The other node is contained by this one."
+msgstr "对方节点被本节点包含。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The relative order depends on the implementation."
+msgstr "相对顺序由实现决定。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "The root node of a live HTMLLayout document."
+msgstr "HTMLLayout 实时文档的根节点。"
+
+#. doc_classes/HTMLTextNode.xml
+msgid "A DOM text node."
+msgstr "DOM 文本节点。"
+
+#. doc_classes/HTMLTextNode.xml
+msgid "Returns the node's character data."
+msgstr "返回节点的字符数据。"
+
+#. doc_classes/HTMLTextNode.xml
+msgid "Replaces the node's character data and retains the handle."
+msgstr "替换节点的字符数据并保留句柄。"
+
+#. doc_classes/HTMLCommentNode.xml
+msgid "A DOM comment node."
+msgstr "DOM 注释节点。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the live document node, or [code]null[/code] before a document exists."
+msgstr "返回实时文档节点。文档尚未创建时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the root element of the live document."
+msgstr "返回实时文档的根元素。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the document's head element, if present."
+msgstr "返回文档的 head 元素。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the document's body or frameset element, if present."
+msgstr "返回文档的 body 或 frameset 元素。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the HTML document title with runs of ASCII whitespace collapsed."
+msgstr "返回 HTML 文档标题，合并连续的 ASCII 空白。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Edits the title of this layout's live document."
+msgstr "编辑当前布局的实时文档标题。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns a snapshot of elements with the given tag name in tree order. Pass [code]*[/code] for all elements."
+msgstr "按树顺序返回指定标签名的元素快照。传入 [code]*[/code] 可取全部元素。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns a snapshot of elements matching all of the whitespace-separated class names."
+msgstr "返回匹配全部空白分隔类名的元素快照。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns a snapshot of elements whose HTML [code]name[/code] attribute matches exactly."
+msgstr "返回 HTML [code]name[/code] 属性完全匹配的元素快照。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Creates a detached text node in this layout."
+msgstr "在当前布局中创建分离的文本节点。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Creates a detached comment in this layout."
+msgstr "在当前布局中创建分离的注释。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Parses a detached fragment in the specified element's context. The default context is [code]body[/code]."
+msgstr "按指定元素的上下文解析分离片段。默认上下文为 [code]body[/code]。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Deep-copies the source fragment into this layout."
+msgstr "将源片段深复制到当前布局。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Transfers an independent fragment and its existing handles into this layout. A fragment owned by a template can be transferred with its template element."
+msgstr "将独立片段和现有句柄迁移到当前布局。模板拥有的片段可以随模板元素迁移。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the first direct element child, or [code]null[/code]."
+msgstr "返回首个直接子元素，无匹配时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the last direct element child, or [code]null[/code]."
+msgstr "返回最后一个直接子元素，无匹配时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the number of direct element children."
+msgstr "返回直接子元素的数量。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Replaces the child nodes with the given nodes, plain strings, and fragments. Removed nodes retain their handles."
+msgstr "用传入的节点、纯文本字符串和片段替换子节点。移出的节点保留句柄。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the preceding sibling element, or [code]null[/code]."
+msgstr "返回上一个同父元素，无匹配时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the following sibling element, or [code]null[/code]."
+msgstr "返回下一个同父元素，无匹配时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the descendant elements with the given tag name as a snapshot."
+msgstr "返回指定标签名的后代元素快照。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns descendants matching all of the whitespace-separated class names."
+msgstr "返回匹配全部空白分隔类名的后代元素。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns a snapshot of source attribute names."
+msgstr "返回源属性名称的快照。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns whether the element has any source attributes."
+msgstr "返回元素是否具有源属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Toggles an attribute, or sets its presence to [param force]. Returns whether the attribute is now present."
+msgstr "切换属性或通过 [param force] 指定其存在状态。返回更新后属性是否存在。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Replaces a class token while preserving token order. Returns whether the replacement was applied."
+msgstr "替换类名并保留顺序。返回是否完成替换。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Sets a [code]data-*[/code] attribute from a dataset key."
+msgstr "按 dataset 键设置 [code]data-*[/code] 属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Removes the attribute for the given dataset key."
+msgstr "移除指定 dataset 键对应的属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Inserts an element at [code]beforebegin[/code], [code]afterbegin[/code], [code]beforeend[/code], or [code]afterend[/code]."
+msgstr "在 [code]beforebegin[/code]、[code]afterbegin[/code]、[code]beforeend[/code] 或 [code]afterend[/code] 位置插入元素。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Inserts plain text at a position accepted by [method insert_adjacent_element]."
+msgstr "在 [method insert_adjacent_element] 支持的位置插入纯文本。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Parses and inserts markup at a position accepted by [method insert_adjacent_element]."
+msgstr "在 [method insert_adjacent_element] 支持的位置解析并插入标记。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Serializes the element and its contents as HTML."
+msgstr "将元素及其内容序列化为 HTML。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Replaces the element with parsed markup and retains this handle as a detached element."
+msgstr "用解析后的标记替换当前元素，保留分离后的元素句柄。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns text with CSS visibility, casing, whitespace, and structural line breaks applied. Without a rendered element, returns the source text content."
+msgstr "返回考虑 CSS 可见性、大小写、空白和结构换行的文本。元素未渲染时返回源文本。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Replaces the child nodes with plain text, converting line endings to HTML line breaks where allowed."
+msgstr "用纯文本替换子节点，并在允许的位置将换行符转换为 HTML 换行元素。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Appends the items at the end of this element. The array accepts nodes, plain strings, and fragments."
+msgstr "将项目追加到元素末尾。数组接受节点、纯文本和片段。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Inserts the items at the beginning of this element. The array accepts nodes, plain strings, and fragments."
+msgstr "将项目插入元素开头。数组接受节点、纯文本和片段。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Inserts the items directly before this element. The array accepts nodes, plain strings, and fragments."
+msgstr "将项目直接插入元素之前。数组接受节点、纯文本和片段。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Inserts the items directly after this element. The array accepts nodes, plain strings, and fragments."
+msgstr "将项目直接插入元素之后。数组接受节点、纯文本和片段。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Replaces this element with the given items and retains this handle as a detached element. The array accepts nodes, plain strings, and fragments."
+msgstr "用传入项目替换当前元素，并保留分离后的元素句柄。数组接受节点、纯文本和片段。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the HTML ID."
+msgstr "反射 HTML ID。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the raw HTML class attribute."
+msgstr "反射原始 HTML 类名属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the element's own HTML language attribute."
+msgstr "反射元素自身的 HTML 语言属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the HTML direction attribute."
+msgstr "反射 HTML 方向属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the HTML title attribute."
+msgstr "反射 HTML 标题属性。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects whether the hidden attribute is present."
+msgstr "反射隐藏属性是否存在。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects whether the inert attribute is present."
+msgstr "反射惰性属性是否存在。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Reflects the explicit tab index, or returns the default for the element type."
+msgstr "反射显式 Tab 索引，或返回该元素类型的默认值。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid "Moves a node or fragment before the reference child, or appends it if the reference is [code]null[/code]."
+msgstr "将节点或片段移到参照子节点之前。参照为 [code]null[/code] 时追加到末尾。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid "Detaches a direct child and retains its handle."
+msgstr "分离直接子节点并保留其句柄。"
+
+#. doc_classes/HTMLDocumentFragment.xml
+msgid "Replaces a direct child and retains the outgoing handle."
+msgstr "替换直接子节点并保留移出的句柄。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the elements at the given document position in front-to-back hit order, with each element included once."
+msgstr "按从前到后的命中顺序返回文档坐标处的元素，每个元素只返回一次。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the elements under a label-local point in front-to-back hit order. Scrollbars and points outside the visible document are skipped."
+msgstr "按从前到后的命中顺序返回控件局部坐标处的元素，跳过滚动条和文档可见区域之外的位置。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the indexed document text used for selection and search."
+msgstr "返回用于选择和搜索的文档索引文本。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the ordered selection endpoints as offsets into [method get_plain_text]."
+msgstr "返回按从小到大排列的选区端点，以 [method get_plain_text] 的字符偏移表示。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Sets the document selection using character offsets. Endpoints are clamped to the document text length."
+msgstr "按字符偏移设置文档选区。端点限制在文档文字长度内。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the visible selection rectangles in document coordinates."
+msgstr "返回文档坐标下的可见选区矩形。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Copies selectable text to the system clipboard. Returns whether there was text to copy."
+msgstr "将可选文本复制到系统剪贴板，返回是否有文字可复制。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Searches document text from the given offset and returns the matching range, or [code]Vector2i(-1, -1)[/code] when absent."
+msgstr "从指定偏移搜索文档文本并返回匹配范围，无匹配时返回 [code]Vector2i(-1, -1)[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the untransformed padding box size. The root uses the viewport size."
+msgstr "返回未变换的内边距盒尺寸。根元素返回视口尺寸。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the left and top border widths in layout pixels."
+msgstr "返回左侧和顶部边框宽度，单位为布局像素。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the reference element for [method get_offset_rect], or [code]null[/code]."
+msgstr "返回 [method get_offset_rect] 的参照元素，无参照元素时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the first border box position and the combined border box size in layout pixels. Position is relative to the offset parent's padding box. CSS transforms and scroll offsets are excluded."
+msgstr "以布局像素返回首个边框盒的位置及合并后的边框盒尺寸。位置相对参照元素的内边距盒。计算排除 CSS 变换和滚动偏移。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the extent of the scrollable content, including padding."
+msgstr "返回可滚动内容的范围，包括内边距。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Returns the current scroll offset of this inner scroll container in CSS pixels."
+msgstr "返回该内层滚动容器的当前偏移，单位为 CSS 像素。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Sets the inner scroll offset immediately, clamped to the scrollable extent. Use [method HTMLLabel.set_scroll_offset] for the outer viewport."
+msgstr "立即设置内层滚动偏移，限制在可滚动范围内。外层视口使用 [method HTMLLabel.set_scroll_offset]。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Sets the inner scroll position to the specified offset."
+msgstr "将内层滚动位置设为指定偏移。"
+
+#. doc_classes/HTMLElement.xml
+msgid "Adds the specified delta to the current inner scroll position."
+msgstr "在当前内层滚动位置上增加指定距离。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Scrolls inner containers and the viewport to reveal an element. Options are [code]block[/code], [code]inline[/code], and [code]behavior[/code]. The alignment values are [code]start[/code], [code]center[/code], [code]end[/code], and [code]nearest[/code]. Behavior accepts [code]auto[/code], [code]instant[/code], or [code]smooth[/code]. The defaults are [code]start[/code], [code]nearest[/code], and [code]auto[/code]."
+msgstr "滚动内层容器和视口以显示元素。选项有 [code]block[/code]、[code]inline[/code] 和 [code]behavior[/code]。对齐接受 [code]start[/code]、[code]center[/code]、[code]end[/code] 和 [code]nearest[/code]。行为接受 [code]auto[/code]、[code]instant[/code] 或 [code]smooth[/code]。三个选项分别默认为 [code]start[/code]、[code]nearest[/code] 和 [code]auto[/code]。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Scrolls the viewport to the first available selection rectangle for character offsets [param from] and [param to]. Returns [code]false[/code] if the range has no visible rectangle in the laid-out document."
+msgstr "将视口滚动到字符偏移 [param from] 和 [param to] 对应的首个可用选区矩形。范围在已排版文档中没有可见矩形时返回 [code]false[/code]。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns text in document order for assistive technologies. CSS alternatives specified after the slash in [code]content[/code] replace the spoken content, including explicit empty alternatives. Image [code]alt[/code] attributes supply text when no CSS alternative applies. Returns an empty string before layout."
+msgstr "按文档顺序返回供辅助技术使用的文本。[code]content[/code] 斜杠后的 CSS 替代文本用于朗读，包括显式空字符串。未指定 CSS 替代文本的图片使用 [code]alt[/code] 属性。布局前返回空字符串。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the document text published as this control's accessibility text value. CSS alternatives in [code]content[/code] are applied. See [method HTMLLayout.get_accessible_text]."
+msgstr "返回此控件发布的无障碍文本值，应用 [code]content[/code] 中的 CSS 替代文本。另请参见 [method HTMLLayout.get_accessible_text]。"

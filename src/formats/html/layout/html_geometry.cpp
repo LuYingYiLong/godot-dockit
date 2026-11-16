@@ -35,7 +35,8 @@ namespace docrender {
 		return {p_port.position + start, (p_port.size - start - end).max(Vector2())};
 	}
 
-	Vector2 html_scroll_delta(const Rect2& p_target, const Rect2& p_port, std::optional<float> p_align) {
+	Vector2 html_scroll_delta(const Rect2& p_target, const Rect2& p_port, std::optional<float> p_align,
+		const HTMLScrollOptions* p_options) {
 		const auto nearest = [](real_t start, real_t size, real_t port, real_t extent) {
 			const real_t leading = start - port;
 			const real_t trailing = leading + size - extent;
@@ -45,6 +46,21 @@ namespace docrender {
 			return real_t(0);
 		};
 		const Vector2 start = p_target.position - p_port.position;
+		if (p_options) {
+			using Alignment = HTMLScrollOptions::Alignment;
+			const auto aligned = [&](int p_axis, Alignment p_value) -> real_t {
+				const auto difference = p_target.size[p_axis] - p_port.size[p_axis];
+				switch (p_value) {
+					case Alignment::START: return start[p_axis];
+					case Alignment::CENTER: return start[p_axis] + difference * 0.5;
+					case Alignment::END: return start[p_axis] + difference;
+					case Alignment::NEAREST: return nearest(p_target.position[p_axis], p_target.size[p_axis],
+						p_port.position[p_axis], p_port.size[p_axis]);
+				}
+				return 0;
+			};
+			return {aligned(0, p_options->inline_axis), aligned(1, p_options->block)};
+		}
 		if (p_align) {
 			const real_t align = std::isfinite(*p_align) ? std::clamp(*p_align, 0.0f, 1.0f) : 0.0f;
 			// HTMLLabel's align parameter positions the target's leading edge.

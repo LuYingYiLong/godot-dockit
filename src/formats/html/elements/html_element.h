@@ -1,7 +1,6 @@
 #pragma once
 
-#include <godot_cpp/classes/ref_counted.hpp>
-#include <godot_cpp/core/object_id.hpp>
+#include "formats/html/dom/html_node.h"
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/rect2.hpp>
@@ -21,8 +20,8 @@ class HTMLInputElement;
 class HTMLFormElement;
 class HTMLDocumentFragment;
 
-class HTMLElement : public godot::RefCounted {
-	GDCLASS(HTMLElement, godot::RefCounted)
+class HTMLElement : public HTMLNode {
+	GDCLASS(HTMLElement, HTMLNode)
 
 	friend class HTMLLayout;
 	friend class docrender::HTMLDOM;
@@ -34,25 +33,13 @@ class HTMLElement : public godot::RefCounted {
 	friend class HTMLLabel;
 	friend class HTMLDocumentFragment;
 
-	struct DetachedTree;
-	godot::ObjectID layout_id;
-	uint64_t parse_version = 0;
-	uint64_t adoption_version = 0;
-	std::weak_ptr<litehtml::element> element;
-	std::shared_ptr<DetachedTree> detached_tree;
-
-	HTMLLayout* get_owner() const;
-
 protected:
 	static void _bind_methods();
-	docrender::HTMLDOM& get_dom() const;
-	std::shared_ptr<litehtml::element> lock_element() const;
 	std::shared_ptr<litehtml::element> lock_related_element(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
-	bool is_valid() const;															// 检查句柄是否仍指向所属布局中的元素
-	bool is_connected() const;														// 检查有效元素是否连接到当前文档树
+	NodeType get_node_type() const override { return ELEMENT_NODE; } // 返回元素节点类型
 	godot::String get_tag_name() const;												// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;							// 检查指定属性是否存在，空属性也视为存在
 	godot::String get_attribute(
@@ -64,6 +51,15 @@ public:
 	godot::TypedArray<HTMLElement> get_children() const;							// 按文档顺序返回直接子元素
 	godot::TypedArray<godot::Rect2> get_client_rects() const;						// 返回各排版片段在文档坐标中的边框盒
 	godot::Rect2 get_bounding_rect() const;											// 返回包围所有排版片段的矩形
+	godot::Vector2 get_client_size() const; // 返回包括内边距的布局尺寸
+	godot::Vector2 get_client_offset() const; // 返回边框左侧和顶部宽度
+	godot::Ref<HTMLElement> get_offset_parent() const; // 返回未变换布局偏移的参照元素
+	godot::Rect2 get_offset_rect() const; // 返回相对参照元素内边距盒的未变换矩形
+	godot::Vector2 get_scroll_size() const; // 返回元素可滚动内容的尺寸
+	godot::Vector2 get_scroll_offset() const; // 返回内层滚动容器的当前偏移
+	godot::Error set_scroll_offset(const godot::Vector2& p_offset); // 设置并限制内层滚动偏移
+	godot::Error scroll_to(const godot::Vector2& p_offset); // 滚动到内层容器的指定偏移
+	godot::Error scroll_by(const godot::Vector2& p_delta); // 将内层容器滚动指定距离
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;				// 返回本元素的 CSS 声明诊断快照
 
 	// 同一布局内的同一元素复用仍在使用的句柄，重新解析后旧句柄失效
@@ -107,4 +103,46 @@ public:
 	godot::Ref<HTMLElement> clone_node(bool p_deep = false) const;					// 创建同一布局中的分离副本，可选复制后代
 	godot::Error detach();															// 从父元素分离当前子树并保留已有句柄
 	godot::Error remove();															// 从父元素中移除当前元素，使该元素及其后代的句柄失效
+	godot::Ref<HTMLElement> get_first_element_child() const; // 返回第一个直接子元素
+	godot::Ref<HTMLElement> get_last_element_child() const; // 返回最后一个直接子元素
+	godot::Ref<HTMLElement> get_previous_element_sibling() const; // 返回上一个同父元素
+	godot::Ref<HTMLElement> get_next_element_sibling() const; // 返回下一个同父元素
+	int64_t get_child_element_count() const; // 返回直接子元素数量
+	godot::TypedArray<HTMLElement> get_elements_by_tag_name(const godot::String& p_name) const; // 按标签名查找后代元素
+	godot::TypedArray<HTMLElement> get_elements_by_class_name(const godot::String& p_names) const; // 按类名查找后代元素
+	godot::PackedStringArray get_attribute_names() const; // 返回源属性名称快照
+	bool has_attributes() const; // 检查是否存在源属性
+	bool toggle_attribute(const godot::String& p_name, const godot::Variant& p_force = {}); // 切换属性并返回切换后的存在状态
+	bool replace_class(const godot::String& p_old_name, const godot::String& p_new_name); // 替换类名并保留顺序
+	godot::Error set_dataset_value(const godot::String& p_key, const godot::String& p_value); // 设置对应的 data 属性
+	godot::Error remove_dataset_value(const godot::String& p_key); // 移除对应的 data 属性
+	godot::Error append(const godot::Array& p_items); // 将一批节点、文本或片段插到末尾
+	godot::Error prepend(const godot::Array& p_items); // 将一批节点、文本或片段插到开头
+	godot::Error before(const godot::Array& p_items); // 将一批节点、文本或片段插到当前元素前
+	godot::Error after(const godot::Array& p_items); // 将一批节点、文本或片段插到当前元素后
+	godot::Error replace_with(const godot::Array& p_items); // 用一批节点、文本或片段替换当前元素
+	godot::Error replace_children(const godot::Array& p_items); // 替换子节点并保留移出的节点句柄
+	godot::Error insert_adjacent_element(const godot::String& p_position, const godot::Ref<HTMLElement>& p_element); // 在指定的相邻位置插入元素
+	godot::Error insert_adjacent_text(const godot::String& p_position, const godot::String& p_text); // 在指定的相邻位置插入纯文本
+	godot::Error insert_adjacent_html(const godot::String& p_position, const godot::String& p_html); // 在指定的相邻位置插入解析后的片段
+	godot::String get_outer_html() const; // 序列化自身和子树
+	godot::Error set_outer_html(const godot::String& p_html); // 解析标记并替换当前元素
+	godot::String get_inner_text() const; // 返回受样式影响的文本和结构换行
+	godot::Error set_inner_text(const godot::String& p_text); // 用文本和换行替换子节点
+	godot::String get_id() const; // 读取元素 ID
+	void set_id(const godot::String& p_value); // 修改元素 ID
+	godot::String get_css_class_name() const; // 读取原始类名
+	void set_css_class_name(const godot::String& p_value); // 修改原始类名
+	godot::String get_lang() const; // 读取语言标签
+	void set_lang(const godot::String& p_value); // 修改语言标签
+	godot::String get_dir() const; // 读取文字方向
+	void set_dir(const godot::String& p_value); // 修改文字方向
+	godot::String get_title() const; // 读取提示标题
+	void set_title(const godot::String& p_value); // 修改提示标题
+	bool get_hidden() const; // 读取隐藏属性
+	void set_hidden(bool p_value); // 修改隐藏属性
+	bool get_inert() const; // 读取惰性属性
+	void set_inert(bool p_value); // 修改惰性属性
+	int64_t get_tab_index() const; // 读取Tab 顺序
+	void set_tab_index(int64_t p_value); // 修改Tab 顺序
 };

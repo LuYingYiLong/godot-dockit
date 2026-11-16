@@ -126,6 +126,15 @@ namespace docrender {
 		const litehtml::element* element;
 	};
 
+	struct HTMLScrollOptions {
+		enum class Alignment { START, CENTER, END, NEAREST };
+		enum class Behavior { AUTO, INSTANT, SMOOTH };
+		Alignment block = Alignment::START;
+		Alignment inline_axis = Alignment::NEAREST;
+		Behavior behavior = Behavior::AUTO;
+		bool smooth(bool p_default) const { return behavior == Behavior::AUTO ? p_default : behavior == Behavior::SMOOTH; }
+	};
+
 	enum class HTMLSnapMethod { destination, direction, relayout };
 	struct HTMLSnapArea {
 		godot::Rect2 area;
@@ -154,7 +163,7 @@ namespace docrender {
 	godot::Rect2 html_scroll_margin_area(const godot::Rect2& p_box, const css::ComputedStyle& p_style);
 	godot::Rect2 html_scroll_padding_area(const godot::Rect2& p_port, const css::ComputedStyle& p_style);
 	godot::Vector2 html_scroll_delta(const godot::Rect2& p_target, const godot::Rect2& p_port,
-		std::optional<float> p_align);
+		std::optional<float> p_align, const HTMLScrollOptions* p_options = nullptr);
 
 	struct HTMLScrollbar {
 		godot::Rect2 track;

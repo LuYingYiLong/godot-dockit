@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="HTMLElement" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<class name="HTMLElement" inherits="HTMLNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<brief_description>
 		A handle to an element in a parsed HTML layout.
 	</brief_description>
@@ -157,18 +157,6 @@
 				On success, the fragment is emptied and all moved handles are preserved. Moving a nonempty fragment into the document schedules one layout update. Invalid arguments leave both trees unchanged and return [constant ERR_INVALID_PARAMETER].
 			</description>
 		</method>
-		<method name="is_connected" qualifiers="const">
-			<return type="bool" />
-			<description>
-				Returns whether the element belongs to the current document tree. A detached or invalid element returns [code]false[/code]. The result updates immediately when the tree changes.
-			</description>
-		</method>
-		<method name="is_valid" qualifiers="const">
-			<return type="bool" />
-			<description>
-				Returns whether the handle still refers to an element in its owning layout.
-			</description>
-		</method>
 		<method name="matches" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="selector" type="String" />
@@ -255,5 +243,267 @@
 				Toggles the given class name when [param force] is [code]null[/code]. Pass [code]true[/code] to add it or [code]false[/code] to remove it. Use [method has_class] to read the resulting state.
 			</description>
 		</method>
+		<method name="get_first_element_child" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the first direct element child, or [code]null[/code].
+			</description>
+		</method>
+		<method name="get_last_element_child" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the last direct element child, or [code]null[/code].
+			</description>
+		</method>
+		<method name="get_child_element_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of direct element children.
+			</description>
+		</method>
+		<method name="replace_children">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Replaces the child nodes with the given nodes, plain strings, and fragments. Removed nodes retain their handles.
+			</description>
+		</method>
+		<method name="get_previous_element_sibling" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the preceding sibling element, or [code]null[/code].
+			</description>
+		</method>
+		<method name="get_next_element_sibling" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the following sibling element, or [code]null[/code].
+			</description>
+		</method>
+		<method name="get_elements_by_tag_name" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns the descendant elements with the given tag name as a snapshot.
+			</description>
+		</method>
+		<method name="get_elements_by_class_name" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<param index="0" name="names" type="String" />
+			<description>
+				Returns descendants matching all of the whitespace-separated class names.
+			</description>
+		</method>
+		<method name="get_attribute_names" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns a snapshot of source attribute names.
+			</description>
+		</method>
+		<method name="has_attributes" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether the element has any source attributes.
+			</description>
+		</method>
+		<method name="toggle_attribute">
+			<return type="bool" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="force" type="Variant" default="null" />
+			<description>
+				Toggles an attribute, or sets its presence to [param force]. Returns whether the attribute is now present.
+			</description>
+		</method>
+		<method name="replace_class">
+			<return type="bool" />
+			<param index="0" name="old_name" type="String" />
+			<param index="1" name="new_name" type="String" />
+			<description>
+				Replaces a class token while preserving token order. Returns whether the replacement was applied.
+			</description>
+		</method>
+		<method name="set_dataset_value">
+			<return type="int" enum="Error" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="String" />
+			<description>
+				Sets a [code]data-*[/code] attribute from a dataset key.
+			</description>
+		</method>
+		<method name="remove_dataset_value">
+			<return type="int" enum="Error" />
+			<param index="0" name="key" type="String" />
+			<description>
+				Removes the attribute for the given dataset key.
+			</description>
+		</method>
+		<method name="insert_adjacent_element">
+			<return type="int" enum="Error" />
+			<param index="0" name="position" type="String" />
+			<param index="1" name="element" type="HTMLElement" />
+			<description>
+				Inserts an element at [code]beforebegin[/code], [code]afterbegin[/code], [code]beforeend[/code], or [code]afterend[/code].
+			</description>
+		</method>
+		<method name="insert_adjacent_text">
+			<return type="int" enum="Error" />
+			<param index="0" name="position" type="String" />
+			<param index="1" name="text" type="String" />
+			<description>
+				Inserts plain text at a position accepted by [method insert_adjacent_element].
+			</description>
+		</method>
+		<method name="insert_adjacent_html">
+			<return type="int" enum="Error" />
+			<param index="0" name="position" type="String" />
+			<param index="1" name="html" type="String" />
+			<description>
+				Parses and inserts markup at a position accepted by [method insert_adjacent_element].
+			</description>
+		</method>
+		<method name="get_outer_html" qualifiers="const">
+			<return type="String" />
+			<description>
+				Serializes the element and its contents as HTML.
+			</description>
+		</method>
+		<method name="set_outer_html">
+			<return type="int" enum="Error" />
+			<param index="0" name="html" type="String" />
+			<description>
+				Replaces the element with parsed markup and retains this handle as a detached element.
+			</description>
+		</method>
+		<method name="get_inner_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns text with CSS visibility, casing, whitespace, and structural line breaks applied. Without a rendered element, returns the source text content.
+			</description>
+		</method>
+		<method name="set_inner_text">
+			<return type="int" enum="Error" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Replaces the child nodes with plain text, converting line endings to HTML line breaks where allowed.
+			</description>
+		</method>
+		<method name="append">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Appends the items at the end of this element. The array accepts nodes, plain strings, and fragments.
+			</description>
+		</method>
+		<method name="prepend">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Inserts the items at the beginning of this element. The array accepts nodes, plain strings, and fragments.
+			</description>
+		</method>
+		<method name="before">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Inserts the items directly before this element. The array accepts nodes, plain strings, and fragments.
+			</description>
+		</method>
+		<method name="after">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Inserts the items directly after this element. The array accepts nodes, plain strings, and fragments.
+			</description>
+		</method>
+		<method name="replace_with">
+			<return type="int" enum="Error" />
+			<param index="0" name="items" type="Array" />
+			<description>
+				Replaces this element with the given items and retains this handle as a detached element. The array accepts nodes, plain strings, and fragments.
+			</description>
+		</method>
+		<method name="get_client_size" qualifiers="const">
+			<return type="Vector2" />
+			<description>
+				Returns the untransformed padding box size. The root uses the viewport size.
+			</description>
+		</method>
+		<method name="get_client_offset" qualifiers="const">
+			<return type="Vector2" />
+			<description>
+				Returns the left and top border widths in layout pixels.
+			</description>
+		</method>
+		<method name="get_offset_parent" qualifiers="const">
+			<return type="HTMLElement" />
+			<description>
+				Returns the reference element for [method get_offset_rect], or [code]null[/code].
+			</description>
+		</method>
+		<method name="get_offset_rect" qualifiers="const">
+			<return type="Rect2" />
+			<description>
+				Returns the first border box position and the combined border box size in layout pixels. Position is relative to the offset parent's padding box. CSS transforms and scroll offsets are excluded.
+			</description>
+		</method>
+		<method name="get_scroll_size" qualifiers="const">
+			<return type="Vector2" />
+			<description>
+				Returns the extent of the scrollable content, including padding.
+			</description>
+		</method>
+		<method name="get_scroll_offset" qualifiers="const">
+			<return type="Vector2" />
+			<description>
+				Returns the current scroll offset of this inner scroll container in CSS pixels.
+			</description>
+		</method>
+		<method name="set_scroll_offset">
+			<return type="int" enum="Error" />
+			<param index="0" name="offset" type="Vector2" />
+			<description>
+				Sets the inner scroll offset immediately, clamped to the scrollable extent. Use [method HTMLLabel.set_scroll_offset] for the outer viewport.
+			</description>
+		</method>
+		<method name="scroll_to">
+			<return type="int" enum="Error" />
+			<param index="0" name="offset" type="Vector2" />
+			<description>
+				Sets the inner scroll position to the specified offset.
+			</description>
+		</method>
+		<method name="scroll_by">
+			<return type="int" enum="Error" />
+			<param index="0" name="delta" type="Vector2" />
+			<description>
+				Adds the specified delta to the current inner scroll position.
+			</description>
+		</method>
 	</methods>
+	<members>
+		<member name="id" type="String" setter="set_id" getter="get_id">
+			Reflects the HTML ID.
+		</member>
+		<member name="css_class_name" type="String" setter="set_css_class_name" getter="get_css_class_name">
+			Reflects the raw HTML class attribute.
+		</member>
+		<member name="lang" type="String" setter="set_lang" getter="get_lang">
+			Reflects the element's own HTML language attribute.
+		</member>
+		<member name="dir" type="String" setter="set_dir" getter="get_dir">
+			Reflects the HTML direction attribute.
+		</member>
+		<member name="title" type="String" setter="set_title" getter="get_title">
+			Reflects the HTML title attribute.
+		</member>
+		<member name="hidden" type="bool" setter="set_hidden" getter="get_hidden">
+			Reflects whether the hidden attribute is present.
+		</member>
+		<member name="inert" type="bool" setter="set_inert" getter="get_inert">
+			Reflects whether the inert attribute is present.
+		</member>
+		<member name="tab_index" type="int" setter="set_tab_index" getter="get_tab_index">
+			Reflects the explicit tab index, or returns the default for the element type.
+		</member>
+	</members>
 </class>

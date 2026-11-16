@@ -183,6 +183,8 @@ namespace docrender {
 		const std::vector<HTMLPaintGroup>& get_paint_groups() const { return paint_groups; }
 		const std::vector<HTMLPaintRun>& get_diagnostic_runs() const { return diagnostic_runs; }
 		std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_point, bool p_text_selection = false) const;
+		void visit_hit_elements(const godot::Vector2& p_point, bool p_text_selection,
+			const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit) const;
 		const godot::String& get_plain_text() const;
 		const godot::String& get_accessible_text() const { return accessible_text; }
 		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;

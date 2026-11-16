@@ -66,6 +66,8 @@ namespace litehtml {
 			bool p_split
 		);																			// 创建纯文本节点，可按排版需要拆分文本
 		static void replace_children(element& p_parent, elements_list p_children);	// 替换父元素的子节点
+		static void replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists); // 在同一次操作中更新多个父节点
+		static void mark_text_node(elements_list& r_parts, const char* p_text); // 标记属于同一个 DOM 文本节点的排版片段
 		enum class child_edit_result { invalid, unchanged, changed };
 		static child_edit_result place_child(const element::ptr& p_child, element& p_parent,
 			const element::ptr& p_reference, bool p_replace_reference);			// 插入或替换子节点，保留节点身份并报告是否改变顺序

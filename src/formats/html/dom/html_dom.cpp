@@ -31,6 +31,7 @@
 #include <litehtml/el_comment.h>
 #include <litehtml/el_space.h>
 #include <litehtml/html_tag.h>
+#include <godot_cpp/templates/hash_set.hpp>
 
 #include <algorithm>
 #include <exception>
@@ -78,6 +79,15 @@ namespace {
 			tag == "noembed" || tag == "noframes" || tag == "plaintext";
 	}
 
+	bool valid_character_data(const CharString& p_data) {
+		return std::string_view(p_data.get_data(), p_data.length()).find('\0') == std::string_view::npos;
+	}
+
+	void sync_dom_children(const litehtml::element::ptr& p_node) {
+		if (auto* textarea = dynamic_cast<docrender::HTMLTextAreaNode*>(p_node.get())) textarea->sync_default_value();
+		docrender::forms::synchronize(p_node);
+	}
+
 	void append_escaped(std::string& r_html, std::string_view p_value, bool p_attribute) {
 		for (const char byte : p_value) {
 			switch (byte) {
@@ -96,6 +106,25 @@ namespace {
 			root = parent.get();
 		}
 		return root;
+	}
+
+	const std::shared_ptr<const litehtml::string>& text_group(const litehtml::element& p_node) {
+		static const std::shared_ptr<const litehtml::string> empty;
+		const auto* text = dynamic_cast<const litehtml::el_text*>(&p_node);
+		return text ? text->dom_text() : empty;
+	}
+
+	litehtml::elements_list node_parts(const litehtml::element::ptr& p_node) {
+		const auto& group = text_group(*p_node);
+		if (const auto parent = p_node->parent(); parent && group) {
+			litehtml::elements_list parts;
+			for (const auto& child : parent->children()) {
+				if (text_group(*child) == group) parts.push_back(child);
+				else if (!parts.empty()) break;
+			}
+			if (!parts.empty()) return parts;
+		}
+		return {p_node};
 	}
 
 	litehtml::element::ptr clone_character_data(const litehtml::element& p_source, const litehtml::document::ptr& p_document) {
@@ -184,17 +213,18 @@ namespace {
 
 } // namespace
 
-HTMLElement::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const litehtml::element::ptr& p_root) :
+HTMLNode::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const litehtml::element::ptr& p_root) :
 	owner(std::move(p_owner)), root(p_root) {}
 
-HTMLElement::DetachedTree::~DetachedTree() {
+HTMLNode::DetachedTree::~DetachedTree() {
 	if (const auto dom = owner.lock(); root && dom) {
 		dom->detached_trees.erase(root.get());
-		HTMLDOM::visit_elements(root, [&](const litehtml::element::ptr& p_element) {
-			dom->element_handles.erase(p_element.get());
-			dom->forget_source_attributes(*p_element);
-			return false;
-		});
+		const auto remove_entries = [&](const auto& p_visit, const litehtml::element& p_node) -> void {
+			dom->node_handles.erase(&p_node);
+			dom->forget_source_attributes(p_node);
+			for (const auto& child : p_node.children()) p_visit(p_visit, *child);
+		};
+		remove_entries(remove_entries, *root);
 	}
 }
 
@@ -206,7 +236,10 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	owner_id = p_owner_id;
 	generation = p_generation;
 	for (const auto& entry : detached_trees) {
-		if (const auto tree = entry.value.lock()) docrender::forms::synchronize(tree->root);
+		if (const auto tree = entry.value.lock()) {
+			if (const auto handle = find_node_handle(*entry.key); handle.is_valid()) bind_handle(*handle.ptr(), tree->root);
+			docrender::forms::synchronize(tree->root);
+		}
 	}
 }
 
@@ -250,9 +283,10 @@ void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
 }
 
 void HTMLDOM::clear() {
-	element_handles.clear();
+	node_handles.clear();
+	document_handle = ObjectID();
 	// Releasing one root can destroy nested template fragments and unregister them.
-	std::vector<std::shared_ptr<HTMLElement::DetachedTree>> trees;
+	std::vector<std::shared_ptr<HTMLNode::DetachedTree>> trees;
 	for (const auto& entry : detached_trees) {
 		if (auto tree = entry.value.lock()) {
 			trees.push_back(std::move(tree));
@@ -271,27 +305,21 @@ bool HTMLDOM::is_element(const litehtml::element& p_element) {
 	return tag != litehtml::empty_id && !litehtml::is_generated_tag(tag) && *p_element.get_tagName();
 }
 
-std::shared_ptr<HTMLElement::DetachedTree> HTMLDOM::get_detached_tree(const litehtml::element& p_element) const {
+std::shared_ptr<HTMLNode::DetachedTree> HTMLDOM::get_detached_tree(const litehtml::element& p_element) const {
 	const auto* tree = detached_trees.getptr(tree_root(p_element));
 	return tree ? tree->lock() : nullptr;
 }
 
-std::shared_ptr<HTMLElement::DetachedTree> HTMLDOM::register_detached_tree(const litehtml::element::ptr& p_root) {
-	auto tree = std::make_shared<HTMLElement::DetachedTree>(weak_from_this(), p_root);
+std::shared_ptr<HTMLNode::DetachedTree> HTMLDOM::register_detached_tree(const litehtml::element::ptr& p_root) {
+	auto tree = std::make_shared<HTMLNode::DetachedTree>(weak_from_this(), p_root);
 	detached_trees.insert(p_root.get(), tree);
 	return tree;
 }
 
 void HTMLDOM::update_detached_handles(const litehtml::element::ptr& p_root,
-	const std::shared_ptr<HTMLElement::DetachedTree>& p_tree) {
-	visit_elements(p_root, [&](const litehtml::element::ptr& p_element) {
-		if (const ObjectID* id = element_handles.getptr(p_element.get())) {
-			if (auto* handle = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id))) {
-				handle->detached_tree = p_tree;
-			}
-		}
-		return false;
-	});
+	const std::shared_ptr<HTMLNode::DetachedTree>& p_tree) {
+	if (const auto handle = find_node_handle(*p_root); handle.is_valid()) handle->detached_tree = p_tree;
+	for (const auto& child : p_root->children()) update_detached_handles(child, p_tree);
 }
 
 void HTMLDOM::retain_detached_subtree(const litehtml::element::ptr& p_root) {
@@ -302,11 +330,11 @@ bool HTMLDOM::is_element_connected(const litehtml::element& p_element) const {
 	return document && document->root().get() == tree_root(p_element);
 }
 
-Ref<HTMLElement> HTMLDOM::find_element_handle(const litehtml::element& p_element) const {
-	if (const ObjectID* id = element_handles.getptr(&p_element)) {
-		auto* existing = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id));
+Ref<HTMLNode> HTMLDOM::find_node_handle(const litehtml::element& p_element) const {
+	if (const ObjectID* id = node_handles.getptr(&p_element)) {
+		auto* existing = Object::cast_to<HTMLNode>(ObjectDB::get_instance(*id));
 		if (existing && existing->element.lock().get() == &p_element) {
-			return Ref<HTMLElement>(existing);
+			return Ref<HTMLNode>(existing);
 		}
 	}
 	return {};
@@ -316,15 +344,57 @@ Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) 
 	if (!p_element || !is_element(*p_element)) {
 		return {};
 	}
-	if (const auto existing = find_element_handle(*p_element); existing.is_valid()) {
+	if (const auto existing = find_node_handle(*p_element); existing.is_valid()) {
 		return existing;
 	}
 	Ref<HTMLElement> handle = create_element_handle(p_element->tag());
+	bind_handle(*handle.ptr(), p_element);
+	return handle;
+}
+
+void HTMLDOM::bind_handle(HTMLNode& handle, const litehtml::element::ptr& p_node) const {
+	handle.layout_id = owner_id;
+	handle.parse_version = generation;
+	handle.element = p_node;
+	handle.detached_tree = get_detached_tree(*p_node);
+	node_handles.insert(p_node.get(), ObjectID(handle.get_instance_id()));
+}
+
+Ref<HTMLNode> HTMLDOM::make_node(const litehtml::element::ptr& p_node) const {
+	if (!p_node || litehtml::is_generated_tag(p_node->tag())) return {};
+	if (is_element(*p_node)) return make_element(p_node);
+	if (const auto existing = find_node_handle(*p_node); existing.is_valid()) return existing;
+	Ref<HTMLNode> handle;
+	if (p_node->is_comment()) {
+		Ref<HTMLCommentNode> comment;
+		comment.instantiate();
+		handle = comment;
+	} else if (p_node->is_text() || dynamic_cast<const litehtml::el_cdata*>(p_node.get())) {
+		const auto parts = node_parts(p_node);
+		if (parts.front() != p_node) return make_node(parts.front());
+		Ref<HTMLTextNode> text;
+		text.instantiate();
+		handle = text;
+	} else if (const auto tree = get_detached_tree(*p_node); tree && tree->root == p_node && tree->public_fragment) {
+		Ref<HTMLDocumentFragment> fragment;
+		fragment.instantiate();
+		handle = fragment;
+	}
+	if (handle.is_valid()) bind_handle(*handle.ptr(), p_node);
+	return handle;
+}
+
+Ref<HTMLDocumentNode> HTMLDOM::get_document_node() const {
+	if (!document || !document->root()) return {};
+	if (auto* handle = Object::cast_to<HTMLDocumentNode>(ObjectDB::get_instance(document_handle))) {
+		return Ref<HTMLDocumentNode>(handle);
+	}
+	Ref<HTMLDocumentNode> handle;
+	handle.instantiate();
+	handle->element = document->root();
 	handle->layout_id = owner_id;
 	handle->parse_version = generation;
-	handle->element = p_element;
-	handle->detached_tree = get_detached_tree(*p_element);
-	element_handles.insert(p_element.get(), ObjectID(handle->get_instance_id()));
+	document_handle = ObjectID(handle->get_instance_id());
 	return handle;
 }
 
@@ -336,6 +406,32 @@ TypedArray<HTMLElement> HTMLDOM::get_children(const litehtml::element& p_element
 		}
 	}
 	return children;
+}
+
+TypedArray<HTMLElement> HTMLDOM::get_elements(const String& p_value, Lookup p_lookup, const litehtml::element::ptr& p_scope) const {
+	TypedArray<HTMLElement> result;
+	if (!document) return result;
+	const auto root = p_scope ? p_scope : document->root();
+	const String tag = p_lookup == Lookup::TAG ? p_value.to_lower() : String();
+	const auto tokens = p_lookup == Lookup::CLASS ? p_value.replace("\t", " ").replace("\r", " ")
+		.replace("\n", " ").replace("\f", " ").split(" ", false) : PackedStringArray();
+	if (p_lookup == Lookup::CLASS && tokens.is_empty()) return result;
+	visit_elements(root, [&](const auto& node) {
+		if (node == p_scope) return false;
+		bool matches = false;
+		if (p_lookup == Lookup::TAG) {
+			matches = tag == "*" || tag == String::utf8(node->get_tagName());
+		} else if (p_lookup == Lookup::NAME) {
+			const char* name = get_element_attribute(*node, "name");
+			matches = name && p_value == String::utf8(name);
+		} else {
+			const auto classes = make_element(node)->get_class_list();
+			matches = std::all_of(tokens.begin(), tokens.end(), [&](const String& p_class) { return classes.has(p_class); });
+		}
+		if (matches) result.append(make_element(node));
+		return false;
+	});
+	return result;
 }
 
 CharString HTMLDOM::normalize_tag_name(const String& p_tag_name) {
@@ -365,7 +461,9 @@ Ref<HTMLDocumentFragment> HTMLDOM::create_document_fragment(const litehtml::docu
 	Ref<HTMLDocumentFragment> fragment;
 	fragment.instantiate();
 	// An unnamed native tag can hold children without exposing an HTMLElement handle.
-	fragment->tree = register_detached_tree(std::make_shared<litehtml::html_tag>(p_document));
+	fragment->detached_tree = register_detached_tree(std::make_shared<litehtml::html_tag>(p_document));
+	fragment->detached_tree->public_fragment = true;
+	bind_handle(*fragment.ptr(), fragment->detached_tree->root);
 	return fragment;
 }
 
@@ -373,17 +471,300 @@ litehtml::element::ptr HTMLDOM::create_template_node(const litehtml::document::p
 	// Initial parsing uses a document that HTMLDOM has yet to install.
 	const auto fragment = create_document_fragment(p_document);
 	const auto node = std::make_shared<HTMLTemplateNode>(p_document, fragment);
-	fragment->tree->host = node;
+	fragment->detached_tree->host = node;
 	return node;
 }
 
 Ref<HTMLDocumentFragment> HTMLDOM::copy_fragment(const litehtml::element& p_root, bool p_deep) {
 	const auto fragment = create_document_fragment();
-	if (p_deep && !clone_children(*this, p_root, *fragment->tree->root)) {
+	if (p_deep && !clone_children(*this, p_root, *fragment->detached_tree->root)) {
 		return {};
 	}
-	docrender::forms::synchronize(fragment->tree->root);
+	docrender::forms::synchronize(fragment->detached_tree->root);
 	return fragment;
+}
+
+Ref<HTMLDocumentFragment> HTMLDOM::parse_fragment(const String& p_html, const litehtml::element::ptr& p_context) {
+	const auto source = p_html.utf8();
+	if (!valid_character_data(source)) return {};
+	const auto context = p_context ? p_context : document->create_element("body", {});
+	const auto fragment = create_document_fragment();
+	DocumentAdapter::replace_children(*fragment->detached_tree->root, DocumentAdapter::parse_fragment(*document, *context, source));
+	docrender::forms::synchronize(fragment->detached_tree->root);
+	return fragment;
+}
+
+Ref<HTMLDocumentFragment> HTMLDOM::import_fragment(const HTMLDocumentFragment& p_source) {
+	if (const auto node = p_source.lock_element()) {
+		const auto copy = create_document_fragment();
+		if (clone_children(p_source.get_dom(), *node, *copy->detached_tree->root)) {
+			docrender::forms::synchronize(copy->detached_tree->root);
+			return copy;
+		}
+	}
+	return {};
+}
+
+bool HTMLDOM::adopt_fragment(HTMLDocumentFragment& r_source) {
+	const auto root = r_source.lock_element();
+	if (!root || !r_source.detached_tree->host.expired()) return false;
+	auto& source = r_source.get_dom();
+	if (&source == this) return true;
+	const auto copy = create_document_fragment();
+	Adoption adoption;
+	if (!clone_children(source, *root, *copy->detached_tree->root, &adoption)) return false;
+	source.node_handles.erase(root.get());
+	transfer_adoption(source, *root, adoption);
+	++r_source.adoption_version;
+	bind_handle(r_source, copy->detached_tree->root);
+	docrender::forms::synchronize(r_source.detached_tree->root);
+	return true;
+}
+
+Ref<HTMLNode> HTMLDOM::create_character_node(const String& p_data, bool p_comment) {
+	const auto data = p_data.utf8();
+	if (!valid_character_data(data)) return {};
+	litehtml::elements_list parts;
+	if (p_comment) {
+		const auto node = std::make_shared<litehtml::el_comment>(document);
+		node->set_data(data.get_data());
+		parts.push_back(node);
+	} else {
+		parts = DocumentAdapter::create_text(document, data.get_data(), true);
+		if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
+	}
+	const auto node = parts.front();
+	const auto holder = std::make_shared<litehtml::html_tag>(document);
+	const auto tree = register_detached_tree(holder);
+	DocumentAdapter::replace_children(*holder, std::move(parts));
+	return make_node(node);
+}
+
+String HTMLDOM::character_data(const litehtml::element& p_node) const {
+	if (const auto& group = text_group(p_node)) return String::utf8(group->c_str());
+	litehtml::string data;
+	p_node.get_text(data);
+	return String::utf8(data.c_str());
+}
+
+Error HTMLDOM::set_character_data(const litehtml::element::ptr& p_node, const String& p_data, bool p_notify) {
+	const auto data = p_data.utf8();
+	if (!valid_character_data(data)) return ERR_INVALID_PARAMETER;
+	if (p_data == character_data(*p_node)) return OK;
+	const auto parent = p_node->parent();
+	if (!parent) return ERR_INVALID_PARAMETER;
+	litehtml::elements_list parts;
+	if (p_node->is_comment()) {
+		const auto comment = std::make_shared<litehtml::el_comment>(document);
+		comment->set_data(data.get_data());
+		parts.push_back(comment);
+	} else {
+		const bool split = parent->tag() != litehtml::_textarea_ && !has_raw_text(*parent);
+		parts = DocumentAdapter::create_text(document, data.get_data(), split);
+		if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
+	}
+	const auto first = parts.front();
+	auto children = parent->children();
+	const auto original = node_parts(p_node);
+	const auto begin = std::find(children.begin(), children.end(), original.front());
+	if (begin == children.end()) return ERR_INVALID_PARAMETER;
+	children.splice(begin, parts);
+	children.erase(begin, std::next(begin, original.size()));
+	const auto handle = find_node_handle(*p_node);
+	DocumentAdapter::replace_children(*parent, std::move(children));
+	node_handles.erase(p_node.get());
+	if (handle.is_valid()) bind_handle(*handle.ptr(), first);
+	sync_dom_children(parent);
+	if (p_notify && is_element_connected(*parent)) on_change();
+	return OK;
+}
+
+Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edit, const Array& p_items, bool p_notify) {
+	const bool sibling = p_edit == TreeEdit::BEFORE || p_edit == TreeEdit::AFTER || p_edit == TreeEdit::REPLACE;
+	const auto parent = sibling ? p_target->parent() : p_target;
+	if (!parent) return sibling ? OK : ERR_INVALID_PARAMETER;
+	if (!dynamic_cast<litehtml::html_tag*>(parent.get()) || is_void_element(*parent) ||
+		dynamic_cast<HTMLTemplateNode*>(parent.get())) return ERR_INVALID_PARAMETER;
+
+	// Flatten by logical node. A repeated node takes its final position, as in a fragment.
+	std::list<litehtml::elements_list> units;
+	HashMap<const litehtml::element*, decltype(units)::iterator> indices;
+	const auto collect = [&](litehtml::elements_list p_parts) {
+		const auto* key = p_parts.front().get();
+		if (const auto* known = indices.getptr(key)) {
+			units.splice(units.end(), units, *known);
+		} else {
+			units.push_back(std::move(p_parts));
+			indices.insert(key, std::prev(units.end()));
+		}
+	};
+	for (const Variant& item : p_items) {
+		if (item.get_type() == Variant::STRING) {
+			const auto source = String(item).utf8();
+			if (!valid_character_data(source)) return ERR_INVALID_PARAMETER;
+			auto parts = DocumentAdapter::create_text(document, source.get_data(),
+				parent->tag() != litehtml::_textarea_ && !has_raw_text(*parent));
+			if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
+			collect(std::move(parts));
+			continue;
+		}
+		const Ref<HTMLNode> node = item;
+		const auto native = node.is_valid() ? node->lock_element() : nullptr;
+		if (!native || &node->get_dom() != this || node->get_node_type() == HTMLNode::DOCUMENT_NODE ||
+			is_host_including_ancestor(*native, parent)) return ERR_INVALID_PARAMETER;
+		if (node->get_node_type() == HTMLNode::DOCUMENT_FRAGMENT_NODE) {
+			for (auto it = native->children().begin(); it != native->children().end();) {
+				auto parts = node_parts(*it);
+				std::advance(it, parts.size());
+				collect(std::move(parts));
+			}
+		} else {
+			// The document element and its implicit document parent cannot be moved here.
+			if (!native->parent() && is_element_connected(*native)) return ERR_INVALID_PARAMETER;
+			collect(node_parts(native));
+		}
+	}
+	if (!can_contain_elements(*parent)) {
+		for (const auto& parts : units) {
+			if (is_element(*parts.front())) return ERR_INVALID_PARAMETER;
+		}
+	}
+
+	HashSet<const litehtml::element*> moved;
+	struct MovedNode {
+		litehtml::element::ptr root;
+		std::shared_ptr<HTMLNode::DetachedTree> tree;
+	};
+	std::vector<MovedNode> moved_nodes;
+	std::vector<std::pair<litehtml::element::ptr, litehtml::elements_list>> parents;
+	HashMap<const litehtml::element*, size_t> parent_indices;
+	const auto add_parent = [&](const litehtml::element::ptr& p_parent) {
+		if (p_parent && !parent_indices.has(p_parent.get())) {
+			parent_indices.insert(p_parent.get(), parents.size());
+			parents.emplace_back(p_parent, litehtml::elements_list());
+		}
+	};
+	add_parent(parent);
+	for (const auto& parts : units) {
+		const auto& root = parts.front();
+		add_parent(root->parent());
+		moved_nodes.push_back({root, get_detached_tree(*root)});
+		for (const auto& part : parts) moved.insert(part.get());
+	}
+
+	litehtml::element::ptr anchor;
+	if (sibling) {
+		const auto parts = node_parts(p_target);
+		const auto after = p_edit == TreeEdit::BEFORE ? parts.front() : parts.back();
+		bool ready = false;
+		for (const auto& child : parent->children()) {
+			if (p_edit == TreeEdit::BEFORE && child == after) ready = true;
+			if (ready && !moved.has(child.get())) {
+				anchor = child;
+				break;
+			}
+			if (child == after) ready = true;
+		}
+	} else {
+		for (const auto& child : parent->children()) {
+			if (!moved.has(child.get()) && (child->tag() == litehtml::_after_ ||
+				(p_edit == TreeEdit::PREPEND && !litehtml::is_generated_tag(child->tag())))) {
+				anchor = child;
+				break;
+			}
+		}
+	}
+
+	HashSet<const litehtml::element*> replaced;
+	if (p_edit == TreeEdit::REPLACE) for (const auto& part : node_parts(p_target)) replaced.insert(part.get());
+	litehtml::elements_list removed;
+	for (auto& [owner, children] : parents) {
+		for (const auto& child : owner->children()) {
+			if (moved.has(child.get())) continue;
+			if (owner == parent && (replaced.has(child.get()) || (p_edit == TreeEdit::REPLACE_CHILDREN &&
+				!litehtml::is_generated_tag(child->tag())))) {
+				removed.push_back(child);
+			} else {
+				children.push_back(child);
+			}
+		}
+	}
+	auto& children = parents.front().second;
+	const auto position = anchor ? std::find(children.begin(), children.end(), anchor) : children.end();
+	for (auto& parts : units) children.splice(position, parts);
+	const auto changed = [](const auto& p_entry) { return p_entry.first->children() != p_entry.second; };
+	parents.erase(std::remove_if(parents.begin(), parents.end(), [&](const auto& p_entry) { return !changed(p_entry); }), parents.end());
+	if (parents.empty()) return OK;
+	const bool connected = std::any_of(parents.begin(), parents.end(), [&](const auto& p_entry) {
+		return is_element_connected(*p_entry.first);
+	});
+	const auto target_tree = get_detached_tree(*parent);
+	DocumentAdapter::replace_child_lists(parents);
+	std::vector<litehtml::element::ptr> preferred;
+	for (const auto& entry : moved_nodes) {
+		release_detached_root(entry.tree, entry.root);
+		update_detached_handles(entry.root, target_tree);
+		preferred.push_back(entry.root);
+	}
+	while (!removed.empty()) {
+		const auto first = removed.front();
+		const auto& group = text_group(*first);
+		if (group || first->is_text() || first->is_comment() || dynamic_cast<const litehtml::el_cdata*>(first.get())) {
+			auto end = removed.begin();
+			++end;
+			if (group) while (end != removed.end() && text_group(**end) == group) ++end;
+			litehtml::elements_list parts;
+			parts.splice(parts.end(), removed, removed.begin(), end);
+			const auto holder = std::make_shared<litehtml::html_tag>(document);
+			DocumentAdapter::replace_children(*holder, std::move(parts));
+			retain_detached_subtree(holder);
+		} else {
+			removed.pop_front();
+			retain_detached_subtree(first);
+		}
+	}
+	for (const auto& [owner, previous] : parents) sync_dom_children(owner);
+	normalize_details(parent, preferred);
+	if (p_notify && connected) on_change();
+	return OK;
+}
+
+Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
+	bool changed = false;
+	const auto merge = [&](const auto& p_visit, const litehtml::element::ptr& p_parent) -> void {
+		std::vector<Ref<HTMLTextNode>> run;
+		const auto flush = [&]() {
+			String data;
+			Ref<HTMLTextNode> first;
+			for (const auto& node : run) {
+				const String part = node->get_data();
+				if (first.is_null() && !part.is_empty()) {
+					first = node;
+				} else {
+					edit_nodes(node->lock_element(), TreeEdit::REPLACE, {}, false);
+					changed = true;
+				}
+				data += part;
+			}
+			if (first.is_valid()) set_character_data(first->lock_element(), data, false);
+			run.clear();
+		};
+		const auto wrapper = make_node(p_parent);
+		if (wrapper.is_null()) return;
+		for (const Ref<HTMLNode>& child : wrapper->get_child_nodes()) {
+			const Ref<HTMLTextNode> text = child;
+			if (text.is_valid()) {
+				run.push_back(text);
+			} else {
+				flush();
+				if (child->get_node_type() == HTMLNode::ELEMENT_NODE) p_visit(p_visit, child->lock_element());
+			}
+		}
+		flush();
+	};
+	merge(merge, p_root);
+	if (changed && is_element_connected(*p_root)) on_change();
+	return OK;
 }
 
 Ref<HTMLElement> HTMLDOM::make_detached_element(const litehtml::element::ptr& p_element) {
@@ -414,27 +795,11 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	}
 	// Stage the detached target before editing the source. Its owner cleans up on failure.
 	const auto target_tree = register_detached_tree(copy);
-	for (const auto& entry : adoption.handles) {
-		element_handles.insert(entry.target.get(), ObjectID(entry.handle->get_instance_id()));
-	}
 	if (parent && !parent->removeChild(p_source)) {
 		return false;
 	}
 	p_source_dom.release_detached_root(source_tree, p_source);
-	for (const auto& entry : adoption.handles) {
-		p_source_dom.element_handles.erase(entry.source);
-		entry.handle->layout_id = owner_id;
-		entry.handle->parse_version = generation;
-		++entry.handle->adoption_version;
-		entry.handle->element = entry.target;
-		entry.handle->detached_tree = get_detached_tree(*entry.target);
-	}
-	p_source_dom.forget_subtree(*p_source);
-	for (const auto& entry : adoption.fragments) {
-		// Keep the public fragment object and transfer its ownership to the copied host.
-		entry.source->tree = std::move(entry.target->content->tree);
-		entry.target->content = entry.source;
-	}
+	transfer_adoption(p_source_dom, *p_source, adoption);
 	docrender::forms::synchronize(copy, copy);
 	docrender::forms::synchronize(parent);
 	if (source_connected) {
@@ -443,10 +808,29 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	return true;
 }
 
+void HTMLDOM::transfer_adoption(HTMLDOM& p_source, const litehtml::element& p_root, const Adoption& p_adoption) {
+	for (const auto& entry : p_adoption.handles) {
+		p_source.node_handles.erase(entry.source);
+		++entry.handle->adoption_version;
+		bind_handle(*entry.handle.ptr(), entry.target);
+	}
+	for (const auto& entry : p_adoption.fragments) p_source.node_handles.erase(entry.source->element.lock().get());
+	p_source.forget_subtree(p_root);
+	for (const auto& entry : p_adoption.fragments) {
+		bind_handle(*entry.source.ptr(), entry.target->content->detached_tree->root);
+		++entry.source->adoption_version;
+		entry.target->content = entry.source;
+	}
+}
+
 litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep,
 	Adoption* r_adoption) {
 	if (!is_element(p_source)) {
-		return clone_character_data(p_source, document);
+		const auto copy = clone_character_data(p_source, document);
+		if (copy && r_adoption) {
+			if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) r_adoption->handles.push_back({&p_source, copy, handle});
+		}
+		return copy;
 	}
 	const auto* source_attributes = p_source_dom.get_source_attributes(p_source);
 	const litehtml::string_map attributes = source_attributes ? *source_attributes : litehtml::string_map();
@@ -456,7 +840,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 	}
 	if (p_deep) {
 		const auto* source_template = dynamic_cast<const HTMLTemplateNode*>(&p_source);
-		const auto& source = source_template ? *source_template->content->tree->root : p_source;
+		const auto& source = source_template ? *source_template->content->detached_tree->root : p_source;
 		if (!clone_children(p_source_dom, source, *copy, r_adoption)) {
 			forget_subtree(*copy);
 			return {};
@@ -469,7 +853,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 	}
 	if (r_adoption) {
 		copy->css_w().copy_remembered_content_size(p_source.css());
-		if (const auto handle = p_source_dom.find_element_handle(p_source); handle.is_valid()) {
+		if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) {
 			r_adoption->handles.push_back({ &p_source, copy, handle });
 		}
 		if (const auto* source_template = dynamic_cast<const HTMLTemplateNode*>(&p_source)) {
@@ -481,6 +865,8 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 
 bool HTMLDOM::clone_children(const HTMLDOM& p_source_dom, const litehtml::element& p_source, litehtml::element& r_target,
 	Adoption* r_adoption) {
+	std::shared_ptr<const litehtml::string> previous_group;
+	std::shared_ptr<const litehtml::string> copied_group;
 	for (const auto& child : p_source.children()) {
 		if (litehtml::is_generated_tag(child->tag())) {
 			continue;
@@ -492,6 +878,12 @@ bool HTMLDOM::clone_children(const HTMLDOM& p_source_dom, const litehtml::elemen
 			}
 			return false;
 		}
+		const auto& group = text_group(*child);
+		if (group != previous_group) {
+			copied_group = group ? std::make_shared<const litehtml::string>(*group) : nullptr;
+			previous_group = group;
+		}
+		if (group) static_cast<litehtml::el_text&>(*copy).set_dom_text(copied_group);
 	}
 	return true;
 }
@@ -511,7 +903,7 @@ bool HTMLDOM::is_host_including_ancestor(const litehtml::element& p_ancestor, li
 	return false;
 }
 
-void HTMLDOM::release_detached_root(const std::shared_ptr<HTMLElement::DetachedTree>& p_tree, const litehtml::element::ptr& p_node) {
+void HTMLDOM::release_detached_root(const std::shared_ptr<HTMLNode::DetachedTree>& p_tree, const litehtml::element::ptr& p_node) {
 	if (p_tree && p_tree->root == p_node) {
 		detached_trees.erase(p_node.get());
 		p_tree->root.reset();
@@ -519,19 +911,19 @@ void HTMLDOM::release_detached_root(const std::shared_ptr<HTMLElement::DetachedT
 }
 
 void HTMLDOM::forget_subtree(const litehtml::element& p_element) {
-	if (const ObjectID* id = element_handles.getptr(&p_element)) {
-		if (auto* handle = Object::cast_to<HTMLElement>(ObjectDB::get_instance(*id))) {
+	if (const ObjectID* id = node_handles.getptr(&p_element)) {
+		if (auto* handle = Object::cast_to<HTMLNode>(ObjectDB::get_instance(*id))) {
 			handle->element.reset();
 			handle->detached_tree.reset();
 		}
-		element_handles.erase(&p_element);
+		node_handles.erase(&p_element);
 	}
 	forget_source_attributes(p_element);
 	for (const auto& child : p_element.children()) {
 		forget_subtree(*child);
 	}
 	if (const auto* node = dynamic_cast<const HTMLTemplateNode*>(&p_element)) {
-		const auto& tree = node->content->tree;
+		const auto& tree = node->content->detached_tree;
 		if (const auto root = tree->root) {
 			forget_subtree(*root);
 			release_detached_root(tree, root);
@@ -720,51 +1112,51 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 }
 
 String HTMLDOM::serialize_children(const litehtml::element& p_element) const {
+	return serialize(p_element, false);
+}
+
+String HTMLDOM::serialize_element(const litehtml::element& p_element) const {
+	return serialize(p_element, true);
+}
+
+String HTMLDOM::serialize(const litehtml::element& p_element, bool p_outer) const {
 	std::string html;
-	const auto append_children = [&](const auto& p_append_children, const litehtml::element& p_parent) -> void {
-		const auto* node = dynamic_cast<const HTMLTemplateNode*>(&p_parent);
-		const auto& contents = node ? *node->content->tree->root : p_parent;
-		for (const auto& child : contents.children()) {
-			if (litehtml::is_generated_tag(child->tag())) {
-				continue;
-			}
-			if (HTMLDOM::is_element(*child)) {
-				const char* tag = child->get_tagName();
-				html += '<';
-				html += tag;
-				if (const auto* attributes = get_source_attributes(*child)) {
-					for (const auto& [name, value] : *attributes) {
-						html += ' ';
-						html += name;
-						html += "=\"";
-						append_escaped(html, value, true);
-						html += '"';
-					}
-				}
-				html += '>';
-				if (!is_void_element(*child)) {
-					p_append_children(p_append_children, *child);
-					html += "</";
-					html += tag;
-					html += '>';
+	const auto append_node = [&](const auto& p_visit, const litehtml::element& p_node, bool p_include_self,
+		bool p_raw_text = false) -> void {
+		if (litehtml::is_generated_tag(p_node.tag())) return;
+		if (p_include_self && !is_element(p_node)) {
+			std::string text;
+			p_node.get_text(text);
+			if (p_node.is_comment()) html += "<!--" + text + "-->";
+			else if (p_raw_text) html += text;
+			else append_escaped(html, text, false);
+			return;
+		}
+		if (p_include_self) {
+			html += '<';
+			html += p_node.get_tagName();
+			if (const auto* attributes = get_source_attributes(p_node)) {
+				for (const auto& [name, value] : *attributes) {
+					html += ' ';
+					html += name;
+					html += "=\"";
+					append_escaped(html, value, true);
+					html += '"';
 				}
 			}
-			else {
-				std::string text;
-				child->get_text(text);
-				if (child->is_comment()) {
-					html += "<!--" + text + "-->";
-				}
-				else if (has_raw_text(p_parent)) {
-					html += text;
-				}
-				else {
-					append_escaped(html, text, false);
-				}
-			}
+			html += '>';
+			if (is_void_element(p_node)) return;
+		}
+		const auto* node = dynamic_cast<const HTMLTemplateNode*>(&p_node);
+		const auto& contents = node ? *node->content->detached_tree->root : p_node;
+		for (const auto& child : contents.children()) p_visit(p_visit, *child, true, has_raw_text(p_node));
+		if (p_include_self) {
+			html += "</";
+			html += p_node.get_tagName();
+			html += '>';
 		}
 	};
-	append_children(append_children, p_element);
+	append_node(append_node, p_element, p_outer);
 	return String::utf8(html.data(), html.size());
 }
 
@@ -786,7 +1178,7 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 	catch (const std::exception&) {
 		return ERR_PARSE_ERROR;
 	}
-	const auto& target = node ? node->content->tree->root : p_element;
+	const auto& target = node ? node->content->detached_tree->root : p_element;
 	for (const auto& child : target->children()) {
 		forget_subtree(*child);
 	}
@@ -809,7 +1201,7 @@ Error HTMLDOM::insert_child(const litehtml::element::ptr& p_parent, const liteht
 
 Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTMLDocumentFragment& p_fragment,
 	const litehtml::element::ptr& p_reference) {
-	const auto& tree = p_fragment.tree;
+	const auto& tree = p_fragment.detached_tree;
 	if (!tree || !tree->root || tree->owner.lock().get() != this || !can_contain_elements(*p_parent) ||
 		(p_reference && p_reference->parent() != p_parent)) {
 		return ERR_INVALID_PARAMETER;

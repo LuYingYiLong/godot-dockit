@@ -225,6 +225,7 @@ private:
 	void on_transition_frame(bool p_size_changed);
 	void update_internal_processing();
 	godot::Vector2i get_content_selection_range() const;
+	std::optional<godot::Vector2> get_hit_document_position(const godot::Vector2& p_position) const;
 	void source_changed();
 	void document_changed(uint64_t p_document_id);
 	void parse_pending_source();
@@ -240,7 +241,8 @@ private:
 		const godot::Vector2i& p_visible_bars, const godot::Vector2i& p_input_axes, bool p_layout_changed,
 		const godot::String& p_error = {}, const godot::Vector2& p_painted_gutters = {});
 	godot::Rect2 get_visible_rect() const;
-	void apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align);
+	void apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align,
+		const docrender::HTMLScrollOptions* p_options = nullptr);
 	void advance_viewport_scroll(double p_fraction, godot::Vector2 p_from, godot::Vector2 p_to);
 	void cancel_viewport_scroll();
 	void on_nested_scroll_advanced();
@@ -309,6 +311,7 @@ public:
 	) const;																		// 返回当前控件文档中的全部匹配元素
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找当前控件文档中的第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 将控件局部坐标换算为文档坐标并命中可见元素
+	godot::TypedArray<HTMLElement> get_elements_at(const godot::Vector2& p_position) const; // 按命中顺序返回控件局部坐标下的元素
 	godot::Ref<HTMLElement> get_focused_element() const; // 返回当前聚焦的 DOM 元素
 	bool focus_element(const godot::Ref<HTMLElement>& p_element); // 将有效元素设为 DOM 焦点
 	bool activate_element(const godot::Ref<HTMLElement>& p_element); // 激活当前控件中可用的链接或表单控件
@@ -333,6 +336,14 @@ public:
 	void clear_selection();															// 清除当前文本选区
 	godot::String get_selected_text() const;										// 返回当前选中的文本
 	godot::String get_accessible_text() const;									// 返回发布给 Godot 无障碍接口的文本
+	godot::String get_plain_text() const; // 返回文档选择使用的纯文本
+	godot::Vector2i get_selection_range() const; // 返回当前文档选区起止偏移
+	void set_selection_range(int64_t p_from, int64_t p_to); // 按文档纯文本偏移设置选区
+	godot::TypedArray<godot::Rect2> get_selection_rects() const; // 返回文档坐标下的选区矩形
+	bool copy_selection() const; // 将选区中可复制的文字写入剪贴板
+	godot::Vector2i find_text(const godot::String& p_text, int64_t p_from = 0, bool p_case_sensitive = false) const; // 返回下一个匹配的文本范围
+	bool scroll_to_text_range(int64_t p_from, int64_t p_to); // 滚动到范围内第一个可用的排版文本矩形
+	bool scroll_element_into_view(const godot::Ref<HTMLElement>& p_element, const godot::Dictionary& p_options = {}); // 按指定对齐方式滚动到元素
 };
 
 VARIANT_ENUM_CAST(HTMLLabel::AnimationProcessMode);

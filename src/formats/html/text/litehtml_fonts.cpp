@@ -1049,6 +1049,15 @@ namespace docrender {
 #endif
 			if (choices.empty() || !choices.front().ranges.empty()) append_installed(serif_fonts);
 		}
+#ifdef WINDOWS_ENABLED
+		if (localize_whole_font) {
+			// Keep named and generic CSS families ahead of the browser's Han fallback.
+			// Restrict it to Han and punctuation so it cannot replace Latin glyphs.
+			if (const char* candidates = chinese_generic_fonts(han_script, "standard")) {
+				append_installed(candidates, CHINESE_FONT_RANGES);
+			}
+		}
+#endif
 		append(text_font);
 		// Font-relative metrics use the first face whose range includes space.
 		const auto primary = std::find_if(choices.begin(), choices.end(), [](const FontChoice& choice) {

@@ -35,6 +35,24 @@ namespace {
 	constexpr int HOVER_PASSES = 2;
 	constexpr const char* DOCUMENT_DEFAULTS = ":root::selection { color: HighlightText; background-color: Highlight; }";
 
+	std::optional<docrender::HTMLScrollOptions> scroll_options(const Dictionary& p_values) {
+		using Options = docrender::HTMLScrollOptions;
+		using Alignment = Options::Alignment;
+		const auto align = [](const String& p_text) -> std::optional<Alignment> {
+			if (p_text == "start") return Alignment::START;
+			if (p_text == "center") return Alignment::CENTER;
+			if (p_text == "end") return Alignment::END;
+			if (p_text == "nearest") return Alignment::NEAREST;
+			return {};
+		};
+		const auto block = align(p_values.get("block", "start"));
+		const auto inline_axis = align(p_values.get("inline", "nearest"));
+		const String behavior = p_values.get("behavior", "auto");
+		if (!block || !inline_axis || (behavior != "auto" && behavior != "instant" && behavior != "smooth")) return {};
+		return Options{*block, *inline_axis, behavior == "auto" ? Options::Behavior::AUTO :
+			(behavior == "smooth" ? Options::Behavior::SMOOTH : Options::Behavior::INSTANT)};
+	}
+
 	std::optional<bool> tab_direction(const InputEventKey& p_key) {
 		if (p_key.is_action_pressed("ui_focus_prev", true, true)) {
 			return true;
@@ -464,12 +482,8 @@ void HTMLLabelCanvas::handle_selection_key(const InputEventKey& p_key) {
 		label->select_all();
 		label->accept_event();
 	}
-	else if (p_key.is_action("ui_copy", true)) {
-		const String text = label->get_selected_text();
-		if (!text.is_empty()) {
-			DisplayServer::get_singleton()->clipboard_set(text);
-			label->accept_event();
-		}
+	else if (p_key.is_action("ui_copy", true) && label->copy_selection()) {
+		label->accept_event();
 	}
 }
 
@@ -728,11 +742,14 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLabel::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLabel::get_element_by_id);
 	ClassDB::bind_method(D_METHOD("get_element_at", "position"), &HTMLLabel::get_element_at);
+	ClassDB::bind_method(D_METHOD("get_elements_at", "position"), &HTMLLabel::get_elements_at);
 	ClassDB::bind_method(D_METHOD("get_focused_element"), &HTMLLabel::get_focused_element);
 	ClassDB::bind_method(D_METHOD("focus_element", "element"), &HTMLLabel::focus_element);
 	ClassDB::bind_method(D_METHOD("activate_element", "element"), &HTMLLabel::activate_element);
 	ClassDB::bind_method(D_METHOD("submit_form", "form", "submitter"), &HTMLLabel::submit_form, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
+	ClassDB::bind_method(D_METHOD("scroll_element_into_view", "element", "options"), &HTMLLabel::scroll_element_into_view, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("scroll_to_text_range", "from", "to"), &HTMLLabel::scroll_to_text_range);
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
 	ClassDB::bind_method(D_METHOD("set_transparent_canvas", "enabled"), &HTMLLabel::set_transparent_canvas);
@@ -750,6 +767,12 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_selection"), &HTMLLabel::clear_selection);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &HTMLLabel::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_accessible_text"), &HTMLLabel::get_accessible_text);
+	ClassDB::bind_method(D_METHOD("get_plain_text"), &HTMLLabel::get_plain_text);
+	ClassDB::bind_method(D_METHOD("get_selection_range"), &HTMLLabel::get_selection_range);
+	ClassDB::bind_method(D_METHOD("set_selection_range", "from", "to"), &HTMLLabel::set_selection_range);
+	ClassDB::bind_method(D_METHOD("get_selection_rects"), &HTMLLabel::get_selection_rects);
+	ClassDB::bind_method(D_METHOD("copy_selection"), &HTMLLabel::copy_selection);
+	ClassDB::bind_method(D_METHOD("find_text", "text", "from", "case_sensitive"), &HTMLLabel::find_text, DEFVAL(0), DEFVAL(false));
 
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
@@ -1078,11 +1101,21 @@ Ref<HTMLElement> HTMLLabel::get_element_by_id(const String& p_id) const {
 }
 
 Ref<HTMLElement> HTMLLabel::get_element_at(const Vector2& p_position) const {
-	if (!is_inside_tree() || refresh_queued || !p_position.is_finite() || !Rect2(Vector2(), get_size()).has_point(p_position)) {
+	const auto local = get_hit_document_position(p_position);
+	return local ? layout->get_element_at(*local) : Ref<HTMLElement>();
+}
+
+TypedArray<HTMLElement> HTMLLabel::get_elements_at(const Vector2& p_position) const {
+	const auto local = get_hit_document_position(p_position);
+	return local ? layout->get_elements_at(*local) : TypedArray<HTMLElement>();
+}
+
+std::optional<Vector2> HTMLLabel::get_hit_document_position(const Vector2& p_position) const {
+	if (!canvas || !is_inside_tree() || refresh_queued || !p_position.is_finite() || !Rect2(Vector2(), get_size()).has_point(p_position)) {
 		return {};
 	}
 	const Vector2 local = (canvas->get_global_transform().affine_inverse() * get_global_transform()).xform(p_position);
-	return get_visible_rect().has_point(local) ? layout->get_element_at(local) : Ref<HTMLElement>();
+	return get_visible_rect().has_point(local) ? std::optional<Vector2>(local) : std::nullopt;
 }
 
 Ref<HTMLElement> HTMLLabel::get_focused_element() const {
@@ -1127,12 +1160,25 @@ bool HTMLLabel::scroll_to_element(const Ref<HTMLElement>& p_element, float p_ali
 	return true;
 }
 
-void HTMLLabel::apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align) {
+bool HTMLLabel::scroll_element_into_view(const Ref<HTMLElement>& p_element, const Dictionary& p_options) {
+	if (!is_inside_tree() || refresh_queued || viewport_size.x <= 0 || viewport_size.y <= 0) return false;
+	const auto options = scroll_options(p_options);
+	if (!options) return false;
+	const auto target = layout->scroll_element_into_view(p_element, {}, *this,
+		callable_mp(this, &HTMLLabel::on_nested_scroll_advanced), &*options);
+	if (!target) return false;
+	apply_scroll_target(*target, {}, &*options);
+	request_hover_check();
+	return true;
+}
+
+void HTMLLabel::apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align,
+	const docrender::HTMLScrollOptions* p_options) {
 	if (p_target.viewport_fixed) return;
 	cancel_viewport_pan_snap();
 	const Vector2i current = get_scroll_offset();
 	const Rect2 region = layout->viewport_scroll_region(Rect2(current, viewport_size));
-	const Vector2 offset = Vector2(current) + docrender::html_scroll_delta(p_target.area, region, p_align);
+	const Vector2 offset = Vector2(current) + docrender::html_scroll_delta(p_target.area, region, p_align, p_options);
 	const Vector2i max_offset = (content_size - viewport_size).max(Vector2i());
 	const auto rounded = p_align ? offset : Vector2(
 		offset.x < current.x ? std::floor(offset.x) : std::ceil(offset.x),
@@ -1142,7 +1188,8 @@ void HTMLLabel::apply_scroll_target(const docrender::HTMLScrollTarget& p_target,
 	const Vector2i destination(layout->viewport_snap_axes() == Vector2i() ? snap.offset : snap.offset.round());
 	cancel_viewport_scroll();
 	if (destination == current) return;
-	if (!layout->viewport_uses_smooth_scroll()) {
+	const bool css_smooth = layout->viewport_uses_smooth_scroll();
+	if (!(p_options ? p_options->smooth(css_smooth) : css_smooth)) {
 		apply_scroll_offset(destination);
 		return;
 	}
@@ -1239,12 +1286,7 @@ double HTMLLabel::get_caret_blink_interval() const {
 }
 
 void HTMLLabel::select_all() {
-	if (selection_enabled && canvas) {
-		canvas->selection_anchor = 0;
-		canvas->selection_caret = layout->get_plain_text().length();
-		canvas->queue_redraw();
-		callable_mp(layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
-	}
+	set_selection_range(0, get_plain_text().length());
 }
 
 void HTMLLabel::clear_selection() {
@@ -1258,6 +1300,55 @@ void HTMLLabel::clear_selection() {
 
 String HTMLLabel::get_accessible_text() const {
 	return viewport_size.x > 0 && viewport_size.y > 0 ? layout->get_accessible_text() : String();
+}
+
+String HTMLLabel::get_plain_text() const {
+	return source_dirty ? String() : layout->get_plain_text();
+}
+
+Vector2i HTMLLabel::get_selection_range() const {
+	return source_dirty ? Vector2i() : get_content_selection_range();
+}
+
+void HTMLLabel::set_selection_range(int64_t p_from, int64_t p_to) {
+	if (!selection_enabled || !canvas || source_dirty) return;
+	const int64_t length = layout->get_plain_text().length();
+	const int64_t anchor = std::clamp(p_from, int64_t(0), length);
+	const int64_t caret = std::clamp(p_to, int64_t(0), length);
+	if (anchor == canvas->selection_anchor && caret == canvas->selection_caret) return;
+	canvas->selection_anchor = anchor;
+	canvas->selection_caret = caret;
+	canvas->queue_redraw();
+	callable_mp(layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
+}
+
+TypedArray<Rect2> HTMLLabel::get_selection_rects() const {
+	const auto range = get_selection_range();
+	return layout->get_selection_rects(range.x, range.y);
+}
+
+bool HTMLLabel::copy_selection() const {
+	const auto text = get_selected_text();
+	if (text.is_empty() || !DisplayServer::get_singleton()) return false;
+	DisplayServer::get_singleton()->clipboard_set(text);
+	return true;
+}
+
+Vector2i HTMLLabel::find_text(const String& p_text, int64_t p_from, bool p_case_sensitive) const {
+	if (p_text.is_empty()) return {-1, -1};
+	const auto content = get_plain_text();
+	const int64_t from = std::clamp(p_from, int64_t(0), content.length());
+	const int64_t index = p_case_sensitive ? content.find(p_text, from) : content.findn(p_text, from);
+	return index < 0 ? Vector2i(-1, -1) : Vector2i(index, index + p_text.length());
+}
+
+bool HTMLLabel::scroll_to_text_range(int64_t p_from, int64_t p_to) {
+	if (!is_inside_tree() || refresh_queued || viewport_size.x <= 0 || viewport_size.y <= 0) return false;
+	const auto boxes = layout->get_selection_rects(p_from, p_to);
+	if (boxes.is_empty()) return false;
+	apply_scroll_target({boxes[0], false, nullptr}, {});
+	request_hover_check();
+	return true;
 }
 
 String HTMLLabel::get_selected_text() const {
@@ -1388,6 +1479,7 @@ void HTMLLabel::parse_pending_source() {
 		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
 	}
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
+	layout->set_element_scroll_callback(callable_mp(this, &HTMLLabel::on_nested_scroll_advanced));
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
 	layout->set_content_visibility_callbacks(callable_mp(this, &HTMLLabel::on_auto_content_update),
 		callable_mp(this, &HTMLLabel::get_content_selection_range));

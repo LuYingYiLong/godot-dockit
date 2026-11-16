@@ -477,6 +477,7 @@ func _run() -> void:
 	await _check_control_font_fallback()
 	await _check_language_font_fallback()
 	await _check_windows_chinese_generic_fonts()
+	await _check_html_label_dom_and_selection_api()
 	await _check_viewport_overflow()
 	await _check_scrollbar_gutter()
 	await _check_scrollbar_styles()
@@ -10801,7 +10802,7 @@ func _check_windows_chinese_generic_fonts() -> void:
 			return
 
 	var viewport: SubViewport = SubViewport.new()
-	viewport.size = Vector2i(800, 300)
+	viewport.size = Vector2i(800, 448)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var label: HTMLLabel = HTMLLabel.new()
@@ -10815,10 +10816,14 @@ func _check_windows_chinese_generic_fonts() -> void:
 			font-size: 26px; line-height: 36px; }
 		textarea { resize: none; }
 		textarea::placeholder { color: black; opacity: 1; }
+		#fallback-placeholder::placeholder { font-family: Arial; }
 	</style><section id="localized">
 		<p>{sample}</p><p style="font-family:serif">{sample}</p>
 		<button>{sample}</button><textarea placeholder="{sample}"></textarea>
 		<p style="font-family:'Microsoft YaHei',sans-serif">{sample}</p>
+		<p style="font-family:Arial">{sample}</p>
+		<textarea id="fallback-placeholder" placeholder="{sample}"></textarea>
+		<p style="font-family:Arial,'Microsoft YaHei',sans-serif">{sample}</p>
 		<p style="font-family:cursive">{sample}</p>
 	</section><section id="reference">
 		<p style="font-family:'Noto Sans SC'">{sample}</p>
@@ -10826,6 +10831,9 @@ func _check_windows_chinese_generic_fonts() -> void:
 		<button style="font-family:Arial,'Noto Sans SC'">{sample}</button>
 		<textarea style="font-family:NSimSun" placeholder="{sample}"></textarea>
 		<p style="font-family:'Microsoft YaHei'">{sample}</p>
+		<p id="reference-fallback" style="font-family:Arial,'Noto Sans SC'">{sample}</p>
+		<textarea id="reference-placeholder" style="font-family:Arial,'Noto Sans SC'" placeholder="{sample}"></textarea>
+		<p style="font-family:Arial,'Microsoft YaHei'">{sample}</p>
 		<p style="font-family:KaiTi">{sample}</p>
 	</section>""".replace("{sample}", SAMPLE)
 	viewport.add_child(label)
@@ -10833,7 +10841,7 @@ func _check_windows_chinese_generic_fonts() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var image: Image = viewport.get_texture().get_image()
-	var row_count: int = 6 if installed.has("KaiTi") else 5
+	var row_count: int = 9 if installed.has("KaiTi") else 8
 	for row: int in range(row_count):
 		var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
 		var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
@@ -10859,13 +10867,17 @@ func _check_windows_chinese_generic_fonts() -> void:
 			"Set the Traditional Chinese standard font reference")
 		_check(reference.query_selector("textarea").set_attribute("style", "font-family:'Microsoft JhengHei'") == OK,
 			"Set the standard font reference when the Traditional Chinese monospace face is unavailable")
+		for id: String in ["reference-fallback", "reference-placeholder",]:
+			var element: HTMLElement = label.get_element_by_id(id)
+			_check(element.set_attribute("style", "font-family:Arial,'Microsoft JhengHei'") == OK,
+				"Set the Traditional Chinese reference for missing Arial glyphs")
 		for language: String in ["zh-Hant-HK", "yue-Hant-HK", "zh-yue-HK",]:
 			_check(document_root.set_attribute("lang", language) == OK, "Use inherited language %s" % language)
 			await process_frame
 			await process_frame
 			await RenderingServer.frame_post_draw
 			image = viewport.get_texture().get_image()
-			for row: int in [0, 3,]:
+			for row: int in [0, 3, 5, 6,]:
 				var actual: Rect2i = Rect2i(0, row * 48, 390, 48)
 				var expected: Rect2i = Rect2i(400, row * 48, 390, 48)
 				_check(image.get_region(actual).get_data() == image.get_region(expected).get_data(),
@@ -10881,6 +10893,64 @@ func _check_windows_chinese_generic_fonts() -> void:
 		_check(image.get_region(Rect2i(0, 144, 390, 48)).get_data() == image.get_region(Rect2i(400, 144, 390, 48)).get_data(),
 			"An unavailable Chinese generic leaves the next author font eligible")
 	viewport.queue_free()
+
+
+func _check_html_label_dom_and_selection_api() -> void:
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(320.0, 180.0)
+	label.text = """<!doctype html><style>
+		body { margin: 0; }
+		.probe { position: absolute; inset: 60px auto auto 10px; width: 100px; height: 30px; }
+		#top { z-index: 2; transform: translateX(4px); }
+		#ignored { z-index: 3; pointer-events: none; }
+		#port { position: absolute; left: 135px; top: 30px; width: 100px; height: 45px;
+			padding: 5px; border: 3px solid; overflow: auto; scroll-behavior: smooth; }
+		#stage { position: relative; width: 220px; height: 200px; }
+		#target { position: absolute; left: 132px; top: 100px; width: 20px; height: 16px; transform: scale(1.2); }
+	</style><p id="text">find 中文 target</p><div id="bottom" class="probe"></div>
+	<div id="top" class="probe"></div><div id="ignored" class="probe"></div>
+	<div id="port"><div id="stage"><div id="target"></div></div></div>
+	<p style="margin-top: 260px">far phrase</p>"""
+	root.add_child(label)
+	await label.layout_changed
+	var hit: Array[HTMLElement] = label.get_elements_at(Vector2(30.0, 75.0))
+	_check(hit.size() >= 2 and hit[0] == label.get_element_by_id("top") and hit[1] == label.get_element_by_id("bottom")
+			and not hit.has(label.get_element_by_id("ignored")), "Stack hit testing observes transforms, order, and pointer-events")
+	_check(label.get_elements_at(Vector2(-1.0, 10.0)).is_empty(), "Stack hit testing excludes points outside the label")
+	var range: Vector2i = label.find_text("中文")
+	_check(range.x >= 0 and label.get_plain_text().substr(range.x, range.y - range.x) == "中文"
+			and label.find_text("TARGET", 0, true) == Vector2i(-1, -1), "Find returns document character offsets")
+	label.set_selection_range(range.x, range.y)
+	_check(label.get_selection_range() == range and label.get_selected_text() == "中文"
+			and not label.get_selection_rects().is_empty(), "Set and read the document selection through GDScript")
+	var port: HTMLElement = label.get_element_by_id("port")
+	var target: HTMLElement = label.get_element_by_id("target")
+	var offset_box: Rect2 = target.get_offset_rect()
+	_check(port.get_client_size().is_equal_approx(Vector2(110.0, 55.0)) and port.get_client_offset() == Vector2(3.0, 3.0)
+			and port.get_scroll_size().y > 190.0, "Client and scroll metrics use the padding box")
+	_check(target.get_offset_parent() == label.get_element_by_id("stage") and offset_box == Rect2(132.0, 100.0, 20.0, 16.0),
+			"Offset geometry uses layout pixels independently of transforms")
+	_check(port.scroll_by(Vector2(20.0, 30.0)) == OK and port.get_scroll_offset().is_equal_approx(Vector2(20.0, 30.0))
+			and target.get_offset_rect() == offset_box, "Programmatic inner scrolling preserves raw offset geometry")
+	_check(not label.scroll_element_into_view(target, {"inline": "invalid",})
+			and label.scroll_element_into_view(target, {"behavior": "instant", "inline": "center", "block": "center",})
+			and port.get_scroll_offset().x > 40.0 and port.get_scroll_offset().y > 65.0,
+			"Scroll into view validates its options and aligns the inner scroll port")
+	var distant: Vector2i = label.find_text("far phrase")
+	_check(label.scroll_to_text_range(distant.x, distant.y) and label.get_scroll_offset().y > 0,
+			"Navigate to a match below the visible viewport")
+	var signals: Array[int] = [0,]
+	label.layout_changed.connect(func() -> void: signals[0] += 1)
+	var text: HTMLElement = label.get_element_by_id("text")
+	var part: HTMLDocumentFragment = label.create_document_fragment()
+	_check(part.replace_children([" with a fragment",]) == OK and text.append([" plus text", part,]) == OK,
+			"Append a mixed batch to a connected label")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(signals[0] == 1 and label.get_plain_text().contains("plus text with a fragment"),
+			"Connected batch edits coalesce into one HTMLLabel layout update")
+	label.queue_free()
 
 
 func _check_viewport_overflow() -> void:

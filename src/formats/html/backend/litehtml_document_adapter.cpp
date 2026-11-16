@@ -190,6 +190,16 @@ namespace litehtml {
 		p_parent.m_children.swap(p_children);
 	}
 
+	void docrender_editor::replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists) {
+		for (const auto& [parent, children] : r_lists) {
+			for (const auto& old : parent->m_children) old->parent(nullptr);
+		}
+		for (auto& [parent, children] : r_lists) {
+			for (const auto& child : children) child->parent(parent);
+			parent->m_children.swap(children);
+		}
+	}
+
 	docrender_editor::child_edit_result docrender_editor::place_child(const element::ptr& p_child, element& p_parent,
 		const element::ptr& p_reference, bool p_replace_reference) {
 		auto* to = dynamic_cast<html_tag*>(&p_parent);
@@ -562,6 +572,13 @@ namespace litehtml {
 				[&](const char* p_word) { children.push_back(std::make_shared<el_text>(p_word, p_document, source == p_word)); },
 				[&](const char* p_space) { children.push_back(std::make_shared<el_space>(p_space, p_document)); });
 		}
+		mark_text_node(children, p_text);
 		return children;
+	}
+
+	void docrender_editor::mark_text_node(elements_list& r_parts, const char* p_text) {
+		if (r_parts.size() <= 1) return;
+		const auto group = std::make_shared<const string>(p_text);
+		for (const auto& part : r_parts) static_cast<el_text&>(*part).set_dom_text(group);
 	}
 }
