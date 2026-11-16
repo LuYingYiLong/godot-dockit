@@ -3632,16 +3632,6 @@ msgid "Returns the enclosing fieldset's form or [code]null[/code]."
 msgstr "返回所在分组的表单或 [code]null[/code]。"
 
 #. doc_classes/HTMLSelectElement.xml
-msgid "An HTML single-select dropdown."
-msgstr "HTML 单选下拉框。"
-
-#. doc_classes/HTMLSelectElement.xml
-msgid ""
-"[HTMLLabel] draws the dropdown and emits [signal HTMLLabel.select_changed] for user changes. "
-"Script assignments update selection silently."
-msgstr "[HTMLLabel] 绘制下拉框，并在用户更改选项时发出 [signal HTMLLabel.select_changed]。脚本赋值时不发出该信号。"
-
-#. doc_classes/HTMLSelectElement.xml
 msgid "Returns the options as a tree-order snapshot of [HTMLOptionElement] handles."
 msgstr "按树顺序返回 [HTMLOptionElement] 选项句柄的快照。"
 
@@ -3652,10 +3642,6 @@ msgstr "表单条目使用的名称。"
 #. doc_classes/HTMLSelectElement.xml
 msgid "Whether submission requires a selection other than the placeholder."
 msgstr "是否必须选择占位项以外的选项才能提交。"
-
-#. doc_classes/HTMLSelectElement.xml
-msgid "The selected option value. An unmatched assignment clears the selection."
-msgstr "所选选项的值。赋值无匹配项时清空选择。"
 
 #. doc_classes/HTMLSelectElement.xml
 msgid "Zero-based selected index. [code]-1[/code] means no selection."
@@ -3710,12 +3696,6 @@ msgstr ""
 #. doc_classes/HTMLLabel.xml
 msgid "Emitted after a reset button restores the form's default values."
 msgstr "重置按钮恢复表单默认值后发出。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Emitted with the ordered entry dictionaries and the submit button, which may be "
-"[code]null[/code]. The game decides how to use the data."
-msgstr "发出有序的条目字典及提交按钮。按钮可能为 [code]null[/code]。游戏决定如何使用这些数据。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Emitted with the first control that fails form validation."
@@ -3929,3 +3909,239 @@ msgstr "在父行组或父表格中的零基索引。没有对应父元素时返
 #. doc_classes/HTMLTableRowElement.xml
 msgid "Zero-based position in the table or [code]-1[/code] when outside a table."
 msgstr "在表格中的零基索引。没有所属表格时为 [code]-1[/code]。"
+
+#. doc_classes/HTMLArticleElement.xml
+msgid "An HTML article element."
+msgstr "HTML 文章元素。"
+
+#. doc_classes/HTMLArticleElement.xml
+msgid "DocRender's typed handle for [code]<article>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
+msgstr "DocRender 为 [code]<article>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
+
+#. doc_classes/HTMLBRElement.xml
+msgid "An HTML line break."
+msgstr "HTML 换行符。"
+
+#. doc_classes/HTMLBRElement.xml
+msgid "Represents the [code]<br>[/code] element."
+msgstr "表示 [code]<br>[/code] 元素。"
+
+#. doc_classes/HTMLBRElement.xml
+msgid "Reflects the legacy clear attribute."
+msgstr "映射旧式清除浮动属性。"
+
+#. doc_classes/HTMLDataListElement.xml
+msgid "An HTML list of input suggestions."
+msgstr "HTML 输入建议列表。"
+
+#. doc_classes/HTMLDataListElement.xml
+msgid "Represents [code]<datalist>[/code]. An input associates it through the list attribute."
+msgstr "表示 [code]<datalist>[/code]。输入控件通过 list 属性关联它。"
+
+#. doc_classes/HTMLDataListElement.xml
+msgid "Returns candidate [HTMLOptionElement] handles in tree order."
+msgstr "按树顺序返回候选 [HTMLOptionElement] 句柄。"
+
+#. doc_classes/HTMLDetailsElement.xml
+msgid "An HTML disclosure widget."
+msgstr "HTML 折叠控件。"
+
+#. doc_classes/HTMLDetailsElement.xml
+msgid "Represents [code]<details>[/code]. Activate the first [code]<summary>[/code] child to toggle it."
+msgstr "表示 [code]<details>[/code]。激活首个 [code]<summary>[/code] 子元素可切换展开状态。"
+
+#. doc_classes/HTMLDetailsElement.xml
+msgid "Whether the disclosure is open."
+msgstr "折叠控件是否展开。"
+
+#. doc_classes/HTMLDetailsElement.xml
+msgid "The name of the mutually exclusive disclosure group."
+msgstr "互斥折叠组的名称。"
+
+#. doc_classes/HTMLDetailsElement.xml
+msgid "Emitted after the open state changes. Successive changes in the same frame are combined."
+msgstr "展开状态改变后发出。同一帧内的多次变更会合并。"
+
+#. doc_classes/HTMLDListElement.xml
+msgid "An HTML description list."
+msgstr "HTML 描述列表。"
+
+#. doc_classes/HTMLDListElement.xml
+msgid "Represents the [code]<dl>[/code] element."
+msgstr "表示 [code]<dl>[/code] 元素。"
+
+#. doc_classes/HTMLMenuElement.xml
+msgid "Reflects the legacy compact attribute."
+msgstr "映射旧式紧凑显示属性。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "An HTML thematic break."
+msgstr "HTML 主题分隔线。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Represents the [code]<hr>[/code] element."
+msgstr "表示 [code]<hr>[/code] 元素。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Reflects the legacy align attribute."
+msgstr "映射旧式 align 属性。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Reflects the legacy color attribute."
+msgstr "映射旧式 color 属性。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Reflects the legacy size attribute."
+msgstr "映射旧式 size 属性。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Reflects the legacy width attribute."
+msgstr "映射旧式 width 属性。"
+
+#. doc_classes/HTMLHRElement.xml
+msgid "Reflects the legacy noshade attribute."
+msgstr "映射旧式 noshade 属性。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The normalized HTML input type."
+msgstr "规范化后的 HTML 输入类型。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The number or range value, or NaN when no numeric value is available."
+msgstr "数字或滑杆的值。没有可用数值时返回 NaN。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted for a valid submission with ordered entries and the submitter. The submitter is an [HTMLButtonElement], an [HTMLInputElement], or [code]null[/code]."
+msgstr "验证通过并提交时发出，参数包含按序排列的条目和提交控件。提交控件为 [HTMLButtonElement]、[HTMLInputElement] 或 [code]null[/code]。"
+
+#. doc_classes/HTMLMenuElement.xml
+msgid "An HTML menu list."
+msgstr "HTML 菜单列表。"
+
+#. doc_classes/HTMLMenuElement.xml
+msgid "Represents the [code]<menu>[/code] element."
+msgstr "表示 [code]<menu>[/code] 元素。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "An HTML measurement gauge."
+msgstr "HTML 数值计量器。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "Represents [code]<meter>[/code]. The fill reflects the normalized value and its proximity to the optimum range."
+msgstr "表示 [code]<meter>[/code]。填充显示规范化后的数值及其所在区间。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "Returns associated [HTMLLabelElement] handles in tree order."
+msgstr "按树顺序返回关联的 [HTMLLabelElement] 句柄。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The effective lower bound."
+msgstr "有效下限。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The effective upper bound."
+msgstr "有效上限。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The current value clamped to the effective range."
+msgstr "限制在有效范围内的当前值。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The normalized low threshold."
+msgstr "规范化后的低阈值。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The normalized high threshold."
+msgstr "规范化后的高阈值。"
+
+#. doc_classes/HTMLMeterElement.xml
+msgid "The normalized optimum value."
+msgstr "规范化后的最佳值。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "An HTML form result."
+msgstr "HTML 表单结果。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "Represents [code]<output>[/code]. Form reset restores its default text."
+msgstr "表示 [code]<output>[/code]。表单重置时恢复默认文本。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "Restores the default text."
+msgstr "恢复默认文本。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "The displayed result."
+msgstr "显示的结果。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "The text restored on reset."
+msgstr "重置时恢复的文本。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "The reflected name attribute."
+msgstr "映射名称属性。"
+
+#. doc_classes/HTMLOutputElement.xml
+msgid "The reflected space-separated list of control IDs."
+msgstr "映射以空格分隔的控件 ID 列表。"
+
+#. doc_classes/HTMLProgressElement.xml
+msgid "An HTML progress indicator."
+msgstr "HTML 进度条。"
+
+#. doc_classes/HTMLProgressElement.xml
+msgid "Represents [code]<progress>[/code]. Remove the value attribute for indeterminate progress."
+msgstr "表示 [code]<progress>[/code]。移除 value 属性可进入不确定进度模式。"
+
+#. doc_classes/HTMLProgressElement.xml
+msgid "The positive maximum. Missing and invalid values use 1."
+msgstr "正数上限。缺失或无效时使用 1。"
+
+#. doc_classes/HTMLProgressElement.xml
+msgid "The fraction completed, or -1 for indeterminate progress."
+msgstr "已完成的比例。不确定进度返回 -1。"
+
+#. doc_classes/HTMLQuoteElement.xml
+msgid "An HTML quotation."
+msgstr "HTML 引文。"
+
+#. doc_classes/HTMLQuoteElement.xml
+msgid "Represents [code]<q>[/code] and [code]<blockquote>[/code]."
+msgstr "表示 [code]<q>[/code] 和 [code]<blockquote>[/code]。"
+
+#. doc_classes/HTMLQuoteElement.xml
+msgid "The reflected quotation source."
+msgstr "映射引文来源属性。"
+
+#. doc_classes/HTMLSectionElement.xml
+msgid "An HTML section element."
+msgstr "HTML 章节元素。"
+
+#. doc_classes/HTMLSectionElement.xml
+msgid "DocRender's typed handle for [code]<section>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
+msgstr "DocRender 为 [code]<section>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "An HTML select control."
+msgstr "HTML 选择控件。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "[HTMLLabel] draws a dropdown or list box and emits [signal HTMLLabel.select_changed] for user changes. Script assignments update selection silently."
+msgstr "[HTMLLabel] 绘制下拉菜单或列表框，并在用户修改时发出 [signal HTMLLabel.select_changed]。脚本赋值直接更新选中状态。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "Returns the selected options in tree order."
+msgstr "按树顺序返回选中项。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "The first selected option value. Assigning a matching value selects only that option. An unmatched assignment clears the selection."
+msgstr "首个选中项的值。赋予匹配的值时只选中对应项，赋予不匹配的值会清空选中状态。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "Whether the list accepts multiple selections."
+msgstr "列表是否允许多选。"
+
+#. doc_classes/HTMLSelectElement.xml
+msgid "The requested visible row count. The default value is 0."
+msgstr "指定的可见行数。默认值为 0。"

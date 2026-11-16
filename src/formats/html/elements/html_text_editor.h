@@ -151,7 +151,7 @@ namespace docrender {
 		void drag_scrollbar(bool p_vertical, const godot::Vector2& p_point, float p_grab_offset);
 		float scrollbar_grab_offset(bool p_vertical, const godot::Vector2& p_point) const;
 		void paint_single(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
-			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused);
+			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused, bool p_password = false);
 		void paint_multiline(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
 			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused, bool p_resize_handle);
 	};

@@ -340,6 +340,7 @@ namespace {
 			{ _id("scrollbar-width"), { property_family::keyword, {}, "auto;thin;none" } },
 			{ _id("scrollbar-color"), { property_family::background } },
 			{ _id("scrollbar-gutter"), { property_family::box } },
+			{ _id("ruby-position"), { property_family::keyword, {}, "over;under" } },
 			{ _id("text-overflow"), { property_family::keyword, {}, "clip;ellipsis" } },
 			{ _id("resize"), { property_family::keyword, {}, resize_strings } },
 			{ _appearance_, { property_family::keyword, {}, appearance_strings } },

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="HTMLSelectElement" inherits="HTMLElement" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<brief_description>
-		An HTML single-select dropdown.
+		An HTML select control.
 	</brief_description>
 	<description>
-		[HTMLLabel] draws the dropdown and emits [signal HTMLLabel.select_changed] for user changes. Script assignments update selection silently.
+		[HTMLLabel] draws a dropdown or list box and emits [signal HTMLLabel.select_changed] for user changes. Script assignments update selection silently.
 	</description>
 	<methods>
 		<method name="get_options" qualifiers="const">
@@ -19,6 +19,12 @@
 				Returns the associated form or [code]null[/code].
 			</description>
 		</method>
+		<method name="get_selected_options" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<description>
+				Returns the selected options in tree order.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="name" type="String" setter="set_name" getter="get_name">
@@ -31,10 +37,16 @@
 			Whether submission requires a selection other than the placeholder.
 		</member>
 		<member name="value" type="String" setter="set_value" getter="get_value">
-			The selected option value. An unmatched assignment clears the selection.
+			The first selected option value. Assigning a matching value selects only that option. An unmatched assignment clears the selection.
 		</member>
 		<member name="selected_index" type="int" setter="set_selected_index" getter="get_selected_index">
 			Zero-based selected index. [code]-1[/code] means no selection.
+		</member>
+		<member name="multiple" type="bool" setter="set_multiple" getter="is_multiple">
+			Whether the list accepts multiple selections.
+		</member>
+		<member name="size" type="int" setter="set_size" getter="get_size">
+			The requested visible row count. The default value is 0.
 		</member>
 	</members>
 </class>

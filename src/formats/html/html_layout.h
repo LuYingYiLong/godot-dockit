@@ -53,6 +53,7 @@ namespace docrender {
 		godot::Color background;
 		int64_t option_index;
 		bool enabled;
+		godot::String value;
 	};
 }
 
@@ -106,6 +107,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;
+	std::vector<docrender::HTMLSelectMenuRow> suggestion_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	std::vector<docrender::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;

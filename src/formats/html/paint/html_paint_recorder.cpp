@@ -1,4 +1,5 @@
 #include "html_paint_recorder.h"
+#include "formats/html/elements/html_details_node.h"
 #include "html_depth_sort.h"
 #include "html_svg_mask.h"
 
@@ -1009,7 +1010,8 @@ void fragment() {
 
 	void HTMLPaintRecorder::index_text(const element::ptr& p_element, const TextShaper& p_shape_text,
 		String& r_separator, bool p_unlaid, bool p_selectable) {
-		if (!p_element || p_element->tag() == litehtml::_textarea_ || p_element->css().get_display() == display_none ||
+		if (!p_element || litehtml::is_one_of(p_element->tag(), litehtml::_textarea_, litehtml::_progress_, litehtml::_meter_) ||
+			p_element->css().get_display() == display_none ||
 			p_element->css().hides_contents()) {
 			return;
 		}
@@ -1130,7 +1132,9 @@ void fragment() {
 			else if (p_unlaid) append_unpainted(*node);
 			return;
 		}
-		const bool block = !litehtml::is_one_of(display, display_inline, display_inline_block, display_inline_flex,
+		const auto annotation_parent = p_element->tag() == litehtml::_rt_ ? p_element->parent() : element::ptr();
+		const bool ruby_annotation = annotation_parent && annotation_parent->tag() == litehtml::_ruby_;
+		const bool block = !ruby_annotation && !litehtml::is_one_of(display, display_inline, display_inline_block, display_inline_flex,
 			display_inline_grid, display_inline_table, display_table_cell);
 		const int64_t start = plain_text.length();
 		const String preceding_separator = r_separator;
@@ -1141,7 +1145,10 @@ void fragment() {
 		}
 		const bool has_scope = selection == css_user_select::none || selection == css_user_select::all;
 		if (has_scope) selection_scope_starts.push_back(-1);
+		const bool folded = p_element->tag() == litehtml::_details_ && !p_element->get_attr("open");
+		const auto summary = folded ? details_summary(*p_element) : element::ptr();
 		for (const auto& child : p_element->children()) {
+			if (folded && child != summary && !litehtml::is_generated_tag(child->tag())) continue;
 			index_text(child, p_shape_text, r_separator, p_unlaid || p_element->css().has_auto_content_visibility(), selectable);
 		}
 		if (has_scope) {

@@ -6,6 +6,7 @@
 #include "elements/html_textarea_node.h"
 
 #include "formats/html/paint/html_canvas_renderer.h"
+#include "formats/html/elements/html_details_node.h"
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/resources/html_image_sources.h"
@@ -595,6 +596,8 @@ void HTMLLayout::record_paint() {
 	state->input_paint_pending = false;
 	state->anchors.clear();
 	collect_anchors(*state->dom->get_document()->root(), state->geometry, state->anchors);
+	state->container->set_gauge_animation_time(uses_owner_animation_clock ? state->animation_time :
+		Time::get_singleton()->get_ticks_msec() / 1000.0);
 	state->container->record(*state->dom->get_document(), state->content_size, state->geometry, state->viewport_gutters);
 	record_css_diagnostics();
 }
@@ -765,7 +768,8 @@ void HTMLLayout::sample_transition_frame(uint64_t p_version) {
 }
 
 bool HTMLLayout::has_active_css_animations() const {
-	return state->error.is_empty() && (state->transitions.active() || state->animations.active());
+	return state->error.is_empty() && (state->transitions.active() || state->animations.active() ||
+		(state->container && state->container->has_gauge_animation()));
 }
 
 void HTMLLayout::advance_css_animations(double p_delta) {
@@ -776,6 +780,10 @@ void HTMLLayout::advance_css_animations(double p_delta) {
 
 void HTMLLayout::sample_css_animations() {
 	if (!state->has_layout()) return;
+	if (!state->transitions.active() && !state->animations.active() && state->container->has_gauge_animation()) {
+		repaint_input();
+		return;
+	}
 	Ref<HTMLLayout> keep_alive(this);
 	auto& current = *state;
 	const auto previous_size = current.content_size;
@@ -1547,10 +1555,14 @@ std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_ov
 
 Ref<HTMLElement> HTMLLayout::get_button_ancestor(const Ref<HTMLElement>& p_element) const {
 	if (p_element.is_valid() && p_element->get_owner() == this) {
-		for (auto element = p_element->element.lock(); element; element = element->parent()) {
-			if (DocumentAdapter::is_command_button(*element)) {
-				return state->dom->make_element(element);
-			}
+		const auto target = p_element->element.lock();
+		bool allow_disclosure = true;
+		for (auto element = target; element; element = element->parent()) {
+			if (DocumentAdapter::is_command_button(*element)) return state->dom->make_element(element);
+			const auto disclosure = allow_disclosure ? docrender::details_activation_target(element) : nullptr;
+			if (disclosure && (element != disclosure || element == target)) return state->dom->make_element(element);
+			if ((element->tag() == litehtml::_a_ && element->get_attr("href")) ||
+				docrender::forms::is_listed(*element)) allow_disclosure = false;
 		}
 	}
 	return {};
@@ -1561,8 +1573,34 @@ bool HTMLLayout::is_enabled_button(const Ref<HTMLElement>& p_element) const {
 		return false;
 	}
 	const auto element = p_element->element.lock();
-	return element && DocumentAdapter::is_command_button(*element) && !docrender::forms::is_disabled(*element) &&
+	return element && (DocumentAdapter::is_command_button(*element) || docrender::details_activation_target(element)) && !docrender::forms::is_disabled(*element) &&
 		get_element_scroll_bounds(p_element).has_value();
+}
+
+std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const Ref<HTMLElement>& p_element) const {
+	std::vector<docrender::HTMLSelectMenuRow> rows;
+	if (!is_focusable(p_element) || !state->container) return rows;
+	const auto input = std::dynamic_pointer_cast<HTMLInputNode>(p_element->lock_element());
+	if (!input || !input->accepts_suggestions() || !input->is_editable() || input->editor.has_preedit()) return rows;
+	const auto* id = input->get_attr("list");
+	if (!id || !*id) return rows;
+	const auto handle = state->dom->get_element_by_id(String::utf8(id));
+	const auto list = handle.is_valid() ? handle->lock_element() : nullptr;
+	if (!list || list->tag() != litehtml::_datalist_) return rows;
+	const auto query = input->get_value().to_lower();
+	std::set<String> seen;
+	HTMLDOM::visit_elements(list, [&](const auto& p_node) {
+		const auto option = std::dynamic_pointer_cast<docrender::HTMLOptionNode>(p_node);
+		if (!option || docrender::forms::is_disabled(*option)) return false;
+		const auto value = option->get_value();
+		const auto label = option->get_label();
+		if (value.is_empty() || (!query.is_empty() && value.to_lower().find(query) < 0 && label.to_lower().find(query) < 0)) return false;
+		if (!input->is_suggestion_valid(value) || !seen.insert(value).second) return false;
+		const auto text = label.is_empty() || label == value ? value : value + String("  ") + label;
+		rows.push_back({state->container->shape_input(input->css().get_font(), text), Color(0.1, 0.13, 0.19), {}, -1, true, value});
+		return false;
+	});
+	return rows;
 }
 
 std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
@@ -1626,6 +1664,7 @@ namespace {
 			return input && input->type() != HTMLInputNode::Type::OTHER && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
 		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
+			docrender::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
 			(tag == litehtml::_a_ && p_node.get_attr("href"));
 	}
 }
@@ -1720,7 +1759,9 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 
 std::shared_ptr<HTMLTextControlNode> HTMLLayout::text_control(const Ref<HTMLElement>& p_element) const {
 	if (p_element.is_null() || p_element->get_owner() != this) return {};
-	return std::dynamic_pointer_cast<HTMLTextControlNode>(p_element->element.lock());
+	const auto element = p_element->element.lock();
+	if (const auto* input = dynamic_cast<const HTMLInputNode*>(element.get()); input && input->is_button()) return {};
+	return std::dynamic_pointer_cast<HTMLTextControlNode>(element);
 }
 
 std::optional<docrender::HTMLPlaneTransform> HTMLLayout::input_inverse(const HTMLElement& p_input) const {

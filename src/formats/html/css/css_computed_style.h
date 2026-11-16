@@ -96,6 +96,7 @@ namespace docrender::css {
 		bool m_pointer_events_none = false;
 		css_user_select m_user_select = css_user_select::automatic;
 		bool m_text_overflow_ellipsis = false;
+		int m_ruby_position = 0;
 		appearance				m_appearance;
 		bool m_fixed_table_layout = false;
 		bool m_hide_empty_cells = false;
@@ -376,6 +377,7 @@ namespace docrender::css {
 		appearance get_appearance() const;
 		bool uses_fixed_table_layout() const { return m_fixed_table_layout; }
 		bool hides_empty_cells() const { return m_hide_empty_cells; }
+		bool is_ruby_under() const { return m_ruby_position == 1; }
 		bool is_right_to_left() const { return m_bg.m_direction == static_cast<int>(css_direction::rtl); }
 		const web_color& get_accent_color() const { return m_accent_color; }
 		const web_color& get_caret_color() const { return m_caret_color; }

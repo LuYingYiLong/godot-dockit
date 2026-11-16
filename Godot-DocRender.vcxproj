@@ -145,6 +145,11 @@
     <ClCompile Include="src\formats\html\elements\html_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_heading_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_list_elements.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_ruby_node.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_details_element.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_gauge_node.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_gauge_elements.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_element_types.cpp" />
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_elements.cpp" />
@@ -318,9 +323,15 @@
     <ClInclude Include="src\formats\html\elements\html_element_types.h" />
     <ClInclude Include="src\formats\html\elements\html_heading_element.h" />
     <ClInclude Include="src\formats\html\elements\html_list_elements.h" />
+    <ClInclude Include="src\formats\html\elements\html_details_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_ruby_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_details_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_gauge_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_gauge_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />
     <ClInclude Include="src\formats\html\elements\html_input_node.h" />
     <ClInclude Include="src\formats\html\elements\html_form_elements.h" />
+    <ClInclude Include="src\formats\html\elements\html_output_node.h" />
     <ClInclude Include="src\formats\html\elements\html_table_attributes.h" />
     <ClInclude Include="src\formats\html\elements\html_table_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_form_state.h" />

@@ -67,7 +67,7 @@ namespace {
 		static const auto svg = _id("svg");
 		static const auto wbr = _id("wbr");
 		return element.is_replaced() ||
-			docrender::css::detail::is_one_of(element.tag(), _input_, _textarea_, _select_, _br_, wbr, svg);
+			docrender::css::detail::is_one_of(element.tag(), _input_, _textarea_, _select_, _progress_, _meter_, _br_, wbr, svg);
 	}
 
 	bool uses_native_chrome(const html_tag& host, const element* parent) {

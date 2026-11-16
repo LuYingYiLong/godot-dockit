@@ -42,5 +42,11 @@
 		<member name="checked" type="bool" setter="set_checked" getter="is_checked">
 			The current checked state. Before a script or user sets it, the state follows the [code]checked[/code] attribute.
 		</member>
+		<member name="type" type="String" setter="set_type" getter="get_type">
+			The normalized HTML input type.
+		</member>
+		<member name="value_as_number" type="float" setter="set_value_as_number" getter="get_value_as_number">
+			The number or range value, or NaN when no numeric value is available.
+		</member>
 	</members>
 </class>

@@ -3,6 +3,9 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/elements/html_form_state.h"
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_details_node.h"
+#include "formats/html/elements/html_select_node.h"
 
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
@@ -16,7 +19,7 @@ using namespace godot;
 using docrender::HTMLInputNode;
 namespace forms = docrender::forms;
 
-Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLButtonElement>& p_submitter) {
+Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLElement>& p_submitter) {
 	if (source_dirty || !layout->is_element_connected(p_form)) return ERR_INVALID_PARAMETER;
 	const auto form = p_form->lock_element();
 	const auto submitter = p_form->lock_related_element(p_submitter);
@@ -48,10 +51,10 @@ void HTMLLabel::submit_from_text(const Ref<HTMLElement>& p_element) {
 	const Ref<HTMLFormElement> form_handle = layout->get_dom().make_element(form);
 	for (const auto& control : forms::controls(*form)) {
 		if (forms::button_action(*control) == forms::ButtonAction::SUBMIT) {
-			if (!forms::is_disabled(*control)) submit_form(form_handle, Ref<HTMLButtonElement>(layout->get_dom().make_element(control)));
+			if (!forms::is_disabled(*control)) submit_form(form_handle, layout->get_dom().make_element(control));
 			return;
 		}
-		if (const auto* input = dynamic_cast<const HTMLInputNode*>(control.get()); input && input->type() == HTMLInputNode::Type::TEXT) ++blocking;
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(control.get()); input && input->is_text_control()) ++blocking;
 	}
 	if (blocking <= 1) submit_form(form_handle);
 }
@@ -66,12 +69,21 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
 	if (const Ref<HTMLLabelElement> label = p_element; label.is_valid()) return activate_form_control(label->get_control());
 	const auto node = p_element->lock_element();
 	if (!node) return false;
-	if (const Ref<HTMLSelectElement> select = p_element; select.is_valid()) return open_select_menu(select);
+	if (const auto disclosure = docrender::details_activation_target(node)) {
+		const Ref<HTMLDetailsElement> details = layout->get_dom().make_element(disclosure);
+		if (details.is_null()) return false;
+		details->set_open(!details->is_open());
+		return true;
+	}
+	if (const Ref<HTMLSelectElement> select = p_element; select.is_valid()) {
+		const auto list = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(node);
+		return list && list->is_list_box() ? focus_element(select) : open_select_menu(select);
+	}
 	if (const auto input = layout->text_control(p_element)) {
 		const ObjectID id(get_instance_id());
 		if (!focus_element(p_element)) return false;
 		if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) {
-			if (const Ref<HTMLInputElement> toggle = p_element; toggle.is_valid() && !input->is_text_control()) label->canvas->toggle_checkbox(toggle);
+			if (const Ref<HTMLInputElement> toggle = p_element; toggle.is_valid() && toggle->get_input()->is_toggle()) label->canvas->toggle_checkbox(toggle);
 		}
 		return true;
 	}
@@ -83,7 +95,7 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
 	}
 	const Ref<HTMLFormElement> form = layout->get_dom().make_element(forms::owner(*node));
 	if (action == forms::ButtonAction::SUBMIT) {
-		submit_form(form, Ref<HTMLButtonElement>(p_element));
+		submit_form(form, p_element);
 	} else if (form.is_valid() && form->reset() == OK) {
 		emit_signal("form_reset", form);
 	}
@@ -101,15 +113,29 @@ Ref<HTMLElement> HTMLLabelCanvas::get_form_click_target(const Ref<HTMLElement>& 
 }
 
 bool HTMLLabel::open_select_menu(const Ref<HTMLSelectElement>& p_element) {
-	const auto rows = layout->select_menu_rows(p_element);
-	if (rows.empty()) return false;
 	if (open_select == p_element) {
 		close_select_menu();
 		return true;
 	}
-	close_select_menu();
+	auto rows = layout->select_menu_rows(p_element);
+	if (rows.empty()) return false;
 	if (!has_focus()) grab_focus();
 	canvas->set_focused_element(p_element);
+	return show_select_menu(p_element, std::move(rows), p_element->get_selected_index());
+}
+
+bool HTMLLabel::open_suggestion_menu(const Ref<HTMLElement>& p_element) {
+	auto rows = layout->suggestion_menu_rows(p_element);
+	if (rows.empty()) {
+		if (open_select == p_element) close_select_menu();
+		return false;
+	}
+	return show_select_menu(p_element, std::move(rows), -1);
+}
+
+bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows,
+	int64_t p_selected) {
+	close_select_menu();
 	if (!select_menu) {
 		select_menu = memnew(Control);
 		select_menu->set_name("_HTMLSelectMenu");
@@ -122,15 +148,14 @@ bool HTMLLabel::open_select_menu(const Ref<HTMLSelectElement>& p_element) {
 		select_menu->connect("gui_input", callable_mp(this, &HTMLLabel::select_menu_input));
 	}
 	open_select = p_element;
-	select_rows = rows;
+	select_rows = std::move(p_rows);
 	update_select_menu();
 	if (open_select.is_null()) return false;
-	const auto selected = p_element->get_selected_index();
 	int first = -1;
 	for (int i = 0; i < static_cast<int>(select_rows.size()); ++i) {
 		if (!select_rows[i].enabled) continue;
 		if (first < 0) first = i;
-		if (select_rows[i].option_index == selected) { first = i; break; }
+		if (p_selected >= 0 && select_rows[i].option_index == p_selected) { first = i; break; }
 	}
 	if (first >= 0) highlight_select_row(first);
 	return true;
@@ -183,7 +208,8 @@ void HTMLLabel::draw_select_menu() {
 	if (open_select.is_null()) return;
 	const auto size = select_menu->get_size();
 	const auto server = TextServerManager::get_singleton()->get_primary_interface();
-	const int64_t selected = open_select->get_selected_index();
+	const Ref<HTMLSelectElement> select = open_select;
+	const int64_t selected = select.is_valid() ? select->get_selected_index() : -1;
 	select_menu->draw_rect(Rect2(Vector2(), size), Color(0.96f, 0.97f, 0.99f));
 	for (int i = 0; i < select_visible_rows; ++i) {
 		const int index = select_scroll + i;
@@ -219,10 +245,25 @@ void HTMLLabel::highlight_select_row(int p_row) {
 
 void HTMLLabel::commit_select_row(int p_row) {
 	if (p_row < 0 || p_row >= static_cast<int>(select_rows.size()) || !select_rows[p_row].enabled) return;
-	const auto select = open_select;
+	const auto target = open_select;
 	const int64_t index = select_rows[p_row].option_index;
+	const String value = select_rows[p_row].value;
 	close_select_menu();
-	if (!layout->is_focusable(select) || index == select->get_selected_index()) return;
+	if (!layout->is_focusable(target)) return;
+	if (const Ref<HTMLInputElement> input = target; input.is_valid()) {
+		const auto node = input->get_input();
+		if (!node || !node->is_editable() || node->get_value() == value) return;
+		auto& editor = node->editor;
+		editor.set_selection(0, editor.get_value().length());
+		if (editor.insert(value, node->get_attr("maxlength"))) {
+			const ObjectID id(get_instance_id());
+			canvas->change_input(input, false);
+			if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) label->canvas->commit_input(input);
+		}
+		return;
+	}
+	const Ref<HTMLSelectElement> select = target;
+	if (select.is_null() || index == select->get_selected_index()) return;
 	select->set_selected_index(index);
 	emit_signal("select_changed", select);
 }
@@ -253,11 +294,72 @@ void HTMLLabel::select_menu_input(const Ref<InputEvent>& p_event) {
 	}
 }
 
+bool HTMLLabel::handle_listbox_mouse(const Ref<HTMLElement>& p_element, const InputEventMouseButton& p_event,
+	const Vector2& p_point) {
+	if (!p_event.is_pressed() || !layout->is_focusable(p_element)) return false;
+	const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element());
+	if (!select || !select->is_list_box()) return false;
+	const auto button = p_event.get_button_index();
+	if (button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN) {
+		if (!select->scroll_list(button == MOUSE_BUTTON_WHEEL_UP ? -3 : 3)) return false;
+		layout->repaint_input();
+		return true;
+	}
+	if (button != MOUSE_BUTTON_LEFT) return false;
+	const auto local = layout->input_local_point(*p_element.ptr(), p_point);
+	if (!local) return false;
+	const auto row = select->list_row_at(*local);
+	if (!focus_element(p_element)) return false;
+	const bool changed = select->select_list_row(row, p_event.is_shift_pressed(), p_event.is_ctrl_pressed() || p_event.is_meta_pressed());
+	if (changed) {
+		layout->get_dom().form_state_changed(select);
+		emit_signal("select_changed", p_element);
+	} else layout->repaint_input();
+	return true;
+}
+
 bool HTMLLabel::handle_select_key(const InputEventKey& p_key) {
-	if (!p_key.is_pressed() || p_key.is_ctrl_pressed() || p_key.is_meta_pressed() || p_key.is_alt_pressed()) return false;
-	const Ref<HTMLSelectElement> select = canvas->focused_element;
-	if (select.is_null() || !layout->is_focusable(select)) return false;
+	if (!p_key.is_pressed() || p_key.is_alt_pressed()) return false;
+	const auto focused = canvas->focused_element;
+	if (focused.is_null() || !layout->is_focusable(focused)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
+	const bool toggle = p_key.is_ctrl_pressed() || p_key.is_meta_pressed();
+	const Ref<HTMLSelectElement> select = focused;
+	if (select.is_valid()) {
+		const auto list = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(select->lock_element());
+		if (list && list->is_list_box()) {
+			if (key != KEY_UP && key != KEY_DOWN && key != KEY_HOME && key != KEY_END && key != KEY_SPACE) return false;
+			if (key == KEY_SPACE && p_key.is_echo()) return true;
+			const auto options = list->get_list_options();
+			const int last = static_cast<int>(options.size()) - 1;
+			int active = list->list_active_row();
+			if (active < 0) active = list->selected_index(options);
+			const bool backwards = key == KEY_UP || key == KEY_END;
+			const int delta = backwards ? -1 : 1;
+			int candidate = key == KEY_HOME ? 0 : key == KEY_END ? last : key == KEY_SPACE ? std::max(0, active) :
+				active < 0 ? (backwards ? last : 0) : active + delta;
+			while (candidate >= 0 && candidate <= last && forms::is_disabled(*options[candidate])) candidate += delta;
+			accept_event();
+			const bool changed = list->select_list_row(candidate, p_key.is_shift_pressed(), key == KEY_SPACE && toggle,
+				toggle && key != KEY_SPACE && list->is_multiple());
+			if (changed) {
+				layout->get_dom().form_state_changed(list);
+				emit_signal("select_changed", select);
+			} else layout->repaint_input();
+			return true;
+		}
+	}
+	if (toggle) return false;
+	if (select.is_null()) {
+		const Ref<HTMLInputElement> input = focused;
+		if (input.is_null() || !input->get_input() || input->get_input()->editor.has_preedit() || p_key.get_unicode() >= 0x20) return false;
+		if (open_select.is_null()) {
+			if (key != KEY_DOWN || !open_suggestion_menu(input)) return false;
+			accept_event();
+			return true;
+		}
+		if (open_select != focused || key == KEY_SPACE || key == KEY_HOME || key == KEY_END) return false;
+	}
 	const bool accept = key == KEY_SPACE || key == KEY_ENTER || key == KEY_KP_ENTER;
 	if (accept || key == KEY_ESCAPE) {
 		if (open_select.is_null() && !accept) return false;

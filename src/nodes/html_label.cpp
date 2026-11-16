@@ -171,6 +171,12 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
+		if (dragging_range.is_valid()) {
+			const auto range = dragging_range;
+			accept_event();
+			move_range(range, motion->get_position(), false);
+			return;
+		}
 		const Vector2 point = motion->get_position();
 		if (scrollbar_drag) {
 			label->layout->drag_scrollbar(*scrollbar_drag, point);
@@ -237,6 +243,19 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
+	if (visible_rect.has_point(point) && label->handle_listbox_mouse(label->layout->get_element_at(point), *button.ptr(), point)) {
+		cancel_press();
+		accept_event();
+		return;
+	}
+	if (button->get_button_index() == MOUSE_BUTTON_LEFT && !button->is_pressed() && dragging_range.is_valid()) {
+		const auto range = dragging_range;
+		dragging_range.unref();
+		accept_event();
+		if (!button->is_canceled()) move_range(range, point, true);
+		else commit_input(range);
+		return;
+	}
 	if (button->get_button_index() == MOUSE_BUTTON_RIGHT && button->is_pressed() && label->context_menu_enabled &&
 		visible_rect.has_point(point) && open_input_menu(label->layout->get_element_at(point), point, true)) {
 		accept_event();
@@ -288,6 +307,16 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		return;
 	}
 	if (button->is_pressed()) {
+		if (target_input.is_valid() && target_input->get_input()->type() == docrender::HTMLInputNode::Type::RANGE &&
+			label->layout->is_focusable(target_input)) {
+			cancel_press();
+			if (label->focus_element(target_input)) {
+				dragging_range = target_input;
+				accept_event();
+				move_range(target_input, point, false);
+			}
+			return;
+		}
 		if (begin_textarea_drag(element, point)) {
 			accept_event();
 			return;
@@ -617,6 +646,7 @@ void HTMLLabelCanvas::cancel_press() {
 	resize_pending.reset();
 	dragged_resize = false;
 	dragging_input.unref();
+	dragging_range.unref();
 	cancel_click();
 	cancel_key_press();
 	selecting = false;
@@ -753,7 +783,7 @@ void HTMLLabel::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("layout_changed"));
 	const PropertyInfo form_info(Variant::OBJECT, "form", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLFormElement::get_class_static());
 	ADD_SIGNAL(MethodInfo("form_submitted", form_info, PropertyInfo(Variant::ARRAY, "entries"),
-		PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLButtonElement::get_class_static())));
+		PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("form_validation_failed", form_info,
 		PropertyInfo(Variant::OBJECT, "control", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("form_reset", form_info));

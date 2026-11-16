@@ -3,17 +3,19 @@
 #include "html_text_control_node.h"
 #include "html_node_copy_state.h"
 
+#include <optional>
 #include <string_view>
 
 namespace docrender {
 	class HTMLInputNode final : public HTMLTextControlNode, public HTMLNodeCopyState {
 		bool checked = false;
 		bool dirty_checked = false;
+		godot::Rect2 range_box;
 
 		void paint_contents(LiteHTMLContainer& p_container, const godot::Rect2& p_box);
 
 	public:
-		enum class Type { TEXT, CHECKBOX, RADIO, HIDDEN, OTHER };
+		enum class Type { TEXT, SEARCH, PASSWORD, EMAIL, URL, TEL, NUMBER, RANGE, CHECKBOX, RADIO, HIDDEN, BUTTON, SUBMIT, RESET, OTHER };
 
 		explicit HTMLInputNode(const std::shared_ptr<litehtml::document>& p_document);
 		void set_attr(const char* p_name, const char* p_value) override;
@@ -22,7 +24,18 @@ namespace docrender {
 			const litehtml::position* p_clip, const std::shared_ptr<litehtml::render_item>& p_item) override;
 		void attribute_changed(std::string_view p_name);
 		Type type() const;
-		bool is_text_control() const override { return type() == Type::TEXT; }
+		godot::String type_name() const;
+		bool is_text_control() const override;
+		bool is_button() const;
+		bool is_password() const { return type() == Type::PASSWORD; }
+		bool accepts_suggestions() const;
+		bool is_suggestion_valid(const godot::String& p_value) const;
+		bool has_type_violation() const;
+		double value_as_number() const;
+		godot::String sanitize_value(const godot::String& p_value) const;
+		bool step_number(int p_step, std::optional<bool> p_endpoint = {});
+		bool set_range_point(const godot::Vector2& p_point);
+		bool set_numeric_from_user(double p_value);
 		bool update_pseudos() override;
 		godot::String get_value() const;
 		bool is_checked() const { return checked; }

@@ -6,6 +6,8 @@
 #include "formats/html/elements/html_anchor_element.h"
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
+#include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
@@ -126,6 +128,7 @@ namespace {
 	}
 
 	Ref<HTMLElement> create_element_handle(litehtml::string_id p_tag) {
+		if (p_tag == litehtml::_id("menu")) return instantiate_element_handle<HTMLMenuElement>();
 		switch (p_tag) {
 			case litehtml::_a_: return instantiate_element_handle<HTMLAnchorElement>();
 			case litehtml::_button_: return instantiate_element_handle<HTMLButtonElement>();
@@ -140,6 +143,18 @@ namespace {
 			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
 			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
 			case litehtml::_pre_: return instantiate_element_handle<HTMLPreElement>();
+			case litehtml::_datalist_: return instantiate_element_handle<HTMLDataListElement>();
+			case litehtml::_output_: return instantiate_element_handle<HTMLOutputElement>();
+			case litehtml::_details_: return instantiate_element_handle<HTMLDetailsElement>();
+			case litehtml::_meter_: return instantiate_element_handle<HTMLMeterElement>();
+			case litehtml::_progress_: return instantiate_element_handle<HTMLProgressElement>();
+			case litehtml::_hr_: return instantiate_element_handle<HTMLHRElement>();
+			case litehtml::_br_: return instantiate_element_handle<HTMLBRElement>();
+			case litehtml::_blockquote_:
+			case litehtml::_q_: return instantiate_element_handle<HTMLQuoteElement>();
+			case litehtml::_dl_: return instantiate_element_handle<HTMLDListElement>();
+			case litehtml::_section_: return instantiate_element_handle<HTMLSectionElement>();
+			case litehtml::_article_: return instantiate_element_handle<HTMLArticleElement>();
 			case litehtml::_ol_: return instantiate_element_handle<HTMLOListElement>();
 			case litehtml::_ul_: return instantiate_element_handle<HTMLUListElement>();
 			case litehtml::_li_: return instantiate_element_handle<HTMLLIElement>();
@@ -192,6 +207,40 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	generation = p_generation;
 	for (const auto& entry : detached_trees) {
 		if (const auto tree = entry.value.lock()) docrender::forms::synchronize(tree->root);
+	}
+}
+
+void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved,
+	bool p_prefer_moved, bool p_notify) {
+	if (!p_tree) return;
+	auto root = p_tree;
+	while (const auto parent = root->parent()) root = parent;
+	std::vector<litehtml::element::ptr> open;
+	visit_elements(root, [&](const auto& p_element) {
+		const char* name = p_element->get_attr("name");
+		if (p_element->tag() == litehtml::_details_ && name && *name && p_element->get_attr("open")) open.push_back(p_element);
+		return false;
+	});
+	if (!p_moved.empty()) {
+		std::unordered_set<const litehtml::element*> moved_roots;
+		for (const auto& node : p_moved) moved_roots.insert(node.get());
+		const auto moved = [&](const auto& p_node) {
+			for (auto current = p_node; current; current = current->parent()) {
+				if (moved_roots.count(current.get())) return true;
+			}
+			return false;
+		};
+		std::stable_partition(open.begin(), open.end(), [&](const auto& p_node) { return moved(p_node) == p_prefer_moved; });
+	}
+	std::unordered_set<std::string> names;
+	for (const auto& node : open) {
+		if (names.insert(node->get_attr("name")).second) continue;
+		DocumentAdapter::set_attribute(*node, "open", nullptr);
+		set_source_attribute(node, "open", nullptr);
+		if (p_notify) {
+			const Ref<HTMLDetailsElement> details = make_element(node);
+			if (details.is_valid()) details->queue_toggle();
+		}
 	}
 }
 
@@ -631,20 +680,33 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	if (!DocumentAdapter::set_attribute(*p_element, p_name, p_value)) {
 		return ERR_UNAVAILABLE;
 	}
+	const bool open_presence_changed = std::string_view(p_name) == "open" && bool(previous) != bool(p_value);
 	set_source_attribute(p_element, p_name, p_value);
+	if (p_element->tag() == litehtml::_details_) {
+		if (open_presence_changed) {
+			const Ref<HTMLDetailsElement> details = make_element(p_element);
+			if (details.is_valid()) details->queue_toggle();
+			if (p_value) normalize_details(p_element, {p_element}, true);
+		} else if (std::string_view(p_name) == "name" && p_element->get_attr("open")) {
+			normalize_details(p_element, {p_element});
+		}
+	}
 	if (auto* input = dynamic_cast<HTMLInputNode*>(p_element.get())) {
 		input->attribute_changed(p_name);
 	} else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->update_pseudos();
 	}
 	const std::string_view name(p_name);
+	if (name == "multiple" && !p_value) {
+		if (auto* select = dynamic_cast<docrender::HTMLSelectNode*>(p_element.get())) select->use_single_selection();
+	}
 	if (name == "selected") {
 		if (auto* option = dynamic_cast<docrender::HTMLOptionNode*>(p_element.get())) option->attribute_changed();
 	}
-	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected") {
+	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected" || name == "multiple" || name == "size") {
 		docrender::forms::synchronize(p_element, p_element);
 	} else if (name == "value" || name == "required" || name == "readonly" || name == "minlength" || name == "maxlength" ||
-		name == "command" || name == "commandfor") {
+		name == "min" || name == "max" || name == "step" || name == "command" || name == "commandfor") {
 		if (const auto* option = dynamic_cast<const docrender::HTMLOptionNode*>(p_element.get())) {
 			if (auto* select = option->select()) docrender::forms::update_validity(*select);
 		} else if (docrender::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
@@ -733,6 +795,7 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 		textarea->sync_default_value();
 	}
 	docrender::forms::synchronize(target, target);
+	normalize_details(target, {target});
 	if (!node && is_element_connected(*p_element)) {
 		on_change();
 	}
@@ -767,9 +830,13 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 		return ERR_INVALID_PARAMETER;
 	}
 	// Splice preserves the iterators to the moved children, now in the target list.
+	std::vector<litehtml::element::ptr> moved;
+	moved.reserve(count);
 	for (size_t i = 0; i < count; ++i, ++child) {
 		update_detached_handles(*child, target_tree);
+		moved.push_back(*child);
 	}
+	normalize_details(p_parent, moved);
 	docrender::forms::synchronize(p_parent, p_parent);
 	if (!target_tree) {
 		on_change();
@@ -813,6 +880,7 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 		docrender::forms::synchronize(p_reference);
 	}
 	docrender::forms::synchronize(p_parent, p_child);
+	normalize_details(p_parent, {p_child});
 	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) docrender::forms::synchronize(old_parent);
 	if (p_notify && (!source_tree || !target_tree)) {
 		on_change();

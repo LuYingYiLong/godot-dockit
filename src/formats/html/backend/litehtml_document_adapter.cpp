@@ -1,4 +1,6 @@
 #include "litehtml_document_adapter.h"
+#include "formats/html/dom/html_dom.h"
+#include "formats/html/elements/html_select_node.h"
 
 #include "formats/html/css/css_selector_matcher.h"
 #include "formats/html/css/css_shadows.h"
@@ -40,6 +42,7 @@ namespace litehtml {
 		const string& p_default_styles, const string& p_user_styles) {
 		auto doc = parse_tree(p_html, p_container);
 		if (doc) {
+			p_container.get_dom().normalize_details(doc->root(), {}, false, false);
 			restyle(doc, p_container, p_default_styles, p_user_styles);
 		}
 		return doc;
@@ -466,6 +469,10 @@ namespace litehtml {
 			const std::string_view name = p_element.get_tagName();
 			const bool svg = p_svg || name == "svg";
 			if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
+				if (const auto* select = dynamic_cast<const docrender::HTMLSelectNode*>(tag); select && select->is_list_box()) {
+					const auto rows = std::min<int64_t>(select->display_size(), 1000);
+					tag->m_style.add_property(_height_, "calc(" + std::to_string(rows) + "lh + " + std::to_string(rows * 4 + 2) + "px)");
+				}
 				if (const auto direction = lowcase(tag->get_attr("dir", "")); is_one_of(direction, "ltr", "rtl")) {
 					tag->m_style.add_property(_id("direction"), direction);
 				}

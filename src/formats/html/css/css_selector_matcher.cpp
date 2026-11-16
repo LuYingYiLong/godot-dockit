@@ -207,6 +207,8 @@ bool match_pseudo_class(const SelectorDOM& dom, SelectorNode node, const Attribu
 	if (detail::is_one_of(name, "link", "any-link")) {
 		return detail::is_one_of(dom.tag(node), "a", "area") && dom.attribute(node, "href").has_value();
 	}
+	if (name == "open") return dom.tag(node) == "details" && dom.attribute(node, "open").has_value();
+	if (name == "indeterminate") return dom.tag(node) == "progress" && !dom.attribute(node, "value").has_value();
 	if (name == "focus-within") return has_focus_within(dom, node);
 	if (name == "has") {
 		return std::any_of(selector.selector_list.begin(), selector.selector_list.end(),

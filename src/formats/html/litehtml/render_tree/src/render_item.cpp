@@ -296,7 +296,8 @@ std::tuple<
             }
             break;
         }
-        if(!child->children().empty())
+        // Atomic inline boxes keep their internal block layout.
+        if(child->css().get_display() == display_inline && !child->children().empty())
         {
             auto child_split = child->split_inlines();
             if(std::get<0>(child_split))

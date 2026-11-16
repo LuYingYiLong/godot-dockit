@@ -467,7 +467,7 @@ bool is_supported_simple_pseudo_class(const string& name)
 		"any-link", "link", "visited", "local-link", "target", "target-within", "scope",
 		// User Action Pseudo-classes  https://www.w3.org/TR/selectors-4/#useraction-pseudos
 		"hover", "active", "focus", "focus-visible", "focus-within",
-		"enabled", "disabled", "checked", "placeholder-shown",
+		"enabled", "disabled", "checked", "placeholder-shown", "open", "indeterminate",
 		"required", "optional", "valid", "invalid", "read-only", "read-write",
 		// Tree-Structural pseudo-classes  https://www.w3.org/TR/selectors-4/#structural-pseudos
 		"root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type",

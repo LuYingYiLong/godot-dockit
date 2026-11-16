@@ -151,6 +151,21 @@
     <ClCompile Include="src\formats\html\elements\html_heading_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_element_types.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_gauge_elements.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_gauge_node.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_details_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_ruby_node.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_list_elements.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -705,6 +720,21 @@
     <ClInclude Include="src\formats\html\elements\html_heading_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_gauge_elements.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_gauge_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_details_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_ruby_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_details_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_list_elements.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
@@ -712,6 +742,9 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_output_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_form_elements.h">

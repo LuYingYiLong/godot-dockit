@@ -37,7 +37,8 @@ namespace {
 		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) {
 			return input->type() != HTMLInputNode::Type::HIDDEN && input->type() != HTMLInputNode::Type::OTHER;
 		}
-		return p_node.tag() == _textarea_ || p_node.tag() == _select_ || p_node.tag() == _button_;
+		const auto tag = p_node.tag();
+		return tag == _textarea_ || tag == _select_ || tag == _button_ || tag == _progress_ || tag == _meter_ || tag == _output_;
 	}
 
 	bool is_submit_button(const element& p_node) {
@@ -74,7 +75,8 @@ namespace {
 			if (input->type() == HTMLInputNode::Type::CHECKBOX) return !required || input->is_checked();
 			return p_radio_missing ? !*p_radio_missing : !radio_value_missing(radio_group(p_node));
 		}
-		if (const auto* text = dynamic_cast<const HTMLTextControlNode*>(&p_node)) {
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node); input && input->has_type_violation()) return false;
+	if (const auto* text = dynamic_cast<const HTMLTextControlNode*>(&p_node)) {
 			return !(required && text->editor.get_value().is_empty()) &&
 				!text->editor.has_length_violation(p_node.get_attr("minlength"), p_node.get_attr("maxlength"));
 		}
@@ -101,7 +103,7 @@ namespace {
 
 bool is_listed(const element& p_node) {
 	const auto tag = p_node.tag();
-	return tag == _input_ || tag == _textarea_ || tag == _button_ || tag == _select_ || tag == _fieldset_;
+	return tag == _input_ || tag == _textarea_ || tag == _button_ || tag == _select_ || tag == _fieldset_ || tag == _output_;
 }
 
 bool supports_required(const element& p_node) {
@@ -165,7 +167,21 @@ element::ptr labeled_control(const element& p_label) {
 	return result;
 }
 
+std::vector<element::ptr> labels(const element& p_control) {
+	std::vector<element::ptr> result;
+	HTMLDOM::visit_elements(root_of(p_control), [&](const element::ptr& p_node) {
+		if (p_node->tag() == _label_ && labeled_control(*p_node).get() == &p_control) result.push_back(p_node);
+		return false;
+	});
+	return result;
+}
+
 ButtonAction button_action(const element& p_node) {
+	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node); input && input->is_button()) {
+		if (input->type() == HTMLInputNode::Type::BUTTON) return ButtonAction::BUTTON;
+		if (!owner(p_node)) return ButtonAction::NONE;
+		return input->type() == HTMLInputNode::Type::RESET ? ButtonAction::RESET : ButtonAction::SUBMIT;
+	}
 	if (p_node.tag() != _button_) return ButtonAction::NONE;
 	const auto type = godot::String::utf8(p_node.get_attr("type", "")).to_lower();
 	if (type == "button") return ButtonAction::BUTTON;
@@ -269,7 +285,7 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 	std::unordered_set<const element*> invalid_containers;
 	HTMLDOM::visit_elements(root, [&](const element::ptr& p_node) {
 		if (auto* input = dynamic_cast<HTMLTextControlNode*>(p_node.get())) input->update_pseudos();
-		else if (is_listed(*p_node) || p_node->tag() == _option_ || p_node->tag() == _optgroup_) {
+		else if ((is_listed(*p_node) && p_node->tag() != _output_) || p_node->tag() == _option_ || p_node->tag() == _optgroup_) {
 			const bool disabled = is_disabled(*p_node);
 			p_node->set_pseudo_class(_id("disabled"), disabled);
 			p_node->set_pseudo_class(_id("enabled"), !disabled);
@@ -277,7 +293,8 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 		if (const auto* select = dynamic_cast<const HTMLSelectNode*>(p_node.get())) {
 			const auto options = select->get_options();
 			const auto selected = select->selected_index(options);
-			for (size_t i = 0; i < options.size(); ++i) options[i]->set_pseudo_class(_id("checked"), static_cast<int64_t>(i) == selected);
+			for (size_t i = 0; i < options.size(); ++i) options[i]->set_pseudo_class(_id("checked"),
+				select->is_multiple() ? select->is_option_selected(*options[i]) : static_cast<int64_t>(i) == selected);
 		}
 		if (const auto* option = dynamic_cast<const HTMLOptionNode*>(p_node.get()); option && !option->select()) {
 			p_node->set_pseudo_class(_id("checked"), option->is_selected());

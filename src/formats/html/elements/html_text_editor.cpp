@@ -399,7 +399,7 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::paint_single(LiteHTMLContainer& p_container, const Rect2& p_box,
-		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused) {
+		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused, bool p_password) {
 		const auto& p_style = p_host.css();
 		viewport = p_box;
 		const auto color = p_style.get_color();
@@ -409,7 +409,8 @@ namespace docrender {
 		const String display = showing_placeholder ? p_placeholder :
 			has_preedit() ? value.substr(0, from) + preedit + value.substr(to) : value;
 		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
-		shaped = p_container.shape_input(placeholder_style ? placeholder_style->get_font() : p_style.get_font(), display);
+		const String masked = p_password && !showing_placeholder ? String::chr(0x2022).repeat(display.length()) : display;
+		shaped = p_container.shape_input(placeholder_style ? placeholder_style->get_font() : p_style.get_font(), masked);
 		const int64_t display_caret = has_preedit() ?
 			from + std::clamp<int64_t>(preedit_selection.x, 0, preedit.length()) : caret;
 		const float x = caret_x(display_caret);

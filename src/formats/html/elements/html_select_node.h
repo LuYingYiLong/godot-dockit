@@ -2,6 +2,7 @@
 
 #include "html_node_copy_state.h"
 
+#include <godot_cpp/variant/rect2.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <litehtml/html_tag.h>
 
@@ -29,11 +30,27 @@ namespace docrender {
 
 	class HTMLSelectNode : public litehtml::html_tag, public HTMLNodeCopyState {
 		bool allow_empty = false;
+		godot::Rect2 list_box;
+		double row_height = 1.0;
+		int scroll_row = 0;
+		int active_row = -1;
+		int anchor_row = -1;
 
 	public:
 		using litehtml::html_tag::html_tag;
 		using Options = std::vector<std::shared_ptr<HTMLOptionNode>>;
 		Options get_options() const;
+		Options get_list_options() const;
+		void use_single_selection();
+		bool is_multiple() const { return get_attr("multiple") != nullptr; }
+		int64_t get_size() const;
+		bool is_list_box() const { return is_multiple() || get_size() > 1; }
+		int64_t display_size() const;
+		bool is_option_selected(const HTMLOptionNode& p_option) const;
+		int list_row_at(const godot::Vector2& p_point) const;
+		int list_active_row() const { return active_row; }
+		bool scroll_list(int p_rows);
+		bool select_list_row(int p_row, bool p_extend, bool p_toggle, bool p_move_only = false);
 		int64_t selected_index(const Options& p_options) const;
 		void set_selected_index(const Options& p_options, int64_t p_index);
 		bool is_missing() const;

@@ -91,7 +91,14 @@ namespace docrender {
 			const litehtml::element& p_element, litehtml::text_justify_adjustment p_justification, litehtml::punctuation_trim p_trim);
 		void draw_automatic_hyphen(const litehtml::position& p_position, const litehtml::element& p_element,
 			litehtml::text_justify_adjustment p_justification);
+		HTMLDOM& get_dom() { return dom; }
+		void set_gauge_animation_time(double p_time) { gauge_animation_time = p_time; gauge_animation_active = false; }
+		double sample_gauge_animation() { gauge_animation_active = true; return gauge_animation_time; }
+		bool has_gauge_animation() const { return gauge_animation_active; }
+
 	private:
+		double gauge_animation_time = 0.0;
+		bool gauge_animation_active = false;
 		HTMLDOM& dom;
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;

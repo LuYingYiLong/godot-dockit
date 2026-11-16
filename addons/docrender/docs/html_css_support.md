@@ -4,6 +4,12 @@ DocRender maintains CSS syntax, selectors, declarations, the cascade, value type
 
 For GDScript queries, element handles, and geometry, see [HTML API and Web standards](html_api_reference.md).
 
+## Native elements
+
+`<details>` supports `:open` and the summary's `::marker`. `<progress>` supports `:indeterminate`. Progress, meters, and range controls paint their native chrome through the HTML renderer. Use `appearance: none` for author-defined backgrounds and borders.
+
+Horizontal ruby supports `ruby-position: over | under`. Text with an annotation is measured as a single segment with one baseline for the base. Adjacent segments can wrap independently. `<rp>` is hidden by the default stylesheet.
+
 ## Selectors and rules
 
 | Feature | Support |

@@ -13,6 +13,7 @@
 
 namespace godot {
 	class InputEventKey;
+	class InputEventMouseButton;
 	class PopupMenu;
 	class ScrollContainer;
 	class Timer;
@@ -55,6 +56,7 @@ class HTMLLabelCanvas : public godot::Control {
 	bool dragged_resize = false;
 	bool applying_textarea_resize = false;
 	godot::Ref<HTMLInputElement> pressed_checkbox;
+	godot::Ref<HTMLInputElement> dragging_range;
 	std::optional<int32_t> ime_window;
 	std::optional<godot::Vector2i> ime_position;
 	godot::Timer* caret_blink_timer = nullptr;
@@ -87,13 +89,14 @@ class HTMLLabelCanvas : public godot::Control {
 	void toggle_checkbox(const godot::Ref<HTMLInputElement>& p_input);
 	bool move_radio(const godot::Ref<HTMLInputElement>& p_input, int p_direction);
 	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;
+	void move_range(const godot::Ref<HTMLInputElement>& p_input, const godot::Vector2& p_point, bool p_commit);
 	bool handle_input_key(const godot::InputEventKey& p_key);
 	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
 	void close_input_menu();
 	void on_input_menu_hidden();
 	void on_input_menu_selected(int p_command);
 	void run_input_command(const godot::Ref<HTMLElement>& p_element, int p_command);
-	void change_input(const godot::Ref<HTMLElement>& p_input);
+	void change_input(const godot::Ref<HTMLElement>& p_input, bool p_update_suggestions = true);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
 	void set_input_caret(const godot::Ref<HTMLElement>& p_input, const godot::Vector2& p_point, bool p_extend);
 	bool begin_textarea_drag(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_point);
@@ -147,7 +150,7 @@ private:
 	godot::Control* scroll_content = nullptr;
 	HTMLLabelCanvas* canvas = nullptr;
 	godot::Control* select_menu = nullptr;
-	godot::Ref<HTMLSelectElement> open_select;
+	godot::Ref<HTMLElement> open_select;
 	std::vector<docrender::HTMLSelectMenuRow> select_rows;
 	int select_highlight = -1;
 	int select_pressed = -1;
@@ -234,6 +237,9 @@ private:
 	void activate_link(const godot::String& p_uri);
 	bool activate_form_control(const godot::Ref<HTMLElement>& p_element);
 	void submit_from_text(const godot::Ref<HTMLElement>& p_element);
+	bool open_suggestion_menu(const godot::Ref<HTMLElement>& p_element);
+	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows, int64_t p_selected);
+	bool handle_listbox_mouse(const godot::Ref<HTMLElement>& p_element, const godot::InputEventMouseButton& p_event, const godot::Vector2& p_point);
 	bool open_select_menu(const godot::Ref<HTMLSelectElement>& p_element);
 	void close_select_menu();
 	void update_select_menu();
@@ -283,7 +289,7 @@ public:
 	bool focus_element(const godot::Ref<HTMLElement>& p_element); // 将有效元素设为 DOM 焦点
 	bool activate_element(const godot::Ref<HTMLElement>& p_element); // 激活当前控件中可用的链接或表单控件
 	godot::Error submit_form(const godot::Ref<HTMLFormElement>& p_form,
-		const godot::Ref<HTMLButtonElement>& p_submitter = {}); // 校验并发出有序的表单数据
+		const godot::Ref<HTMLElement>& p_submitter = {}); // 校验并发出有序的表单数据
 	bool scroll_to_element(
 		const godot::Ref<HTMLElement>& p_element,
 		float p_align = 0.0f

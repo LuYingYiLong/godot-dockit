@@ -448,6 +448,8 @@ func _run() -> void:
 	await _check_controls()
 	await _check_element_activation()
 	await _check_forms()
+	await _check_extended_html_elements()
+	await _check_gauge_and_ruby_paint()
 	await _check_form_state_selectors()
 	_check_table_elements()
 	await _check_table_layout()
@@ -799,7 +801,7 @@ func _check_selector_semantics() -> void:
 func _check_element_subclasses() -> void:
 	var layout: HTMLLayout = HTMLLayout.new()
 	var html: String = """<!doctype html><div id="container"><p id="paragraph"><span id="inline">Text</span></p></div>
-		<div id="destination"></div><section id="other"></section>"""
+		<div id="destination"></div><aside id="other"></aside>"""
 	_check(layout.parse(html) == OK, "Parse the element subclass fixture")
 	var container: HTMLElement = layout.get_element_by_id("container")
 	var paragraph: HTMLElement = layout.query_selector("#paragraph")
@@ -13235,6 +13237,238 @@ func _check_form_state_selectors() -> void:
 	viewport.queue_free()
 
 
+func _check_extended_html_elements() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var markup: String = """<!doctype html><style>
+	body { margin: 0; }
+	ruby { font-size: 28px; }
+	#under { ruby-position: under; }
+	q { quotes: "[" "]" "(" ")"; }
+	</style>
+	<main id="main"><article id="article"><section id="section"><mark>Highlight</mark></section></article></main>
+	<aside id="aside">Other</aside><search id="search">Search</search>
+	<dl id="definition"><dt>Key</dt><dd>Value</dd></dl><menu id="menu"><li>Item</li></menu>
+	<blockquote id="quotation" cite="doc">Quote</blockquote><q>First <q>Second</q></q><br id="break"><hr id="rule">
+	<label id="gauge_label" for="progress">Progress</label><progress id="progress" max="8">Fallback</progress>
+	<meter id="meter" min="2" max="8" value="9" low="3" high="6" optimum="5"></meter>
+	<details id="first" name="group" open><summary id="title">One</summary><div id="body">Details</div></details>
+	<details id="second" name="group" open><summary>Two</summary><div id="other">Second body</div></details>
+	<p><ruby><span id="base">漢字</span><rp>(</rp><rt id="note">かんじ</rt><rp>)</rp></ruby>
+	<ruby id="under"><span id="base_under">中文</span><rt id="note_under">zhōng wén</rt></ruby></p>"""
+	_check(layout.parse(markup) == OK and layout.layout(Vector2i(360, 650)) == OK, "Lay out the extended HTML elements")
+	var article: HTMLArticleElement = layout.get_element_by_id("article") as HTMLArticleElement
+	var section: HTMLSectionElement = layout.get_element_by_id("section") as HTMLSectionElement
+	var description_list: HTMLDListElement = layout.get_element_by_id("definition") as HTMLDListElement
+	var menu: HTMLMenuElement = layout.get_element_by_id("menu") as HTMLMenuElement
+	var quotation: HTMLQuoteElement = layout.get_element_by_id("quotation") as HTMLQuoteElement
+	var line_break: HTMLBRElement = layout.get_element_by_id("break") as HTMLBRElement
+	var rule: HTMLHRElement = layout.get_element_by_id("rule") as HTMLHRElement
+	var progress: HTMLProgressElement = layout.get_element_by_id("progress") as HTMLProgressElement
+	var meter: HTMLMeterElement = layout.get_element_by_id("meter") as HTMLMeterElement
+	var first: HTMLDetailsElement = layout.get_element_by_id("first") as HTMLDetailsElement
+	var second: HTMLDetailsElement = layout.get_element_by_id("second") as HTMLDetailsElement
+	if [article, section, description_list, menu, quotation, line_break, rule, progress, meter, first, second,].has(null):
+		_check(false, "Create typed handles for all extended HTML elements")
+		return
+	_check(section.get_parent() == article and article.clone_node() is HTMLArticleElement
+		and layout.create_element("section") is HTMLSectionElement and layout.get_element_by_id("aside").get_class() == "HTMLElement",
+		"Sectioning handles use the existing factory")
+	_check(_rect(layout, "main").size.x == 360.0 and _rect(layout, "search").size.x == 360.0
+		and "[First (Second)]" in layout.get_plain_text(), "Default block layout and nested quote marks apply")
+	menu.compact = true
+	description_list.compact = true
+	line_break.clear = "left"
+	rule.no_shade = true
+	rule.width = "30"
+	_check(menu.has_attribute("compact") and description_list.has_attribute("compact")
+		and line_break.get_attribute("clear") == "left" and rule.has_attribute("noshade") and rule.get_attribute("width") == "30"
+		and quotation.cite == "doc", "Base element properties reflect source attributes")
+	_check(progress.position == -1.0 and progress.matches(":indeterminate") and progress.get_labels().size() == 1
+		and "Fallback" not in layout.get_plain_text(), "Progress distinguishes indeterminate state and has an associated label")
+	progress.value = 4.0
+	_check(is_equal_approx(progress.position, 0.5) and meter.value == 8.0 and meter.low == 3.0 and meter.high == 6.0,
+		"Progress and meter normalize current values")
+	_check(first.open and first.matches(":open") and not second.open and layout.get_element_by_id("other").get_client_rects().is_empty(),
+		"A disclosure group starts with one open element")
+	second.open = true
+	_check(not first.open and second.open and layout.layout(Vector2i(360, 650)) == OK
+		and layout.get_element_by_id("body").get_client_rects().is_empty() and _rect(layout, "other").has_area(),
+		"Opening a peer keeps closed content queryable and removes its geometry")
+	var peer: HTMLDetailsElement = layout.create_element("details") as HTMLDetailsElement
+	peer.name = "group"
+	peer.open = true
+	var fragment: HTMLDocumentFragment = layout.create_document_fragment()
+	_check(fragment.append_child(peer) == OK and second.get_parent().insert_fragment_before(fragment, second) == OK
+		and second.open and not peer.open, "A moved disclosure closes when an existing group peer is open")
+	_check(layout.layout(Vector2i(360, 650)) == OK, "Reflow the moved disclosure")
+	_check(_rect(layout, "note").has_area() and _rect(layout, "note_under").has_area()
+		and _rect(layout, "note").end.y <= _rect(layout, "base").end.y
+		and _rect(layout, "note_under").position.y > _rect(layout, "base_under").position.y
+		and layout.query_selector("rp").get_client_rects().is_empty(),
+		"Horizontal ruby draws under and over annotations and hides fallback parentheses")
+
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(460, 460)
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """<!doctype html><style>input, select { display:block; } details { margin: 8px; }</style>
+	<details id="widget"><summary id="summary"><span>Open</span></summary><input id="inside"></details>
+	<input id="query" list="choices" value="al" type="search"><datalist id="choices">
+	<option value="alpha"><option value="beta"><option value="alone" disabled></datalist>
+	<form id="form"><input type="email" id="email" name="email" value="wrong">
+	<input type="number" id="number" name="count" value="2" min="0" max="8" step="2">
+	<input type="range" id="range" min="0" max="10" value="4" step="2">
+	<input type="password" id="password" value="secret">
+	<select id="multi" name="items" size="3" multiple>
+	<option id="option_a" selected value="a">A</option><option id="option_b" selected value="b">B</option>
+	<option disabled selected value="c">C</option><option value="d">D</option></select>
+	<output id="output" for="number" name="result">Initial</output>
+	<input type="submit" id="send" name="action" value="save">
+	<input type="reset" id="resetter"></form>"""
+	viewport.add_child(label)
+	var submissions: Array[Array] = []
+	label.form_submitted.connect(func(_form: HTMLFormElement, entries: Array[Dictionary], submitter: HTMLElement) -> void:
+		submissions.append([entries, submitter])
+	)
+	await process_frame
+	await process_frame
+	var widget: HTMLDetailsElement = label.get_element_by_id("widget") as HTMLDetailsElement
+	var summary: HTMLElement = label.get_element_by_id("summary")
+	var inside: HTMLElement = label.get_element_by_id("inside")
+	var search: HTMLInputElement = label.get_element_by_id("query") as HTMLInputElement
+	var suggestions: HTMLDataListElement = label.get_element_by_id("choices") as HTMLDataListElement
+	var form: HTMLFormElement = label.get_element_by_id("form") as HTMLFormElement
+	var email: HTMLInputElement = label.get_element_by_id("email") as HTMLInputElement
+	var number: HTMLInputElement = label.get_element_by_id("number") as HTMLInputElement
+	var slider: HTMLInputElement = label.get_element_by_id("range") as HTMLInputElement
+	var output: HTMLOutputElement = label.get_element_by_id("output") as HTMLOutputElement
+	var multi: HTMLSelectElement = label.get_element_by_id("multi") as HTMLSelectElement
+	var submitter: HTMLInputElement = label.get_element_by_id("send") as HTMLInputElement
+	if [widget, summary, inside, search, suggestions, form, email, number, slider, output, multi, submitter,].has(null):
+		_check(false, "Find the extended controls in HTMLLabel")
+		viewport.queue_free()
+		return
+	_check(not label.focus_element(inside) and label.focus_element(summary), "Only the summary is focusable in a closed disclosure")
+	_send_dom_key(viewport, KEY_ENTER)
+	await process_frame
+	await process_frame
+	_check(widget.open and label.focus_element(inside), "Keyboard activation reveals the disclosure contents")
+	_check(search.type == "search" and suggestions.get_options().size() == 3 and label.focus_element(search),
+		"A typed text field can use its suggestion list")
+	_send_dom_key(viewport, KEY_DOWN)
+	_send_dom_key(viewport, KEY_ENTER)
+	_check(search.value == "alpha", "A keyboard suggestion changes the field")
+	_send_text_history_key(viewport, KEY_Z)
+	_check(search.value == "al", "Choosing one suggestion is a single undo operation")
+	_check(email.matches(":invalid") and label.submit_form(form, submitter) == ERR_INVALID_DATA, "Email constraints apply to submission")
+	email.value = "user@example.test"
+	_check(label.focus_element(number), "Focus the numeric field")
+	_send_dom_key(viewport, KEY_UP)
+	_check(number.value_as_number == 4.0, "Number input uses step arithmetic")
+	_check(label.focus_element(slider), "Focus the range field")
+	_send_dom_key(viewport, KEY_END)
+	_check(slider.value_as_number == 10.0, "End moves the range thumb to its upper value")
+	var slider_rect: Rect2 = _label_rect(label, "range")
+	_drag_pointer(viewport, slider_rect.get_center(), Vector2(slider_rect.position.x + 1.0, slider_rect.get_center().y))
+	_check(slider.value_as_number == 0.0, "Dragging the range thumb updates the value")
+	var password: HTMLInputElement = label.get_element_by_id("password") as HTMLInputElement
+	_check(password != null and label.focus_element(password), "Focus the masked password field")
+	if password != null:
+		password.set_selection_range(0, password.value.length())
+		var old_clipboard: String = DisplayServer.clipboard_get()
+		DisplayServer.clipboard_set("clipboard sentinel")
+		var clipboard_before_copy: String = DisplayServer.clipboard_get()
+		_send_text_history_key(viewport, KEY_C)
+		_send_text_history_key(viewport, KEY_X)
+		_check(password.value == "secret" and DisplayServer.clipboard_get() == clipboard_before_copy,
+			"Password copy and cut keep the secret out of the clipboard")
+		DisplayServer.clipboard_set(old_clipboard)
+	_check(multi.multiple and multi.size == 3 and multi.get_selected_options().size() == 3 and multi.value == "a",
+		"Multiple selections have a stable first value and retain disabled selected options")
+	output.value = "Changed"
+	output.default_value = "Reset text"
+	var cloned_output: HTMLOutputElement = output.clone_node() as HTMLOutputElement
+	_check(cloned_output != null and cloned_output.value == "Changed" and cloned_output.default_value == "Reset text"
+		and output.get_form() == form and output in form.get_controls(), "An output keeps both values through a shallow clone")
+	await process_frame
+	await process_frame
+	_check(label.activate_element(submitter) and submissions.size() == 1 and submissions[0][1] == submitter,
+		"An input submitter uses the existing form signal")
+	var item_values: Array[String] = []
+	for entry: Dictionary in form.get_form_data(submitter):
+		if entry["name"] == "items":
+			item_values.append(entry["value"])
+	_check(item_values == ["a", "b"], "Multiple selections submit ordered entries and skip disabled options")
+	var list_rect: Rect2 = _label_rect(label, "multi")
+	var first_row: Vector2 = Vector2(list_rect.get_center().x, list_rect.position.y + 8.0)
+	_drag_pointer(viewport, first_row, first_row)
+	_check(label.get_focused_element() == multi and multi.value == "a", "A list box row accepts pointer input")
+	await process_frame
+	await process_frame
+	_send_dom_key(viewport, KEY_DOWN, 0, true)
+	_check(multi.value == "a" and (multi.get_options()[1] as HTMLOptionElement).selected,
+		"Shift+Down extends the list box selection")
+	multi.selected_index = 1
+	_check(multi.get_selected_options().size() == 1 and multi.value == "b", "Assigning selected_index selects just one option")
+	await process_frame
+	await process_frame
+	var resetter: HTMLInputElement = label.get_element_by_id("resetter") as HTMLInputElement
+	_check(resetter != null and label.activate_element(resetter) and output.value == "Reset text" and multi.get_selected_options().size() == 3,
+		"An input reset restores the output and all default selections")
+	viewport.queue_free()
+
+
+func _check_gauge_and_ruby_paint() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(400, 130)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(195.0, 130.0)
+	label.animation_process_mode = HTMLLabel.ANIMATION_PROCESS_MANUAL
+	label.text = """<!doctype html><style>body { margin:0; }
+		progress { display:block; width:140px; height:12px; accent-color:#0f6b34; }
+		meter { display:block; width:140px; height:12px; accent-color:#124ca0; }
+		#custom { appearance:none; background-color:#a120bb; }
+		</style>
+		<progress id="advance"></progress><meter value="0.5"></meter><progress id="custom"></progress>"""
+	viewport.add_child(label)
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2(200.0, 0.0)
+	markdown.size = Vector2(200.0, 130.0)
+	markdown.parse_html = true
+	var test_icon: ImageTexture = ImageTexture.create_from_image(Image.create_empty(1, 1, false, Image.FORMAT_RGBA8))
+	for icon: StringName in [&"task_checked", &"task_unchecked", &"file_broken",]:
+		markdown.add_theme_icon_override(icon, test_icon)
+	markdown.text = """<div>
+	<style>progress { width:100px; height:10px; accent-color:#e04818; }</style>
+	<progress value="0.5"></progress><ruby>漢<rt>かん</rt></ruby>
+	</div>"""
+	viewport.add_child(markdown)
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var gauge_region: Rect2i = Rect2i(0, 0, 180, 40)
+	var first: Rect2i = _color_bounds(image, gauge_region, Color("#0f6b34"))
+	_check(first.size.x > 0 and _color_bounds(image, gauge_region, Color("#124ca0")).size.x == 70
+		and _color_bounds(image, gauge_region, Color("#a120bb")).size.x == 140,
+		"Gauge tracks paint determinate fill and respect native appearance and accent color")
+	label.advance_animation(0.5)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	var moved: Rect2i = _color_bounds(image, gauge_region, Color("#0f6b34"))
+	_check(moved.has_area() and moved.position.x > first.position.x, "Manual animation moves the indeterminate fill")
+	_check(_color_bounds(image, Rect2i(200, 0, 200, 130), Color("#e04818")).has_area(),
+		"Markdown HTML blocks paint the same progress element")
+	markdown.select_all()
+	_check("漢" in markdown.get_selected_text() and "かん" in markdown.get_selected_text(),
+		"Markdown HTML selection includes the ruby base and annotation")
+	viewport.queue_free()
+
+
 func _check_forms() -> void:
 	var viewport: SubViewport = SubViewport.new()
 	viewport.size = Vector2i(400, 320)
@@ -13264,7 +13498,7 @@ func _check_forms() -> void:
 	var invalid: Array[HTMLElement] = []
 	var resets: Array[HTMLFormElement] = []
 	var changes: Array[HTMLSelectElement] = []
-	label.form_submitted.connect(func(form: HTMLFormElement, entries: Array[Dictionary], button: HTMLButtonElement) -> void:
+	label.form_submitted.connect(func(form: HTMLFormElement, entries: Array[Dictionary], button: HTMLElement) -> void:
 		submitted.append([form, entries, button])
 	)
 	label.form_validation_failed.connect(func(_form: HTMLFormElement, control: HTMLElement) -> void: invalid.append(control))

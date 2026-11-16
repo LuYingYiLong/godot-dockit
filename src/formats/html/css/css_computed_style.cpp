@@ -173,6 +173,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 	m_replaced = context.is_replaced;
 	m_scrollbar_colors = read_property(context, _id("scrollbar-color"), true, std::optional<css_scrollbar_colors>{},
 		parent ? &parent->m_scrollbar_colors : nullptr);
+	m_ruby_position = read_property<int>(context, _id("ruby-position"), true, 0, parent ? &parent->m_ruby_position : nullptr);
 	m_text_overflow_ellipsis = read_property<int>(context, _id("text-overflow"), false, 0,
 		parent ? &parent->m_text_overflow_ellipsis : nullptr) != 0;
 	m_resize = static_cast<resize_mode>(read_property<int>(context, _id("resize"), false, resize_none,

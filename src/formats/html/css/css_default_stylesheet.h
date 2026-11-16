@@ -339,7 +339,7 @@ form {
 	margin-top: 0em;
 }
 
-option, optgroup {
+option, optgroup, datalist {
 	display: none;
 }
 
@@ -350,6 +350,7 @@ label { cursor: pointer; }
 button, meter, progress, select, input[type=reset], input[type=button], input[type=submit], input[type=checkbox], input[type=radio] {
 	user-select: none;
 }
+progress, meter { appearance: auto; display: inline-block; width: 10em; height: 1em; vertical-align: -0.2em; }
 input, textarea, keygen, select, button, isindex {
 	appearance: auto;
 	margin: 0em;
@@ -360,16 +361,22 @@ input, textarea, keygen, select, button, isindex {
 	text-shadow: none;
 	display: inline-block;
 }
-input:not([type]), input[type="text" i], input[type="" i], input[type="checkbox" i], input[type="radio" i], select {
+input:not([type]), input[type="text" i], input[type="" i], input:is([type="search" i], [type="password" i], [type="email" i], [type="url" i], [type="tel" i], [type="number" i]), input[type="checkbox" i], input[type="radio" i], select {
 	display: inline-block; box-sizing: border-box; font: inherit;
 	background-color: #ffffff; color: #182230; border: 1px solid #64748b; border-radius: 4px;
 }
-input:not([type]), input[type="text" i], input[type="" i] {
+input:not([type]), input[type="text" i], input[type="" i], input:is([type="search" i], [type="password" i], [type="email" i], [type="url" i], [type="tel" i], [type="number" i]) {
 	width: 12em; height: 1.75em; padding: 0 0.4em; cursor: text;
 }
 input[type="checkbox" i], input[type="radio" i] {
 	width: 1.1em; height: 1.1em; cursor: pointer; vertical-align: middle;
 }
+input[type="range" i] { width: 12em; height: 1.75em; font: inherit; cursor: pointer; }
+input:is([type="button" i], [type="submit" i], [type="reset" i]) {
+	width: 7em; height: 1.8em; font: inherit; padding: 0.15em 0.4em; box-sizing: border-box; cursor: pointer;
+}
+input:is([type="button" i], [type="submit" i], [type="reset" i]):not(:disabled) { background: #e2e8f0; color: #182230; border: 1px solid #64748b; border-radius: 4px; }
+input:is([type="button" i], [type="submit" i], [type="reset" i]):active { background-color: #cbd5e1; }
 input[type="radio" i] { border-radius: 50%; }
 input[type="checkbox" i]:checked, input[type="radio" i]:checked { color: #ffffff; }
 select { width: 12em; height: 1.75em; padding: 0 0.4em; cursor: pointer; }
@@ -397,10 +404,25 @@ input[type="hidden" i] {
 }
 
 
-article, aside, footer, header, hgroup, nav, section 
+article, aside, footer, header, hgroup, main, nav, search, section
 {
 	display: block;
 }
+
+details { display: block; }
+details > summary:first-of-type { display: list-item; list-style: disclosure-closed inside; cursor: pointer; }
+details:open > summary:first-of-type { list-style-type: disclosure-open; }
+details:not(:has(> summary))::before { display: block; content: "▸ Details"; cursor: pointer; }
+details:open:not(:has(> summary))::before { content: "▾ Details"; }
+details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid #2563eb; }
+
+ruby { display: inline; }
+ruby > rt { display: block; font-size: 50%; white-space: nowrap; }
+rp { display: none; }
+
+mark { background-color: yellow; color: black; }
+q::before { content: open-quote; }
+q::after { content: close-quote; }
 
 sub {
 	vertical-align: sub;

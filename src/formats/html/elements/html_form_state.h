@@ -12,6 +12,7 @@ bool is_disabled(const litehtml::element& p_node);
 bool supports_required(const litehtml::element& p_node);
 bool is_read_write(const litehtml::element& p_node);
 litehtml::element::ptr owner(const litehtml::element& p_node);
+std::vector<litehtml::element::ptr> labels(const litehtml::element& p_control);
 litehtml::element::ptr labeled_control(const litehtml::element& p_label);
 ButtonAction button_action(const litehtml::element& p_node);
 std::vector<litehtml::element::ptr> controls(const litehtml::element& p_form);

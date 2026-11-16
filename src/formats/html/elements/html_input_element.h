@@ -17,6 +17,10 @@ protected:
 
 public:
 	godot::Ref<HTMLFormElement> get_form() const; // 返回所属表单
+	godot::String get_type() const; // 返回有效的输入类型
+	void set_type(const godot::String& p_value); // 设置输入类型属性
+	double get_value_as_number() const; // 返回数值或 NaN
+	void set_value_as_number(double p_value); // 设置数值字段的值
 	godot::String get_value() const; // 返回输入框的当前值
 	void set_value(const godot::String& p_value); // 设置当前值且不发出用户编辑信号
 	bool is_checked() const; // 返回复选框的当前选中状态

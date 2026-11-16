@@ -91,10 +91,11 @@ void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vec
 	}
 }
 
-void HTMLLabelCanvas::change_input(const Ref<HTMLElement>& p_input) {
+void HTMLLabelCanvas::change_input(const Ref<HTMLElement>& p_input, bool p_update_suggestions) {
 	if (const auto input = label->layout->text_control(p_input)) {
 		label->layout->update_input(*input);
 		queue_redraw();
+		if (p_update_suggestions && focused_element == p_input && input->get_attr("list")) label->open_suggestion_menu(p_input);
 		label->emit_signal(input->editor.is_multiline() ? "textarea_changed" : "input_changed", p_input);
 	}
 }
@@ -148,11 +149,43 @@ bool HTMLLabelCanvas::move_radio(const Ref<HTMLInputElement>& p_input, int p_dir
 	return true;
 }
 
+void HTMLLabelCanvas::move_range(const Ref<HTMLInputElement>& p_input, const Vector2& p_point, bool p_commit) {
+	if (p_input.is_null() || !label->layout->is_focusable(p_input)) return;
+	const auto node = p_input->get_input();
+	const auto local = label->layout->input_local_point(*p_input.ptr(), p_point);
+	if (!node || node->type() != HTMLInputNode::Type::RANGE || !local) return;
+	const ObjectID id(label->get_instance_id());
+	if (node->set_range_point(*local)) change_input(p_input);
+	if (p_commit) {
+		if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) owner->canvas->commit_input(p_input);
+	}
+}
+
 bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const Ref<HTMLElement> handle = focused_element;
 	const auto input = label->layout->text_control(handle);
 	if (!input || !label->layout->is_element_connected(handle)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
+	if (auto* numeric = dynamic_cast<HTMLInputNode*>(input.get()); numeric && p_key.is_pressed() &&
+		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !input->editor.has_preedit() &&
+		!docrender::forms::is_disabled(*input)) {
+		const bool range = numeric->type() == HTMLInputNode::Type::RANGE;
+		const bool number = numeric->type() == HTMLInputNode::Type::NUMBER;
+		const bool vertical = key == KEY_UP || key == KEY_DOWN;
+		const bool horizontal = key == KEY_LEFT || key == KEY_RIGHT;
+		const bool endpoint = key == KEY_HOME || key == KEY_END;
+		if ((range && (vertical || horizontal || endpoint)) || (number && vertical && input->is_editable())) {
+			int step = key == KEY_DOWN || key == KEY_LEFT ? -1 : 1;
+			if (horizontal && input->css().is_right_to_left()) step = -step;
+			const ObjectID id(label->get_instance_id());
+			label->accept_event();
+			if (numeric->step_number(step, endpoint ? std::optional<bool>(key == KEY_END) : std::nullopt)) {
+				change_input(handle);
+				if (range) if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) owner->canvas->commit_input(handle);
+			}
+			return true;
+		}
+	}
 	if (const auto* toggle = dynamic_cast<const HTMLInputNode*>(input.get()); toggle && toggle->is_toggle()) {
 		if (!label->layout->is_focusable(handle)) return false;
 		if (p_key.is_pressed() && toggle->type() == HTMLInputNode::Type::RADIO && !p_key.is_alt_pressed() &&
@@ -299,11 +332,13 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 
 	input_menu->clear();
 	const bool editable = input->is_editable();
+	const auto* field = dynamic_cast<const HTMLInputNode*>(input.get());
+	const bool password = field && field->is_password();
 	const bool disabled[] = {
 		!editable || !editor.can_undo(),
 		!editable || !editor.can_redo(),
-		!editable || !has_selection,
-		!has_selection,
+		password || !editable || !has_selection,
+		password || !has_selection,
 		!editable || DisplayServer::get_singleton()->clipboard_get().is_empty(),
 		editor.get_value().is_empty() || input->user_selection_mode() == litehtml::css_user_select::none,
 	};
@@ -357,6 +392,8 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 			break;
 		case INPUT_CUT:
 		case INPUT_COPY: {
+			const auto* field = dynamic_cast<const HTMLInputNode*>(input.get());
+			if (field && field->is_password()) break;
 			const int64_t start = editor.selection_start();
 			const int64_t length = editor.selection_end() - start;
 			if (length > 0 && (p_command == INPUT_COPY || editable)) {

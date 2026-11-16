@@ -1,4 +1,7 @@
 #include "html_form_elements.h"
+#include "html_output_node.h"
+#include "formats/html/backend/litehtml_document_adapter.h"
+#include <litehtml/document.h>
 
 #include "html_form_state.h"
 #include "html_input_node.h"
@@ -66,6 +69,13 @@ void HTMLSelectElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLSelectElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLSelectElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	ClassDB::bind_method(D_METHOD("is_multiple"), &HTMLSelectElement::is_multiple);
+	ClassDB::bind_method(D_METHOD("set_multiple", "value"), &HTMLSelectElement::set_multiple);
+	ClassDB::bind_method(D_METHOD("get_size"), &HTMLSelectElement::get_size);
+	ClassDB::bind_method(D_METHOD("set_size", "value"), &HTMLSelectElement::set_size);
+	ClassDB::bind_method(D_METHOD("get_selected_options"), &HTMLSelectElement::get_selected_options);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "multiple"), "set_multiple", "is_multiple");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "size"), "set_size", "get_size");
 	ClassDB::bind_method(D_METHOD("get_selected_index"), &HTMLSelectElement::get_selected_index);
 	ClassDB::bind_method(D_METHOD("set_selected_index", "value"), &HTMLSelectElement::set_selected_index);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "selected_index"), "set_selected_index", "get_selected_index");
@@ -146,7 +156,7 @@ TypedArray<HTMLElement> HTMLFormElement::get_controls() const {
 	return result;
 }
 
-TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLButtonElement>& p_submitter) const {
+TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLElement>& p_submitter) const {
 	TypedArray<Dictionary> result;
 	const auto form = lock_element();
 	if (!form) return result;
@@ -158,15 +168,20 @@ TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLButtonElemen
 		if (!name || !*name || forms::is_disabled(*control)) continue;
 		String value;
 		if (const auto* input = dynamic_cast<const HTMLInputNode*>(control.get())) {
-			if (input->type() == HTMLInputNode::Type::OTHER || (input->is_toggle() && !input->is_checked())) continue;
+			if (input->type() == HTMLInputNode::Type::OTHER || (input->is_toggle() && !input->is_checked()) ||
+				(input->is_button() && control != submitter)) continue;
 			value = input->get_value();
 		} else if (const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(control.get())) {
 			value = textarea->editor.get_value();
 		} else if (const auto* select = dynamic_cast<const HTMLSelectNode*>(control.get())) {
-			const auto options = select->get_options();
-			const auto index = select->selected_index(options);
-			if (index < 0 || forms::is_disabled(*options[index])) continue;
-			value = options[index]->get_value();
+			for (const auto& option : select->get_options()) {
+				if (!option->is_selected() || forms::is_disabled(*option)) continue;
+				Dictionary entry;
+				entry["name"] = String::utf8(name);
+				entry["value"] = option->get_value();
+				result.append(entry);
+			}
+			continue;
 		} else if (control == submitter) {
 			value = String::utf8(control->get_attr("value", ""));
 		} else {
@@ -187,6 +202,10 @@ Error HTMLFormElement::reset() {
 		if (auto* input = dynamic_cast<HTMLInputNode*>(node.get())) input->reset();
 		else if (auto* area = dynamic_cast<HTMLTextAreaNode*>(node.get())) area->editor.reset_value(area->get_default_value());
 		else if (auto* select = dynamic_cast<HTMLSelectNode*>(node.get())) select->reset();
+		else if (node->tag() == litehtml::_output_) {
+			const Ref<HTMLOutputElement> output = get_dom().make_element(node);
+			if (output.is_valid()) output->reset();
+		}
 	}
 	get_dom().form_state_changed(form);
 	return OK;
@@ -209,6 +228,25 @@ TypedArray<HTMLElement> HTMLSelectElement::get_options() const {
 	return result;
 }
 
+bool HTMLSelectElement::is_multiple() const { return has_attribute("multiple"); }
+void HTMLSelectElement::set_multiple(bool p_value) {
+	if (p_value) set_attribute("multiple", "");
+	else remove_attribute("multiple");
+}
+int64_t HTMLSelectElement::get_size() const {
+	const auto node = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element());
+	return node ? node->get_size() : 0;
+}
+void HTMLSelectElement::set_size(int64_t p_value) {
+	if (p_value >= 0 && p_value <= UINT32_MAX) set_attribute("size", String::num_int64(p_value));
+}
+TypedArray<HTMLElement> HTMLSelectElement::get_selected_options() const {
+	TypedArray<HTMLElement> result;
+	if (const auto node = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element())) {
+		for (const auto& option : node->get_options()) if (option->is_selected()) result.append(get_dom().make_element(option));
+	}
+	return result;
+}
 int64_t HTMLSelectElement::get_selected_index() const {
 	const auto select = std::dynamic_pointer_cast<HTMLSelectNode>(lock_element());
 	return select ? select->selected_index(select->get_options()) : -1;
@@ -265,4 +303,80 @@ void HTMLOptionElement::set_selected(bool p_value) {
 		option->set_selected(p_value);
 		get_dom().form_state_changed(option);
 	}
+}
+
+bool docrender::HTMLOutputNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode) const {
+	auto* target = dynamic_cast<HTMLOutputNode*>(&p_target);
+	if (!target) return false;
+	target->default_override = default_override;
+	if (default_override && target->children().empty()) {
+		litehtml::string text;
+		get_text(text);
+		auto children = litehtml::docrender_editor::create_text(target->get_document(), text.c_str(), true);
+		litehtml::docrender_editor::replace_children(*target, std::move(children));
+	}
+	return true;
+}
+
+String HTMLOutputElement::get_value() const { return get_text_content(); }
+void HTMLOutputElement::set_value(const String& p_value) {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	if (!node) return;
+	const auto previous_default = node->default_override;
+	if (!previous_default) node->default_override = get_value();
+	if (set_text_content(p_value) != OK) node->default_override = previous_default;
+}
+
+String HTMLOutputElement::get_default_value() const {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	return node && node->default_override ? *node->default_override : get_value();
+}
+
+void HTMLOutputElement::set_default_value(const String& p_value) {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	if (!node) return;
+	if (node->default_override) node->default_override = p_value;
+	else set_text_content(p_value);
+}
+
+void HTMLOutputElement::reset() {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	if (!node || !node->default_override) return;
+	if (set_text_content(*node->default_override) == OK) node->default_override.reset();
+}
+
+String HTMLOutputElement::get_name() const { return get_attribute("name"); }
+void HTMLOutputElement::set_name(const String& p_value) { set_attribute("name", p_value); }
+String HTMLOutputElement::get_html_for() const { return get_attribute("for"); }
+void HTMLOutputElement::set_html_for(const String& p_value) { set_attribute("for", p_value); }
+Ref<HTMLFormElement> HTMLOutputElement::get_form() const { return get_form_owner(); }
+TypedArray<HTMLElement> HTMLOutputElement::get_labels() const {
+	TypedArray<HTMLElement> result;
+	const auto node = lock_element();
+	if (node) for (const auto& label : forms::labels(*node)) result.append(get_dom().make_element(label));
+	return result;
+}
+
+TypedArray<HTMLElement> HTMLDataListElement::get_options() const { return query_selector_all("option"); }
+
+void HTMLDataListElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_options"), &HTMLDataListElement::get_options);
+}
+
+void HTMLOutputElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_form"), &HTMLOutputElement::get_form);
+	ClassDB::bind_method(D_METHOD("get_labels"), &HTMLOutputElement::get_labels);
+	ClassDB::bind_method(D_METHOD("reset"), &HTMLOutputElement::reset);
+	ClassDB::bind_method(D_METHOD("get_value"), &HTMLOutputElement::get_value);
+	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLOutputElement::set_value);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	ClassDB::bind_method(D_METHOD("get_default_value"), &HTMLOutputElement::get_default_value);
+	ClassDB::bind_method(D_METHOD("set_default_value", "value"), &HTMLOutputElement::set_default_value);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "default_value"), "set_default_value", "get_default_value");
+	ClassDB::bind_method(D_METHOD("get_name"), &HTMLOutputElement::get_name);
+	ClassDB::bind_method(D_METHOD("set_name", "value"), &HTMLOutputElement::set_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	ClassDB::bind_method(D_METHOD("get_html_for"), &HTMLOutputElement::get_html_for);
+	ClassDB::bind_method(D_METHOD("set_html_for", "value"), &HTMLOutputElement::set_html_for);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "html_for"), "set_html_for", "get_html_for");
 }

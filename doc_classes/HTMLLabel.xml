@@ -160,7 +160,7 @@
 		<method name="submit_form">
 			<return type="int" enum="Error" />
 			<param index="0" name="form" type="HTMLFormElement" />
-			<param index="1" name="submitter" type="HTMLButtonElement" default="null" />
+			<param index="1" name="submitter" type="HTMLElement" default="null" />
 			<description>
 				Submits a connected form in this label and emits [signal form_submitted] on success. An optional submitter must be an enabled submit button associated with the form. Returns [constant ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid argument.
 			</description>
@@ -220,9 +220,9 @@
 		<signal name="form_submitted">
 			<param index="0" name="form" type="HTMLFormElement" />
 			<param index="1" name="entries" type="Dictionary[]" />
-			<param index="2" name="submitter" type="HTMLButtonElement" />
+			<param index="2" name="submitter" type="HTMLElement" />
 			<description>
-				Emitted with the ordered entry dictionaries and the submit button, which may be [code]null[/code]. The game decides how to use the data.
+				Emitted for a valid submission with ordered entries and the submitter. The submitter is an [HTMLButtonElement], an [HTMLInputElement], or [code]null[/code].
 			</description>
 		</signal>
 		<signal name="form_validation_failed">

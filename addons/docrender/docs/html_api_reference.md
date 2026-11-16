@@ -53,13 +53,21 @@ DOM queries reflect successful edits immediately. Geometry requires layout. Afte
 
 The form, label, fieldset, legend, select, option, and optgroup elements expose typed handles. Forms expose `get_controls()`, `get_form_data()`, and `reset()`. For a connected form, `HTMLLabel.submit_form()` checks `required` and emits either `form_submitted` with an ordered array of name and value dictionaries or `form_validation_failed` with the first invalid control. The game handles submission. Reset buttons emit `form_reset`. [WHATWG form control infrastructure](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html)
 
-Text inputs, checkboxes, radios, hidden inputs, textareas, and single-select dropdowns are supported. Dropdowns use a CSS-styled trigger and a label-local custom menu. Use `select_changed` for user selections. Form transport, browser validation UI, multiple selection, and list boxes are outside the current API.
+Inputs support single-line text modes, numbers, range sliders, checkboxes, radios, hidden fields, and buttons. Text input suggestions use `<datalist>` with a local `list` ID. Suggestions follow edits in an eligible field. Press Down to open the list with the keyboard, Enter to accept, and Escape to dismiss. An output element restores its default text on form reset.
+
+A single-row select uses a dropdown. The `multiple` attribute or a `size` above one enables a list box. Multi-select submissions emit one ordered form entry per selected enabled option. Use `select_changed` for user actions. The `form_submitted` submitter argument is an `HTMLElement` handle. Scripts can check for `HTMLButtonElement` and `HTMLInputElement` to distinguish the two kinds of submitter.
 
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)
 
 ## Lists and preformatted text
 
 `HTMLPreElement` and `HTMLUListElement` expose the shared `HTMLElement` API. `HTMLOListElement` reflects `start`, `reversed`, and `type`. `HTMLLIElement` reflects `value` and the legacy `type` attribute. When `start` is absent, the property reads as `1`, and a reversed list starts numbering from its item count. `<aside>` uses `HTMLElement`. [WHATWG grouping content](https://html.spec.whatwg.org/multipage/grouping-content.html)
+
+## Sections, disclosure, and gauges
+
+DocRender exposes typed `HTMLArticleElement` and `HTMLSectionElement` handles for block sectioning content. The HTML standard exposes both as `HTMLElement`. Description lists, menu lists, quotes, and line and thematic breaks expose their corresponding reflected properties.
+
+Use `HTMLDetailsElement.open` to change disclosure state. A named group opens one disclosure at a time, and a closed disclosure keeps its DOM available to selectors. The first summary can be focused and activated by the pointer or keyboard. `HTMLProgressElement` and `HTMLMeterElement` expose normalized numeric values. A progress indicator with no value attribute is indeterminate and advances with the label's animation process mode.
 
 ## Tables
 

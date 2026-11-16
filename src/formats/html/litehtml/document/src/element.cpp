@@ -5,6 +5,7 @@
 #include "document.h"
 #include "render_item.h"
 #include "formats/html/layout/grid/litehtml_render_grid.h"
+#include "formats/html/elements/html_details_node.h"
 #include "render_flex.h"
 #include "render_inline.h"
 #include "render_table.h"
@@ -197,8 +198,12 @@ void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
 	if (css().get_display() == display_none) return;
 	if (css().get_display() == display_contents)
 	{
+		const bool folded = tag() == _details_ && !get_attr("open");
+		const auto summary = folded ? docrender::details_summary(*this) : ptr();
 		for (const auto& child : m_children)
-			child->append_render_items(parent_ri);
+		{
+			if (!folded || child == summary || is_generated_tag(child->tag())) child->append_render_items(parent_ri);
+		}
 	}
 	else if (auto item = create_render_item(parent_ri))
 	{

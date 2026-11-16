@@ -12,6 +12,8 @@
 #include "formats/html/elements/html_anchor_element.h"
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
+#include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
@@ -76,6 +78,18 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLParagraphElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLSpanElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLPreElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLDataListElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLOutputElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLDetailsElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLMeterElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLProgressElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLHRElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLBRElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLQuoteElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLMenuElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLDListElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLSectionElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLArticleElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLOListElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLUListElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLLIElement);
