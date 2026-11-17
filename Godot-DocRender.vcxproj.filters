@@ -655,6 +655,9 @@
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp">
       <Filter>Source Files\formats\markdown</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\remote_images.cpp">
+      <Filter>Source Files\formats</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\markdown\markdown_html.cpp">
       <Filter>Source Files\formats\markdown</Filter>
     </ClCompile>
@@ -1313,6 +1316,9 @@
     </ClInclude>
     <ClInclude Include="src\formats\markdown\markdown_document.h">
       <Filter>Header Files\formats\markdown</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\remote_images.h">
+      <Filter>Header Files\formats</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\latex\latex_document.h">
       <Filter>Header Files\formats\latex</Filter>

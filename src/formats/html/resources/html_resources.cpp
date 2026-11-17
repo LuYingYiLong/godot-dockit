@@ -1,4 +1,5 @@
 #include "html_resources.h"
+#include "formats/remote_images.h"
 
 #include "formats/html/markup/html_markup.h"
 #include "html_resource_paths.h"
@@ -240,6 +241,7 @@ namespace docrender {
 
 	String HTMLResources::resolve_image_source(std::string_view p_source) const {
 		const String source = String::utf8(p_source.data(), p_source.size()).strip_edges();
+		if (is_remote_image_url(source)) return source;
 		const String path = resolve_html_image_path(source, document_base.directory);
 		const int64_t fragment = source.find("#");
 		return !path.is_empty() && fragment >= 0 ? path + source.substr(fragment) : path;
@@ -272,35 +274,77 @@ namespace docrender {
 	}
 
 	Ref<Texture2D> HTMLResources::load_texture(const char* p_src, const char* p_css_base,
-		litehtml::css_image_orientation p_orientation) {
+		litehtml::css_image_orientation p_orientation, bool p_affects_layout) {
 		using orientation = litehtml::css_image_orientation;
-		const String source = String::utf8(p_src);
-		const String path = resolve_html_image_path(source, get_url_dir(p_css_base));
+		const String source = String::utf8(p_src).strip_edges();
+		const bool remote = is_remote_image_url(source);
+		const String path = remote ? remote_image_request_url(source) : resolve_html_image_path(source, get_url_dir(p_css_base));
 		if (path.is_empty()) return {};
+		Ref<Texture2D> remote_texture;
+		if (remote) {
+			if (const auto* cached = images.getptr(path)) remote_texture = *cached;
+			else {
+				const auto result = request_remote_image(path, remote_image_callback);
+				if (result.status == RemoteImageStatus::loading) {
+					(p_affects_layout && !recording_paint ? pending_layout_images : pending_paint_images).insert(path);
+				}
+				remote_texture = result.texture;
+				if (remote_texture.is_null()) return {};
+				images.insert(path, remote_texture);
+			}
+		}
 		if (p_orientation == orientation::from_image)
-			p_orientation = static_cast<orientation>(get_image_metadata(path).orientation);
+			p_orientation = remote ? orientation::identity : static_cast<orientation>(get_image_metadata(path).orientation);
 		else if (p_orientation == orientation::none)
 			p_orientation = orientation::identity;
 
 		const int64_t separator = source.find("#");
 		const String variant_key = String::num_int64(static_cast<int>(p_orientation)) + ":" + path;
+		const auto load_base = [&]() { return remote ? remote_texture : load_texture_file(path); };
 		const auto load_oriented = [&]() {
-			if (p_orientation == orientation::identity) return load_texture_file(path);
+			if (p_orientation == orientation::identity) return load_base();
 			if (const auto* cached = images.getptr(variant_key)) return *cached;
-			const auto texture = orient_texture(load_texture_file(path), p_orientation);
+			const auto texture = orient_texture(load_base(), p_orientation);
 			images.insert(variant_key, texture);
 			return texture;
 		};
 		if (separator < 0) return load_oriented();
 
 		const String fragment = decode_html_fragment(source.substr(separator + 1));
+		const auto selection = parse_image_fragment(fragment);
+		if (remote && !selection) return load_oriented();
 		// Include the path length so fragments cannot alias file names containing an escaped hash.
 		const String key = String::num_int64(path.length()) + "/" + variant_key + "#" + fragment;
 		if (const auto* cached = images.getptr(key)) return *cached;
 		Ref<Texture2D> texture;
-		if (const auto selection = parse_image_fragment(fragment)) texture = crop_texture(load_oriented(), *selection);
+		if (selection) texture = crop_texture(load_oriented(), *selection);
 		images.insert(key, texture);
 		return texture;
+	}
+
+	void HTMLResources::set_remote_image_callback(const Callable& p_callback) {
+		remote_image_callback = p_callback;
+	}
+
+	void HTMLResources::begin_image_layout() {
+		pending_layout_images.clear();
+	}
+
+	void HTMLResources::begin_image_paint() {
+		pending_paint_images.clear();
+		recording_paint = true;
+	}
+
+	void HTMLResources::end_image_paint() {
+		recording_paint = false;
+	}
+
+	HTMLResources::ImageUpdate HTMLResources::receive_remote_image(const String& p_url, const Ref<Texture2D>& p_texture) {
+		const bool layout = pending_layout_images.erase(p_url);
+		const bool paint = pending_paint_images.erase(p_url);
+		if (p_texture.is_null() || (!layout && !paint)) return ImageUpdate::none;
+		images.insert(p_url, p_texture);
+		return layout ? ImageUpdate::layout : paint ? ImageUpdate::paint : ImageUpdate::none;
 	}
 
 	Ref<Texture2D> load_html_image_file(const String& p_path) {

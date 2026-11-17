@@ -286,6 +286,7 @@ namespace docrender {
 
 	void LiteHTMLContainer::record(litehtml::document& p_document, const Vector2i& p_content_size,
 		const HTMLGeometryIndex& p_geometry, const Vector2& p_viewport_gutters) {
+		resources.begin_image_paint();
 		const litehtml::position bounds(0, 0, std::max(p_content_size.x, viewport_size.x),
 			std::max(p_content_size.y, viewport_size.y));
 		paint.begin(p_geometry, p_document.root_render().get(), [this](uint_ptr p_font, const String& p_text,
@@ -315,6 +316,7 @@ namespace docrender {
 			const auto font = p_element.parent()->css().get_font();
 			return font ? fonts.shape_text(font, p_text) : HTMLTextLayout{};
 		});
+		resources.end_image_paint();
 	}
 
 	uint_ptr LiteHTMLContainer::create_font(const font_description& p_description, const litehtml::document*,
@@ -450,7 +452,8 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool, css_image_orientation p_orientation) {
-		if (!svg_clip_only) resources.load_texture(p_src, p_css_base, p_orientation);
+		// Style computation preloads images even when none of their dimensions enter layout.
+		if (!svg_clip_only) resources.load_texture(p_src, p_css_base, p_orientation, false);
 	}
 
 	bool LiteHTMLContainer::is_image_available(const char* p_source, const char* p_base, css_image_orientation p_orientation) {

@@ -3307,8 +3307,8 @@ msgid ""
 msgstr "HTML [code]height[/code] 属性中的非负整数像素提示。属性缺失或值无效时返回 [code]0[/code]。CSS 可以覆盖该提示。"
 
 #. doc_classes/HTMLImageElement.xml
-msgid "The original [code]src[/code] attribute. Relative paths use the document's resource directory."
-msgstr "原始 [code]src[/code] 属性。相对路径基于文档的资源目录解析。"
+msgid "The original [code]src[/code] attribute. Relative paths use the document's resource directory. Absolute HTTP(S) image URLs load asynchronously."
+msgstr "原始 [code]src[/code] 属性。相对路径基于文档的资源目录解析。HTTP(S) 绝对图片地址会异步加载。"
 
 #. doc_classes/HTMLImageElement.xml
 msgid ""
@@ -3332,10 +3332,10 @@ msgstr ""
 
 #. doc_classes/HTMLImageElement.xml
 msgid ""
-"The selected Godot resource path, including any fragment, from the last successful layout. Empty "
-"before the first selection, when no source is selected, or for invalid or detached handles. A "
-"selected path can point to an unavailable image."
-msgstr "最近一次成功排版选中的 Godot 资源路径，包含图片片段。首次选图前、未选中来源、句柄失效或元素未插入时返回空字符串。选中的路径也可能指向不可用的图片。"
+"The selected resource path or HTTP(S) URL, including any fragment, from the last successful layout. "
+"Empty before the first selection, when no source is selected, or for invalid or detached handles. "
+"The selected source can still be loading or unavailable."
+msgstr "最近一次成功排版选中的资源路径或 HTTP(S) URL，包含图片片段。首次选图前、未选中来源、句柄失效或元素未插入时返回空字符串。选中的图片可能仍在加载或不可用。"
 
 #. doc_classes/HTMLImageElement.xml
 msgid ""
@@ -3346,8 +3346,8 @@ msgstr "用于求值宽度描述符的源 [code]sizes[/code] 属性。采用第�
 #. doc_classes/HTMLImageElement.xml
 msgid ""
 "The source [code]srcset[/code] attribute. Candidates accept width or pixel-density descriptors. "
-"URLs use the same local resource rules as [member src]."
-msgstr "源 [code]srcset[/code] 属性。候选支持宽度或像素密度描述符。URL 沿用 [member src] 的本地资源规则。"
+"URLs follow the rules for [member src]."
+msgstr "源 [code]srcset[/code] 属性。候选支持宽度或像素密度描述符。URL 沿用 [member src] 的规则。"
 
 #. doc_classes/HTMLElement.xml
 msgid ""

@@ -138,6 +138,7 @@
     <ClCompile Include="src\nodes\html_label_input.cpp" />
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
+    <ClCompile Include="src\formats\remote_images.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_html.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_render.cpp" />
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
@@ -312,6 +313,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\formats\markdown\markdown_document.h" />
+    <ClInclude Include="src\formats\remote_images.h" />
     <ClInclude Include="src\formats\latex\latex_document.h" />
     <ClInclude Include="src\formats\latex\latex_document_loader.h" />
     <ClInclude Include="src\formats\mermaid\mermaid_document.h" />

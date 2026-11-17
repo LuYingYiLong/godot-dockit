@@ -109,6 +109,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLTextAreaElement;
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
+	friend class MarkdownLabelCanvas;
 	friend class HTMLRange;
 	friend class HTMLAnimation;
 	friend class docrender::HTMLDOM;
@@ -152,6 +153,9 @@ class HTMLLayout : public godot::RefCounted {
 	void request_auto_content_update();
 	bool prepare_content_focus(const godot::Ref<HTMLElement>& p_element);
 	void set_content_visibility_callbacks(const godot::Callable& p_update, const godot::Callable& p_selection);
+	void set_image_layout_callback(const godot::Callable& p_callback);
+	static void remote_image_completed(const godot::String& p_url, const godot::Ref<godot::Texture2D>& p_texture,
+		uint64_t p_id, uint64_t p_version);
 	void invalidate_styles();
 	void queue_reflow();
 	static void reflow_after_edit(uint64_t p_id, uint64_t p_version);

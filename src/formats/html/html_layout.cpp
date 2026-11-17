@@ -237,6 +237,7 @@ struct HTMLLayout::State {
 	double animation_time = 0.0;
 	bool sampling_transitions = false;
 	Callable content_update_callback;
+	Callable image_layout_callback;
 	Callable content_selection_callback;
 	String error;
 	Error parse_error = OK;
@@ -772,6 +773,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 	try {
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
+		state->container->set_remote_image_callback(callable_mp_static(&HTMLLayout::remote_image_completed).bind(get_instance_id(), parse_version));
 		state->container->set_document_source_path(p_source_path);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->container->set_preferred_color_scheme(system_preference());
@@ -877,6 +879,7 @@ Error HTMLLayout::layout_viewport(const Vector2i& p_viewport_size, const Vector2
 Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_media_size,
 	const Vector2i& p_viewport_unit_size) {
 	using Update = State::Update;
+	state->container->begin_image_layout();
 	const auto& document = state->dom->get_document();
 	const double transition_time = animation_clock_time();
 	docrender::css::TransitionState::Snapshot before_transition;
@@ -1102,6 +1105,25 @@ void HTMLLayout::request_auto_content_update() {
 void HTMLLayout::set_content_visibility_callbacks(const Callable& p_update, const Callable& p_selection) {
 	state->content_update_callback = p_update;
 	state->content_selection_callback = p_selection;
+}
+
+void HTMLLayout::set_image_layout_callback(const Callable& p_callback) {
+	state->image_layout_callback = p_callback;
+}
+
+void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_id, uint64_t p_version) {
+	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_id)));
+	if (!layout || layout->parse_version != p_version || !layout->state->container) return;
+	auto& state = *layout->state;
+	const auto update = state.container->receive_remote_image(p_url, p_texture);
+	if (update == docrender::HTMLResources::ImageUpdate::none) return;
+	if (update == docrender::HTMLResources::ImageUpdate::paint) {
+		layout->repaint_input();
+		return;
+	}
+	if (state.pending_update == State::Update::NONE) state.pending_update = State::Update::LAYOUT;
+	if (state.image_layout_callback.is_valid()) state.image_layout_callback.call();
+	else layout->queue_reflow();
 }
 
 void HTMLLayout::record_paint() {

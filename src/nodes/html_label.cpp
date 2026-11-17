@@ -1678,10 +1678,12 @@ void HTMLLabel::poll_preferred_color_scheme() {
 	if (layout->update_preferred_color_scheme()) queue_refresh();
 }
 
-void HTMLLabel::queue_refresh() {
+void HTMLLabel::queue_refresh(bool p_image_only) {
 	hover_reflow = false;
 	hover_passes_remaining = HOVER_PASSES;
-	if (canvas && is_inside_tree() && !refresh_queued) {
+	if (!canvas || !is_inside_tree()) return;
+	image_refresh_only = p_image_only && (!refresh_queued || image_refresh_only);
+	if (!refresh_queued) {
 		refresh_queued = true;
 		callable_mp(this, &HTMLLabel::flush_queued_refresh).call_deferred();
 	}
@@ -1755,11 +1757,17 @@ void HTMLLabel::parse_pending_source() {
 	layout->set_transition_callback(callable_mp(this, &HTMLLabel::on_transition_frame));
 	layout->set_content_visibility_callbacks(callable_mp(this, &HTMLLabel::on_auto_content_update),
 		callable_mp(this, &HTMLLabel::get_content_selection_range));
+	layout->set_image_layout_callback(callable_mp(this, &HTMLLabel::on_image_layout_update));
 }
 
 void HTMLLabel::on_auto_content_update() {
 	layout_updated = true;
 	queue_refresh();
+}
+
+void HTMLLabel::on_image_layout_update() {
+	layout_updated = true;
+	queue_refresh(true);
 }
 
 void HTMLLabel::on_transition_frame(bool p_size_changed) {
@@ -1874,10 +1882,11 @@ void HTMLLabel::draw_viewport_gutters() {
 
 void HTMLLabel::refresh() {
 	refresh_queued = false;
+	const bool image_update = std::exchange(image_refresh_only, false);
 	if (!is_inside_tree()) {
 		return;
 	}
-	if (!hover_reflow && !interaction_styles_dirty) {
+	if (!image_update && !hover_reflow && !interaction_styles_dirty) {
 		canvas->cancel_click();
 	}
 	if (!pending_scroll_offset) {

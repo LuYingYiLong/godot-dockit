@@ -250,9 +250,9 @@ public:
 	int32_t get_layout_flush_interval_msec() const;
 	bool flush_pending_layout();
 	void request_local_image(const String& p_uri);
-	void request_remote_image(const String& p_uri);
-	void on_image_request_completed(int32_t p_result, int32_t p_response_code, const PackedStringArray& p_headers, const PackedByteArray& p_body, const String& p_uri, uint64_t p_request_id);
 	void refresh_image_content();
+	static void remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_canvas);
+	static void refresh_after_html_image(uint64_t p_canvas);
 	void update_internal_processing();
 	bool process_pending_local_images();
 	bool update_gif_animations(double p_delta);

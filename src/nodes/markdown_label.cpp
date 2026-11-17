@@ -1,4 +1,5 @@
 #include "markdown_label.h"
+#include "formats/remote_images.h"
 
 #include "formats/html/markup/html_markup.h"
 #include "formats/html/resources/html_resource_paths.h"
@@ -557,10 +558,6 @@ namespace {
 	static std::vector<String> s_pending_local_image_uris;
 	static int32_t s_live_image_canvas_count = 0;
 
-	static bool is_remote_image_uri(const String& p_uri) {
-		return p_uri.begins_with("http://") || p_uri.begins_with("https://");
-	}
-
 	static String image_uri_without_query(const String& p_uri) {
 		String clean_uri = p_uri;
 		const int64_t query_pos = clean_uri.find("?");
@@ -624,17 +621,6 @@ namespace {
 		}
 	}
 
-	static Ref<Texture2D> load_gif_texture_from_buffer(const PackedByteArray& p_body) {
-		if (!has_gif_plugin_support()) {
-			return Ref<Texture2D>();
-		}
-
-		Variant result = ClassDB::class_call_static("GIFTexture", "load_from_buffer", p_body);
-		Ref<Resource> resource = result;
-		Ref<Texture2D> texture = resource;
-		return texture;
-	}
-
 	static bool is_animated_gif_texture(const Ref<Texture2D>& p_texture) {
 		if (p_texture.is_null()) {
 			return false;
@@ -648,61 +634,27 @@ namespace {
 		return static_cast<int32_t>(texture_object->call("get_frame_count")) > 1;
 	}
 
-	static Ref<Texture2D> decode_image_texture_from_buffer(const String& p_uri, const PackedByteArray& p_body) {
-		if (p_body.is_empty()) {
-			return Ref<Texture2D>();
-		}
-
-		if (is_gif_image_uri(p_uri)) {
-			return load_gif_texture_from_buffer(p_body);
-		}
-
-		const String clean_uri = image_uri_without_query(p_uri).to_lower();
-		std::vector<int32_t> decode_order;
-		if (clean_uri.ends_with(".png")) {
-			decode_order = { 0, 1, 2 };
-		}
-		else if (clean_uri.ends_with(".jpg") || clean_uri.ends_with(".jpeg")) {
-			decode_order = { 1, 0, 2 };
-		}
-		else if (clean_uri.ends_with(".webp")) {
-			decode_order = { 2, 0, 1 };
-		}
-		else {
-			decode_order = { 0, 1, 2 };
-		}
-
-		for (int32_t decode_type : decode_order) {
-			Ref<Image> image;
-			image.instantiate();
-			Error error = ERR_UNAVAILABLE;
-			if (decode_type == 0) {
-				error = image->load_png_from_buffer(p_body);
-			}
-			else if (decode_type == 1) {
-				error = image->load_jpg_from_buffer(p_body);
-			}
-			else {
-				error = image->load_webp_from_buffer(p_body);
-			}
-
-			if (error == OK && image.is_valid() && !image->is_empty()) {
-				return ImageTexture::create_from_image(image);
-			}
-		}
-
-		if (has_gif_plugin_support()) {
-			return load_gif_texture_from_buffer(p_body);
-		}
-
-		return Ref<Texture2D>();
-	}
-
 	static MarkdownImageCacheEntry load_image_texture(const String& p_uri, MarkdownLabelCanvas* p_canvas) {
 		if (p_uri.is_empty()) {
 			MarkdownImageCacheEntry entry;
 			entry.status = MARKDOWN_IMAGE_FAILED;
 			entry.error = "empty_uri";
+			return entry;
+		}
+
+		if (docrender::is_remote_image_url(p_uri)) {
+			const auto key = docrender::remote_image_request_url(p_uri);
+			if (const auto* cached = s_image_cache.getptr(key)) return *cached;
+			const auto callback = p_canvas ?
+				callable_mp_static(&MarkdownLabelCanvas::remote_image_completed).bind(p_canvas->get_instance_id()) : Callable();
+			const auto image = docrender::request_remote_image(p_uri, callback);
+			using Status = docrender::RemoteImageStatus;
+			MarkdownImageCacheEntry entry;
+			entry.status = image.status == Status::ready ? MARKDOWN_IMAGE_READY :
+				image.status == Status::loading ? MARKDOWN_IMAGE_LOADING : MARKDOWN_IMAGE_FAILED;
+			entry.texture = image.texture;
+			entry.error = image.error;
+			if (entry.texture.is_valid()) s_image_cache.insert(key, entry);
 			return entry;
 		}
 
@@ -733,23 +685,6 @@ namespace {
 			return entry;
 		}
 
-		if (is_remote_image_uri(p_uri)) {
-			MarkdownImageCacheEntry entry;
-			if (is_gif_image_uri(p_uri) && !has_gif_plugin_support()) {
-				entry.status = MARKDOWN_IMAGE_FAILED;
-				entry.error = "gif_plugin_missing";
-				s_image_cache[p_uri] = entry;
-				return entry;
-			}
-
-			entry.status = MARKDOWN_IMAGE_LOADING;
-			s_image_cache[p_uri] = entry;
-			register_image_watcher(p_uri, p_canvas);
-			if (p_canvas != nullptr) {
-				p_canvas->request_remote_image(p_uri);
-			}
-			return entry;
-		}
 
 		MarkdownImageCacheEntry entry;
 		if (is_gif_image_uri(p_uri) && !has_gif_plugin_support()) {
@@ -1282,6 +1217,7 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 
 String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) const {
 	if (p_html) {
+		if (docrender::is_remote_image_url(p_uri)) return p_uri;
 		const String path = docrender::resolve_html_image_path(p_uri, label ? label->get_html_base_dir() : String("res://"));
 		if (path.is_empty()) return {};
 		const bool available = ResourceLoader::get_singleton()->exists(path, "Texture2D") ||
@@ -1467,65 +1403,24 @@ void MarkdownLabelCanvas::request_local_image(const String& p_uri) {
 	update_internal_processing();
 }
 
-void MarkdownLabelCanvas::request_remote_image(const String& p_uri) {
-	if (p_uri.is_empty() || !s_image_cache.has(p_uri) || s_image_cache[p_uri].status != MARKDOWN_IMAGE_LOADING) {
-		return;
-	}
-
-	HTTPRequest* request = memnew(HTTPRequest);
-	request->set_name("_MarkdownImageRequest");
-	request->set_use_threads(true);
-	request->set_timeout(12.0);
-	request->set_body_size_limit(8 * 1024 * 1024);
-	request->set_max_redirects(8);
-	const uint64_t request_id = request->get_instance_id();
-	request->connect("request_completed", callable_mp(this, &MarkdownLabelCanvas::on_image_request_completed).bind(p_uri, request_id));
-	add_child(request, false, Node::INTERNAL_MODE_BACK);
-
-	const Error error = request->request(p_uri);
-	if (error != OK) {
-		MarkdownImageCacheEntry entry;
-		entry.status = MARKDOWN_IMAGE_FAILED;
-		entry.error = "request_start_failed";
-		s_image_cache[p_uri] = entry;
-		request->queue_free();
-		notify_image_watchers(p_uri);
-	}
-	update_internal_processing();
-}
-
-void MarkdownLabelCanvas::on_image_request_completed(int32_t p_result, int32_t p_response_code, const PackedStringArray& p_headers, const PackedByteArray& p_body, const String& p_uri, uint64_t p_request_id) {
-	(void)p_headers;
-
-	MarkdownImageCacheEntry entry;
-	if (p_result == HTTPRequest::RESULT_SUCCESS && p_response_code >= 200 && p_response_code < 300) {
-		Ref<Texture2D> texture = decode_image_texture_from_buffer(p_uri, p_body);
-		if (texture.is_valid()) {
-			entry.status = MARKDOWN_IMAGE_READY;
-			entry.texture = texture;
-		}
-		else {
-			entry.status = MARKDOWN_IMAGE_FAILED;
-			entry.error = "decode_failed";
-		}
-	}
-	else {
-		entry.status = MARKDOWN_IMAGE_FAILED;
-		entry.error = "request_failed";
-	}
-
-	s_image_cache[p_uri] = entry;
-	Object* request_object = ObjectDB::get_instance(p_request_id);
-	HTTPRequest* request = Object::cast_to<HTTPRequest>(request_object);
-	if (request != nullptr) {
-		request->queue_free();
-	}
-	notify_image_watchers(p_uri);
-	update_internal_processing();
-}
-
 void MarkdownLabelCanvas::refresh_image_content() {
+	layout_prefix_reuse_requested = false;
 	mark_layout_dirty();
+}
+
+void MarkdownLabelCanvas::remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_canvas) {
+	auto* canvas = Object::cast_to<MarkdownLabelCanvas>(ObjectDB::get_instance(ObjectID(p_canvas)));
+	if (!canvas) return;
+	if (p_texture.is_valid() && !s_image_cache.has(p_url)) {
+		s_image_cache.insert(p_url, {MARKDOWN_IMAGE_READY, p_texture, {}, 0.0});
+	}
+	canvas->refresh_image_content();
+}
+
+void MarkdownLabelCanvas::refresh_after_html_image(uint64_t p_canvas) {
+	if (auto* canvas = Object::cast_to<MarkdownLabelCanvas>(ObjectDB::get_instance(ObjectID(p_canvas)))) {
+		canvas->refresh_image_content();
+	}
 }
 
 bool MarkdownLabelCanvas::process_pending_local_images() {
@@ -2030,6 +1925,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 			html->layout_embedded_block(Vector2i(std::max(1, static_cast<int32_t>(p_width)), html_height)) != OK) {
 			return {};
 		}
+		html->set_image_layout_callback(callable_mp_static(&MarkdownLabelCanvas::refresh_after_html_image).bind(get_instance_id()));
 		return html;
 	};
 	HashMap<String, int32_t> footnote_numbers;
@@ -3322,12 +3218,6 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	}
 	if (p_what == NOTIFICATION_RESIZED || p_what == NOTIFICATION_THEME_CHANGED) {
 		mark_layout_dirty();
-	}
-
-	if (p_what == NOTIFICATION_PREDELETE) {
-		s_image_watchers.clear();
-		s_pending_local_image_uris.clear();
-		s_image_cache.clear();
 	}
 
 	if (p_what == NOTIFICATION_MOUSE_EXIT) {

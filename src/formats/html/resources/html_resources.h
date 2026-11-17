@@ -8,6 +8,8 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/font_file.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
+#include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
 #include <optional>
@@ -31,6 +33,10 @@ namespace docrender {
 		godot::HashMap<godot::String, godot::Ref<godot::Texture2D>> images;
 		godot::HashMap<godot::String, godot::Ref<godot::FontFile>> fonts;
 		godot::HashMap<godot::String, HTMLImageMetadata> image_metadata;
+		godot::HashSet<godot::String> pending_layout_images;
+		godot::HashSet<godot::String> pending_paint_images;
+		godot::Callable remote_image_callback;
+		bool recording_paint = false;
 		int stylesheet_reads = 0;
 
 		const HTMLImageMetadata& get_image_metadata(const godot::String& p_path);
@@ -49,6 +55,12 @@ namespace docrender {
 		const HTMLResourceBase& get_document_base() const { return document_base; }
 		const HTMLResourceBase& get_fallback_base() const { return fallback_base; }
 		void reset_stylesheet_reads();
+		void set_remote_image_callback(const godot::Callable& p_callback);
+		void begin_image_layout();
+		void begin_image_paint();
+		void end_image_paint();
+		enum class ImageUpdate { none, paint, layout };
+		ImageUpdate receive_remote_image(const godot::String& p_url, const godot::Ref<godot::Texture2D>& p_texture);
 		void import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base);
 		godot::String resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const;
 		std::optional<godot::String> get_svg_clip_source(const godot::String& p_path) const;
@@ -56,7 +68,8 @@ namespace docrender {
 		bool is_vector_image(const char* p_src, const char* p_css_base) const; // 判断本地图片是否为 SVG
 		double get_image_dpi(const char* p_src, const char* p_css_base); // 获取导入保存或从源图片读取的 DPI
 		godot::Ref<godot::Texture2D> load_texture(const char* p_src, const char* p_css_base,
-			litehtml::css_image_orientation p_orientation = litehtml::css_image_orientation::from_image);
+			litehtml::css_image_orientation p_orientation = litehtml::css_image_orientation::from_image,
+			bool p_affects_layout = true);
 		godot::Ref<godot::FontFile> load_font(const char* p_src, const char* p_css_base);
 	};
 }

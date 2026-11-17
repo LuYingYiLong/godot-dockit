@@ -46,6 +46,11 @@ namespace docrender {
 		godot::String resolve_image_source(std::string_view p_source) const {
 			return resources.resolve_image_source(p_source);
 		}
+		void set_remote_image_callback(const godot::Callable& p_callback) { resources.set_remote_image_callback(p_callback); }
+		void begin_image_layout() { resources.begin_image_layout(); }
+		HTMLResources::ImageUpdate receive_remote_image(const godot::String& p_url, const godot::Ref<godot::Texture2D>& p_texture) {
+			return resources.receive_remote_image(p_url, p_texture);
+		}
 		godot::Ref<godot::Texture2D> video_poster(const char* p_source) {
 			return p_source ? resources.load_texture(p_source, nullptr) : godot::Ref<godot::Texture2D>();
 		}
