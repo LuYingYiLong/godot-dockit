@@ -1067,12 +1067,22 @@ namespace docrender {
 		return visible.has_area();
 	}
 
-	void HTMLGeometryIndex::rebuild(const std::shared_ptr<render_item>& p_root, const Rect2& p_viewport) {
+	void HTMLGeometryIndex::rebuild(const std::shared_ptr<render_item>& p_root, const Rect2& p_viewport,
+		const std::vector<std::shared_ptr<render_item>>& p_top_layer) {
 		clear();
 		viewport = p_viewport;
 		if (p_root) {
 			index(p_root, nullptr, Transform2D(), false, viewport, viewport, {}, nullptr);
 		}
+		top_layer = !p_top_layer.empty();
+		indexing_top_layer = true;
+		for (const auto& holder : p_top_layer) {
+			for (const auto& child : holder->children()) {
+				const Rect2 box(Vector2(), viewport.size);
+				index(child, nullptr, Transform2D(0, viewport.position), true, box, box, {}, nullptr);
+			}
+		}
+		indexing_top_layer = false;
 	}
 
 	namespace {
@@ -1119,6 +1129,7 @@ namespace docrender {
 		element_blending = false;
 		backdrop_filtering = false;
 		scrollbars = false;
+		top_layer = false;
 	}
 
 	const HTMLGeometryIndex::ElementGeometry* HTMLGeometryIndex::find_element(const element* p_element) const {
@@ -1148,7 +1159,7 @@ namespace docrender {
 		const bool preserves = css.preserves_3d();
 		if (fixed) p_flattened_depth.reset();
 		const bool fixed_subtree = p_viewport_fixed_subtree || fixed;
-		HTMLPlaneTransform matrix = fixed ? HTMLPlaneTransform() : p_parent_matrix;
+		HTMLPlaneTransform matrix = fixed ? HTMLPlaneTransform(Transform2D(0, indexing_top_layer ? viewport.position : Vector2())) : p_parent_matrix;
 		Rect2 scrollport = fixed ? Rect2(Vector2(), viewport.size) : p_scrollport;
 		Vector2 sticky_offset = fixed ? Vector2() : p_sticky_offset;
 		position::vector boxes;

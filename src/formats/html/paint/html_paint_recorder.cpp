@@ -1262,8 +1262,9 @@ void fragment() {
 		return excluded == excluded_selection.end() || excluded->x > p_from || excluded->y < p_to;
 	}
 
-	HTMLSelectionPoint HTMLPaintRecorder::selection_point_at(const Vector2& p_point, element::ptr p_target) const {
-		HTMLSelectionPoint result{ hit_test_text(p_point) };
+	HTMLSelectionPoint HTMLPaintRecorder::selection_point_at(const Vector2& p_point, element::ptr p_target,
+		const element* p_scope) const {
+		HTMLSelectionPoint result{ hit_test_text(p_point, p_scope) };
 		const auto scope_at = [&](const element& p_element) {
 			const auto found = selection_scopes.find(&p_element);
 			return found == selection_scopes.end() ? Vector2i() : found->second;
@@ -1312,7 +1313,29 @@ void fragment() {
 		return false;
 	}
 
-	int64_t HTMLPaintRecorder::hit_test_text(const Vector2& p_point) const {
+	namespace {
+		bool text_belongs_to(const element* p_owner, const element& p_scope) {
+			for (auto node = p_owner ? p_owner->shared_from_this() : nullptr; node; node = node->parent()) {
+				if (node.get() == &p_scope) return true;
+				if (const auto* tag = dynamic_cast<const html_tag*>(node.get()); tag && tag->has_pseudo_class(litehtml::_id("modal")))
+					return false;
+			}
+			return false;
+		}
+	}
+
+	Vector2i HTMLPaintRecorder::text_range_in(const element& p_scope) const {
+		Vector2i offsets(plain_text.length(), 0);
+		for (const TextRun& run : text_runs) {
+			if (run.selectable && text_belongs_to(run.selection_owner, p_scope)) {
+				offsets.x = std::min<int64_t>(offsets.x, run.offset);
+				offsets.y = std::max<int64_t>(offsets.y, run.offset + run.length);
+			}
+		}
+		return offsets.x < offsets.y ? offsets : Vector2i();
+	}
+
+	int64_t HTMLPaintRecorder::hit_test_text(const Vector2& p_point, const element* p_scope) const {
 		const TextRun* closest = nullptr;
 		real_t best_y = std::numeric_limits<real_t>::infinity();
 		real_t best_x = best_y;
@@ -1320,6 +1343,7 @@ void fragment() {
 		real_t bottom = -best_y;
 		for (const TextRun& run : text_runs) {
 			if (!run.visible_rect.has_area()) continue;
+			if (p_scope && !text_belongs_to(run.selection_owner, *p_scope)) continue;
 			const Rect2& rect = run.visible_rect;
 			const Vector2 end = rect.get_end();
 			top = std::min(top, rect.position.y);
@@ -1349,6 +1373,10 @@ void fragment() {
 				best_y = dy;
 				best_x = dx;
 			}
+		}
+		if (p_scope && (p_point.y < top || p_point.y > bottom)) {
+			const Vector2i range = text_range_in(*p_scope);
+			return p_point.y < top ? range.x : range.y;
 		}
 		if (!closest || p_point.y < top) {
 			return 0;

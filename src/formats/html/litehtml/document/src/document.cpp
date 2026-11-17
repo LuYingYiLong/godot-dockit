@@ -517,6 +517,13 @@ pixel_t document::render( pixel_t max_width, render_type rt )
 			m_size.height	= 0;
 			m_root_render->calc_document_size(m_size);
 		}
+		for (auto& layer : m_top_layer_render) {
+			if (rt != render_fixed_only) {
+				layer->render(0, 0, cb_context, nullptr);
+				layer->fetch_positioned();
+			}
+			layer->render_positioned(rt);
+		}
 	}
 	return ret;
 }
@@ -526,6 +533,9 @@ void document::draw( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip )
 	if(m_root && m_root_render)
 	{
 		m_root_render->paint_group(hdc, x, y, clip, true);
+		for (const auto& layer : m_top_layer_render) {
+			for (const auto& item : layer->children()) item->paint_group(hdc, 0, 0, clip, true);
+		}
 	}
 }
 

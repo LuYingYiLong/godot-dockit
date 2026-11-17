@@ -464,6 +464,26 @@ article, aside, footer, header, hgroup, main, nav, search, section
 }
 
 details, summary { display: block; }
+dialog:not([open]) { display: none; }
+dialog {
+	position: absolute;
+	inset-inline: 0;
+	width: fit-content;
+	height: fit-content;
+	margin: auto;
+	border: solid;
+	padding: 1em;
+	background: Canvas;
+	color: CanvasText;
+}
+dialog:modal {
+	position: fixed;
+	inset-block: 0;
+	max-width: calc(100% - 6px - 2em);
+	max-height: calc(100% - 6px - 2em);
+	overflow: auto;
+}
+dialog::backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.1); }
 details > summary:first-of-type { display: list-item; list-style: disclosure-closed inside; }
 details:open > summary:first-of-type { list-style-type: disclosure-open; }
 details:not(:has(> summary))::before { display: block; content: "▸ Details"; }

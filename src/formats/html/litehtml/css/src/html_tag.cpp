@@ -196,6 +196,20 @@ litehtml::element::ptr litehtml::html_tag::select_one( const css_selector& selec
 bool html_tag::apply_auxiliary_pseudo(int match, const css_selector& selector,
 	const docrender::css::CascadePriority& priority)
 {
+	if (match & select_match_with_backdrop)
+	{
+		if (!has_pseudo_class(_id("modal"))) return true;
+		if (!m_auxiliary_pseudos) m_auxiliary_pseudos = std::make_unique<auxiliary_pseudo_styles>();
+		auto& backdrop = m_auxiliary_pseudos->backdrop;
+		if (!backdrop)
+		{
+			backdrop = std::make_shared<html_tag>(get_document());
+			backdrop->set_tagName("-tag-backdrop");
+			backdrop->parent(shared_from_this());
+		}
+		backdrop->m_style.combine(*selector.m_style, priority);
+		return true;
+	}
 	if (!(match & (select_match_with_placeholder | select_match_with_selection))) return false;
 	if (match & select_match_with_placeholder)
 	{
@@ -322,6 +336,11 @@ void litehtml::html_tag::compute_styles(bool recursive)
 		doc->container()->report_css_diagnostic(diagnostic, this);
 
 	m_css.compute(this, doc);
+	if (has_pseudo_class(_id("modal"))) {
+		m_css.set_position(element_position_fixed);
+		m_css.set_float(float_none);
+		if (m_css.get_display() == display_inline || m_css.get_display() == display_contents) m_css.set_display(display_block);
+	}
 	m_content_alternative.reset();
 	if (const auto* image = m_css.get_content_image()) {
 		if (!m_content_image) m_content_image = std::make_unique<css_replaced_image>();
@@ -331,6 +350,7 @@ void litehtml::html_tag::compute_styles(bool recursive)
 	}
 	if (m_auxiliary_pseudos)
 	{
+		if (const auto& backdrop = m_auxiliary_pseudos->backdrop) backdrop->compute_styles(false);
 		const auto resolve = [&](style& declarations) {
 			declarations.resolve_cascade(*this, true);
 			for (const auto& diagnostic : declarations.get_computed_diagnostics())

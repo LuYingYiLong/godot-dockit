@@ -8,6 +8,7 @@
 #include "formats/html/elements/html_output_node.h"
 #include "formats/html/elements/html_ruby_node.h"
 #include "formats/html/elements/html_details_node.h"
+#include "formats/html/elements/html_dialog_node.h"
 #include "formats/html/css/css_animation_state.h"
 #include "formats/html/css/css_transition_state.h"
 
@@ -162,6 +163,7 @@ namespace docrender {
 		const std::string_view tag(p_tag);
 		if (tag == "ruby") return std::make_shared<HTMLRubyNode>(p_document);
 		if (tag == "details") return std::make_shared<HTMLDetailsNode>(p_document);
+		if (tag == "dialog") return std::make_shared<HTMLDialogNode>(p_document);
 		if (tag == "output") return std::make_shared<HTMLOutputNode>(p_document);
 		if (tag == "template") return dom.create_template_node(p_document);
 		if (tag == "video") return std::make_shared<HTMLVideoNode>(p_document);

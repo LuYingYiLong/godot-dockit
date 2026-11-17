@@ -205,9 +205,11 @@ namespace docrender {
 		const godot::String& get_accessible_text() const { return accessible_text; }
 		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 		bool has_selectable_text(int64_t p_from, int64_t p_to) const;
-		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target) const;
+		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target,
+			const litehtml::element* p_scope = nullptr) const;
 		const auto& get_auto_content_text() const { return auto_content_text; }
-		int64_t hit_test_text(const godot::Vector2& p_point) const;
+		int64_t hit_test_text(const godot::Vector2& p_point, const litehtml::element* p_scope = nullptr) const;
+		godot::Vector2i text_range_in(const litehtml::element& p_scope) const;
 		bool hit_test_selectable_text(const godot::Vector2& p_point, const litehtml::element& p_target, bool* r_text_hit = nullptr) const;
 		godot::TypedArray<godot::Rect2> get_selection_rects(int64_t p_from, int64_t p_to) const;
 

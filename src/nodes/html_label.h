@@ -3,6 +3,7 @@
 #include "formats/html/html_document.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_audio_element.h"
+#include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_video_element.h"
 #include "formats/html/text/html_text_selection.h"
 
@@ -147,7 +148,7 @@ class HTMLLabelCanvas : public godot::Control {
 	void update_ime();
 	void close_ime();
 	void on_ime_update();
-	void set_focused_element(const godot::Ref<HTMLElement>& p_button, bool p_keyboard = false);
+	void set_focused_element(const godot::Ref<HTMLElement>& p_button, bool p_keyboard = false, bool p_reveal = true);
 	void set_element_pseudo(const godot::Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled);
 	void clear_tab_entry();
 	void focus_tab_endpoint(bool p_backward);
@@ -185,6 +186,7 @@ public:
 private:
 	friend class HTMLLabelCanvas;
 	friend class HTMLAudioElement;
+	friend class HTMLDialogElement;
 	friend class HTMLVideoElement;
 
 	godot::Ref<HTMLDocument> document;
@@ -355,6 +357,25 @@ private:
 	void on_node_selection_changed();
 	std::optional<godot::Vector2> get_hit_document_position(const godot::Vector2& p_position) const;
 	void source_changed();
+	struct DialogFocus {
+		godot::Ref<HTMLDialogElement> dialog;
+		godot::Ref<HTMLElement> previous;
+		godot::Ref<HTMLDialogElement> previous_modal;
+		godot::ObjectID previous_control;
+		bool modal = false;
+		bool keyboard = false;
+		bool pending = true;
+	};
+	std::vector<DialogFocus> dialog_focus;
+	std::vector<std::pair<godot::Ref<HTMLDialogElement>, godot::String>> closed_dialogs;
+	godot::Ref<HTMLDialogElement> focused_modal;
+	bool dialog_escape_held = false;
+	void remember_dialog_focus(const godot::Ref<HTMLDialogElement>& p_dialog, bool p_modal);
+	void on_dialog_opened();
+	void sync_dialog_focus(bool p_has_viewport);
+	bool handle_dialog_escape(const godot::InputEventKey& p_key);
+	void queue_dialog_closed(const godot::Ref<HTMLDialogElement>& p_dialog, const godot::String& p_value);
+	void emit_dialog_closures();
 	void document_changed(uint64_t p_document_id);
 	void parse_pending_source();
 	void on_layout_edited();

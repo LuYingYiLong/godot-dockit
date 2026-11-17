@@ -35,6 +35,8 @@ namespace litehtml {
 		static void set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size); // 设置视口百分比单位的参考尺寸
 		static void compute_styles(document& p_document);							// 按文档顺序更新计算样式与计数器
 		static void rebuild_render_tree(document& p_document);						// 用现有元素和样式重新建立渲染树
+		static void push_modal(document& p_document, const element::ptr& p_element); // 将对话框加入文档顶层
+		static void prune_modals(document& p_document); // 移除已关闭或离开文档的对话框
 		static void remember_content_sizes(document& p_document);					// 记录参加排版的元素的自动固有尺寸
 		static void prune_unused_fonts(document& p_document);						// 回收当前文档和渲染树均未引用的字体
 		static ContainerUpdate measure_containers(document& p_document);			// 更新容器内容盒尺寸并检测查询和单位变化

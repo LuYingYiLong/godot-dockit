@@ -64,6 +64,7 @@ namespace docrender {
 
 class HTMLAudioElement;
 class HTMLVideoElement;
+class HTMLDialogElement;
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
@@ -73,6 +74,16 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLImageElement;
 	friend class HTMLAudioElement;
 	friend class HTMLVideoElement;
+	friend class HTMLDialogElement;
+	godot::ObjectID dialog_host;
+	void push_modal(const std::shared_ptr<litehtml::element>& p_element);
+	std::shared_ptr<litehtml::element> top_modal_node() const;
+	godot::Ref<HTMLDialogElement> top_modal() const;
+	godot::Vector2i modal_text_range() const;
+	bool allows_modal_interaction(const litehtml::element& p_element) const;
+	bool allows_modal_interaction(const godot::Ref<HTMLElement>& p_element) const;
+	godot::Ref<HTMLElement> dialog_focus_target(const godot::Ref<HTMLDialogElement>& p_dialog) const;
+	void rebuild_document_geometry(const godot::Vector2i& p_viewport_size, bool p_resolve_sticky = true);
 	godot::ObjectID video_host;
 	godot::TypedArray<HTMLVideoElement> video_elements() const;
 	godot::PackedStringArray video_paths(const HTMLVideoElement& p_element) const;

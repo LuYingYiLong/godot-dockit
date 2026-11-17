@@ -60,6 +60,7 @@ void HTMLLabel::submit_from_text(const Ref<HTMLElement>& p_element) {
 }
 
 bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
+	if (!layout->allows_modal_interaction(p_element)) return false;
 	if (!layout->is_focusable(p_element)) {
 		if (!layout->is_element_connected(p_element)) return false;
 		const Ref<HTMLLabelElement> label = p_element;

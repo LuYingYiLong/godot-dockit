@@ -463,6 +463,7 @@ namespace litehtml {
 		auto& doc = *p_document;
 		const auto& root = doc.m_root;
 		doc.m_root_render.reset();
+		doc.m_top_layer_render.clear();
 		doc.m_tabular_elements.clear();
 		doc.m_fixed_boxes.clear();
 		doc.m_size = {};
@@ -555,14 +556,56 @@ namespace litehtml {
 			clear_render_items(clear_render_items, *doc.m_root);
 		}
 		doc.m_root_render.reset();
+		doc.m_top_layer_render.clear();
 		doc.m_tabular_elements.clear();
 		doc.m_fixed_boxes.clear();
 		doc.m_root_render = doc.m_root->create_render_item(nullptr);
+		for (const auto& entry : doc.m_top_layer) {
+			const auto dialog = std::dynamic_pointer_cast<html_tag>(entry.lock());
+			if (!dialog) continue;
+			bool hidden = false;
+			for (auto node = element::ptr(dialog); node; node = node->parent()) {
+				hidden |= node->css().get_display() == display_none;
+			}
+			if (hidden) continue;
+			// Each synthetic containing block is independent of the document's render ancestry.
+			const auto viewport = std::make_shared<html_tag>(doc.m_root, "display:block; width:100%; height:100%; direction:ltr");
+			auto holder = viewport->create_render_item(nullptr);
+			if (const auto backdrop = dialog->backdrop(); backdrop && backdrop->css().get_display() != display_none) {
+				if (auto box = backdrop->create_render_item(holder)) holder->add_child(box);
+			}
+			if (auto box = dialog->create_render_item(holder)) holder->add_child(box);
+			doc.m_top_layer_render.push_back(std::move(holder));
+		}
 		doc.fix_tables_layout();
 		if (doc.m_root_render) {
 			trim_white_space(*doc.m_root_render);
 			doc.m_root_render = doc.m_root_render->init();
 		}
+		for (auto& layer : doc.m_top_layer_render) {
+			trim_white_space(*layer);
+			layer = layer->init();
+		}
+	}
+
+	void docrender_editor::push_modal(document& doc, const element::ptr& p_element) {
+		p_element->set_pseudo_class(_id("modal"), true);
+		doc.m_top_layer.emplace_back(p_element);
+	}
+
+	void docrender_editor::prune_modals(document& doc) {
+		auto& layer = doc.m_top_layer;
+		layer.erase(std::remove_if(layer.begin(), layer.end(), [&](const auto& candidate) {
+			const auto element = candidate.lock();
+			if (!element) return true;
+			if (element->get_attr("open")) {
+				for (auto node = element; node; node = node->parent()) {
+					if (node == doc.m_root) return false;
+				}
+			}
+			element->set_pseudo_class(_id("modal"), false);
+			return true;
+		}), layer.end());
 	}
 
 	bool docrender_editor::set_attribute(element& p_element, const char* p_name, const char* p_value) {

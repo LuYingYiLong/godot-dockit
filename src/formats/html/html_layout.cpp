@@ -1,5 +1,7 @@
 #include "html_layout.h"
 #include "elements/html_audio_element.h"
+#include "elements/html_dialog_element.h"
+#include "elements/html_dialog_node.h"
 #include "elements/html_video_node.h"
 #include <godot_cpp/classes/audio_stream_mp3.hpp>
 #include <godot_cpp/classes/audio_stream_ogg_vorbis.hpp>
@@ -274,6 +276,10 @@ namespace {
 	const html_tag* cssom_tag(const element& element, const String& pseudo) {
 		if (pseudo.is_empty()) return dynamic_cast<const html_tag*>(&element);
 		const auto name = pseudo.trim_prefix("::").trim_prefix(":");
+		if (name == "backdrop") {
+			const auto* tag = dynamic_cast<const html_tag*>(&element);
+			return tag ? tag->backdrop().get() : nullptr;
+		}
 		const auto tag = name == "before" ? __tag_before_ : name == "after" ? __tag_after_ :
 			name == "marker" ? marker_tag() : empty_id;
 		if (tag == empty_id) return nullptr;
@@ -912,7 +918,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 			}
 			continue;
 		}
-		state->geometry.rebuild(document->root_render());
+		rebuild_document_geometry(p_viewport_size, false);
 		const Vector2 original_size(document->width(), document->height());
 		overflow = state->geometry.has_transforms() ? state->geometry.extend_overflow(original_size) : original_size;
 		bool restored_scroll = false;
@@ -929,9 +935,9 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 			}
 		}
 		if (state->geometry.has_sticky()) {
-			state->geometry.rebuild(document->root_render(), Rect2(state->viewport_scroll_offset, p_viewport_size));
+			rebuild_document_geometry(p_viewport_size);
 		} else if (restored_scroll) {
-			state->geometry.rebuild(document->root_render());
+			rebuild_document_geometry(p_viewport_size);
 		}
 		resnap_nested(p_viewport_size);
 		if (!update_auto_content_visibility(p_viewport_size, selected_content, revealed)) {
@@ -1091,7 +1097,8 @@ String HTMLLayout::get_accessible_text() const {
 }
 
 int64_t HTMLLayout::hit_test_text(const Vector2& p_position) const {
-	return state->has_layout() ? state->container->get_paint_recorder().hit_test_text(p_position) : 0;
+	const auto modal = top_modal_node();
+	return state->has_layout() ? state->container->get_paint_recorder().hit_test_text(p_position, modal.get()) : 0;
 }
 
 bool HTMLLayout::hit_test_selectable_text(const Vector2& p_position, bool* r_blank) const {
@@ -1104,8 +1111,9 @@ bool HTMLLayout::hit_test_selectable_text(const Vector2& p_position, bool* r_bla
 }
 
 docrender::HTMLSelectionPoint HTMLLayout::selection_point_at(const Vector2& p_position) const {
+	const auto modal = top_modal_node();
 	return state->has_layout() ? state->container->get_paint_recorder().selection_point_at(p_position,
-		hit_test_element(p_position, nullptr, true)) : docrender::HTMLSelectionPoint{};
+		hit_test_element(p_position, nullptr, true), modal.get()) : docrender::HTMLSelectionPoint{};
 }
 
 String HTMLLayout::get_copyable_text(int64_t p_from, int64_t p_to) const {
@@ -1463,6 +1471,7 @@ void HTMLLayout::sample_css_animations(bool p_force) {
 }
 
 void HTMLLayout::invalidate_styles() {
+	if (const auto& document = state->dom->get_document()) DocumentAdapter::prune_modals(*document);
 	mark_styles_pending();
 	state->implicit_empty_document = false;
 	if (state->edit_callback.is_valid()) {
@@ -1663,6 +1672,7 @@ TypedArray<HTMLElement> HTMLLayout::get_elements_at(const Vector2& p_position) c
 	std::unordered_set<const HTMLElement*> visited{first.ptr()};
 	result.append(first);
 	state->container->get_paint_recorder().visit_hit_elements(p_position, false, [&](const auto& p_node) {
+		if (!allows_modal_interaction(*p_node)) return false;
 		const auto handle = wrap_hit_element(p_node);
 		if (handle.is_valid() && visited.insert(handle.ptr()).second) result.append(handle);
 		return false;
@@ -1692,6 +1702,15 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 	if (const auto bar = scrollbar_at(p_position)) {
 		if (r_scrollbar) *r_scrollbar = true;
 		return bar->element.lock();
+	}
+	if (top_modal_node()) {
+		litehtml::element::ptr target;
+		state->container->get_paint_recorder().visit_hit_elements(p_position, p_text_selection, [&](const auto& p_node) {
+			if (!allows_modal_interaction(*p_node)) return false;
+			target = p_node;
+			return true;
+		});
+		return target;
 	}
 	if (state->geometry.uses_visual_hit_order()) {
 		return state->container->get_paint_recorder().hit_test_element(p_position, p_text_selection);
@@ -1920,8 +1939,7 @@ void HTMLLayout::resnap_nested(const Vector2i& p_viewport_size) {
 		if (delta == Vector2()) continue;
 		item.h_scroll(delta.x);
 		item.v_scroll(delta.y);
-		const Rect2 viewport = state->geometry.has_sticky() ? Rect2(state->viewport_scroll_offset, p_viewport_size) : Rect2();
-		state->geometry.rebuild(state->dom->get_document()->root_render(), viewport);
+		rebuild_document_geometry(p_viewport_size);
 	}
 	for (auto it = state->nested_snap_memory.begin(); it != state->nested_snap_memory.end();) {
 		const auto live = it->second.container.lock();
@@ -2014,8 +2032,15 @@ void HTMLLayout::refresh_overflow_paint(bool p_moved_boxes) {
 }
 
 void HTMLLayout::rebuild_scroll_geometry() {
-	const Rect2 viewport = state->geometry.has_sticky() ? Rect2(state->viewport_scroll_offset, state->viewport_size) : Rect2();
-	state->geometry.rebuild(state->dom->get_document()->root_render(), viewport);
+	rebuild_document_geometry(state->viewport_size);
+}
+
+void HTMLLayout::rebuild_document_geometry(const Vector2i& p_viewport_size, bool p_resolve_sticky) {
+	const auto& document = state->dom->get_document();
+	const auto& top = document->top_layer_render();
+	const Rect2 viewport = !top.empty() || (p_resolve_sticky && state->geometry.has_sticky())
+		? Rect2(state->viewport_scroll_offset, p_viewport_size) : Rect2();
+	state->geometry.rebuild(document->root_render(), viewport, top);
 }
 
 Rect2 HTMLLayout::viewport_scroll_region(const Rect2& p_viewport) const {
@@ -2155,7 +2180,7 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const litehtml::element& p_element,
 	std::optional<float> p_align, bool p_allow_fallback, Node& p_owner, const Callable& p_changed,
 	const docrender::HTMLScrollOptions* p_options) {
-	if (!state->has_layout()) return std::nullopt;
+	if (!state->has_layout() || !allows_modal_interaction(p_element)) return std::nullopt;
 	const auto* renderers = state->geometry.find_element(&p_element);
 	const auto* renderer = scroll_target_renderer(renderers, p_allow_fallback);
 	if (!renderer) {
@@ -2224,7 +2249,7 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 void HTMLLayout::set_viewport_scroll_offset(const Vector2i& p_offset) {
 	if (state->viewport_scroll_offset == p_offset) return;
 	state->viewport_scroll_offset = p_offset;
-	if (state->has_layout() && state->geometry.has_sticky()) refresh_overflow_paint(true);
+	if (state->has_layout() && (state->geometry.has_sticky() || top_modal_node())) refresh_overflow_paint(true);
 	else request_auto_content_update();
 }
 
@@ -2277,7 +2302,9 @@ docrender::HTMLTextLayout HTMLLayout::shape_element_text(const Ref<HTMLElement>&
 }
 std::optional<docrender::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vector2& p_position) const {
 	if (!state->has_layout() || !p_position.is_finite()) return {};
-	return state->container->get_paint_recorder().scrollbar_at(p_position);
+	const auto bar = state->container->get_paint_recorder().scrollbar_at(p_position);
+	const auto owner = bar ? bar->element.lock() : nullptr;
+	return owner && allows_modal_interaction(*owner) ? bar : std::nullopt;
 }
 
 void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position) {
@@ -2385,7 +2412,7 @@ HTMLLayout::LinkHit HTMLLayout::find_link_at(const Vector2& p_position, Ref<HTML
 		*r_element = scrollbar ? Ref<HTMLElement>() : wrap_hit_element(element);
 	}
 	if (scrollbar) return {};
-	if (const auto link = find_link_element(std::move(element))) {
+	if (const auto link = find_link_element(std::move(element)); link && allows_modal_interaction(*link)) {
 		return { String::utf8(link->get_attr("href")), reinterpret_cast<uintptr_t>(link.get()) };
 	}
 	return {};
@@ -2400,7 +2427,8 @@ String HTMLLayout::get_activatable_link_uri(const Ref<HTMLElement>& p_element) c
 
 std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const {
 	const auto element = find_html_ancestor(hit_test_element(p_position));
-	r_over_link = bool(find_link_element(element));
+	const auto link = find_link_element(element);
+	r_over_link = link && allows_modal_interaction(*link);
 	if (r_over_selectable_text) {
 		*r_over_selectable_text = element && !r_over_link &&
 			state->container->get_paint_recorder().hit_test_selectable_text(p_position, *element);
@@ -2412,7 +2440,7 @@ Ref<HTMLElement> HTMLLayout::get_button_ancestor(const Ref<HTMLElement>& p_eleme
 	if (p_element.is_valid() && p_element->get_owner() == this) {
 		const auto target = p_element->element.lock();
 		bool allow_disclosure = true;
-		for (auto element = target; element; element = element->parent()) {
+		for (auto element = target; element && allows_modal_interaction(*element); element = element->parent()) {
 			if (DocumentAdapter::is_command_button(*element)) return state->dom->make_element(element);
 			const auto disclosure = allow_disclosure ? docrender::details_activation_target(element) : nullptr;
 			if (disclosure && (element != disclosure || element == target)) return state->dom->make_element(element);
@@ -2516,6 +2544,7 @@ namespace {
 		if (p_node.get_attr("hidden")) return false;
 		if (docrender::forms::is_listed(p_node) && docrender::forms::is_disabled(p_node)) return false;
 		if (tag == litehtml::_textarea_ || tag == litehtml::_select_) return true;
+		if (dynamic_cast<const docrender::HTMLDialogNode*>(&p_node)) return p_node.get_attr("open") != nullptr;
 		if (tag == litehtml::_input_) {
 			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
 			return input && input->type() != HTMLInputNode::Type::OTHER && input->type() != HTMLInputNode::Type::HIDDEN;
@@ -2528,10 +2557,63 @@ namespace {
 	}
 }
 
+void HTMLLayout::push_modal(const litehtml::element::ptr& p_element) {
+	DocumentAdapter::push_modal(*state->dom->get_document(), p_element);
+}
+
+litehtml::element::ptr HTMLLayout::top_modal_node() const {
+	const auto& document = state->dom->get_document();
+	return document && !document->top_layer().empty() ? document->top_layer().back().lock() : nullptr;
+}
+
+Ref<HTMLDialogElement> HTMLLayout::top_modal() const {
+	return state->dom->make_element(top_modal_node());
+}
+
+Vector2i HTMLLayout::modal_text_range() const {
+	const auto modal = top_modal_node();
+	return modal && state->has_layout() ? state->container->get_paint_recorder().text_range_in(*modal) : Vector2i();
+}
+
+bool HTMLLayout::allows_modal_interaction(const litehtml::element& p_element) const {
+	const auto modal = top_modal_node();
+	if (!modal) return true;
+	if (p_element.tag() == litehtml::_id("-tag-backdrop")) return false;
+	for (auto node = p_element.shared_from_this(); node; node = node->parent()) {
+		if (node == modal) return true;
+		if (const auto* dialog = dynamic_cast<const docrender::HTMLDialogNode*>(node.get());
+			dialog && dialog->has_pseudo_class(litehtml::_id("modal"))) return false;
+	}
+	return false;
+}
+
+bool HTMLLayout::allows_modal_interaction(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null() || p_element->get_owner() != this) return false;
+	const auto node = p_element->lock_element();
+	return node && allows_modal_interaction(*node);
+}
+
+Ref<HTMLElement> HTMLLayout::dialog_focus_target(const Ref<HTMLDialogElement>& p_dialog) const {
+	Ref<HTMLElement> first, autofocus;
+	HTMLDOM::visit_elements(p_dialog->lock_element(), [&](const auto& p_node) {
+		const auto candidate = state->dom->make_element(p_node);
+		if (!is_focusable(candidate)) return false;
+		if (p_node->get_attr("autofocus")) {
+			autofocus = candidate;
+			return true;
+		}
+		if (first.is_null() && candidate != p_dialog && explicit_tab_index(*p_node).value_or(0) >= 0) first = candidate;
+		return false;
+	});
+	if (autofocus.is_valid()) return autofocus;
+	if (first.is_valid()) return first;
+	return is_focusable(p_dialog) ? Ref<HTMLElement>(p_dialog) : Ref<HTMLElement>();
+}
+
 bool HTMLLayout::is_focusable(const Ref<HTMLElement>& p_element) const {
 	if (p_element.is_null() || p_element->get_owner() != this) return false;
 	const auto element = p_element->element.lock();
-	return element && state->has_layout() && can_focus_node(*element) &&
+	return element && state->has_layout() && allows_modal_interaction(*element) && can_focus_node(*element) &&
 		(scroll_target_renderer(state->geometry.find_element(element.get())) || auto_content_placeholder(*element));
 }
 
@@ -2566,7 +2648,7 @@ bool HTMLLayout::is_element_connected(const Ref<HTMLElement>& p_element) const {
 
 Ref<HTMLElement> HTMLLayout::get_focus_ancestor(const Ref<HTMLElement>& p_element) const {
 	if (!p_element.is_valid() || p_element->get_owner() != this) return {};
-	for (auto node = p_element->element.lock(); node; node = node->parent()) {
+	for (auto node = p_element->element.lock(); node && allows_modal_interaction(*node); node = node->parent()) {
 		if (!can_focus_node(*node)) continue;
 		const auto handle = state->dom->make_element(node);
 		if (get_element_scroll_bounds(handle)) return handle;
@@ -2601,7 +2683,8 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 					}
 					if (tab_stop != p_element) return false;
 				}
-				if (index >= 0) elements.push_back({handle, index});
+				if (index >= 0 && (!dynamic_cast<const docrender::HTMLDialogNode*>(p_element.get()) ||
+						explicit_tab_index(*p_element))) elements.push_back({handle, index});
 			}
 			return false;
 		});
@@ -2705,7 +2788,7 @@ bool HTMLLayout::set_interaction_pseudo(const Ref<HTMLElement>& p_element, const
 bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
 	const auto target = p_position ? find_html_ancestor(hit_test_element(*p_position)) : nullptr;
 	std::vector<std::weak_ptr<litehtml::element>> next;
-	for (auto element = target; element; element = find_html_ancestor(element->parent())) {
+	for (auto element = target; element && allows_modal_interaction(*element); element = find_html_ancestor(element->parent())) {
 		next.emplace_back(element);
 	}
 	auto& previous = state->hovered_elements;
@@ -2723,7 +2806,7 @@ bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
 			DocumentAdapter::set_hover(*element, false);
 		}
 	}
-	for (auto element = target; element; element = find_html_ancestor(element->parent())) {
+	for (auto element = target; element && allows_modal_interaction(*element); element = find_html_ancestor(element->parent())) {
 		if (hovered.count(element.get())) {
 			DocumentAdapter::set_hover(*element, true);
 		}

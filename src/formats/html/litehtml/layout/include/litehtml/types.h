@@ -272,8 +272,9 @@ namespace litehtml
 		select_match_with_marker	= 0x40,
 		select_match_with_placeholder = 0x80,
 		select_match_with_selection = 0x100,
+		select_match_with_backdrop = 0x200,
 		select_match_with_generated = select_match_with_before | select_match_with_after | select_match_with_marker,
-		select_match_with_pseudo_element = select_match_with_generated | select_match_with_placeholder | select_match_with_selection,
+		select_match_with_pseudo_element = select_match_with_generated | select_match_with_placeholder | select_match_with_selection | select_match_with_backdrop,
 	};
 
 	template<class T>

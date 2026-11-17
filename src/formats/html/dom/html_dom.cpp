@@ -7,6 +7,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_audio_element.h"
 #include "formats/html/elements/html_video_element.h"
@@ -161,6 +162,7 @@ namespace {
 
 	Ref<HTMLElement> create_element_handle(litehtml::string_id p_tag) {
 		if (p_tag == litehtml::_id("menu")) return instantiate_element_handle<HTMLMenuElement>();
+		if (p_tag == litehtml::_id("dialog")) return instantiate_element_handle<HTMLDialogElement>();
 		switch (p_tag) {
 			case litehtml::_a_: return instantiate_element_handle<HTMLAnchorElement>();
 			case litehtml::_button_: return instantiate_element_handle<HTMLButtonElement>();

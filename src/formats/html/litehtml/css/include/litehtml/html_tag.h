@@ -34,6 +34,7 @@ namespace litehtml
 			std::unique_ptr<style> placeholder;
 			std::unique_ptr<style> selection;
 			std::unique_ptr<css_properties> placeholder_css;
+			std::shared_ptr<html_tag> backdrop;
 		};
 		std::unique_ptr<auxiliary_pseudo_styles> m_auxiliary_pseudos;
 		struct cascaded_selection_colors {
@@ -96,6 +97,7 @@ namespace litehtml
 		const std::optional<string>& get_content_alternative() const { return m_content_alternative; }
 
 		const css_properties* get_placeholder_style() const;
+		std::shared_ptr<html_tag> backdrop() const { return m_auxiliary_pseudos ? m_auxiliary_pseudos->backdrop : nullptr; }
 		bool has_placeholder_color() const;
 		struct selection_colors {
 			std::optional<web_color> foreground;

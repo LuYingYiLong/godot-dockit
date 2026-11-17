@@ -128,6 +128,7 @@
     <ClCompile Include="src\formats\pdf\reader\pdf_reader_queries.cpp" />
     <ClCompile Include="src\formats\pdf\pdf_texture.cpp" />
     <ClCompile Include="src\nodes\html_label_audio.cpp" />
+    <ClCompile Include="src\nodes\html_label_dialog.cpp" />
     <ClCompile Include="src\nodes\html_label_video.cpp" />
     <ClCompile Include="src\nodes\latex_label.cpp" />
     <ClCompile Include="src\nodes\latex_label_3d.cpp" />
@@ -152,6 +153,7 @@
     <ClCompile Include="src\formats\html\elements\html_list_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_ruby_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_details_element.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_dialog_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_gauge_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_gauge_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element_types.cpp" />
@@ -344,6 +346,8 @@
     <ClInclude Include="src\formats\html\elements\html_details_node.h" />
     <ClInclude Include="src\formats\html\elements\html_ruby_node.h" />
     <ClInclude Include="src\formats\html\elements\html_details_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_dialog_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_dialog_node.h" />
     <ClInclude Include="src\formats\html\elements\html_gauge_node.h" />
     <ClInclude Include="src\formats\html\elements\html_gauge_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />

@@ -13,6 +13,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_list_elements.h"
@@ -93,6 +94,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLDataListElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLOutputElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDetailsElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLDialogElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLMeterElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLProgressElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAudioElement);

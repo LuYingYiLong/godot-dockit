@@ -467,7 +467,7 @@ bool is_supported_simple_pseudo_class(const string& name)
 		"any-link", "link", "visited", "local-link", "target", "target-within", "scope",
 		// User Action Pseudo-classes  https://www.w3.org/TR/selectors-4/#useraction-pseudos
 		"hover", "active", "focus", "focus-visible", "focus-within",
-		"enabled", "disabled", "checked", "placeholder-shown", "open", "indeterminate",
+		"enabled", "disabled", "checked", "placeholder-shown", "open", "modal", "indeterminate",
 		"required", "optional", "valid", "invalid", "read-only", "read-write",
 		// Tree-Structural pseudo-classes  https://www.w3.org/TR/selectors-4/#structural-pseudos
 		"root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type",
@@ -567,7 +567,7 @@ bool is_supported_simple_pseudo_element(const string& name)
 		// Highlight Pseudo-elements  https://www.w3.org/TR/css-pseudo-4/#highlight-pseudos
 		//"selection",
 		// Tree-Abiding Pseudo-elements  https://www.w3.org/TR/css-pseudo-4/#treelike
-		"before", "after", "marker", "placeholder", "selection"
+		"before", "after", "marker", "placeholder", "selection", "backdrop"
 	);
 }
 

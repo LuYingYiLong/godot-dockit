@@ -262,7 +262,7 @@
 			<param index="1" name="name" type="String" />
 			<param index="2" name="pseudo" type="String" default="&quot;&quot;" />
 			<description>
-				Returns a serialized computed value for a connected element, including sampled animation values. Pass [code]::before[/code], [code]::after[/code], [code]::marker[/code], [code]::placeholder[/code], or [code]::selection[/code] to inspect a supported pseudo-element. Returns an empty string if the value is unavailable.
+				Returns a serialized computed value for a connected element, including sampled animation values. Pass [code]::before[/code], [code]::after[/code], [code]::marker[/code], [code]::placeholder[/code], [code]::selection[/code], or [code]::backdrop[/code] to inspect a supported pseudo-element. Returns an empty string if the value is unavailable.
 			</description>
 		</method>
 		<method name="get_stylesheets">

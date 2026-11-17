@@ -48,6 +48,7 @@ enum MatchFlag : unsigned {
 	match_marker = 1 << 4,
 	match_placeholder = 1 << 5,
 	match_selection = 1 << 6,
+	match_backdrop = 1 << 7,
 };
 
 struct ScopeRule {

@@ -4739,8 +4739,8 @@ msgid "Returns a snapshot of serialized computed CSS properties. Lengths that de
 msgstr "返回序列化后的计算样式快照。依赖布局盒的长度可以保留百分比。几何信息见 [method HTMLElement.get_bounding_rect]。"
 
 #. doc_classes/HTMLLayout.xml
-msgid "Returns a serialized computed value for a connected element, including sampled animation values. Pass [code]::before[/code], [code]::after[/code], [code]::marker[/code], [code]::placeholder[/code], or [code]::selection[/code] to inspect a supported pseudo-element. Returns an empty string if the value is unavailable."
-msgstr "返回已连接元素的序列化计算值，包括当前动画采样值。传入 [code]::before[/code]、[code]::after[/code]、[code]::marker[/code]、[code]::placeholder[/code] 或 [code]::selection[/code] 查询受支持的伪元素。值不可用时返回空字符串。"
+msgid "Returns a serialized computed value for a connected element, including sampled animation values. Pass [code]::before[/code], [code]::after[/code], [code]::marker[/code], [code]::placeholder[/code], [code]::selection[/code], or [code]::backdrop[/code] to inspect a supported pseudo-element. Returns an empty string if the value is unavailable."
+msgstr "返回已连接元素的序列化计算值，包括当前动画采样值。传入 [code]::before[/code]、[code]::after[/code]、[code]::marker[/code]、[code]::placeholder[/code]、[code]::selection[/code] 或 [code]::backdrop[/code] 查询受支持的伪元素。值不可用时返回空字符串。"
 
 #. doc_classes/HTMLLayout.xml
 msgid "Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], and [code]media[/code]. The additional stylesheet is last. IDs apply to the current layout generation."
@@ -5062,3 +5062,53 @@ msgstr "使用可选的 EIRTeam.FFmpeg 插件。"
 #. doc_classes/HTMLLabel.xml
 msgid "Uses the optional godot-vlc add-on."
 msgstr "使用可选的 godot-vlc 插件。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "An HTML dialog that can open in the document or in the modal top layer."
+msgstr "可在文档内或模态顶层中打开的 HTML 对话框。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid ""
+"Closes the dialog. Pass a [String] to replace [member return_value], or leave the argument as "
+"[code]null[/code] to keep the current value. Returns [constant OK] if the dialog is already "
+"closed."
+msgstr "关闭对话框。传入 [String] 会替换 [member return_value]，传入 [code]null[/code] 则保留当前值。对话框已关闭时返回 [constant OK]。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "Emitted after [method close] closes an open dialog and [HTMLLabel] processes focus restoration."
+msgstr "[method close] 关闭已打开的对话框，并且 [HTMLLabel] 处理完焦点恢复后发出。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid ""
+"Opens a connected dialog in the modal top layer. Returns [constant ERR_INVALID_PARAMETER] if it "
+"is detached or already open as a non-modal dialog."
+msgstr "在模态顶层打开已连接的对话框。如果对话框已分离，或已作为非模态对话框打开，则返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid ""
+"Opens the dialog in the document. Returns [constant ERR_INVALID_PARAMETER] if it is already open "
+"as a modal."
+msgstr "在文档内打开对话框。如果已作为模态对话框打开，则返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid ""
+"Reflects the HTML [code]open[/code] attribute. Setting this property to [code]true[/code] opens a"
+" regular dialog. Setting it to [code]false[/code] removes the attribute and leaves the top layer "
+"if needed."
+msgstr "反映 HTML 的 [code]open[/code] 属性。设为 [code]true[/code] 会打开普通对话框。设为 [code]false[/code] 会移除该属性，并在需要时退出模态顶层。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid ""
+"Represents [code]<dialog>[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above"
+" the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its"
+" focusable elements and Escape closes it after open menus and IME composition have handled the "
+"key."
+msgstr "表示 [code]<dialog>[/code]。模态对话框与其 CSS [code]::backdrop[/code] 绘制在文档上方。在 [HTMLLabel] 中，只有最上层的模态对话框接收交互。Tab 在其中的可聚焦元素间循环，Escape 在菜单和输入法处理完按键后关闭该对话框。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "Returns whether this dialog is in its layout's modal top layer."
+msgstr "返回此对话框是否位于其布局的模态顶层。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "The result associated with this dialog. The initial value is an empty string."
+msgstr "此对话框关联的结果，初始值为空字符串。"

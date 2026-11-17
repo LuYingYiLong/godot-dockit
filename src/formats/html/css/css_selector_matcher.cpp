@@ -207,7 +207,7 @@ bool match_pseudo_class(const SelectorDOM& dom, SelectorNode node, const Attribu
 	if (detail::is_one_of(name, "link", "any-link")) {
 		return detail::is_one_of(dom.tag(node), "a", "area") && dom.attribute(node, "href").has_value();
 	}
-	if (name == "open") return dom.tag(node) == "details" && dom.attribute(node, "open").has_value();
+	if (name == "open") return (dom.tag(node) == "details" || dom.tag(node) == "dialog") && dom.attribute(node, "open").has_value();
 	if (name == "indeterminate") return dom.tag(node) == "progress" && !dom.attribute(node, "value").has_value();
 	if (name == "focus-within") return has_focus_within(dom, node);
 	if (name == "has") {
@@ -298,6 +298,7 @@ unsigned match_compound(const SelectorDOM& dom, SelectorNode node, const Compoun
 				else if (attribute.name == "marker") result |= match_marker;
 				else if (attribute.name == "placeholder") result |= match_placeholder;
 				else if (attribute.name == "selection") result |= match_selection;
+				else if (attribute.name == "backdrop") result |= match_backdrop;
 				else return match_none;
 				break;
 			case select_pseudo_class:

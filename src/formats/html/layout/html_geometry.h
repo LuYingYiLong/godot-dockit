@@ -217,6 +217,8 @@ namespace docrender {
 		bool element_blending = false;
 		bool backdrop_filtering = false;
 		bool scrollbars = false;
+		bool top_layer = false;
+		bool indexing_top_layer = false;
 		godot::Rect2 viewport;
 
 		struct SpatialParent;
@@ -232,7 +234,8 @@ namespace docrender {
 		HTMLGeometryIndex(const HTMLGeometryIndex&) = delete;
 		HTMLGeometryIndex& operator=(const HTMLGeometryIndex&) = delete;
 
-		void rebuild(const std::shared_ptr<litehtml::render_item>& p_root, const godot::Rect2& p_viewport = {});
+		void rebuild(const std::shared_ptr<litehtml::render_item>& p_root, const godot::Rect2& p_viewport = {},
+			const std::vector<std::shared_ptr<litehtml::render_item>>& p_top_layer = {});
 		void clear();
 		const ElementGeometry* find_element(const litehtml::element* p_element) const;
 		const RenderGeometry* find_renderer(const litehtml::render_item* p_item) const;
@@ -247,7 +250,7 @@ namespace docrender {
 		bool has_element_blending() const { return element_blending; }
 		bool has_backdrop_filtering() const { return backdrop_filtering; }
 		bool has_sticky() const { return sticky; }
-		bool uses_visual_hit_order() const { return transforms || sticky || group_effects; }
+		bool uses_visual_hit_order() const { return transforms || sticky || group_effects || top_layer; }
 		bool has_scrollbars() const { return scrollbars; }
 		godot::Vector2 extend_overflow(const godot::Vector2& p_size) const;
 	};

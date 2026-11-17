@@ -59,6 +59,8 @@ namespace litehtml
 	private:
 		std::shared_ptr<element>			m_root;
 		std::shared_ptr<render_item>		m_root_render;
+		std::vector<std::weak_ptr<element>> m_top_layer;
+		std::vector<std::shared_ptr<render_item>> m_top_layer_render;
 		document_container*					m_container;
 		fonts_map							m_fonts;
 		std::size_t							m_font_prune_threshold = 256;
@@ -136,6 +138,8 @@ namespace litehtml
 		std::shared_ptr<element>		create_element(const char* tag_name, const string_map& attributes);
 		std::shared_ptr<element>		root();
 		std::shared_ptr<render_item>	root_render();
+		const auto& top_layer() const { return m_top_layer; }
+		const auto& top_layer_render() const { return m_top_layer_render; }
 		void							get_fixed_boxes(position::vector& fixed_boxes);
 		void							add_fixed_box(const position& pos);
 		void							add_media_list(media_query_list_list::ptr list);

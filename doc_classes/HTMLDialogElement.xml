@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLDialogElement" inherits="HTMLElement" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		An HTML dialog that can open in the document or in the modal top layer.
+	</brief_description>
+	<description>
+		Represents [code]&lt;dialog&gt;[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its focusable elements and Escape closes it after open menus and IME composition have handled the key.
+	</description>
+	<methods>
+		<method name="close">
+			<return type="int" enum="Error" />
+			<param index="0" name="return_value" type="Variant" default="null" />
+			<description>
+				Closes the dialog. Pass a [String] to replace [member return_value], or leave the argument as [code]null[/code] to keep the current value. Returns [constant OK] if the dialog is already closed.
+			</description>
+		</method>
+		<method name="is_modal" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether this dialog is in its layout's modal top layer.
+			</description>
+		</method>
+		<method name="show">
+			<return type="int" enum="Error" />
+			<description>
+				Opens the dialog in the document. Returns [constant ERR_INVALID_PARAMETER] if it is already open as a modal.
+			</description>
+		</method>
+		<method name="show_modal">
+			<return type="int" enum="Error" />
+			<description>
+				Opens a connected dialog in the modal top layer. Returns [constant ERR_INVALID_PARAMETER] if it is detached or already open as a non-modal dialog.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="open" type="bool" setter="set_open" getter="is_open">
+			Reflects the HTML [code]open[/code] attribute. Setting this property to [code]true[/code] opens a regular dialog. Setting it to [code]false[/code] removes the attribute and leaves the top layer if needed.
+		</member>
+		<member name="return_value" type="String" setter="set_return_value" getter="get_return_value">
+			The result associated with this dialog. The initial value is an empty string.
+		</member>
+	</members>
+	<signals>
+		<signal name="closed">
+			<param index="0" name="return_value" type="String" />
+			<description>
+				Emitted after [method close] closes an open dialog and [HTMLLabel] processes focus restoration.
+			</description>
+		</signal>
+	</signals>
+</class>

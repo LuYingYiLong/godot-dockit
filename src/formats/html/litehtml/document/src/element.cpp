@@ -202,6 +202,7 @@ std::shared_ptr<render_item> element::create_render_item(const std::shared_ptr<r
 void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
 {
 	if (css().get_display() == display_none) return;
+	if (const auto* tag = dynamic_cast<const html_tag*>(this); tag && tag->has_pseudo_class(_id("modal"))) return;
 	if (css().get_display() == display_contents)
 	{
 		const bool folded = tag() == _details_ && !get_attr("open");

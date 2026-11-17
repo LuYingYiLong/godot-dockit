@@ -97,6 +97,7 @@ int selector_match_flags(unsigned result) {
 	if (result & syntax::match_marker) flags |= select_match_with_marker;
 	if (result & syntax::match_placeholder) flags |= select_match_with_placeholder;
 	if (result & syntax::match_selection) flags |= select_match_with_selection;
+	if (result & syntax::match_backdrop) flags |= select_match_with_backdrop;
 	return flags;
 }
 

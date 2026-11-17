@@ -170,7 +170,8 @@ namespace litehtml {
 	}
 
 	inline bool is_generated_tag(string_id p_tag) {
-		return p_tag == __tag_before_ || p_tag == __tag_after_ || p_tag == marker_tag();
+		static const auto backdrop = _id("-tag-backdrop");
+		return p_tag == __tag_before_ || p_tag == __tag_after_ || p_tag == marker_tag() || p_tag == backdrop;
 	}
 
 	struct css_quotes {
