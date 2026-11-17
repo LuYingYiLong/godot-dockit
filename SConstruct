@@ -21,6 +21,11 @@ if linux_toolchain_prefix:
 else:
     env = SConscript("godot-cpp/SConstruct")
 
+# SCons takes SHLIBPREFIX from the build host, so cross-compiling these targets
+# from Windows would drop the "lib" prefix the GDExtension descriptor declares.
+if env["platform"] in ("linux", "android", "web"):
+    env["SHLIBPREFIX"] = "lib"
+
 env.Append(CPPPATH=["src/"])
 if env["platform"] == "windows":
     env.AppendUnique(LIBS=["dwrite"])
