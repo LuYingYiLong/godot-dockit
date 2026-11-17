@@ -137,6 +137,7 @@
     <ClCompile Include="src\nodes\html_label.cpp" />
     <ClCompile Include="src\nodes\html_label_input.cpp" />
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
+    <ClCompile Include="src\nodes\html_label_behaviors.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
     <ClCompile Include="src\formats\remote_images.cpp" />
     <ClCompile Include="src\formats\http_requests.cpp" />
@@ -146,6 +147,7 @@
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
     <ClCompile Include="src\formats\html\paint\html_depth_sort.cpp" />
     <ClCompile Include="src\formats\html\html_document.cpp" />
+    <ClCompile Include="src\formats\html\html_behavior.cpp" />
     <ClCompile Include="src\formats\html\elements\html_audio_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_video_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element_style.cpp" />
@@ -341,6 +343,7 @@
     <ClInclude Include="src\formats\html\paint\html_blend_shader.h" />
     <ClInclude Include="src\formats\html\paint\html_depth_sort.h" />
     <ClInclude Include="src\formats\html\html_document.h" />
+    <ClInclude Include="src\formats\html\html_behavior.h" />
     <ClInclude Include="src\formats\html\elements\html_audio_node.h" />
     <ClInclude Include="src\formats\html\elements\html_video_node.h" />
     <ClInclude Include="src\formats\html\elements\html_audio_element.h" />

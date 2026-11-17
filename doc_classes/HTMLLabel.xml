@@ -353,6 +353,12 @@
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
 			The base directory in [code]res://[/code] or [code]user://[/code] for relative asset paths in [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
 		</member>
+		<member name="behavior_scripts" type="Dictionary" setter="set_behavior_scripts" getter="get_behavior_scripts" default="{}">
+			A [code]Dictionary[StringName, GDScript][/code] of registered [HTMLBehavior] scripts. Each key matches a script element's [code]src[/code] name. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors.
+		</member>
+		<member name="behaviors_enabled" type="bool" setter="set_behaviors_enabled" getter="are_behaviors_enabled" default="false">
+			Enables registered [HTMLBehavior] scripts at runtime. Each document is scanned once per mount. Replacing the document, disabling behaviors, or leaving the scene tree detaches the current instances.
+		</member>
 		<member name="caret_blink" type="bool" setter="set_caret_blink_enabled" getter="is_caret_blink_enabled" default="true">
 			If [code]true[/code], the caret in a focused text field blinks. If [code]false[/code], it stays visible while the field is focused.
 		</member>

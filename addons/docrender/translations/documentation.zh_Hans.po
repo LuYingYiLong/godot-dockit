@@ -5365,8 +5365,32 @@ msgid "An inert script or data element."
 msgstr "惰性的脚本或数据元素。"
 
 #. doc_classes/HTMLScriptElement.xml
-msgid "Represents [code]<script>[/code]. Its text and attributes are accessible to GDScript as DOM data."
-msgstr "表示 [code]<script>[/code]。GDScript 可以读取其 DOM 文字和属性。"
+msgid "Represents [code]<script>[/code]. Its text and attributes are accessible to GDScript as DOM data. A runtime [HTMLLabel] can use a script with type [code]text/gdscript[/code] to select a project script from [member HTMLLabel.behavior_scripts]."
+msgstr "表示 [code]<script>[/code]。GDScript 可以读取其 DOM 文本和属性。运行中的 [HTMLLabel] 可通过类型为 [code]text/gdscript[/code] 的标签选择 [member HTMLLabel.behavior_scripts] 中登记的项目脚本。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "Base class for project scripts attached to an HTML label."
+msgstr "挂载到 HTML 控件的项目脚本基类。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "Extend this class with a GDScript that can be constructed without arguments. Add the script resource to [member HTMLLabel.behavior_scripts] and enable [member HTMLLabel.behaviors_enabled]. An HTML script element with type [code]text/gdscript[/code] selects a registered script by its [code]src[/code] name."
+msgstr "使用可无参构造的 GDScript 继承此类。将脚本资源加入 [member HTMLLabel.behavior_scripts]，并开启 [member HTMLLabel.behaviors_enabled]。类型为 [code]text/gdscript[/code] 的 HTML 脚本元素通过 [code]src[/code] 名称选择已登记的脚本。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "Called after the host's document has been laid out. Use [param label] to query elements and connect signals."
+msgstr "在宿主文档完成排版后调用。使用 [param label] 查询元素并连接信号。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. During document replacement, the old DOM is still available from the host."
+msgstr "卸载行为时调用。在这里断开信号并取消行为启动的任务。替换文档期间仍可通过宿主访问原 DOM。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "A [code]Dictionary[StringName, GDScript][/code] of registered [HTMLBehavior] scripts. Each key matches a script element's [code]src[/code] name. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors."
+msgstr "保存已登记的 [HTMLBehavior] 脚本的 [code]Dictionary[StringName, GDScript][/code]。每个键匹配脚本元素的 [code]src[/code] 名称。读取此属性返回副本。赋值新的字典会更新登记表并重新挂载行为。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Enables registered [HTMLBehavior] scripts at runtime. Each document is scanned once per mount. Replacing the document, disabling behaviors, or leaving the scene tree detaches the current instances."
+msgstr "在运行时启用已登记的 [HTMLBehavior] 脚本。每轮挂载扫描文档一次。替换文档、停用行为或离开场景树都会卸载当前实例。"
 
 #. doc_classes/HTMLScriptElement.xml
 msgid "Reflects the [code]async[/code] attribute."

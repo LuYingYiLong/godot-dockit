@@ -2,6 +2,7 @@
 
 #include "editor/docrender_source_editor.h"
 #include "formats/html/dom/html_document_fragment.h"
+#include "formats/html/html_behavior.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/css/css_values.h"
 
@@ -856,6 +857,10 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_use_fmod_bus", "enabled"), &HTMLLabel::set_use_fmod_bus);
 	ClassDB::bind_method(D_METHOD("is_using_fmod_bus"), &HTMLLabel::is_using_fmod_bus);
 	ClassDB::bind_method(D_METHOD("set_document", "document"), &HTMLLabel::set_document);
+	ClassDB::bind_method(D_METHOD("set_behaviors_enabled", "enabled"), &HTMLLabel::set_behaviors_enabled);
+	ClassDB::bind_method(D_METHOD("are_behaviors_enabled"), &HTMLLabel::are_behaviors_enabled);
+	ClassDB::bind_method(D_METHOD("set_behavior_scripts", "scripts"), &HTMLLabel::set_behavior_scripts);
+	ClassDB::bind_method(D_METHOD("get_behavior_scripts"), &HTMLLabel::get_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("get_document"), &HTMLLabel::get_document);
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &HTMLLabel::set_text);
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLLabel::get_text);
@@ -944,6 +949,9 @@ void HTMLLabel::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "behaviors_enabled"), "set_behaviors_enabled", "are_behaviors_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "behavior_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"),
+		"set_behavior_scripts", "get_behavior_scripts");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "transparent_canvas"), "set_transparent_canvas", "is_transparent_canvas");
@@ -1017,6 +1025,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_POST_ENTER_TREE:
+		behavior_host_in_tree = true;
 		ensure_controls();
 		connect_audio_buses(true);
 		queue_audio_sync();
@@ -1103,7 +1112,11 @@ void HTMLLabel::_notification(int p_what) {
 			queue_interaction();
 		}
 		break;
-	case NOTIFICATION_EXIT_TREE:
+	case NOTIFICATION_EXIT_TREE: {
+		const ObjectID id(get_instance_id());
+		behavior_host_in_tree = false;
+		request_behavior_reset();
+		if (!ObjectDB::get_instance(id)) return;
 		dialog_escape_held = false;
 		if (!closed_dialogs.empty()) callable_mp(this, &HTMLLabel::emit_dialog_closures).call_deferred();
 		clear_videos();
@@ -1125,6 +1138,7 @@ void HTMLLabel::_notification(int p_what) {
 		layout_signal_pending = false;
 		reveal_focused_element = false;
 		break;
+	}
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		dialog_escape_held = false;
 		viewport_touch_index = -1;
@@ -1699,6 +1713,10 @@ void HTMLLabel::queue_interaction_style_refresh() {
 }
 
 void HTMLLabel::source_changed() {
+	request_behavior_reset(true);
+}
+
+void HTMLLabel::reset_document_source() {
 	clear_videos();
 	clear_audio();
 	cancel_viewport_scroll();
@@ -2306,6 +2324,7 @@ void HTMLLabel::update_interaction() {
 		emit_dialog_closures();
 		if (!ObjectDB::get_instance(id)) return;
 	}
+	queue_behavior_mount();
 	if (layout_signal_pending && !refresh_queued) {
 		layout_signal_pending = false;
 		emit_signal("layout_changed");

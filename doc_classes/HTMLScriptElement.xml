@@ -4,7 +4,7 @@
 		An inert script or data element.
 	</brief_description>
 	<description>
-		Represents [code]&lt;script&gt;[/code]. Its text and attributes are accessible to GDScript as DOM data.
+		Represents [code]&lt;script&gt;[/code]. Its text and attributes are accessible to GDScript as DOM data. A runtime [HTMLLabel] can use a script with type [code]text/gdscript[/code] to select a project script from [member HTMLLabel.behavior_scripts].
 	</description>
 	<members>
 		<member name="async" type="bool" setter="set_async" getter="is_async">

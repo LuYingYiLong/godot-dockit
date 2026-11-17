@@ -8,8 +8,11 @@
 #include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/gd_script.hpp>
+#include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
+#include <godot_cpp/variant/typed_dictionary.hpp>
 
 #include <optional>
 #include <array>
@@ -26,6 +29,7 @@ namespace docrender {
 }
 
 class HTMLLabel;
+class HTMLBehavior;
 class HTMLButtonElement;
 class HTMLFormElement;
 class HTMLLabelElement;
@@ -332,6 +336,14 @@ private:
 	godot::Ref<godot::Tween> viewport_pan_snap_timer;
 	godot::Vector2i viewport_pan_axes;
 	bool source_dirty = true;
+	bool behaviors_enabled = false;
+	bool behavior_host_in_tree = false;
+	bool behavior_mount_scheduled = false;
+	bool dispatching_behavior = false;
+	bool behavior_source_pending = false;
+	uint64_t behavior_version = 0;
+	godot::TypedDictionary<godot::StringName, godot::GDScript> behavior_scripts;
+	std::vector<godot::Ref<HTMLBehavior>> attached_behaviors;
 	bool parsed = false;
 	bool refresh_queued = false;
 	bool resource_refresh_only = false;
@@ -371,6 +383,12 @@ private:
 	void on_node_selection_changed();
 	std::optional<godot::Vector2> get_hit_document_position(const godot::Vector2& p_position) const;
 	void source_changed();
+	void reset_document_source();
+	void request_behavior_reset(bool p_source_changed = false);
+	void apply_behavior_reset();
+	bool can_mount_behaviors() const;
+	void queue_behavior_mount();
+	static void mount_behaviors(uint64_t p_id, uint64_t p_version);
 	struct DialogFocus {
 		godot::Ref<HTMLDialogElement> dialog;
 		godot::Ref<HTMLElement> previous;
@@ -443,6 +461,7 @@ protected:
 
 public:
 	HTMLLabel();
+	~HTMLLabel() override;
 	void set_bus(const godot::StringName& p_bus); // 设置音频输出总线
 	godot::StringName get_bus() const; // 返回配置的音频总线
 	void set_video_backend(VideoBackend p_backend); // 选择视频解码后端
@@ -465,6 +484,10 @@ public:
 
 	void set_document(const godot::Ref<HTMLDocument>& p_document);					// 设置用于显示的 HTML 文档资源
 	godot::Ref<HTMLDocument> get_document() const;									// 返回控件当前关联的文档资源
+	void set_behaviors_enabled(bool p_enabled); // 设置是否挂载登记的文档行为
+	bool are_behaviors_enabled() const; // 返回是否允许挂载文档行为
+	void set_behavior_scripts(const godot::TypedDictionary<godot::StringName, godot::GDScript>& p_scripts); // 替换行为脚本登记表
+	godot::TypedDictionary<godot::StringName, godot::GDScript> get_behavior_scripts() const; // 返回行为脚本登记表快照
 	void set_text(const godot::String& p_text);										// 设置控件的内联 HTML 文本
 	godot::String get_text() const;													// 返回控件的内联 HTML 文本
 	void set_base_dir(const godot::String& p_base_dir);								// 设置内联 HTML 的相对资源路径基准目录

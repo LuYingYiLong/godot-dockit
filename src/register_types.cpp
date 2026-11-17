@@ -28,6 +28,7 @@
 #include "formats/html/dom/html_mutation_observer.h"
 #include "formats/html/css/html_animation.h"
 #include "formats/html/css/html_style_sheet.h"
+#include "formats/html/html_behavior.h"
 #include "formats/remote_images.h"
 #include "formats/http_requests.h"
 #include "formats/html/resources/html_remote_stylesheets.h"
@@ -136,6 +137,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableElement);
 		GDREGISTER_INTERNAL_CLASS(docrender::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
+		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
 		GDREGISTER_CLASS(HTMLDocument);
 		GDREGISTER_INTERNAL_CLASS(HTMLLabelCanvas);
 		GDREGISTER_CLASS(HTMLLabel);

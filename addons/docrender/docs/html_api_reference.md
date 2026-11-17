@@ -81,7 +81,38 @@ The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree 
 
 `HTMLPreElement` and `HTMLUListElement` expose the shared `HTMLElement` API. `HTMLOListElement` reflects `start`, `reversed`, and `type`. `HTMLLIElement` reflects `value` and the legacy `type` attribute. When `start` is absent, the property reads as `1`, and a reversed list starts numbering from its item count. `<aside>` uses `HTMLElement`. [WHATWG grouping content](https://html.spec.whatwg.org/multipage/grouping-content.html)
 
-Document nodes expose `HTMLHtmlElement`, `HTMLHeadElement`, `HTMLBodyElement`, `HTMLTitleElement`, `HTMLMetaElement`, `HTMLBaseElement`, and `HTMLScriptElement` through the same queries and DOM creation API. `HTMLTitleElement.text` exposes the original title text. `HTMLLayout.get_title()` collapses ASCII whitespace. Script elements store text and attributes as inert DOM data. [WHATWG document metadata](https://html.spec.whatwg.org/multipage/semantics.html#document-metadata)
+Document nodes expose `HTMLHtmlElement`, `HTMLHeadElement`, `HTMLBodyElement`, `HTMLTitleElement`, `HTMLMetaElement`, `HTMLBaseElement`, and `HTMLScriptElement` through the same queries and DOM creation API. `HTMLTitleElement.text` exposes the original title text. `HTMLLayout.get_title()` collapses ASCII whitespace. Script elements expose their original text and attributes. [WHATWG document metadata](https://html.spec.whatwg.org/multipage/semantics.html#document-metadata)
+
+## Document behaviors
+
+Assign a GDScript resource that extends `HTMLBehavior` to the `inventory` entry of the label's `behavior_scripts` dictionary and enable `behaviors_enabled` on that label. The dictionary is saved with the scene as resource references. In GDScript, assign the dictionary back after editing the returned copy.
+
+```html
+<script type="text/gdscript" src="inventory"></script>
+<button type="button" id="inventory">Open inventory</button>
+```
+
+```gdscript
+extends HTMLBehavior
+
+var _label: HTMLLabel
+
+
+func _attach(label: HTMLLabel) -> void:
+	_label = label
+	_label.button_pressed.connect(_on_button_pressed)
+
+
+func _detach() -> void:
+	_label.button_pressed.disconnect(_on_button_pressed)
+
+
+func _on_button_pressed(element: HTMLElement) -> void:
+	if element.get_attribute("id") == "inventory":
+		element.set_text_content("Inventory opened")
+```
+
+The label scans the connected document after its first completed layout. Each matching declaration gets a separate instance in document order. The host matches `src` to a registered name and constructs the corresponding script without arguments. Document replacement detaches behaviors in reverse order while the old DOM is still available. Disabling behaviors, replacing the registry, and exiting the scene tree also call `_detach()`. A new mount scans the DOM again. Mounting runs in the game, and ordinary DOM edits do not start a new mount.
 
 `get_base_uri()` on `HTMLLayout`, `HTMLDocumentNode`, and `HTMLLabel` exposes the effective base. DocRender resolves the first connected `<base href>` in document order against the source file or the configured base directory. Supported bases are relative paths within a Godot resource scheme, `res://`, `user://`, and resolvable `uid://` paths. Invalid and blocked bases fall back to the source. Relative image, audio, video and inline CSS URLs use the effective base. External CSS and its nested imports use their own file locations. The HTML importer collects project dependencies for the active base at import time. [WHATWG document base URLs](https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-urls)
 

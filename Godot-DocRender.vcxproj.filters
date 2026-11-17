@@ -139,6 +139,9 @@
     <ClCompile Include="src\formats\html\html_document.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_behavior.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_audio_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -703,6 +706,9 @@
     <ClCompile Include="src\nodes\html_label_forms.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_behaviors.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\docrender_editor_translations.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
@@ -766,6 +772,9 @@
       <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_document.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_behavior.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_audio_node.h">

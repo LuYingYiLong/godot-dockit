@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLBehavior" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		Base class for project scripts attached to an HTML label.
+	</brief_description>
+	<description>
+		Extend this class with a GDScript that can be constructed without arguments. Add the script resource to [member HTMLLabel.behavior_scripts] and enable [member HTMLLabel.behaviors_enabled]. An HTML script element with type [code]text/gdscript[/code] selects a registered script by its [code]src[/code] name.
+	</description>
+	<methods>
+		<method name="_attach" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="label" type="HTMLLabel" />
+			<description>
+				Called after the host's document has been laid out. Use [param label] to query elements and connect signals.
+			</description>
+		</method>
+		<method name="_detach" qualifiers="virtual">
+			<return type="void" />
+			<description>
+				Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. During document replacement, the old DOM is still available from the host.
+			</description>
+		</method>
+	</methods>
+</class>

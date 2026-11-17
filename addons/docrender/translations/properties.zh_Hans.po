@@ -39,6 +39,14 @@ msgstr "自动换行修剪标志"
 msgid "Base Dir"
 msgstr "基目录"
 
+#. src/nodes/html_label.cpp
+msgid "Behavior Scripts"
+msgstr "行为脚本"
+
+#. src/nodes/html_label.cpp
+msgid "Behaviors Enabled"
+msgstr "启用文档行为"
+
 #. src/nodes/latex_label_3d.cpp
 msgid "Billboard"
 msgstr "公告板"
