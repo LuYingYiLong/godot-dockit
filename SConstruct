@@ -6,6 +6,9 @@ from scripts.litehtml.build import build_litehtml
 merman_sdk_option = ARGUMENTS.pop("merman_sdk", None)
 pdfium_sdk_option = ARGUMENTS.pop("pdfium_sdk", None)
 linux_toolchain_prefix = ARGUMENTS.pop("linux_toolchain_prefix", "")
+if ARGUMENTS.get("platform") == "ios":
+    # MicroTeX uses std::filesystem, which is available starting with iOS 13.
+    ARGUMENTS.setdefault("ios_min_version", "13.0")
 if linux_toolchain_prefix:
     if ARGUMENTS.get("platform") != "linux":
         print("linux_toolchain_prefix requires platform=linux.")
