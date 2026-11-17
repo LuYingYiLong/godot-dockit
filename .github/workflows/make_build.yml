@@ -1,8 +1,42 @@
 # For syntax, see https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 
 name: Build Godot DocRender
+
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create and publish, for example v1.0.1. Leave empty only when publishing is disabled.
+        required: false
+        type: string
+      title:
+        description: Release title. Defaults to the tag.
+        required: false
+        type: string
+      notes:
+        description: Release notes. Use \n for line breaks; they are prepended to the generated notes.
+        required: false
+        type: string
+      publish:
+        description: Publish a GitHub Release after the build.
+        required: false
+        type: boolean
+        default: true
+      generate_notes:
+        description: Append the automatically generated release notes.
+        required: false
+        type: boolean
+        default: true
+      draft:
+        description: Save the release as a draft so the title and notes can be edited before publishing.
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: Mark the release as a pre-release.
+        required: false
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -10,7 +44,56 @@ permissions:
   contents: read
 
 jobs:
+  prepare:
+    name: Validate release inputs
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      title: ${{ steps.meta.outputs.title }}
+      asset: ${{ steps.meta.outputs.asset }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      # Fail fast so a typo in the tag does not waste a full matrix build.
+      - name: Resolve release metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_TITLE: ${{ inputs.title }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            publish="${INPUT_PUBLISH:-false}"
+            tag="$(printf '%s' "$INPUT_TAG" | tr -d '[:space:]')"
+          else
+            publish=true
+            tag="$REF_NAME"
+          fi
+          if [ "$publish" = "true" ]; then
+            if [ -z "$tag" ]; then
+              echo "::error::Enter a release tag such as v1.0.1, or disable 'publish' to only build."
+              exit 1
+            fi
+            if ! printf '%s' "$tag" | grep -Eq '^v[0-9A-Za-z._-]+$'; then
+              echo "::error::Release tags must start with 'v' and use only letters, digits, '.', '_' or '-' (received '$tag')."
+              exit 1
+            fi
+          fi
+          title="${INPUT_TITLE:-$tag}"
+          asset="godot-docrender-$tag.zip"
+          {
+            echo "tag=$tag"
+            echo "title=$title"
+            echo "asset=$asset"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+          echo "publish=$publish tag=${tag:-none} title=${title:-none}"
+
   build:
+    name: Build ${{ matrix.target.platform }} / ${{ matrix.target.arch }} / ${{ matrix.target-type }}
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -93,8 +176,9 @@ jobs:
           path: artifact/
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: package
+    name: Publish GitHub Release
+    if: needs.prepare.outputs.publish == 'true'
+    needs: [prepare, package]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -105,11 +189,57 @@ jobs:
           name: godot-docrender
           path: artifact/
 
+      # A manual run creates its tag from the commit it was dispatched on.
+      - name: Reject an existing tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists. Choose another tag or push the existing one."
+            exit 1
+          fi
+
+      - name: Package addon archive
+        env:
+          ASSET: ${{ needs.prepare.outputs.asset }}
+        run: |
+          set -euo pipefail
+          (cd artifact && zip -qr "../$ASSET" .)
+          unzip -tq "$ASSET"
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          TITLE: ${{ needs.prepare.outputs.title }}
+          ASSET: ${{ needs.prepare.outputs.asset }}
+          NOTES: ${{ inputs.notes }}
+          GENERATE_NOTES: ${{ inputs.generate_notes }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
-          asset="godot-docrender-${GITHUB_REF_NAME//\//-}.zip"
-          (cd artifact && zip -qr "../$asset" .)
-          unzip -tq "$asset"
-          gh release create "$GITHUB_REF_NAME" "$asset" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          set -euo pipefail
+          printf '%b' "$NOTES" > release-notes.md
+          args=("$TAG" "$ASSET" --repo "$GITHUB_REPOSITORY" --title "$TITLE")
+          if [ -s release-notes.md ]; then
+            args+=(--notes-file release-notes.md)
+          fi
+          if [ "${GENERATE_NOTES:-true}" = "true" ]; then
+            args+=(--generate-notes)
+          fi
+          if [ "${DRAFT:-false}" = "true" ]; then
+            args+=(--draft)
+          fi
+          if [ "${PRERELEASE:-false}" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          if [ "$EVENT_NAME" = "push" ]; then
+            args+=(--verify-tag)
+          else
+            args+=(--target "$GITHUB_SHA")
+          fi
+          gh release create "${args[@]}"
