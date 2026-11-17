@@ -89,28 +89,22 @@ Assign a GDScript resource that extends `HTMLBehavior` to the `inventory` entry 
 
 ```html
 <script type="text/gdscript" src="inventory"></script>
-<button type="button" id="inventory">Open inventory</button>
+<section id="inventory"><h2>Inventory</h2></section>
 ```
 
 ```gdscript
 extends HTMLBehavior
 
-var _label: HTMLLabel
-
-
-func _attach(label: HTMLLabel) -> void:
-	_label = label
-	_label.button_pressed.connect(_on_button_pressed)
-
-
-func _detach() -> void:
-	_label.button_pressed.disconnect(_on_button_pressed)
-
-
-func _on_button_pressed(element: HTMLElement) -> void:
-	if element.get_attribute("id") == "inventory":
-		element.set_text_content("Inventory opened")
+func _attach_document(dom: HTMLDocumentNode) -> void:
+	var inventory: HTMLElement = dom.get_element_by_id("inventory")
+	if inventory == null:
+		return
+	var status: HTMLElement = dom.create_element("p")
+	status.set_text_content("Inventory ready")
+	inventory.append_child(status)
 ```
+
+The [`HTMLDocumentNode`](#documents-and-handles) is the live DOM for this view. Use it to query elements and create nodes or fragments. The behavior's read-only `document` property exposes the same handle through `_detach()`. Override `_attach(label: HTMLLabel)` if you need host control methods or signals such as `button_pressed`. When both hooks are defined, `_attach_document()` takes precedence.
 
 The label scans the connected document after its first completed layout. Each matching declaration gets a separate instance in document order. The host matches `src` to a registered name and constructs the corresponding script without arguments. Document replacement detaches behaviors in reverse order while the old DOM is still available. Disabling behaviors, replacing the registry, and exiting the scene tree also call `_detach()`. A new mount scans the DOM again. Mounting runs in the game, and ordinary DOM edits do not start a new mount.
 

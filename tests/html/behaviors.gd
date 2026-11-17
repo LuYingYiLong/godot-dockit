@@ -92,6 +92,7 @@ func _ready() -> void:
 	_check(_events(label).back() == "attach:direct:Reloaded", "reentering the tree mounts a fresh instance")
 
 	await _check_reentry(registry)
+	await _check_document_behavior()
 	if failures == 0:
 		print("HTML behavior checks passed")
 	get_tree().quit(0 if failures == 0 else 1)
@@ -123,6 +124,31 @@ func _check_reentry(registry: Dictionary[StringName, GDScript]) -> void:
 		"after_detach_swap:Leaving",
 		"attach:direct:Target",
 	], "a source change from _detach completes cleanup before mounting the final source")
+
+
+func _check_document_behavior() -> void:
+	label.document = _document("Direct DOM", "dom")
+	await _settle()
+	var behavior: HTMLBehavior = Engine.get_meta(&"dom_behavior", null) as HTMLBehavior
+	_check(behavior != null, "_attach_document runs without an HTMLLabel argument")
+	if behavior == null:
+		return
+	var dom: HTMLDocumentNode = behavior.document
+	var status: HTMLElement = label.get_element_by_id("behavior-status")
+	_check(status != null and status.get_text_content() == "Created by behavior",
+		"direct DOM creation is visible to the host")
+	_check(dom.query_selector_all("#behavior-status") == [status] and
+		dom.get_element_by_id("marker").has_attribute("data-attached"),
+		"direct queries share the live DOM and existing handles")
+	_check(not Engine.has_meta(&"legacy_behavior_called"), "only the document attach hook runs when both hooks exist")
+	label.document = _document("Replacement", "")
+	_check(Engine.get_meta(&"dom_behavior_detached") == "Direct DOM", "_detach still has access to the old DOM")
+	_check(behavior.document == null, "the instance releases its document after _detach")
+	await _settle()
+	_check(not dom.is_valid() and dom.query_selector_all("p").is_empty() and dom.create_element("p") == null,
+		"stale document handles cannot query or edit the replacement")
+	Engine.remove_meta(&"dom_behavior")
+	Engine.remove_meta(&"dom_behavior_detached")
 
 
 func _prepare(host: HTMLLabel) -> void:

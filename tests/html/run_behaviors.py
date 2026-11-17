@@ -78,7 +78,7 @@ func _detach() -> void:
 
 
 func _marker() -> String:
-	return _host.get_element_by_id("marker").get_text_content()
+	return document.get_element_by_id("marker").get_text_content()
 
 
 func _kind() -> String:
@@ -141,8 +141,33 @@ static func _static_init() -> void:
 func _init(_required: String) -> void:
 	pass
 """)
+    write(project / "document_behavior.gd", """extends HTMLBehavior
+
+
+func _attach_document(dom: HTMLDocumentNode) -> void:
+	var target: HTMLElement = dom.query_selector("#marker")
+	if document != dom or target != dom.get_element_by_id("marker") or dom.document_element.get_tag_name() != "html":
+		return
+	var status: HTMLElement = dom.create_element("span")
+	status.set_attribute("id", "behavior-status")
+	status.append([dom.create_text_node("Created by behavior")])
+	var fragment: HTMLDocumentFragment = dom.create_document_fragment()
+	fragment.append_child(status)
+	dom.body.append_fragment(fragment)
+	target.set_attribute("data-attached", "true")
+	Engine.set_meta(&"dom_behavior", self)
+
+
+func _attach(_label: HTMLLabel) -> void:
+	Engine.set_meta(&"legacy_behavior_called", true)
+
+
+func _detach() -> void:
+	var target: HTMLElement = document.get_element_by_id("marker")
+	Engine.set_meta(&"dom_behavior_detached", target.get_text_content())
+""")
     shutil.copyfile(Path(__file__).with_name("behaviors.gd"), project / "behaviors.gd")
-    write(project / "main.tscn", """[gd_scene load_steps=9 format=3 uid="uid://cc5pvpfm05j3y"]
+    write(project / "main.tscn", """[gd_scene load_steps=10 format=3 uid="uid://cc5pvpfm05j3y"]
 [ext_resource type="Script" path="res://behaviors.gd" id="1"]
 [ext_resource type="HTMLDocument" path="res://index.html" id="2"]
 [ext_resource type="Script" uid="uid://ct6udxxgpt6ev" path="res://behavior.gd" id="3"]
@@ -151,13 +176,14 @@ func _init(_required: String) -> void:
 [ext_resource type="Script" path="res://swap_on_detach.gd" id="6"]
 [ext_resource type="Script" path="res://wrong.gd" id="7"]
 [ext_resource type="Script" path="res://required.gd" id="8"]
+[ext_resource type="Script" path="res://document_behavior.gd" id="9"]
 [node name="Behaviors" type="Node"]
 script = ExtResource("1")
 [node name="Label" type="HTMLLabel" parent="."]
 offset_right = 440.0
 offset_bottom = 180.0
 document = ExtResource("2")
-behavior_scripts = Dictionary[StringName, GDScript]({&"direct": ExtResource("3"), &"indirect": ExtResource("4"), &"swap": ExtResource("5"), &"swap_on_detach": ExtResource("6"), &"wrong": ExtResource("7"), &"required": ExtResource("8")})
+behavior_scripts = Dictionary[StringName, GDScript]({&"direct": ExtResource("3"), &"indirect": ExtResource("4"), &"swap": ExtResource("5"), &"swap_on_detach": ExtResource("6"), &"wrong": ExtResource("7"), &"required": ExtResource("8"), &"dom": ExtResource("9")})
 """)
 
 

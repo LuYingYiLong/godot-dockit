@@ -61,6 +61,7 @@ void HTMLLabel::apply_behavior_reset() {
 	dispatching_behavior = true;
 	for (auto it = instances.rbegin(); it != instances.rend(); ++it) {
 		GDVIRTUAL_CALL_PTR(it->ptr(), _detach);
+		(*it)->document.unref();
 		if (!ObjectDB::get_instance(id)) return;
 	}
 	dispatching_behavior = false;
@@ -94,6 +95,7 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 	}
 
 	// Capture the declarations before invoking project code that may edit the DOM.
+	const auto document = label->layout->get_document_node();
 	std::vector<Ref<GDScript>> scripts;
 	for (const Ref<HTMLElement>& element : label->layout->query_selector_all("script")) {
 		const Ref<HTMLScriptElement> declaration = element;
@@ -109,8 +111,11 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 		if (!ObjectDB::get_instance(id)) return;
 		if (label->behavior_version != p_version || label->is_queued_for_deletion()) break;
 		if (instance.is_null()) continue;
+		instance->document = document;
 		label->attached_behaviors.push_back(instance);
-		GDVIRTUAL_CALL_PTR(instance.ptr(), _attach, label);
+		if (!GDVIRTUAL_CALL_PTR(instance.ptr(), _attach_document, document)) {
+			GDVIRTUAL_CALL_PTR(instance.ptr(), _attach, label);
+		}
 		if (!ObjectDB::get_instance(id)) return;
 		if (label->behavior_version != p_version || label->is_queued_for_deletion()) break;
 	}

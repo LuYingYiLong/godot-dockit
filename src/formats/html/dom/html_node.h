@@ -11,6 +11,7 @@ namespace docrender { class HTMLDOM; }
 class HTMLLayout;
 class HTMLElement;
 class HTMLDocumentFragment;
+class HTMLTextNode;
 class HTMLRange;
 class HTMLMutationObserver;
 
@@ -66,6 +67,14 @@ protected:
 public:
 	NodeType get_node_type() const override { return DOCUMENT_NODE; } // 返回文档节点类型
 	godot::String get_base_uri() const; // 返回当前文档的生效基准
+	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
+	godot::Ref<HTMLElement> get_body() const; // 返回文档的正文元素
+	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const; // 返回文档中第一个匹配选择器的元素
+	godot::TypedArray<HTMLElement> query_selector_all(const godot::String& p_selector) const; // 按文档顺序返回所有匹配元素的快照
+	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const; // 按区分大小写的原始 ID 查找第一个元素
+	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name); // 创建属于此文档的分离元素
+	godot::Ref<HTMLTextNode> create_text_node(const godot::String& p_data); // 创建属于此文档的分离文本节点
+	godot::Ref<HTMLDocumentFragment> create_document_fragment(); // 创建属于此文档的空片段
 };
 
 class HTMLTextNode : public HTMLNode {

@@ -1,6 +1,8 @@
 #include "html_node.h"
 
+#include "html_document_fragment.h"
 #include "html_dom.h"
+#include "formats/html/elements/html_element.h"
 #include "formats/html/html_layout.h"
 
 #include <litehtml/el_text.h>
@@ -11,11 +13,63 @@ using namespace godot;
 
 void HTMLDocumentNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLDocumentNode::get_base_uri);
+	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLDocumentNode::get_document_element);
+	ClassDB::bind_method(D_METHOD("get_body"), &HTMLDocumentNode::get_body);
+	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLDocumentNode::query_selector);
+	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLDocumentNode::query_selector_all);
+	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLDocumentNode::get_element_by_id);
+	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLDocumentNode::create_element);
+	ClassDB::bind_method(D_METHOD("create_text_node", "data"), &HTMLDocumentNode::create_text_node);
+	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLDocumentNode::create_document_fragment);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document_element", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
+		"", "get_document_element");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "body", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
+		"", "get_body");
 }
 
 String HTMLDocumentNode::get_base_uri() const {
 	const auto* layout = get_owner();
 	return layout ? layout->get_base_uri() : String();
+}
+
+Ref<HTMLElement> HTMLDocumentNode::get_document_element() const {
+	const auto* layout = get_owner();
+	return layout ? layout->get_document_element() : Ref<HTMLElement>();
+}
+
+Ref<HTMLElement> HTMLDocumentNode::get_body() const {
+	const auto* layout = get_owner();
+	return layout ? layout->get_body() : Ref<HTMLElement>();
+}
+
+Ref<HTMLElement> HTMLDocumentNode::query_selector(const String& p_selector) const {
+	const auto* layout = get_owner();
+	return layout ? layout->query_selector(p_selector) : Ref<HTMLElement>();
+}
+
+TypedArray<HTMLElement> HTMLDocumentNode::query_selector_all(const String& p_selector) const {
+	const auto* layout = get_owner();
+	return layout ? layout->query_selector_all(p_selector) : TypedArray<HTMLElement>();
+}
+
+Ref<HTMLElement> HTMLDocumentNode::get_element_by_id(const String& p_id) const {
+	const auto* layout = get_owner();
+	return layout ? layout->get_element_by_id(p_id) : Ref<HTMLElement>();
+}
+
+Ref<HTMLElement> HTMLDocumentNode::create_element(const String& p_tag_name) {
+	auto* layout = get_owner();
+	return layout ? layout->create_element(p_tag_name) : Ref<HTMLElement>();
+}
+
+Ref<HTMLTextNode> HTMLDocumentNode::create_text_node(const String& p_data) {
+	auto* layout = get_owner();
+	return layout ? layout->create_text_node(p_data) : Ref<HTMLTextNode>();
+}
+
+Ref<HTMLDocumentFragment> HTMLDocumentNode::create_document_fragment() {
+	auto* layout = get_owner();
+	return layout ? layout->create_document_fragment() : Ref<HTMLDocumentFragment>();
 }
 
 void HTMLNode::_bind_methods() {

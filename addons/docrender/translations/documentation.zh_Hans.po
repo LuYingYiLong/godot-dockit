@@ -5377,12 +5377,20 @@ msgid "Extend this class with a GDScript that can be constructed without argumen
 msgstr "使用可无参构造的 GDScript 继承此类。将脚本资源加入 [member HTMLLabel.behavior_scripts]，并开启 [member HTMLLabel.behaviors_enabled]。类型为 [code]text/gdscript[/code] 的 HTML 脚本元素通过 [code]src[/code] 名称选择已登记的脚本。"
 
 #. doc_classes/HTMLBehavior.xml
-msgid "Called after the host's document has been laid out. Use [param label] to query elements and connect signals."
-msgstr "在宿主文档完成排版后调用。使用 [param label] 查询元素并连接信号。"
+msgid "Called after the host's document has been laid out if [method _attach_document] is not overridden. Use [param label] to connect host signals or call control methods."
+msgstr "如果没有重写 [method _attach_document]，在宿主文档完成排版后调用。使用 [param label] 连接宿主信号或调用控件方法。"
 
 #. doc_classes/HTMLBehavior.xml
-msgid "Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. During document replacement, the old DOM is still available from the host."
-msgstr "卸载行为时调用。在这里断开信号并取消行为启动的任务。替换文档期间仍可通过宿主访问原 DOM。"
+msgid "Called after the host's document has been laid out. Use [param document] to query, create, and edit nodes in the live DOM. If both attach hooks are overridden, only this hook is called."
+msgstr "在宿主文档完成排版后调用。使用 [param document] 查询、创建和编辑实时 DOM 中的节点。如果两个挂载方法都被重写，只调用此方法。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. [member document] still exposes the current DOM during this call, including when the host is replacing the document."
+msgstr "卸载行为时调用。在这里断开信号并取消行为启动的任务。在此次调用期间仍可通过 [member document] 访问当前 DOM，包括宿主正在替换文档的情况。"
+
+#. doc_classes/HTMLBehavior.xml
+msgid "The live DOM of the attached behavior. It is available during both attach hooks and [method _detach]. It is [code]null[/code] before attachment and after [method _detach] returns."
+msgstr "挂载行为对应的实时 DOM。两个挂载方法和 [method _detach] 执行期间均可访问。挂载前以及 [method _detach] 返回后为 [code]null[/code]。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "A [code]Dictionary[StringName, GDScript][/code] of registered [HTMLBehavior] scripts. Each key matches a script element's [code]src[/code] name. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors."
@@ -5423,6 +5431,42 @@ msgstr "返回按当前文档基准解析的链接地址。激活链接时仍报
 #. doc_classes/HTMLDocumentNode.xml
 msgid "Returns the current base URL of this document."
 msgstr "返回此文档当前的基准 URL。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Queries and edits the live DOM of one layout. It becomes invalid when that layout clears or replaces its document. Queries and creation methods on an invalid document node return [code]null[/code] or empty arrays."
+msgstr "查询和编辑一个布局的实时 DOM。当该布局清空或替换文档后，句柄失效。对失效句柄调用查询或创建方法会返回 [code]null[/code] 或空数组。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Creates an empty document fragment owned by this document."
+msgstr "创建一个属于此文档的空文档片段。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Creates a detached element owned by this document."
+msgstr "创建一个属于此文档的分离元素。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Creates a detached text node owned by this document."
+msgstr "创建一个属于此文档的分离文本节点。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Returns the first element with the given case-sensitive ID, or [code]null[/code]."
+msgstr "返回给定 ID 的首个元素，找不到时返回 [code]null[/code]。ID 区分大小写。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Returns the first element in document order that matches [param selector], or [code]null[/code]."
+msgstr "按文档顺序返回首个匹配 [param selector] 的元素，找不到时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Returns a snapshot of all matching elements in document order."
+msgstr "按文档顺序返回所有匹配元素的快照。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "The document's body or frameset element, if present."
+msgstr "文档的 body 或 frameset 元素（如果存在）。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "The document's root element."
+msgstr "文档的根元素。"
 
 #. doc_classes/HTMLLayout.xml
 msgid "Returns the effective base URL for document-relative resources. The first connected [HTMLBaseElement] with an [code]href[/code] attribute can replace the source URL or the configured base directory."

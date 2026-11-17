@@ -11,14 +11,26 @@
 			<return type="void" />
 			<param index="0" name="label" type="HTMLLabel" />
 			<description>
-				Called after the host's document has been laid out. Use [param label] to query elements and connect signals.
+				Called after the host's document has been laid out if [method _attach_document] is not overridden. Use [param label] to connect host signals or call control methods.
+			</description>
+		</method>
+		<method name="_attach_document" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="document" type="HTMLDocumentNode" />
+			<description>
+				Called after the host's document has been laid out. Use [param document] to query, create, and edit nodes in the live DOM. If both attach hooks are overridden, only this hook is called.
 			</description>
 		</method>
 		<method name="_detach" qualifiers="virtual">
 			<return type="void" />
 			<description>
-				Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. During document replacement, the old DOM is still available from the host.
+				Called when the behavior is detached. Disconnect signals and cancel work started by the behavior here. [member document] still exposes the current DOM during this call, including when the host is replacing the document.
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="document" type="HTMLDocumentNode" setter="" getter="get_document">
+			The live DOM of the attached behavior. It is available during both attach hooks and [method _detach]. It is [code]null[/code] before attachment and after [method _detach] returns.
+		</member>
+	</members>
 </class>
