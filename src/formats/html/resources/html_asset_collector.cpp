@@ -174,7 +174,8 @@ namespace docrender {
 				continue;
 			}
 			const GumboElement& element = node->v.element;
-			if (element.tag == GUMBO_TAG_IMG) {
+			const auto* input_type = element.tag == GUMBO_TAG_INPUT ? gumbo_get_attribute(&element.attributes, "type") : nullptr;
+			if (element.tag == GUMBO_TAG_IMG || (input_type && String::utf8(input_type->value).nocasecmp_to("image") == 0)) {
 				if (const GumboAttribute* src = gumbo_get_attribute(&element.attributes, "src")) {
 					add_image_path(assets.images, src->value, base_dir);
 				}

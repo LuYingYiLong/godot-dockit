@@ -774,6 +774,10 @@ namespace litehtml {
 		return store_sample({space, components, missing});
 	}
 
+	std::array<double, 4> css_color_components(const web_color& color, css_color_space space) {
+		return convert(evaluate(color, BLACK), space).values;
+	}
+
 	bool equal_css_colors(const web_color& first, const web_color& second) {
 		const auto a = convert(evaluate(first, BLACK), css_color_space::srgb, true);
 		const auto b = convert(evaluate(second, BLACK), css_color_space::srgb, true);

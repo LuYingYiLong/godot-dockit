@@ -1667,7 +1667,10 @@ void fragment() {
 
 	Ref<Texture2D> HTMLPaintRecorder::get_control_icon(HTMLControlIcon p_icon) {
 		static constexpr std::array svg{control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
-			control_icons::volume_off, control_icons::resize_window, control_icons::fullscreen, control_icons::fullscreen_exit};
+			control_icons::volume_off, control_icons::resize_window, control_icons::fullscreen, control_icons::fullscreen_exit,
+			control_icons::arrow_drop_down, control_icons::arrow_drop_up, control_icons::arrow_left, control_icons::arrow_right,
+			control_icons::radio_button_checked, control_icons::calendar_today, control_icons::schedule, control_icons::colorize};
+		static_assert(svg.size() == static_cast<size_t>(HTMLControlIcon::count));
 		const auto index = static_cast<size_t>(p_icon);
 		auto& texture = control_icon_textures[index];
 		if (texture.is_null()) {

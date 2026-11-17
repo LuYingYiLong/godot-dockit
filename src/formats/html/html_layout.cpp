@@ -2571,7 +2571,7 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const
 	const auto handle = state->dom->get_element_by_id(String::utf8(id));
 	const auto list = handle.is_valid() ? handle->lock_element() : nullptr;
 	if (!list || list->tag() != litehtml::_datalist_) return rows;
-	const auto query = input->get_value().to_lower();
+	const auto query = input->type() == HTMLInputNode::Type::COLOR ? String() : input->get_value().to_lower();
 	std::set<String> seen;
 	HTMLDOM::visit_elements(list, [&](const auto& p_node) {
 		const auto option = std::dynamic_pointer_cast<docrender::HTMLOptionNode>(p_node);
@@ -2587,6 +2587,10 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const
 		return false;
 	});
 	return rows;
+}
+
+Ref<Texture2D> HTMLLayout::get_control_icon(docrender::HTMLControlIcon p_icon) const {
+	return state->container ? state->container->get_control_icon(p_icon) : Ref<Texture2D>();
 }
 
 std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
@@ -2648,7 +2652,7 @@ namespace {
 		if (dynamic_cast<const docrender::HTMLDialogNode*>(&p_node)) return p_node.get_attr("open") != nullptr;
 		if (tag == litehtml::_input_) {
 			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
-			return input && input->type() != HTMLInputNode::Type::OTHER && input->type() != HTMLInputNode::Type::HIDDEN;
+			return input && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
 		const auto* video = dynamic_cast<const docrender::HTMLVideoNode*>(&p_node);
 		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||

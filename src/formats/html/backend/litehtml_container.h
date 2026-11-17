@@ -84,6 +84,7 @@ namespace docrender {
 		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color) {
 			paint.draw_input_icon(p_icon, p_clip, p_rect, p_color);
 		}
+		godot::Ref<godot::Texture2D> get_control_icon(HTMLControlIcon p_icon) { return paint.get_control_icon(p_icon); }
 		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color) {
 			paint.draw_input_check(p_box, p_color);
 		}

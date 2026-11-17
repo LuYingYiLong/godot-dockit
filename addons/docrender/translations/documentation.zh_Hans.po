@@ -1013,10 +1013,6 @@ msgid ""
 "[code]checked[/code] attribute."
 msgstr "当前勾选状态。脚本或用户设置之前，状态随 [code]checked[/code] 属性变化。"
 
-#. doc_classes/HTMLInputElement.xml
-msgid "The current text or checkbox value."
-msgstr "文本框或复选框的当前值。"
-
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Returns the focused element, or [code]null[/code] when the label has no DOM focus. Removing the focused element "
@@ -1071,9 +1067,7 @@ msgid ""
 " elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order "
 "before the default stops. A negative value allows direct focus. At either end, focus passes to "
 "another Godot control when one is available.\n"
-"Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles "
-"text editing, its own selection, and system IME composition. A focused checkbox can be toggled "
-"with Space.\n"
+"HTML inputs are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space. Date, time, color, and file inputs provide pickers.\n"
 "Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo "
 "and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new "
 "value from script or resetting the form clears the field's edit history."
@@ -1097,7 +1091,7 @@ msgstr ""
 "\n"
 "Tab 和 Shift+Tab 遍历可见且已启用的输入框、按钮、带 [code]href[/code] 的链接以及设置了有效 [code]tabindex[/code] "
 "的元素。正值按升序优先访问。负值允许直接聚焦。到达任一边界时，若有其他 Godot 控件可用，就把焦点交给该控件。\n"
-"文本框和复选框由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。\n"
+"HTML 输入由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。日期、时间、颜色和文件输入提供选择器。\n"
 "聚焦的文本字段支持 [code]ui_undo[/code] 和 [code]ui_redo[/code] 输入动作。撤销和重做时也会恢复选区。"
 "每次输入法提交算作一次编辑。通过脚本赋予新值或重置表单时，会清空字段的编辑历史。"
 
@@ -3566,12 +3560,6 @@ msgstr "按树顺序返回关联控件的快照。"
 
 #. doc_classes/HTMLFormElement.xml
 msgid ""
-"Returns ordered dictionaries with [code]name[/code] and [code]value[/code] keys. Repeated names "
-"remain separate. The optional submitter must be enabled and associated with this form."
-msgstr "按顺序返回包含 [code]name[/code] 和 [code]value[/code] 键的字典。同名项分别保留。可选的提交按钮必须可用并关联到当前表单。"
-
-#. doc_classes/HTMLFormElement.xml
-msgid ""
 "Restores all associated controls to their markup defaults, clears edit state, and schedules one "
 "layout update when connected."
 msgstr "将所有关联控件恢复到标记中的默认值，清除编辑状态，并在表单已连接时调度一次布局更新。"
@@ -3720,18 +3708,6 @@ msgstr ""
 "激活此控件内可见的链接或表单控件。片段链接先请求锚点滚动，再发出 [signal link_pressed]。命令按钮发出 [signal "
 "button_pressed]。表单按钮、标签、开关和下拉框执行各自的操作。已派发激活时返回 [code]true[/code]。"
 
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Emitted when the user edits a text input, changes a checkbox, or selects a radio button. Read the"
-" new state from the element."
-msgstr "用户编辑文本框、更改复选框或选中单选按钮时发出。通过元素读取新状态。"
-
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Emitted after a user edit is committed with Enter or by moving focus away. Checkboxes and radio "
-"buttons commit immediately after [signal input_changed]."
-msgstr "用户按 Enter 或移开焦点提交编辑时发出。复选框和单选按钮在 [signal input_changed] 后立即提交。"
-
 #. doc_classes/HTMLButtonElement.xml
 msgid ""
 "Returned by queries and [method HTMLLayout.create_element] for [code]<button>[/code]. In "
@@ -3740,19 +3716,6 @@ msgid ""
 msgstr ""
 "查询和 [method HTMLLayout.create_element] 会为 [code]<button>[/code] 返回此类型。在 [HTMLLabel] "
 "中，可用的按钮根据类型运行命令、提交所属表单或重置表单。"
-
-#. doc_classes/HTMLInputElement.xml
-msgid ""
-"Returned by queries and [method HTMLLayout.create_element] for [code]<input>[/code]. [HTMLLabel] "
-"supports text, checkbox, radio, and hidden inputs. Script assignments emit no user editing "
-"signals.\n"
-"Text inputs track a current value separately from the [code]value[/code] attribute. Checkboxes "
-"and radios have a current checked state and use the value attribute with [code]on[/code] as the "
-"default. Hidden inputs store their value in the attribute and participate in form data."
-msgstr ""
-"查询和 [method HTMLLayout.create_element] 会为 [code]<input>[/code] 返回此类型。[HTMLLabel] "
-"支持文本框、复选框、单选按钮和隐藏字段。脚本赋值时不发出用户编辑信号。\n"
-"文本框的当前值与 [code]value[/code] 属性分开。复选框和单选按钮具有当前勾选状态，其值来自源属性，默认是 [code]on[/code]。隐藏字段的值保存在属性中并参与表单数据。"
 
 #. doc_classes/HTMLTableSectionElement.xml
 msgid "A row group in an HTML table."
@@ -4010,10 +3973,6 @@ msgstr "映射旧式 noshade 属性。"
 #. doc_classes/HTMLInputElement.xml
 msgid "The normalized HTML input type."
 msgstr "规范化后的 HTML 输入类型。"
-
-#. doc_classes/HTMLInputElement.xml
-msgid "The number or range value, or NaN when no numeric value is available."
-msgstr "数字或滑杆的值。没有可用数值时返回 NaN。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -5475,3 +5434,79 @@ msgstr "返回文档相对资源的生效基准 URL。首个已连接且有 [cod
 #. doc_classes/HTMLLabel.xml
 msgid "Returns the effective base URL of the displayed document. See [method HTMLLayout.get_base_uri]."
 msgstr "返回所显示文档的生效基准 URL。请参阅 [method HTMLLayout.get_base_uri]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Returned by queries and [method HTMLLayout.create_element] for [code]<input>[/code]. [HTMLLabel] supports text, search, tel, url, email, password, number, range, date, month, week, time, datetime-local, color, file, checkbox, radio, button, submit, reset, image, and hidden.\nText and picker values are tracked separately from the markup default. Checkbox and radio values default to [code]on[/code]. A selected file contributes a read-only [HTMLInputFile] to form data. Script assignments emit no user editing signals."
+msgstr "查询元素或调用 [method HTMLLayout.create_element] 创建 [code]<input>[/code] 时返回。[HTMLLabel] 支持 text、search、tel、url、email、password、number、range、date、month、week、time、datetime-local、color、file、checkbox、radio、button、submit、reset、image 和 hidden。\n文本和选择器的当前值与标记中的默认值分别保存。复选框和单选按钮的默认值为 [code]on[/code]。用户选择的文件以只读 [HTMLInputFile] 写入表单数据。脚本赋值不会发出用户编辑信号。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Returns a snapshot of the selected files. Returns an empty array for other input types."
+msgstr "返回已选文件的快照。其他输入类型返回空数组。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Returns the boolean flags [code]will_validate[/code], [code]valid[/code], [code]value_missing[/code], [code]type_mismatch[/code], [code]bad_input[/code], [code]pattern_mismatch[/code], [code]range_underflow[/code], [code]range_overflow[/code], [code]step_mismatch[/code], [code]too_short[/code], and [code]too_long[/code]. The [code]pattern[/code] attribute uses Godot's [RegEx] syntax and matches the full value. ECMAScript Unicode Sets syntax may differ."
+msgstr "返回布尔标志 [code]will_validate[/code]、[code]valid[/code]、[code]value_missing[/code]、[code]type_mismatch[/code]、[code]bad_input[/code]、[code]pattern_mismatch[/code]、[code]range_underflow[/code]、[code]range_overflow[/code]、[code]step_mismatch[/code]、[code]too_short[/code] 和 [code]too_long[/code]。[code]pattern[/code] 属性使用 Godot 的 [RegEx] 语法并匹配整个值。ECMAScript Unicode Sets 语法可能有差异。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Returns [code]year[/code], [code]month[/code], [code]day[/code], [code]hour[/code], [code]minute[/code], [code]second[/code], and [code]millisecond[/code]. A month starts on its first day, a week starts on Monday, and a time uses the date 1970-01-01. Returns an empty dictionary when the value is empty or this operation does not apply, including for datetime-local."
+msgstr "返回 [code]year[/code]、[code]month[/code]、[code]day[/code]、[code]hour[/code]、[code]minute[/code]、[code]second[/code] 和 [code]millisecond[/code]。月份取第一天，周取星期一，时间使用日期 1970-01-01。空值和不适用的类型（包括 datetime-local）返回空字典。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Sets the input from date or time parts. An empty dictionary clears the value. Returns [constant ERR_UNAVAILABLE] for input types without a date getter and [constant ERR_INVALID_PARAMETER] for invalid parts."
+msgstr "用日期或时间分量设置输入值。传入空字典将清空值。没有对应日期读取接口时返回 [constant ERR_UNAVAILABLE]，分量无效时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Opens the input picker or suggestions in the owning [HTMLLabel]. The element must be visible, connected, mutable, and within the active dialog if one is modal."
+msgstr "在所属 [HTMLLabel] 打开选择器或建议列表。元素必须可见、已连接且可编辑。有模态对话框时，元素还必须位于活动对话框中。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Increases a numeric or temporal value using its configured step and limits. Returns [constant ERR_UNAVAILABLE] when stepping does not apply or [code]step=\"any\"[/code]."
+msgstr "按配置的步长和范围增大数值或日期时间值。步进不适用或设置了 [code]step=\"any\"[/code] 时返回 [constant ERR_UNAVAILABLE]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "Decreases a numeric or temporal value using its configured step and limits."
+msgstr "按配置的步长和范围减小数值或日期时间值。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The current input value. For a file input, this is an empty string or the first selected file name with the standard fake-path prefix. Only an empty assignment can change a file input's value."
+msgstr "当前输入值。文件输入返回空字符串，或带标准虚拟路径前缀的第一个文件名。只有赋空字符串才能修改文件输入的值。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The mixed state of a checkbox. It changes the appearance and is cleared by user activation. Form data uses [member checked]."
+msgstr "复选框的混合状态。它改变外观，并在用户激活时清除。表单数据使用 [member checked]。"
+
+#. doc_classes/HTMLInputElement.xml
+msgid "The numeric value, or NaN when unavailable. Months count from January 1970, times use milliseconds since midnight, and other temporal values use milliseconds from the civil epoch without applying a timezone offset."
+msgstr "数值，不可用时为 NaN。月份以 1970 年 1 月为起点计数，时间以午夜后的毫秒计数，其他日期时间值以民用纪元以来的毫秒计数，无时区偏移。"
+
+#. doc_classes/HTMLInputFile.xml
+msgid "A read-only handle to a file selected through an HTML input."
+msgstr "HTML 文件输入中所选文件的只读句柄。"
+
+#. doc_classes/HTMLInputFile.xml
+msgid "Returned by [method HTMLInputElement.get_files] and as the value of a file entry in [method HTMLFormElement.get_form_data]. The handle retains access to the selected file while referenced and exposes its base name."
+msgstr "由 [method HTMLInputElement.get_files] 返回，也可作为 [method HTMLFormElement.get_form_data] 中的文件值。持有该句柄时可以访问所选文件及其文件名。"
+
+#. doc_classes/HTMLInputFile.xml
+msgid "Reads up to [param count] bytes at the zero-based [param offset]. Returns an empty array when the range is empty, invalid, or outside the file."
+msgstr "从零基 [param offset] 开始读取至多 [param count] 个字节。范围为空、无效或超出文件时返回空数组。"
+
+#. doc_classes/HTMLInputFile.xml
+msgid "The selected file's base name."
+msgstr "所选文件的文件名。"
+
+#. doc_classes/HTMLInputFile.xml
+msgid "The selected file's size in bytes at selection time."
+msgstr "选择时的文件大小，单位为字节。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when the user changes an input value or checked state. Read the new state from the element."
+msgstr "当用户更改输入值或勾选状态时发出。可从元素读取新状态。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when the user confirms an edit. Text fields commit with Enter or on focus loss. Toggle controls and confirmed picker selections commit immediately after [signal input_changed]."
+msgstr "当用户确认编辑时发出。文本字段通过 Enter 或失焦提交。勾选控件和选择器确认后紧接着 [signal input_changed] 提交。"
+
+#. doc_classes/HTMLFormElement.xml
+msgid "Returns ordered dictionaries with [code]name[/code] and [code]value[/code] keys. Repeated names remain separate. File entries hold [HTMLInputFile] values. The optional submitter must be enabled and associated with this form. An image submitter produces two coordinate entries whose values default to [code]0[/code]."
+msgstr "返回包含 [code]name[/code] 和 [code]value[/code] 键的有序字典。重复名称各占一项。文件项的值是 [HTMLInputFile]。可选的提交按钮必须已启用并关联该表单。图像提交按钮产生两个坐标条目，默认值为 [code]0[/code]。"

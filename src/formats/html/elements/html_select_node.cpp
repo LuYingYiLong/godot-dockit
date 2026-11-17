@@ -319,7 +319,14 @@ void HTMLSelectNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, liteh
 		return;
 	}
 	const bool arrow = css().get_appearance() != litehtml::appearance_none;
-	if (index >= 0) paint(options[index]->get_label(), Rect2(box.position, Vector2(box.size.x - (arrow ? 16 : 0), box.size.y)), css().get_color(), css());
-	if (arrow) paint(String::chr(0x25be), Rect2(box.get_end().x - 14, box.position.y, 14, box.size.y), css().get_color(), css());
+	const bool rtl = css().is_right_to_left();
+	const Rect2 text_box(box.position + Vector2(arrow && rtl ? 16 : 0, 0), Vector2(box.size.x - (arrow ? 16 : 0), box.size.y));
+	if (index >= 0) paint(options[index]->get_label(), text_box, css().get_color(), css());
+	if (arrow) {
+		const auto color = css().get_color().to_srgb();
+		container->draw_input_icon(dropdown_open ? HTMLControlIcon::up : HTMLControlIcon::down, box,
+			Rect2(rtl ? box.position.x : box.get_end().x - 16, box.get_center().y - 8, 16, 16),
+			Color::from_rgba8(color.red, color.green, color.blue, color.alpha));
+	}
 }
 }

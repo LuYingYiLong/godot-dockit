@@ -75,6 +75,12 @@ Inputs support single-line text modes, numbers, range sliders, checkboxes, radio
 
 A single-row select uses a dropdown. The `multiple` attribute or a `size` above one enables a list box. Multi-select submissions emit one ordered form entry per selected enabled option. Use `select_changed` for user actions. The `form_submitted` submitter argument is an `HTMLElement` handle. Scripts can check for `HTMLButtonElement` and `HTMLInputElement` to distinguish the two kinds of submitter.
 
+### Input types
+
+`HTMLInputElement` covers the 22 HTML input states. Date and time values use the HTML civil date formats. GDScript can read date parts with `get_value_as_date()`, step numeric or temporal fields with `step_up()` and `step_down()`, and inspect constraint flags with `get_validity()`. The `pattern` attribute uses Godot's RegEx syntax. [WHATWG input states](https://html.spec.whatwg.org/multipage/input.html#states-of-the-type-attribute)
+
+File entries use the same `{name, value}` structure as text entries. Each file value is an `HTMLInputFile` with `name`, `size`, and `read_bytes(offset, count)`. The picker exposes the file name and content without exposing its system path. An image submitter contributes two coordinate entries, prefixed with its name when present.
+
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)
 
 ## Lists and preformatted text

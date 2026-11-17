@@ -208,7 +208,8 @@ bool match_pseudo_class(const SelectorDOM& dom, SelectorNode node, const Attribu
 		return detail::is_one_of(dom.tag(node), "a", "area") && dom.attribute(node, "href").has_value();
 	}
 	if (name == "open") return (dom.tag(node) == "details" || dom.tag(node) == "dialog") && dom.attribute(node, "open").has_value();
-	if (name == "indeterminate") return dom.tag(node) == "progress" && !dom.attribute(node, "value").has_value();
+	if (name == "indeterminate") return (dom.tag(node) == "progress" && !dom.attribute(node, "value").has_value()) ||
+		dom.has_pseudo_class(node, name);
 	if (name == "focus-within") return has_focus_within(dom, node);
 	if (name == "has") {
 		return std::any_of(selector.selector_list.begin(), selector.selector_list.end(),

@@ -193,6 +193,9 @@
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_input_time.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_form_elements.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -703,6 +706,9 @@
     <ClCompile Include="src\nodes\html_label_input.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_pickers.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\nodes\html_label_forms.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
@@ -841,6 +847,9 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_input_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_input_time.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_output_node.h">

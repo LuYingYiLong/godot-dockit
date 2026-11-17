@@ -17,6 +17,7 @@ namespace litehtml {
 	};
 
 	web_color make_css_color(css_color_space space, std::array<double, 4> components, unsigned missing = 0);
+	std::array<double, 4> css_color_components(const web_color& color, css_color_space space);
 	bool parse_absolute_color(const css_token& token, web_color& color);
 	bool parse_relative_color(const css_token& token, web_color& color, document_container* container, unsigned depth);
 	bool parse_color_mix(const css_token& token, web_color& color, document_container* container, unsigned depth);

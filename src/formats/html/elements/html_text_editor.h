@@ -138,6 +138,7 @@ namespace docrender {
 		const godot::String& get_preedit() const { return preedit; }
 		bool take_user_change();
 		bool has_length_violation(const char* p_minlength, const char* p_maxlength) const;
+		bool has_dirty_value() const { return dirty_value; }
 		godot::Rect2 get_caret_rect() const { return caret_rect; }
 		bool is_caret_visible() const { return caret_visible; }
 		bool set_caret_visible(bool p_visible) {

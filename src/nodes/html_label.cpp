@@ -339,6 +339,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		return;
 	}
 	const Ref<HTMLElement> target_button = label->layout->get_button_ancestor(element);
+	if (handle_input_decoration(Ref<HTMLInputElement>(element), *button.ptr(), point)) return;
 	const Ref<HTMLElement> form_target = hit.id == 0 ? get_form_click_target(element) : Ref<HTMLElement>();
 	const Ref<HTMLInputElement> target_input = element;
 	if (!button->is_pressed() && dragging_input.is_valid()) {
@@ -382,7 +383,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (target_focus.is_valid()) label->grab_focus();
 		set_focused_element(target_focus);
 		const auto control = label->layout->text_control(element);
-		if (control) {
+		if (control && (control->is_text_control() || (target_input.is_valid() && target_input->get_input()->is_toggle()))) {
 			selecting = false;
 			pressed_blank = false;
 			pressed_element.unref();
@@ -459,7 +460,11 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button_clicked) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
-			target->activate_element(target_button);
+			const Ref<HTMLInputElement> image = target_button;
+			if (image.is_valid() && image->get_input() && image->get_input()->type() == docrender::HTMLInputNode::Type::IMAGE) {
+				const auto local = target->layout->input_local_point(*image.ptr(), point);
+				target->activate_form_control(image, local ? image->get_input()->image_coordinates(*local) : Vector2i());
+			} else target->activate_element(target_button);
 		}
 	}
 	else if (form_clicked) {
@@ -1086,6 +1091,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_VISIBILITY_CHANGED:
+		if (!is_visible_in_tree()) close_input_picker();
 		if (is_visible_in_tree()) {
 			if (color_scheme_timer && color_scheme_timer->is_inside_tree()) color_scheme_timer->start();
 			poll_preferred_color_scheme();
@@ -1113,6 +1119,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE: {
+		close_input_picker();
 		const ObjectID id(get_instance_id());
 		behavior_host_in_tree = false;
 		request_behavior_reset();
@@ -1717,6 +1724,7 @@ void HTMLLabel::source_changed() {
 }
 
 void HTMLLabel::reset_document_source() {
+	close_input_picker();
 	clear_videos();
 	clear_audio();
 	cancel_viewport_scroll();
@@ -1820,6 +1828,7 @@ void HTMLLabel::on_node_selection_changed() {
 }
 
 void HTMLLabel::on_layout_edited() {
+	if (picker_input.is_valid() && !input_picker_valid()) close_input_picker();
 	queue_audio_sync();
 	queue_video_sync();
 	close_select_menu();
@@ -1976,6 +1985,7 @@ void HTMLLabel::refresh() {
 		vertical = visible_bar(style.overflow[1], vertical || size.y > viewport.y);
 		const Vector2i next_viewport = client_size(horizontal, vertical);
 		if (next_viewport == viewport) {
+			if (picker_input.is_valid() && !input_picker_valid()) close_input_picker();
 			if (open_select.is_valid()) {
 				const Ref<HTMLSelectElement> select = open_select;
 				select_rows = select.is_valid() ? layout->select_menu_rows(open_select) : layout->suggestion_menu_rows(open_select);

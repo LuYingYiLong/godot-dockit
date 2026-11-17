@@ -136,6 +136,7 @@
     <ClCompile Include="src\nodes\mermaid_label.cpp" />
     <ClCompile Include="src\nodes\html_label.cpp" />
     <ClCompile Include="src\nodes\html_label_input.cpp" />
+    <ClCompile Include="src\nodes\html_label_pickers.cpp" />
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\nodes\html_label_behaviors.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
@@ -165,6 +166,7 @@
     <ClCompile Include="src\formats\html\elements\html_metadata_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_input_time.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_table_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_state.cpp" />
@@ -366,6 +368,7 @@
     <ClInclude Include="src\formats\html\elements\html_gauge_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_image_element.h" />
     <ClInclude Include="src\formats\html\elements\html_input_node.h" />
+    <ClInclude Include="src\formats\html\elements\html_input_time.h" />
     <ClInclude Include="src\formats\html\elements\html_form_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_output_node.h" />
     <ClInclude Include="src\formats\html\elements\html_table_attributes.h" />

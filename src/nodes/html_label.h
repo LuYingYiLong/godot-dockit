@@ -22,6 +22,10 @@ namespace godot {
 	class InputEventKey;
 	class InputEventMouseButton;
 	class Timer;
+	class PopupPanel;
+	class FileDialog;
+	class ColorPicker;
+	class VBoxContainer;
 }
 
 namespace docrender {
@@ -58,6 +62,8 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
 	godot::Ref<HTMLElement> pressed_form_target;
+	godot::Ref<HTMLInputElement> pressed_input_decoration;
+	int pressed_input_part = 0;
 	godot::Ref<HTMLElement> dragging_input;
 	struct TextareaDrag {
 		godot::Ref<HTMLElement> element;
@@ -140,6 +146,8 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;
 	void move_range(const godot::Ref<HTMLInputElement>& p_input, const godot::Vector2& p_point, bool p_commit);
 	bool handle_input_key(const godot::InputEventKey& p_key);
+	bool handle_input_decoration(const godot::Ref<HTMLInputElement>& p_input, const godot::InputEventMouseButton& p_event,
+		const godot::Vector2& p_point);
 	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
 	void close_input_menu();
 	void on_input_menu_selected(int p_command);
@@ -312,6 +320,16 @@ private:
 	int select_scroll = 0;
 	int select_visible_rows = 0;
 	float select_row_height = 0.0f;
+	godot::Ref<HTMLInputElement> picker_input;
+	godot::PopupPanel* input_popup = nullptr;
+	godot::FileDialog* file_dialog = nullptr;
+	godot::ColorPicker* color_picker = nullptr;
+	godot::VBoxContainer* picker_content = nullptr;
+	godot::Dictionary picker_date;
+	uint64_t picker_sequence = 0;
+	uint64_t picker_adoption = 0;
+	uint64_t picker_reset = 0;
+	godot::String picker_type;
 	godot::String text;
 	godot::String base_dir = "res://";
 	godot::String source_path;
@@ -440,7 +458,26 @@ private:
 	void queue_interaction();
 	void update_interaction();
 	void activate_link(const godot::String& p_uri);
-	bool activate_form_control(const godot::Ref<HTMLElement>& p_element);
+	bool activate_form_control(const godot::Ref<HTMLElement>& p_element, const godot::Vector2i& p_image_coordinates = {});
+	godot::Error submit_form_at(const godot::Ref<HTMLFormElement>& p_form, const godot::Ref<HTMLElement>& p_submitter,
+		const godot::Vector2i& p_image_coordinates);
+	friend class HTMLInputElement;
+	godot::Error open_input_picker(const godot::Ref<HTMLInputElement>& p_element);
+	godot::Error open_file_picker(uint64_t p_sequence);
+	bool input_picker_valid() const;
+	void close_input_picker();
+	void on_input_picker_closed(uint64_t p_sequence);
+	void files_selected(const godot::PackedStringArray& p_paths, uint64_t p_sequence);
+	void file_selected(const godot::String& p_path, uint64_t p_sequence);
+	void native_files_selected(bool p_accepted, const godot::PackedStringArray& p_paths, int p_filter, uint64_t p_sequence);
+	void show_color_picker();
+	void commit_picker_color();
+	void build_time_picker();
+	void navigate_time_picker(int p_delta);
+	void choose_time_picker_day(int p_day);
+	void change_time_picker_part(double p_value, const godot::String& p_part);
+	void commit_time_picker();
+	void commit_picker_value(const godot::String& p_value);
 	void submit_from_text(const godot::Ref<HTMLElement>& p_element);
 	bool open_suggestion_menu(const godot::Ref<HTMLElement>& p_element);
 	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows, int64_t p_selected);

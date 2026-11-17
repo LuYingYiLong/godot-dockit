@@ -6,6 +6,7 @@
 #include "formats/html/elements/html_details_element.h"
 #include "formats/html/elements/html_details_node.h"
 #include "formats/html/elements/html_select_node.h"
+#include "formats/html/paint/html_paint_recorder.h"
 
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
@@ -21,6 +22,11 @@ using docrender::HTMLInputNode;
 namespace forms = docrender::forms;
 
 Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLElement>& p_submitter) {
+	return submit_form_at(p_form, p_submitter, {});
+}
+
+Error HTMLLabel::submit_form_at(const Ref<HTMLFormElement>& p_form, const Ref<HTMLElement>& p_submitter,
+	const Vector2i& p_image_coordinates) {
 	if (source_dirty || !layout->is_element_connected(p_form)) return ERR_INVALID_PARAMETER;
 	const auto form = p_form->lock_element();
 	const auto submitter = p_form->lock_related_element(p_submitter);
@@ -39,7 +45,7 @@ Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLE
 			return ERR_INVALID_DATA;
 		}
 	}
-	const auto entries = p_form->get_form_data(p_submitter);
+	const auto entries = p_form->collect_form_data(p_submitter, p_image_coordinates);
 	const ObjectID id(get_instance_id());
 	const char* method = submitter ? submitter->get_attr("formmethod") : nullptr;
 	if (!method) method = form->get_attr("method", "");
@@ -78,7 +84,7 @@ void HTMLLabel::submit_from_text(const Ref<HTMLElement>& p_element) {
 	if (blocking <= 1) submit_form(form_handle);
 }
 
-bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
+bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element, const Vector2i& p_image_coordinates) {
 	if (!layout->allows_modal_interaction(p_element)) return false;
 	if (!layout->is_focusable(p_element)) {
 		if (!layout->is_element_connected(p_element)) return false;
@@ -99,6 +105,10 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
 		const auto list = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(node);
 		return list && list->is_list_box() ? focus_element(select) : open_select_menu(select);
 	}
+	if (const auto* field = dynamic_cast<const HTMLInputNode*>(node.get()); field &&
+		(field->type() == HTMLInputNode::Type::FILE || field->type() == HTMLInputNode::Type::COLOR)) {
+		return open_input_picker(Ref<HTMLInputElement>(p_element)) == OK;
+	}
 	if (const auto input = layout->text_control(p_element)) {
 		const ObjectID id(get_instance_id());
 		if (!focus_element(p_element)) return false;
@@ -115,7 +125,7 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element) {
 	}
 	const Ref<HTMLFormElement> form = layout->get_dom().make_element(forms::owner(*node));
 	if (action == forms::ButtonAction::SUBMIT) {
-		submit_form(form, p_element);
+		submit_form_at(form, p_element, p_image_coordinates);
 	} else if (form.is_valid() && form->reset() == OK) {
 		emit_signal("form_reset", form);
 	}
@@ -127,6 +137,10 @@ Ref<HTMLElement> HTMLLabelCanvas::get_form_click_target(const Ref<HTMLElement>& 
 	for (auto node = p_element->lock_element(); node; node = node->parent()) {
 		const auto tag = node->tag();
 		if (tag == litehtml::_label_ || tag == litehtml::_select_) return label->layout->get_dom().make_element(node);
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(node.get()); input &&
+			(input->type() == HTMLInputNode::Type::COLOR || input->type() == HTMLInputNode::Type::FILE)) {
+			return label->layout->get_dom().make_element(node);
+		}
 		if (docrender::forms::is_listed(*node) || (tag == litehtml::_a_ && node->get_attr("href"))) return {};
 	}
 	return {};
@@ -171,6 +185,10 @@ bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<
 	select_rows = std::move(p_rows);
 	update_select_menu();
 	if (open_select.is_null()) return false;
+	if (const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element())) {
+		select->set_dropdown_open(true);
+		layout->repaint_input();
+	}
 	int first = -1;
 	for (int i = 0; i < static_cast<int>(select_rows.size()); ++i) {
 		if (!select_rows[i].enabled) continue;
@@ -182,6 +200,12 @@ bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<
 }
 
 void HTMLLabel::close_select_menu() {
+	if (open_select.is_valid()) {
+		if (const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(open_select->lock_element())) {
+			select->set_dropdown_open(false);
+			layout->repaint_input();
+		}
+	}
 	open_select.unref();
 	select_rows.clear();
 	select_highlight = -1;
@@ -241,7 +265,11 @@ void HTMLLabel::draw_select_menu() {
 		if (row.background.a > 0) select_menu->draw_rect(box, row.background);
 		if (index == select_highlight) select_menu->draw_rect(box, docrender::html_system_color(litehtml::system_color::menu_hover, scheme));
 		const bool checked = row.option_index >= 0 && row.option_index == selected;
-		if (checked) select_menu->draw_circle(Vector2(9, y + select_row_height * 0.5f), 3, row.color);
+		if (checked) {
+			const auto icon = layout->get_control_icon(docrender::HTMLControlIcon::selected);
+			if (icon.is_valid()) select_menu->draw_texture_rect(icon, Rect2(2, y + (select_row_height - 14) * 0.5f, 14, 14),
+				false, row.color);
+		}
 		if (row.text.is_valid() && server.is_valid()) {
 			const float inset = row.option_index >= 0 ? 18 : 6;
 			const float baseline = y + (select_row_height + row.text.line_ascent() - row.text.line_descent()) * 0.5f;

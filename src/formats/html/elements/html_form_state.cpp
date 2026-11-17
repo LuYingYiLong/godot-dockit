@@ -35,7 +35,7 @@ namespace {
 
 	bool labelable(const element& p_node) {
 		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) {
-			return input->type() != HTMLInputNode::Type::HIDDEN && input->type() != HTMLInputNode::Type::OTHER;
+			return input->type() != HTMLInputNode::Type::HIDDEN;
 		}
 		const auto tag = p_node.tag();
 		return tag == _textarea_ || tag == _select_ || tag == _button_ || tag == _progress_ || tag == _meter_ || tag == _output_;
@@ -69,14 +69,16 @@ namespace {
 	}
 
 	std::optional<bool> control_validity(const element& p_node, std::optional<bool> p_radio_missing = {}) {
+		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) {
+			if (input->type() == HTMLInputNode::Type::RADIO && p_radio_missing) {
+				return is_validation_candidate(p_node) ? std::optional<bool>(!*p_radio_missing) : std::nullopt;
+			}
+			const auto validity = input->validity();
+			return bool(validity["will_validate"]) ? std::optional<bool>(bool(validity["valid"])) : std::nullopt;
+		}
 		if (!is_validation_candidate(p_node)) return {};
 		const bool required = p_node.get_attr("required");
-		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node); input && input->is_toggle()) {
-			if (input->type() == HTMLInputNode::Type::CHECKBOX) return !required || input->is_checked();
-			return p_radio_missing ? !*p_radio_missing : !radio_value_missing(radio_group(p_node));
-		}
-		if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node); input && input->has_type_violation()) return false;
-	if (const auto* text = dynamic_cast<const HTMLTextControlNode*>(&p_node)) {
+		if (const auto* text = dynamic_cast<const HTMLTextControlNode*>(&p_node)) {
 			return !(required && text->editor.get_value().is_empty()) &&
 				!text->editor.has_length_violation(p_node.get_attr("minlength"), p_node.get_attr("maxlength"));
 		}
@@ -107,7 +109,7 @@ bool is_listed(const element& p_node) {
 }
 
 bool supports_required(const element& p_node) {
-	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) return input->is_text_control() || input->is_toggle();
+	if (const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node)) return input->supports_required();
 	return p_node.tag() == _select_ || p_node.tag() == _textarea_;
 }
 
@@ -196,6 +198,20 @@ std::vector<element::ptr> controls(const element& p_form) {
 		return false;
 	});
 	return result;
+}
+
+std::vector<element::ptr> datalist_options(const element& p_control) {
+	std::vector<element::ptr> options;
+	const auto* id = p_control.get_attr("list");
+	const auto doc = p_control.get_document();
+	if (!id || !*id || !doc || root_of(p_control) != doc->root()) return options;
+	const auto list = by_id(doc->root(), id);
+	if (!list || list->tag() != _datalist_) return options;
+	HTMLDOM::visit_elements(list, [&](const element::ptr& p_node) {
+		if (p_node->tag() == _option_ && !is_disabled(*p_node)) options.push_back(p_node);
+		return false;
+	});
+	return options;
 }
 
 std::vector<element::ptr> radio_group(const element& p_radio) {

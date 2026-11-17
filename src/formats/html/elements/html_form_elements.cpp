@@ -157,7 +157,18 @@ TypedArray<HTMLElement> HTMLFormElement::get_controls() const {
 }
 
 TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLElement>& p_submitter) const {
+	return collect_form_data(p_submitter, {});
+}
+
+TypedArray<Dictionary> HTMLFormElement::collect_form_data(const Ref<HTMLElement>& p_submitter,
+	const Vector2i& p_image_coordinates) const {
 	TypedArray<Dictionary> result;
+	const auto add_entry = [&](const String& p_name, const Variant& p_value) {
+		Dictionary entry;
+		entry["name"] = p_name;
+		entry["value"] = p_value;
+		result.append(entry);
+	};
 	const auto form = lock_element();
 	if (!form) return result;
 	const auto submitter = lock_related_element(p_submitter);
@@ -165,21 +176,40 @@ TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLElement>& p_
 		forms::owner(*submitter) != form || forms::is_disabled(*submitter))) return result;
 	for (const auto& control : forms::controls(*form)) {
 		const auto* name = control->get_attr("name");
-		if (!name || !*name || forms::is_disabled(*control)) continue;
+		if (forms::is_disabled(*control)) continue;
+		const auto* input = dynamic_cast<const HTMLInputNode*>(control.get());
+		if (input && input->type() == HTMLInputNode::Type::IMAGE) {
+			if (control != submitter) continue;
+			const String prefix = name && *name ? String::utf8(name) + "." : String();
+			add_entry(prefix + String("x"), String::num_int64(p_image_coordinates.x));
+			add_entry(prefix + String("y"), String::num_int64(p_image_coordinates.y));
+			continue;
+		}
+		if (!name || !*name) continue;
 		String value;
-		if (const auto* input = dynamic_cast<const HTMLInputNode*>(control.get())) {
-			if (input->type() == HTMLInputNode::Type::OTHER || (input->is_toggle() && !input->is_checked()) ||
+		if (input) {
+			if ((input->is_toggle() && !input->is_checked()) ||
 				(input->is_button() && control != submitter)) continue;
+			if (input->type() == HTMLInputNode::Type::FILE) {
+				const auto& files = input->get_files();
+				if (files.is_empty()) {
+					Ref<HTMLInputFile> empty;
+					empty.instantiate();
+					add_entry(String::utf8(name), empty);
+				} else {
+					for (const Ref<HTMLInputFile>& file : files) {
+						add_entry(String::utf8(name), file);
+					}
+				}
+				continue;
+			}
 			value = input->get_value();
 		} else if (const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(control.get())) {
 			value = textarea->editor.get_value();
 		} else if (const auto* select = dynamic_cast<const HTMLSelectNode*>(control.get())) {
 			for (const auto& option : select->get_options()) {
 				if (!option->is_selected() || forms::is_disabled(*option)) continue;
-				Dictionary entry;
-				entry["name"] = String::utf8(name);
-				entry["value"] = option->get_value();
-				result.append(entry);
+				add_entry(String::utf8(name), option->get_value());
 			}
 			continue;
 		} else if (control == submitter) {
@@ -187,10 +217,7 @@ TypedArray<Dictionary> HTMLFormElement::get_form_data(const Ref<HTMLElement>& p_
 		} else {
 			continue;
 		}
-		Dictionary entry;
-		entry["name"] = String::utf8(name);
-		entry["value"] = value;
-		result.append(entry);
+		add_entry(String::utf8(name), value);
 	}
 	return result;
 }

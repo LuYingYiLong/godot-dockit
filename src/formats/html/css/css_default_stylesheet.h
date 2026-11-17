@@ -406,7 +406,30 @@ input:is([type="checkbox" i], [type="radio" i]) {
 }
 input[type="radio" i] { margin: 3px 3px 0 5px; border-radius: 50%; }
 input:is([type="checkbox" i], [type="radio" i]):checked { color: AccentColorText; }
+input[type="checkbox" i]:indeterminate { color: AccentColorText; background-color: AccentColor; }
 input[type="range" i] { width: 129px; height: 16px; margin: 2px; cursor: default; }
+input:is([type="date" i], [type="datetime-local" i], [type="month" i], [type="week" i], [type="time" i]) {
+	width: 11em;
+	height: 1lh;
+	background-color: Field;
+	border: 1px solid ButtonBorder;
+	padding: 2px 3px;
+	border-radius: 2px;
+	cursor: text;
+}
+input[type="datetime-local" i] { width: 16em; }
+input[type="time" i] { width: 8em; }
+input[type="file" i] { width: 19em; height: 1lh; padding-block: 3px; cursor: default; user-select: none; }
+input[type="image" i] { cursor: pointer; user-select: none; }
+input[type="color" i] {
+	box-sizing: border-box;
+	width: 50px;
+	height: 27px;
+	border: 1px solid ButtonBorder;
+	border-radius: 2px;
+	background-color: ButtonFace;
+	cursor: default;
+}
 
 button, input:is([type="button" i], [type="submit" i], [type="reset" i]) {
 	box-sizing: border-box;

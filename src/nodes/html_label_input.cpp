@@ -25,6 +25,10 @@ using docrender::HTMLInputNode;
 using docrender::HTMLTextAreaNode;
 
 namespace {
+	const char* edit_maxlength(const docrender::HTMLTextControlNode& p_input) {
+		const auto* field = dynamic_cast<const HTMLInputNode*>(&p_input);
+		return field ? field->maxlength() : p_input.get_attr("maxlength", "");
+	}
 	enum InputCommand {
 		INPUT_UNDO,
 		INPUT_REDO,
@@ -124,8 +128,9 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 
 void HTMLLabelCanvas::toggle_checkbox(const Ref<HTMLInputElement>& p_input) {
 	const auto input = p_input.is_valid() ? p_input->get_input() : nullptr;
-	if (!input || !input->is_toggle() || docrender::forms::is_disabled(*input) ||
-		!input->set_checked(input->type() == HTMLInputNode::Type::RADIO || !input->is_checked())) return;
+	if (!input || !input->is_toggle() || docrender::forms::is_disabled(*input)) return;
+	if (input->type() == HTMLInputNode::Type::CHECKBOX) input->set_indeterminate(false);
+	if (!input->set_checked(input->type() == HTMLInputNode::Type::RADIO || !input->is_checked())) return;
 	const ObjectID id(label->get_instance_id());
 	const uint64_t reset_version = input->editor.get_reset_version();
 	change_input(p_input);
@@ -164,11 +169,60 @@ void HTMLLabelCanvas::move_range(const Ref<HTMLInputElement>& p_input, const Vec
 	}
 }
 
+bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_input, const InputEventMouseButton& p_event,
+	const Vector2& p_point) {
+	const auto node = p_input.is_valid() ? p_input->get_input() : nullptr;
+	const auto local = node ? label->layout->input_local_point(*p_input.ptr(), p_point) : std::nullopt;
+	const int part = local && node->is_editable() && label->layout->is_focusable(p_input) ? node->decoration_at(*local) : 0;
+	if (p_event.is_pressed()) {
+		pressed_input_decoration.unref();
+		if (!part) return false;
+		cancel_press();
+		pressed_input_decoration = p_input;
+		pressed_input_part = part;
+		accept_event();
+		return true;
+	}
+	const auto pressed = std::exchange(pressed_input_decoration, {});
+	if (pressed.is_null()) return false;
+	accept_event();
+	if (p_event.is_canceled() || !part || pressed != p_input || part != pressed_input_part) return true;
+	const ObjectID id(label->get_instance_id());
+	if (!label->focus_element(p_input) || !ObjectDB::get_instance(id)) return true;
+	if (!label->layout->is_element_connected(p_input) || p_input->get_input() != node) return true;
+	if (node->time_kind() != docrender::input_time::Kind::none) {
+		label->open_input_picker(p_input);
+		return true;
+	}
+	bool changed = false;
+	if (node->type() == HTMLInputNode::Type::NUMBER) node->step_number(part, changed);
+	else if (node->type() == HTMLInputNode::Type::SEARCH) {
+		node->editor.set_selection(0, node->editor.get_value().length());
+		changed = node->editor.insert(String());
+	}
+	if (changed) {
+		change_input(p_input, false);
+		if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) owner->canvas->commit_input(p_input);
+	}
+	return true;
+}
+
 bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const Ref<HTMLElement> handle = focused_element;
 	const auto input = label->layout->text_control(handle);
 	if (!input || !label->layout->is_element_connected(handle)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
+	if (const Ref<HTMLInputElement> field = handle; field.is_valid() && p_key.is_pressed() && !p_key.is_echo() &&
+		!p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !docrender::forms::is_disabled(*input)) {
+		const auto native = field->get_input();
+		const bool specialized = native->type() == HTMLInputNode::Type::FILE || native->type() == HTMLInputNode::Type::COLOR;
+		if ((specialized && (key == KEY_SPACE || key == KEY_ENTER || key == KEY_KP_ENTER)) ||
+			(p_key.is_alt_pressed() && key == KEY_DOWN && native->has_picker())) {
+			label->accept_event();
+			label->open_input_picker(field);
+			return true;
+		}
+	}
 	if (auto* numeric = dynamic_cast<HTMLInputNode*>(input.get()); numeric && p_key.is_pressed() &&
 		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !input->editor.has_preedit() &&
 		!docrender::forms::is_disabled(*input)) {
@@ -177,12 +231,24 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		const bool vertical = key == KEY_UP || key == KEY_DOWN;
 		const bool horizontal = key == KEY_LEFT || key == KEY_RIGHT;
 		const bool endpoint = key == KEY_HOME || key == KEY_END;
+		if (numeric->time_kind() != docrender::input_time::Kind::none && input->is_editable() && !p_key.is_shift_pressed() &&
+			(vertical || horizontal) && numeric->edit_time_segment(key == KEY_LEFT || key == KEY_DOWN ? -1 : 1, vertical)) {
+			label->accept_event();
+			if (vertical) change_input(handle, false);
+			else {
+				label->layout->repaint_input();
+				queue_redraw();
+			}
+			return true;
+		}
 		if ((range && (vertical || horizontal || endpoint)) || (number && vertical && input->is_editable())) {
 			int step = key == KEY_DOWN || key == KEY_LEFT ? -1 : 1;
 			if (horizontal && input->css().is_right_to_left()) step = -step;
 			const ObjectID id(label->get_instance_id());
 			label->accept_event();
-			if (numeric->step_number(step, endpoint ? std::optional<bool>(key == KEY_END) : std::nullopt)) {
+			bool changed = false;
+			numeric->step_number(step, changed, endpoint ? std::optional<bool>(key == KEY_END) : std::nullopt);
+			if (changed) {
 				change_input(handle);
 				if (range) if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) owner->canvas->commit_input(handle);
 			}
@@ -251,7 +317,7 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	bool changed = false;
 	const auto selection_mode = input->user_selection_mode();
 	const bool extend = p_key.is_shift_pressed() && selection_mode != litehtml::css_user_select::none;
-	const char* maxlength = input->get_attr("maxlength", "");
+	const char* maxlength = edit_maxlength(*input);
 	if (enter && !inserts_text && !editor.is_multiline()) {
 		label->accept_event();
 		if (!p_key.is_echo()) {
@@ -312,7 +378,7 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 		// Keep the marked text before closing the native composition, as LineEdit does.
 		const String marked = active->editor.get_preedit();
 		close_ime();
-		if (active->editor.insert(marked, active->get_attr("maxlength", ""))) change_input(active_element);
+		if (active->editor.insert(marked, edit_maxlength(*active))) change_input(active_element);
 	}
 
 	label->grab_focus();
@@ -477,7 +543,7 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 
 	auto& editor = input->editor;
 	const bool editable = input->is_editable() && !editor.has_preedit();
-	const char* maxlength = input->get_attr("maxlength", "");
+	const char* maxlength = edit_maxlength(*input);
 	bool changed = false;
 	switch (p_command) {
 		case INPUT_UNDO:

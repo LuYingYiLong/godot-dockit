@@ -23,7 +23,8 @@ namespace litehtml {
 }
 
 namespace docrender {
-	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit, count };
+	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit,
+		down, up, left, right, selected, calendar, clock, colorize, count };
 
 	struct HTMLInputPaintColors {
 		std::optional<litehtml::web_color> selection_foreground;

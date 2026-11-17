@@ -29,6 +29,7 @@ namespace docrender {
 	};
 
 	class HTMLSelectNode : public litehtml::html_tag, public HTMLNodeCopyState {
+		bool dropdown_open = false;
 		bool allow_empty = false;
 		godot::Rect2 list_box;
 		double row_height = 1.0;
@@ -45,6 +46,7 @@ namespace docrender {
 		bool is_multiple() const { return get_attr("multiple") != nullptr; }
 		int64_t get_size() const;
 		bool is_list_box() const { return is_multiple() || get_size() > 1; }
+		void set_dropdown_open(bool p_open) { dropdown_open = p_open; }
 		int64_t display_size() const;
 		bool is_option_selected(const HTMLOptionNode& p_option) const;
 		int list_row_at(const godot::Vector2& p_point) const;

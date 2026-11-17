@@ -13,7 +13,7 @@
 		[code]&lt;button type="button"&gt;[/code] has a default style that author CSS can override. Use [code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even when text selection is disabled.
 		Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code] or [code]data-*[/code] attributes to identify the command.
 		Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order before the default stops. A negative value allows direct focus. At either end, focus passes to another Godot control when one is available.
-		Text inputs and checkboxes are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space.
+		HTML inputs are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space. Date, time, color, and file inputs provide pickers.
 		Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new value from script or resetting the form clears the field's edit history.
 	</description>
 	<methods>
@@ -436,13 +436,13 @@
 		<signal name="input_changed">
 			<param index="0" name="element" type="HTMLInputElement" />
 			<description>
-				Emitted when the user edits a text input, changes a checkbox, or selects a radio button. Read the new state from the element.
+				Emitted when the user changes an input value or checked state. Read the new state from the element.
 			</description>
 		</signal>
 		<signal name="input_committed">
 			<param index="0" name="element" type="HTMLInputElement" />
 			<description>
-				Emitted after a user edit is committed with Enter or by moving focus away. Checkboxes and radio buttons commit immediately after [signal input_changed].
+				Emitted when the user confirms an edit. Text fields commit with Enter or on focus loss. Toggle controls and confirmed picker selections commit immediately after [signal input_changed].
 			</description>
 		</signal>
 		<signal name="layout_changed">
