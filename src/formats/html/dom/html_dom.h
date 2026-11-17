@@ -27,6 +27,7 @@ struct HTMLNode::DetachedTree {
 
 namespace docrender {
 	class HTMLTemplateNode;
+	class HTMLDialogNode;
 
 	class HTMLDOM : public std::enable_shared_from_this<HTMLDOM> {
 		friend struct HTMLNode::DetachedTree;
@@ -43,6 +44,8 @@ namespace docrender {
 			litehtml::string_map values;
 		};
 		godot::HashMap<const litehtml::element*, SourceAttributes> source_attributes;
+		std::vector<std::weak_ptr<HTMLDialogNode>> dialog_nodes;
+		uint64_t last_dialog_sequence = 0;
 		std::function<void()> on_change;
 		std::function<void()> on_selection_change;
 		uint64_t lifetime = 0;
@@ -132,6 +135,9 @@ namespace docrender {
 
 		void set_document(std::shared_ptr<litehtml::document> p_document, godot::ObjectID p_owner_id, uint64_t p_generation);
 		const std::shared_ptr<litehtml::document>& get_document() const { return document; }
+		void track_dialog(const std::shared_ptr<HTMLDialogNode>& p_dialog);
+		void sync_open_dialogs();
+		std::shared_ptr<HTMLDialogNode> last_open_dialog() const;
 		void clear();
 		uint64_t get_lifetime() const { return lifetime; }
 		HTMLLayout* get_layout() const;

@@ -43,6 +43,7 @@ namespace litehtml {
 		auto doc = parse_tree(p_html, p_container);
 		if (doc) {
 			p_container.get_dom().normalize_details(doc->root(), {}, false, false);
+			p_container.refresh_document_base(doc->root());
 			restyle(doc, p_container, p_default_styles, p_user_styles);
 		}
 		return doc;
@@ -166,6 +167,7 @@ namespace litehtml {
 	elements_list docrender_editor::parse_fragment(document& p_document, const element& p_parent, const godot::CharString& p_html) {
 		GumboOptions options = kGumboDefaultOptions;
 		options.fragment_context = gumbo_tag_enum(p_parent.get_tagName());
+		options.fragment_namespace = static_cast<GumboNamespaceEnum>(p_parent.get_namespace());
 		if (options.fragment_context == GUMBO_TAG_UNKNOWN) {
 			options.fragment_context = GUMBO_TAG_DIV;
 		}

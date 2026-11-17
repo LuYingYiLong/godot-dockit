@@ -4,7 +4,7 @@
 		An HTML dialog that can open in the document or in the modal top layer.
 	</brief_description>
 	<description>
-		Represents [code]&lt;dialog&gt;[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its focusable elements and Escape closes it after open menus and IME composition have handled the key.
+		Represents [code]&lt;dialog&gt;[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its focusable elements. After menus and IME handle Escape, [member closed_by] determines whether to request a close.
 	</description>
 	<methods>
 		<method name="close">
@@ -18,6 +18,13 @@
 			<return type="bool" />
 			<description>
 				Returns whether this dialog is in its layout's modal top layer.
+			</description>
+		</method>
+		<method name="request_close">
+			<return type="int" enum="Error" />
+			<param index="0" name="return_value" type="Variant" default="null" />
+			<description>
+				Emits [signal close_requested] synchronously for an open, connected dialog, regardless of [member closed_by]. If a listener cancels the request, returns [constant ERR_SKIP]. Otherwise the dialog closes using the same result rules as [method close]. Returns [constant OK] for a closed or detached dialog.
 			</description>
 		</method>
 		<method name="show">
@@ -34,6 +41,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="closed_by" type="String" setter="set_closed_by" getter="get_closed_by">
+			The effective policy for user dismissal. [code]any[/code] allows Escape and clicks outside the dialog within the label. [code]closerequest[/code] allows Escape. [code]none[/code] disables both. A missing or invalid [code]closedby[/code] attribute acts as [code]closerequest[/code] for a modal dialog and [code]none[/code] otherwise. The raw attribute is available through [method HTMLElement.get_attribute].
+		</member>
 		<member name="open" type="bool" setter="set_open" getter="is_open">
 			Reflects the HTML [code]open[/code] attribute. Setting this property to [code]true[/code] opens a regular dialog. Setting it to [code]false[/code] removes the attribute and leaves the top layer if needed.
 		</member>
@@ -42,6 +52,12 @@
 		</member>
 	</members>
 	<signals>
+		<signal name="close_requested">
+			<param index="0" name="request" type="HTMLDialogCloseRequest" />
+			<description>
+				Emitted synchronously when a script, Escape, or an outside click requests dismissal. Call [method HTMLDialogCloseRequest.prevent_default] in the callback to keep the dialog open. Calls to [method close] and [code]method="dialog"[/code] submissions close directly.
+			</description>
+		</signal>
 		<signal name="closed">
 			<param index="0" name="return_value" type="String" />
 			<description>

@@ -6,8 +6,10 @@
 #include "formats/html/elements/html_anchor_element.h"
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
+#include "formats/html/elements/html_metadata_elements.h"
 #include "formats/html/elements/html_details_element.h"
 #include "formats/html/elements/html_dialog_element.h"
+#include "formats/html/elements/html_dialog_node.h"
 #include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_audio_element.h"
 #include "formats/html/elements/html_video_element.h"
@@ -160,7 +162,20 @@ namespace {
 		return handle;
 	}
 
-	Ref<HTMLElement> create_element_handle(litehtml::string_id p_tag) {
+	Ref<HTMLElement> create_element_handle(const litehtml::element& p_element) {
+		const auto p_tag = p_element.tag();
+		if (p_element.is_html_namespace()) {
+			switch (p_tag) {
+				case litehtml::_html_: return instantiate_element_handle<HTMLHtmlElement>();
+				case litehtml::_head_: return instantiate_element_handle<HTMLHeadElement>();
+				case litehtml::_body_: return instantiate_element_handle<HTMLBodyElement>();
+				case litehtml::_title_: return instantiate_element_handle<HTMLTitleElement>();
+				case litehtml::_meta_: return instantiate_element_handle<HTMLMetaElement>();
+				case litehtml::_base_: return instantiate_element_handle<HTMLBaseElement>();
+				case litehtml::_script_: return instantiate_element_handle<HTMLScriptElement>();
+				default: break;
+			}
+		}
 		if (p_tag == litehtml::_id("menu")) return instantiate_element_handle<HTMLMenuElement>();
 		if (p_tag == litehtml::_id("dialog")) return instantiate_element_handle<HTMLDialogElement>();
 		switch (p_tag) {
@@ -242,12 +257,48 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	document = std::move(p_document);
 	owner_id = p_owner_id;
 	generation = p_generation;
+	sync_open_dialogs();
 	for (const auto& entry : detached_trees) {
 		if (const auto tree = entry.value.lock()) {
 			if (const auto handle = find_node_handle(*entry.key); handle.is_valid()) bind_handle(*handle.ptr(), tree->root);
 			docrender::forms::synchronize(tree->root);
 		}
 	}
+}
+
+void HTMLDOM::track_dialog(const std::shared_ptr<HTMLDialogNode>& p_dialog) {
+	dialog_nodes.emplace_back(p_dialog);
+}
+
+void HTMLDOM::sync_open_dialogs() {
+	if (!document) return;
+	std::vector<std::shared_ptr<HTMLDialogNode>> opened;
+	dialog_nodes.erase(std::remove_if(dialog_nodes.begin(), dialog_nodes.end(), [&](const auto& p_candidate) {
+		const auto dialog = p_candidate.lock();
+		if (!dialog) return true;
+		if (!dialog->get_attr("open") || !is_element_connected(*dialog)) dialog->open_sequence = 0;
+		else if (!dialog->open_sequence) opened.push_back(dialog);
+		return false;
+	}), dialog_nodes.end());
+	if (opened.size() == 1) {
+		opened.front()->open_sequence = ++last_dialog_sequence;
+	} else if (!opened.empty()) {
+		// A parsed or inserted subtree opens its dialogs in document order.
+		visit_elements(document->root(), [&](const auto& p_element) {
+			if (auto* dialog = dynamic_cast<HTMLDialogNode*>(p_element.get()); dialog && !dialog->open_sequence && dialog->get_attr("open"))
+				dialog->open_sequence = ++last_dialog_sequence;
+			return false;
+		});
+	}
+}
+
+std::shared_ptr<docrender::HTMLDialogNode> HTMLDOM::last_open_dialog() const {
+	std::shared_ptr<HTMLDialogNode> result;
+	for (const auto& candidate : dialog_nodes) {
+		const auto dialog = candidate.lock();
+		if (dialog && dialog->open_sequence && (!result || dialog->open_sequence > result->open_sequence)) result = dialog;
+	}
+	return result;
 }
 
 void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved,
@@ -322,6 +373,7 @@ void HTMLDOM::clear() {
 		tree->root.reset();
 	}
 	source_attributes.clear();
+	dialog_nodes.clear();
 	document.reset();
 }
 
@@ -372,7 +424,7 @@ Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) 
 	if (const auto existing = find_node_handle(*p_element); existing.is_valid()) {
 		return existing;
 	}
-	Ref<HTMLElement> handle = create_element_handle(p_element->tag());
+	Ref<HTMLElement> handle = create_element_handle(*p_element);
 	bind_handle(*handle.ptr(), p_element);
 	return handle;
 }
@@ -1000,6 +1052,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 	if (!copy) {
 		return {};
 	}
+	copy->set_namespace(p_source.get_namespace());
 	if (p_deep) {
 		const auto* source_template = dynamic_cast<const HTMLTemplateNode*>(&p_source);
 		const auto& source = source_template ? *source_template->content->detached_tree->root : p_source;

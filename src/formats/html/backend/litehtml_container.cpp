@@ -161,9 +161,14 @@ namespace docrender {
 			return element;
 		}
 		const std::string_view tag(p_tag);
+		if (tag == "base") has_base_element = true;
 		if (tag == "ruby") return std::make_shared<HTMLRubyNode>(p_document);
 		if (tag == "details") return std::make_shared<HTMLDetailsNode>(p_document);
-		if (tag == "dialog") return std::make_shared<HTMLDialogNode>(p_document);
+		if (tag == "dialog") {
+			const auto dialog = std::make_shared<HTMLDialogNode>(p_document);
+			dom.track_dialog(dialog);
+			return dialog;
+		}
 		if (tag == "output") return std::make_shared<HTMLOutputNode>(p_document);
 		if (tag == "template") return dom.create_template_node(p_document);
 		if (tag == "video") return std::make_shared<HTMLVideoNode>(p_document);
@@ -187,6 +192,16 @@ namespace docrender {
 
 	void LiteHTMLContainer::reset_stylesheet_reads() {
 		resources.reset_stylesheet_reads();
+	}
+
+	void LiteHTMLContainer::refresh_document_base(const litehtml::element::ptr& p_root) {
+		if (!has_base_element) return;
+		const char* href = nullptr;
+		HTMLDOM::visit_elements(p_root, [&](const auto& p_node) {
+			if (p_node->tag() == litehtml::_base_ && p_node->is_html_namespace()) href = p_node->get_attr("href");
+			return href != nullptr;
+		});
+		resources.set_document_base_href(href);
 	}
 
 	void LiteHTMLContainer::set_css_diagnostics_enabled(bool p_enabled) {

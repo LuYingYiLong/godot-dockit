@@ -212,7 +212,7 @@ struct HTMLLayout::State {
 	Vector2 viewport_gutters;
 	std::array<litehtml::overflow, 2> viewport_overflow{litehtml::overflow_auto, litehtml::overflow_auto};
 	Vector2i content_size;
-	String resource_base;
+	String imported_video_base_dir;
 	Dictionary audio_streams;
 	Dictionary video_sources;
 	std::string master_styles;
@@ -677,6 +677,7 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLLayout::get_document_element);
 	ClassDB::bind_method(D_METHOD("get_head"), &HTMLLayout::get_head);
 	ClassDB::bind_method(D_METHOD("get_body"), &HTMLLayout::get_body);
+	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLLayout::get_base_uri);
 	ClassDB::bind_method(D_METHOD("get_title"), &HTMLLayout::get_title);
 	ClassDB::bind_method(D_METHOD("set_title", "title"), &HTMLLayout::set_title);
 	ClassDB::bind_method(D_METHOD("get_elements_by_tag_name", "name"), &HTMLLayout::get_elements_by_tag_name);
@@ -721,7 +722,7 @@ Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const St
 }
 
 Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
-	const Dictionary& p_textures, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
+	const Dictionary& p_textures, const String& p_source_path, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
 	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
 	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams, const Dictionary& p_video_sources) {
 	clear();
@@ -730,12 +731,12 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		state->error = "The base directory must use res:// or user://.";
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
-	state->resource_base = *base_dir;
 	state->audio_streams = p_audio_streams;
 	state->video_sources = p_video_sources;
 	try {
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
+		state->container->set_document_source_path(p_source_path);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->container->set_preferred_color_scheme(system_preference());
 		state->master_styles = litehtml::master_css;
@@ -750,6 +751,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 			state->error = "litehtml could not create the document.";
 			return state->parse_error = ERR_PARSE_ERROR;
 		}
+		state->imported_video_base_dir = state->container->get_document_base().directory;
 	}
 	catch (const std::exception& p_error) {
 		clear();
@@ -1293,8 +1295,31 @@ Ref<HTMLElement> HTMLLayout::get_body() const {
 	return query_selector("html > body, html > frameset");
 }
 
+String HTMLLayout::get_base_uri() const {
+	return state->container ? state->container->get_document_base().uri : String();
+}
+
+String HTMLLayout::resolve_link_href(const String& p_href, bool p_use_fallback) const {
+	if (!state->container) return p_href;
+	return docrender::resolve_html_link_href(p_href,
+		p_use_fallback ? state->container->get_fallback_base() : state->container->get_document_base());
+}
+
+Ref<HTMLElement> HTMLLayout::get_title_element() const {
+	const auto& document = state->dom->get_document();
+	Ref<HTMLElement> title;
+	if (document) {
+		HTMLDOM::visit_elements(document->root(), [&](const auto& p_node) {
+			if (p_node->tag() != litehtml::_title_ || !p_node->is_html_namespace()) return false;
+			title = state->dom->make_element(p_node);
+			return true;
+		});
+	}
+	return title;
+}
+
 String HTMLLayout::get_title() const {
-	const auto title = query_selector("title:not(svg title)");
+	const auto title = get_title_element();
 	if (title.is_null()) return {};
 	const String value = title->get_text_content().replace("\t", " ").replace("\r", " ").replace("\n", " ").replace("\f", " ");
 	return String(" ").join(value.split(" ", false));
@@ -1302,7 +1327,7 @@ String HTMLLayout::get_title() const {
 
 Error HTMLLayout::set_title(const String& p_title) {
 	if (!ensure_document_for_editing()) return ERR_UNCONFIGURED;
-	if (const auto title = query_selector("title:not(svg title)"); title.is_valid()) return title->set_text_content(p_title);
+	if (const auto title = get_title_element(); title.is_valid()) return title->set_text_content(p_title);
 	auto head = get_head();
 	const bool needs_head = head.is_null();
 	if (needs_head) head = create_element("head");
@@ -1471,7 +1496,11 @@ void HTMLLayout::sample_css_animations(bool p_force) {
 }
 
 void HTMLLayout::invalidate_styles() {
-	if (const auto& document = state->dom->get_document()) DocumentAdapter::prune_modals(*document);
+	if (const auto& document = state->dom->get_document()) {
+		DocumentAdapter::prune_modals(*document);
+		state->container->refresh_document_base(document->root());
+	}
+	state->dom->sync_open_dialogs();
 	mark_styles_pending();
 	state->implicit_empty_document = false;
 	if (state->edit_callback.is_valid()) {
@@ -2570,6 +2599,30 @@ Ref<HTMLDialogElement> HTMLLayout::top_modal() const {
 	return state->dom->make_element(top_modal_node());
 }
 
+Ref<HTMLDialogElement> HTMLLayout::active_dialog() const {
+	if (const auto modal = top_modal_node()) return state->dom->make_element(modal);
+	return state->dom->make_element(state->dom->last_open_dialog());
+}
+
+bool HTMLLayout::is_outside_dialog(const HTMLDialogElement& p_dialog, const Vector2& p_point) const {
+	const auto node = p_dialog.lock_element();
+	if (!state->has_layout() || !node) return false;
+	const auto* boxes = state->geometry.find_element(node.get());
+	if (!boxes || boxes->empty()) return false;
+	bool visible = false;
+	for (const auto* box : *boxes) {
+		if (!box->item->is_visible() || !box->inverse) continue;
+		visible = true;
+		// CSS pointer-events can suppress a hit on otherwise visible dialog content.
+		if (box->contains_visible_point(p_point)) return false;
+	}
+	if (!visible) return false;
+	for (auto hit = hit_test_element(p_point); hit; hit = hit->parent()) {
+		if (hit == node) return false;
+	}
+	return true;
+}
+
 Vector2i HTMLLayout::modal_text_range() const {
 	const auto modal = top_modal_node();
 	return modal && state->has_layout() ? state->container->get_paint_recorder().text_range_in(*modal) : Vector2i();
@@ -2929,13 +2982,14 @@ TypedArray<HTMLVideoElement> HTMLLayout::video_elements() const {
 PackedStringArray HTMLLayout::video_paths(const HTMLVideoElement& p_element) const {
 	PackedStringArray result;
 	const auto element = p_element.get_video_node();
-	if (!element || p_element.get_owner() != this) return result;
+	if (!element || p_element.get_owner() != this || !state->container) return result;
+	const String& base_dir = state->container->get_document_base().directory;
 	const auto append = [&](const char* p_src) {
 		if (!p_src) return;
 		const String value = String::utf8(p_src);
-		String path = docrender::resolve_html_video_path(value, state->resource_base);
-		if (path.is_empty()) {
-			path = docrender::resolve_html_video_path(state->video_sources.get(value, String()), state->resource_base);
+		String path = docrender::resolve_html_video_path(value, base_dir);
+		if (path.is_empty() && (base_dir == state->imported_video_base_dir || value.begins_with("uid://"))) {
+			path = docrender::resolve_html_video_path(state->video_sources.get(value, String()), base_dir);
 		}
 		if (!path.is_empty() && !result.has(path)) result.append(path);
 	};
@@ -2972,12 +3026,12 @@ TypedArray<HTMLAudioElement> HTMLLayout::audio_elements() const {
 
 PackedStringArray HTMLLayout::audio_sources(const HTMLAudioElement& p_element) const {
 	PackedStringArray result;
-	if (p_element.get_owner() != this) return result;
+	if (p_element.get_owner() != this || !state->container) return result;
 	const auto element = p_element.lock_element();
 	if (!element) return result;
 	const auto append_source = [&](const char* p_src) {
 		if (!p_src) return;
-		const String path = docrender::resolve_html_audio_path(String::utf8(p_src), state->resource_base);
+		const String path = docrender::resolve_html_audio_path(String::utf8(p_src), state->container->get_document_base().directory);
 		if (!path.is_empty()) result.append(path);
 	};
 	if (const char* src = element->get_attr("src")) append_source(src);
@@ -3010,7 +3064,7 @@ Ref<Resource> HTMLLayout::audio_resource(const String& p_path, bool p_fmod) cons
 void HTMLLayout::clear() {
 	state->audio_streams.clear();
 	state->video_sources.clear();
-	state->resource_base = String();
+	state->imported_video_base_dir = String();
 	++parse_version;
 	state->stylesheet_ids.clear();
 	state->extra_stylesheet_id = 0;

@@ -88,6 +88,10 @@ namespace docrender {
 			paint.record_css_diagnostic(p_geometry, p_box);
 		}
 		void reset_stylesheet_reads();												// 重置本轮外部样式表的读取计数
+		void set_document_source_path(const godot::String& p_path) { resources.set_source_path(p_path); }
+		void refresh_document_base(const litehtml::element::ptr& p_root);
+		const HTMLResourceBase& get_document_base() const { return resources.get_document_base(); }
+		const HTMLResourceBase& get_fallback_base() const { return resources.get_fallback_base(); }
 		void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
 		void set_transition_state(const css::TransitionState* p_state) { transition_state = p_state; }
 		void set_animation_state(const css::AnimationState* p_state) { animation_state = p_state; }
@@ -126,6 +130,7 @@ namespace docrender {
 		godot::HashMap<const litehtml::element*, std::vector<int64_t>> element_diagnostics;
 		bool fit_images;
 		bool svg_clip_only;
+		bool has_base_element = false;
 		LiteHTMLFonts fonts;
 		godot::Vector2i viewport_size;
 		godot::Vector2i media_viewport_size;
@@ -199,7 +204,7 @@ namespace docrender {
 		void get_language(litehtml::string& r_language, litehtml::string& r_culture) const override;
 
 		void import_css(litehtml::string& r_text, const litehtml::string& p_url, litehtml::string& r_css_base) override;
-		void set_base_url(const char*) override {}
+		void set_base_url(const char*) override {} // 文档基准在读取样式表前按 DOM 顺序计算
 		void set_caption(const char*) override {}
 		void link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) override;
 		void on_anchor_click(const char*, const litehtml::element::ptr&) override {}

@@ -290,6 +290,10 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 			}
 			if (ret)
 			{
+				static_assert(static_cast<int>(element_namespace::html) == GUMBO_NAMESPACE_HTML &&
+					static_cast<int>(element_namespace::svg) == GUMBO_NAMESPACE_SVG &&
+					static_cast<int>(element_namespace::mathml) == GUMBO_NAMESPACE_MATHML);
+				ret->set_namespace(static_cast<element_namespace>(node->v.element.tag_namespace));
 				elements_list child;
 				for (unsigned int i = 0; i < node->v.element.children.length; i++)
 				{

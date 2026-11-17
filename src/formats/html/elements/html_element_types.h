@@ -2,6 +2,27 @@
 
 #include "html_element.h"
 
+class HTMLHtmlElement : public HTMLElement {
+	GDCLASS(HTMLHtmlElement, HTMLElement)
+
+protected:
+	static void _bind_methods() {}
+};
+
+class HTMLHeadElement : public HTMLElement {
+	GDCLASS(HTMLHeadElement, HTMLElement)
+
+protected:
+	static void _bind_methods() {}
+};
+
+class HTMLBodyElement : public HTMLElement {
+	GDCLASS(HTMLBodyElement, HTMLElement)
+
+protected:
+	static void _bind_methods() {}
+};
+
 class HTMLDivElement : public HTMLElement {
 	GDCLASS(HTMLDivElement, HTMLElement)
 

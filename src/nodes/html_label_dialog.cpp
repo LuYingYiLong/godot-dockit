@@ -112,14 +112,22 @@ bool HTMLLabel::handle_dialog_escape(const InputEventKey& p_key) {
 		accept_event();
 		return true;
 	}
-	const auto dialog = layout->top_modal();
+	const auto dialog = layout->active_dialog();
 	if (dialog.is_null() || !p_key.is_pressed()) return false;
+	const bool allowed = dialog->get_closed_by() != "none";
+	if (!allowed && !dialog->is_modal()) return false;
 	accept_event();
 	if (!p_key.is_echo()) {
 		dialog_escape_held = true;
-		dialog->close();
+		if (canvas) canvas->update_focus_mode();
+		if (allowed) dialog->dispatch_close_request(HTMLDialogCloseRequest::ESCAPE);
 	}
 	return true;
+}
+
+void HTMLLabel::request_dialog_from_pointer(const Ref<HTMLDialogElement>& p_dialog, uint64_t p_sequence) {
+	if (is_visible_in_tree() && layout->active_dialog() == p_dialog && p_dialog->get_open_sequence() == p_sequence)
+		p_dialog->dispatch_close_request(HTMLDialogCloseRequest::BACKDROP);
 }
 
 void HTMLLabel::queue_dialog_closed(const Ref<HTMLDialogElement>& p_dialog, const String& p_value) {

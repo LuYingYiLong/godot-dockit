@@ -157,6 +157,7 @@
     <ClCompile Include="src\formats\html\elements\html_gauge_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_gauge_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element_types.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_metadata_elements.cpp" />
     <ClCompile Include="src\formats\html\elements\html_image_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_input_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_form_elements.cpp" />
@@ -340,6 +341,7 @@
     <ClInclude Include="src\formats\html\elements\html_button_element.h" />
     <ClInclude Include="src\formats\html\elements\html_element.h" />
     <ClInclude Include="src\formats\html\elements\html_element_types.h" />
+    <ClInclude Include="src\formats\html\elements\html_metadata_elements.h" />
     <ClInclude Include="src\formats\html\elements\html_control_render_item.h" />
     <ClInclude Include="src\formats\html\elements\html_heading_element.h" />
     <ClInclude Include="src\formats\html\elements\html_list_elements.h" />

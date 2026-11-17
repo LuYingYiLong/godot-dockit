@@ -16,6 +16,7 @@ namespace godot {
 	void HTMLPreviewEditorPlugin::update_preview(CodeEdit* p_source, Control* p_preview, const String& p_path) {
 		auto* label = static_cast<HTMLLabel*>(p_preview);
 		label->set_base_dir(p_path.get_base_dir());
+		label->set_source_path(p_path);
 		label->set_text(p_source->get_text());
 	}
 } // namespace godot

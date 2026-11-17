@@ -1,6 +1,7 @@
 #pragma once
 
 #include "html_image_metadata.h"
+#include "html_resource_paths.h"
 
 #include <litehtml/types.h>
 
@@ -19,7 +20,8 @@ namespace docrender {
 	std::optional<godot::String> read_html_svg_source(const godot::String& p_path); // 读取大小受限的本地 UTF-8 SVG 文件
 
 	class HTMLResources {
-		godot::String base_dir;
+		HTMLResourceBase fallback_base;
+		HTMLResourceBase document_base;
 		godot::Dictionary textures;
 		godot::Dictionary local_stylesheets;
 		godot::Dictionary local_fonts;
@@ -42,6 +44,10 @@ namespace docrender {
 			const godot::Dictionary& p_image_orientations, const godot::Dictionary& p_svg_clip_sources);
 
 		static std::string_view stylesheet_path(std::string_view p_css_base);
+		void set_source_path(const godot::String& p_path);
+		void set_document_base_href(const char* p_href);
+		const HTMLResourceBase& get_document_base() const { return document_base; }
+		const HTMLResourceBase& get_fallback_base() const { return fallback_base; }
 		void reset_stylesheet_reads();
 		void import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base);
 		godot::String resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const;

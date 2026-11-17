@@ -62,9 +62,10 @@ public:
 class HTMLDocumentNode : public HTMLNode {
 	GDCLASS(HTMLDocumentNode, HTMLNode)
 protected:
-	static void _bind_methods() {}
+	static void _bind_methods();
 public:
 	NodeType get_node_type() const override { return DOCUMENT_NODE; } // 返回文档节点类型
+	godot::String get_base_uri() const; // 返回当前文档的生效基准
 };
 
 class HTMLTextNode : public HTMLNode {

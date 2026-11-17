@@ -6,6 +6,8 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <litehtml/html.h>
 
+#include <algorithm>
+
 using namespace godot;
 
 namespace docrender {
@@ -24,6 +26,58 @@ namespace docrender {
 			const String absolute = source.begins_with("res://") || source.begins_with("user://") ? source : p_base_dir.path_join(source);
 			return normalize_html_resource_path(absolute).value_or(String());
 		}
+
+		String directory_uri(const String& p_path) {
+			return p_path.is_empty() || p_path.ends_with("/") ? p_path : p_path + String("/");
+		}
+
+		int64_t url_suffix(const String& p_url) {
+			const int64_t query = p_url.find("?");
+			const int64_t fragment = p_url.find("#");
+			return query < 0 ? fragment : fragment < 0 ? query : std::min(query, fragment);
+		}
+
+		String without_url_suffix(const String& p_url) {
+			const int64_t suffix = url_suffix(p_url);
+			return suffix < 0 ? p_url : p_url.substr(0, suffix);
+		}
+
+		String resolve_local_url(const String& p_href, const HTMLResourceBase& p_base) {
+			const int64_t suffix = url_suffix(p_href);
+			if (p_href.is_empty() || suffix == 0) {
+				const int64_t cut = p_href.begins_with("?") ? url_suffix(p_base.uri) : p_base.uri.find("#");
+				return (cut < 0 ? p_base.uri : p_base.uri.substr(0, cut)) + p_href;
+			}
+			const String reference = suffix < 0 ? p_href : p_href.substr(0, suffix);
+			const String path = resolve_local_path(reference, p_base.directory);
+			if (path.is_empty()) return {};
+			const String decoded = decode_html_fragment(reference).replace("\\", "/");
+			const String last = decoded.get_file();
+			const bool directory = decoded.ends_with("/") || last == "." || last == "..";
+			return (directory ? directory_uri(path) : path) + (suffix < 0 ? String() : p_href.substr(suffix));
+		}
+	}
+
+	HTMLResourceBase make_html_resource_base(const String& p_directory, const String& p_source_path) {
+		const String directory = normalize_html_resource_path(p_directory).value_or(String());
+		const auto source = normalize_html_resource_path(p_source_path);
+		return { source && source->get_base_dir() == directory ? *source : directory_uri(directory), directory };
+	}
+
+	HTMLResourceBase resolve_html_document_base(const HTMLResourceBase& p_fallback, const char* p_href) {
+		if (!p_href) return p_fallback;
+		const String uri = resolve_local_url(String::utf8(p_href).strip_edges(), p_fallback);
+		if (uri.is_empty()) return p_fallback;
+		const String path = without_url_suffix(uri);
+		return { uri, path.ends_with("/") ? normalize_html_resource_path(path).value_or(p_fallback.directory) : path.get_base_dir() };
+	}
+
+	String resolve_html_link_href(const String& p_href, const HTMLResourceBase& p_base) {
+		const String href = p_href.strip_edges();
+		const String prefix = without_url_suffix(href).get_slice("/", 0);
+		if (prefix.contains(":") && !href.begins_with("res://") && !href.begins_with("user://") && !href.begins_with("uid://"))
+			return href;
+		return resolve_local_url(href, p_base);
 	}
 
 	std::optional<String> normalize_html_resource_path(const String& p_path) {

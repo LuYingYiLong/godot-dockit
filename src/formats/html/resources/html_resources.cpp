@@ -177,8 +177,18 @@ namespace docrender {
 	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets,
 		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations,
 		const Dictionary& p_svg_clip_sources) :
-		base_dir(p_base_dir), textures(p_textures), local_stylesheets(p_local_stylesheets), local_fonts(p_local_fonts),
+		fallback_base(make_html_resource_base(p_base_dir)), document_base(fallback_base),
+		textures(p_textures), local_stylesheets(p_local_stylesheets), local_fonts(p_local_fonts),
 		image_dpi(p_image_dpi), image_orientations(p_image_orientations), svg_clip_sources(p_svg_clip_sources) {
+	}
+
+	void HTMLResources::set_source_path(const String& p_path) {
+		fallback_base = make_html_resource_base(fallback_base.directory, p_path);
+		document_base = fallback_base;
+	}
+
+	void HTMLResources::set_document_base_href(const char* p_href) {
+		document_base = resolve_html_document_base(fallback_base, p_href);
 	}
 
 	std::string_view HTMLResources::stylesheet_path(std::string_view p_css_base) {
@@ -192,7 +202,7 @@ namespace docrender {
 
 	String HTMLResources::get_url_dir(const char* p_css_base) const {
 		if (!p_css_base || !*p_css_base) {
-			return base_dir;
+			return document_base.directory;
 		}
 		const auto path = stylesheet_path(p_css_base);
 		return String::utf8(path.data(), path.size()).get_base_dir();
@@ -230,7 +240,7 @@ namespace docrender {
 
 	String HTMLResources::resolve_image_source(std::string_view p_source) const {
 		const String source = String::utf8(p_source.data(), p_source.size()).strip_edges();
-		const String path = resolve_html_image_path(source, base_dir);
+		const String path = resolve_html_image_path(source, document_base.directory);
 		const int64_t fragment = source.find("#");
 		return !path.is_empty() && fragment >= 0 ? path + source.substr(fragment) : path;
 	}

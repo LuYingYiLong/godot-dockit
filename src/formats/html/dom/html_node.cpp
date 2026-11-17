@@ -9,6 +9,15 @@
 
 using namespace godot;
 
+void HTMLDocumentNode::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLDocumentNode::get_base_uri);
+}
+
+String HTMLDocumentNode::get_base_uri() const {
+	const auto* layout = get_owner();
+	return layout ? layout->get_base_uri() : String();
+}
+
 void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_node_type"), &HTMLNode::get_node_type);
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLNode::is_valid);

@@ -8,6 +8,7 @@
 #include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/input.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
@@ -161,13 +162,31 @@ void HTMLLabelCanvas::refresh_diagnostic_tooltip(const std::optional<Vector2>& p
 }
 
 void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
-	if (!label) {
+	if (!label || p_event.is_null()) {
 		return;
 	}
-	if (label->viewport_touch_dragged) return;
 	const Rect2 visible_rect = label->get_visible_rect();
+	// Touch-generated mouse events use the same path as a mouse click.
+	if (p_event->get_device() != InputEvent::DEVICE_ID_EMULATION && !Input::get_singleton()->is_emulating_mouse_from_touch()) {
+		if (const Ref<InputEventScreenTouch> touch = p_event; touch.is_valid()) {
+			const int index = touch->get_index();
+			if (touch->is_pressed() && dialog_touch_index < 0) dialog_touch_index = index;
+			if (dialog_touch_index == index) {
+				if (!touch->is_pressed()) dialog_touch_index = -1;
+				if (!label->viewport_touch_dragged)
+					handle_dialog_pointer(touch->get_position(), touch->is_pressed(), touch->is_canceled(), touch->get_device(), index);
+			}
+			return;
+		}
+		if (const Ref<InputEventScreenDrag> drag = p_event; drag.is_valid()) {
+			update_dialog_pointer(drag->get_position(), drag->get_device(), drag->get_index());
+			return;
+		}
+	}
+	if (label->viewport_touch_dragged) return;
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
+		update_dialog_pointer(motion->get_position(), motion->get_device());
 		if (move_video_control(motion->get_position()) || move_audio_control(motion->get_position())) {
 			accept_event();
 			return;
@@ -243,11 +262,17 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (result == docrender::HTMLScrollInput::handled || label->layout->top_modal().is_valid()) accept_event();
 	};
 	if (pan.is_valid()) {
+		outside_dialog_press.reset();
 		scroll(pan->get_position());
 		return;
 	}
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
+	if (button->get_button_index() == MOUSE_BUTTON_LEFT) {
+		if (handle_dialog_pointer(point, button->is_pressed(), button->is_canceled(), button->get_device())) return;
+	} else if (button->is_pressed()) {
+		outside_dialog_press.reset();
+	}
 	if (handle_video_button(*button.ptr(), point) || handle_audio_button(*button.ptr(), point)) {
 		accept_event();
 		return;
@@ -444,6 +469,43 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			target->emit_signal("element_clicked", element);
 		}
 	}
+}
+
+bool HTMLLabelCanvas::handle_dialog_pointer(const Vector2& p_point, bool p_pressed, bool p_cancelled, int p_device, int p_touch) {
+	if (outside_dialog_press && (outside_dialog_press->device != p_device || outside_dialog_press->touch != p_touch)) return false;
+	const auto press = std::exchange(outside_dialog_press, std::nullopt);
+	const auto dialog = label->layout->active_dialog();
+	if (p_cancelled || dialog.is_null() || !_has_point(p_point)) return false;
+	if (dialog->get_closed_by() != "any") return false;
+	const bool modal = dialog->is_modal();
+	const bool outside = label->layout->is_outside_dialog(*dialog.ptr(), p_point);
+	const Vector2 position = p_point - label->get_visible_rect().position;
+	if (p_pressed) {
+		if (outside && modal) {
+			cancel_press();
+			accept_event();
+		}
+		if (outside)
+			outside_dialog_press = OutsideDialogPress{dialog, dialog->get_open_sequence(), position, p_device, p_touch};
+		return outside && modal;
+	}
+	if (!press || press->dialog != dialog || press->open_sequence != dialog->get_open_sequence() || !outside ||
+		press->position.distance_squared_to(position) > DRAG_DEADZONE * DRAG_DEADZONE) return false;
+	if (modal) {
+		accept_event();
+		label->request_dialog_from_pointer(dialog, press->open_sequence);
+	} else {
+		// Let an ordinary click still activate its target outside the non-modal dialog.
+		callable_mp(label, &HTMLLabel::request_dialog_from_pointer).call_deferred(dialog, press->open_sequence);
+	}
+	return modal;
+}
+
+void HTMLLabelCanvas::update_dialog_pointer(const Vector2& p_point, int p_device, int p_touch) {
+	if (!outside_dialog_press || outside_dialog_press->device != p_device || outside_dialog_press->touch != p_touch) return;
+	const Vector2 position = p_point - label->get_visible_rect().position;
+	if (!_has_point(p_point) || outside_dialog_press->position.distance_squared_to(position) > DRAG_DEADZONE * DRAG_DEADZONE)
+		outside_dialog_press.reset();
 }
 
 void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
@@ -681,6 +743,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	}
 	else if (p_what == NOTIFICATION_EXIT_TREE) {
 		cancel_press();
+		dialog_touch_index = -1;
 		set_focused_element({});
 		caret_window_active = true;
 		tab_elements.clear();
@@ -728,6 +791,7 @@ void HTMLLabelCanvas::cancel_press() {
 }
 
 void HTMLLabelCanvas::cancel_click() {
+	outside_dialog_press.reset();
 	pressed_blank = false;
 	if (pressed_checkbox.is_valid()) {
 		set_element_pseudo(pressed_checkbox, "active", false);
@@ -797,6 +861,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLLabel::get_text);
 	ClassDB::bind_method(D_METHOD("set_base_dir", "base_dir"), &HTMLLabel::set_base_dir);
 	ClassDB::bind_method(D_METHOD("get_base_dir"), &HTMLLabel::get_base_dir);
+	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLLabel::get_base_uri);
 	ClassDB::bind_method(D_METHOD("set_stylesheet", "stylesheet"), &HTMLLabel::set_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &HTMLLabel::get_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_content_size"), &HTMLLabel::get_content_size);
@@ -1024,6 +1089,7 @@ void HTMLLabel::_notification(int p_what) {
 			if (color_scheme_timer) color_scheme_timer->stop();
 			viewport_touch_index = -1;
 			viewport_touch_dragged = false;
+			canvas->dialog_touch_index = -1;
 			dragging_viewport_scrollbar = {};
 			cancel_viewport_scroll();
 			cancel_viewport_pan_snap();
@@ -1067,6 +1133,7 @@ void HTMLLabel::_notification(int p_what) {
 		if (viewport_bars) viewport_bars->queue_redraw();
 		close_select_menu();
 		if (canvas) {
+			canvas->dialog_touch_index = -1;
 			canvas->close_input_menu();
 			canvas->cancel_press();
 			canvas->caret_window_active = false;
@@ -1120,6 +1187,15 @@ void HTMLLabel::set_base_dir(const String& p_base_dir) {
 
 String HTMLLabel::get_base_dir() const {
 	return base_dir;
+}
+
+String HTMLLabel::get_base_uri() const { return layout->get_base_uri(); }
+
+void HTMLLabel::set_source_path(const String& p_path) {
+	if (source_path != p_path) {
+		source_path = p_path;
+		if (document.is_null()) source_changed();
+	}
 }
 
 void HTMLLabel::set_stylesheet(const String& p_stylesheet) {
@@ -1669,7 +1745,7 @@ void HTMLLabel::parse_pending_source() {
 		parsed = layout->get_render_error().is_empty();
 	}
 	else {
-		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
+		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), source_path, false, DOCUMENT_DEFAULTS) == OK;
 	}
 	sync_videos();
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));

@@ -12,6 +12,7 @@
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <litehtml/html.h>
 
 #include <algorithm>
 
@@ -38,7 +39,25 @@ Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLE
 			return ERR_INVALID_DATA;
 		}
 	}
-	emit_signal("form_submitted", p_form, p_form->get_form_data(p_submitter), p_submitter);
+	const auto entries = p_form->get_form_data(p_submitter);
+	const ObjectID id(get_instance_id());
+	const char* method = submitter ? submitter->get_attr("formmethod") : nullptr;
+	if (!method) method = form->get_attr("method", "");
+	if (litehtml::lowcase(method) == "dialog") {
+		for (auto ancestor = form->parent(); ancestor; ancestor = ancestor->parent()) {
+			if (ancestor->tag() != litehtml::_id("dialog")) continue;
+			const Ref<HTMLDialogElement> dialog = layout->get_dom().make_element(ancestor);
+			if (dialog.is_valid()) {
+				const char* value = submitter ? submitter->get_attr("value") : nullptr;
+				const Error error = dialog->close(value ? Variant(String::utf8(value)) : Variant());
+				if (error != OK) return error;
+			}
+			break;
+		}
+	}
+	if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) {
+		label->emit_signal("form_submitted", p_form, entries, p_submitter);
+	}
 	return OK;
 }
 

@@ -3688,10 +3688,15 @@ msgid ""
 "Submits a connected form in this label and emits [signal form_submitted] on success. An optional "
 "submitter must be an enabled submit button associated with the form. Returns [constant "
 "ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid "
-"argument."
+"argument. The submitter's [code]formmethod[/code] overrides the form's [code]method[/code]. "
+"With the [code]dialog[/code] method, a successful submission closes the form's nearest ancestor "
+"[HTMLDialogElement]. A supplied submitter [code]value[/code], including an empty string, replaces "
+"[member HTMLDialogElement.return_value]. Omit the attribute or the submitter to preserve the existing value."
 msgstr ""
 "提交此控件中已连接的表单，成功时发出 [signal form_submitted]。可选的提交按钮必须可用并关联到该表单。校验失败时返回 [constant "
-"ERR_INVALID_DATA]，参数无效时返回 [constant ERR_INVALID_PARAMETER]。"
+"ERR_INVALID_DATA]，参数无效时返回 [constant ERR_INVALID_PARAMETER]。提交控件的 [code]formmethod[/code] 覆盖表单的 [code]method[/code]。"
+"使用 [code]dialog[/code] 方法时，成功提交会关闭表单最近的祖先 [HTMLDialogElement]。提交控件存在 [code]value[/code] 属性时，会用该值替换 "
+"[member HTMLDialogElement.return_value]，空字符串也会替换。省略该属性或提交控件时保留原值。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Emitted after a reset button restores the form's default values."
@@ -4011,8 +4016,13 @@ msgid "The number or range value, or NaN when no numeric value is available."
 msgstr "数字或滑杆的值。没有可用数值时返回 NaN。"
 
 #. doc_classes/HTMLLabel.xml
-msgid "Emitted for a valid submission with ordered entries and the submitter. The submitter is an [HTMLButtonElement], an [HTMLInputElement], or [code]null[/code]."
-msgstr "验证通过并提交时发出，参数包含按序排列的条目和提交控件。提交控件为 [HTMLButtonElement]、[HTMLInputElement] 或 [code]null[/code]。"
+msgid ""
+"Emitted for a valid submission with ordered entries and the submitter. The submitter is an "
+"[HTMLButtonElement], an [HTMLInputElement], or [code]null[/code]. If the submission closes a "
+"dialog, this signal is emitted before [signal HTMLDialogElement.closed]."
+msgstr ""
+"验证通过并提交时发出，参数包含按序排列的条目和提交控件。提交控件为 [HTMLButtonElement]、[HTMLInputElement] 或 "
+"[code]null[/code]。如果提交关闭了对话框，该信号在 [signal HTMLDialogElement.closed] 之前发出。"
 
 #. doc_classes/HTMLMenuElement.xml
 msgid "An HTML menu list."
@@ -5098,12 +5108,8 @@ msgid ""
 msgstr "反映 HTML 的 [code]open[/code] 属性。设为 [code]true[/code] 会打开普通对话框。设为 [code]false[/code] 会移除该属性，并在需要时退出模态顶层。"
 
 #. doc_classes/HTMLDialogElement.xml
-msgid ""
-"Represents [code]<dialog>[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above"
-" the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its"
-" focusable elements and Escape closes it after open menus and IME composition have handled the "
-"key."
-msgstr "表示 [code]<dialog>[/code]。模态对话框与其 CSS [code]::backdrop[/code] 绘制在文档上方。在 [HTMLLabel] 中，只有最上层的模态对话框接收交互。Tab 在其中的可聚焦元素间循环，Escape 在菜单和输入法处理完按键后关闭该对话框。"
+msgid "Represents [code]<dialog>[/code]. A modal dialog and its CSS [code]::backdrop[/code] render above the document. In [HTMLLabel], only the topmost modal accepts interaction. Tab cycles through its focusable elements. After menus and IME handle Escape, [member closed_by] determines whether to request a close."
+msgstr "表示 [code]<dialog>[/code]。模态对话框与 CSS [code]::backdrop[/code] 绘制在文档上方。在 [HTMLLabel] 中，只有栈顶模态对话框接收交互。Tab 在其中的可聚焦元素间循环。菜单和输入法处理 Escape 后，[member closed_by] 决定是否发起关闭请求。"
 
 #. doc_classes/HTMLDialogElement.xml
 msgid "Returns whether this dialog is in its layout's modal top layer."
@@ -5112,3 +5118,184 @@ msgstr "返回此对话框是否位于其布局的模态顶层。"
 #. doc_classes/HTMLDialogElement.xml
 msgid "The result associated with this dialog. The initial value is an empty string."
 msgstr "此对话框关联的结果，初始值为空字符串。"
+
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "Emits [signal close_requested] synchronously for an open, connected dialog, regardless of [member closed_by]. If a listener cancels the request, returns [constant ERR_SKIP]. Otherwise the dialog closes using the same result rules as [method close]. Returns [constant OK] for a closed or detached dialog."
+msgstr "为已打开且连接到文档的对话框同步发出 [signal close_requested]，[member closed_by] 不影响脚本请求。监听器取消时返回 [constant ERR_SKIP]。请求获准时，按 [method close] 的结果规则关闭对话框。对话框已关闭或已分离时返回 [constant OK]。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "The effective policy for user dismissal. [code]any[/code] allows Escape and clicks outside the dialog within the label. [code]closerequest[/code] allows Escape. [code]none[/code] disables both. A missing or invalid [code]closedby[/code] attribute acts as [code]closerequest[/code] for a modal dialog and [code]none[/code] otherwise. The raw attribute is available through [method HTMLElement.get_attribute]."
+msgstr "用户关闭对话框的生效策略。[code]any[/code] 允许 Escape 和在控件内点击对话框外部。[code]closerequest[/code] 允许 Escape。[code]none[/code] 禁用两者。[code]closedby[/code] 属性缺失或无效时，模态对话框按 [code]closerequest[/code] 处理，其他对话框按 [code]none[/code] 处理。可通过 [method HTMLElement.get_attribute] 读取原始属性。"
+
+#. doc_classes/HTMLDialogElement.xml
+msgid "Emitted synchronously when a script, Escape, or an outside click requests dismissal. Call [method HTMLDialogCloseRequest.prevent_default] in the callback to keep the dialog open. Calls to [method close] and [code]method=\"dialog\"[/code] submissions close directly."
+msgstr "脚本、Escape 或点击对话框外部发起关闭请求时同步发出。在回调内调用 [method HTMLDialogCloseRequest.prevent_default] 可以保持对话框打开。调用 [method close] 或提交 [code]method=\"dialog\"[/code] 表单会直接关闭对话框。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "A synchronous request to close an HTML dialog."
+msgstr "用于关闭 HTML 对话框的同步请求。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "Emitted by [signal HTMLDialogElement.close_requested]. Connect directly to the signal and call [method prevent_default] during the callback to keep the dialog open."
+msgstr "由 [signal HTMLDialogElement.close_requested] 发出。直接连接信号并在回调内调用 [method prevent_default] 可以保持对话框打开。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "Returns whether a listener canceled this request."
+msgstr "返回监听器是否已取消此请求。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "Cancels the default close action during synchronous signal delivery. Deferred calls have no effect."
+msgstr "在同步信号派发期间取消默认关闭操作。延迟调用没有效果。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "The source of this close request."
+msgstr "此关闭请求的来源。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "The proposed result. A [code]null[/code] value preserves [member HTMLDialogElement.return_value]."
+msgstr "拟写入的结果。[code]null[/code] 会保留 [member HTMLDialogElement.return_value] 的原值。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "A GDScript call to [method HTMLDialogElement.request_close]."
+msgstr "GDScript 调用了 [method HTMLDialogElement.request_close]。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "A press of the Escape key."
+msgstr "按下了 Escape 键。"
+
+#. doc_classes/HTMLDialogCloseRequest.xml
+msgid "A primary pointer click outside the active dialog."
+msgstr "主指针点击了当前对话框的外部。"
+
+#. doc_classes/HTMLHtmlElement.xml
+msgid "The root element of an HTML document."
+msgstr "HTML 文档的根元素。"
+
+#. doc_classes/HTMLHtmlElement.xml
+msgid "Represents [code]<html>[/code]. Read shared attributes such as [member HTMLElement.lang] through the inherited API."
+msgstr "表示 [code]<html>[/code]。通过继承的接口读取 [member HTMLElement.lang] 等公共属性。"
+
+#. doc_classes/HTMLHeadElement.xml
+msgid "The metadata container of an HTML document."
+msgstr "HTML 文档的元数据容器。"
+
+#. doc_classes/HTMLHeadElement.xml
+msgid "Represents [code]<head>[/code]. Its children can be queried and edited through [HTMLElement]."
+msgstr "表示 [code]<head>[/code]。通过 [HTMLElement] 查询和编辑子节点。"
+
+#. doc_classes/HTMLBodyElement.xml
+msgid "The body element of an HTML document."
+msgstr "HTML 文档的正文元素。"
+
+#. doc_classes/HTMLBodyElement.xml
+msgid "Represents [code]<body>[/code]. Use the inherited API to read and edit its contents."
+msgstr "表示 [code]<body>[/code]。通过继承的接口读取和编辑内容。"
+
+#. doc_classes/HTMLTitleElement.xml
+msgid "The title element of an HTML document."
+msgstr "HTML 文档的标题元素。"
+
+#. doc_classes/HTMLTitleElement.xml
+msgid "Represents [code]<title>[/code]. [method HTMLLayout.get_title] returns the document title with normalized ASCII whitespace."
+msgstr "表示 [code]<title>[/code]。[method HTMLLayout.get_title] 返回规范化 ASCII 空白后的文档标题。"
+
+#. doc_classes/HTMLTitleElement.xml
+msgid "The original text of the title."
+msgstr "标题的原始文字。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "An HTML metadata declaration."
+msgstr "HTML 元数据声明。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "Represents [code]<meta>[/code]. These properties reflect metadata attributes. Documents are read as UTF-8."
+msgstr "表示 [code]<meta>[/code]。这些属性反映元数据声明。文档以 UTF-8 读取。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "The declared character encoding."
+msgstr "声明的字符编码。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "The metadata content."
+msgstr "元数据内容。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "Reflects the [code]http-equiv[/code] attribute."
+msgstr "反映 [code]http-equiv[/code] 属性。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "The declared media condition."
+msgstr "声明的媒体条件。"
+
+#. doc_classes/HTMLMetaElement.xml
+msgid "The metadata name."
+msgstr "元数据名称。"
+
+#. doc_classes/HTMLBaseElement.xml
+msgid "A document base URL or default link target."
+msgstr "文档基准 URL 或默认链接目标。"
+
+#. doc_classes/HTMLBaseElement.xml
+msgid "Represents [code]<base>[/code]. The first connected base with an [code]href[/code] attribute determines the document's local resource base. Read the effective URL with [method HTMLLayout.get_base_uri]."
+msgstr "表示 [code]<base>[/code]。首个已连接且带 [code]href[/code] 属性的基准元素决定文档的本地资源基准。通过 [method HTMLLayout.get_base_uri] 读取生效地址。"
+
+#. doc_classes/HTMLBaseElement.xml
+msgid "Resolves the base element's own address against the original document source."
+msgstr "相对于原始文档来源解析此基准元素自身的地址。"
+
+#. doc_classes/HTMLBaseElement.xml
+msgid "The original base address. A trailing slash denotes a directory."
+msgstr "原始基准地址。斜杠结尾表示目录。"
+
+#. doc_classes/HTMLBaseElement.xml
+msgid "The declared default target for navigation."
+msgstr "声明的默认导航目标。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "An inert script or data element."
+msgstr "惰性的脚本或数据元素。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "Represents [code]<script>[/code]. Its text and attributes are accessible to GDScript as DOM data."
+msgstr "表示 [code]<script>[/code]。GDScript 可以读取其 DOM 文字和属性。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "Reflects the [code]async[/code] attribute."
+msgstr "反映 [code]async[/code] 属性。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "Reflects the [code]defer[/code] attribute."
+msgstr "反映 [code]defer[/code] 属性。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "Reflects the [code]nomodule[/code] attribute."
+msgstr "反映 [code]nomodule[/code] 属性。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "The original source attribute."
+msgstr "原始来源属性。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "The text inside the element."
+msgstr "元素中的文字。"
+
+#. doc_classes/HTMLScriptElement.xml
+msgid "The declared script or data type."
+msgstr "声明的脚本或数据类型。"
+
+#. doc_classes/HTMLAnchorElement.xml
+msgid "Returns the link address resolved against the current document base. Activating a link still reports the original [member href]."
+msgstr "返回按当前文档基准解析的链接地址。激活链接时仍报告原始 [member href]。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "Returns the current base URL of this document."
+msgstr "返回此文档当前的基准 URL。"
+
+#. doc_classes/HTMLLayout.xml
+msgid "Returns the effective base URL for document-relative resources. The first connected [HTMLBaseElement] with an [code]href[/code] attribute can replace the source URL or the configured base directory."
+msgstr "返回文档相对资源的生效基准 URL。首个已连接且有 [code]href[/code] 属性的 [HTMLBaseElement] 可以覆盖源文件地址或配置的基准目录。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the effective base URL of the displayed document. See [method HTMLLayout.get_base_uri]."
+msgstr "返回所显示文档的生效基准 URL。请参阅 [method HTMLLayout.get_base_uri]。"

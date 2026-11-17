@@ -7,6 +7,8 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLDocument::get_text);
 	ClassDB::bind_method(D_METHOD("set_base_dir", "base_dir"), &HTMLDocument::set_base_dir);
 	ClassDB::bind_method(D_METHOD("get_base_dir"), &HTMLDocument::get_base_dir);
+	ClassDB::bind_method(D_METHOD("_set_source_path", "path"), &HTMLDocument::set_source_path);
+	ClassDB::bind_method(D_METHOD("_get_source_path"), &HTMLDocument::get_source_path);
 	ClassDB::bind_method(D_METHOD("set_stylesheet", "stylesheet"), &HTMLDocument::set_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &HTMLDocument::get_stylesheet);
 	ClassDB::bind_method(D_METHOD("_set_textures", "textures"), &HTMLDocument::set_textures);
@@ -29,6 +31,8 @@ void HTMLDocument::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "_source_path", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_source_path", "_get_source_path");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_video_sources", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_video_sources", "_get_video_sources");
@@ -68,6 +72,15 @@ void HTMLDocument::set_base_dir(const String& p_dir) {
 String HTMLDocument::get_base_dir() const {
 	return base_dir;
 }
+
+void HTMLDocument::set_source_path(const String& p_path) {
+	if (source_path != p_path) {
+		source_path = p_path;
+		emit_changed();
+	}
+}
+
+String HTMLDocument::get_source_path() const { return source_path; }
 
 void HTMLDocument::set_stylesheet(const String& p_stylesheet) {
 	if (stylesheet != p_stylesheet) {
@@ -160,6 +173,6 @@ Ref<HTMLLayout> HTMLDocument::create_layout() const {
 }
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
-	p_layout.parse_source(text, base_dir, stylesheet, textures, false, p_default_stylesheet, {}, local_stylesheets,
+	p_layout.parse_source(text, base_dir, stylesheet, textures, source_path, false, p_default_stylesheet, {}, local_stylesheets,
 		local_fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams, video_sources);
 }

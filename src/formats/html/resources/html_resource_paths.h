@@ -8,6 +8,14 @@
 namespace godot { class Texture2D; }
 
 namespace docrender {
+	struct HTMLResourceBase {
+		godot::String uri;
+		godot::String directory;
+	};
+	HTMLResourceBase make_html_resource_base(const godot::String& p_directory, const godot::String& p_source_path = {});
+	HTMLResourceBase resolve_html_document_base(const HTMLResourceBase& p_fallback, const char* p_href);
+	godot::String resolve_html_link_href(const godot::String& p_href, const HTMLResourceBase& p_base);
+
 	godot::Ref<godot::Texture2D> load_html_image_file(const godot::String& p_path); // 读取已解析的本地纹理路径
 	godot::String resolve_html_audio_path(const godot::String& p_src, const godot::String& p_base_dir);
 	godot::String resolve_html_video_path(const godot::String& p_src, const godot::String& p_base_dir);

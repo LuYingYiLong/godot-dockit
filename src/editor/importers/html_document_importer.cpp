@@ -49,7 +49,8 @@ namespace godot {
 		document.instantiate();
 		document->set_text(text);
 		document->set_base_dir(base_dir);
-		const auto assets = docrender::collect_html_assets(text, base_dir);
+		document->set_source_path(p_source_file);
+		const auto assets = docrender::collect_html_assets(text, base_dir, p_source_file);
 		document->set_textures(assets.textures);
 		document->set_audio_streams(assets.audio_streams);
 		document->set_video_sources(assets.video_sources);

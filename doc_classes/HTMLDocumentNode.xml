@@ -3,4 +3,12 @@
 	<brief_description>
 		The root node of a live HTMLLayout document.
 	</brief_description>
+	<methods>
+		<method name="get_base_uri" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the current base URL of this document.
+			</description>
+		</method>
+	</methods>
 </class>

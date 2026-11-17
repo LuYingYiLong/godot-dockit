@@ -10,6 +10,7 @@ class HTMLDocument : public godot::Resource {
 
 	godot::String text;
 	godot::String base_dir = "res://";
+	godot::String source_path;
 	godot::String stylesheet;
 	godot::Dictionary textures;
 	godot::Dictionary audio_streams;
@@ -31,6 +32,8 @@ public:
 	
 	void set_base_dir(const godot::String& p_dir);									// 设置文档的相对资源路径基准目录
 	godot::String get_base_dir() const;												// 返回文档的资源基准目录
+	void set_source_path(const godot::String& p_path); // 保存导入的原始 HTML 文件路径
+	godot::String get_source_path() const; // 返回导入的原始 HTML 文件路径
 	
 	void set_stylesheet(const godot::String& p_stylesheet);							// 设置文档的附加 CSS
 	godot::String get_stylesheet() const;											// 返回文档的附加 CSS

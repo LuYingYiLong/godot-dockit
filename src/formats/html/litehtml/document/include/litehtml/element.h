@@ -14,6 +14,7 @@ namespace litehtml
 	class line_box;
 	class dumper;
 	class render_item;
+	enum class element_namespace { html, svg, mathml };
 
 	class element : public std::enable_shared_from_this<element>
 	{
@@ -51,10 +52,14 @@ namespace litehtml
 		};
 		std::map<string_id, std::vector<scoped_counter>> m_counter_values;
 		const element* m_counter_containment_root = nullptr;
+		element_namespace m_namespace = element_namespace::html;
 
 	public:
 		explicit element(const std::shared_ptr<document>& doc);
 		virtual ~element() = default;
+		element_namespace get_namespace() const { return m_namespace; }
+		void set_namespace(element_namespace value) { m_namespace = value; }
+		bool is_html_namespace() const { return m_namespace == element_namespace::html; }
 
 		const css_properties&		css() const;
 		css_properties&				css_w();

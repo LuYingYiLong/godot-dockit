@@ -75,10 +75,15 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLAudioElement;
 	friend class HTMLVideoElement;
 	friend class HTMLDialogElement;
+	friend class HTMLAnchorElement;
+	friend class HTMLBaseElement;
+	godot::String resolve_link_href(const godot::String& p_href, bool p_use_fallback = false) const;
 	godot::ObjectID dialog_host;
 	void push_modal(const std::shared_ptr<litehtml::element>& p_element);
 	std::shared_ptr<litehtml::element> top_modal_node() const;
 	godot::Ref<HTMLDialogElement> top_modal() const;
+	godot::Ref<HTMLDialogElement> active_dialog() const;
+	bool is_outside_dialog(const HTMLDialogElement& p_dialog, const godot::Vector2& p_point) const;
 	godot::Vector2i modal_text_range() const;
 	bool allows_modal_interaction(const litehtml::element& p_element) const;
 	bool allows_modal_interaction(const godot::Ref<HTMLElement>& p_element) const;
@@ -116,6 +121,7 @@ class HTMLLayout : public godot::RefCounted {
 	bool uses_owner_animation_clock = false;
 
 	bool initialize_document(const godot::CharString& p_html);
+	godot::Ref<HTMLElement> get_title_element() const;
 	bool ensure_document_for_editing();
 	docrender::HTMLDOM& get_dom() const;
 	bool has_current_layout() const;
@@ -260,6 +266,7 @@ public:
 		const godot::String& p_base_dir,
 		const godot::String& p_stylesheet,
 		const godot::Dictionary& p_textures,
+		const godot::String& p_source_path = {},
 		bool p_fit_images = false,
 		const godot::String& p_default_stylesheet = {},
 		const docrender::HTMLFontConfig& p_fonts = {},
@@ -320,6 +327,7 @@ public:
 	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
 	godot::Ref<HTMLElement> get_head() const; // 返回文档的 head 元素
 	godot::Ref<HTMLElement> get_body() const; // 返回文档的 body 或 frameset 元素
+	godot::String get_base_uri() const; // 返回当前文档解析相对 URL 时使用的基准
 	godot::String get_title() const; // 返回归并空白后的文档标题
 	godot::Error set_title(const godot::String& p_title); // 设置当前布局中的文档标题
 	godot::TypedArray<HTMLElement> get_elements_by_tag_name(const godot::String& p_name) const; // 按标签名查找文档元素

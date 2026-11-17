@@ -12,6 +12,7 @@
 #include "formats/html/elements/html_anchor_element.h"
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
+#include "formats/html/elements/html_metadata_elements.h"
 #include "formats/html/elements/html_details_element.h"
 #include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_gauge_elements.h"
@@ -75,6 +76,13 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLMutationObserver);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLHtmlElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLHeadElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLBodyElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLTitleElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLMetaElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLBaseElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLScriptElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnchorElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLButtonElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLFormElement);
@@ -94,6 +102,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLDataListElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLOutputElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDetailsElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLDialogCloseRequest);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDialogElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLMeterElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLProgressElement);

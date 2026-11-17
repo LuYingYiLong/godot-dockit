@@ -2026,7 +2026,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	auto layout_html = [&](const String& p_source, float p_width) -> Ref<HTMLLayout> {
 		Ref<HTMLLayout> html;
 		html.instantiate();
-		if (html->parse_source(p_source, html_base_dir, String(), Dictionary(), true, html_defaults, html_fonts) != OK ||
+		if (html->parse_source(p_source, html_base_dir, String(), Dictionary(), {}, true, html_defaults, html_fonts) != OK ||
 			html->layout_embedded_block(Vector2i(std::max(1, static_cast<int32_t>(p_width)), html_height)) != OK) {
 			return {};
 		}

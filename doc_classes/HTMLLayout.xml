@@ -15,6 +15,12 @@
 		<link title="CSS support reference">https://github.com/LuYingYiLong/godot-docrender/blob/main/addons/docrender/docs/html_css_support.md</link>
 	</tutorials>
 	<methods>
+		<method name="get_base_uri" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the effective base URL for document-relative resources. The first connected [HTMLBaseElement] with an [code]href[/code] attribute can replace the source URL or the configured base directory.
+			</description>
+		</method>
 		<method name="adopt_node">
 			<return type="HTMLElement" />
 			<param index="0" name="element" type="HTMLElement" />

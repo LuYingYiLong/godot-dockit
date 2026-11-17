@@ -42,6 +42,15 @@ class HTMLLabelCanvas : public godot::Control {
 	HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
 	bool pressed_blank = false;
+	struct OutsideDialogPress {
+		godot::Ref<HTMLDialogElement> dialog;
+		uint64_t open_sequence;
+		godot::Vector2 position;
+		int device;
+		int touch;
+	};
+	std::optional<OutsideDialogPress> outside_dialog_press;
+	int dialog_touch_index = -1;
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
 	godot::Ref<HTMLElement> pressed_form_target;
@@ -114,6 +123,8 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Vector2 diagnostic_location;
 
 	void cancel_press();
+	bool handle_dialog_pointer(const godot::Vector2& p_point, bool p_pressed, bool p_cancelled, int p_device, int p_touch = -1);
+	void update_dialog_pointer(const godot::Vector2& p_point, int p_device, int p_touch = -1);
 	void extend_document_selection(const godot::Vector2& p_point);
 	void cancel_click();
 	void cancel_button_press();
@@ -299,6 +310,7 @@ private:
 	float select_row_height = 0.0f;
 	godot::String text;
 	godot::String base_dir = "res://";
+	godot::String source_path;
 	godot::String stylesheet;
 	godot::Vector2i viewport_size;
 	godot::Vector2i content_size;
@@ -374,6 +386,7 @@ private:
 	void on_dialog_opened();
 	void sync_dialog_focus(bool p_has_viewport);
 	bool handle_dialog_escape(const godot::InputEventKey& p_key);
+	void request_dialog_from_pointer(const godot::Ref<HTMLDialogElement>& p_dialog, uint64_t p_sequence);
 	void queue_dialog_closed(const godot::Ref<HTMLDialogElement>& p_dialog, const godot::String& p_value);
 	void emit_dialog_closures();
 	void document_changed(uint64_t p_document_id);
@@ -453,6 +466,8 @@ public:
 	void set_text(const godot::String& p_text);										// 设置控件的内联 HTML 文本
 	godot::String get_text() const;													// 返回控件的内联 HTML 文本
 	void set_base_dir(const godot::String& p_base_dir);								// 设置内联 HTML 的相对资源路径基准目录
+	godot::String get_base_uri() const; // 返回当前 DOM 的生效基准
+	void set_source_path(const godot::String& p_path); // 设置编辑器实时预览对应的源文件
 	godot::String get_base_dir() const;												// 返回内联 HTML 的资源基准目录
 	void set_stylesheet(const godot::String& p_stylesheet);							// 设置应用于内联 HTML 的附加 CSS
 	godot::String get_stylesheet() const;											// 返回内联 HTML 的附加 CSS

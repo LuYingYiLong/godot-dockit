@@ -36,6 +36,21 @@ namespace docrender {
 			return static_cast<const GumboNode*>(p_element.children.data[p_index]);
 		}
 
+		const char* first_base_href(const GumboNode* p_root) {
+			std::vector<const GumboNode*> nodes{ p_root };
+			while (!nodes.empty()) {
+				const auto* node = nodes.back();
+				nodes.pop_back();
+				if (node->type != GUMBO_NODE_ELEMENT) continue;
+				const auto& element = node->v.element;
+				if (element.tag == GUMBO_TAG_BASE && element.tag_namespace == GUMBO_NAMESPACE_HTML) {
+					if (const auto* href = gumbo_get_attribute(&element.attributes, "href")) return href->value;
+				}
+				for (size_t i = element.children.length; i > 0; --i) nodes.push_back(child(element, i - 1));
+			}
+			return nullptr;
+		}
+
 		void add_image_path(HashSet<String>& r_paths, const char* p_src, const String& p_base_dir) {
 			const String path = resolve_html_image_path(String::utf8(p_src), p_base_dir);
 			if (path.begins_with("res://")) {
@@ -137,7 +152,7 @@ namespace docrender {
 		};
 	}
 
-	HTMLAssets collect_html_assets(const String& p_html, const String& p_base_dir) {
+	HTMLAssets collect_html_assets(const String& p_html, const String& p_base_dir, const String& p_source_path) {
 		if (p_html.is_empty()) {
 			return {};
 		}
@@ -147,6 +162,8 @@ namespace docrender {
 		if (!tree || !tree->root) {
 			return {};
 		}
+		const String base_dir = resolve_html_document_base(make_html_resource_base(p_base_dir, p_source_path),
+			first_base_href(tree->root)).directory;
 		HashSet<String> audio_paths;
 		Dictionary video_sources;
 		std::vector<const GumboNode*> nodes{ tree->root };
@@ -159,7 +176,7 @@ namespace docrender {
 			const GumboElement& element = node->v.element;
 			if (element.tag == GUMBO_TAG_IMG) {
 				if (const GumboAttribute* src = gumbo_get_attribute(&element.attributes, "src")) {
-					add_image_path(assets.images, src->value, p_base_dir);
+					add_image_path(assets.images, src->value, base_dir);
 				}
 			}
 			if (element.tag == GUMBO_TAG_IMG || (element.tag == GUMBO_TAG_SOURCE &&
@@ -167,7 +184,7 @@ namespace docrender {
 				node->parent->v.element.tag == GUMBO_TAG_PICTURE)) {
 				if (const auto* srcset = gumbo_get_attribute(&element.attributes, "srcset")) {
 					for (const auto& candidate : parse_html_srcset(srcset->value)) {
-						add_image_path(assets.images, candidate.url.c_str(), p_base_dir);
+						add_image_path(assets.images, candidate.url.c_str(), base_dir);
 					}
 				}
 			}
@@ -175,20 +192,20 @@ namespace docrender {
 				node->parent && node->parent->type == GUMBO_NODE_ELEMENT &&
 				node->parent->v.element.tag == GUMBO_TAG_AUDIO)) {
 				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
-					const String path = resolve_html_audio_path(String::utf8(source->value), p_base_dir);
+					const String path = resolve_html_audio_path(String::utf8(source->value), base_dir);
 					if (path.begins_with("res://")) audio_paths.insert(path);
 				}
 			}
 			if (element.tag == GUMBO_TAG_VIDEO) {
 				if (const auto* poster = gumbo_get_attribute(&element.attributes, "poster")) {
-					add_image_path(assets.images, poster->value, p_base_dir);
+					add_image_path(assets.images, poster->value, base_dir);
 				}
 			}
 			if (element.tag == GUMBO_TAG_VIDEO || (element.tag == GUMBO_TAG_SOURCE &&
 				node->parent && node->parent->type == GUMBO_NODE_ELEMENT && node->parent->v.element.tag == GUMBO_TAG_VIDEO)) {
 				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
 					const String value = String::utf8(source->value);
-					const String path = resolve_html_video_path(value, p_base_dir);
+					const String path = resolve_html_video_path(value, base_dir);
 					if (path.begins_with("res://")) video_sources[value] = path;
 				}
 			}
@@ -196,16 +213,16 @@ namespace docrender {
 				const GumboAttribute* rel = gumbo_get_attribute(&element.attributes, "rel");
 				const GumboAttribute* href = gumbo_get_attribute(&element.attributes, "href");
 				if (href && is_html_stylesheet_link(rel ? rel->value : nullptr)) {
-					assets.add_stylesheet(String::utf8(href->value), p_base_dir);
+					assets.add_stylesheet(String::utf8(href->value), base_dir);
 				}
 			}
 			if (const GumboAttribute* style = gumbo_get_attribute(&element.attributes, "style")) {
-				collect_css_paths(style->value, p_base_dir, assets.images, assets.svg_clips);
+				collect_css_paths(style->value, base_dir, assets.images, assets.svg_clips);
 			}
 			for (size_t i = 0; i < element.children.length; ++i) {
 				const GumboNode* nested = child(element, i);
 				if (element.tag == GUMBO_TAG_STYLE && (nested->type == GUMBO_NODE_TEXT || nested->type == GUMBO_NODE_CDATA)) {
-					assets.add_css(nested->v.text.text, p_base_dir);
+					assets.add_css(nested->v.text.text, base_dir);
 				}
 				nodes.push_back(nested);
 			}

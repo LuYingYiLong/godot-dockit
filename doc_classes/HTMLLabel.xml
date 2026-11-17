@@ -17,6 +17,12 @@
 		Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new value from script or resetting the form clears the field's edit history.
 	</description>
 	<methods>
+		<method name="get_base_uri" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the effective base URL of the displayed document. See [method HTMLLayout.get_base_uri].
+			</description>
+		</method>
 		<method name="activate_element">
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
@@ -169,7 +175,7 @@
 			<param index="0" name="form" type="HTMLFormElement" />
 			<param index="1" name="submitter" type="HTMLElement" default="null" />
 			<description>
-				Submits a connected form in this label and emits [signal form_submitted] on success. An optional submitter must be an enabled submit button associated with the form. Returns [constant ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid argument.
+				Submits a connected form in this label and emits [signal form_submitted] on success. An optional submitter must be an enabled submit button associated with the form. Returns [constant ERR_INVALID_DATA] on failed validation or [constant ERR_INVALID_PARAMETER] for an invalid argument. The submitter's [code]formmethod[/code] overrides the form's [code]method[/code]. With the [code]dialog[/code] method, a successful submission closes the form's nearest ancestor [HTMLDialogElement]. A supplied submitter [code]value[/code], including an empty string, replaces [member HTMLDialogElement.return_value]. Omit the attribute or the submitter to preserve the existing value.
 			</description>
 		</method>
 		<method name="get_elements_at" qualifiers="const">
@@ -411,7 +417,7 @@
 			<param index="1" name="entries" type="Dictionary[]" />
 			<param index="2" name="submitter" type="HTMLElement" />
 			<description>
-				Emitted for a valid submission with ordered entries and the submitter. The submitter is an [HTMLButtonElement], an [HTMLInputElement], or [code]null[/code].
+				Emitted for a valid submission with ordered entries and the submitter. The submitter is an [HTMLButtonElement], an [HTMLInputElement], or [code]null[/code]. If the submission closes a dialog, this signal is emitted before [signal HTMLDialogElement.closed].
 			</description>
 		</signal>
 		<signal name="form_validation_failed">
