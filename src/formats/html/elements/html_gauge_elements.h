@@ -2,13 +2,6 @@
 
 #include "html_element.h"
 
-#include <optional>
-
-namespace docrender {
-	// HTML attribute parsing accepts a numeric prefix; form values require a complete number.
-	std::optional<double> html_number(const char* p_value, bool p_entire = false);
-}
-
 class HTMLProgressElement : public HTMLElement {
 	GDCLASS(HTMLProgressElement, HTMLElement)
 

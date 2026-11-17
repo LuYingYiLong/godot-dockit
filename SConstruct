@@ -31,12 +31,17 @@ def enable_cpp_exceptions(build_env):
         build_env.AppendUnique(CXXFLAGS=["/EHsc"])
     else:
         build_env["CXXFLAGS"] = [flag for flag in build_env["CXXFLAGS"] if flag != "-fno-exceptions"]
-        build_env.AppendUnique(CXXFLAGS=["-fexceptions"])
         if env["platform"] == "web":
-            env.AppendUnique(LINKFLAGS=["-fexceptions"])
+            build_env.AppendUnique(CXXFLAGS=["-fwasm-exceptions"])
+            env.AppendUnique(LINKFLAGS=["-fwasm-exceptions"])
+        else:
+            build_env.AppendUnique(CXXFLAGS=["-fexceptions"])
 
 
 mermaid_env = env.Clone()
+if merman_sdk_option and not (env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc", False)):
+    print("The Merman SDK requires the Windows x64 MSVC toolchain.")
+    Exit(1)
 if env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc", False):
     merman_sdk = Path(merman_sdk_option or "src/thirdparty/merman-sdk")
     if (merman_sdk / "include/merman.h").is_file() and (merman_sdk / "lib/merman_ffi.lib").is_file():

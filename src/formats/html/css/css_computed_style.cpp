@@ -31,7 +31,7 @@ namespace {
 		const Value& initial, bool rtl, const ReadParent& read_parent) {
 		const auto& group = css_edge_properties(kind);
 		const auto name = group.physical[side];
-		const auto& value = context.read_declaration(context.declarations, name);
+		const property_value& value = context.read_declaration(context.declarations, name);
 		if (value.is<Value>()) return value.get<Value>();
 		if (context.parent && value.is<inherit>()) {
 			const bool flip = context.parent->is_right_to_left() != rtl && css_map_logical_property(value.declaration_property, rtl) == name;
@@ -848,7 +848,8 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 								m_float == float_none && !is_one_of(m_el_position, element_position_absolute, element_position_fixed);
 	const auto read_decoration = [&](string_id name, auto initial, auto member) {
 		// Explicit inheritance uses the DOM, while line decoration follows the box tree.
-		const auto* source = context.read_declaration(context.declarations, name).is<inherit>() ? parent : decorating_parent;
+		const property_value& value = context.read_declaration(context.declarations, name);
+		const auto* source = value.is<inherit>() ? parent : decorating_parent;
 		return read_property(context, name, propagate_decoration, initial, source ? &(source->*member) : nullptr);
 	};
 

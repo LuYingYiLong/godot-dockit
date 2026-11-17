@@ -123,7 +123,7 @@ namespace docrender {
 			face.instantiate();
 			face->set_data(data);
 			face->set_face_index(0, index);
-			if (matches_font_names(*face, p_name)) {
+			if (matches_font_names(*face.ptr(), p_name)) {
 				return face;
 			}
 		}

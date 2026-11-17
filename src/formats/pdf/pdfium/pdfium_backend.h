@@ -4,6 +4,7 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 
 #include <limits>
+#include <memory>
 #include <mutex>
 
 #ifdef DOCRENDER_PDFIUM_ENABLED

@@ -7,16 +7,19 @@
 #include "css_syntax_util.h"
 #include <litehtml/css_parser.h>
 
-#include <charconv>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace docrender::css {
 namespace {
 	using namespace litehtml;
 
 	std::string number(double value) {
-		char buffer[64];
-		const auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value, std::chars_format::general, 7);
-		return error == std::errc() ? std::string(buffer, end) : std::string();
+		std::ostringstream stream;
+		stream.imbue(std::locale::classic());
+		stream << std::setprecision(7) << value;
+		return stream.str();
 	}
 
 	std::string length(string_id name, const css_length& value) {

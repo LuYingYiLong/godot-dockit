@@ -510,7 +510,13 @@ TypedArray<HTMLElement> HTMLDOM::get_elements(const String& p_value, Lookup p_lo
 			matches = name && p_value == String::utf8(name);
 		} else {
 			const auto classes = make_element(node)->get_class_list();
-			matches = std::all_of(tokens.begin(), tokens.end(), [&](const String& p_class) { return classes.has(p_class); });
+			matches = true;
+			for (const String& class_name : tokens) {
+				if (!classes.has(class_name)) {
+					matches = false;
+					break;
+				}
+			}
 		}
 		if (matches) result.append(make_element(node));
 		return false;

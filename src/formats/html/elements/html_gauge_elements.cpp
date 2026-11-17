@@ -3,37 +3,13 @@
 #include "html_gauge_node.h"
 #include "html_form_state.h"
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/markup/html_number.h"
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
-#include <string_view>
 
 using namespace godot;
 using namespace litehtml;
-
-std::optional<double> docrender::html_number(const char* p_value, bool p_entire) {
-	if (!p_value) return {};
-	std::string_view input(p_value);
-	if (!p_entire) {
-		const auto start = input.find_first_not_of(" \t\n\r\f");
-		if (start == std::string_view::npos) return {};
-		input.remove_prefix(start);
-		if (input.front() == '+') {
-			input.remove_prefix(1);
-			if (input.empty() || input.front() == '-') return {};
-		}
-	}
-	if (input.empty()) return {};
-	if (p_entire) {
-		const auto dot = input.find('.');
-		if (dot != std::string_view::npos && (dot + 1 == input.size() || input[dot + 1] < '0' || input[dot + 1] > '9')) return {};
-	}
-	double result = 0;
-	const auto converted = std::from_chars(input.data(), input.data() + input.size(), result);
-	if (converted.ec != std::errc() || (p_entire && converted.ptr != input.data() + input.size()) || !std::isfinite(result)) return {};
-	return result;
-}
 
 namespace {
 	struct ProgressValue {
