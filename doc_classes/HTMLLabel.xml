@@ -333,6 +333,12 @@
 				Creates a scripted animation on the current layout clock. Keyframe dictionaries contain CSS property values and optional [code]offset[/code] and [code]easing[/code]. Options include [code]duration[/code], [code]delay[/code], [code]iterations[/code], [code]easing[/code], [code]direction[/code], and [code]fill[/code]. Times are in seconds. Returns [code]null[/code] for invalid input or an empty effect.
 			</description>
 		</method>
+		<method name="get_fullscreen_video" qualifiers="const">
+			<return type="HTMLVideoElement" />
+			<description>
+				Returns the current fullscreen video owned by this label, if any.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">
@@ -373,6 +379,12 @@
 		</member>
 		<member name="use_fmod_bus" type="bool" setter="set_use_fmod_bus" getter="is_using_fmod_bus" default="false">
 			Uses the FMOD audio player and bus list when the optional FMOD plugin is available.
+		</member>
+		<member name="video_backend" type="int" setter="set_video_backend" getter="get_video_backend" enum="HTMLLabel.VideoBackend" default="0">
+			The video decoder. Auto tries the available FFmpeg and VLC add-ons in that order for each source.
+		</member>
+		<member name="video_bus" type="StringName" setter="set_video_bus" getter="get_video_bus" default="&amp;&quot;Master&quot;">
+			The Godot audio bus for video playback.
 		</member>
 	</members>
 	<signals>
@@ -450,6 +462,21 @@
 				Emitted when a multiline text field loses focus after a user edit.
 			</description>
 		</signal>
+		<signal name="video_failed">
+			<param index="0" name="element" type="HTMLVideoElement" />
+			<param index="1" name="error" type="int" enum="Error" />
+			<param index="2" name="message" type="String" />
+			<description>
+				Emitted when a video cannot open any of its sources.
+			</description>
+		</signal>
+		<signal name="video_fullscreen_changed">
+			<param index="0" name="element" type="HTMLVideoElement" />
+			<param index="1" name="active" type="bool" />
+			<description>
+				Emitted when the video enters or exits fullscreen.
+			</description>
+		</signal>
 	</signals>
 	<constants>
 		<constant name="ANIMATION_PROCESS_IDLE" value="0" enum="AnimationProcessMode">
@@ -460,6 +487,15 @@
 		</constant>
 		<constant name="ANIMATION_PROCESS_MANUAL" value="2" enum="AnimationProcessMode">
 			Advances CSS animations and transitions through calls to [method advance_animation].
+		</constant>
+		<constant name="VIDEO_BACKEND_AUTO" value="0" enum="VideoBackend">
+			Selects an available video decoder automatically.
+		</constant>
+		<constant name="VIDEO_BACKEND_FFMPEG" value="1" enum="VideoBackend">
+			Uses the optional EIRTeam.FFmpeg add-on.
+		</constant>
+		<constant name="VIDEO_BACKEND_VLC" value="2" enum="VideoBackend">
+			Uses the optional godot-vlc add-on.
 		</constant>
 	</constants>
 </class>

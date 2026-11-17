@@ -147,6 +147,11 @@ namespace
 	}
 }
 
+litehtml::background_layer litehtml::make_replaced_object_layer(html_tag& p_owner, const position& p_box, render_item& p_item)
+{
+	return make_image_layer(p_owner, p_box, p_item);
+}
+
 void litehtml::css_replaced_image::draw(html_tag& owner, uint_ptr hdc, const position& box, render_item& render)
 {
 	if (source.m_image.front().is_empty()) return;

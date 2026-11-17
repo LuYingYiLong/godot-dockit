@@ -13,6 +13,7 @@ class HTMLDocument : public godot::Resource {
 	godot::String stylesheet;
 	godot::Dictionary textures;
 	godot::Dictionary audio_streams;
+	godot::Dictionary video_sources;
 	godot::Dictionary local_stylesheets;
 	godot::Dictionary local_fonts;
 	godot::Dictionary image_dpi;
@@ -34,6 +35,8 @@ public:
 	void set_stylesheet(const godot::String& p_stylesheet);							// 设置文档的附加 CSS
 	godot::String get_stylesheet() const;											// 返回文档的附加 CSS
 	
+	void set_video_sources(const godot::Dictionary& p_sources); // 保存用于打包的本地视频来源
+	godot::Dictionary get_video_sources() const; // 返回视频来源到项目路径的映射
 	void set_audio_streams(const godot::Dictionary& p_audio); // 保存导入的音频资源依赖
 	godot::Dictionary get_audio_streams() const; // 返回路径到音频资源的映射
 	void set_textures(const godot::Dictionary& p_textures);							// 设置导入时收集的项目图片纹理依赖

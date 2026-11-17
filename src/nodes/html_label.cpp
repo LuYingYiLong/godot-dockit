@@ -168,7 +168,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Ref<InputEventMouseMotion> motion = p_event;
 	if (motion.is_valid()) {
-		if (move_audio_control(motion->get_position())) {
+		if (move_video_control(motion->get_position()) || move_audio_control(motion->get_position())) {
 			accept_event();
 			return;
 		}
@@ -245,7 +245,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
-	if (handle_audio_button(*button.ptr(), point)) {
+	if (handle_video_button(*button.ptr(), point) || handle_audio_button(*button.ptr(), point)) {
 		accept_event();
 		return;
 	}
@@ -512,6 +512,7 @@ void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
 	if (label->has_focus() && focused_element.is_null() && !tab_elements.empty()) {
 		set_focused_element(p_backward ? tab_elements.back() : tab_elements.front(), true);
 		set_audio_focus_edge(p_backward);
+		set_video_focus_edge(p_backward);
 	}
 }
 
@@ -519,7 +520,7 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 	if (const auto direction = tab_direction(p_key); direction && !tab_elements.empty()) {
 		label->close_select_menu();
 		const bool backwards = *direction;
-		if (move_audio_focus(backwards)) {
+		if (move_video_focus(backwards) || move_audio_focus(backwards)) {
 			accept_event();
 			return true;
 		}
@@ -545,10 +546,11 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 		accept_event();
 		set_focused_element(*button, true);
 		set_audio_focus_edge(backwards);
+		set_video_focus_edge(backwards);
 		return true;
 	}
 
-	if (handle_audio_key(p_key) || label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
+	if (handle_video_key(p_key) || handle_audio_key(p_key) || label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && p_key.is_pressed() && !p_key.is_echo() &&
 		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed()) {
@@ -676,6 +678,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 }
 
 void HTMLLabelCanvas::cancel_press() {
+	cancel_video_press();
 	pressed_audio.unref();
 	pressed_audio_part = docrender::HTMLAudioPart::none;
 	if (label && (textarea_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
@@ -730,6 +733,10 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 	}
 	if (selection_dragged || dragging_input.is_valid()) {
 		set_default_cursor_shape(CURSOR_IBEAM);
+		return;
+	}
+	if (is_video_control_at(*p_point)) {
+		set_default_cursor_shape(CURSOR_POINTING_HAND);
 		return;
 	}
 	bool over_link = false;
@@ -819,6 +826,21 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("copy_selection"), &HTMLLabel::copy_selection);
 	ClassDB::bind_method(D_METHOD("find_text", "text", "from", "case_sensitive"), &HTMLLabel::find_text, DEFVAL(0), DEFVAL(false));
 
+	ClassDB::bind_method(D_METHOD("set_video_backend", "backend"), &HTMLLabel::set_video_backend);
+	ClassDB::bind_method(D_METHOD("get_video_backend"), &HTMLLabel::get_video_backend);
+	ClassDB::bind_method(D_METHOD("set_video_bus", "bus"), &HTMLLabel::set_video_bus);
+	ClassDB::bind_method(D_METHOD("get_video_bus"), &HTMLLabel::get_video_bus);
+	ClassDB::bind_method(D_METHOD("get_fullscreen_video"), &HTMLLabel::get_fullscreen_video);
+	BIND_ENUM_CONSTANT(VIDEO_BACKEND_AUTO);
+	BIND_ENUM_CONSTANT(VIDEO_BACKEND_FFMPEG);
+	BIND_ENUM_CONSTANT(VIDEO_BACKEND_VLC);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_backend", PROPERTY_HINT_ENUM, "Auto,FFmpeg,VLC"),
+		"set_video_backend", "get_video_backend");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "video_bus", PROPERTY_HINT_ENUM), "set_video_bus", "get_video_bus");
+	ADD_SIGNAL(MethodInfo("video_failed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
+		PropertyInfo(Variant::INT, "error"), PropertyInfo(Variant::STRING, "message")));
+	ADD_SIGNAL(MethodInfo("video_fullscreen_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
+		PropertyInfo(Variant::BOOL, "active")));
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
@@ -926,6 +948,7 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	case NOTIFICATION_INTERNAL_PROCESS:
 		poll_audio();
+		poll_videos(get_process_delta_time());
 		if (animation_process_mode == ANIMATION_PROCESS_IDLE && viewport_size.x > 0) {
 			layout->advance_css_animations(get_process_delta_time());
 			update_internal_processing();
@@ -962,6 +985,7 @@ void HTMLLabel::_notification(int p_what) {
 			request_hover_check();
 		}
 		else if (canvas) {
+			leave_video_fullscreen();
 			if (color_scheme_timer) color_scheme_timer->stop();
 			viewport_touch_index = -1;
 			viewport_touch_dragged = false;
@@ -979,6 +1003,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE:
+		clear_videos();
 		connect_audio_buses(false);
 		clear_audio();
 		viewport_touch_index = -1;
@@ -1554,6 +1579,7 @@ void HTMLLabel::queue_interaction_style_refresh() {
 }
 
 void HTMLLabel::source_changed() {
+	clear_videos();
 	clear_audio();
 	cancel_viewport_scroll();
 	cancel_viewport_pan_snap();
@@ -1591,6 +1617,7 @@ void HTMLLabel::parse_pending_source() {
 	source_dirty = false;
 	layout_updated = true;
 	layout->audio_host = ObjectID(get_instance_id());
+	layout->video_host = ObjectID(get_instance_id());
 	if (document.is_valid()) {
 		document->parse_into(*layout.ptr(), DOCUMENT_DEFAULTS);
 		parsed = layout->get_render_error().is_empty();
@@ -1598,6 +1625,7 @@ void HTMLLabel::parse_pending_source() {
 	else {
 		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), false, DOCUMENT_DEFAULTS) == OK;
 	}
+	sync_videos();
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
 	queue_audio_sync();
 	layout->set_dom_selection_change_callback(callable_mp(this, &HTMLLabel::on_node_selection_changed));
@@ -1621,7 +1649,7 @@ void HTMLLabel::update_internal_processing() {
 	const bool in_tree = is_inside_tree();
 	const bool animate = in_tree && viewport_size.x > 0 && layout->has_active_css_animations();
 	const bool track_ime = in_tree && canvas && canvas->ime_window.has_value();
-	set_process_internal(track_ime || (in_tree && has_playing_audio()) || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
+	set_process_internal(track_ime || (in_tree && (has_playing_audio() || has_active_video())) || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
 	set_physics_process_internal(animate && animation_process_mode == ANIMATION_PROCESS_PHYSICS);
 }
 
@@ -1645,6 +1673,7 @@ void HTMLLabel::on_node_selection_changed() {
 
 void HTMLLabel::on_layout_edited() {
 	queue_audio_sync();
+	queue_video_sync();
 	close_select_menu();
 	layout_updated = true;
 	if (canvas) {

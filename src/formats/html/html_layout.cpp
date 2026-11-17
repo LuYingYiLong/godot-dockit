@@ -1,5 +1,6 @@
 #include "html_layout.h"
 #include "elements/html_audio_element.h"
+#include "elements/html_video_node.h"
 #include <godot_cpp/classes/audio_stream_mp3.hpp>
 #include <godot_cpp/classes/audio_stream_ogg_vorbis.hpp>
 #include <godot_cpp/classes/audio_stream_wav.hpp>
@@ -211,6 +212,7 @@ struct HTMLLayout::State {
 	Vector2i content_size;
 	String resource_base;
 	Dictionary audio_streams;
+	Dictionary video_sources;
 	std::string master_styles;
 	std::string user_styles;
 	std::map<std::weak_ptr<litehtml::element>, int64_t, std::owner_less<>> stylesheet_ids;
@@ -715,7 +717,7 @@ Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const St
 Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
 	const Dictionary& p_textures, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
 	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
-	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams) {
+	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams, const Dictionary& p_video_sources) {
 	clear();
 	const std::optional<String> base_dir = docrender::normalize_html_resource_path(p_base_dir);
 	if (!base_dir) {
@@ -724,6 +726,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 	}
 	state->resource_base = *base_dir;
 	state->audio_streams = p_audio_streams;
+	state->video_sources = p_video_sources;
 	try {
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
@@ -2517,9 +2520,11 @@ namespace {
 			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
 			return input && input->type() != HTMLInputNode::Type::OTHER && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
+		const auto* video = dynamic_cast<const docrender::HTMLVideoNode*>(&p_node);
 		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
 			docrender::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
-			(tag == litehtml::_a_ && p_node.get_attr("href")) || (tag == litehtml::_audio_ && p_node.get_attr("controls"));
+			(tag == litehtml::_a_ && p_node.get_attr("href")) || (tag == litehtml::_audio_ && p_node.get_attr("controls")) ||
+			(video && video->has_controls());
 	}
 }
 
@@ -2827,6 +2832,50 @@ String HTMLLayout::get_css_diagnostic_tooltip(const Vector2& p_position) const {
 	return {};
 }
 
+TypedArray<HTMLVideoElement> HTMLLayout::video_elements() const {
+	TypedArray<HTMLVideoElement> result;
+	if (const auto& document = state->dom->get_document()) {
+		HTMLDOM::visit_elements(document->root(), [&](const auto& node) {
+			if (node->tag() == litehtml::_video_) result.append(state->dom->make_element(node));
+			return false;
+		});
+	}
+	return result;
+}
+
+PackedStringArray HTMLLayout::video_paths(const HTMLVideoElement& p_element) const {
+	PackedStringArray result;
+	const auto element = p_element.get_video_node();
+	if (!element || p_element.get_owner() != this) return result;
+	const auto append = [&](const char* p_src) {
+		if (!p_src) return;
+		const String value = String::utf8(p_src);
+		String path = docrender::resolve_html_video_path(value, state->resource_base);
+		if (path.is_empty()) {
+			path = docrender::resolve_html_video_path(state->video_sources.get(value, String()), state->resource_base);
+		}
+		if (!path.is_empty() && !result.has(path)) result.append(path);
+	};
+	if (const char* src = element->get_attr("src")) append(src);
+	else for (const auto& child : element->children()) {
+		if (child->tag() == litehtml::_source_) append(child->get_attr("src"));
+	}
+	return result;
+}
+
+Ref<Texture2D> HTMLLayout::video_poster(const HTMLVideoElement& p_element) {
+	const auto node = p_element.get_video_node();
+	return state->container && node ? state->container->video_poster(node->get_attr("poster")) : Ref<Texture2D>();
+}
+
+Ref<Texture2D> HTMLLayout::video_control_icon(docrender::HTMLControlIcon p_icon) {
+	return state->container ? state->container->get_paint_recorder().get_control_icon(p_icon) : Ref<Texture2D>();
+}
+
+void HTMLLayout::video_dimensions_changed() {
+	if (state->pending_update == State::Update::NONE) state->pending_update = State::Update::LAYOUT;
+}
+
 TypedArray<HTMLAudioElement> HTMLLayout::audio_elements() const {
 	TypedArray<HTMLAudioElement> result;
 	if (const auto& document = state->dom->get_document()) {
@@ -2877,6 +2926,7 @@ Ref<Resource> HTMLLayout::audio_resource(const String& p_path, bool p_fmod) cons
 
 void HTMLLayout::clear() {
 	state->audio_streams.clear();
+	state->video_sources.clear();
 	state->resource_base = String();
 	++parse_version;
 	state->stylesheet_ids.clear();

@@ -1637,16 +1637,16 @@ void fragment() {
 		del_clip();
 	}
 
-	void HTMLPaintRecorder::draw_input_icon(HTMLControlIcon p_icon, const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
+	Ref<Texture2D> HTMLPaintRecorder::get_control_icon(HTMLControlIcon p_icon) {
 		static constexpr std::array svg{control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
-			control_icons::volume_off, control_icons::resize_window};
+			control_icons::volume_off, control_icons::resize_window, control_icons::fullscreen, control_icons::fullscreen_exit};
 		const auto index = static_cast<size_t>(p_icon);
 		auto& texture = control_icon_textures[index];
 		if (texture.is_null()) {
 			Ref<godot::Image> image;
 			image.instantiate();
 			// Keep the SVG's alpha and use the computed control color for RGB.
-			if (image->load_svg_from_string(String::utf8(svg[index]), 3.0f) != OK || image->is_empty()) return;
+			if (image->load_svg_from_string(String::utf8(svg[index]), 3.0f) != OK || image->is_empty()) return {};
 			image->convert(godot::Image::FORMAT_RGBA8);
 			auto pixels = image->get_data();
 			auto* bytes = pixels.ptrw();
@@ -1657,6 +1657,11 @@ void fragment() {
 			if (p_icon == HTMLControlIcon::resize) image->flip_x();
 			texture = ImageTexture::create_from_image(image);
 		}
+		return texture;
+	}
+
+	void HTMLPaintRecorder::draw_input_icon(HTMLControlIcon p_icon, const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
+		const auto texture = get_control_icon(p_icon);
 		if (texture.is_null() || !p_rect.has_area() || !push_content_clip(p_clip)) return;
 		add_image(Image{texture, p_rect, Rect2(Vector2(), texture->get_size()), p_color});
 		del_clip();

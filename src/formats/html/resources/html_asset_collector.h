@@ -12,6 +12,7 @@ namespace docrender {
 		godot::Dictionary image_orientations;
 		godot::Dictionary svg_clip_sources;
 		godot::Dictionary audio_streams;
+		godot::Dictionary video_sources;
 	};
 
 	HTMLAssets collect_html_assets(

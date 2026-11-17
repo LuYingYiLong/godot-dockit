@@ -23,7 +23,7 @@ namespace litehtml {
 }
 
 namespace docrender {
-	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, count };
+	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit, count };
 
 	struct HTMLInputPaintColors {
 		std::optional<litehtml::web_color> selection_foreground;
@@ -182,6 +182,7 @@ namespace docrender {
 		void record_viewport_background(const litehtml::render_item& p_root, const std::function<void()>& p_draw);
 		void draw_text_overflow(const litehtml::render_item& p_context);
 		void draw_scrollbars(const litehtml::render_item& p_item);
+		godot::Ref<godot::Texture2D> get_control_icon(HTMLControlIcon p_icon);
 		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
 		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color);
 		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,

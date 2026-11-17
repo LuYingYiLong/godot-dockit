@@ -46,6 +46,9 @@ namespace docrender {
 		godot::String resolve_image_source(std::string_view p_source) const {
 			return resources.resolve_image_source(p_source);
 		}
+		godot::Ref<godot::Texture2D> video_poster(const char* p_source) {
+			return p_source ? resources.load_texture(p_source, nullptr) : godot::Ref<godot::Texture2D>();
+		}
 		void record(
 			litehtml::document& p_document,
 			const godot::Vector2i& p_content_size,

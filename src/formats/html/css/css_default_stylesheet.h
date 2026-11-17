@@ -349,6 +349,11 @@ input:is([type="reset" i], [type="button" i], [type="submit" i], [type="checkbox
 }
 
 audio:not([controls]) { display: none !important; }
+video {
+  display: inline-block;
+  object-fit: contain;
+}
+
 audio[controls] {
 	display: inline-block; width: 300px; max-width: 100%; height: 54px; border-radius: 27px;
 	font-family: Arial, sans-serif; font-size: 13px;

@@ -3,6 +3,7 @@
 #include "formats/html/html_document.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_audio_element.h"
+#include "formats/html/elements/html_video_element.h"
 #include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/control.hpp>
@@ -28,6 +29,9 @@ class HTMLButtonElement;
 class HTMLFormElement;
 class HTMLLabelElement;
 class HTMLSelectElement;
+
+namespace godot { class CanvasLayer; class Window; }
+namespace docrender { enum class HTMLVideoPart; }
 
 class HTMLLabelCanvas : public godot::Control {
 	GDCLASS(HTMLLabelCanvas, godot::Control)
@@ -58,6 +62,16 @@ class HTMLLabelCanvas : public godot::Control {
 	bool applying_textarea_resize = false;
 	godot::Ref<HTMLAudioElement> pressed_audio;
 	docrender::HTMLAudioPart pressed_audio_part = docrender::HTMLAudioPart::none;
+	godot::Ref<HTMLVideoElement> pressed_video;
+	godot::Vector2 video_press_position;
+	docrender::HTMLVideoPart pressed_video_part{};
+	bool handle_video_button(const godot::InputEventMouseButton& p_button, const godot::Vector2& p_point);
+	bool is_video_control_at(const godot::Vector2& p_point) const;
+	bool move_video_control(const godot::Vector2& p_point);
+	bool handle_video_key(const godot::InputEventKey& p_key);
+	bool move_video_focus(bool p_backward);
+	void set_video_focus_edge(bool p_backward);
+	void cancel_video_press();
 	bool handle_audio_button(const godot::InputEventMouseButton& p_button, const godot::Vector2& p_point);
 	bool move_audio_control(const godot::Vector2& p_point);
 	bool handle_audio_key(const godot::InputEventKey& p_key);
@@ -156,6 +170,12 @@ class HTMLLabel : public godot::Control {
 	GDCLASS(HTMLLabel, godot::Control)
 
 public:
+	enum VideoBackend {
+		VIDEO_BACKEND_AUTO,
+		VIDEO_BACKEND_FFMPEG,
+		VIDEO_BACKEND_VLC,
+	};
+
 	enum AnimationProcessMode {
 		ANIMATION_PROCESS_IDLE,
 		ANIMATION_PROCESS_PHYSICS,
@@ -165,6 +185,7 @@ public:
 private:
 	friend class HTMLLabelCanvas;
 	friend class HTMLAudioElement;
+	friend class HTMLVideoElement;
 
 	godot::Ref<HTMLDocument> document;
 	godot::Ref<HTMLLayout> layout;
@@ -177,6 +198,63 @@ private:
 		bool muted = false;
 	};
 	std::vector<AudioPlayback> audio_playbacks;
+	struct VideoPlayback {
+		godot::Ref<HTMLVideoElement> element;
+		godot::PackedStringArray paths;
+		godot::Node* player = nullptr;
+		VideoBackend backend = VIDEO_BACKEND_AUTO;
+		int64_t next_candidate = 0;
+		double opening_time = 0;
+		double controls_idle = 0;
+		bool awaiting_frame = false;
+		bool started = false;
+		bool autoplay_attempted = false;
+		bool applied_muted = false;
+	};
+	std::vector<VideoPlayback> video_playbacks;
+	VideoBackend video_backend = VIDEO_BACKEND_AUTO;
+	godot::StringName video_bus = "Master";
+	bool video_present = false;
+	bool video_sync_queued = false;
+	godot::Ref<HTMLVideoElement> fullscreen_video;
+	godot::ObjectID fullscreen_host;
+	godot::ObjectID fullscreen_restore_focus;
+	godot::Window* video_window = nullptr;
+	godot::CanvasLayer* video_overlay_layer = nullptr;
+	godot::Control* video_surface = nullptr;
+	docrender::HTMLVideoPart fullscreen_pressed_part{};
+	bool fullscreen_keyboard_focus = false;
+	godot::Vector2 fullscreen_press_position;
+	VideoPlayback* find_video(const HTMLVideoElement& p_element);
+	VideoPlayback& video_entry(const godot::Ref<HTMLVideoElement>& p_element);
+	bool can_play_video() const;
+	godot::Error play_video(const godot::Ref<HTMLVideoElement>& p_element);
+	godot::Error open_next_video(VideoPlayback& r_playback);
+	void pause_video(const HTMLVideoElement& p_element);
+	godot::Error seek_video(const HTMLVideoElement& p_element, double p_seconds);
+	void set_video_volume(const HTMLVideoElement& p_element);
+	void apply_video_audio(VideoPlayback& r_playback);
+	void stop_video_player(VideoPlayback& r_playback);
+	void destroy_video(VideoPlayback& r_playback);
+	void clear_videos();
+	void queue_video_sync();
+	void sync_videos();
+	void poll_videos(double p_delta);
+	bool has_active_video() const;
+	void video_finished(uint64_t p_id);
+	void notify_video_failure(const godot::Ref<HTMLVideoElement>& p_element, godot::Error p_error);
+	void redraw_video();
+	godot::Error enter_video_fullscreen(const godot::Ref<HTMLVideoElement>& p_element);
+	void leave_video_fullscreen();
+	void restore_video_focus(uint64_t p_window, uint64_t p_control);
+	void draw_video_fullscreen();
+	void on_video_fullscreen_input(const godot::Ref<godot::InputEvent>& p_event);
+	void wake_video_controls(const HTMLVideoElement& p_element);
+	void activate_video_part(const godot::Ref<HTMLVideoElement>& p_element, docrender::HTMLVideoPart p_part);
+	void update_video_slider(const godot::Ref<HTMLVideoElement>& p_element, docrender::HTMLVideoPart p_part,
+		const godot::Rect2& p_box, float p_x, bool p_commit);
+	bool video_key(const godot::Ref<HTMLVideoElement>& p_element, const godot::InputEventKey& p_key, const godot::Rect2& p_box);
+
 	godot::StringName bus = "Master";
 	bool use_fmod_bus = false;
 	bool audio_sync_queued = false;
@@ -329,6 +407,11 @@ public:
 	HTMLLabel();
 	void set_bus(const godot::StringName& p_bus); // 设置音频输出总线
 	godot::StringName get_bus() const; // 返回配置的音频总线
+	void set_video_backend(VideoBackend p_backend); // 选择视频解码后端
+	VideoBackend get_video_backend() const; // 返回视频解码后端设置
+	void set_video_bus(const godot::StringName& p_bus); // 设置视频使用的 Godot 音频总线
+	godot::StringName get_video_bus() const; // 返回视频使用的音频总线
+	godot::Ref<HTMLVideoElement> get_fullscreen_video() const; // 返回当前全屏视频的元素句柄
 	void set_use_fmod_bus(bool p_enable); // 选择可用的 FMOD 播放后端
 	bool is_using_fmod_bus() const; // 返回 FMOD 后端的配置值
 	void _draw() override;
@@ -414,3 +497,4 @@ public:
 };
 
 VARIANT_ENUM_CAST(HTMLLabel::AnimationProcessMode);
+VARIANT_ENUM_CAST(HTMLLabel::VideoBackend);

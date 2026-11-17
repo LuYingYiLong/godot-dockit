@@ -52,6 +52,7 @@ namespace godot {
 		const auto assets = docrender::collect_html_assets(text, base_dir);
 		document->set_textures(assets.textures);
 		document->set_audio_streams(assets.audio_streams);
+		document->set_video_sources(assets.video_sources);
 		document->set_local_stylesheets(assets.stylesheets);
 		document->set_local_fonts(assets.fonts);
 		document->set_image_dpi(assets.image_dpi);

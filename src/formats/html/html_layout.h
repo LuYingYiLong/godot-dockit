@@ -32,12 +32,14 @@ namespace godot {
 	class InputEvent;
 	class Node;
 	class StyleBox;
+	class Texture2D;
 	class Tween;
 }
 
 namespace docrender {
 	class HTMLDOM;
 	class HTMLTextControlNode;
+	enum class HTMLControlIcon;
 	struct HTMLAnchor {
 		godot::Rect2 bounds;
 		std::weak_ptr<const litehtml::element> element;
@@ -61,6 +63,7 @@ namespace docrender {
 }
 
 class HTMLAudioElement;
+class HTMLVideoElement;
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
@@ -69,6 +72,13 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLNode;
 	friend class HTMLImageElement;
 	friend class HTMLAudioElement;
+	friend class HTMLVideoElement;
+	godot::ObjectID video_host;
+	godot::TypedArray<HTMLVideoElement> video_elements() const;
+	godot::PackedStringArray video_paths(const HTMLVideoElement& p_element) const;
+	godot::Ref<godot::Texture2D> video_poster(const HTMLVideoElement& p_element);
+	godot::Ref<godot::Texture2D> video_control_icon(docrender::HTMLControlIcon p_icon);
+	void video_dimensions_changed();
 	godot::ObjectID audio_host;
 	godot::PackedStringArray audio_sources(const HTMLAudioElement& p_element) const;
 	godot::Ref<godot::Resource> audio_resource(const godot::String& p_path, bool p_fmod) const;
@@ -247,7 +257,8 @@ public:
 		const godot::Dictionary& p_image_dpi = {},
 		const godot::Dictionary& p_image_orientations = {},
 		const godot::Dictionary& p_svg_clip_sources = {},
-		const godot::Dictionary& p_audio_streams = {}
+		const godot::Dictionary& p_audio_streams = {},
+		const godot::Dictionary& p_video_sources = {}
 	);																				// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
 	godot::Error layout(const godot::Vector2i& p_viewport_size);					// 按给定视口尺寸排版并更新几何
 	godot::Error layout_embedded_block(const godot::Vector2i& p_viewport_size);	// 为外层排版器保留完整块的几何和文字

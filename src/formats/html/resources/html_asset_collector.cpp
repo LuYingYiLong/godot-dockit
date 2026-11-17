@@ -148,6 +148,7 @@ namespace docrender {
 			return {};
 		}
 		HashSet<String> audio_paths;
+		Dictionary video_sources;
 		std::vector<const GumboNode*> nodes{ tree->root };
 		while (!nodes.empty()) {
 			const GumboNode* node = nodes.back();
@@ -176,6 +177,19 @@ namespace docrender {
 				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
 					const String path = resolve_html_audio_path(String::utf8(source->value), p_base_dir);
 					if (path.begins_with("res://")) audio_paths.insert(path);
+				}
+			}
+			if (element.tag == GUMBO_TAG_VIDEO) {
+				if (const auto* poster = gumbo_get_attribute(&element.attributes, "poster")) {
+					add_image_path(assets.images, poster->value, p_base_dir);
+				}
+			}
+			if (element.tag == GUMBO_TAG_VIDEO || (element.tag == GUMBO_TAG_SOURCE &&
+				node->parent && node->parent->type == GUMBO_NODE_ELEMENT && node->parent->v.element.tag == GUMBO_TAG_VIDEO)) {
+				if (const auto* source = gumbo_get_attribute(&element.attributes, "src")) {
+					const String value = String::utf8(source->value);
+					const String path = resolve_html_video_path(value, p_base_dir);
+					if (path.begins_with("res://")) video_sources[value] = path;
 				}
 			}
 			if (element.tag == GUMBO_TAG_LINK) {
@@ -233,6 +247,6 @@ namespace docrender {
 				audio_streams[path] = resource;
 			}
 		}
-		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams };
+		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams, video_sources };
 	}
 }

@@ -10,6 +10,8 @@ Add a `MarkdownLabel` to a scene and set its `text` property. It supports select
 
 Enable `parse_html` to render HTML blocks and supported inline tags in Markdown. To display a standalone `.html` or `.htm` file, assign the imported `HTMLDocument` to an `HTMLLabel`.
 
+HTMLLabel can play local videos with [EIRTeam.FFmpeg](https://github.com/EIRTeam/EIRTeam.FFmpeg/releases/tag/autobuild-2026-10-07-13-22) or [godot-vlc](https://github.com/xiSage/godot-vlc/releases/tag/v1.3.0). Install either add-on in your project and use `<video src="clip.mp4" controls>`. Imported HTML documents carry their local video sources into exports. For video paths set at runtime, include the files in the export preset. Without a decoder, the video box is black and its controls are disabled.
+
 ### <img src="addons/docrender/icons/latex_label.svg" width=18 /> <img src="addons/docrender/icons/latex_label_3d.svg" width=18 /> <img src="addons/docrender/icons/mermaid_label.svg" width=18 /> LaTeX formulas and Mermaid diagrams
 
 Display them in Markdown or in standalone nodes. Use `LatexLabel` in UI, `LatexLabel3D` in 3D scenes, and `MermaidLabel` for diagrams on Windows x64 with the Merman backend. 

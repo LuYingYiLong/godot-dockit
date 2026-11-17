@@ -19,6 +19,13 @@ using namespace godot;
 using docrender::HTMLAudioPart;
 
 namespace {
+	PackedStringArray godot_audio_bus_names() {
+		auto* server = AudioServer::get_singleton();
+		PackedStringArray names;
+		for (int32_t i = 0; i < server->get_bus_count(); ++i) names.append(String(server->get_bus_name(i)));
+		return names;
+	}
+
 	Object* fmod_server() {
 		auto* engine = Engine::get_singleton();
 		if (!engine->has_singleton("FmodServer") || !ClassDB::class_exists("FmodAudioStreamPlayer") ||
@@ -67,10 +74,7 @@ bool HTMLLabel::uses_fmod_audio() const {
 
 PackedStringArray HTMLLabel::audio_bus_names() const {
 	if (uses_fmod_audio()) return ClassDB::class_call_static("FmodServer", "get_bus_names");
-	auto* server = AudioServer::get_singleton();
-	PackedStringArray names;
-	for (int32_t i = 0; i < server->get_bus_count(); ++i) names.append(String(server->get_bus_name(i)));
-	return names;
+	return godot_audio_bus_names();
 }
 
 StringName HTMLLabel::effective_audio_bus() const {
@@ -82,6 +86,7 @@ StringName HTMLLabel::effective_audio_bus() const {
 
 void HTMLLabel::validate_audio_property(PropertyInfo& p_property) const {
 	if (p_property.name == StringName("bus")) p_property.hint_string = String(",").join(audio_bus_names());
+	if (p_property.name == StringName("video_bus")) p_property.hint_string = String(",").join(godot_audio_bus_names());
 	if (p_property.name == StringName("use_fmod_bus") && !fmod_server()) p_property.usage &= ~PROPERTY_USAGE_EDITOR;
 }
 
@@ -109,6 +114,7 @@ void HTMLLabel::audio_buses_changed() {
 	for (auto& playback : audio_playbacks) {
 		if (playback.player) playback.player->call("set_bus", effective);
 	}
+	for (auto& playback : video_playbacks) apply_video_audio(playback);
 	notify_property_list_changed();
 }
 

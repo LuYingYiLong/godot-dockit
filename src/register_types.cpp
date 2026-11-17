@@ -96,6 +96,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLMeterElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLProgressElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAudioElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLVideoElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHRElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLBRElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLQuoteElement);
@@ -140,6 +141,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		EditorPlugins::add_by_type<MermaidPreviewEditorPlugin>();
 		GDREGISTER_INTERNAL_CLASS(LatexDocumentImporter);
 		GDREGISTER_INTERNAL_CLASS(HTMLDocumentImporter);
+		GDREGISTER_INTERNAL_CLASS(HTMLVideoExportPlugin);
 		GDREGISTER_INTERNAL_CLASS(MermaidDocumentImporter);
 		if (PDFTextureImporter::is_supported()) {
 			GDREGISTER_INTERNAL_CLASS(PDFTextureImporter);

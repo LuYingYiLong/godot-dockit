@@ -62,6 +62,19 @@ namespace docrender {
 		return resolve_local_path(p_src, p_base_dir);
 	}
 
+	String resolve_html_video_path(const String& p_src, const String& p_base_dir) {
+		const String path = resolve_local_path(p_src, p_base_dir);
+		const String extension = path.get_extension().to_lower();
+		return litehtml::is_one_of(extension, "mp4", "webm", "mkv", "mov", "m4v", "avi", "ogv", "mpeg", "mpg", "ts")
+			? path : String();
+	}
+
+	String packed_html_video_path(const String& p_path) {
+		return p_path.begins_with("res://")
+			? String("res://.docrender/video/") + p_path.sha256_text() + "." + p_path.get_extension().to_lower()
+			: String();
+	}
+
 	String resolve_html_image_path(const String& p_src, const String& p_base_dir) {
 		const int64_t fragment = p_src.find("#");
 		const String path = resolve_local_path(fragment < 0 ? p_src : p_src.substr(0, fragment), p_base_dir);

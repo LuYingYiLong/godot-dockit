@@ -10,6 +10,7 @@ namespace docrender { class HTMLImageAltText; }
 
 namespace litehtml
 {
+	background_layer make_replaced_object_layer(html_tag& p_owner, const position& p_box, render_item& p_item);
 	class css_replaced_image {
 		background source;
 	public:

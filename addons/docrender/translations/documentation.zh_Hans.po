@@ -4938,3 +4938,127 @@ msgstr "音频元素使用的总线。指定总线不可用时使用当前后端
 #. doc_classes/HTMLLabel.xml
 msgid "Uses the FMOD audio player and bus list when the optional FMOD plugin is available."
 msgstr "可选 FMOD 插件可用时，使用 FMOD 播放器和总线列表。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "A video element with optional playback and fullscreen controls."
+msgstr "带可选播放与全屏控件的视频元素。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "An [HTMLLabel] owns the playback session for a connected video. Projects can install compatible VLC or FFmpeg add-ons to decode local video."
+msgstr "由 [HTMLLabel] 管理已连接视频的播放。项目可安装兼容的 VLC 或 FFmpeg 插件来解码本地视频。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Closes the video fullscreen presentation and keeps the current playback session."
+msgstr "关闭视频全屏界面，保留当前播放会话。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Returns whether the video is presented in fullscreen."
+msgstr "返回视频当前是否全屏显示。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Pauses video playback at the current position."
+msgstr "在当前位置暂停视频播放。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Requests playback. Returns [constant ERR_UNAVAILABLE] when the requested backend is missing."
+msgstr "请求播放。所需的后端缺失时，返回 [constant ERR_UNAVAILABLE]。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Opens a separate fullscreen window on a supported desktop or fills the host viewport. Returns [constant ERR_BUSY] if another video is fullscreen in the same host window."
+msgstr "在支持的桌面上打开独立全屏窗口，或铺满宿主视口。同一宿主窗口已有全屏视频时，返回 [constant ERR_BUSY]。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Requests a seek to [param seconds]. The target is clamped to the video duration. Returns [constant ERR_UNAVAILABLE] when seeking is unavailable."
+msgstr "请求跳转到 [param seconds] 秒，目标时间限制在视频时长内。无法跳转时返回 [constant ERR_UNAVAILABLE]。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Starts playback automatically at runtime. Editor previews require user input."
+msgstr "在游戏运行时自动播放。编辑器预览需手动播放。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Requests built-in controls. The video is drawn black and its controls are disabled when no selected backend is available."
+msgstr "启用内置控件。所选后端均不可用时，视频内容区显示黑色，内置控件禁用。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The original local resource path of the selected video."
+msgstr "当前视频源原有的本地资源路径。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The current playback position in seconds. Use [method seek] to change it."
+msgstr "当前播放位置，单位为秒。使用 [method seek] 修改。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The video duration in seconds, or zero while unknown."
+msgstr "视频时长，单位为秒。时长未知时为零。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The HTML height attribute in CSS pixels."
+msgstr "HTML 高度属性，单位为 CSS 像素。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Restarts the video when it reaches the end."
+msgstr "视频播放结束时重新播放。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Whether video audio is muted. The HTML attribute supplies the initial state."
+msgstr "视频音轨是否静音。HTML 属性提供初始值。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Whether video playback is paused or stopped."
+msgstr "视频是否暂停或停止。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The local poster image displayed before a video frame is available."
+msgstr "解码画面尚未可用时显示的本地海报图片。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The local video source. If omitted, the player tries the child [code]<source>[/code] elements in order."
+msgstr "本地视频源。省略时按顺序尝试 [code]<source>[/code] 子元素。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The intrinsic decoded frame height in pixels."
+msgstr "解码画面的固有高度，单位为像素。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The intrinsic decoded frame width in pixels."
+msgstr "解码画面的固有宽度，单位为像素。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "Linear video audio volume from [code]0.0[/code] to [code]1.0[/code]."
+msgstr "视频的线性音量，范围为 [code]0.0[/code] 到 [code]1.0[/code]。"
+
+#. doc_classes/HTMLVideoElement.xml
+msgid "The HTML width attribute in CSS pixels."
+msgstr "HTML 宽度属性，单位为 CSS 像素。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Returns the current fullscreen video owned by this label, if any."
+msgstr "返回此控件当前管理的全屏视频，没有时为空。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "The video decoder. Auto tries the available FFmpeg and VLC add-ons in that order for each source."
+msgstr "视频解码后端。自动模式对每个来源依次尝试可用的 FFmpeg 和 VLC 插件。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "The Godot audio bus for video playback."
+msgstr "用于视频播放的 Godot 音频总线。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when a video cannot open any of its sources."
+msgstr "视频的所有候选来源打开失败时发出。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Emitted when the video enters or exits fullscreen."
+msgstr "视频进入或退出全屏时发出。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Selects an available video decoder automatically."
+msgstr "自动选择可用的视频解码后端。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Uses the optional EIRTeam.FFmpeg add-on."
+msgstr "使用可选的 EIRTeam.FFmpeg 插件。"
+
+#. doc_classes/HTMLLabel.xml
+msgid "Uses the optional godot-vlc add-on."
+msgstr "使用可选的 godot-vlc 插件。"

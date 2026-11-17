@@ -205,6 +205,8 @@ namespace godot {
 
 	void DocRenderSourceEditorPlugin::_enter_tree() {
 		editor_translations.load();
+		video_exporter.instantiate();
+		add_export_plugin(video_exporter);
 		if (startup_latex_importer.is_valid()) {
 			html_importer = startup_html_importer;
 			startup_html_importer.unref();
@@ -262,6 +264,8 @@ namespace godot {
 
 	void DocRenderSourceEditorPlugin::_exit_tree() {
 		detach_source_editor();
+		remove_export_plugin(video_exporter);
+		video_exporter.unref();
 		{
 			const std::lock_guard lock(observed_documents_lock);
 			observed_documents.clear();

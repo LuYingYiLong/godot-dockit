@@ -9,6 +9,7 @@
 #include "formats/html/elements/html_details_element.h"
 #include "formats/html/elements/html_gauge_elements.h"
 #include "formats/html/elements/html_audio_element.h"
+#include "formats/html/elements/html_video_element.h"
 #include "formats/html/elements/html_heading_element.h"
 #include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
@@ -178,6 +179,7 @@ namespace {
 			case litehtml::_output_: return instantiate_element_handle<HTMLOutputElement>();
 			case litehtml::_details_: return instantiate_element_handle<HTMLDetailsElement>();
 			case litehtml::_meter_: return instantiate_element_handle<HTMLMeterElement>();
+			case litehtml::_video_: return instantiate_element_handle<HTMLVideoElement>();
 			case litehtml::_audio_: return instantiate_element_handle<HTMLAudioElement>();
 			case litehtml::_progress_: return instantiate_element_handle<HTMLProgressElement>();
 			case litehtml::_hr_: return instantiate_element_handle<HTMLHRElement>();
