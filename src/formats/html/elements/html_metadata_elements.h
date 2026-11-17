@@ -2,6 +2,8 @@
 
 #include "html_element.h"
 
+class HTMLStyleSheet;
+
 class HTMLTitleElement : public HTMLElement {
 	GDCLASS(HTMLTitleElement, HTMLElement)
 
@@ -79,6 +81,7 @@ public:
 	bool is_disabled() const; // 判断样式表是否停用
 	void set_disabled(bool p_value); // 设置样式表的停用状态
 	int64_t get_stylesheet_id() const; // 返回关联样式表的 CSSOM ID
+	godot::Ref<HTMLStyleSheet> get_sheet() const; // 返回当前关联的样式表句柄
 	godot::String get_resolved_href() const; // 按当前文档的基准解析链接地址
 };
 
@@ -96,4 +99,5 @@ public:
 	bool is_disabled() const; // 判断样式表是否停用
 	void set_disabled(bool p_value); // 设置样式表的停用状态
 	int64_t get_stylesheet_id() const; // 返回关联样式表的 CSSOM ID
+	godot::Ref<HTMLStyleSheet> get_sheet() const; // 返回当前关联的样式表句柄
 };

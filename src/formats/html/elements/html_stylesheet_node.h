@@ -2,10 +2,13 @@
 
 #include <litehtml/html_tag.h>
 
+#include <cstdint>
+
 namespace docrender {
 	class HTMLStylesheetNode : public litehtml::html_tag {
 	public:
 		using html_tag::html_tag;
+		uint64_t source_version = 0;
 		bool style_disabled = false;
 		litehtml::string linked_path;
 		litehtml::string linked_text;

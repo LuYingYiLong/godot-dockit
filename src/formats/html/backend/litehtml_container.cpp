@@ -437,6 +437,9 @@ namespace docrender {
 		litehtml::string base;
 		import_css(css, href, base);
 		if (!css.empty() || !base.empty()) {
+			if (!node->linked_path.empty() && (base != node->linked_path || css != node->linked_text)) {
+				litehtml::docrender_editor::reset_stylesheet_source(*p_element);
+			}
 			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"),
 				p_element->parent().get(), p_element);
 			node->linked_path = std::move(base);

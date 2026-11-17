@@ -455,6 +455,7 @@ namespace litehtml {
 		auto* node = dynamic_cast<docrender::HTMLStylesheetNode*>(&p_owner);
 		if (!node) return;
 		if (const auto doc = node->get_document()) doc->m_cssom_overrides.erase(node->weak_from_this());
+		++node->source_version;
 		node->style_disabled = false;
 		node->linked_path.clear();
 		node->linked_text.clear();

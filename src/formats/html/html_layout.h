@@ -65,6 +65,7 @@ namespace docrender {
 class HTMLAudioElement;
 class HTMLVideoElement;
 class HTMLDialogElement;
+class HTMLStyleSheet;
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
@@ -79,7 +80,9 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLBaseElement;
 	friend class HTMLLinkElement;
 	friend class HTMLStyleElement;
+	friend class HTMLStyleSheet;
 	int64_t get_stylesheet_id(const HTMLElement& p_element);
+	godot::Ref<HTMLStyleSheet> get_stylesheet(const HTMLElement& p_element);
 	godot::String resolve_link_href(const godot::String& p_href, bool p_use_fallback = false) const;
 	godot::ObjectID dialog_host;
 	void push_modal(const std::shared_ptr<litehtml::element>& p_element);
@@ -240,11 +243,11 @@ public:
 		const godot::TypedArray<godot::Dictionary>& p_keyframes, const godot::Dictionary& p_options = {}); // 创建并播放脚本关键帧动画
 	godot::Dictionary get_computed_style(const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = ""); // 返回计算样式快照
 	godot::String get_computed_style_property(const godot::Ref<HTMLElement>& p_element, const godot::String& p_name,
-		const godot::String& p_pseudo = ""); // 返回指定属性的计算值
-	godot::TypedArray<godot::Dictionary> get_stylesheets(); // 返回作者样式表及其布局内标识
-	godot::PackedStringArray get_css_rules(int64_t p_stylesheet); // 返回样式表顶层规则的快照
+		const godot::String& p_pseudo = "");									// 返回指定属性的计算值
+	godot::TypedArray<godot::Dictionary> get_stylesheets();						// 返回作者样式表及其布局内标识
+	godot::PackedStringArray get_css_rules(int64_t p_stylesheet);				// 返回样式表顶层规则的快照
 	godot::Error insert_rule(int64_t p_stylesheet, const godot::String& p_rule, int64_t p_index = 0); // 插入一条顶层 CSS 规则
-	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index); // 删除指定的顶层 CSS 规则
+	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index);			// 删除指定的顶层 CSS 规则
 	bool supports_css(const godot::String& p_property_or_condition, const godot::String& p_value = "") const; // 验证 CSS 属性值或支持条件
 	bool supports_selector(const godot::String& p_selector) const;				// 验证 CSS 选择器是否受支持
 	bool matches_media(const godot::String& p_query) const;						// 查询当前布局是否匹配媒体条件

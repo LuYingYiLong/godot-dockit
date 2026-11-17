@@ -21,6 +21,9 @@
 		<member name="media" type="String" setter="set_media" getter="get_media">
 			The media query list that controls when the stylesheet applies.
 		</member>
+		<member name="sheet" type="HTMLStyleSheet" setter="" getter="get_sheet">
+			The associated stylesheet, or [code]null[/code] when no stylesheet is associated.
+		</member>
 		<member name="text" type="String" setter="set_text_content" getter="get_text_content">
 			The original CSS text of the element. Read edited CSSOM rules using [method get_stylesheet_id] and [method HTMLLayout.get_css_rules].
 		</member>

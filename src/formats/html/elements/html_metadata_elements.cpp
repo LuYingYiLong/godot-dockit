@@ -2,6 +2,7 @@
 #include "html_stylesheet_node.h"
 
 #include "formats/html/backend/litehtml_document_adapter.h"
+#include "formats/html/css/html_style_sheet.h"
 #include "formats/html/html_layout.h"
 
 #include <litehtml/html.h>
@@ -156,6 +157,9 @@ void HTMLLinkElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLLinkElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
 	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLLinkElement::get_stylesheet_id);
+	ClassDB::bind_method(D_METHOD("get_sheet"), &HTMLLinkElement::get_sheet);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "sheet", PROPERTY_HINT_NONE, "",
+		PROPERTY_USAGE_DEFAULT, "HTMLStyleSheet"), "", "get_sheet");
 	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLLinkElement::get_resolved_href);
 }
 
@@ -174,6 +178,11 @@ void HTMLLinkElement::set_media(const String& p_value) { set_attribute("media", 
 int64_t HTMLLinkElement::get_stylesheet_id() const {
 	auto* owner = get_owner();
 	return owner ? owner->get_stylesheet_id(*this) : 0;
+}
+
+Ref<HTMLStyleSheet> HTMLLinkElement::get_sheet() const {
+	auto* owner = get_owner();
+	return owner ? owner->get_stylesheet(*this) : Ref<HTMLStyleSheet>();
 }
 
 String HTMLLinkElement::get_resolved_href() const {
@@ -200,6 +209,9 @@ void HTMLStyleElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLStyleElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
 	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLStyleElement::get_stylesheet_id);
+	ClassDB::bind_method(D_METHOD("get_sheet"), &HTMLStyleElement::get_sheet);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "sheet", PROPERTY_HINT_NONE, "",
+		PROPERTY_USAGE_DEFAULT, "HTMLStyleSheet"), "", "get_sheet");
 }
 
 String HTMLStyleElement::get_type() const { return get_attribute("type"); }
@@ -211,6 +223,11 @@ void HTMLStyleElement::set_media(const String& p_value) { set_attribute("media",
 int64_t HTMLStyleElement::get_stylesheet_id() const {
 	auto* owner = get_owner();
 	return owner ? owner->get_stylesheet_id(*this) : 0;
+}
+
+Ref<HTMLStyleSheet> HTMLStyleElement::get_sheet() const {
+	auto* owner = get_owner();
+	return owner ? owner->get_stylesheet(*this) : Ref<HTMLStyleSheet>();
 }
 
 bool HTMLStyleElement::is_disabled() const {

@@ -33,6 +33,9 @@
 		<member name="rel" type="String" setter="set_rel" getter="get_rel">
 			The raw list of link relationship tokens.
 		</member>
+		<member name="sheet" type="HTMLStyleSheet" setter="" getter="get_sheet">
+			The associated stylesheet, or [code]null[/code] when no stylesheet is associated.
+		</member>
 		<member name="type" type="String" setter="set_type" getter="get_type">
 			The declared MIME type of the linked resource.
 		</member>

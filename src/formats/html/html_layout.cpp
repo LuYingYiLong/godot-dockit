@@ -12,6 +12,7 @@
 #include "elements/html_form_state.h"
 #include "elements/html_input_node.h"
 #include "elements/html_select_node.h"
+#include "elements/html_stylesheet_node.h"
 #include "elements/html_textarea_node.h"
 
 #include "formats/html/paint/html_canvas_renderer.h"
@@ -31,6 +32,7 @@
 #include "formats/html/css/css_supports.h"
 #include "formats/html/css/css_syntax_util.h"
 #include "formats/html/css/html_cssom.h"
+#include "formats/html/css/html_style_sheet.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
@@ -217,7 +219,11 @@ struct HTMLLayout::State {
 	Dictionary video_sources;
 	std::string master_styles;
 	std::string user_styles;
-	std::map<std::weak_ptr<litehtml::element>, int64_t, std::owner_less<>> stylesheet_ids;
+	struct StylesheetIdentity {
+		int64_t id = 0;
+		Ref<HTMLStyleSheet> handle;
+	};
+	std::map<std::weak_ptr<litehtml::element>, StylesheetIdentity, std::owner_less<>> stylesheet_identities;
 	int64_t extra_stylesheet_id = 0;
 	Callable edit_callback;
 	Callable element_scroll_callback;
@@ -379,17 +385,17 @@ Dictionary HTMLLayout::get_computed_style(const Ref<HTMLElement>& p_element, con
 std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
 	if (!refresh_cssom()) return {};
 	static std::atomic<int64_t> next_id{1};
-	for (auto it = state->stylesheet_ids.begin(); it != state->stylesheet_ids.end();) {
-		if (it->first.expired()) it = state->stylesheet_ids.erase(it);
+	for (auto it = state->stylesheet_identities.begin(); it != state->stylesheet_identities.end();) {
+		if (it->first.expired()) it = state->stylesheet_identities.erase(it);
 		else ++it;
 	}
 	std::vector<CSSOMSheet> result;
 	for (const auto& sheet : DocumentAdapter::stylesheets(*state->dom->get_document())) {
 		auto owner = sheet.owner.lock();
 		if (!owner) continue;
-		auto [entry, added] = state->stylesheet_ids.try_emplace(owner, 0);
-		if (added) entry->second = next_id++;
-		result.push_back({entry->second, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled});
+		auto [entry, added] = state->stylesheet_identities.try_emplace(owner);
+		if (added) entry->second.id = next_id++;
+		result.push_back({entry->second.id, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled});
 	}
 	if (state->extra_stylesheet_id == 0) state->extra_stylesheet_id = next_id++;
 	result.push_back({state->extra_stylesheet_id, {}, state->user_styles, {}, {}});
@@ -404,6 +410,24 @@ int64_t HTMLLayout::get_stylesheet_id(const HTMLElement& p_element) {
 		}
 	}
 	return 0;
+}
+
+Ref<HTMLStyleSheet> HTMLLayout::get_stylesheet(const HTMLElement& p_element) {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(p_element.lock_element());
+	const int64_t id = node ? get_stylesheet_id(p_element) : 0;
+	if (id == 0) return {};
+	auto& handle = state->stylesheet_identities.find(node)->second.handle;
+	if (handle.is_valid() && handle->source_version == node->source_version) return handle;
+
+	Ref<HTMLStyleSheet> sheet;
+	sheet.instantiate();
+	sheet->layout_id = ObjectID(get_instance_id());
+	sheet->owner = node;
+	sheet->parse_version = parse_version;
+	sheet->source_version = node->source_version;
+	sheet->id = id;
+	handle = sheet;
+	return sheet;
 }
 
 TypedArray<Dictionary> HTMLLayout::get_stylesheets() {
@@ -3078,7 +3102,7 @@ void HTMLLayout::clear() {
 	state->video_sources.clear();
 	state->imported_video_base_dir = String();
 	++parse_version;
-	state->stylesheet_ids.clear();
+	state->stylesheet_identities.clear();
 	state->extra_stylesheet_id = 0;
 	state->animation_handles.clear();
 	disconnect_transition_frames();

@@ -7,6 +7,7 @@
 #include "formats/html/elements/html_button_element.h"
 #include "formats/html/elements/html_element_types.h"
 #include "formats/html/elements/html_metadata_elements.h"
+#include "formats/html/elements/html_stylesheet_node.h"
 #include "formats/html/elements/html_details_element.h"
 #include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_dialog_node.h"
@@ -398,6 +399,9 @@ std::shared_ptr<HTMLNode::DetachedTree> HTMLDOM::register_detached_tree(const li
 void HTMLDOM::update_detached_handles(const litehtml::element::ptr& p_root,
 	const std::shared_ptr<HTMLNode::DetachedTree>& p_tree) {
 	if (const auto handle = find_node_handle(*p_root); handle.is_valid()) handle->detached_tree = p_tree;
+	if (p_tree) {
+		if (auto* sheet_owner = dynamic_cast<HTMLStylesheetNode*>(p_root.get())) ++sheet_owner->source_version;
+	}
 	for (const auto& child : p_root->children()) update_detached_handles(child, p_tree);
 }
 

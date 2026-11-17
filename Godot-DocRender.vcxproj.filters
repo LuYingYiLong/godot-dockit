@@ -295,6 +295,9 @@
     <ClCompile Include="src\formats\html\css\html_animation.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\css\html_style_sheet.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\css\css_shadows.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
@@ -940,6 +943,9 @@
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\html_animation.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\html_style_sheet.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_playback.h">

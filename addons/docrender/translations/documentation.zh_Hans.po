@@ -4815,6 +4815,55 @@ msgstr "元素的原始 CSS 文本。使用 [method get_stylesheet_id] 和 [meth
 msgid "The declared MIME type of the inline stylesheet. An empty value defaults to [code]text/css[/code]."
 msgstr "内联样式表声明的 MIME 类型。留空时默认为 [code]text/css[/code]。"
 
+#. doc_classes/HTMLLinkElement.xml
+#. doc_classes/HTMLStyleElement.xml
+msgid "The associated stylesheet, or [code]null[/code] when no stylesheet is associated."
+msgstr "关联的样式表。没有关联的样式表时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "A handle to an element's stylesheet in an HTML layout."
+msgstr "HTML 布局中元素的样式表句柄。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet] to get the stylesheet. It shares its rules with the layout's numeric CSSOM API. Changing the media condition or disabled state keeps the handle valid. Replacing the source, removing the owner from the document, or clearing or replacing the layout invalidates the handle."
+msgstr "通过 [member HTMLLinkElement.sheet] 或 [member HTMLStyleElement.sheet] 获取样式表。它与布局的数字 ID CSSOM 接口共用规则。修改媒体条件或禁用状态时，句柄继续有效。替换来源、将所属元素移出文档、清空或替换布局时，句柄失效。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Deletes the top-level rule at the given zero-based [param index]. Returns [constant ERR_INVALID_PARAMETER] for a stale handle or invalid index."
+msgstr "删除给定零基 [param index] 处的顶层规则。句柄或索引无效时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Returns a snapshot of the serialized top-level rules. A stale handle returns an empty array."
+msgstr "返回序列化的顶层规则快照。句柄失效时返回空数组。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Inserts one CSS [param rule] at the given zero-based [param index]. Uses the same validation as [method HTMLLayout.insert_rule]. A stale handle returns [constant ERR_INVALID_PARAMETER]."
+msgstr "在给定的零基 [param index] 处插入一条 CSS 规则 [param rule]。复用 [method HTMLLayout.insert_rule] 的校验逻辑。句柄失效时返回 [constant ERR_INVALID_PARAMETER]。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Returns whether the handle still refers to the associated stylesheet."
+msgstr "返回句柄是否仍指向关联的样式表。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "Whether the associated stylesheet is disabled. Set the owning element's disabled property to change this state."
+msgstr "关联的样式表是否已禁用。设置所属元素的 disabled 属性可修改此状态。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "The resolved resource path of an external stylesheet. Inline stylesheets return an empty string."
+msgstr "外部样式表解析后的资源路径。内联样式表返回空字符串。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "The ID used by the layout's numeric CSSOM methods. A stale handle returns [code]0[/code]."
+msgstr "布局的数字 ID CSSOM 方法使用的 ID。句柄失效时返回 [code]0[/code]。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "The owning element's current media query list."
+msgstr "样式表所属元素当前的媒体查询列表。"
+
+#. doc_classes/HTMLStyleSheet.xml
+msgid "The element that owns the associated stylesheet. A stale handle returns [code]null[/code]."
+msgstr "关联样式表的所属元素。句柄失效时返回 [code]null[/code]。"
+
 #. doc_classes/HTMLLayout.xml
 msgid "Returns a serialized snapshot of the top-level rules in the stylesheet identified by [param stylesheet]. Grouped and imported rules retain their place in the list."
 msgstr "返回由 [param stylesheet] 指定的样式表顶层规则快照。分组规则和导入规则保留其在列表中的位置。"
