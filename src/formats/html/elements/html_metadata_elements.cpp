@@ -1,8 +1,42 @@
 #include "html_metadata_elements.h"
+#include "html_stylesheet_node.h"
 
+#include "formats/html/backend/litehtml_document_adapter.h"
 #include "formats/html/html_layout.h"
 
+#include <litehtml/html.h>
+#include <litehtml/document_container.h>
+
 using namespace godot;
+
+namespace docrender {
+	bool HTMLStylesheetNode::accepts_style_text() const {
+		const auto type = litehtml::lowcase(get_attr("type", ""));
+		return type.empty() || type == "text/css";
+	}
+
+	void HTMLStylesheetNode::parse_attributes() {
+		const auto doc = get_document();
+		if (tag() == litehtml::_link_) {
+			doc->container()->link(doc, shared_from_this());
+		} else if (accepts_style_text()) {
+			litehtml::string text;
+			get_text(text);
+			doc->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get(), shared_from_this(), style_disabled);
+		}
+	}
+
+	void HTMLStylesheetNode::compute_styles(bool p_recursive) {
+		if (tag() == litehtml::_style_) css_w().set_display(litehtml::display_none);
+		else html_tag::compute_styles(p_recursive);
+	}
+
+	bool HTMLStylesheetNode::removeChild(const litehtml::element::ptr& p_child) {
+		if (!html_tag::removeChild(p_child)) return false;
+		if (tag() == litehtml::_style_) litehtml::docrender_editor::reset_stylesheet_source(*this);
+		return true;
+	}
+}
 
 void HTMLTitleElement::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text"), "set_text_content", "get_text_content");
@@ -103,4 +137,90 @@ bool HTMLScriptElement::is_no_module() const { return has_attribute("nomodule");
 void HTMLScriptElement::set_no_module(bool p_value) {
 	if (p_value) set_attribute("nomodule", "");
 	else remove_attribute("nomodule");
+}
+
+void HTMLLinkElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_href"), &HTMLLinkElement::get_href);
+	ClassDB::bind_method(D_METHOD("set_href", "value"), &HTMLLinkElement::set_href);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "href"), "set_href", "get_href");
+	ClassDB::bind_method(D_METHOD("get_rel"), &HTMLLinkElement::get_rel);
+	ClassDB::bind_method(D_METHOD("set_rel", "value"), &HTMLLinkElement::set_rel);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "rel"), "set_rel", "get_rel");
+	ClassDB::bind_method(D_METHOD("get_type"), &HTMLLinkElement::get_type);
+	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLLinkElement::set_type);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+	ClassDB::bind_method(D_METHOD("get_media"), &HTMLLinkElement::get_media);
+	ClassDB::bind_method(D_METHOD("set_media", "value"), &HTMLLinkElement::set_media);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "set_media", "get_media");
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLLinkElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLLinkElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLLinkElement::get_stylesheet_id);
+	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLLinkElement::get_resolved_href);
+}
+
+String HTMLLinkElement::get_href() const { return get_attribute("href"); }
+void HTMLLinkElement::set_href(const String& p_value) { set_attribute("href", p_value); }
+
+String HTMLLinkElement::get_rel() const { return get_attribute("rel"); }
+void HTMLLinkElement::set_rel(const String& p_value) { set_attribute("rel", p_value); }
+
+String HTMLLinkElement::get_type() const { return get_attribute("type"); }
+void HTMLLinkElement::set_type(const String& p_value) { set_attribute("type", p_value); }
+
+String HTMLLinkElement::get_media() const { return get_attribute("media"); }
+void HTMLLinkElement::set_media(const String& p_value) { set_attribute("media", p_value); }
+
+int64_t HTMLLinkElement::get_stylesheet_id() const {
+	auto* owner = get_owner();
+	return owner ? owner->get_stylesheet_id(*this) : 0;
+}
+
+String HTMLLinkElement::get_resolved_href() const {
+	const auto* owner = get_owner();
+	return owner && has_attribute("href") ? owner->resolve_link_href(get_href()) : String();
+}
+
+bool HTMLLinkElement::is_disabled() const { return has_attribute("disabled"); }
+
+void HTMLLinkElement::set_disabled(bool p_value) {
+	if (p_value) set_attribute("disabled", "");
+	else remove_attribute("disabled");
+}
+
+void HTMLStyleElement::_bind_methods() {
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text"), "set_text_content", "get_text_content");
+	ClassDB::bind_method(D_METHOD("get_type"), &HTMLStyleElement::get_type);
+	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLStyleElement::set_type);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+	ClassDB::bind_method(D_METHOD("get_media"), &HTMLStyleElement::get_media);
+	ClassDB::bind_method(D_METHOD("set_media", "value"), &HTMLStyleElement::set_media);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "set_media", "get_media");
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLStyleElement::is_disabled);
+	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLStyleElement::set_disabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLStyleElement::get_stylesheet_id);
+}
+
+String HTMLStyleElement::get_type() const { return get_attribute("type"); }
+void HTMLStyleElement::set_type(const String& p_value) { set_attribute("type", p_value); }
+
+String HTMLStyleElement::get_media() const { return get_attribute("media"); }
+void HTMLStyleElement::set_media(const String& p_value) { set_attribute("media", p_value); }
+
+int64_t HTMLStyleElement::get_stylesheet_id() const {
+	auto* owner = get_owner();
+	return owner ? owner->get_stylesheet_id(*this) : 0;
+}
+
+bool HTMLStyleElement::is_disabled() const {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(lock_element());
+	return node && node->accepts_style_text() && node->style_disabled && is_connected();
+}
+
+void HTMLStyleElement::set_disabled(bool p_value) {
+	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(lock_element());
+	if (!node || !node->accepts_style_text() || node->style_disabled == p_value || !is_connected()) return;
+	node->style_disabled = p_value;
+	get_owner()->invalidate_styles();
 }

@@ -60,3 +60,40 @@ public:
 	bool is_no_module() const; // 读取非模块属性
 	void set_no_module(bool p_value); // 设置非模块属性
 };
+
+class HTMLLinkElement : public HTMLElement {
+	GDCLASS(HTMLLinkElement, HTMLElement)
+
+protected:
+	static void _bind_methods();
+
+public:
+	godot::String get_href() const; // 读取链接的原始地址
+	void set_href(const godot::String& p_value); // 设置链接的原始地址
+	godot::String get_rel() const; // 读取关系类型
+	void set_rel(const godot::String& p_value); // 设置关系类型
+	godot::String get_type() const; // 读取资源内容类型
+	void set_type(const godot::String& p_value); // 设置资源内容类型
+	godot::String get_media() const; // 读取适用媒体条件
+	void set_media(const godot::String& p_value); // 设置适用媒体条件
+	bool is_disabled() const; // 判断样式表是否停用
+	void set_disabled(bool p_value); // 设置样式表的停用状态
+	int64_t get_stylesheet_id() const; // 返回关联样式表的 CSSOM ID
+	godot::String get_resolved_href() const; // 按当前文档的基准解析链接地址
+};
+
+class HTMLStyleElement : public HTMLElement {
+	GDCLASS(HTMLStyleElement, HTMLElement)
+
+protected:
+	static void _bind_methods();
+
+public:
+	godot::String get_type() const; // 读取样式内容类型
+	void set_type(const godot::String& p_value); // 设置样式内容类型
+	godot::String get_media() const; // 读取适用媒体条件
+	void set_media(const godot::String& p_value); // 设置适用媒体条件
+	bool is_disabled() const; // 判断样式表是否停用
+	void set_disabled(bool p_value); // 设置样式表的停用状态
+	int64_t get_stylesheet_id() const; // 返回关联样式表的 CSSOM ID
+};

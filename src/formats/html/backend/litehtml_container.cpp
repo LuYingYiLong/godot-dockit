@@ -9,6 +9,7 @@
 #include "formats/html/elements/html_ruby_node.h"
 #include "formats/html/elements/html_details_node.h"
 #include "formats/html/elements/html_dialog_node.h"
+#include "formats/html/elements/html_stylesheet_node.h"
 #include "formats/html/css/css_animation_state.h"
 #include "formats/html/css/css_transition_state.h"
 
@@ -44,37 +45,11 @@ namespace docrender {
 		constexpr float CSS_DPI = 96.0f;
 
 		class RawTextElement final : public html_tag {
-			bool stylesheet;
-
-		public:
-			RawTextElement(const document::ptr& p_document, bool p_stylesheet) :
-				html_tag(p_document), stylesheet(p_stylesheet) {}
-
-			void parse_attributes() override {
-				if (!stylesheet) {
-					return;
-				}
-				const char* type = get_attr("type", "");
-				if (*type && lowcase(type) != "text/css") {
-					return;
-				}
-				std::string text;
-				get_text(text);
-				get_document()->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get(), shared_from_this());
-			}
-
-			void compute_styles(bool) override {
-				css_w().set_display(display_none);
-			}
-		};
-
-		class StylesheetLinkElement final : public html_tag {
 		public:
 			using html_tag::html_tag;
-
-			void parse_attributes() override {
-				const auto doc = get_document();
-				doc->container()->link(doc, shared_from_this());
+			void parse_attributes() override {}
+			void compute_styles(bool) override {
+				css_w().set_display(display_none);
 			}
 		};
 
@@ -180,12 +155,8 @@ namespace docrender {
 		if (tag == "input") {
 			return std::make_shared<HTMLInputNode>(p_document);
 		}
-		if (tag == "style" || tag == "script") {
-			return std::make_shared<RawTextElement>(p_document, tag == "style");
-		}
-		if (tag == "link") {
-			return std::make_shared<StylesheetLinkElement>(p_document);
-		}
+		if (tag == "script") return std::make_shared<RawTextElement>(p_document);
+		if (tag == "style" || tag == "link") return std::make_shared<HTMLStylesheetNode>(p_document);
 		if (tag == "source") return std::make_shared<ImageSourceElement>(p_document);
 		return fit_images && tag == "img" ? std::make_shared<FittedImageElement>(p_document) : nullptr;
 	}
@@ -442,12 +413,24 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) {
+		auto* node = dynamic_cast<HTMLStylesheetNode*>(p_element.get());
 		const char* href = p_element->get_attr("href");
-		if (!href || p_element->get_attr("disabled") || !is_html_stylesheet_link(p_element->get_attr("rel"))) {
+		if (!node || !href || !is_html_stylesheet_link(p_element->get_attr("rel"))) {
 			return;
 		}
 		const char* type = p_element->get_attr("type", "");
 		if (*type && String::utf8(type).get_slice(";", 0).strip_edges().nocasecmp_to("text/css") != 0) {
+			return;
+		}
+		if (p_element->get_attr("disabled")) {
+			if (node->linked_path.empty()) return;
+			const String path = resolve_html_stylesheet_path(String::utf8(href), resources.get_document_base().directory);
+			if (path == String::utf8(node->linked_path.c_str())) {
+				p_doc->add_stylesheet(node->linked_text.c_str(), node->linked_path.c_str(), p_element->get_attr("media"),
+					p_element->parent().get(), p_element, true);
+			} else {
+				litehtml::docrender_editor::reset_stylesheet_source(*p_element);
+			}
 			return;
 		}
 		litehtml::string css;
@@ -456,6 +439,10 @@ namespace docrender {
 		if (!css.empty() || !base.empty()) {
 			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"),
 				p_element->parent().get(), p_element);
+			node->linked_path = std::move(base);
+			node->linked_text = std::move(css);
+		} else if (!node->linked_path.empty()) {
+			litehtml::docrender_editor::reset_stylesheet_source(*p_element);
 		}
 	}
 

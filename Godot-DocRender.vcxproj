@@ -342,6 +342,7 @@
     <ClInclude Include="src\formats\html\elements\html_element.h" />
     <ClInclude Include="src\formats\html\elements\html_element_types.h" />
     <ClInclude Include="src\formats\html\elements\html_metadata_elements.h" />
+    <ClInclude Include="src\formats\html\elements\html_stylesheet_node.h" />
     <ClInclude Include="src\formats\html\elements\html_control_render_item.h" />
     <ClInclude Include="src\formats\html\elements\html_heading_element.h" />
     <ClInclude Include="src\formats\html\elements\html_list_elements.h" />

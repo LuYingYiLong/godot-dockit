@@ -780,6 +780,9 @@
     <ClInclude Include="src\formats\html\elements\html_metadata_elements.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_stylesheet_node.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_element.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>

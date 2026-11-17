@@ -274,7 +274,7 @@
 		<method name="get_stylesheets">
 			<return type="Dictionary[]" />
 			<description>
-				Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], and [code]media[/code]. The additional stylesheet is last. IDs apply to the current layout generation.
+				Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], [code]media[/code], and [code]disabled[/code]. The additional stylesheet is last. IDs apply to the current layout generation.
 			</description>
 		</method>
 		<method name="get_css_rules">

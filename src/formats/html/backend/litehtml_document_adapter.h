@@ -53,6 +53,7 @@ namespace litehtml {
 		static bool is_command_button(const element& p_element);					// 判断元素是否有按钮激活行为
 		static css_text::vector stylesheets(const document& p_document);
 		static void edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text);
+		static void reset_stylesheet_source(element& p_owner);
 
 		static bool set_attribute(
 			element& p_element,

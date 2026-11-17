@@ -23,6 +23,7 @@ namespace litehtml
 		string	media;
 		const element* scope_root = nullptr;
 		std::weak_ptr<element> owner;
+		bool disabled = false;
 
 		css_text() = default;
 
@@ -128,7 +129,7 @@ namespace litehtml
 		pixel_t							content_width() const;
 		pixel_t							content_height() const;
 		void							add_stylesheet(const char* str, const char* baseurl, const char* media,
-			const element* scope_root = nullptr, const std::shared_ptr<element>& owner = {});
+										const element* scope_root = nullptr, const std::shared_ptr<element>& owner = {}, bool disabled = false);
 		bool							on_mouse_over(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, position::vector& redraw_boxes);
 		std::vector<scroll_values>		on_scroll(pixel_t dx, pixel_t dy, pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y) const;
 		bool							on_lbutton_down(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, position::vector& redraw_boxes);

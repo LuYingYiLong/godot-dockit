@@ -173,6 +173,8 @@ namespace {
 				case litehtml::_meta_: return instantiate_element_handle<HTMLMetaElement>();
 				case litehtml::_base_: return instantiate_element_handle<HTMLBaseElement>();
 				case litehtml::_script_: return instantiate_element_handle<HTMLScriptElement>();
+				case litehtml::_link_: return instantiate_element_handle<HTMLLinkElement>();
+				case litehtml::_style_: return instantiate_element_handle<HTMLStyleElement>();
 				default: break;
 			}
 		}

@@ -253,6 +253,7 @@ struct HTMLLayout::CSSOMSheet {
 	std::string text;
 	std::string base;
 	std::string media;
+	bool disabled = false;
 };
 
 bool HTMLLayout::refresh_cssom() {
@@ -388,11 +389,21 @@ std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
 		if (!owner) continue;
 		auto [entry, added] = state->stylesheet_ids.try_emplace(owner, 0);
 		if (added) entry->second = next_id++;
-		result.push_back({entry->second, std::move(owner), sheet.text, sheet.baseurl, sheet.media});
+		result.push_back({entry->second, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled});
 	}
 	if (state->extra_stylesheet_id == 0) state->extra_stylesheet_id = next_id++;
 	result.push_back({state->extra_stylesheet_id, {}, state->user_styles, {}, {}});
 	return result;
+}
+
+int64_t HTMLLayout::get_stylesheet_id(const HTMLElement& p_element) {
+	const auto node = p_element.lock_element();
+	if (node && state->dom->is_element_connected(*node)) {
+		for (const auto& sheet : collect_stylesheets()) {
+			if (sheet.owner == node) return sheet.id;
+		}
+	}
+	return 0;
 }
 
 TypedArray<Dictionary> HTMLLayout::get_stylesheets() {
@@ -404,6 +415,7 @@ TypedArray<Dictionary> HTMLLayout::get_stylesheets() {
 		snapshot["source"] = !sheet.owner ? "stylesheet" : sheet.owner->tag() == litehtml::_link_ ? "link" : "style";
 		snapshot["path"] = String::utf8(sheet.base.c_str());
 		snapshot["media"] = String::utf8(sheet.media.c_str());
+		snapshot["disabled"] = sheet.disabled;
 		result.append(snapshot);
 	}
 	return result;

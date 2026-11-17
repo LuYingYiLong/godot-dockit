@@ -58,6 +58,8 @@ func _ready() -> void:
 	_check_pixel("linked", Color.BLUE)
 	_check_pixel("nested", Color.MAGENTA)
 	_check_pixel("inline-import", Color.CYAN)
+	await _check_link_stylesheet(from_pck)
+	_check_inline_stylesheet()
 	_check(jump.href == "#tail" and jump.get_resolved_href() == "res://assets/v1/virtual.html#tail", "script can read the resolved link")
 	var clicked_uris: Array[String]
 	label.link_pressed.connect(func(uri: String) -> void: clicked_uris.append(uri), CONNECT_ONE_SHOT)
@@ -109,6 +111,87 @@ func _check_base_edits(
 	var svg: HTMLElement = layout.query_selector("svg")
 	_check(svg.set_inner_html("<base href='ignored/'/>") == OK and layout.get_base_uri() == "res://pages/",
 		"base elements inserted into a foreign fragment stay out of the resource context")
+
+
+func _check_link_stylesheet(from_pck: bool) -> void:
+	var link: HTMLLinkElement = label.get_element_by_id("optional-sheet") as HTMLLinkElement
+	var target: HTMLElement = label.get_element_by_id("optional-target")
+	var href: String = link.href
+	_check(link.rel == "stylesheet" and link.get_resolved_href() == "res://assets/v1/styles/optional.css",
+		"typed link resolves the original href through the document base")
+	_check(link.disabled and link.get_stylesheet_id() == 0 and target.get_bounding_rect().size == Vector2(12.0, 12.0),
+		"the initially disabled link has no associated sheet and its rules do not apply")
+	if from_pck:
+		_check(not FileAccess.file_exists("res://assets/v1/styles/optional.css"), "initially disabled CSS uses its baked text in the PCK")
+	link.disabled = false
+	await _settle()
+	var id: int = link.get_stylesheet_id()
+	_check(id > 0 and target.get_bounding_rect().size == Vector2(44.0, 18.0), "enabling the linked sheet applies its nested import")
+	_check_pixel("optional-target", Color.YELLOW)
+	var rule_count: int = label.get_css_rules(id).size()
+	_check(label.insert_rule(id, "#optional-target { width: 60px; }", rule_count) == OK,
+		"CSSOM edits the linked stylesheet by its element ID")
+	link.media = "(min-width: 999px)"
+	await _settle()
+	_check(link.get_stylesheet_id() == id and label.get_css_rules(id).size() == rule_count + 1
+		and target.get_bounding_rect().size.x == 12.0, "media changes suspend CSSOM rules without discarding them")
+	link.media = ""
+	link.disabled = true
+	await _settle()
+	_check(link.get_stylesheet_id() == id and label.get_css_rules(id).size() == rule_count + 1
+		and target.get_bounding_rect().size.x == 12.0, "disabling an associated link keeps its ID and rules")
+	link.disabled = false
+	await _settle()
+	_check(target.get_bounding_rect().size.x == 60.0, "re-enabling the link restores the edited rule")
+	link.href = "styles/missing.css"
+	link.href = href
+	await _settle()
+	_check(link.get_stylesheet_id() == id and label.get_css_rules(id).size() == rule_count
+		and target.get_bounding_rect().size.x == 44.0, "changing href and restoring it in the same frame clears the old edits")
+	link.type = "text/plain"
+	await _settle()
+	_check(link.get_stylesheet_id() == 0 and target.get_bounding_rect().size.x == 12.0,
+		"a non-CSS link type removes the associated sheet")
+
+
+func _check_inline_stylesheet() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var original: String = "#item { width: 35px; height: 10px; }"
+	var viewport_size: Vector2i = Vector2i(180, 100)
+	_check(layout.parse("<style id='style'>%s</style><div id='item'></div>" % original) == OK
+		and layout.layout(viewport_size) == OK, "inline stylesheet fixture parses and lays out")
+	var style: HTMLStyleElement = layout.get_element_by_id("style") as HTMLStyleElement
+	var item: HTMLElement = layout.get_element_by_id("item")
+	var id: int = style.get_stylesheet_id()
+	_check(id > 0 and style.text == original and item.get_bounding_rect().size.x == 35.0, "inline style exposes its text and sheet ID")
+	_check(layout.insert_rule(id, "#item { width: 90px; }", 1) == OK, "CSSOM edits the inline stylesheet by its element ID")
+	style.media = "(min-width: 999px)"
+	layout.layout(viewport_size)
+	_check(style.get_stylesheet_id() == id and layout.get_css_rules(id).size() == 2
+		and item.get_bounding_rect().size.x != 90.0, "inline media changes retain CSSOM edits")
+	style.media = ""
+	style.disabled = true
+	layout.layout(viewport_size)
+	_check(style.disabled and not style.has_attribute("disabled") and style.get_stylesheet_id() == id
+		and layout.get_css_rules(id).size() == 2 and item.get_bounding_rect().size.x != 90.0,
+		"inline disabled controls the associated sheet without changing HTML attributes")
+	style.disabled = false
+	layout.layout(viewport_size)
+	_check(item.get_bounding_rect().size.x == 90.0, "re-enabling inline style restores the edited rule")
+	style.text = "#item { width: 50px; }"
+	style.text = original
+	layout.layout(viewport_size)
+	_check(style.get_stylesheet_id() == id and layout.get_css_rules(id).size() == 1
+		and item.get_bounding_rect().size.x == 35.0, "replacing style text clears old edits even when restoring the same text")
+	_check(layout.insert_rule(id, "#item { width: 90px; }", 1) == OK, "CSSOM edits the replacement inline stylesheet")
+	var text_node: HTMLTextNode = style.get_first_child() as HTMLTextNode
+	text_node.data = "#item { width: 50px; height: 10px; }"
+	layout.layout(viewport_size)
+	_check(layout.get_css_rules(id).size() == 1 and item.get_bounding_rect().size.x == 50.0,
+		"Text node edits through the DOM invalidate inline CSSOM rules")
+	style.type = "text/plain"
+	layout.layout(viewport_size)
+	_check(style.get_stylesheet_id() == 0 and item.get_bounding_rect().size.x != 50.0, "non-CSS style text has no associated stylesheet")
 
 
 func _check_pixel(id: String, expected: Color) -> void:

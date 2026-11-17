@@ -77,6 +77,9 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLDialogElement;
 	friend class HTMLAnchorElement;
 	friend class HTMLBaseElement;
+	friend class HTMLLinkElement;
+	friend class HTMLStyleElement;
+	int64_t get_stylesheet_id(const HTMLElement& p_element);
 	godot::String resolve_link_href(const godot::String& p_href, bool p_use_fallback = false) const;
 	godot::ObjectID dialog_host;
 	void push_modal(const std::shared_ptr<litehtml::element>& p_element);
@@ -243,12 +246,12 @@ public:
 	godot::Error insert_rule(int64_t p_stylesheet, const godot::String& p_rule, int64_t p_index = 0); // 插入一条顶层 CSS 规则
 	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index); // 删除指定的顶层 CSS 规则
 	bool supports_css(const godot::String& p_property_or_condition, const godot::String& p_value = "") const; // 验证 CSS 属性值或支持条件
-	bool supports_selector(const godot::String& p_selector) const; // 验证 CSS 选择器是否受支持
-	bool matches_media(const godot::String& p_query) const; // 查询当前布局是否匹配媒体条件
+	bool supports_selector(const godot::String& p_selector) const;				// 验证 CSS 选择器是否受支持
+	bool matches_media(const godot::String& p_query) const;						// 查询当前布局是否匹配媒体条件
 
-	void set_css_diagnostics_enabled(bool p_enabled);								// 设置是否收集 CSS 声明诊断
-	bool is_css_diagnostics_enabled() const;										// 返回是否收集 CSS 声明诊断
-	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;				// 返回最近一轮样式计算的诊断快照
+	void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
+	bool is_css_diagnostics_enabled() const;									// 返回是否收集 CSS 声明诊断
+	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;			// 返回最近一轮样式计算的诊断快照
 
 	struct LinkHit {
 		godot::String uri;
@@ -261,7 +264,7 @@ public:
 	godot::Error parse(const godot::String& p_html,
 		const godot::String& p_base_dir = "res://",
 		const godot::String& p_stylesheet = ""
-	);																				// 解析 HTML 和附加样式，替换当前布局的文档
+	);																			// 解析 HTML 和附加样式，替换当前布局的文档
 	godot::Error parse_source(const godot::String& p_html,
 		const godot::String& p_base_dir,
 		const godot::String& p_stylesheet,
@@ -277,24 +280,24 @@ public:
 		const godot::Dictionary& p_svg_clip_sources = {},
 		const godot::Dictionary& p_audio_streams = {},
 		const godot::Dictionary& p_video_sources = {}
-	);																				// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
-	godot::Error layout(const godot::Vector2i& p_viewport_size);					// 按给定视口尺寸排版并更新几何
+	);																			// 使用指定字体、样式表和资源依赖解析 HTML 并替换当前文档
+	godot::Error layout(const godot::Vector2i& p_viewport_size);				// 按给定视口尺寸排版并更新几何
 	godot::Error layout_embedded_block(const godot::Vector2i& p_viewport_size);	// 为外层排版器保留完整块的几何和文字
-	godot::Vector2i get_content_size() const;										// 返回最近一次成功排版的内容尺寸
-	godot::String get_plain_text() const;											// 返回排版后的可复制文本
+	godot::Vector2i get_content_size() const;									// 返回最近一次成功排版的内容尺寸
+	godot::String get_plain_text() const;										// 返回排版后的可复制文本
 	godot::String get_accessible_text() const;									// 返回应用 CSS 替代文本后的无障碍文本
-	int64_t hit_test_text(const godot::Vector2& p_position) const;					// 返回离指定文档坐标最近的文本光标偏移
+	int64_t hit_test_text(const godot::Vector2& p_position) const;				// 返回离指定文档坐标最近的文本光标偏移
 	bool hit_test_selectable_text(const godot::Vector2& p_position, bool* r_blank = nullptr) const;	// 检查是否命中可选择的文字，并可选地报告空白命中
 	docrender::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
 	godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 	godot::TypedArray<godot::Rect2> get_selection_rects(
 		int64_t p_from,
 		int64_t p_to
-	) const;																		// 返回文本范围在文档坐标中的可见选区矩形
+	) const;																	// 返回文本范围在文档坐标中的可见选区矩形
 	void draw(godot::CanvasItem* p_canvas,
 		const godot::Vector2& p_position = {},
 		const godot::Rect2& p_clip = {}
-	);																				// 在画布绘制回调中按给定位置和裁剪区域绘制 HTML
+	);																			// 在画布绘制回调中按给定位置和裁剪区域绘制 HTML
 	void draw_with_highlights(
 		godot::CanvasItem* p_canvas,
 		const godot::Vector2& p_position,
@@ -305,13 +308,13 @@ public:
 		const godot::Vector2i& p_search = {},
 		const godot::StyleBox* p_search_style = nullptr,
 		const godot::Vector2& p_viewport_origin = {}
-	);																				// 在指定画布上绘制 HTML，并显示选区与搜索高亮
-	godot::String get_link_at(const godot::Vector2& p_position) const;				// 返回指定文档坐标处链接的原始 href
+	);																			// 在指定画布上绘制 HTML，并显示选区与搜索高亮
+	godot::String get_link_at(const godot::Vector2& p_position) const;			// 返回指定文档坐标处链接的原始 href
 	LinkHit find_link_at(
 		const godot::Vector2& p_position,
 		godot::Ref<HTMLElement>* r_element = nullptr
-	) const;																		// 命中文档坐标处的链接，可同时写出命中的元素
-	godot::Rect2 get_anchor_rect(const godot::String& p_id) const;					// 返回指定 HTML ID 的锚点矩形
+	) const;																	// 命中文档坐标处的链接，可同时写出命中的元素
+	godot::Rect2 get_anchor_rect(const godot::String& p_id) const;				// 返回指定 HTML ID 的锚点矩形
 	const godot::HashMap<godot::String, docrender::HTMLAnchor>& get_anchors() const; // 提供当前布局的锚点位置及节点
 	std::optional<docrender::HTMLScrollTarget> scroll_anchor_into_view(const godot::String& p_id, float p_align,
 		godot::Node& p_owner, const godot::Callable& p_changed = {});
@@ -319,11 +322,11 @@ public:
 		std::optional<float> p_align, godot::Node& p_owner, const godot::Callable& p_changed,
 		const docrender::HTMLScrollOptions* p_options = nullptr);
 	void cancel_scroll_activity();
-	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);		// 创建同一布局中尚未插入文档的元素
-	godot::Ref<HTMLDocumentFragment> create_document_fragment();					// 创建属于当前布局的空片段
-	godot::Ref<HTMLDocumentNode> get_document_node() const; // 返回实时文档的节点句柄
-	godot::Ref<HTMLRange> create_range(); // 创建关联当前文档的实时范围
-	godot::Ref<HTMLSelection> get_selection() const; // 返回文档的节点选区
+	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);	// 创建同一布局中尚未插入文档的元素
+	godot::Ref<HTMLDocumentFragment> create_document_fragment();				// 创建属于当前布局的空片段
+	godot::Ref<HTMLDocumentNode> get_document_node() const;						// 返回实时文档的节点句柄
+	godot::Ref<HTMLRange> create_range();										// 创建关联当前文档的实时范围
+	godot::Ref<HTMLSelection> get_selection() const;							// 返回文档的节点选区
 	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
 	godot::Ref<HTMLElement> get_head() const; // 返回文档的 head 元素
 	godot::Ref<HTMLElement> get_body() const; // 返回文档的 body 或 frameset 元素

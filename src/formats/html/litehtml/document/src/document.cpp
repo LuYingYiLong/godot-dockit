@@ -670,17 +670,18 @@ void document::append_document_stylesheets()
 	}
 	for (const auto& sheet : m_css)
 	{
-		media_query_list_list::ptr media;
-		if (!sheet.media.empty())
-		{
-			media = make_shared<media_query_list_list>();
-			media->add(parse_media_query_list(sheet.media, doc));
-		}
 		auto edit = m_cssom_overrides.find(sheet.owner);
 		if (edit != m_cssom_overrides.end() && (edit->second.original != sheet.text || edit->second.baseurl != sheet.baseurl))
 		{
 			m_cssom_overrides.erase(edit);
 			edit = m_cssom_overrides.end();
+		}
+		if (sheet.disabled) continue;
+		media_query_list_list::ptr media;
+		if (!sheet.media.empty())
+		{
+			media = make_shared<media_query_list_list>();
+			media->add(parse_media_query_list(sheet.media, doc));
 		}
 		m_styles.parse_css_stylesheet(edit == m_cssom_overrides.end() ? sheet.text : edit->second.replacement,
 			sheet.baseurl, doc, media, 0, sheet.scope_root);
@@ -709,12 +710,13 @@ void document::apply_author_styles(element& root)
 }
 
 void document::add_stylesheet(const char* str, const char* baseurl, const char* media, const element* scope_root,
-	const std::shared_ptr<element>& owner)
+	const std::shared_ptr<element>& owner, bool disabled)
 {
 	if(owner || (str && str[0]))
 	{
 		m_css.emplace_back(str, baseurl, media, scope_root);
 		m_css.back().owner = owner;
+		m_css.back().disabled = disabled;
 	}
 }
 

@@ -1,4 +1,4 @@
-"""Test HTML document metadata, local base URLs and selected-scene Windows exports."""
+"""Test HTML document metadata, stylesheet changes and selected-scene Windows exports."""
 
 import argparse
 import os
@@ -53,6 +53,7 @@ application/modify_resources=false
         ("assets/v1/inline.svg", 12, "#00ff00"),
         ("assets/v1/styles/linked.svg", 12, "#0000ff"),
         ("assets/v1/styles/nested/nested.svg", 12, "#ff00ff"),
+        ("assets/v1/styles/nested/optional.svg", 12, "#ffff00"),
         ("assets/v1/extras/inline-import.svg", 12, "#00ffff"),
         ("assets/v2/icon.svg", 36, "#ffffff"),
         ("pages/icon.svg", 24, "#ffffff"),
@@ -66,6 +67,10 @@ application/modify_resources=false
     write(project / "assets/v1/styles/outer.css", '@import "nested/inner.css";\n'
           '#linked { background: url(linked.svg) no-repeat; width: 40px; }\n')
     write(project / "assets/v1/styles/nested/inner.css", '#nested { background-image: url(nested.svg); }\n')
+    write(project / "assets/v1/styles/optional.css", '@import "nested/optional.css";\n'
+          '#optional-target { width: 44px; }\n')
+    write(project / "assets/v1/styles/nested/optional.css",
+          '#optional-target { height: 18px; background: url(optional.svg) no-repeat; }\n')
     write(project / "assets/v1/extras/inline.css", '#inline-import { background-image: url(inline-import.svg); }\n')
     write(project / "assets/v2/styles/outer.css", '#linked { width: 70px; }\n')
     write(project / "pages/index.html", """<!doctype html>
@@ -75,6 +80,7 @@ application/modify_resources=false
 <base target="_blank"><base id="first" href="../assets/v1/virtual.html"><base id="next" href="../assets/v2/">
 <meta name="viewport" id="meta" content="test"><script id="config" type="application/json">{"enabled":true}</script>
 <link rel="stylesheet" href="styles/outer.css">
+<link id="optional-sheet" rel="stylesheet" href="styles/optional.css" media="(min-width: 150px)" disabled>
 <style>
 @import "extras/inline.css";
 html, body { margin: 0; background: black; }
@@ -86,6 +92,7 @@ div.swatch { height: 12px; width: 12px; }
 <div class="swatch" id="linked"></div>
 <div class="swatch" id="nested"></div>
 <div class="swatch" id="inline-import"></div>
+<div class="swatch" id="optional-target"></div>
 <audio id="tone" src="tone.wav"></audio>
 <a id="jump" href="#tail">Jump</a><div style="height:360px"></div><div id="tail">Tail</div>
 </body></html>

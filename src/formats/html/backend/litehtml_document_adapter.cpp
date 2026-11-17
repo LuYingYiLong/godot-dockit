@@ -1,4 +1,5 @@
 #include "litehtml_document_adapter.h"
+#include "formats/html/elements/html_stylesheet_node.h"
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/elements/html_select_node.h"
 
@@ -190,6 +191,7 @@ namespace litehtml {
 			child->parent(p_parent.shared_from_this());
 		}
 		p_parent.m_children.swap(p_children);
+		if (p_parent.tag() == _style_) reset_stylesheet_source(p_parent);
 	}
 
 	void docrender_editor::replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists) {
@@ -199,6 +201,7 @@ namespace litehtml {
 		for (auto& [parent, children] : r_lists) {
 			for (const auto& child : children) child->parent(parent);
 			parent->m_children.swap(children);
+			if (parent->tag() == _style_) reset_stylesheet_source(*parent);
 		}
 	}
 
@@ -237,6 +240,8 @@ namespace litehtml {
 			p_reference->parent(nullptr);
 			target_children.erase(position);
 		}
+		if (old_parent && old_parent.get() != to && old_parent->tag() == _style_) reset_stylesheet_source(*old_parent);
+		if (to->tag() == _style_) reset_stylesheet_source(*to);
 		return child_edit_result::changed;
 	}
 
@@ -255,6 +260,8 @@ namespace litehtml {
 			child->parent(parent);
 		}
 		target_children.splice(position, p_source.m_children);
+		if (p_source.tag() == _style_) reset_stylesheet_source(p_source);
+		if (to->tag() == _style_) reset_stylesheet_source(*to);
 		return true;
 	}
 
@@ -444,6 +451,15 @@ namespace litehtml {
 		}
 	}
 
+	void docrender_editor::reset_stylesheet_source(element& p_owner) {
+		auto* node = dynamic_cast<docrender::HTMLStylesheetNode*>(&p_owner);
+		if (!node) return;
+		if (const auto doc = node->get_document()) doc->m_cssom_overrides.erase(node->weak_from_this());
+		node->style_disabled = false;
+		node->linked_path.clear();
+		node->linked_text.clear();
+	}
+
 	void docrender_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_additional_styles) {
 		auto& doc = *p_document;
@@ -621,6 +637,10 @@ namespace litehtml {
 		else {
 			remove_attribute(*tag, p_name);
 		}
+		const std::string_view name(p_name);
+		if ((p_element.tag() == _style_ && name == "type") ||
+			(p_element.tag() == _link_ && is_one_of(name, "href", "rel", "type")))
+			reset_stylesheet_source(p_element);
 		return true;
 	}
 
