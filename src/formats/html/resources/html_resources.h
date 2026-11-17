@@ -2,6 +2,7 @@
 
 #include "html_image_metadata.h"
 #include "html_resource_paths.h"
+#include "html_remote_stylesheets.h"
 
 #include <litehtml/types.h>
 
@@ -36,11 +37,15 @@ namespace docrender {
 		godot::HashSet<godot::String> pending_layout_images;
 		godot::HashSet<godot::String> pending_paint_images;
 		godot::Callable remote_image_callback;
+		godot::HashMap<godot::String, RemoteStylesheet> remote_stylesheets;
+		godot::HashSet<godot::String> pending_stylesheets;
+		godot::Callable remote_stylesheet_callback;
 		bool recording_paint = false;
 		int stylesheet_reads = 0;
 
 		const HTMLImageMetadata& get_image_metadata(const godot::String& p_path);
 		godot::String get_url_dir(const char* p_css_base) const;
+		godot::String resolve_remote_resource(const godot::String& p_url, std::string_view p_css_base) const;
 		godot::Ref<godot::Texture2D> load_texture_file(const godot::String& p_path);
 		godot::Ref<godot::FontFile> load_font_file(const godot::String& p_path);
 
@@ -55,6 +60,9 @@ namespace docrender {
 		const HTMLResourceBase& get_document_base() const { return document_base; }
 		const HTMLResourceBase& get_fallback_base() const { return fallback_base; }
 		void reset_stylesheet_reads();
+		godot::String resolve_stylesheet_source(const godot::String& p_url, std::string_view p_css_base = {}) const;
+		void set_remote_stylesheet_callback(const godot::Callable& p_callback);
+		bool receive_remote_stylesheet(const godot::String& p_url, const godot::String& p_final_url, const godot::String& p_text);
 		void set_remote_image_callback(const godot::Callable& p_callback);
 		void begin_image_layout();
 		void begin_image_paint();

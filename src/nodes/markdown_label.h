@@ -252,7 +252,7 @@ public:
 	void request_local_image(const String& p_uri);
 	void refresh_image_content();
 	static void remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_canvas);
-	static void refresh_after_html_image(uint64_t p_canvas);
+	static void refresh_after_html_resource(uint64_t p_canvas);
 	void update_internal_processing();
 	bool process_pending_local_images();
 	bool update_gif_animations(double p_delta);

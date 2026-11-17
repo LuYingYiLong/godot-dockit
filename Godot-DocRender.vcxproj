@@ -139,6 +139,8 @@
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
     <ClCompile Include="src\formats\remote_images.cpp" />
+    <ClCompile Include="src\formats\http_requests.cpp" />
+    <ClCompile Include="src\formats\http_url.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_html.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_render.cpp" />
     <ClCompile Include="src\formats\html\paint\html_canvas_renderer.cpp" />
@@ -185,6 +187,7 @@
     <ClCompile Include="src\formats\html\resources\html_asset_collector.cpp" />
     <ClCompile Include="src\formats\html\resources\html_resource_paths.cpp" />
     <ClCompile Include="src\formats\html\resources\html_resources.cpp" />
+    <ClCompile Include="src\formats\html\resources\html_remote_stylesheets.cpp" />
     <ClCompile Include="src\formats\html\text\html_image_alt_text.cpp" />
     <ClCompile Include="src\formats\html\paint\html_image_blend.cpp" />
     <ClCompile Include="src\formats\html\paint\html_border_image.cpp" />
@@ -314,6 +317,8 @@
   <ItemGroup>
     <ClInclude Include="src\formats\markdown\markdown_document.h" />
     <ClInclude Include="src\formats\remote_images.h" />
+    <ClInclude Include="src\formats\http_requests.h" />
+    <ClInclude Include="src\formats\http_url.h" />
     <ClInclude Include="src\formats\latex\latex_document.h" />
     <ClInclude Include="src\formats\latex\latex_document_loader.h" />
     <ClInclude Include="src\formats\mermaid\mermaid_document.h" />
@@ -387,6 +392,7 @@
     <ClInclude Include="src\formats\html\resources\html_asset_collector.h" />
     <ClInclude Include="src\formats\html\resources\html_resource_paths.h" />
     <ClInclude Include="src\formats\html\resources\html_resources.h" />
+    <ClInclude Include="src\formats\html\resources\html_remote_stylesheets.h" />
     <ClInclude Include="src\formats\html\text\html_image_alt_text.h" />
     <ClInclude Include="src\formats\html\paint\html_image_blend.h" />
     <ClInclude Include="src\formats\html\paint\html_border_image.h" />

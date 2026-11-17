@@ -457,6 +457,7 @@ namespace litehtml {
 		if (const auto doc = node->get_document()) doc->m_cssom_overrides.erase(node->weak_from_this());
 		++node->source_version;
 		node->style_disabled = false;
+		node->linked_request_path.clear();
 		node->linked_path.clear();
 		node->linked_text.clear();
 	}

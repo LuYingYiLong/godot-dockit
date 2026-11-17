@@ -10,6 +10,7 @@
 #include "formats/html/elements/html_details_node.h"
 #include "formats/html/elements/html_dialog_node.h"
 #include "formats/html/elements/html_stylesheet_node.h"
+#include "formats/http_url.h"
 #include "formats/html/css/css_animation_state.h"
 #include "formats/html/css/css_transition_state.h"
 
@@ -227,10 +228,11 @@ namespace docrender {
 		static constexpr const char* kinds[] = { "unknown_property", "unsupported_value", "not_rendered" };
 		static constexpr const char* sources[] = { "", "inline_style", "style_element", "stylesheet", "local_stylesheet" };
 		const String kind = kinds[static_cast<int>(p_diagnostic.kind)];
-		const String source = sources[static_cast<int>(p_diagnostic.source.kind)];
 		const String property = String::utf8(p_diagnostic.property.c_str());
 		const String value = String::utf8(p_diagnostic.value.c_str());
 		const String path = String::utf8(p_diagnostic.source.path.c_str());
+		const String source = p_diagnostic.source.kind == css_source_kind::local_stylesheet && is_http_url(path)
+			? "remote_stylesheet" : sources[static_cast<int>(p_diagnostic.source.kind)];
 		const String key = vformat("%s/%s/%d/%d/%s%s%s", kind, source, property.length(), path.length(), property, path, value);
 		const int64_t* existing = css_diagnostic_keys.getptr(key);
 		const int64_t index = existing ? *existing : static_cast<int64_t>(css_diagnostics.size());
@@ -424,10 +426,10 @@ namespace docrender {
 		if (*type && String::utf8(type).get_slice(";", 0).strip_edges().nocasecmp_to("text/css") != 0) {
 			return;
 		}
+		const auto path = resources.resolve_stylesheet_source(String::utf8(href)).utf8();
 		if (p_element->get_attr("disabled")) {
 			if (node->linked_path.empty()) return;
-			const String path = resolve_html_stylesheet_path(String::utf8(href), resources.get_document_base().directory);
-			if (path == String::utf8(node->linked_path.c_str())) {
+			if (node->linked_request_path == path.get_data()) {
 				p_doc->add_stylesheet(node->linked_text.c_str(), node->linked_path.c_str(), p_element->get_attr("media"),
 					p_element->parent().get(), p_element, true);
 			} else {
@@ -439,11 +441,13 @@ namespace docrender {
 		litehtml::string base;
 		import_css(css, href, base);
 		if (!css.empty() || !base.empty()) {
-			if (!node->linked_path.empty() && (base != node->linked_path || css != node->linked_text)) {
+			if (!node->linked_path.empty() && (node->linked_request_path != path.get_data() ||
+				base != node->linked_path || css != node->linked_text)) {
 				litehtml::docrender_editor::reset_stylesheet_source(*p_element);
 			}
 			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"),
 				p_element->parent().get(), p_element);
+			node->linked_request_path = path.get_data();
 			node->linked_path = std::move(base);
 			node->linked_text = std::move(css);
 		} else if (!node->linked_path.empty()) {

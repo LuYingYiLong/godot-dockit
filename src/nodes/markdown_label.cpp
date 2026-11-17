@@ -1417,7 +1417,7 @@ void MarkdownLabelCanvas::remote_image_completed(const String& p_url, const Ref<
 	canvas->refresh_image_content();
 }
 
-void MarkdownLabelCanvas::refresh_after_html_image(uint64_t p_canvas) {
+void MarkdownLabelCanvas::refresh_after_html_resource(uint64_t p_canvas) {
 	if (auto* canvas = Object::cast_to<MarkdownLabelCanvas>(ObjectDB::get_instance(ObjectID(p_canvas)))) {
 		canvas->refresh_image_content();
 	}
@@ -1925,7 +1925,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 			html->layout_embedded_block(Vector2i(std::max(1, static_cast<int32_t>(p_width)), html_height)) != OK) {
 			return {};
 		}
-		html->set_image_layout_callback(callable_mp_static(&MarkdownLabelCanvas::refresh_after_html_image).bind(get_instance_id()));
+		html->set_resource_layout_callback(callable_mp_static(&MarkdownLabelCanvas::refresh_after_html_resource).bind(get_instance_id()));
 		return html;
 	};
 	HashMap<String, int32_t> footnote_numbers;

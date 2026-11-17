@@ -1,4 +1,5 @@
 #include "html_resources.h"
+#include "formats/http_url.h"
 #include "formats/remote_images.h"
 
 #include "formats/html/markup/html_markup.h"
@@ -24,7 +25,6 @@ using namespace godot;
 
 namespace docrender {
 	namespace {
-		constexpr int MAX_SOURCE_BYTES = 1024 * 1024;
 
 		struct ImageFragment {
 			std::array<int, 4> coordinates;
@@ -155,16 +155,11 @@ namespace docrender {
 			return std::nullopt;
 		}
 		const uint64_t length = file->get_length();
-		if (length > MAX_SOURCE_BYTES) {
+		if (length > MAX_HTML_SOURCE_BYTES) {
 			return std::nullopt;
 		}
 		const PackedByteArray bytes = file->get_buffer(length);
-		String text;
-		if (static_cast<uint64_t>(bytes.size()) != length ||
-			(!bytes.is_empty() && (bytes.has(0) || text.parse_utf8(reinterpret_cast<const char*>(bytes.ptr()), bytes.size()) != OK))) {
-			return std::nullopt;
-		}
-		return text;
+		return static_cast<uint64_t>(bytes.size()) == length ? decode_html_source_text(bytes) : std::nullopt;
 	}
 
 	std::optional<String> read_html_stylesheet(const String& p_path) {
@@ -199,6 +194,31 @@ namespace docrender {
 
 	void HTMLResources::reset_stylesheet_reads() {
 		stylesheet_reads = 0;
+		pending_stylesheets.clear();
+	}
+
+	String HTMLResources::resolve_remote_resource(const String& p_url, std::string_view p_css_base) const {
+		const auto path = stylesheet_path(p_css_base);
+		const String base = path.empty() ? String() : String::utf8(path.data(), path.size());
+		return resolve_http_url(p_url, base);
+	}
+
+	String HTMLResources::resolve_stylesheet_source(const String& p_url, std::string_view p_css_base) const {
+		if (p_url.strip_edges().is_empty()) return {};
+		const String remote = resolve_remote_resource(p_url, p_css_base);
+		if (!remote.is_empty()) return http_request_url(remote);
+		const String css_base = p_css_base.empty() ? String() : String::utf8(p_css_base.data(), p_css_base.size());
+		return resolve_html_stylesheet_path(p_url, get_url_dir(css_base.utf8().get_data()));
+	}
+
+	void HTMLResources::set_remote_stylesheet_callback(const Callable& p_callback) {
+		remote_stylesheet_callback = p_callback;
+	}
+
+	bool HTMLResources::receive_remote_stylesheet(const String& p_url, const String& p_final_url, const String& p_text) {
+		if (!pending_stylesheets.erase(p_url) || p_final_url.is_empty()) return false;
+		remote_stylesheets.insert(p_url, {RemoteStylesheetStatus::ready, p_final_url, p_text});
+		return true;
 	}
 
 	String HTMLResources::get_url_dir(const char* p_css_base) const {
@@ -220,22 +240,34 @@ namespace docrender {
 
 	void HTMLResources::import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base) {
 		r_text.clear();
-		const String path = resolve_html_stylesheet_path(String::utf8(p_url.c_str()), get_url_dir(r_css_base.c_str()));
+		const String path = resolve_stylesheet_source(String::utf8(p_url.c_str()), r_css_base);
 		const auto parents = String::utf8(r_css_base.c_str()).split("\n", false);
 		// litehtml carries this base string into nested imports and declarations.
 		if (path.is_empty() || parents.has(path) || parents.size() >= 16 || stylesheet_reads >= 128) {
 			return;
 		}
 		++stylesheet_reads;
-		const Variant stored = local_stylesheets.get(path, Variant());
-		const auto file = stored.get_type() == Variant::STRING ? std::optional<String>(stored) : read_html_stylesheet(path);
+		String source = path;
+		std::optional<String> file;
+		if (is_http_url(path)) {
+			const auto* cached = remote_stylesheets.getptr(path);
+			const auto sheet = cached ? *cached : request_remote_stylesheet(path, remote_stylesheet_callback);
+			if (sheet.status == RemoteStylesheetStatus::loading) pending_stylesheets.insert(path);
+			if (sheet.status != RemoteStylesheetStatus::ready || parents.has(sheet.url)) return;
+			if (!cached) remote_stylesheets.insert(path, sheet);
+			source = sheet.url;
+			file = sheet.text;
+		} else {
+			const Variant stored = local_stylesheets.get(path, Variant());
+			file = stored.get_type() == Variant::STRING ? std::optional<String>(stored) : read_html_stylesheet(path);
+		}
 		if (!file) {
 			return;
 		}
 		if (!r_css_base.empty()) {
 			r_css_base += '\n';
 		}
-		r_css_base += path.utf8().get_data();
+		r_css_base += source.utf8().get_data();
 		r_text = file->utf8().get_data();
 	}
 
@@ -276,8 +308,11 @@ namespace docrender {
 	Ref<Texture2D> HTMLResources::load_texture(const char* p_src, const char* p_css_base,
 		litehtml::css_image_orientation p_orientation, bool p_affects_layout) {
 		using orientation = litehtml::css_image_orientation;
-		const String source = String::utf8(p_src).strip_edges();
-		const bool remote = is_remote_image_url(source);
+		const String original = String::utf8(p_src).strip_edges();
+		if (original.is_empty() || original.begins_with("#")) return {};
+		const String resolved = resolve_remote_resource(original, p_css_base ? p_css_base : "");
+		const String& source = resolved.is_empty() ? original : resolved;
+		const bool remote = !resolved.is_empty();
 		const String path = remote ? remote_image_request_url(source) : resolve_html_image_path(source, get_url_dir(p_css_base));
 		if (path.is_empty()) return {};
 		Ref<Texture2D> remote_texture;

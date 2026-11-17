@@ -334,7 +334,7 @@ private:
 	bool source_dirty = true;
 	bool parsed = false;
 	bool refresh_queued = false;
-	bool image_refresh_only = false;
+	bool resource_refresh_only = false;
 	bool layout_updated = false;
 	bool use_node_selection = false;
 	bool capturing_node_selection = false;
@@ -359,11 +359,11 @@ private:
 
 	void ensure_controls();
 	void poll_preferred_color_scheme();
-	void queue_refresh(bool p_image_only = false);
+	void queue_refresh(bool p_resource_only = false);
 	void flush_queued_refresh();
 	void queue_interaction_style_refresh();
 	void on_auto_content_update();
-	void on_image_layout_update();
+	void on_resource_layout_update();
 	void on_transition_frame(bool p_size_changed);
 	void update_internal_processing();
 	godot::Vector2i get_content_selection_range() const;

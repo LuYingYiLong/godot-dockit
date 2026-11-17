@@ -25,7 +25,7 @@ def png(width, height, rgb, oversized=False):
             chunk(b"IDAT", zlib.compress(pixels)) + chunk(b"IEND", b""))
 
 
-def create_project(project, repo):
+def create_project(project, repo, script):
     addon = project / "addons/docrender"
     (addon / "bin").mkdir(parents=True)
     for asset in ("docrender.gdextension", "bin/docrender.windows.template_debug.x86_64.dll"):
@@ -42,12 +42,12 @@ window/size/viewport_height=200
 [rendering]
 renderer/rendering_method="gl_compatibility"
 """)
-    write(project / "main.tscn", """[gd_scene load_steps=2 format=3]
-[ext_resource type="Script" path="res://remote_images.gd" id="1"]
+    write(project / "main.tscn", f"""[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://{script}" id="1"]
 [node name="RemoteImages" type="Node"]
 script = ExtResource("1")
 """)
-    shutil.copyfile(Path(__file__).with_name("remote_images.gd"), project / "remote_images.gd")
+    shutil.copyfile(Path(__file__).with_name(script), project / script)
     settings = project.parent / "Godot"
     settings.mkdir()
     write(settings / "editor_settings-4.7.tres", """[gd_resource type="EditorSettings" format=3]
@@ -61,6 +61,7 @@ def main():
     parser.add_argument("godot", type=Path)
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--https", action="store_true", help="serve HTTPS with an OpenSSL-generated test certificate")
+    parser.add_argument("--css", action="store_true", help="exercise remote stylesheets instead of standalone images")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     counts = Counter()
@@ -75,17 +76,46 @@ def main():
         "/picture": (0.05, png(14, 12, (255, 0, 255))),
         "/local-choice": (0.05, png(10, 12, (0, 255, 255))),
     }
+    css = "text/css; charset=utf-8"
+    css_responses = {
+        "/early": (0.60, css, b"#probe{width:95px}"),
+        "/v2/css/theme?build=1": (0.05, css, b"@import 'nest/child?mode=1' layer(theme);"
+                              b"#probe{width:60px} #pic{background:url(../img/tile?shade=dark) no-repeat}"),
+        "/v3/sheets/child?mode=1": (0.65, css, b"@import '/v2/css/theme?build=1';"
+                                              b"#child{width:29px;background:url(../assets/child-tile.png) no-repeat}"),
+        "/v2/img/tile?shade=dark": (0.01, "image/png", png(12, 12, (255, 0, 0))),
+        "/v3/assets/child-tile.png": (0.01, "image/png", png(12, 12, (0, 255, 0))),
+        "/v2/css/dynamic/tile": (0.01, "image/png", png(12, 12, (0, 0, 255))),
+        "/v2/css/waiting": (0.70, css, b"#probe{width:99px!important}"),
+        "/stale": (0.80, css, b"#replace{width:99px}"),
+        "/replacement": (0.02, css, b"#replace{width:43px}"),
+        "/wrong-mime": (0.01, "text/html", b"#probe{width:99px!important}"),
+        "/disabled": (0.01, css, b"#off{width:48px}"),
+        "/empty": (0.01, css, b""),
+        "/inline-sheet": (0.01, css, b"#inline{width:26px}"),
+    }
+    redirects = {"/entry": "v2/css/theme?build=1", "/v2/css/nest/child?mode=1": "/v3/sheets/child?mode=1"}
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             counts[self.path] += 1
-            if self.path not in responses:
+            if args.css and self.path in redirects:
+                self.send_response(302)
+                self.send_header("Location", redirects[self.path])
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if args.css and self.path in css_responses:
+                delay, mime, body = css_responses[self.path]
+            elif not args.css and self.path in responses:
+                delay, body = responses[self.path]
+                mime = "image/png"
+            else:
                 self.send_error(404)
                 return
-            delay, body = responses[self.path]
             time.sleep(delay)
             self.send_response(200)
-            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Type", mime)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -93,9 +123,10 @@ def main():
         def log_message(self, _format, *_args):
             pass
 
-    with TemporaryDirectory(prefix="docrender-remote-images-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    suite = "css" if args.css else "images"
+    with TemporaryDirectory(prefix=f"docrender-remote-{suite}-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
-        create_project(workspace / "project", repo)
+        create_project(workspace / "project", repo, f"remote_{suite}.gd")
         with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
             if args.https:
                 certificate = workspace / "project/localhost.crt"
@@ -125,11 +156,12 @@ def main():
                     counts.clear()
                     try:
                         run([godot, "--path", project, "--rendering-method", renderer, "--quit-after", "1200", "--", url],
-                            workspace, "HTML remote image checks passed")
+                            workspace, "HTML remote stylesheet checks passed" if args.css else "HTML remote image checks passed")
                     except SystemExit:
                         print("Observed requests:", dict(counts))
                         raise
-                    expected = Counter({key: 1 for key in (*responses, "/missing")})
+                    routes = (*css_responses, *redirects) if args.css else (*responses, "/missing")
+                    expected = Counter({key: 1 for key in routes})
                     if counts != expected:
                         raise SystemExit(f"Unexpected request counts using {renderer}: {counts}")
             finally:

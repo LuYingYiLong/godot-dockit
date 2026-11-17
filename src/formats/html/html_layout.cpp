@@ -237,7 +237,7 @@ struct HTMLLayout::State {
 	double animation_time = 0.0;
 	bool sampling_transitions = false;
 	Callable content_update_callback;
-	Callable image_layout_callback;
+	Callable resource_layout_callback;
 	Callable content_selection_callback;
 	String error;
 	Error parse_error = OK;
@@ -774,6 +774,7 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
 		state->container->set_remote_image_callback(callable_mp_static(&HTMLLayout::remote_image_completed).bind(get_instance_id(), parse_version));
+		state->container->set_remote_stylesheet_callback(callable_mp_static(&HTMLLayout::remote_stylesheet_completed).bind(get_instance_id(), parse_version));
 		state->container->set_document_source_path(p_source_path);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->container->set_preferred_color_scheme(system_preference());
@@ -1107,8 +1108,23 @@ void HTMLLayout::set_content_visibility_callbacks(const Callable& p_update, cons
 	state->content_selection_callback = p_selection;
 }
 
-void HTMLLayout::set_image_layout_callback(const Callable& p_callback) {
-	state->image_layout_callback = p_callback;
+void HTMLLayout::set_resource_layout_callback(const Callable& p_callback) {
+	state->resource_layout_callback = p_callback;
+}
+
+void HTMLLayout::queue_resource_layout() {
+	if (state->pending_update == State::Update::NONE) state->pending_update = State::Update::LAYOUT;
+	if (state->resource_layout_callback.is_valid()) state->resource_layout_callback.call();
+	else queue_reflow();
+}
+
+void HTMLLayout::remote_stylesheet_completed(const String& p_url, const String& p_final_url, const String& p_text,
+	uint64_t p_id, uint64_t p_version) {
+	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_id)));
+	if (!layout || layout->parse_version != p_version || !layout->state->container) return;
+	if (!layout->state->container->receive_remote_stylesheet(p_url, p_final_url, p_text)) return;
+	layout->mark_styles_pending();
+	layout->queue_resource_layout();
 }
 
 void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_id, uint64_t p_version) {
@@ -1121,9 +1137,7 @@ void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D
 		layout->repaint_input();
 		return;
 	}
-	if (state.pending_update == State::Update::NONE) state.pending_update = State::Update::LAYOUT;
-	if (state.image_layout_callback.is_valid()) state.image_layout_callback.call();
-	else layout->queue_reflow();
+	layout->queue_resource_layout();
 }
 
 void HTMLLayout::record_paint() {

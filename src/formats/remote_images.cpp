@@ -1,18 +1,14 @@
 #include "remote_images.h"
+#include "http_requests.h"
+#include "http_url.h"
 
-#include <godot_cpp/classes/engine.hpp>
-#include <godot_cpp/classes/http_request.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
-#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
-#include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
-#include <godot_cpp/variant/callable_method_pointer.hpp>
 
 #include <algorithm>
 #include <cstdint>
-#include <deque>
 #include <string_view>
 #include <vector>
 
@@ -20,7 +16,6 @@ using namespace godot;
 
 namespace docrender {
 	namespace {
-		constexpr int MAX_REQUESTS = 6;
 		constexpr int MAX_ENTRIES = 128;
 		constexpr int MAX_BODY_BYTES = 8 * 1024 * 1024;
 		constexpr int64_t MAX_PIXELS = 16 * 1024 * 1024;
@@ -106,18 +101,13 @@ namespace docrender {
 		struct Entry {
 			RemoteImage image{RemoteImageStatus::loading, {}, {}};
 			std::vector<Callable> listeners;
-			ObjectID request;
 			uint64_t used = 0;
 			uint64_t retry_at = 0;
 			int64_t bytes = 0;
 		};
 
 		HashMap<String, Entry> entries;
-		std::deque<String> pending;
-		int active = 0;
 		int64_t cache_bytes = 0;
-		bool start_queued = false;
-		bool stopping = false;
 
 		void evict(const String& p_keep, bool p_need_room) {
 			while (cache_bytes > MAX_CACHE_BYTES || (p_need_room && entries.size() >= MAX_ENTRIES)) {
@@ -133,8 +123,6 @@ namespace docrender {
 			}
 		}
 
-		void queue_requests();
-
 		void finish(const String& p_url, const Ref<Texture2D>& p_texture, const String& p_error) {
 			auto& entry = entries[p_url];
 			const bool ready = p_texture.is_valid();
@@ -143,76 +131,20 @@ namespace docrender {
 			entry.retry_at = entry.used + RETRY_DELAY_MS;
 			entry.bytes = ready ? int64_t(p_texture->get_width()) * p_texture->get_height() * 4 : 0;
 			cache_bytes += entry.bytes;
-			if (auto* request = Object::cast_to<HTTPRequest>(ObjectDB::get_instance(entry.request))) {
-				request->queue_free();
-				--active;
-			}
-			entry.request = ObjectID();
 			auto listeners = std::move(entry.listeners);
 			evict(p_url, false);
 			for (const auto& listener : listeners) {
 				if (listener.is_valid()) listener.call_deferred(p_url, p_texture);
 			}
-			queue_requests();
-		}
-
-		void completed(int p_result, int p_code, const PackedStringArray&, const PackedByteArray& p_body,
-			const String& p_url, uint64_t p_request) {
-			const auto* entry = entries.getptr(p_url);
-			if (!entry || entry->request != ObjectID(p_request)) return;
-			if (p_result != HTTPRequest::RESULT_SUCCESS || p_code < 200 || p_code >= 300) {
-				finish(p_url, {}, "request_failed");
-				return;
-			}
-			const auto texture = decode_texture(p_body);
-			finish(p_url, texture, texture.is_valid() ? String() : String("decode_failed"));
-		}
-
-		void start_requests() {
-			start_queued = false;
-			auto* tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
-			auto* root = tree ? tree->get_root() : nullptr;
-			while (!stopping && active < MAX_REQUESTS && !pending.empty()) {
-				const String url = pending.front();
-				pending.pop_front();
-				if (!root || !root->is_inside_tree()) {
-					finish(url, {}, "scene_tree_unavailable");
-					continue;
-				}
-				auto* request = memnew(HTTPRequest);
-				request->set_use_threads(true);
-				request->set_timeout(12.0);
-				request->set_body_size_limit(MAX_BODY_BYTES);
-				request->set_max_redirects(8);
-				request->set_process_mode(Node::PROCESS_MODE_ALWAYS);
-				entries[url].request = ObjectID(request->get_instance_id());
-				++active;
-				request->connect("request_completed", callable_mp_static(&completed).bind(url, request->get_instance_id()));
-				root->add_child(request, false, Node::INTERNAL_MODE_BACK);
-				if (request->request(url) != OK) finish(url, {}, "request_start_failed");
-			}
-		}
-
-		void queue_requests() {
-			if (stopping || start_queued || active >= MAX_REQUESTS || pending.empty()) return;
-			start_queued = true;
-			callable_mp_static(&start_requests).call_deferred();
 		}
 	}
 
-	bool is_remote_image_url(const String& p_url) {
-		const String prefix = p_url.left(8).to_lower();
-		return prefix.begins_with("https://") || prefix.begins_with("http://");
-	}
+	bool is_remote_image_url(const String& p_url) { return is_http_url(p_url); }
 
-	String remote_image_request_url(const String& p_url) {
-		const auto fragment = p_url.find("#");
-		const auto scheme = p_url.find(":");
-		return p_url.left(scheme).to_lower() + p_url.substr(scheme, fragment < 0 ? -1 : fragment - scheme);
-	}
+	String remote_image_request_url(const String& p_url) { return http_request_url(p_url); }
 
 	RemoteImage request_remote_image(const String& p_url, const Callable& p_completed) {
-		if (stopping || !is_remote_image_url(p_url)) return {};
+		if (!is_remote_image_url(p_url)) return {};
 		const String url = remote_image_request_url(p_url);
 		const auto now = Time::get_singleton()->get_ticks_msec();
 		auto* entry = entries.getptr(url);
@@ -225,8 +157,14 @@ namespace docrender {
 			if (entries.size() >= MAX_ENTRIES) return {RemoteImageStatus::failed, {}, "request_queue_full"};
 			entries.insert(url, Entry{});
 			entry = entries.getptr(url);
-			pending.push_back(url);
-			queue_requests();
+			queue_http_request(url, MAX_BODY_BYTES, false, [url](const HTTPResponse& p_response) {
+				if (!p_response.error.is_empty()) {
+					finish(url, {}, p_response.error);
+					return;
+				}
+				const auto texture = decode_texture(p_response.body);
+				finish(url, texture, texture.is_valid() ? String() : String("decode_failed"));
+			});
 		}
 		entry->used = now;
 		if (entry->image.status == RemoteImageStatus::loading && p_completed.is_valid() &&
@@ -237,17 +175,7 @@ namespace docrender {
 	}
 
 	void shutdown_remote_images() {
-		stopping = true;
-		for (const auto& item : entries) {
-			if (auto* request = Object::cast_to<HTTPRequest>(ObjectDB::get_instance(item.value.request))) {
-				request->disconnect("request_completed", callable_mp_static(&completed).bind(item.key, request->get_instance_id()));
-				request->cancel_request();
-				request->queue_free();
-			}
-		}
-		pending.clear();
 		entries.clear();
-		active = 0;
 		cache_bytes = 0;
 	}
 }

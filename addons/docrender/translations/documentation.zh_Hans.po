@@ -3051,14 +3051,14 @@ msgid ""
 "Returns a copy of the CSS diagnostics collected during the latest style calculation. Each dictionary "
 "contains [code]kind[/code], [code]property[/code], [code]value[/code], [code]source[/code], and [code]path[/code].\n"
 "[code]kind[/code] is [code]unknown_property[/code], [code]unsupported_value[/code], or [code]not_rendered[/code]. "
-"[code]source[/code] is [code]inline_style[/code], [code]style_element[/code], [code]stylesheet[/code], or "
-"[code]local_stylesheet[/code]. Only local stylesheets include a resource [code]path[/code]."
+"[code]source[/code] is [code]inline_style[/code], [code]style_element[/code], [code]stylesheet[/code], "
+"[code]local_stylesheet[/code], or [code]remote_stylesheet[/code]. External stylesheets include a resource path or response URL in [code]path[/code]."
 msgstr ""
 "返回最近一轮样式计算收集的 CSS 诊断副本。每个字典包含 [code]kind[/code]、[code]property[/code]、"
 "[code]value[/code]、[code]source[/code] 和 [code]path[/code]。\n"
 "[code]kind[/code] 为 [code]unknown_property[/code]、[code]unsupported_value[/code] 或 [code]not_rendered[/code]。"
-"[code]source[/code] 为 [code]inline_style[/code]、[code]style_element[/code]、[code]stylesheet[/code] 或 "
-"[code]local_stylesheet[/code]。本地样式表会附带资源路径 [code]path[/code]。"
+"[code]source[/code] 为 [code]inline_style[/code]、[code]style_element[/code]、[code]stylesheet[/code]、"
+"[code]local_stylesheet[/code] 或 [code]remote_stylesheet[/code]。外部样式表的 [code]path[/code] 包含资源路径或响应 URL。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -4762,8 +4762,8 @@ msgid "A link to an external document resource."
 msgstr "指向文档外部资源的链接。"
 
 #. doc_classes/HTMLLinkElement.xml
-msgid "Represents [code]<link>[/code]. DocRender loads local stylesheets for [code]rel=\"stylesheet\"[/code], including stylesheet text and resource dependencies baked into an imported [HTMLDocument]. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules."
-msgstr "代表 [code]<link>[/code] 元素。DocRender 为 [code]rel=\"stylesheet\"[/code] 加载本地样式表，包括已导入 [HTMLDocument] 内嵌的样式表文本和资源依赖。修改 [member href] 会清除之前编辑的 CSSOM 规则。修改 [member media] 或 [member disabled] 会保留关联样式表的 ID 和规则。"
+msgid "Represents [code]<link>[/code]. DocRender loads local and absolute HTTP(S) stylesheets for [code]rel=\"stylesheet\"[/code]. Local stylesheet text and dependencies can be baked into an imported [HTMLDocument]. HTTP(S) stylesheets load asynchronously and [member sheet] becomes available after a successful response. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules."
+msgstr "代表 [code]<link>[/code] 元素。DocRender 为 [code]rel=\"stylesheet\"[/code] 加载本地样式表和绝对 HTTP(S) 地址上的样式表。导入的 [HTMLDocument] 可内嵌本地样式表文本及依赖。HTTP(S) 样式表异步加载，收到有效响应后即可获取 [member sheet]。修改 [member href] 会清除之前编辑的 CSSOM 规则。修改 [member media] 或 [member disabled] 会保留关联样式表的 ID 和规则。"
 
 #. doc_classes/HTMLLinkElement.xml
 msgid "Resolves [member href] against the current document base URL."
@@ -4849,8 +4849,8 @@ msgid "Whether the associated stylesheet is disabled. Set the owning element's d
 msgstr "关联的样式表是否已禁用。设置所属元素的 disabled 属性可修改此状态。"
 
 #. doc_classes/HTMLStyleSheet.xml
-msgid "The resolved resource path of an external stylesheet. Inline stylesheets return an empty string."
-msgstr "外部样式表解析后的资源路径。内联样式表返回空字符串。"
+msgid "The resolved resource path or final response URL of an external stylesheet. Inline stylesheets return an empty string."
+msgstr "外部样式表解析后的资源路径或最终响应 URL。内联样式表返回空字符串。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid "The ID used by the layout's numeric CSSOM methods. A stale handle returns [code]0[/code]."

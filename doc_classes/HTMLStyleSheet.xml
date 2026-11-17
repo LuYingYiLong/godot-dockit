@@ -40,7 +40,7 @@
 			Whether the associated stylesheet is disabled. Set the owning element's disabled property to change this state.
 		</member>
 		<member name="href" type="String" setter="" getter="get_href">
-			The resolved resource path of an external stylesheet. Inline stylesheets return an empty string.
+			The resolved resource path or final response URL of an external stylesheet. Inline stylesheets return an empty string.
 		</member>
 		<member name="id" type="int" setter="" getter="get_id">
 			The ID used by the layout's numeric CSSOM methods. A stale handle returns [code]0[/code].

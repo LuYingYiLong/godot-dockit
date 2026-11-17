@@ -29,6 +29,8 @@
 #include "formats/html/css/html_animation.h"
 #include "formats/html/css/html_style_sheet.h"
 #include "formats/remote_images.h"
+#include "formats/http_requests.h"
+#include "formats/html/resources/html_remote_stylesheets.h"
 #include "formats/html/elements/html_audio_element.h"
 #include "formats/html/dom/html_selection.h"
 #include "formats/latex/latex_document.h"
@@ -179,7 +181,9 @@ void uninitialize_docrender_module(ModuleInitializationLevel p_level) {
 	}
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		ResourceLoader::get_singleton()->remove_resource_format_loader(tex_loader);
+		docrender::shutdown_http_requests();
 		docrender::shutdown_remote_images();
+		docrender::shutdown_remote_stylesheets();
 		tex_loader.unref();
 		PDFReader::shutdown_backend();
 		TeXRender::shutdown_renderer();

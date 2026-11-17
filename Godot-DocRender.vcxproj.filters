@@ -262,6 +262,9 @@
     <ClCompile Include="src\formats\html\resources\html_resources.cpp">
       <Filter>Source Files\formats\html\resources</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\resources\html_remote_stylesheets.cpp">
+      <Filter>Source Files\formats\html\resources</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\text\html_image_alt_text.cpp">
       <Filter>Source Files\formats\html\text</Filter>
     </ClCompile>
@@ -658,6 +661,12 @@
     <ClCompile Include="src\formats\remote_images.cpp">
       <Filter>Source Files\formats</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\http_requests.cpp">
+      <Filter>Source Files\formats</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\http_url.cpp">
+      <Filter>Source Files\formats</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\markdown\markdown_html.cpp">
       <Filter>Source Files\formats\markdown</Filter>
     </ClCompile>
@@ -910,6 +919,9 @@
       <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\resources\html_resources.h">
+      <Filter>Header Files\formats\html\resources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\resources\html_remote_stylesheets.h">
       <Filter>Header Files\formats\html\resources</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\text\html_image_alt_text.h">
@@ -1318,6 +1330,12 @@
       <Filter>Header Files\formats\markdown</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\remote_images.h">
+      <Filter>Header Files\formats</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\http_requests.h">
+      <Filter>Header Files\formats</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\http_url.h">
       <Filter>Header Files\formats</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\latex\latex_document.h">

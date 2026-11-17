@@ -98,7 +98,7 @@
 			<return type="Dictionary[]" />
 			<description>
 				Returns a copy of the CSS diagnostics collected during the latest style calculation. Each dictionary contains [code]kind[/code], [code]property[/code], [code]value[/code], [code]source[/code], and [code]path[/code].
-				[code]kind[/code] is [code]unknown_property[/code], [code]unsupported_value[/code], or [code]not_rendered[/code]. [code]source[/code] is [code]inline_style[/code], [code]style_element[/code], [code]stylesheet[/code], or [code]local_stylesheet[/code]. Only local stylesheets include a resource [code]path[/code].
+				[code]kind[/code] is [code]unknown_property[/code], [code]unsupported_value[/code], or [code]not_rendered[/code]. [code]source[/code] is [code]inline_style[/code], [code]style_element[/code], [code]stylesheet[/code], [code]local_stylesheet[/code], or [code]remote_stylesheet[/code]. External stylesheets include a resource path or response URL in [code]path[/code].
 			</description>
 		</method>
 		<method name="get_render_error" qualifiers="const">
