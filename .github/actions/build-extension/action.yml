@@ -25,12 +25,20 @@ runs:
         sudo apt-get update
         sudo apt-get install -y gcc-multilib g++-multilib
 
+    - name: Install Linux ARM32 toolchain
+      if: inputs.platform == 'linux' && inputs.arch == 'arm32'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-arm-linux-gnueabihf
+
     - name: Set up godot-cpp
       uses: ./godot-cpp/.github/actions/setup-godot-cpp
       with:
         platform: ${{ inputs.platform }}
         windows-compiler: msvc
-        em-version: 3.1.62
+        em-version: 4.0.11
+        scons-version: 4.11.1
 
     - name: Install Merman and PDFium SDKs
       if: inputs.platform == 'windows' && inputs.arch == 'x86_64'
@@ -53,7 +61,13 @@ runs:
         BUILD_TARGET: ${{ inputs.target }}
         BUILD_PRECISION: ${{ inputs.precision }}
       run: |
-        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION"
+        build_options=()
+        if [[ "$BUILD_PLATFORM-$BUILD_ARCH" == linux-arm32 ]]; then
+          build_options+=(linux_toolchain_prefix=arm-linux-gnueabihf-)
+        elif [[ "$BUILD_PLATFORM-$BUILD_ARCH" == windows-x86_64 ]]; then
+          build_options+=(merman_sdk=src/thirdparty/merman-sdk pdfium_sdk=src/thirdparty/pdfium-sdk)
+        fi
+        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION" "${build_options[@]}"
 
     - name: Save SCons cache
       uses: ./godot-cpp/.github/actions/godot-cache-save

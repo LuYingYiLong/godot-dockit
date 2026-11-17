@@ -779,7 +779,10 @@ namespace {
 			break;
 		}
 
-		return flags | (p_label == nullptr ? (TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES) : p_label->get_autowrap_trim_flags());
+		const BitField<TextServer::LineBreakFlag> trim_flags = p_label == nullptr
+				? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
+				: p_label->get_autowrap_trim_flags();
+		return flags | trim_flags;
 	}
 
 	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const MarkdownLabel* p_label) {

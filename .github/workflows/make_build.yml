@@ -1,9 +1,13 @@
 # For syntax, see https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
-# This workflow is triggered manually on the "Actions" tab on GitHub, and can be used to create releases.
 
 name: Build Godot DocRender
 on:
   workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -42,17 +46,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      # Remove committed/pre-existing binaries so each matrix artifact only contains its own build output.
-      - name: Clean bundled binary outputs
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path addons/docrender/bin | Out-Null
-          $binary_patterns = @("*.dll", "*.so", "*.a", "*.wasm", "*.lib", "*.exp", "*.pdb")
-          foreach ($pattern in $binary_patterns) {
-            Get-ChildItem addons/docrender/bin -File -Filter $pattern | Remove-Item -Force
-          }
-          Get-ChildItem addons/docrender/bin -Directory -Filter "*.framework" | Remove-Item -Recurse -Force
-
       - name: Build DocRender
         uses: ./.github/actions/build-extension
         with:
@@ -61,50 +54,8 @@ jobs:
           target: ${{ matrix.target-type }}
           precision: ${{ matrix.float-precision }}
 
-      # Clean up compilation files
-      - name: Windows - Delete compilation files
-        if: ${{ matrix.target.platform == 'windows' }}
-        shell: pwsh
-        run: |
-          Remove-Item addons/docrender/bin/* -Include *.exp,*.lib,*.pdb -Force
-
-      # Keep binaries under bin/ in the uploaded artifact.
       - name: Stage Build Artifact
-        shell: pwsh
-        run: |
-          $stage = Join-Path $env:GITHUB_WORKSPACE "artifact"
-          if (Test-Path $stage) {
-            Remove-Item $stage -Recurse -Force
-          }
-
-          $stage_bin = Join-Path $stage "bin"
-          New-Item -ItemType Directory -Force -Path $stage_bin | Out-Null
-
-          $build_outputs = @(Get-ChildItem addons/docrender/bin | Where-Object { $_.Name -like "*${{ matrix.target.platform }}*${{ matrix.target-type }}*" })
-          if ($build_outputs.Count -eq 0) {
-            throw "No build outputs found for ${{ matrix.target.platform }} ${{ matrix.target.arch }} ${{ matrix.target-type }}"
-          }
-
-          foreach ($item in $build_outputs) {
-            Copy-Item -LiteralPath $item.FullName -Destination $stage_bin -Recurse -Force
-          }
-
-          if ("${{ matrix.target.platform }}-${{ matrix.target.arch }}" -eq "windows-x86_64") {
-            Copy-Item -LiteralPath addons/docrender/bin/pdfium.dll -Destination $stage_bin -ErrorAction Stop
-            $pdfium_sdk = Join-Path $env:GITHUB_WORKSPACE "src/thirdparty/pdfium-sdk"
-            $pdfium_licenses = Join-Path $stage "PDFium-LICENSES"
-            New-Item -ItemType Directory -Path $pdfium_licenses | Out-Null
-            foreach ($item in @("LICENSE", "licenses")) {
-              Copy-Item -LiteralPath (Join-Path $pdfium_sdk $item) -Destination $pdfium_licenses -Recurse -ErrorAction Stop
-            }
-
-            $merman_licenses = Join-Path $stage "Merman-LICENSES"
-            New-Item -ItemType Directory -Path $merman_licenses | Out-Null
-            $sdk = Join-Path $env:GITHUB_WORKSPACE "src/thirdparty/merman-sdk"
-            foreach ($item in @("LICENSE-APACHE", "LICENSE-MIT", "SOURCE_AVAILABILITY.md", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_LICENSES")) {
-              Copy-Item -LiteralPath (Join-Path $sdk $item) -Destination $merman_licenses -Recurse
-            }
-          }
+        run: python scripts/package_addon.py stage artifact ${{ matrix.target.platform }} ${{ matrix.target.arch }} ${{ matrix.target-type }}
 
       # Upload the build
       - name: Upload Artifact
@@ -112,36 +63,53 @@ jobs:
         with:
           name: godot-docrender-${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
           if-no-files-found: error
-          path: |
-            ${{ github.workspace }}/artifact/**
+          overwrite: true
+          path: artifact/
 
-      # Upload addon metadata once so the merged artifact can be copied directly as an addon.
-      - name: Upload Addon Files Artifact
-        if: ${{ matrix.target.platform == 'linux' && matrix.target.arch == 'x86_64' && matrix.target-type == 'template_debug' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-docrender-addon-files
-          path: |
-            ${{ github.workspace }}/addons/docrender/docrender.gdextension
-            ${{ github.workspace }}/addons/docrender/THIRD-PARTY-NOTICES.md
-            ${{ github.workspace }}/addons/docrender/godot-cpp-LICENSE.md
-            ${{ github.workspace }}/addons/docrender/MicroTeX-LICENSES.txt
-            ${{ github.workspace }}/addons/docrender/OpenSans-LICENSE.txt
-            ${{ github.workspace }}/addons/docrender/LiteHTML-LICENSES/**
-            ${{ github.workspace }}/addons/docrender/icons/**
-            ${{ github.workspace }}/addons/docrender/translations/**
-            ${{ github.workspace }}/addons/docrender/docs/**
-            ${{ github.workspace }}/addons/docrender/example/**
-
-  # Merge the build and addon files into one Godot DocRender artifact.
-  # If you comment out this step, all the builds will be uploaded individually.
-  merge:
+  package:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-      - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download Target Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: godot-docrender-*
+          merge-multiple: true
+          path: artifact/
+
+      - name: Verify and Assemble Addon
+        run: python3 scripts/package_addon.py assemble artifact
+
+      - name: Upload Complete Addon
+        uses: actions/upload-artifact@v4
         with:
           name: godot-docrender
-          pattern: godot-docrender-*
-          delete-merged: false
+          if-no-files-found: error
+          overwrite: true
+          path: artifact/
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download Verified Addon
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-docrender
+          path: artifact/
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset="godot-docrender-${GITHUB_REF_NAME//\//-}.zip"
+          (cd artifact && zip -qr "../$asset" .)
+          unzip -tq "$asset"
+          gh release create "$GITHUB_REF_NAME" "$asset" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes

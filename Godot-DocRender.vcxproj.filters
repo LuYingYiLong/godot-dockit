@@ -927,6 +927,9 @@
     <ClInclude Include="src\formats\html\markup\html_markup.h">
       <Filter>Header Files\formats\html\markup</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\markup\html_number.h">
+      <Filter>Header Files\formats\html\markup</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\paint\html_paint_run.h">
       <Filter>Header Files\formats\html\paint</Filter>
     </ClInclude>

@@ -1,6 +1,5 @@
 #include "html_input_node.h"
 #include "html_control_render_item.h"
-#include "html_gauge_elements.h"
 #include "html_select_node.h"
 
 #include <algorithm>
@@ -10,6 +9,7 @@
 #include "formats/html/backend/litehtml_container.h"
 #include "formats/html/css/css_color.h"
 #include "formats/html/css/css_parser.h"
+#include "formats/html/markup/html_number.h"
 
 #include <godot_cpp/classes/reg_ex.hpp>
 #include <godot_cpp/classes/reg_ex_match.hpp>

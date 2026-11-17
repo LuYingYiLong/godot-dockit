@@ -2,6 +2,7 @@
 
 #include "formats/html/css/css_image_value.h"
 #include "formats/html/css/css_math.h"
+#include "formats/html/markup/html_number.h"
 
 #include <litehtml/css_parser.h>
 #include <litehtml/document.h>
@@ -36,13 +37,9 @@ namespace docrender {
 				return true;
 			}
 			if (unit != 'x') return false;
-			const size_t dot = p_value.find('.');
-			if (dot != std::string_view::npos &&
-				(dot + 1 == p_value.size() || p_value[dot + 1] < '0' || p_value[dot + 1] > '9')) return false;
-			double density = 0;
-			const auto result = std::from_chars(p_value.data(), end, density);
-			if (result.ec != std::errc() || result.ptr != end || !std::isfinite(density) || density <= 0) return false;
-			r_candidate.value = density;
+			const auto density = html_number(p_value, true);
+			if (!density || *density <= 0) return false;
+			r_candidate.value = *density;
 			return true;
 		}
 

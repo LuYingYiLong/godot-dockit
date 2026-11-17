@@ -5,7 +5,21 @@ from scripts.litehtml.build import build_litehtml
 
 merman_sdk_option = ARGUMENTS.pop("merman_sdk", None)
 pdfium_sdk_option = ARGUMENTS.pop("pdfium_sdk", None)
-env = SConscript("godot-cpp/SConstruct")
+linux_toolchain_prefix = ARGUMENTS.pop("linux_toolchain_prefix", "")
+if ARGUMENTS.get("platform") == "ios":
+    # MicroTeX uses std::filesystem, which is available starting with iOS 13.
+    ARGUMENTS.setdefault("ios_min_version", "13.0")
+if linux_toolchain_prefix:
+    if ARGUMENTS.get("platform") != "linux":
+        print("linux_toolchain_prefix requires platform=linux.")
+        Exit(1)
+    # Set the tools before godot-cpp creates its own compilation targets.
+    env = Environment(tools=["default"], PLATFORM="")
+    env.Replace(CC=linux_toolchain_prefix + "gcc", CXX=linux_toolchain_prefix + "g++",
+                AR=linux_toolchain_prefix + "ar", RANLIB=linux_toolchain_prefix + "ranlib")
+    env = SConscript("godot-cpp/SConstruct", exports={"env": env})
+else:
+    env = SConscript("godot-cpp/SConstruct")
 
 env.Append(CPPPATH=["src/"])
 if env["platform"] == "windows":
@@ -20,12 +34,17 @@ def enable_cpp_exceptions(build_env):
         build_env.AppendUnique(CXXFLAGS=["/EHsc"])
     else:
         build_env["CXXFLAGS"] = [flag for flag in build_env["CXXFLAGS"] if flag != "-fno-exceptions"]
-        build_env.AppendUnique(CXXFLAGS=["-fexceptions"])
         if env["platform"] == "web":
-            env.AppendUnique(LINKFLAGS=["-fexceptions"])
+            build_env.AppendUnique(CXXFLAGS=["-fwasm-exceptions"])
+            env.AppendUnique(LINKFLAGS=["-fwasm-exceptions"])
+        else:
+            build_env.AppendUnique(CXXFLAGS=["-fexceptions"])
 
 
 mermaid_env = env.Clone()
+if merman_sdk_option and not (env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc", False)):
+    print("The Merman SDK requires the Windows x64 MSVC toolchain.")
+    Exit(1)
 if env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc", False):
     merman_sdk = Path(merman_sdk_option or "src/thirdparty/merman-sdk")
     if (merman_sdk / "include/merman.h").is_file() and (merman_sdk / "lib/merman_ffi.lib").is_file():
@@ -131,6 +150,7 @@ if env["platform"] == "macos":
             env["platform"], env["target"], env["platform"], env["target"]
         ),
         source=sources,
+        SHLIBSUFFIX="",
     )
 elif env["platform"] == "ios":
     if env["ios_simulator"]:
