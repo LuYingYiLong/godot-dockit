@@ -976,6 +976,31 @@ namespace docrender {
 		return bar;
 	}
 
+	Vector2i html_resize_axes(const css::ComputedStyle& p_style) {
+		if (!p_style.is_scroll_container()) return {};
+		switch (p_style.get_resize()) {
+			case resize_both: return {1, 1};
+			case resize_horizontal:
+			case resize_inline: return {1, 0};
+			case resize_vertical:
+			case resize_block: return {0, 1};
+			default: return {};
+		}
+	}
+
+	Rect2 html_resize_grip(const Rect2& p_box) {
+		const real_t edge = std::min<real_t>({14, p_box.size.x, p_box.size.y});
+		const Vector2 size(edge, edge);
+		return p_box.has_area() ? Rect2(p_box.get_end() - size, size) : Rect2();
+	}
+
+	Rect2 RenderGeometry::resize_grip() const {
+		if (!inverse || !child_overflow || !item->is_visible() || item->src_el()->is_replaced() ||
+			item->src_el()->is_root() || is_generated_tag(item->src_el()->tag()) ||
+			html_resize_axes(item->css()) == Vector2i()) return {};
+		return html_resize_grip(child_overflow->shape.rect);
+	}
+
 	std::array<HTMLScrollbar, 2> RenderGeometry::scrollbars() const {
 		std::array<HTMLScrollbar, 2> result{};
 		if (!inverse || !child_overflow || !item->is_visible() || item->src_el()->is_replaced()) return result;
@@ -995,12 +1020,15 @@ namespace docrender {
 		const bool horizontal = shows_scrollbar(css.get_overflow_x(), range.x);
 		const bool vertical = shows_scrollbar(css.get_overflow_y(), range.y);
 		const Vector2 size = viewport.size.min(Vector2(thickness, thickness));
+		const Vector2 grip = resize_grip().size;
 		const Vector2 end = viewport.get_end();
 		if (horizontal) {
-			result[0].track = Rect2(viewport.position.x, end.y - size.y, viewport.size.x - (vertical ? size.x : 0), size.y);
+			result[0].track = Rect2(viewport.position.x, end.y - size.y,
+				viewport.size.x - std::max(grip.x, vertical ? size.x : 0), size.y);
 		}
 		if (vertical) {
-			result[1].track = Rect2(end.x - size.x, viewport.position.y, size.x, viewport.size.y - (horizontal ? size.y : 0));
+			result[1].track = Rect2(end.x - size.x, viewport.position.y, size.x,
+				viewport.size.y - std::max(grip.y, horizontal ? size.y : 0));
 		}
 		const Vector2 offset(item->get_scroll_left(), item->get_scroll_top());
 		for (int axis = 0; axis < 2; ++axis) {
@@ -1128,7 +1156,7 @@ namespace docrender {
 		group_effects = false;
 		element_blending = false;
 		backdrop_filtering = false;
-		scrollbars = false;
+		overflow_controls = false;
 		top_layer = false;
 	}
 
@@ -1319,8 +1347,9 @@ namespace docrender {
 				*inverse, p_item.get(), p_overflow });
 			p_overflow = &clips.back();
 			entry.child_overflow = p_overflow;
-			scrollbars |= css.get_scrollbar_width() != scrollbar_width::none && p_item->scrollable_content_size().has_value() && !p_item->src_el()->is_replaced() &&
-				(is_interactive_overflow(css.get_overflow_x()) || is_interactive_overflow(css.get_overflow_y()));
+			overflow_controls |= entry.resize_grip().has_area() ||
+				(css.get_scrollbar_width() != scrollbar_width::none && p_item->scrollable_content_size().has_value() &&
+					!p_item->src_el()->is_replaced() && (is_interactive_overflow(css.get_overflow_x()) || is_interactive_overflow(css.get_overflow_y())));
 		}
 		Rect2 containing_box = p_containing_box;
 		if (viewport.has_area() && !p_item->children().empty()) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <litehtml/render_block.h>
+#include <cmath>
 
 namespace docrender {
 	// Controls paint their current label themselves, but its intrinsic width still participates in layout.
@@ -9,6 +10,14 @@ namespace docrender {
 
 	public:
 		enum class Baseline { text, swatch };
+		static litehtml::pixel_t text_baseline(litehtml::pixel_t p_height, const litehtml::font_metrics& p_font) {
+			return (p_height + p_font.ascent - p_font.descent) / 2;
+		}
+		static litehtml::pixel_t paint_text_baseline(litehtml::pixel_t p_y, litehtml::pixel_t p_height,
+			const litehtml::font_metrics& p_font, litehtml::pixel_t p_ascent) {
+			// Inline text snaps the top of its laid-out text box before recording the glyphs.
+			return std::round(p_y + text_baseline(p_height, p_font) - p_ascent) + p_ascent;
+		}
 
 	protected:
 		Baseline baseline;
@@ -18,8 +27,7 @@ namespace docrender {
 				// The inline color control uses the bottom of its swatch wrapper.
 				return content_offset_top() + std::max<litehtml::pixel_t>(0, m_pos.height - 4);
 			}
-			const auto& font = css().get_font_metrics();
-			return content_offset_top() + (m_pos.height + font.ascent - font.descent) / 2;
+			return content_offset_top() + text_baseline(m_pos.height, css().get_font_metrics());
 		}
 
 		litehtml::rendered_width _render_content(litehtml::pixel_t, litehtml::pixel_t, bool,

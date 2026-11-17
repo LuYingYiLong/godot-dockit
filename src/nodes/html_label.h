@@ -2,13 +2,16 @@
 
 #include "formats/html/html_document.h"
 #include "formats/html/elements/html_form_elements.h"
+#include "formats/html/elements/html_input_time.h"
 #include "formats/html/elements/html_audio_element.h"
 #include "formats/html/elements/html_dialog_element.h"
 #include "formats/html/elements/html_video_element.h"
 #include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/gd_script.hpp>
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -22,9 +25,8 @@ namespace godot {
 	class InputEventKey;
 	class InputEventMouseButton;
 	class Timer;
-	class PopupPanel;
 	class FileDialog;
-	class VBoxContainer;
+	class TextureRect;
 }
 
 namespace docrender {
@@ -64,7 +66,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLInputElement> pressed_input_decoration;
 	int pressed_input_part = 0;
 	godot::Ref<HTMLElement> dragging_input;
-	struct TextareaDrag {
+	struct BoxDrag {
 		godot::Ref<HTMLElement> element;
 		godot::Vector2i axes;
 		docrender::HTMLPlaneTransform inverse;
@@ -73,12 +75,12 @@ class HTMLLabelCanvas : public godot::Control {
 		float scrollbar_grab = 0;
 		bool vertical_scrollbar = false;
 	};
-	std::optional<TextareaDrag> textarea_drag;
+	std::optional<BoxDrag> box_drag;
 	std::optional<docrender::HTMLScrollbarDrag> scrollbar_drag;
 	std::optional<godot::Vector2> resize_pending;
 	bool resize_queued = false;
 	bool dragged_resize = false;
-	bool applying_textarea_resize = false;
+	bool applying_box_resize = false;
 	godot::Ref<HTMLAudioElement> pressed_audio;
 	docrender::HTMLAudioPart pressed_audio_part = docrender::HTMLAudioPart::none;
 	godot::Ref<HTMLVideoElement> pressed_video;
@@ -158,11 +160,12 @@ class HTMLLabelCanvas : public godot::Control {
 	void change_input(const godot::Ref<HTMLElement>& p_input, bool p_update_suggestions = true);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
 	void set_input_caret(const godot::Ref<HTMLElement>& p_input, const godot::Vector2& p_point, bool p_extend);
-	bool begin_textarea_drag(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_point);
-	void move_textarea_drag(const godot::Vector2& p_point);
-	void flush_textarea_resize();
+	bool begin_resize_drag(const godot::Vector2& p_point);
+	bool begin_textarea_scrollbar_drag(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_point);
+	void move_box_drag(const godot::Vector2& p_point);
+	void flush_box_resize();
 	void update_input_autoscroll();
-	std::optional<CursorShape> textarea_resize_cursor(const godot::Vector2& p_point) const;
+	std::optional<CursorShape> box_resize_cursor(const godot::Vector2& p_point) const;
 	void set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible);
 	void restart_caret_blink();
 	void stop_caret_blink();
@@ -320,9 +323,21 @@ private:
 	int select_visible_rows = 0;
 	float select_row_height = 0.0f;
 	godot::Ref<HTMLInputElement> picker_input;
-	godot::PopupPanel* input_popup = nullptr;
 	godot::FileDialog* file_dialog = nullptr;
 	godot::Control* color_picker_canvas = nullptr;
+	godot::TextureRect* color_eyedropper_canvas = nullptr;
+	struct ColorEyedropper {
+		godot::Ref<godot::Image> frame;
+		godot::Rect2 viewport;
+		godot::DisplayServer::MouseMode previous_mode;
+		godot::DisplayServer::MouseMode hidden_mode;
+		bool linear;
+		godot::Vector2i pixel{-1, -1};
+		bool pressed = false;
+
+		godot::Color sample(const godot::Vector2i& p_pixel) const;
+	};
+	std::optional<ColorEyedropper> color_eyedropper;
 	struct ColorPickerState {
 		enum Part { well, hue, opacity, eyedropper, format, channel, preset = channel + 3 };
 		enum Format { rgb, hsl, hex };
@@ -334,7 +349,6 @@ private:
 		float v = 0.0f;
 		float a = 1.0f;
 		bool alpha = false;
-		bool sampling = false;
 		bool replace_text = false;
 		int active = -1;
 		int hovered = -1;
@@ -347,7 +361,43 @@ private:
 		godot::String field_text(int p_channel) const;
 	};
 	ColorPickerState color_picker;
-	godot::VBoxContainer* picker_content = nullptr;
+	struct TimePickerState {
+		enum Unit { hour, minute, second, millisecond, meridiem };
+		struct Column {
+			Unit unit;
+			std::vector<int> values;
+			int selected = 0;
+			int first = 0;
+
+			bool loops() const { return values.size() >= 10; }
+			int row_index(int p_row) const;
+			void scroll(int p_rows);
+			void reveal();
+		};
+		std::vector<Column> columns;
+		godot::Dictionary initial;
+		godot::String initial_value;
+		godot::Vector2i calendar_month;
+		godot::Vector2i hovered_cell{-1, -1};
+		godot::Vector2i pressed_cell{-1, -1};
+		godot::Vector2 press_position;
+		docrender::input_time::Kind kind = docrender::input_time::Kind::none;
+		bool use_meridiem = false;
+		bool sunday_first = false;
+		bool year_view = false;
+		bool changed = false;
+		bool dragged_column = false;
+		int active_column = 0;
+		int calendar_hover = -1;
+		int pressed_calendar = -1;
+
+		bool has_calendar() const { return kind != docrender::input_time::Kind::time; }
+		bool has_clock() const { return !has_calendar() || kind == docrender::input_time::Kind::local; }
+		int calendar_width() const;
+		int calendar_height() const;
+	};
+	TimePickerState time_picker;
+	godot::Control* time_picker_canvas = nullptr;
 	godot::Dictionary picker_date;
 	uint64_t picker_sequence = 0;
 	uint64_t picker_adoption = 0;
@@ -490,12 +540,19 @@ private:
 	bool input_picker_valid() const;
 	void close_input_picker();
 	void on_input_picker_closed(uint64_t p_sequence);
+	bool is_time_picker_open() const;
+	bool is_canvas_picker_open() const;
+	bool place_input_picker_canvas(godot::Control& p_surface, const godot::Vector2& p_size);
 	void files_selected(const godot::PackedStringArray& p_paths, uint64_t p_sequence);
 	void file_selected(const godot::String& p_path, uint64_t p_sequence);
 	void native_files_selected(bool p_accepted, const godot::PackedStringArray& p_paths, int p_filter, uint64_t p_sequence);
 	godot::Error show_color_picker();
 	void update_color_picker();
 	void draw_color_picker();
+	void start_color_eyedropper(const godot::Vector2& p_position);
+	void stop_color_eyedropper();
+	void move_color_eyedropper(const godot::Vector2& p_position);
+	bool handle_color_eyedropper_input(const godot::Ref<godot::InputEvent>& p_event);
 	bool handle_color_picker_input(const godot::Ref<godot::InputEvent>& p_event);
 	void finish_color_picker(bool p_commit);
 	void select_color_picker_part(int p_part);
@@ -503,15 +560,21 @@ private:
 	void update_color_picker_value(const godot::String& p_value);
 	void update_color_picker_field();
 	void update_color_picker_preview();
-	void build_time_picker();
-	void navigate_time_picker(int p_delta);
-	void choose_time_picker_day(int p_day);
-	void change_time_picker_part(double p_value, const godot::String& p_part);
+	godot::Error show_clock_picker();
+	void update_clock_picker();
+	void draw_clock_picker();
+	bool handle_clock_picker_input(const godot::Ref<godot::InputEvent>& p_event);
+	void configure_clock_columns();
+	void preview_clock_value();
+	void shift_clock_calendar(int p_months);
+	bool set_clock_calendar_date(double p_date);
+	int clock_calendar_hit(const godot::Vector2& p_point) const;
+	void activate_clock_calendar(int p_item);
 	void commit_time_picker();
 	void commit_picker_value(const godot::String& p_value);
 	void submit_from_text(const godot::Ref<HTMLElement>& p_element);
 	bool open_suggestion_menu(const godot::Ref<HTMLElement>& p_element);
-	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows, int64_t p_selected);
+	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows);
 	bool handle_listbox_mouse(const godot::Ref<HTMLElement>& p_element, const godot::InputEventMouseButton& p_event, const godot::Vector2& p_point);
 	bool open_select_menu(const godot::Ref<HTMLSelectElement>& p_element);
 	void close_select_menu();

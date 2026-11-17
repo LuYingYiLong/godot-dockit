@@ -399,14 +399,15 @@ input:is([type="checkbox" i], [type="radio" i]) {
 	height: 13px;
 	box-sizing: border-box;
 	margin: 3px 3px 3px 4px;
-	border: 1px solid ButtonBorder;
+	border: 0 solid ButtonBorder;
 	border-radius: 2px;
-	background-color: Field;
+	background-color: transparent;
 	cursor: default;
 }
-input[type="radio" i] { margin: 3px 3px 0 5px; border-radius: 50%; }
-input:is([type="checkbox" i], [type="radio" i]):checked { color: AccentColorText; }
-input[type="checkbox" i]:indeterminate { color: AccentColorText; background-color: AccentColor; }
+input[type="radio" i] {
+	margin: 3px 3px 0 5px;
+	border-radius: 50%;
+}
 input[type="range" i] { width: 129px; height: 16px; margin: 2px; cursor: default; }
 input:is([type="date" i], [type="datetime-local" i], [type="month" i], [type="week" i], [type="time" i]) {
 	width: 11em;
@@ -458,6 +459,7 @@ input:is([type="button" i], [type="submit" i], [type="reset" i]) { min-height: 2
 	border-color: -docrender-disabled-border;
 	cursor: default;
 }
+input:is([type="checkbox" i], [type="radio" i]):disabled { background-color: transparent; }
 
 select {
 	box-sizing: border-box;

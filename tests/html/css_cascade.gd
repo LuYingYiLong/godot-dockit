@@ -500,6 +500,7 @@ func _run() -> void:
 	await _check_text_undo()
 	await _check_input_context_menu()
 	await _check_textarea()
+	await _check_box_resize()
 	await _check_text_emphasis()
 	await _check_underline_position()
 	await _check_color_spaces()
@@ -16005,6 +16006,88 @@ func _check_caret_blink() -> void:
 	await create_timer(0.25).timeout
 	await RenderingServer.frame_post_draw
 	_check(not caret_is_visible.call(multi), "The caret switches off at the updated interval")
+	viewport.queue_free()
+
+
+func _check_box_resize() -> void:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = Vector2i(440, 250)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var label: HTMLLabel = HTMLLabel.new()
+	label.size = Vector2(viewport.size)
+	label.text = """
+		<style>
+			body { margin: 0; }
+			#paragraphs { overflow: hidden; resize: horizontal; width: 9rem; max-width: 185px; color-scheme: light;
+				padding: 6px; border: 2px dashed #999; background: #4c4c4c; height: 48px; }
+			#clip { overflow: clip; resize: both; width: 100px; height: 40px; background: silver; }
+			#vertical { position: absolute; left: 220px; top: 0; overflow: auto; resize: block; box-sizing: border-box;
+				transform: scale(2); transform-origin: top left; width: 90px; height: 44px; padding: 5px; border: 2px solid;
+				min-height: 32px; max-height: 80px; scrollbar-width: none; }
+			#both { overflow: scroll; resize: both; width: 95px; height: 60px; }
+			#both div { width: 180px; height: 120px; }
+			#dark-grip { position: absolute; left: 224px; top: 154px; width: 64px; height: 48px;
+				border: 0; overflow: hidden; color-scheme: dark; background: #4c4c4c; }
+		</style>
+		<div id="paragraphs" style="color: white"><p>Fernstraßenbauprivatfinanzierungsgesetz</p></div>
+		<div id="clip">Clipped</div>
+		<div id="vertical">Vertical resize</div>
+		<div id="both"><div></div></div>
+		<textarea id="dark-grip"></textarea>"""
+	viewport.add_child(label)
+	await process_frame
+	await process_frame
+	var paragraphs: HTMLElement = label.get_element_by_id("paragraphs")
+	var initial: Rect2 = paragraphs.get_bounding_rect()
+	var grip: Vector2 = initial.end - Vector2(9.0, 9.0)
+	await RenderingServer.frame_post_draw
+	var image: Image = viewport.get_texture().get_image()
+	var dark_corner: Vector2 = label.get_element_by_id("dark-grip").get_bounding_rect().end
+	var origins: Array[Vector2i] = [Vector2i(initial.end) - Vector2i(16, 16), Vector2i(dark_corner) - Vector2i(14, 14)]
+	for origin: Vector2i in origins:
+		var darkest: float = 1.0
+		var lightest: float = 0.0
+		for y: int in range(14):
+			for x: int in range(14):
+				var ink: float = image.get_pixelv(origin + Vector2i(x, y)).r
+				darkest = minf(darkest, ink)
+				lightest = maxf(lightest, ink)
+		_check(darkest < 0.22 and lightest > 0.42,
+			"Resize grips use paired dark and light strokes in either color scheme (%s, %s)" % [darkest, lightest,])
+	_drag_pointer(viewport, grip, grip + Vector2(90.0, 35.0))
+	await process_frame
+	await process_frame
+	_check(paragraphs.get_bounding_rect().size == Vector2(201.0, initial.size.y) and
+		"color: white" in paragraphs.get_attribute("style") and "height:" not in paragraphs.get_attribute("style"),
+		"A content-box div resizes horizontally, respects max-width and preserves the inline color")
+
+	var clipped: HTMLElement = label.get_element_by_id("clip")
+	grip = clipped.get_bounding_rect().end - Vector2(7.0, 7.0)
+	_drag_pointer(viewport, grip, grip + Vector2(35.0, 25.0))
+	await process_frame
+	_check(clipped.get_attribute("style").is_empty(), "Overflow clip does not create an interactive resize grip")
+
+	var vertical: HTMLElement = label.get_element_by_id("vertical")
+	initial = vertical.get_bounding_rect()
+	_check(initial.size == Vector2(180.0, 88.0), "The positioned border box includes its padding and borders in the CSS size")
+	grip = initial.end - Vector2(17.0, 17.0)
+	_drag_pointer(viewport, grip, grip + Vector2(30.0, 40.0))
+	await process_frame
+	await process_frame
+	_check(vertical.get_bounding_rect().size == initial.size + Vector2(0.0, 40.0),
+		"A transformed border-box scroll container resizes on its local block axis (%s to %s, style %s)" % [
+			initial.size, vertical.get_bounding_rect().size, vertical.get_attribute("style"),
+		])
+
+	var both: HTMLElement = label.get_element_by_id("both")
+	initial = both.get_bounding_rect()
+	grip = initial.end - Vector2(7.0, 7.0)
+	_drag_pointer(viewport, grip, grip + Vector2(30.0, 24.0))
+	await process_frame
+	await process_frame
+	_check(both.get_bounding_rect().size == initial.size + Vector2(30.0, 24.0),
+		"The common scrollbar corner handles two-axis resizing")
 	viewport.queue_free()
 
 

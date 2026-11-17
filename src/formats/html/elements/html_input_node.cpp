@@ -194,6 +194,7 @@ namespace docrender {
 	}
 
 	double HTMLInputNode::step_scale() const { return number_limits(*this).step.value_or(input_time::scale(time_kind())); }
+	double HTMLInputNode::step_base() const { return number_limits(*this).base; }
 
 	bool HTMLInputNode::accepts_suggestions() const {
 		return (is_text_control() && !is_password()) || type() == Type::COLOR || type() == Type::RANGE;
@@ -548,10 +549,13 @@ namespace docrender {
 			item->parent(p_parent);
 			return item;
 		}
-		if (is_button() && (display == litehtml::display_inline_block || display == litehtml::display_block)) {
-			const auto width = get_document()->container()->text_width(button_text(), css().get_font());
-			const auto height = css().line_height().computed_value;
-			auto item = std::make_shared<HTMLControlRenderItem>(shared_from_this(), litehtml::size(width, height));
+		if (display == litehtml::display_inline_block || display == litehtml::display_block) {
+			litehtml::size natural(169, css().line_height().computed_value);
+			if (is_button() && css().get_font()) natural.width = get_document()->container()->text_width(button_text(), css().get_font());
+			else if (type() == Type::FILE) natural.width = 19 * css().get_font_size();
+			else if (is_toggle()) natural = {11, 11};
+			else if (type() == Type::RANGE) natural = {129, 16};
+			auto item = std::make_shared<HTMLControlRenderItem>(shared_from_this(), natural);
 			item->parent(p_parent);
 			return item;
 		}
@@ -563,11 +567,15 @@ namespace docrender {
 		decoration_box = {};
 		if (kind == Type::HIDDEN || !p_box.has_area()) return;
 		const auto color = css().get_color();
+		const auto baseline = [&](const Rect2& p_rect, const HTMLTextLayout& p_line) {
+			return HTMLControlRenderItem::paint_text_baseline(p_rect.position.y, p_rect.size.y,
+				css().get_font_metrics(), p_line.ascent);
+		};
 		if (is_button()) {
 			const auto line = p_container.shape_input(css().get_font(), String::utf8(button_text()));
 			if (line.is_valid()) p_container.draw_input(p_box, line,
 				Vector2(p_box.position.x + std::max<real_t>(0, (p_box.size.x - line.width()) / 2),
-					p_box.get_center().y + (line.line_ascent() - line.line_descent()) / 2), color, {}, {}, {});
+					baseline(p_box, line)), color, {}, {}, {});
 			return;
 		}
 		if (kind == Type::RANGE) {
@@ -606,31 +614,22 @@ namespace docrender {
 			p_container.draw_input_chrome(p_box, Rect2(p_box.position.x + offset, p_box.get_center().y - thumb / 2, thumb, thumb), ink, thumb / 2);
 			return;
 		}
-		if (is_toggle()) {
-			if ((!checked && !(kind == Type::CHECKBOX && indeterminate)) || css().get_appearance() == litehtml::appearance_none) return;
-			const auto accent = css().get_accent_color().to_srgb(color);
-			const bool automatic = !has_author_property(litehtml::_color_) && !has_author_property(litehtml::_background_color_) &&
-				!has_pseudo_class(litehtml::_id("disabled"));
-			const float lightness = (accent.red * 0.2126f + accent.green * 0.7152f + accent.blue * 0.0722f) / 255;
-			const auto ink = (automatic ? (lightness > 0.55f ? litehtml::web_color::black : litehtml::web_color::white) : color).to_srgb();
-			const Color mark(ink.red / 255.0, ink.green / 255.0, ink.blue / 255.0, ink.alpha / 255.0);
-			if (kind == Type::CHECKBOX) {
-				if (indeterminate) p_container.draw_input_chrome(p_box,
-					Rect2(p_box.position.x + p_box.size.x * 0.25, p_box.get_center().y - 1, p_box.size.x * 0.5, 2), mark, 1);
-				else p_container.draw_input_check(p_box, mark);
+		if (kind == Type::CHECKBOX || kind == Type::RADIO) {
+			if (css().get_appearance() == litehtml::appearance_none) return;
+			const bool mixed = kind == Type::CHECKBOX && indeterminate;
+			HTMLControlIcon icon;
+			if (kind == Type::RADIO) {
+				icon = checked ? HTMLControlIcon::radio_checked : HTMLControlIcon::radio_unchecked;
 			} else {
-				const auto minimum = std::min(p_box.size.x, p_box.size.y);
-				const auto disc = [&](float p_diameter, const Color& p_color) {
-					const Vector2 size(p_diameter, p_diameter);
-					p_container.draw_input_chrome(p_box, Rect2(p_box.get_center() - size * 0.5, size), p_color, p_diameter * 0.5);
-				};
-				if (automatic) {
-					disc(minimum * 0.82f, mark);
-					disc(minimum * 0.48f, Color(accent.red / 255.0, accent.green / 255.0, accent.blue / 255.0, accent.alpha / 255.0));
-				} else {
-					disc(minimum * 0.45f, mark);
-				}
+				icon = mixed ? HTMLControlIcon::checkbox_indeterminate :
+					checked ? HTMLControlIcon::checkbox_checked : HTMLControlIcon::checkbox_unchecked;
 			}
+			const bool use_accent = (checked || mixed) && !has_author_property(litehtml::_color_) && !forms::is_disabled(*this);
+			const auto ink = use_accent ? css().get_accent_color().to_srgb(color) : color.to_srgb();
+			const auto edge = std::min(p_box.size.x, p_box.size.y);
+			const Vector2 size(edge, edge);
+			p_container.draw_input_icon(icon, p_box, Rect2(p_box.get_center() - size * 0.5f, size),
+				Color(ink.red / 255.0f, ink.green / 255.0f, ink.blue / 255.0f, ink.alpha / 255.0f));
 			return;
 		}
 
@@ -667,7 +666,7 @@ namespace docrender {
 			const auto draw_label = [&](const String& p_text, const Rect2& p_rect) {
 				const auto line = p_container.shape_input(css().get_font(), p_text);
 				if (line.is_valid()) p_container.draw_input(p_rect, line,
-					Vector2(p_rect.position.x, p_rect.get_center().y + (line.line_ascent() - line.line_descent()) / 2),
+					Vector2(p_rect.position.x, baseline(p_rect, line)),
 					color, {}, {}, {});
 			};
 			const auto label = p_container.shape_input(css().get_font(), button);
@@ -709,7 +708,8 @@ namespace docrender {
 					decoration_box.get_center(), 14);
 			}
 		}
-		if (edit_box.has_area()) editor.paint_single(p_container, edit_box, *this, placeholder, focused, is_password());
+		if (edit_box.has_area()) editor.paint_single(p_container, edit_box, *this, placeholder,
+			focused && !preview_time, is_password(), preview_time ? &*preview_time : nullptr);
 	}
 
 	int HTMLInputNode::decoration_at(const Vector2& p_point) const {

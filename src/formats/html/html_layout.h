@@ -59,6 +59,7 @@ namespace docrender {
 		int64_t option_index;
 		bool enabled;
 		godot::String value;
+		bool selected = false;
 	};
 }
 
@@ -185,7 +186,8 @@ class HTMLLayout : public godot::RefCounted {
 	std::vector<docrender::HTMLSelectMenuRow> suggestion_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	std::vector<docrender::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<godot::Texture2D> get_control_icon(docrender::HTMLControlIcon p_icon) const;
-	docrender::HTMLTextLayout shape_control_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
+	docrender::HTMLTextLayout shape_control_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text,
+		int p_size = 0, bool p_bold = false) const;
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;
 	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;
@@ -197,7 +199,14 @@ class HTMLLayout : public godot::RefCounted {
 	void update_input(docrender::HTMLTextControlNode& p_input);
 	std::shared_ptr<docrender::HTMLTextControlNode> text_control(const godot::Ref<HTMLElement>& p_element) const;
 	std::optional<docrender::HTMLPlaneTransform> input_inverse(const HTMLElement& p_input) const;
-	bool resize_textarea(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_size, const godot::Vector2i& p_axes);
+	struct ResizeTarget {
+		godot::Ref<HTMLElement> element;
+		docrender::HTMLPlaneTransform inverse;
+		godot::Vector2 size;
+		godot::Vector2i axes;
+	};
+	std::optional<ResizeTarget> resize_grip_at(const godot::Vector2& p_point) const;
+	bool resize_element(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_size, const godot::Vector2i& p_axes);
 	godot::Vector2 scroll_overflow(const godot::Vector2& p_position, const godot::Vector2& p_delta,
 		godot::Node* p_pan_owner, const godot::Callable& p_changed);
 	void refresh_overflow_paint(bool p_moved_boxes);

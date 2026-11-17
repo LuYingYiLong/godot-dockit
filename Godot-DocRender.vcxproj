@@ -138,6 +138,7 @@
     <ClCompile Include="src\nodes\html_label_input.cpp" />
     <ClCompile Include="src\nodes\html_label_pickers.cpp" />
     <ClCompile Include="src\nodes\html_label_color_picker.cpp" />
+    <ClCompile Include="src\nodes\html_label_time_picker.cpp" />
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\nodes\html_label_behaviors.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />

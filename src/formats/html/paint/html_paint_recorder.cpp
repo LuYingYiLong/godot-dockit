@@ -757,7 +757,7 @@ void fragment() {
 		clips.clear();
 		clip_material.unref();
 		pointer_targets.clear();
-		scrollbar_bounds = Rect2();
+		overflow_control_bounds = Rect2();
 		painted_text.clear();
 		painted_text_by_renderer.clear();
 		painted_text_by_source.clear();
@@ -937,7 +937,7 @@ void fragment() {
 	void HTMLPaintRecorder::visit_hit_elements(const Vector2& p_point, bool p_text_selection,
 		const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit) const {
 		visit_pointer_targets(p_point, [&](const PointerTarget& p_target) {
-			if (p_target.axis >= 0) return false;
+			if (p_target.axis != PointerTarget::element) return false;
 			const auto* geometry = p_target.geometry;
 			if (geometry->item->is_visible() && (p_text_selection || geometry->item->css().accepts_pointer_events()) &&
 				geometry->contains_visible_point(p_point)) {
@@ -947,23 +947,37 @@ void fragment() {
 		});
 	}
 
-	std::optional<HTMLScrollbarDrag> HTMLPaintRecorder::scrollbar_at(const Vector2& p_point) const {
-		if (!scrollbar_bounds.has_point(p_point)) return {};
-		std::optional<HTMLScrollbarDrag> result;
+	const HTMLPaintRecorder::PointerTarget* HTMLPaintRecorder::overflow_control_at(const Vector2& p_point) const {
+		if (!overflow_control_bounds.has_point(p_point)) return nullptr;
+		const PointerTarget* result = nullptr;
 		visit_pointer_targets(p_point, [&](const PointerTarget& p_target) {
 			const auto& geometry = *p_target.geometry;
 			if (!geometry.item->is_visible() || !geometry.item->css().accepts_pointer_events() ||
 				!geometry.contains_visible_point(p_point)) return false;
-			if (p_target.axis < 0) return true;
+			if (p_target.axis == PointerTarget::element) return true;
 			const Vector2 local = geometry.inverse->xform(p_point);
-			if (!p_target.track.has_point(local) || !geometry.child_overflow->contains_point(p_point, true)) return false;
-			const auto bar = geometry.scrollbars()[p_target.axis];
-			const real_t fraction = bar.thumb.has_point(local)
-				? (local[p_target.axis] - bar.thumb.position[p_target.axis]) / bar.thumb.size[p_target.axis] : 0.5;
-			result = HTMLScrollbarDrag{ geometry.item->src_el(), p_target.axis, fraction };
+			if (!p_target.bounds.has_point(local) || !geometry.child_overflow->contains_point(p_point, true)) return false;
+			result = &p_target;
 			return true;
 		});
 		return result;
+	}
+
+	std::optional<HTMLScrollbarDrag> HTMLPaintRecorder::scrollbar_at(const Vector2& p_point) const {
+		const auto* target = overflow_control_at(p_point);
+		if (!target || target->axis < 0) return {};
+		const auto& geometry = *target->geometry;
+		const int axis = target->axis;
+		const Vector2 local = geometry.inverse->xform(p_point);
+		const auto bar = geometry.scrollbars()[axis];
+		const real_t fraction = bar.thumb.has_point(local) ?
+			(local[axis] - bar.thumb.position[axis]) / bar.thumb.size[axis] : 0.5;
+		return HTMLScrollbarDrag{geometry.item->src_el(), axis, fraction};
+	}
+
+	const RenderGeometry* HTMLPaintRecorder::resize_grip_at(const Vector2& p_point) const {
+		const auto* target = overflow_control_at(p_point);
+		return target && target->axis == PointerTarget::resize ? target->geometry : nullptr;
 	}
 
 	void HTMLPaintRecorder::record_css_diagnostic(const RenderGeometry& p_geometry, const Rect2& p_box) {
@@ -1669,7 +1683,9 @@ void fragment() {
 		static constexpr std::array svg{control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
 			control_icons::volume_off, control_icons::resize_window, control_icons::fullscreen, control_icons::fullscreen_exit,
 			control_icons::arrow_drop_down, control_icons::arrow_drop_up, control_icons::arrow_left, control_icons::arrow_right,
-			control_icons::radio_button_checked, control_icons::calendar_today, control_icons::schedule, control_icons::colorize};
+			control_icons::radio_button_checked, control_icons::calendar_today, control_icons::schedule,
+			control_icons::colorize, control_icons::unfold_more, control_icons::radio_button_unchecked,
+			control_icons::check_box, control_icons::check_box_outline_blank, control_icons::indeterminate_check_box};
 		static_assert(svg.size() == static_cast<size_t>(HTMLControlIcon::count));
 		const auto index = static_cast<size_t>(p_icon);
 		auto& texture = control_icon_textures[index];
@@ -1698,21 +1714,13 @@ void fragment() {
 		del_clip();
 	}
 
-	void HTMLPaintRecorder::draw_input_check(const Rect2& p_box, const Color& p_color) {
-		if (!push_content_clip(p_box)) return;
-		const float extent = std::min(p_box.size.x, p_box.size.y);
-		const Vector2 origin = p_box.get_center() - Vector2(extent, extent) * 0.5;
-		auto polygon = std::make_shared<HTMLClipPolygon>();
-		auto& points = polygon->outlines.emplace_back().contours.emplace_back();
-		for (const auto& point : std::array{
-			Vector2(0.18, 0.49), Vector2(0.29, 0.38), Vector2(0.45, 0.55),
-			Vector2(0.74, 0.24), Vector2(0.86, 0.35), Vector2(0.45, 0.78),
-		}) points.push_back(origin + point * extent);
-		const auto boundary = polygon->bounds();
-		push_clip({ RoundedRect(boundary, {}), active_geometry ? active_geometry->matrix : Transform2D(),
-			ClipAxes::both, true, polygon });
-		fill_rect(boundary, p_color);
-		del_clip();
+	void HTMLPaintRecorder::draw_resize_grip(const Rect2& p_clip, const Rect2& p_grip) {
+		const auto texture = get_control_icon(HTMLControlIcon::resize);
+		if (texture.is_null() || !p_grip.has_area() || !push_content_clip(p_clip)) return;
+		// Chromium pairs translucent black strokes with a white highlight one pixel below.
+		const Rect2 source(Vector2(), texture->get_size());
+		add_image(Image{texture, p_grip, source, Color(0, 0, 0, 0.6f)});
+		add_image(Image{texture, Rect2(p_grip.position + Vector2(0, 1), p_grip.size), source, Color(1, 1, 1, 0.6f)});
 		del_clip();
 	}
 
@@ -2249,7 +2257,7 @@ void fragment() {
 		active_geometry = recording_geometry ? recording_geometry->find_renderer(&p_item) : nullptr;
 		if (!active_geometry) return true;
 		if (!active_geometry->inverse) return false;
-		if (!active_decoration && (recording_geometry->uses_visual_hit_order() || recording_geometry->has_scrollbars()) &&
+		if (!active_decoration && (recording_geometry->uses_visual_hit_order() || recording_geometry->has_overflow_controls()) &&
 			!active_geometry->fragments.empty()) {
 			pointer_targets.push_back({ active_geometry });
 		}
@@ -2318,19 +2326,27 @@ void fragment() {
 	}
 
 	void HTMLPaintRecorder::draw_scrollbars(const render_item& p_item) {
-		if (!recording_geometry->has_scrollbars() || has_elided_ancestor(p_item)) return;
+		if (!recording_geometry->has_overflow_controls() || has_elided_ancestor(p_item)) return;
 		const auto* geometry = recording_geometry->find_renderer(&p_item);
 		if (!geometry) return;
 		const auto bars = geometry->scrollbars();
 		active_geometry = geometry;
+		const auto add_target = [&](int p_axis, const Rect2& p_box) {
+			pointer_targets.push_back({geometry, p_axis, p_box});
+			const Rect2 bounds = geometry->matrix.xform(p_box);
+			overflow_control_bounds = overflow_control_bounds.has_area() ? overflow_control_bounds.merge(bounds) : bounds;
+		};
 		const auto appearance = html_scrollbar_appearance(p_item.css());
 		for (int axis = 0; axis < 2; ++axis) {
 			const auto& bar = bars[axis];
 			if (!bar.track.has_area()) continue;
 			paint_scrollbar(bar.track, bar.thumb, axis, appearance);
-			pointer_targets.push_back({ geometry, axis, bar.track });
-			const Rect2 bounds = geometry->matrix.xform(bar.track);
-			scrollbar_bounds = scrollbar_bounds.has_area() ? scrollbar_bounds.merge(bounds) : bounds;
+			add_target(axis, bar.track);
+		}
+		const Rect2 grip = geometry->resize_grip();
+		if (grip.has_area()) {
+			draw_resize_grip(grip, grip);
+			add_target(PointerTarget::resize, grip);
 		}
 		active_geometry = nullptr;
 	}

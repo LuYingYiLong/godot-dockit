@@ -155,7 +155,7 @@ bool HTMLLabel::open_select_menu(const Ref<HTMLSelectElement>& p_element) {
 	if (rows.empty()) return false;
 	if (!has_focus()) grab_focus();
 	canvas->set_focused_element(p_element);
-	return show_select_menu(p_element, std::move(rows), p_element->get_selected_index());
+	return show_select_menu(p_element, std::move(rows));
 }
 
 bool HTMLLabel::open_suggestion_menu(const Ref<HTMLElement>& p_element) {
@@ -164,11 +164,10 @@ bool HTMLLabel::open_suggestion_menu(const Ref<HTMLElement>& p_element) {
 		if (open_select == p_element) close_select_menu();
 		return false;
 	}
-	return show_select_menu(p_element, std::move(rows), -1);
+	return show_select_menu(p_element, std::move(rows));
 }
 
-bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows,
-	int64_t p_selected) {
+bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows) {
 	close_select_menu();
 	if (!select_menu) {
 		select_menu = memnew(Control);
@@ -193,7 +192,7 @@ bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<
 	for (int i = 0; i < static_cast<int>(select_rows.size()); ++i) {
 		if (!select_rows[i].enabled) continue;
 		if (first < 0) first = i;
-		if (p_selected >= 0 && select_rows[i].option_index == p_selected) { first = i; break; }
+		if (select_rows[i].selected) { first = i; break; }
 	}
 	if (first >= 0) highlight_select_row(first);
 	return true;
@@ -252,23 +251,24 @@ void HTMLLabel::draw_select_menu() {
 	if (open_select.is_null()) return;
 	const auto size = select_menu->get_size();
 	const auto server = TextServerManager::get_singleton()->get_primary_interface();
-	const Ref<HTMLSelectElement> select = open_select;
-	const int64_t selected = select.is_valid() ? select->get_selected_index() : -1;
 	const auto scheme = layout->get_element_color_scheme(open_select);
 	const auto menu_border = docrender::html_system_color(litehtml::system_color::menu_border, scheme);
-	select_menu->draw_rect(Rect2(Vector2(), size), docrender::html_system_color(litehtml::system_color::menu_face, scheme));
+	const auto menu_face = docrender::html_system_color(litehtml::system_color::menu_face, scheme);
+	const auto menu_hover = docrender::html_system_color(litehtml::system_color::menu_hover, scheme);
+	const auto icon = layout->get_control_icon(docrender::HTMLControlIcon::radio_checked);
+	select_menu->draw_rect(Rect2(Vector2(), size), menu_face);
 	for (int i = 0; i < select_visible_rows; ++i) {
 		const int index = select_scroll + i;
 		const auto& row = select_rows[index];
 		const float y = i * select_row_height;
 		const Rect2 box(Vector2(0, y), Vector2(size.x, select_row_height));
 		if (row.background.a > 0) select_menu->draw_rect(box, row.background);
-		if (index == select_highlight) select_menu->draw_rect(box, docrender::html_system_color(litehtml::system_color::menu_hover, scheme));
-		const bool checked = row.option_index >= 0 && row.option_index == selected;
-		if (checked) {
-			const auto icon = layout->get_control_icon(docrender::HTMLControlIcon::selected);
-			if (icon.is_valid()) select_menu->draw_texture_rect(icon, Rect2(2, y + (select_row_height - 14) * 0.5f, 14, 14),
-				false, row.color);
+		if (index == select_highlight) select_menu->draw_rect(box, menu_hover);
+		if (row.selected && icon.is_valid()) {
+			auto background = menu_face.blend(row.background);
+			if (index == select_highlight) background = background.blend(menu_hover);
+			const Color ink = background.srgb_to_linear().get_luminance() > 0.179f ? Color(0, 0, 0) : Color(1, 1, 1);
+			select_menu->draw_texture_rect(icon, Rect2(2, y + (select_row_height - 14) * 0.5f, 14, 14), false, ink);
 		}
 		if (row.text.is_valid() && server.is_valid()) {
 			const float inset = row.option_index >= 0 ? 18 : 6;

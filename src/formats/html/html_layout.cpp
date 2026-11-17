@@ -2593,9 +2593,20 @@ Ref<Texture2D> HTMLLayout::get_control_icon(docrender::HTMLControlIcon p_icon) c
 	return state->container ? state->container->get_control_icon(p_icon) : Ref<Texture2D>();
 }
 
-docrender::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_element, const String& p_text) const {
+docrender::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_element, const String& p_text,
+	int p_size, bool p_bold) const {
 	const auto node = is_element_connected(p_element) ? p_element->lock_element() : nullptr;
-	return node && state->container ? state->container->shape_input(node->css().get_font(), p_text) : docrender::HTMLTextLayout();
+	if (!node || !state->container) return {};
+	auto font = node->css().get_font();
+	if (p_size > 0) {
+		litehtml::font_description description;
+		description.families = {{"Arial", false}, {"sans-serif", true}};
+		description.size = p_size;
+		description.weight = p_bold ? 700 : 400;
+		litehtml::font_metrics metrics;
+		font = node->get_document()->get_font(description, &metrics);
+	}
+	return state->container->shape_input(font, p_text);
 }
 std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
 	std::vector<docrender::HTMLSelectMenuRow> result;
@@ -2605,16 +2616,19 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref
 	const auto to_color = [](const litehtml::web_color& p_color) {
 		return Color(p_color.red / 255.0f, p_color.green / 255.0f, p_color.blue / 255.0f, p_color.alpha / 255.0f);
 	};
+	const auto options = select->get_options();
+	const int64_t selected = select->selected_index(options);
 	const auto make_row = [&](const litehtml::element& p_node, const String& p_text, int64_t p_index, bool p_enabled) {
 		const auto& style = p_node.css();
 		const auto font = style.get_font() ? style.get_font() : select->css().get_font();
 		const auto bg = style.get_bg().m_color.to_srgb(style.get_color());
 		result.push_back({state->container->shape_input(font, p_text), to_color(style.get_color().to_srgb()),
-			to_color(bg.alpha ? bg : select->css().get_bg().m_color.to_srgb(select->css().get_color())), p_index, p_enabled});
+			to_color(bg.alpha ? bg : select->css().get_bg().m_color.to_srgb(select->css().get_color())), p_index, p_enabled,
+			{}, p_index >= 0 && p_index == selected});
 	};
 	litehtml::element::ptr previous_group;
 	int64_t index = 0;
-	for (const auto& option : select->get_options()) {
+	for (const auto& option : options) {
 		const int64_t option_index = index++;
 		const auto parent = option->parent();
 		const auto group = parent.get() != select.get() ? parent : nullptr;
@@ -2872,10 +2886,38 @@ void HTMLLayout::flush_input_paint() {
 	if (state->has_layout() && state->input_paint_pending) record_paint();
 }
 
-bool HTMLLayout::resize_textarea(const Ref<HTMLElement>& p_element, const Vector2& p_size, const Vector2i& p_axes) {
-	if (!p_size.is_finite() || p_axes == Vector2i()) return false;
-	const auto node = text_control(p_element);
-	if (!node || !node->editor.is_multiline()) return false;
+std::optional<HTMLLayout::ResizeTarget> HTMLLayout::resize_grip_at(const Vector2& p_point) const {
+	if (!state->has_layout() || !p_point.is_finite()) return {};
+	if (const auto* grip = state->container->get_paint_recorder().resize_grip_at(p_point)) {
+		auto& item = *grip->item;
+		if (!allows_modal_interaction(*item.src_el())) return {};
+		auto box = item.get_placement();
+		if (item.css().get_box_sizing() == litehtml::box_sizing_border_box) {
+			box += item.get_paddings();
+			box += item.get_borders();
+		}
+		return ResizeTarget{state->dom->make_element(item.src_el()), *grip->inverse,
+			Vector2(box.width, box.height), docrender::html_resize_axes(item.css())};
+	}
+	const auto element = get_element_at(p_point);
+	const auto node = text_control(element);
+	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
+	if (!textarea) return {};
+	const auto axes = textarea->resize_axes();
+	const auto inverse = input_inverse(*element.ptr());
+	if (!inverse || axes == Vector2i() || !textarea->get_resize_handle().has_point(inverse->xform(p_point))) return {};
+	const Vector2 size = textarea->css().get_box_sizing() == litehtml::box_sizing_border_box ?
+		textarea->get_border_size() : textarea->get_border_size() - textarea->get_border_extras();
+	return ResizeTarget{element, *inverse, size, axes};
+}
+
+bool HTMLLayout::resize_element(const Ref<HTMLElement>& p_element, const Vector2& p_size, const Vector2i& p_axes) {
+	if (!p_size.is_finite() || !is_element_connected(p_element) || !allows_modal_interaction(p_element)) return false;
+	const auto node = p_element->lock_element();
+	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
+	const auto enabled = textarea ? textarea->resize_axes() : docrender::html_resize_axes(node->css());
+	const Vector2i axes(p_axes.x && enabled.x, p_axes.y && enabled.y);
+	if (axes == Vector2i()) return false;
 
 	litehtml::raw_declaration::vector declarations;
 	litehtml::raw_rule::vector rules;
@@ -2884,13 +2926,13 @@ bool HTMLLayout::resize_textarea(const Ref<HTMLElement>& p_element, const Vector
 	litehtml::string style;
 	for (const auto& declaration : declarations) {
 		const auto name = litehtml::lowcase(declaration.name);
-		if ((p_axes.x && name == "width") || (p_axes.y && name == "height")) continue;
+		if ((axes.x && name == "width") || (axes.y && name == "height")) continue;
 		style += declaration.name + ": " + litehtml::get_repr(declaration.value);
 		if (declaration.important) style += " !important";
 		style += "; ";
 	}
-	if (p_axes.x) style += "width: " + std::to_string(std::max(0.0f, p_size.x)) + "px; ";
-	if (p_axes.y) style += "height: " + std::to_string(std::max(0.0f, p_size.y)) + "px;";
+	if (axes.x) style += "width: " + std::to_string(std::max<real_t>(0, p_size.x)) + "px; ";
+	if (axes.y) style += "height: " + std::to_string(std::max<real_t>(0, p_size.y)) + "px;";
 	return state->dom->edit_attribute(node, "style", style.c_str()) == OK;
 }
 

@@ -16,6 +16,7 @@ namespace docrender {
 		godot::Rect2 decoration_box;
 		godot::Rect2 image_box;
 		std::optional<godot::Color> preview_color;
+		std::optional<godot::String> preview_time;
 		bool image_available = false;
 		bool indeterminate = false;
 		godot::TypedArray<HTMLInputFile> files;
@@ -51,6 +52,7 @@ namespace docrender {
 		bool supports_required() const;
 		bool has_picker() const;
 		double step_scale() const;
+		double step_base() const;
 		input_time::Kind time_kind() const;
 		bool is_password() const { return type() == Type::PASSWORD; }
 		bool accepts_suggestions() const;
@@ -74,6 +76,7 @@ namespace docrender {
 		bool set_files(const godot::TypedArray<HTMLInputFile>& p_files);
 		static godot::Color color_preview(const godot::String& p_value);
 		void set_color_preview(std::optional<godot::Color> p_color) { preview_color = p_color; }
+		void set_time_preview(std::optional<godot::String> p_value) { preview_time = std::move(p_value); }
 		int decoration_at(const godot::Vector2& p_point) const;
 		godot::Vector2i image_coordinates(const godot::Vector2& p_point) const;
 		bool edit_time_segment(int p_direction, bool p_step);

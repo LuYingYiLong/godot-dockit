@@ -249,7 +249,9 @@ Style ranges, queries of standard CSS properties, and `scroll-state()` are pendi
 
 Wheel input in HTMLLabel and MarkdownLabel's HTML blocks scrolls the nearest eligible `overflow: auto` or `overflow: scroll` box under the pointer. Inner scroll offsets are retained when the same DOM elements are laid out again. Standalone HTMLLayout uses the viewport passed to `layout()` with its origin at the document origin. Each Markdown HTML block has its own viewport.
 
-In HTMLLabel, `textarea` wraps text by default. Use `wrap="off"` or `white-space: pre` for horizontal scrolling. `overflow: auto` shows internal scrollbars as needed. `resize` accepts `none`, `both`, `horizontal`, `vertical`, `inline`, and `block`. The default `both` draws a grip in the bottom-right corner when the textarea can scroll or clips overflow. Dragging updates the applicable inline `width` and `height`, subject to CSS sizing and cascade rules. `inline` and `block` correspond to horizontal and vertical resizing in the supported horizontal writing mode.
+In HTMLLabel, `textarea` wraps text by default. Use `wrap="off"` or `white-space: pre` for horizontal scrolling. `overflow: auto` shows internal scrollbars as needed.
+
+`resize` accepts `none`, `both`, `horizontal`, `vertical`, `inline`, and `block`. Scroll containers with `overflow: hidden`, `auto`, or `scroll` can show a resize grip even when no scrollbars are visible. Textareas default to `resize: both`. In both color schemes, the grip blends translucent black with an offset white highlight for contrast over the element background. Dragging the grip updates the applicable inline `width` and `height` in pixels, subject to CSS sizing and cascade rules. `inline` and `block` correspond to horizontal and vertical resizing in the supported horizontal writing mode. [Chromium resizer paint](https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/core/paint/scrollable_area_painter.cc)
 
 ## Background positions
 

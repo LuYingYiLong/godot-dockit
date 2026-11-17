@@ -59,6 +59,10 @@ document = ExtResource("2")
     write(project / "inputs.html", """<!doctype html>
 <style>
 form { display: grid; grid-template-columns: repeat(3, 225px); row-gap: 8px; align-items: start; }
+#checkbox, #radio { width: 24px; height: 24px; accent-color: #0075ff; }
+#select option { color: transparent; }
+#eyedropper-target { position: absolute; left: 628px; top: 375px; width: 110px; height: 100px;
+  background: linear-gradient(90deg, #13579b 50%, #37a6cd 50%); }
 </style>
 <form id="form">
 <input id="text" type="text" name="text" pattern="[A-Z]{3}" required>
@@ -69,11 +73,11 @@ form { display: grid; grid-template-columns: repeat(3, 225px); row-gap: 8px; ali
 <input id="password" type="password">
 <input id="number" type="number" min="0" max="10" step="2">
 <input id="range" type="range" list="ticks">
-<input id="date" type="date" value="2024-02-29">
+<input id="date" type="date" lang="zh-CN" value="2024-02-29">
 <input id="month" type="month" value="1969-12">
 <input id="week" type="week" value="2020-W53">
-<input id="time" type="time" value="23:59:59.999" step="0.001">
-<input id="datetime-local" type="datetime-local" value="2024-03-31 03:12:00">
+<input id="time" type="time" lang="en-GB" value="23:59:59.999" step="0.001">
+<input id="datetime-local" type="datetime-local" lang="zh-CN" value="2024-03-31 03:12:00">
 <input id="color" type="color" list="colors">
 <input id="file" type="file" accept=".txt,text/plain" name="upload" required>
 <input id="checkbox" type="checkbox">
@@ -91,6 +95,17 @@ form { display: grid; grid-template-columns: repeat(3, 225px); row-gap: 8px; ali
 <datalist id="colors"><option value="red"><option value="blue"></datalist>
 <div><input id="swatch" type="color" value="#e66465"> <label for="swatch">Head<i id="swatch-baseline"
  style="display:inline-block; width:1px; height:1px"></i></label></div>
+<div><input id="clock" type="time" lang="en-GB" value="08:20" min="00:05" step="900">
+<input id="clock12" type="time" lang="en-US" value="14:20"></div>
+<div class="baseline-fixture" style="font:16px Arial; color:#000">
+<input id="baseline-text" type="text" value="H" style="width:45px;height:34px;font:16px Arial;color:#000;background:white;padding:0;border:0">
+<span id="baseline-label">H<i id="baseline-text-marker" style="display:inline-block;width:1px;height:1px"></i></span>
+<input id="baseline-number" type="number" value="123" style="height:34px;font:16px Arial;padding:0;border:0">
+<i id="baseline-number-marker" style="display:inline-block;width:1px;height:1px"></i>
+<input id="baseline-file" type="file" style="height:34px;font:16px Arial;padding:0;border:0">
+<i id="baseline-file-marker" style="display:inline-block;width:1px;height:1px"></i>
+</div>
+<div id="eyedropper-target"></div>
 """)
     shutil.copyfile(Path(__file__).with_name("inputs.gd"), project / "inputs.gd")
 

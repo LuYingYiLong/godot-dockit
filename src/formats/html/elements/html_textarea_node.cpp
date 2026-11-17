@@ -86,15 +86,7 @@ namespace docrender {
 	}
 
 	Vector2i HTMLTextAreaNode::resize_axes() const {
-		if (forms::is_disabled(*this) || !css().is_scroll_container()) return {};
-		switch (css().get_resize()) {
-			case litehtml::resize_both: return {1, 1};
-			case litehtml::resize_horizontal:
-			case litehtml::resize_inline: return {1, 0};
-			case litehtml::resize_vertical:
-			case litehtml::resize_block: return {0, 1};
-			default: return {};
-		}
+		return forms::is_disabled(*this) ? Vector2i() : html_resize_axes(css());
 	}
 
 	void HTMLTextAreaNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,
@@ -114,11 +106,8 @@ namespace docrender {
 
 		resize_handle = {};
 		if (resizable) {
-			Color grip = html_system_color(litehtml::system_color::gray_text, css().get_color_scheme());
-			grip.a *= 0.85f;
-			const float size = std::min({14.0f, border_box.size.x, border_box.size.y});
-			resize_handle = Rect2(border_box.get_end() - Vector2(size, size), Vector2(size, size));
-			container->draw_input_icon(HTMLControlIcon::resize, border_box, resize_handle, grip);
+			resize_handle = html_resize_grip(border_box);
+			container->draw_resize_grip(border_box, resize_handle);
 		}
 	}
 }

@@ -1,4 +1,5 @@
 #include "html_text_editor.h"
+#include "html_control_render_item.h"
 
 #include "formats/html/backend/litehtml_container.h"
 
@@ -399,14 +400,14 @@ namespace docrender {
 	}
 
 	void HTMLTextEditor::paint_single(LiteHTMLContainer& p_container, const Rect2& p_box,
-		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused, bool p_password) {
+		const litehtml::html_tag& p_host, const String& p_placeholder, bool p_focused, bool p_password, const String* p_preview) {
 		const auto& p_style = p_host.css();
 		viewport = p_box;
 		const auto color = p_style.get_color();
 		const auto from = selection_start();
 		const auto to = selection_end();
-		showing_placeholder = value.is_empty() && preedit.is_empty();
-		const String display = showing_placeholder ? p_placeholder :
+		showing_placeholder = !p_preview && value.is_empty() && preedit.is_empty();
+		const String display = p_preview ? *p_preview : showing_placeholder ? p_placeholder :
 			has_preedit() ? value.substr(0, from) + preedit + value.substr(to) : value;
 		const auto* placeholder_style = showing_placeholder ? p_host.get_placeholder_style() : nullptr;
 		const auto& text_style = placeholder_style ? *placeholder_style : p_style;
@@ -429,8 +430,9 @@ namespace docrender {
 		const bool use_shaped_metrics = shaped.is_valid() && !metrics.has_metric_overrides;
 		const float ascent = use_shaped_metrics ? shaped.line_ascent() : metrics.ascent;
 		const float descent = use_shaped_metrics ? shaped.line_descent() : metrics.descent;
-		const float baseline = p_box.get_center().y + (ascent - descent) * 0.5f;
-		text_origin = Vector2(p_box.position.x + align - horizontal_scroll, baseline);
+		const float baseline = HTMLControlRenderItem::paint_text_baseline(p_box.position.y, p_box.size.y,
+			metrics, shaped.is_valid() ? shaped.ascent : metrics.ascent);
+		text_origin = Vector2(p_box.position.x + align - (p_preview ? 0.0f : horizontal_scroll), baseline);
 		caret_rect = Rect2(text_origin.x + x, baseline - ascent, 1.0f, ascent + descent);
 		const auto ink = showing_placeholder ? placeholder_ink(p_host, placeholder_style) : color;
 		const auto server = text_server();

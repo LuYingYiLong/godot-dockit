@@ -4,11 +4,16 @@
 #include "formats/html/paint/html_paint_recorder.h"
 
 #include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/shader.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/viewport_texture.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 #include <algorithm>
@@ -20,6 +25,34 @@ using docrender::HTMLInputNode;
 
 namespace {
 	constexpr float panel_width = 234.0f;
+	constexpr float eyedropper_diameter = 112.0f;
+	constexpr int eyedropper_pixels = 11;
+
+	constexpr const char* eyedropper_shader = R"(
+shader_type canvas_item;
+render_mode unshaded;
+
+void fragment() {
+	vec2 cells = vec2(textureSize(TEXTURE, 0));
+	vec2 point = UV * cells;
+	vec2 from_center = abs(point - cells * 0.5);
+	vec2 grid = min(fract(point), 1.0 - fract(point));
+	float radius = cells.x * 0.5;
+	float distance_from_center = length(from_center);
+	float edge = smoothstep(radius - 0.18, radius - 0.10, distance_from_center);
+	float coverage = 1.0 - smoothstep(radius - 0.08, radius, distance_from_center);
+	float grid_line = 1.0 - smoothstep(0.025, 0.075, min(grid.x, grid.y));
+	float center = max(from_center.x, from_center.y);
+	float center_outer = smoothstep(0.43, 0.50, center) * (1.0 - smoothstep(0.61, 0.68, center));
+	float center_inner = smoothstep(0.33, 0.41, center) * (1.0 - smoothstep(0.49, 0.56, center));
+	vec3 red = vec3(0.88, 0.05, 0.05);
+
+	vec3 color = mix(texture(TEXTURE, UV).rgb, red, grid_line * 0.72);
+	color = mix(color, vec3(1.0), center_outer);
+	color = mix(color, red, max(edge, center_inner));
+	COLOR = vec4(color, coverage);
+}
+)";
 
 	Vector3 color_hsl(const Color& p_color, float p_hue) {
 		const float light = (std::max({ p_color.r, p_color.g, p_color.b }) +
@@ -53,8 +86,8 @@ namespace {
 		}
 	}
 
-	bool can_sample_screen() {
-		return DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_SCREEN_CAPTURE);
+	bool can_use_eyedropper() {
+		return DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_MOUSE);
 	}
 }
 
@@ -71,7 +104,7 @@ Rect2 HTMLLabel::ColorPickerState::part_rect(int p_part) const {
 		case well: return { 1, 1, 232, 137 };
 		case hue: return { 88, 154, 130, 12 };
 		case opacity: return alpha ? Rect2(24, 192, 186, 14) : Rect2();
-		case eyedropper: return can_sample_screen() ? Rect2(5, 145, 32, 32) : Rect2();
+		case eyedropper: return can_use_eyedropper() ? Rect2(5, 145, 32, 32) : Rect2();
 		case format: return { 18, alpha ? 249.0f : 217.0f, 198, 25 };
 		default:
 			if (p_part >= channel && p_part < preset) {
@@ -125,32 +158,119 @@ Error HTMLLabel::show_color_picker() {
 }
 
 void HTMLLabel::update_color_picker() {
-	const auto anchor = layout->get_element_scroll_bounds(picker_input);
-	const Rect2 visible = get_visible_rect();
-	if (!input_picker_valid() || !anchor || !visible.intersects(*anchor)) {
-		close_input_picker();
-		return;
-	}
-	const Transform2D inverse = get_global_transform_with_canvas().affine_inverse();
-	const Rect2 owner_box = inverse.xform(canvas->get_global_transform_with_canvas().xform(*anchor));
-	const Rect2 limits = inverse.xform(get_viewport()->get_visible_rect());
-	if (!limits.has_area()) {
-		close_input_picker();
-		return;
-	}
-	const Vector2 size = color_picker.size();
-	const float scale = std::min({ 1.0f, limits.size.x / size.x, limits.size.y / size.y });
-	const Vector2 visible_size = size * scale;
-	Vector2 pos(owner_box.position.x, owner_box.get_end().y);
-	if (pos.y + visible_size.y > limits.get_end().y && owner_box.position.y - limits.position.y > limits.get_end().y - pos.y) {
-		pos.y = owner_box.position.y - visible_size.y;
-	}
-	pos = pos.clamp(limits.position, limits.position.max(limits.get_end() - visible_size));
-	color_picker_canvas->set_position(pos.floor());
-	color_picker_canvas->set_size(size);
-	color_picker_canvas->set_scale(Vector2(scale, scale));
-	color_picker_canvas->set_visible(!color_picker.sampling);
+	if (!place_input_picker_canvas(*color_picker_canvas, color_picker.size())) return;
+	if (color_eyedropper && color_eyedropper->viewport != get_viewport()->get_visible_rect()) stop_color_eyedropper();
+	color_picker_canvas->show();
 	color_picker_canvas->queue_redraw();
+}
+
+Color HTMLLabel::ColorEyedropper::sample(const Vector2i& p_pixel) const {
+	const Vector2i pos = p_pixel.clamp(Vector2i(), frame->get_size() - Vector2i(1, 1));
+	const Color color = frame->get_pixelv(pos);
+	return linear ? color.linear_to_srgb() : color;
+}
+
+void HTMLLabel::start_color_eyedropper(const Vector2& p_position) {
+	if (!can_use_eyedropper() || color_eyedropper) return;
+	const auto* viewport = get_viewport();
+	const Rect2 bounds = viewport->get_visible_rect();
+	if (!bounds.has_area()) return;
+	// Use one frame for both the lens and the selected color, captured before drawing the lens.
+	const auto texture = viewport->get_texture();
+	const auto frame = texture.is_valid() ? texture->get_image() : Ref<Image>();
+	if (frame.is_null() || frame->is_empty()) return;
+
+	if (!color_eyedropper_canvas) {
+		color_eyedropper_canvas = memnew(TextureRect);
+		color_eyedropper_canvas->set_name("_HTMLColorEyedropper");
+		color_eyedropper_canvas->set_mouse_filter(MOUSE_FILTER_IGNORE);
+		color_eyedropper_canvas->set_z_index(color_picker_canvas->get_z_index() - 1);
+		color_eyedropper_canvas->set_texture_filter(TEXTURE_FILTER_NEAREST);
+		color_eyedropper_canvas->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
+		color_eyedropper_canvas->set_size(Vector2(eyedropper_diameter, eyedropper_diameter));
+		Ref<Shader> shader;
+		shader.instantiate();
+		shader->set_code(eyedropper_shader);
+		Ref<ShaderMaterial> material;
+		material.instantiate();
+		material->set_shader(shader);
+		color_eyedropper_canvas->set_material(material);
+		color_eyedropper_canvas->hide();
+		add_child(color_eyedropper_canvas, false, INTERNAL_MODE_BACK);
+	}
+	auto* display = DisplayServer::get_singleton();
+	const auto previous = display->mouse_get_mode();
+	const auto hidden = previous == DisplayServer::MOUSE_MODE_CONFINED || previous == DisplayServer::MOUSE_MODE_CONFINED_HIDDEN ?
+		DisplayServer::MOUSE_MODE_CONFINED_HIDDEN : DisplayServer::MOUSE_MODE_HIDDEN;
+	color_eyedropper.emplace(ColorEyedropper{frame, bounds, previous, hidden, viewport->is_using_hdr_2d()});
+	display->mouse_set_mode(hidden);
+	move_color_eyedropper(p_position);
+}
+
+void HTMLLabel::stop_color_eyedropper() {
+	if (!color_eyedropper) return;
+	const auto session = std::exchange(color_eyedropper, std::nullopt);
+	color_eyedropper_canvas->hide();
+	color_eyedropper_canvas->set_texture({});
+	auto* display = DisplayServer::get_singleton();
+	if (display && display->mouse_get_mode() == session->hidden_mode) display->mouse_set_mode(session->previous_mode);
+}
+
+void HTMLLabel::move_color_eyedropper(const Vector2& p_position) {
+	auto& session = *color_eyedropper;
+	if (get_viewport()->get_visible_rect() != session.viewport) {
+		stop_color_eyedropper();
+		return;
+	}
+	const auto transform = get_global_transform_with_canvas();
+	if (!session.viewport.has_point(p_position) || transform.determinant() == 0.0f) {
+		color_eyedropper_canvas->hide();
+		session.pixel = Vector2i(-1, -1);
+		return;
+	}
+	const Vector2 image_position = (p_position - session.viewport.position) * Vector2(session.frame->get_size()) / session.viewport.size;
+	const Vector2i pixel = Vector2i(image_position.floor()).clamp(Vector2i(), session.frame->get_size() - Vector2i(1, 1));
+	if (session.pixel != pixel) {
+		session.pixel = pixel;
+		const auto tile = Image::create_empty(eyedropper_pixels, eyedropper_pixels, false, Image::FORMAT_RGBA8);
+		const Vector2i start = pixel - Vector2i(eyedropper_pixels / 2, eyedropper_pixels / 2);
+		for (int y = 0; y < eyedropper_pixels; ++y) {
+			for (int x = 0; x < eyedropper_pixels; ++x) {
+				tile->set_pixel(x, y, session.sample(start + Vector2i(x, y)));
+			}
+		}
+		const Ref<ImageTexture> texture = color_eyedropper_canvas->get_texture();
+		if (texture.is_valid()) texture->update(tile);
+		else color_eyedropper_canvas->set_texture(ImageTexture::create_from_image(tile));
+	}
+	const Vector2 center = transform.affine_inverse().xform(p_position);
+	color_eyedropper_canvas->set_position(center - Vector2(eyedropper_diameter / 2, eyedropper_diameter / 2));
+	color_eyedropper_canvas->show();
+}
+
+bool HTMLLabel::handle_color_eyedropper_input(const Ref<InputEvent>& p_event) {
+	const Ref<InputEventKey> key = p_event;
+	if (key.is_valid()) {
+		const auto code = key->get_keycode() == KEY_NONE ? key->get_physical_keycode() : key->get_keycode();
+		if (key->is_pressed() && code == KEY_ESCAPE) stop_color_eyedropper();
+		return true;
+	}
+	const Ref<InputEventMouse> mouse = p_event;
+	if (mouse.is_null()) return false;
+	move_color_eyedropper(mouse->get_position());
+	if (!color_eyedropper) return true;
+	const Ref<InputEventMouseButton> button = p_event;
+	if (button.is_null() || button->get_button_index() != MOUSE_BUTTON_LEFT) return true;
+	auto& session = *color_eyedropper;
+	if (button->is_pressed()) {
+		session.pressed = session.pixel.x >= 0;
+	} else if (std::exchange(session.pressed, false) && !button->is_canceled() && session.pixel.x >= 0) {
+		const auto sample = session.sample(session.pixel);
+		stop_color_eyedropper();
+		update_color_picker_value(color_value(Color(sample.r, sample.g, sample.b, color_picker.a)));
+		select_color_picker_part(ColorPickerState::well);
+	}
+	return true;
 }
 
 void HTMLLabel::draw_color_picker() {
@@ -223,10 +343,9 @@ void HTMLLabel::draw_color_picker() {
 	if (state.active == ColorPickerState::format) surface.draw_rect(format, focus, false, 1);
 	const char* labels[] = { "RGB", "HSL", "HEX" };
 	draw_text(labels[state.format_index], format, ink);
-	const auto up = layout->get_control_icon(HTMLControlIcon::up);
-	const auto down = layout->get_control_icon(HTMLControlIcon::down);
-	if (up.is_valid()) surface.draw_texture_rect(up, Rect2(format.get_end().x - 20, format.position.y + 2, 14, 12), false, ink);
-	if (down.is_valid()) surface.draw_texture_rect(down, Rect2(format.get_end().x - 20, format.position.y + 10, 14, 12), false, ink);
+	const auto format_icon = layout->get_control_icon(HTMLControlIcon::unfold_more);
+	if (format_icon.is_valid()) surface.draw_texture_rect(format_icon,
+		Rect2(format.get_end().x - 23, format.get_center().y - 9, 18, 18), false, ink);
 	for (int i = 0; i < int(state.presets.size()); ++i) {
 		const int part = ColorPickerState::preset + i;
 		const Rect2 tile = state.part_rect(part);
@@ -322,32 +441,19 @@ bool HTMLLabel::handle_color_picker_input(const Ref<InputEvent>& p_event) {
 		close_input_picker();
 		return false;
 	}
+	if (color_eyedropper) return handle_color_eyedropper_input(p_event);
 	using Part = ColorPickerState;
 	auto& state = color_picker;
 	const Ref<InputEventMouse> mouse = p_event;
 	const Ref<InputEventMouseButton> button = p_event;
 	const Ref<InputEventMouseMotion> motion = p_event;
 	const Ref<InputEventKey> key = p_event;
-	if (state.sampling) {
-		if (key.is_valid() && key->is_pressed() && key->get_keycode() == KEY_ESCAPE) {
-			state.sampling = false;
-			update_color_picker();
-		} else if (button.is_valid() && button->get_button_index() == MOUSE_BUTTON_LEFT && button->is_pressed()) {
-			auto* display = DisplayServer::get_singleton();
-			const Color picked = display->screen_get_pixel(display->mouse_get_position());
-			state.sampling = false;
-			update_color_picker_value(color_value(Color(picked.r, picked.g, picked.b, state.a)));
-			update_color_picker();
-		}
-		return mouse.is_valid() || key.is_valid();
-	}
 	const auto activate = [&](int part) {
 		if (part == Part::format) {
 			state.format_index = (state.format_index + 1) % 3;
 			color_picker_canvas->queue_redraw();
-		} else if (part == Part::eyedropper && can_sample_screen()) {
-			state.sampling = true;
-			color_picker_canvas->hide();
+		} else if (part == Part::eyedropper) {
+			start_color_eyedropper(mouse.is_valid() ? mouse->get_position() : get_viewport()->get_mouse_position());
 		} else if (part >= Part::preset) {
 			update_color_picker_value(state.presets[part - Part::preset]);
 			finish_color_picker(true);

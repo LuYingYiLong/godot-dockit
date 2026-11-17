@@ -172,6 +172,8 @@ namespace docrender {
 	};
 	HTMLScrollbar make_html_scrollbar(const godot::Rect2& p_track, int p_axis,
 		godot::real_t p_page, godot::real_t p_range, godot::real_t p_offset);
+	godot::Vector2i html_resize_axes(const css::ComputedStyle& p_style);
+	godot::Rect2 html_resize_grip(const godot::Rect2& p_box);
 
 	struct HTMLScrollbarDrag {
 		std::weak_ptr<litehtml::element> element;
@@ -197,6 +199,7 @@ namespace docrender {
 		bool flattens_3d_context = false;
 
 		std::array<HTMLScrollbar, 2> scrollbars() const; // 计算两个轴的覆盖式滚动条
+		godot::Rect2 resize_grip() const;
 		bool contains_visible_point(const godot::Vector2& p_point) const;
 		bool has_visible_area(const godot::Rect2& p_box) const;
 	};
@@ -216,7 +219,7 @@ namespace docrender {
 		bool group_effects = false;
 		bool element_blending = false;
 		bool backdrop_filtering = false;
-		bool scrollbars = false;
+		bool overflow_controls = false;
 		bool top_layer = false;
 		bool indexing_top_layer = false;
 		godot::Rect2 viewport;
@@ -251,7 +254,7 @@ namespace docrender {
 		bool has_backdrop_filtering() const { return backdrop_filtering; }
 		bool has_sticky() const { return sticky; }
 		bool uses_visual_hit_order() const { return transforms || sticky || group_effects || top_layer; }
-		bool has_scrollbars() const { return scrollbars; }
+		bool has_overflow_controls() const { return overflow_controls; }
 		godot::Vector2 extend_overflow(const godot::Vector2& p_size) const;
 	};
 }

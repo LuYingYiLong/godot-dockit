@@ -1,25 +1,13 @@
 #include "html_label.h"
 
 #include "formats/html/elements/html_input_node.h"
-#include "formats/html/paint/html_paint_recorder.h"
 
-#include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_dialog.hpp>
-#include <godot_cpp/classes/grid_container.hpp>
-#include <godot_cpp/classes/h_box_container.hpp>
-#include <godot_cpp/classes/label.hpp>
-#include <godot_cpp/classes/popup_panel.hpp>
-#include <godot_cpp/classes/spin_box.hpp>
-#include <godot_cpp/classes/style_box_flat.hpp>
-#include <godot_cpp/classes/theme.hpp>
-#include <godot_cpp/classes/time.hpp>
-#include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 #include <algorithm>
-#include <cmath>
 
 using namespace godot;
 using docrender::HTMLInputNode;
@@ -60,14 +48,6 @@ namespace {
 		}
 		return filters;
 	}
-
-	Button* picker_button(Control& p_parent, const String& p_text, const Callable& p_callback) {
-		auto* button = memnew(Button);
-		button->set_text(p_text);
-		button->connect("pressed", p_callback);
-		p_parent.add_child(button);
-		return button;
-	}
 }
 
 bool HTMLLabel::input_picker_valid() const {
@@ -78,23 +58,61 @@ bool HTMLLabel::input_picker_valid() const {
 		!docrender::forms::is_disabled(*input) && !(input->supports_readonly() && input->get_attr("readonly"));
 }
 
+bool HTMLLabel::is_time_picker_open() const {
+	return time_picker.kind != calendar::Kind::none;
+}
+
+bool HTMLLabel::is_canvas_picker_open() const {
+	return picker_type == "color" || is_time_picker_open();
+}
+
+bool HTMLLabel::place_input_picker_canvas(Control& p_surface, const Vector2& p_size) {
+	const auto anchor = layout->get_element_scroll_bounds(picker_input);
+	if (!input_picker_valid() || !anchor || !get_visible_rect().intersects(*anchor)) {
+		close_input_picker();
+		return false;
+	}
+	const Transform2D inverse = get_global_transform_with_canvas().affine_inverse();
+	const Rect2 owner_box = inverse.xform(canvas->get_global_transform_with_canvas().xform(*anchor));
+	const Rect2 limits = inverse.xform(get_viewport()->get_visible_rect());
+	if (!limits.has_area()) {
+		close_input_picker();
+		return false;
+	}
+	const auto scale = std::min<real_t>({ 1, limits.size.x / p_size.x, limits.size.y / p_size.y });
+	const Vector2 visible_size = p_size * scale;
+	Vector2 position(owner_box.position.x, owner_box.get_end().y);
+	if (position.y + visible_size.y > limits.get_end().y &&
+		owner_box.position.y - limits.position.y > limits.get_end().y - position.y) {
+		position.y = owner_box.position.y - visible_size.y;
+	}
+	position = position.clamp(limits.position, limits.position.max(limits.get_end() - visible_size));
+	p_surface.set_position(position.floor());
+	p_surface.set_size(p_size);
+	p_surface.set_scale(Vector2(scale, scale));
+	return true;
+}
+
 void HTMLLabel::close_input_picker() {
 	const bool closes_color = picker_type == "color";
+	const bool closes_clock = is_time_picker_open();
 	if (closes_color) {
+		stop_color_eyedropper();
 		if (const auto node = picker_input->get_input()) node->set_color_preview(std::nullopt);
 		if (color_picker_canvas) color_picker_canvas->hide();
 		color_picker = {};
 		layout->repaint_input();
 	}
+	if (closes_clock) {
+		if (const auto node = picker_input->get_input()) node->set_time_preview(std::nullopt);
+		if (time_picker_canvas) time_picker_canvas->hide();
+		time_picker = {};
+		layout->repaint_input();
+	}
 	++picker_sequence;
 	picker_input.unref();
 	picker_type = String();
-	if (closes_color && canvas) canvas->update_focus_mode();
-	picker_content = nullptr;
-	if (auto* popup = std::exchange(input_popup, nullptr)) {
-		popup->hide();
-		popup->queue_free();
-	}
+	if ((closes_color || closes_clock) && canvas) canvas->update_focus_mode();
 	if (auto* dialog = std::exchange(file_dialog, nullptr)) {
 		dialog->hide();
 		dialog->queue_free();
@@ -128,76 +146,7 @@ Error HTMLLabel::open_input_picker(const Ref<HTMLInputElement>& p_element) {
 	picker_reset = node->editor.get_reset_version();
 	if (kind == HTMLInputNode::Type::FILE) return open_file_picker(picker_sequence);
 	if (kind == HTMLInputNode::Type::COLOR) return show_color_picker();
-
-	const auto bounds = layout->get_element_scroll_bounds(p_element);
-	if (!bounds) {
-		close_input_picker();
-		return ERR_UNAVAILABLE;
-	}
-	input_popup = memnew(PopupPanel);
-	input_popup->set_name("_HTMLInputPicker");
-	input_popup->connect("popup_hide", callable_mp(this, &HTMLLabel::on_input_picker_closed).bind(picker_sequence),
-		Object::CONNECT_DEFERRED);
-	add_child(input_popup, false, INTERNAL_MODE_BACK);
-	const auto scheme = layout->get_element_color_scheme(p_element);
-	Ref<StyleBoxFlat> panel;
-	panel.instantiate();
-	panel->set_bg_color(docrender::html_system_color(litehtml::system_color::menu_face, scheme));
-	panel->set_border_color(docrender::html_system_color(litehtml::system_color::menu_border, scheme));
-	panel->set_border_width_all(1);
-	panel->set_corner_radius_all(8);
-	for (const auto side : { SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM }) panel->set_content_margin(side, 8);
-	input_popup->add_theme_stylebox_override("panel", panel);
-	picker_content = memnew(VBoxContainer);
-	Ref<Theme> theme;
-	theme.instantiate();
-	const auto ink = docrender::html_system_color(litehtml::system_color::canvas_text, scheme);
-	for (const char* type : { "Button", "Label", "LineEdit" }) {
-		theme->set_color("font_color", type, ink);
-		theme->set_color("font_hover_color", type, ink);
-		theme->set_color("font_pressed_color", type, ink);
-		theme->set_color("font_focus_color", type, ink);
-		theme->set_color("icon_normal_color", type, ink);
-		theme->set_color("icon_hover_color", type, ink);
-		theme->set_color("icon_pressed_color", type, ink);
-		theme->set_color("caret_color", type, ink);
-	}
-	const auto button_style = [&](litehtml::system_color p_color) {
-		Ref<StyleBoxFlat> box;
-		box.instantiate();
-		box->set_bg_color(docrender::html_system_color(p_color, scheme));
-		box->set_corner_radius_all(4);
-		for (const auto side : { SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM }) box->set_content_margin(side, 4);
-		return box;
-	};
-	theme->set_stylebox("normal", "Button", button_style(litehtml::system_color::button_face));
-	theme->set_stylebox("hover", "Button", button_style(litehtml::system_color::menu_hover));
-	theme->set_stylebox("pressed", "Button", button_style(litehtml::system_color::list_selected));
-	theme->set_stylebox("normal", "LineEdit", button_style(litehtml::system_color::field));
-	picker_content->set_theme(theme);
-	input_popup->add_child(picker_content);
-	const double current = node->value_as_number();
-	picker_date = std::isfinite(current) ? calendar::parts(date_kind, current) :
-		Time::get_singleton()->get_datetime_dict_from_system();
-	if (!std::isfinite(current) && date_kind == calendar::Kind::time) {
-		picker_date["hour"] = 0;
-		picker_date["minute"] = 0;
-		picker_date["second"] = 0;
-	}
-	build_time_picker();
-	const Vector2i minimum = Vector2i(picker_content->get_combined_minimum_size().ceil()) + Vector2i(16, 16);
-	const bool embedded = get_viewport()->is_embedding_subwindows();
-	const Transform2D transform = embedded ? canvas->get_global_transform_with_canvas() : canvas->get_screen_transform();
-	const Vector2 base = transform.xform(bounds->get_end());
-	const Vector2 top = transform.xform(bounds->position);
-	const Rect2i visible = embedded ? Rect2i(get_viewport()->get_visible_rect()) :
-		DisplayServer::get_singleton()->screen_get_usable_rect(get_window()->get_current_screen());
-	Vector2i position(top.x, base.y);
-	if (position.y + minimum.y > visible.get_end().y && top.y > visible.position.y) position.y = int(top.y) - minimum.y;
-	position.x = std::clamp(position.x, visible.position.x, std::max(visible.position.x, visible.get_end().x - minimum.x));
-	position.y = std::clamp(position.y, visible.position.y, std::max(visible.position.y, visible.get_end().y - minimum.y));
-	input_popup->popup(Rect2i(position, minimum));
-	return OK;
+	return show_clock_picker();
 }
 
 Error HTMLLabel::open_file_picker(uint64_t p_sequence) {
@@ -275,117 +224,6 @@ void HTMLLabel::files_selected(const PackedStringArray& p_paths, uint64_t p_sequ
 		input->type() == HTMLInputNode::Type::FILE && input->editor.get_reset_version() == reset) {
 		label->emit_signal("input_committed", element);
 	}
-}
-
-void HTMLLabel::navigate_time_picker(int p_delta) {
-	if (!input_picker_valid()) return;
-	const auto kind = picker_input->get_input()->time_kind();
-	const int64_t year = picker_date["year"], month = picker_date["month"];
-	const int64_t number = (year - 1) * 12 + month - 1 + p_delta * (kind == calendar::Kind::month ? 12 : 1);
-	if (number < 0 || number >= 275760 * 12LL) return;
-	picker_date["year"] = number / 12 + 1;
-	picker_date["month"] = number % 12 + 1;
-	picker_date["day"] = 1;
-	build_time_picker();
-}
-
-void HTMLLabel::choose_time_picker_day(int p_day) {
-	if (!input_picker_valid()) return;
-	if (picker_input->get_input()->time_kind() == calendar::Kind::month) {
-		picker_date["month"] = p_day;
-		picker_date["day"] = 1;
-	} else {
-		picker_date["day"] = p_day;
-	}
-	if (picker_input->get_input()->time_kind() == calendar::Kind::local) build_time_picker();
-	else commit_time_picker();
-}
-
-void HTMLLabel::change_time_picker_part(double p_value, const String& p_part) {
-	picker_date[p_part] = static_cast<int64_t>(p_value);
-}
-
-void HTMLLabel::build_time_picker() {
-	while (picker_content->get_child_count()) {
-		auto* child = picker_content->get_child(0);
-		picker_content->remove_child(child);
-		child->queue_free();
-	}
-	const auto node = picker_input->get_input();
-	const auto kind = node->time_kind();
-	if (kind != calendar::Kind::time) {
-		auto* header = memnew(HBoxContainer);
-		picker_content->add_child(header);
-		auto* prev = picker_button(*header, "", callable_mp(this, &HTMLLabel::navigate_time_picker).bind(-1));
-		prev->set_button_icon(layout->get_control_icon(docrender::HTMLControlIcon::left));
-		prev->set_tooltip_text("Previous");
-		auto* caption = memnew(Label);
-		const int64_t year = picker_date["year"], month = picker_date["month"];
-		caption->set_text(kind == calendar::Kind::month ? String::num_int64(year) : vformat("%04d-%02d", year, month));
-		caption->set_h_size_flags(SIZE_EXPAND_FILL);
-		caption->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-		header->add_child(caption);
-		auto* next = picker_button(*header, "", callable_mp(this, &HTMLLabel::navigate_time_picker).bind(1));
-		next->set_button_icon(layout->get_control_icon(docrender::HTMLControlIcon::right));
-		next->set_tooltip_text("Next");
-		auto* grid = memnew(GridContainer);
-		grid->set_columns(kind == calendar::Kind::month ? 3 : 7);
-		picker_content->add_child(grid);
-		const int64_t selected_day = picker_date["day"];
-		if (kind != calendar::Kind::month) {
-			for (const char* weekday : { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }) {
-				auto* label = memnew(Label);
-				label->set_text(weekday);
-				label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-				grid->add_child(label);
-			}
-			const auto first = calendar::parse(calendar::Kind::date, vformat("%04d-%02d-01", year, month));
-			if (first) {
-				const int offset = (static_cast<int64_t>(*first / calendar::day) % 7 + 10) % 7;
-				for (int i = 0; i < offset; ++i) grid->add_child(memnew(Control));
-			}
-		}
-		Button* selected = nullptr;
-		for (int day = 1; day <= (kind == calendar::Kind::month ? 12 : 31); ++day) {
-			const auto date = calendar::parse(calendar::Kind::date, vformat("%04d-%02d-%02d", year, month, day));
-			if (kind != calendar::Kind::month && !date) break;
-			auto* cell = picker_button(*grid, String::num_int64(day), callable_mp(this, &HTMLLabel::choose_time_picker_day).bind(day));
-			cell->set_custom_minimum_size(Vector2(30, 26));
-			if (kind == calendar::Kind::week && date) cell->set_tooltip_text(calendar::format(kind, *date));
-			if (day == (kind == calendar::Kind::month ? month : selected_day)) {
-				cell->set_toggle_mode(true);
-				cell->set_pressed_no_signal(true);
-				selected = cell;
-			}
-		}
-		if (selected) callable_mp(static_cast<Control*>(selected), &Control::grab_focus).call_deferred();
-	}
-	if (kind == calendar::Kind::time || kind == calendar::Kind::local) {
-		auto* clock = memnew(HBoxContainer);
-		picker_content->add_child(clock);
-		const auto add_spin = [&](const String& key, const char* p_caption, int p_max, int p_step) {
-			auto* spin = memnew(SpinBox);
-			spin->set_min(0);
-			spin->set_max(p_max);
-			spin->set_step(p_step);
-			spin->set_prefix(p_caption);
-			spin->set_value(double(picker_date.get(key, 0)));
-			spin->connect("value_changed", callable_mp(this, &HTMLLabel::change_time_picker_part).bind(key));
-			clock->add_child(spin);
-		};
-		add_spin("hour", "h", 23, 1);
-		add_spin("minute", "m", 59, 1);
-		const double step = node->step_scale();
-		const bool fractions = step < 1000 || std::fmod(step, 1000.) != 0 ||
-			int64_t(picker_date.get("millisecond", 0)) != 0;
-		if (fractions || std::fmod(step, 60000.) != 0 || int64_t(picker_date.get("second", 0))) add_spin("second", "s", 59, 1);
-		if (fractions) add_spin("millisecond", "ms", 999, 1);
-		picker_button(*picker_content, "OK", callable_mp(this, &HTMLLabel::commit_time_picker));
-	}
-	auto* actions = memnew(HBoxContainer);
-	picker_content->add_child(actions);
-	picker_button(*actions, "Clear", callable_mp(this, &HTMLLabel::commit_picker_value).bind(String()));
-	picker_button(*actions, "Cancel", callable_mp(this, &HTMLLabel::close_input_picker));
 }
 
 void HTMLLabel::commit_time_picker() {

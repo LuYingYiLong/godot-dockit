@@ -537,7 +537,7 @@ void litehtml::render_item::render_positioned(render_type rt)
 			{
 				if (positioned_ratio) return el->height();
 				auto max_height = el->css().get_max_height();
-				auto min_height = el->css().get_max_height();
+				auto min_height = el->css().get_min_height();
 				if(!max_height.is_predefined())
 				{
 					pixel_t max_height_value = max_height.calc_percent(containing_block_size.height);
@@ -554,8 +554,7 @@ void litehtml::render_item::render_positioned(render_type rt)
 						height = min_height_value;
 					}
 				}
-				height += el->content_offset_height();
-				return height;
+				return std::max<pixel_t>(0, height - el->box_sizing_height()) + el->content_offset_height();
 			};
 
 			auto fix_width_min_max = [&] (pixel_t width)
@@ -579,8 +578,7 @@ void litehtml::render_item::render_positioned(render_type rt)
 						width = min_width_value;
 					}
 				}
-				width += el->content_offset_width();
-				return width;
+				return std::max<pixel_t>(0, width - el->box_sizing_width()) + el->content_offset_width();
 			};
 
 			pixel_t bottom = 0;

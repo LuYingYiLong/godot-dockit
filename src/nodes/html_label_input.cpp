@@ -708,7 +708,20 @@ void HTMLLabelCanvas::on_ime_update() {
 }
 
 
-bool HTMLLabelCanvas::begin_textarea_drag(const Ref<HTMLElement>& p_element, const Vector2& p_point) {
+bool HTMLLabelCanvas::begin_resize_drag(const Vector2& p_point) {
+	label->layout->flush_input_paint();
+	const auto target = label->layout->resize_grip_at(p_point);
+	if (!target || target->element.is_null()) return false;
+	const Vector2 local = target->inverse.xform(p_point);
+	if (!local.is_finite()) return false;
+	cancel_press();
+	const auto inverse = target->inverse * Transform2D(0, label->get_visible_rect().position);
+	box_drag.emplace(BoxDrag{target->element, target->axes, inverse, local, target->size});
+	update_cursor(p_point);
+	return true;
+}
+
+bool HTMLLabelCanvas::begin_textarea_scrollbar_drag(const Ref<HTMLElement>& p_element, const Vector2& p_point) {
 	const auto node = label->layout->text_control(p_element);
 	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
 	if (!textarea) return false;
@@ -717,45 +730,31 @@ bool HTMLLabelCanvas::begin_textarea_drag(const Ref<HTMLElement>& p_element, con
 	if (!inverse) return false;
 	const Vector2 local = inverse->xform(p_point);
 	if (!local.is_finite()) return false;
-	const auto axes = textarea->resize_axes();
 	const auto scrollbar = textarea->editor.scrollbar_at(local);
-	const bool resize = axes != Vector2i() && textarea->get_resize_handle().has_point(local);
-	if (!resize && !scrollbar) return false;
+	if (!scrollbar) return false;
 
 	cancel_press();
-	textarea_drag.emplace();
-	auto& drag = *textarea_drag;
+	auto& drag = box_drag.emplace();
 	drag.element = p_element;
-	drag.inverse = *inverse * Transform2D(0, label->get_visible_rect().position);
-	drag.start_point = local;
-	if (resize) {
-		drag.axes = axes;
-		drag.start_size = textarea->get_border_size();
-		if (textarea->css().get_box_sizing() == litehtml::box_sizing_content_box) {
-			drag.start_size -= textarea->get_border_extras();
-		}
-	} else {
-		drag.vertical_scrollbar = *scrollbar;
-		drag.scrollbar_grab = textarea->editor.scrollbar_grab_offset(*scrollbar, local);
-		label->layout->set_scrollbar_pressed(docrender::HTMLScrollbarDrag{node, *scrollbar ? 1 : 0, 0});
-		move_textarea_drag(p_point);
-	}
+	drag.vertical_scrollbar = *scrollbar;
+	drag.scrollbar_grab = textarea->editor.scrollbar_grab_offset(*scrollbar, local);
+	label->layout->set_scrollbar_pressed(docrender::HTMLScrollbarDrag{node, *scrollbar ? 1 : 0, 0});
+	move_box_drag(p_point);
 	update_cursor(p_point);
 	return true;
 }
 
-void HTMLLabelCanvas::move_textarea_drag(const Vector2& p_point) {
-	if (!textarea_drag) return;
-	const auto& drag = *textarea_drag;
-	const auto node = label->layout->text_control(drag.element);
-	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-	if (!textarea || docrender::forms::is_disabled(*textarea)) {
-		textarea_drag.reset();
-		label->layout->set_scrollbar_pressed(std::nullopt);
-		resize_pending.reset();
-		return;
-	}
+void HTMLLabelCanvas::move_box_drag(const Vector2& p_point) {
+	if (!box_drag) return;
+	const auto& drag = *box_drag;
 	if (drag.axes == Vector2i()) {
+		const auto node = label->layout->text_control(drag.element);
+		const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
+		if (!textarea || docrender::forms::is_disabled(*textarea)) {
+			box_drag.reset();
+			label->layout->set_scrollbar_pressed(std::nullopt);
+			return;
+		}
 		if (const auto local = label->layout->input_local_point(*drag.element.ptr(), p_point)) {
 			node->editor.drag_scrollbar(drag.vertical_scrollbar, *local, drag.scrollbar_grab);
 			label->layout->repaint_input();
@@ -771,25 +770,18 @@ void HTMLLabelCanvas::move_textarea_drag(const Vector2& p_point) {
 	resize_pending = size;
 	if (!resize_queued) {
 		resize_queued = true;
-		callable_mp(this, &HTMLLabelCanvas::flush_textarea_resize).call_deferred();
+		callable_mp(this, &HTMLLabelCanvas::flush_box_resize).call_deferred();
 	}
 }
 
-void HTMLLabelCanvas::flush_textarea_resize() {
+void HTMLLabelCanvas::flush_box_resize() {
 	resize_queued = false;
 	const auto size = std::exchange(resize_pending, std::nullopt);
-	if (!label || !textarea_drag || !size) return;
-	const auto& drag = *textarea_drag;
-	if (const auto node = label->layout->text_control(drag.element)) {
-		const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-		const auto axes = textarea ? textarea->resize_axes() : Vector2i();
-		const auto allowed_axes = Vector2i(drag.axes.x && axes.x, drag.axes.y && axes.y);
-		if (allowed_axes != Vector2i()) {
-			applying_textarea_resize = true;
-			label->layout->resize_textarea(drag.element, *size, allowed_axes);
-			applying_textarea_resize = false;
-		}
-	}
+	if (!label || !box_drag || !size) return;
+	const auto& drag = *box_drag;
+	applying_box_resize = true;
+	label->layout->resize_element(drag.element, *size, drag.axes);
+	applying_box_resize = false;
 }
 
 void HTMLLabelCanvas::update_input_autoscroll() {
@@ -809,18 +801,12 @@ void HTMLLabelCanvas::update_input_autoscroll() {
 	}
 }
 
-std::optional<Control::CursorShape> HTMLLabelCanvas::textarea_resize_cursor(const Vector2& p_point) const {
+std::optional<Control::CursorShape> HTMLLabelCanvas::box_resize_cursor(const Vector2& p_point) const {
 	Vector2i axes;
-	if (textarea_drag) {
-		axes = textarea_drag->axes;
-	} else {
-		const auto handle = label->layout->get_element_at(p_point);
-		const auto node = label->layout->text_control(handle);
-		const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-		if (!textarea) return std::nullopt;
-		const auto local = label->layout->input_local_point(*handle.ptr(), p_point);
-		if (!local || !textarea->get_resize_handle().has_point(*local)) return std::nullopt;
-		axes = textarea->resize_axes();
+	if (box_drag) {
+		axes = box_drag->axes;
+	} else if (const auto target = label->layout->resize_grip_at(p_point)) {
+		axes = target->axes;
 	}
 	if (axes.x && axes.y) return CURSOR_FDIAGSIZE;
 	if (axes.x) return CURSOR_HSIZE;

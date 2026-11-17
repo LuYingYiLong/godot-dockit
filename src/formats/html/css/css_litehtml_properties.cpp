@@ -73,12 +73,6 @@ namespace {
 		}
 	};
 
-	bool is_toggle(const html_tag& host) {
-		if (host.tag() != _input_) return false;
-		const auto type = docrender::css::detail::lowcase(std::string(host.get_attr("type", "")));
-		return type == "checkbox" || type == "radio";
-	}
-
 	bool suppress_contents_display(const html_tag& element) {
 		static const auto svg = _id("svg");
 		static const auto wbr = _id("wbr");
@@ -150,7 +144,9 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 	const auto root = doc->root();
 	const bool control = docrender::css::detail::is_one_of(element->tag(), _input_, _textarea_, _select_, _button_);
 	const bool native = control && uses_native_chrome(*element, parent.get());
-	const bool toggle = is_toggle(*element);
+	const auto input_type = element->tag() == _input_ ?
+		docrender::css::detail::lowcase(std::string(element->get_attr("type", ""))) : std::string();
+	const bool toggle = input_type == "checkbox" || input_type == "radio";
 	const bool replace_content = (!control || toggle) &&
 		!docrender::css::detail::is_one_of(element->tag(), marker_tag(), _progress_, _meter_);
 	const ElementStyleInput input{*element, control && !native, *doc->container(), keyframe};
@@ -159,16 +155,6 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 		viewport, root ? &root->css().get_font_metrics() : nullptr,
 		element->is_root(), element->is_replaced(), box_parent ? &box_parent->css() : nullptr,
 		suppress_contents_display(*element), replace_content, element->tag() == _img_ || toggle});
-
-	if (native && toggle && element->has_pseudo_class(_id("checked")) && !element->has_pseudo_class(_id("disabled")) &&
-		!element->has_author_property(_background_color_) &&
-		(keyframe ? !keyframe->count(_background_color_) : !doc->container()->transition_override(element, _background_color_) &&
-			!doc->container()->animation_override(element, _background_color_)))
-	{
-		auto background = get_bg();
-		background.m_color = get_accent_color();
-		set_bg(background);
-	}
 }
 
 void litehtml::css_properties::compute_placeholder(const html_tag& element, const style& declarations, document& doc)

@@ -24,7 +24,8 @@ namespace litehtml {
 
 namespace docrender {
 	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit,
-		down, up, left, right, selected, calendar, clock, colorize, count };
+		down, up, left, right, radio_checked, calendar, clock, colorize, unfold_more, radio_unchecked,
+		checkbox_checked, checkbox_unchecked, checkbox_indeterminate, count };
 
 	struct HTMLInputPaintColors {
 		std::optional<litehtml::web_color> selection_foreground;
@@ -116,13 +117,16 @@ namespace docrender {
 			const HTMLScrollbarAppearance& p_appearance);
 		bool active_decoration = false;
 		struct PointerTarget {
+			static constexpr int element = -1;
+			static constexpr int resize = -2;
 			const RenderGeometry* geometry;
-			int axis = -1;
-			godot::Rect2 track;
+			int axis = element;
+			godot::Rect2 bounds;
 		};
 		std::vector<PointerTarget> pointer_targets;
 		void visit_pointer_targets(const godot::Vector2& p_point, const std::function<bool(const PointerTarget&)>& p_visitor) const;
-		godot::Rect2 scrollbar_bounds;
+		const PointerTarget* overflow_control_at(const godot::Vector2& p_point) const;
+		godot::Rect2 overflow_control_bounds;
 		godot::String plain_text;
 		godot::String accessible_text;
 		std::vector<godot::Vector2i> excluded_selection;
@@ -185,12 +189,13 @@ namespace docrender {
 		void draw_scrollbars(const litehtml::render_item& p_item);
 		godot::Ref<godot::Texture2D> get_control_icon(HTMLControlIcon p_icon);
 		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
-		void draw_input_check(const godot::Rect2& p_box, const godot::Color& p_color);
+		void draw_resize_grip(const godot::Rect2& p_clip, const godot::Rect2& p_grip);
 		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,
 			int p_axis, const HTMLScrollbarAppearance& p_appearance);
 		bool set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target);
 		bool set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target);
 		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;
+		const RenderGeometry* resize_grip_at(const godot::Vector2& p_point) const;
 		void finish(const std::shared_ptr<litehtml::element>& p_root, const TextShaper& p_shape_text);
 
 		const std::vector<HTMLPaintRun>& get_paint_runs() const;

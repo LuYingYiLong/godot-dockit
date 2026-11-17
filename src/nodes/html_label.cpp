@@ -204,8 +204,8 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			accept_event();
 			return;
 		}
-		if (textarea_drag) {
-			move_textarea_drag(point);
+		if (box_drag) {
+			move_box_drag(point);
 			accept_event();
 			return;
 		}
@@ -312,6 +312,10 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		return;
 	}
 	if (button->is_pressed() && visible_rect.has_point(point)) {
+		if (begin_resize_drag(point)) {
+			accept_event();
+			return;
+		}
 		if (const auto drag = label->layout->scrollbar_at(point)) {
 			cancel_press();
 			scrollbar_drag = drag;
@@ -321,10 +325,10 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			return;
 		}
 	}
-	if (!button->is_pressed() && textarea_drag) {
-		if (!button->is_canceled()) move_textarea_drag(point);
-		flush_textarea_resize();
-		textarea_drag.reset();
+	if (!button->is_pressed() && box_drag) {
+		if (!button->is_canceled()) move_box_drag(point);
+		flush_box_resize();
+		box_drag.reset();
 		label->layout->set_scrollbar_pressed(std::nullopt);
 		label->request_hover_check();
 		accept_event();
@@ -360,7 +364,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			}
 			return;
 		}
-		if (begin_textarea_drag(element, point)) {
+		if (begin_textarea_scrollbar_drag(element, point)) {
 			accept_event();
 			return;
 		}
@@ -522,9 +526,10 @@ void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
-	if (picker_type == "color") {
+	if (is_canvas_picker_open()) {
 		const ObjectID host_id(get_instance_id()), viewport_id(get_viewport()->get_instance_id());
-		if (handle_color_picker_input(p_event)) {
+		const bool handled = is_time_picker_open() ? handle_clock_picker_input(p_event) : handle_color_picker_input(p_event);
+		if (handled) {
 			if (auto* viewport = Object::cast_to<Viewport>(ObjectDB::get_instance(viewport_id))) viewport->set_input_as_handled();
 			return;
 		}
@@ -740,7 +745,7 @@ void HTMLLabelCanvas::update_focus_mode() {
 	const bool tab_reachable = !tab_elements.empty() || label->layout->top_modal().is_valid();
 	label->set_focus_mode(tab_reachable ? FOCUS_ALL :
 		(label->selection_enabled || has_focusable_elements ? FOCUS_CLICK : FOCUS_NONE));
-	label->set_process_input(tab_reachable || label->dialog_escape_held || label->picker_type == "color");
+	label->set_process_input(tab_reachable || label->dialog_escape_held || label->is_canvas_picker_open());
 }
 
 void HTMLLabelCanvas::_notification(int p_what) {
@@ -790,8 +795,8 @@ void HTMLLabelCanvas::cancel_press() {
 	cancel_video_press();
 	pressed_audio.unref();
 	pressed_audio_part = docrender::HTMLAudioPart::none;
-	if (label && (textarea_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
-	textarea_drag.reset();
+	if (label && (box_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
+	box_drag.reset();
 	scrollbar_drag.reset();
 	resize_pending.reset();
 	dragged_resize = false;
@@ -833,12 +838,16 @@ void HTMLLabelCanvas::cancel_key_press() {
 }
 
 void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
-	if (!p_point || scrollbar_drag || label->layout->scrollbar_at(*p_point)) {
+	if (!p_point || scrollbar_drag) {
 		set_default_cursor_shape(CURSOR_ARROW);
 		return;
 	}
-	if (const auto resize = textarea_resize_cursor(*p_point)) {
+	if (const auto resize = box_resize_cursor(*p_point)) {
 		set_default_cursor_shape(*resize);
+		return;
+	}
+	if (label->layout->scrollbar_at(*p_point)) {
+		set_default_cursor_shape(CURSOR_ARROW);
 		return;
 	}
 	if (selection_dragged || dragging_input.is_valid()) {
@@ -1089,7 +1098,7 @@ void HTMLLabel::_notification(int p_what) {
 		else if (canvas && layout->top_modal().is_valid()) canvas->focus_tab_endpoint(false);
 		break;
 	case NOTIFICATION_FOCUS_EXIT:
-		if (picker_type == "color") close_input_picker();
+		if (is_canvas_picker_open()) close_input_picker();
 		if (canvas) {
 			const bool was_dragging = canvas->selection_dragged;
 			canvas->cancel_press();
@@ -1156,7 +1165,7 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	}
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-		if (picker_type == "color") close_input_picker();
+		if (is_canvas_picker_open()) close_input_picker();
 		dialog_escape_held = false;
 		viewport_touch_index = -1;
 		viewport_touch_dragged = false;
@@ -1171,6 +1180,9 @@ void HTMLLabel::_notification(int p_what) {
 			canvas->stop_caret_blink();
 			canvas->close_ime();
 		}
+		break;
+	case NOTIFICATION_WM_MOUSE_EXIT:
+		stop_color_eyedropper();
 		break;
 	}
 }
@@ -1846,7 +1858,7 @@ void HTMLLabel::on_layout_edited() {
 	if (canvas) {
 		canvas->close_input_menu();
 		// Writing the size during a resize schedules reflow while the handle is held.
-		if (!canvas->applying_textarea_resize) {
+		if (!canvas->applying_box_resize) {
 			canvas->cancel_press();
 		}
 		const auto selection = get_selection();
@@ -2037,7 +2049,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 		if (canvas->pressed_button.is_valid() && !layout->is_enabled_button(canvas->pressed_button)) {
 			canvas->cancel_button_press();
 		}
-		if (canvas->textarea_drag && !layout->get_element_scroll_bounds(canvas->textarea_drag->element)) {
+		if (canvas->box_drag && !layout->get_element_scroll_bounds(canvas->box_drag->element)) {
 			canvas->cancel_press();
 		}
 	}
@@ -2291,6 +2303,7 @@ void HTMLLabel::update_interaction() {
 	}
 	update_select_menu();
 	if (picker_type == "color") update_color_picker();
+	else if (is_time_picker_open()) update_clock_picker();
 
 	if (std::exchange(reveal_focused_element, false)) {
 		if (const auto target = layout->scroll_element_into_view(canvas->focused_element, std::nullopt, *this,
