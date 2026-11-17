@@ -732,6 +732,7 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLLayout::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLLayout::get_element_by_id);
 	ClassDB::bind_method(D_METHOD("get_element_at", "position"), &HTMLLayout::get_element_at);
+	ClassDB::bind_method(D_METHOD("get_hovered_elements"), &HTMLLayout::get_hovered_elements);
 	ClassDB::bind_method(D_METHOD("get_elements_at", "position"), &HTMLLayout::get_elements_at);
 	ClassDB::bind_method(D_METHOD("get_render_error"), &HTMLLayout::get_render_error);
 	ClassDB::bind_method(D_METHOD("set_css_diagnostics_enabled", "enabled"), &HTMLLayout::set_css_diagnostics_enabled);
@@ -2959,6 +2960,19 @@ bool HTMLLayout::set_interaction_pseudo(const Ref<HTMLElement>& p_element, const
 		input->set_focus_style(p_enabled);
 	}
 	return element && element->set_pseudo_class(litehtml::_id(p_name), p_enabled);
+}
+
+TypedArray<HTMLElement> HTMLLayout::get_hovered_elements() const {
+	TypedArray<HTMLElement> result;
+	if (!state) return result;
+	const std::vector<std::weak_ptr<litehtml::element>> entries = state->hovered_elements;
+	for (const auto& entry : entries) {
+		if (const auto element = entry.lock()) {
+			Ref<HTMLElement> handle = wrap_hit_element(element);
+			if (handle.is_valid()) result.append(handle);
+		}
+	}
+	return result;
 }
 
 bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {

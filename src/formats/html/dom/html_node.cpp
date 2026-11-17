@@ -3,6 +3,7 @@
 #include "html_document_fragment.h"
 #include "html_dom.h"
 #include "formats/html/elements/html_element.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 
 #include <litehtml/el_text.h>
@@ -85,6 +86,12 @@ void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("compare_document_position", "node"), &HTMLNode::compare_document_position);
 	ClassDB::bind_method(D_METHOD("is_equal_node", "node"), &HTMLNode::is_equal_node);
 	ClassDB::bind_method(D_METHOD("normalize"), &HTMLNode::normalize);
+	ClassDB::bind_method(D_METHOD("add_event_listener", "type", "callable", "options"),
+		&HTMLNode::add_event_listener, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("remove_event_listener", "type", "callable", "options"),
+		&HTMLNode::remove_event_listener, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("dispatch_event", "event"), &HTMLNode::dispatch_event);
+	ClassDB::bind_method(D_METHOD("has_event_listener", "type"), &HTMLNode::has_event_listener);
 	BIND_ENUM_CONSTANT(ELEMENT_NODE);
 	BIND_ENUM_CONSTANT(TEXT_NODE);
 	BIND_ENUM_CONSTANT(COMMENT_NODE);
@@ -240,6 +247,36 @@ bool HTMLNode::is_equal_node(const Ref<HTMLNode>& p_node) const {
 Error HTMLNode::normalize() {
 	const auto node = lock_element();
 	return node ? get_dom().normalize(node) : ERR_INVALID_PARAMETER;
+}
+
+Error HTMLNode::add_event_listener(const StringName& p_type, const Callable& p_callable, const Dictionary& p_options) {
+	if (!is_valid()) return ERR_INVALID_PARAMETER;
+	const auto node = lock_element();
+	if (!node) return ERR_INVALID_PARAMETER;
+	const bool capture = p_options.get("capture", false);
+	const bool once = p_options.get("once", false);
+	return get_dom().add_event_listener(node, p_type, p_callable, capture, once);
+}
+
+Error HTMLNode::remove_event_listener(const StringName& p_type, const Callable& p_callable,
+	const Dictionary& p_options) {
+	if (!is_valid()) return ERR_INVALID_PARAMETER;
+	const auto node = lock_element();
+	if (!node) return ERR_INVALID_PARAMETER;
+	const bool capture = p_options.get("capture", false);
+	return get_dom().remove_event_listener(node, p_type, p_callable, capture);
+}
+
+bool HTMLNode::dispatch_event(const Ref<HTMLEvent>& p_event) {
+	if (p_event.is_null()) return true;
+	if (!is_valid()) return !p_event->is_default_prevented();
+	return get_dom().dispatch_event(Ref<HTMLNode>(this), p_event);
+}
+
+bool HTMLNode::has_event_listener(const StringName& p_type) const {
+	if (!is_valid()) return false;
+	const auto node = lock_element();
+	return node ? get_dom().has_event_listener(*node, p_type) : false;
 }
 
 void HTMLTextNode::_bind_methods() {

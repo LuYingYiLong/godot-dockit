@@ -9,6 +9,8 @@
 		Source changes are applied on a deferred update and reset the scroll position. Resizing recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.
 		Drag to select rendered text. The focused control supports the standard select-all and copy shortcuts. CSS [code]::selection[/code] styles the selection highlight.
 		CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates the hovered element even when the mouse is stationary. During text selection by dragging, hover styles stay fixed until the drag ends.
+		Elements also report DOM events. Register a listener with [method HTMLNode.add_event_listener] on an element, or on the document node to handle events for all of its descendants. Events run before the built-in action they describe, so a listener can call [method HTMLEvent.prevent_default] to cancel following a link, activating a button or label, toggling a checkbox, opening a disclosure or dropdown, inserting typed text, traversing focus with Tab, and submitting or resetting a form. Events without listeners change nothing, and the signals below keep reporting the actions that were performed.
+		When a listener cancels an event, the signal that reports the same action is not emitted. For example, cancelling [code]click[/code] on a link suppresses [signal link_pressed].
 		CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], [code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], [code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the I-beam.
 		[code]&lt;button type="button"&gt;[/code] has a default style that author CSS can override. Use [code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even when text selection is disabled.
 		Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code] or [code]data-*[/code] attributes to identify the command.
@@ -54,6 +56,12 @@
 			<return type="void" />
 			<description>
 				Clears the text selection.
+			</description>
+		</method>
+		<method name="get_document_node" qualifiers="const">
+			<return type="HTMLDocumentNode" />
+			<description>
+				Returns the root node of this control's live document, or [code]null[/code] when the source has not been parsed yet. Register listeners on this node to handle events for all of its descendants, then use [method HTMLElement.closest] on the event's [member HTMLEvent.target] to find the element that owns the action. The handle is invalidated when the source is reparsed.
 			</description>
 		</method>
 		<method name="create_document_fragment">

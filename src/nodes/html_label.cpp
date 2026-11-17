@@ -291,6 +291,12 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		else commit_input(range);
 		return;
 	}
+	if (button->get_button_index() == MOUSE_BUTTON_RIGHT && button->is_pressed() && visible_rect.has_point(point) &&
+		dispatch_pointer_event(StringName("contextmenu"), label->layout->get_element_at(point), *button.ptr(), point, true)) {
+		// 监听器接管了右键菜单。
+		accept_event();
+		return;
+	}
 	if (button->get_button_index() == MOUSE_BUTTON_RIGHT && button->is_pressed() && label->context_menu_enabled &&
 		visible_rect.has_point(point) && open_input_menu(label->layout->get_element_at(point), point, true)) {
 		accept_event();
@@ -368,6 +374,18 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			accept_event();
 			return;
 		}
+		if (dispatch_pointer_event(StringName("mousedown"), label->layout->get_element_at(point), *button.ptr(), point, true)) {
+			// 监听器取消了按下：只保留点击合成所需的记录，跳过焦点、光标、选区与 :active。
+			pressed_position = point - visible_rect.position;
+			pressed_link = hit.id;
+			pressed_element = element;
+			pressed_form_target = form_target;
+			pressed_blank = false;
+			selecting = false;
+			selection_dragged = false;
+			accept_event();
+			return;
+		}
 		cancel_button_press();
 		cancel_key_press();
 		pressed_position = point - visible_rect.position;
@@ -429,7 +447,12 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		set_element_pseudo(checkbox, "active", false);
 		pressed_checkbox.unref();
 		accept_event();
-		if (!button->is_canceled() && checkbox == target_input) toggle_checkbox(checkbox);
+		if (!button->is_canceled() && checkbox == target_input) {
+			const Ref<HTMLElement> checkbox_target = checkbox;
+			if (!dispatch_pointer_event(StringName("click"), checkbox_target, *button.ptr(), point, true)) {
+				toggle_checkbox(checkbox);
+			}
+		}
 		return;
 	}
 
@@ -459,10 +482,15 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		callable_mp(label->layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
 	}
 	const ObjectID label_id(label->get_instance_id());
-	if (link_clicked) {
+	// mouseup 与可取消的 click 都在默认动作之前派发。
+	// 画布坐标已经等于文档坐标（canvas 的偏移就是 -scroll_offset），因此直接用 layout 的命中测试。
+	const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+	dispatch_pointer_event(StringName("mouseup"), event_target, *button.ptr(), point, false);
+	const bool click_prevented = clicked && dispatch_pointer_event(StringName("click"), event_target, *button.ptr(), point, true);
+	if (link_clicked && !click_prevented) {
 		label->activate_link(hit.uri);
 	}
-	if (button_clicked) {
+	if (button_clicked && !click_prevented) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			const Ref<HTMLInputElement> image = target_button;
 			if (image.is_valid() && image->get_input() && image->get_input()->type() == docrender::HTMLInputNode::Type::IMAGE) {
@@ -471,7 +499,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			} else target->activate_element(target_button);
 		}
 	}
-	else if (form_clicked) {
+	else if (form_clicked && !click_prevented) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) target->activate_element(form_target);
 	}
 	if (element_clicked && element->is_valid() && element->adoption_version == click_version) {
@@ -619,6 +647,16 @@ void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
 }
 
 bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
+	// 输入法组合期间由编辑器接管按键，不派发 DOM 键盘事件。
+	const auto composing_control = label->layout->text_control(focused_element);
+	const bool composing = composing_control && composing_control->editor.has_preedit();
+	if (!composing) {
+		const bool prevented = dispatch_key_event(p_key.is_pressed() ? StringName("keydown") : StringName("keyup"), p_key);
+		if (prevented) {
+			label->accept_event();
+			return true;
+		}
+	}
 	const bool modal = label->layout->top_modal().is_valid();
 	if (const auto direction = tab_direction(p_key); direction && (!tab_elements.empty() || modal)) {
 		label->close_select_menu();
@@ -724,6 +762,8 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		const auto input = label->layout->text_control(focused_element);
 		focused_reset_version = input ? input->editor.get_reset_version() : 0;
 		set_element_pseudo(focused_element, "focus", true);
+		// blur/focusout 先于 focus/focusin 派发。
+		dispatch_focus_events(previous, p_element);
 		restart_caret_blink();
 		label->layout->repaint_input();
 		update_ime();
@@ -901,6 +941,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "id", "align"), &HTMLLabel::scroll_to_anchor, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("create_element", "tag_name"), &HTMLLabel::create_element);
 	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLLabel::create_document_fragment);
+	ClassDB::bind_method(D_METHOD("get_document_node"), &HTMLLabel::get_document_node);
 	ClassDB::bind_method(D_METHOD("create_range"), &HTMLLabel::create_range);
 	ClassDB::bind_method(D_METHOD("get_selection"), &HTMLLabel::get_selection);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLLabel::query_selector);
@@ -2093,6 +2134,7 @@ void HTMLLabel::apply_scroll_offset(const Vector2i& p_offset) {
 	canvas->cancel_click();
 	if (!hover_reflow) hover_passes_remaining = HOVER_PASSES;
 	sync_viewport_scroll();
+	dispatch_scroll_event(layout->get_document_element());
 }
 
 void HTMLLabel::apply_pending_scroll() {
@@ -2341,12 +2383,19 @@ void HTMLLabel::update_interaction() {
 	}
 
 	layout->update_scrollbar_hover(point);
-	if (!canvas->selection_dragged && !canvas->scrollbar_drag && hover_passes_remaining > 0 && layout->update_hover(point)) {
-		// A hover rule can move or hide its own target. Allow one correction after sorting.
-		--hover_passes_remaining;
-		hover_reflow = true;
-		refresh();
-		return;
+	if (!canvas->selection_dragged && !canvas->scrollbar_drag) {
+		const TypedArray<HTMLElement> previous_hover = layout->get_hovered_elements();
+		if (layout->update_hover(point)) {
+			// 在回流之前派发 mouseenter / mouseleave，避免链已被改写。
+			canvas->dispatch_hover_events(previous_hover);
+			if (hover_passes_remaining > 0) {
+				// A hover rule can move or hide its own target. Allow one correction after sorting.
+				--hover_passes_remaining;
+				hover_reflow = true;
+				refresh();
+				return;
+			}
+		}
 	}
 
 	hover_passes_remaining = 0;

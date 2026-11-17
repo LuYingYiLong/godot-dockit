@@ -1,10 +1,13 @@
 #pragma once
 
 #include "formats/html/elements/html_element.h"
+#include "formats/html/events/html_event.h"
 #include "html_mutation_observer.h"
 #include "html_selection.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/variant/callable.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <litehtml/element.h>
 
 #include <functional>
@@ -55,6 +58,23 @@ namespace docrender {
 		bool observer_delivery_queued = false;
 		bool delivering_observers = false;
 		uint64_t observer_delivery_epoch = 0;
+
+		// Event listeners are keyed by the litehtml element pointer.
+		struct EventListener {
+			godot::Callable callable;
+			godot::ObjectID owner;
+			bool capture = false;
+			bool once = false;
+		};
+		godot::HashMap<const litehtml::element*,
+			godot::HashMap<godot::StringName, std::vector<EventListener>>> event_listeners;
+		std::size_t event_listener_count = 0;
+		int event_dispatch_depth = 0;
+		std::vector<godot::Ref<HTMLNode>> pending_scroll_targets;
+		bool scroll_delivery_queued = false;
+		uint64_t scroll_delivery_epoch = 0;
+
+		void invoke_event_listeners(const godot::Ref<HTMLNode>& p_node, const godot::Ref<HTMLEvent>& p_event, int p_phase);
 
 		struct ChildChange {
 			struct Endpoint {
@@ -148,6 +168,20 @@ namespace docrender {
 		void set_selection_callback(std::function<void()> p_callback) { on_selection_change = std::move(p_callback); }
 		void track_observer(godot::ObjectID p_id);
 		void queue_observer_delivery();
+		godot::Error add_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
+			const godot::Callable& p_callable, bool p_capture, bool p_once);
+		godot::Error remove_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
+			const godot::Callable& p_callable, bool p_capture);
+		bool dispatch_event(const godot::Ref<HTMLNode>& p_target, const godot::Ref<HTMLEvent>& p_event);
+		bool has_event_listeners() const { return event_listener_count > 0; }
+		bool has_event_listener(const litehtml::element& p_element, const godot::StringName& p_type);
+		std::size_t get_event_listener_count() const { return event_listener_count; }
+		uint64_t get_generation() const { return generation; }
+		void clear_event_listeners();
+		void forget_subtree_listeners(const litehtml::element& p_element);
+		void transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_from, const litehtml::element::ptr& p_to);
+		void queue_scroll_event(const godot::Ref<HTMLNode>& p_node);
+		static void deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
 		void normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved = {}, bool p_prefer_moved = false, bool p_notify = true);
 		void form_state_changed(const litehtml::element::ptr& p_node);
 

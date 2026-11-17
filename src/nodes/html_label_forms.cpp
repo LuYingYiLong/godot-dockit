@@ -45,6 +45,8 @@ Error HTMLLabel::submit_form_at(const Ref<HTMLFormElement>& p_form, const Ref<HT
 			return ERR_INVALID_DATA;
 		}
 	}
+	// 校验通过后才派发可取消的 submit；被取消时提交中止，但不视为错误。
+	if (dispatch_form_event(StringName("submit"), p_form, p_submitter)) return OK;
 	const auto entries = p_form->collect_form_data(p_submitter, p_image_coordinates);
 	const ObjectID id(get_instance_id());
 	const char* method = submitter ? submitter->get_attr("formmethod") : nullptr;
@@ -126,8 +128,10 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element, const V
 	const Ref<HTMLFormElement> form = layout->get_dom().make_element(forms::owner(*node));
 	if (action == forms::ButtonAction::SUBMIT) {
 		submit_form_at(form, p_element, p_image_coordinates);
-	} else if (form.is_valid() && form->reset() == OK) {
-		emit_signal("form_reset", form);
+	} else if (form.is_valid()) {
+		// reset 只对重置按钮激活可取消；程序化 reset() 不派发。
+		if (dispatch_form_event(StringName("reset"), form, Ref<HTMLElement>())) return true;
+		if (form->reset() == OK) emit_signal("form_reset", form);
 	}
 	return true;
 }
@@ -315,6 +319,7 @@ void HTMLLabel::commit_select_row(int p_row) {
 	const Ref<HTMLSelectElement> select = target;
 	if (select.is_null() || index == select->get_selected_index()) return;
 	select->set_selected_index(index);
+	dispatch_control_event(StringName("change"), select);
 	emit_signal("select_changed", select);
 }
 
@@ -363,6 +368,7 @@ bool HTMLLabel::handle_listbox_mouse(const Ref<HTMLElement>& p_element, const In
 	const bool changed = select->select_list_row(row, p_event.is_shift_pressed(), p_event.is_ctrl_pressed() || p_event.is_meta_pressed());
 	if (changed) {
 		layout->get_dom().form_state_changed(select);
+		dispatch_control_event(StringName("change"), p_element);
 		emit_signal("select_changed", p_element);
 	} else layout->repaint_input();
 	return true;
@@ -394,6 +400,7 @@ bool HTMLLabel::handle_select_key(const InputEventKey& p_key) {
 				toggle && key != KEY_SPACE && list->is_multiple());
 			if (changed) {
 				layout->get_dom().form_state_changed(list);
+				dispatch_control_event(StringName("change"), select);
 				emit_signal("select_changed", select);
 			} else layout->repaint_input();
 			return true;

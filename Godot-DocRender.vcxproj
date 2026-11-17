@@ -68,6 +68,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <IncludePath>$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include;$(IncludePath)</IncludePath>
+    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_debug arch=x86_64</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_debug arch=x86_64</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64</NMakeCleanCommandLine>
+    <NMakeOutput>$(ProjectDir)addons\docrender\bin\docrender.windows.template_debug.x86_64.dll</NMakeOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
@@ -78,10 +83,22 @@
   <PropertyGroup>
     <!-- Use the same staged litehtml headers as SCons for the editing adapter's friend declarations. -->
     <NMakeIncludeSearchPath>$(ProjectDir)src;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
-    <ExternalIncludePath>$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include;$(ExternalIncludePath)</ExternalIncludePath>
     <NMakePreprocessorDefinitions>NOMINMAX;TYPED_METHOD_BIND;WINDOWS_ENABLED;GDEXTENSION;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <AdditionalOptions>$(AdditionalOptions) /std:c++17 /utf-8 /EHsc /external:I "$(ProjectDir)godot-cpp" /external:W0 /analyze:external-</AdditionalOptions>
+    <AdditionalOptions>$(AdditionalOptions) /std:c++17 /utf-8</AdditionalOptions>
   </PropertyGroup>
+  <!-- A Makefile project has no ClCompile tool, so options placed only in the property group above
+       never reach IntelliSense. Restate the language standard, source encoding, and the NMake
+       include/define lists here so the editor parses the sources the same way SCons compiles them.
+       Keep AdditionalOptions to plain switches: quoted paths and /external:/analyze: switches break
+       the design-time command line, which drops the include paths along with the rest. -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/std:c++17 /utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(NMakeIncludeSearchPath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>$(NMakePreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
@@ -142,6 +159,7 @@
     <ClCompile Include="src\nodes\html_label_time_picker.cpp" />
     <ClCompile Include="src\nodes\html_label_forms.cpp" />
     <ClCompile Include="src\nodes\html_label_behaviors.cpp" />
+    <ClCompile Include="src\nodes\html_label_events.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
     <ClCompile Include="src\formats\remote_images.cpp" />
     <ClCompile Include="src\formats\http_requests.cpp" />
@@ -187,6 +205,8 @@
     <ClCompile Include="src\formats\html\dom\html_mutation_observer.cpp" />
     <ClCompile Include="src\formats\html\dom\html_dom_mutations.cpp" />
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_dom_events.cpp" />
+    <ClCompile Include="src\formats\html\events\html_event.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
     <ClCompile Include="src\formats\html\paint\html_paint_recorder.cpp" />
     <ClCompile Include="src\formats\html\paint\html_svg_mask.cpp" />
@@ -389,6 +409,7 @@
     <ClInclude Include="src\formats\html\text\html_font_config.h" />
     <ClInclude Include="src\formats\html\dom\html_dom.h" />
     <ClInclude Include="src\formats\html\dom\html_node.h" />
+    <ClInclude Include="src\formats\html\events\html_event.h" />
     <ClInclude Include="src\formats\html\dom\html_range.h" />
     <ClInclude Include="src\formats\html\dom\html_selection.h" />
     <ClInclude Include="src\formats\html\dom\html_mutation_observer.h" />

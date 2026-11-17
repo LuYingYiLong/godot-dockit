@@ -2,6 +2,9 @@
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/core/object_id.hpp>
+#include <godot_cpp/variant/callable.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 
 #include <memory>
@@ -14,6 +17,7 @@ class HTMLDocumentFragment;
 class HTMLTextNode;
 class HTMLRange;
 class HTMLMutationObserver;
+class HTMLEvent;
 
 class HTMLNode : public godot::RefCounted {
 	GDCLASS(HTMLNode, godot::RefCounted)
@@ -58,6 +62,12 @@ public:
 	int32_t compare_document_position(const godot::Ref<HTMLNode>& p_node) const; // 返回节点间的位置标志
 	bool is_equal_node(const godot::Ref<HTMLNode>& p_node) const; // 按类型、内容和子树比较节点
 	godot::Error normalize(); // 移除空文本并合并相邻文本节点
+	godot::Error add_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+		const godot::Dictionary& p_options = {}); // 为此节点注册 DOM 事件监听器
+	godot::Error remove_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+		const godot::Dictionary& p_options = {}); // 移除之前注册的监听器
+	bool dispatch_event(const godot::Ref<HTMLEvent>& p_event); // 从此节点派发事件，返回默认动作是否未被取消
+	bool has_event_listener(const godot::StringName& p_type) const; // 检查此节点是否注册了该类型的监听器
 };
 
 class HTMLDocumentNode : public HTMLNode {

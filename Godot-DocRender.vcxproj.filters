@@ -30,6 +30,7 @@
     <Filter Include="Header Files\formats\html\resources" />
     <Filter Include="Header Files\formats\html\text" />
     <Filter Include="Header Files\formats\html\elements" />
+    <Filter Include="Header Files\formats\html\events" />
     <Filter Include="Header Files\formats\html">
       <UniqueIdentifier>{458d247b-1727-407d-8723-386218d28393}</UniqueIdentifier>
     </Filter>
@@ -80,6 +81,7 @@
     <Filter Include="Source Files\formats\html\resources" />
     <Filter Include="Source Files\formats\html\text" />
     <Filter Include="Source Files\formats\html\elements" />
+    <Filter Include="Source Files\formats\html\events" />
     <Filter Include="Source Files\formats\html">
       <UniqueIdentifier>{ce13e574-6124-4bc6-bca6-240a08c6d482}</UniqueIdentifier>
     </Filter>
@@ -246,6 +248,12 @@
     </ClCompile>
     <ClCompile Include="src\formats\html\dom\html_document_fragment.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_dom_events.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\events\html_event.cpp">
+      <Filter>Source Files\formats\html\events</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_layout.cpp">
       <Filter>Source Files\formats\html</Filter>
@@ -721,6 +729,9 @@
     <ClCompile Include="src\nodes\html_label_behaviors.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_events.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\docrender_editor_translations.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
@@ -908,6 +919,9 @@
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_node.h">
       <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\events\html_event.h">
+      <Filter>Header Files\formats\html\events</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_range.h">
       <Filter>Header Files\formats\html\dom</Filter>

@@ -80,6 +80,12 @@
 				Returns the frontmost element at the given document pixel position, accounting for overflow clipping. Returns [code]null[/code] when there is no hit or no layout.
 			</description>
 		</method>
+		<method name="get_hovered_elements" qualifiers="const">
+			<return type="HTMLElement[]" />
+			<description>
+				Returns the elements matched by CSS [code]:hover[/code], ordered from the innermost element outward to the document root. The array is empty when the pointer is outside the content, during a selection drag, and while a modal dialog blocks interaction. The chain only updates through [method HTMLLabel] interaction processing.
+			</description>
+		</method>
 		<method name="get_element_by_id" qualifiers="const">
 			<return type="HTMLElement" />
 			<param index="0" name="id" type="String" />

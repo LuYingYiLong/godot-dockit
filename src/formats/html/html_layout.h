@@ -182,6 +182,7 @@ class HTMLLayout : public godot::RefCounted {
 		bool p_text_selection = false) const;
 	godot::Ref<HTMLElement> wrap_hit_element(std::shared_ptr<litehtml::element> p_element) const;
 	bool update_hover(const std::optional<godot::Vector2>& p_position);
+	godot::TypedArray<HTMLElement> get_hovered_elements() const; // 返回当前悬停链，由最内层元素向外排列
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;

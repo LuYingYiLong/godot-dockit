@@ -65,7 +65,7 @@ if env["platform"] == "windows" and env["arch"] == "x86_64" and env.get("is_msvc
 tex_render = File("src/formats/latex/tex_render.cpp")
 mermaid_render = File("src/formats/mermaid/mermaid_render.cpp")
 html_sources = Glob("src/formats/html/*.cpp") + Glob("src/nodes/html_label*.cpp")
-for folder in ("backend", "css", "dom", "elements", "layout", "layout/grid", "markup", "paint", "resources", "text"):
+for folder in ("backend", "css", "dom", "elements", "events", "layout", "layout/grid", "markup", "paint", "resources", "text"):
     html_sources += Glob(f"src/formats/html/{folder}/*.cpp")
 pdfium_sources = (Glob("src/formats/pdf/reader/*.cpp") + Glob("src/formats/pdf/writer/*.cpp")
                   + Glob("src/formats/pdf/pdfium/*.cpp"))

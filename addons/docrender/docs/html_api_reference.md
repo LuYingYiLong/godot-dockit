@@ -57,6 +57,37 @@ An element query searches its descendants. `:scope` refers to the element that s
 
 DOM queries reflect successful edits immediately. Geometry requires layout. After changing a standalone document, call `layout(viewport_size)` to measure immediately. Layouts with a previous viewport can also reflow on a deferred call. For `HTMLLabel`, wait for `layout_changed` before reading geometry or scrolling to a newly inserted element. The label batches connected tree edits, including insertion of a nonempty fragment, into a layout update. [CSSOM View element geometry and scrolling](https://www.w3.org/TR/cssom-view-1/#extensions-to-the-element-interface) · [HTML text control selections](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#textFieldSelection)
 
+## Events
+
+| Web concept | DocRender API and semantics |
+| --- | --- |
+| `addEventListener()` / `removeEventListener()` | `HTMLNode.add_event_listener(type, callable, options)` and `remove_event_listener(type, callable, options)` exist on elements, text nodes, the document node, and fragments. `options` accepts `capture` and `once`. Registering the same callback, type, and `capture` flag twice is a no-op; removal requires the same `capture` flag. The listener receives the event as its only argument. |
+| `dispatchEvent()` | `HTMLNode.dispatch_event(event)` runs the capture, target, and bubble phases and returns `false` when a listener cancelled the default action. Build a synthetic event with `HTMLEvent.new()` or a concrete subclass, then set `type`, `bubbles`, and `cancelable` before dispatching. |
+| `Event` | `HTMLEvent` exposes `type`, `target`, `current_target`, `event_phase`, `bubbles`, `cancelable`, `default_prevented`, `trusted`, and `time_stamp`. `target`, `current_target`, `event_phase`, and `default_prevented` are read-only. Assigning `type`, `bubbles`, or `cancelable` during dispatch is ignored. |
+| `preventDefault()` / `stopPropagation()` | `prevent_default()` cancels the built-in action when `cancelable` is set. `stop_propagation()` ends propagation after the current node. `stop_immediate_propagation()` also skips the remaining listeners on the current node. |
+| Event delegation | Register on the document node, then use `event.target.closest(selector)` to find the element that owns the action. A listener registered on the document node receives events from every connected descendant. |
+
+| Event | Bubbles | Cancelable | Target |
+| --- | --- | --- | --- |
+| `mousedown`, `mouseup` | yes | `mousedown` only | Element under the pointer |
+| `click` | yes | yes | Element under the pointer |
+| `contextmenu` | yes | yes | Element under the pointer |
+| `mouseenter`, `mouseleave` | no | no | Entered or left element |
+| `focus`, `blur` | no | no | New or previous focused element |
+| `focusin`, `focusout` | yes | no | New or previous focused element |
+| `keydown`, `keyup` | yes | `keydown` only | Focused element, else the document body |
+| `input`, `change` | yes | no | Control |
+| `submit`, `reset` | yes | yes | Form |
+| `scroll` | no | no | Scrolled element |
+
+Events run **before** the built-in action they describe. Cancelling `click` prevents following a link, activating a button or label, toggling a checkbox, opening a disclosure or dropdown, and submitting or resetting a form. Cancelling `keydown` suppresses Tab traversal, Enter and Space activation, and text insertion. Cancelling `contextmenu` leaves right-click handling to the script.
+
+Because the event runs first, a cancelled event also suppresses the signal that reports the same action: `link_pressed`, `button_pressed`, `form_submitted`, and `form_reset`. Without listeners the signals behave exactly as documented elsewhere in this guide.
+
+`scroll` events coalesce: each scrolled element reports at most one event per frame, delivered after the scroll offset is applied. `load` and `DOMContentLoaded` are not part of this set yet; use `HTMLBehavior._attach_document` or the `layout_changed` signal to run code after a document is laid out.
+
+`HTMLLabel` can deliver events without the host handling input. Programmatic activation through `HTMLLabel.activate_element()` and `submit_form()` still runs as before; only real input is cancelable.
+
 ## Live ranges, selection, and mutation observers
 
 Use `HTMLLayout.create_range()` or `HTMLLabel.create_range()` after parsing a document. An endpoint is a node and a zero-based offset. Text and comments count Godot string characters. Other nodes count logical children, including text and comments. A range tracks insertions, removals, text edits, text splitting, and `normalize()`. Removing a subtree relocates endpoints inside it to its former position in the parent. Extracting preserves the handles of fully selected nodes. `get_text()` returns source text. For a label, `get_selected_text()` returns the rendered, copyable text. [DOM live ranges](https://dom.spec.whatwg.org/#concept-live-range)

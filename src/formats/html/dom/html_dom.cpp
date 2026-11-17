@@ -244,6 +244,7 @@ HTMLNode::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const liteh
 HTMLNode::DetachedTree::~DetachedTree() {
 	if (const auto dom = owner.lock(); root && dom) {
 		dom->detached_trees.erase(root.get());
+		dom->forget_subtree_listeners(*root);
 		const auto remove_entries = [&](const auto& p_visit, const litehtml::element& p_node) -> void {
 			dom->node_handles.erase(&p_node);
 			dom->forget_source_attributes(p_node);
@@ -353,6 +354,7 @@ void HTMLDOM::clear() {
 		if (auto* observer = Object::cast_to<HTMLMutationObserver>(ObjectDB::get_instance(id))) observer->clear_owner(*this);
 	}
 	observers.clear();
+	clear_event_listeners();
 	for (ObjectID id : ranges) {
 		if (auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id))) {
 			range->start = {};
@@ -1040,6 +1042,7 @@ void HTMLDOM::transfer_adoption(HTMLDOM& p_source, const litehtml::element& p_ro
 		bind_handle(*entry.handle.ptr(), entry.target);
 	}
 	for (const auto& entry : p_adoption.fragments) p_source.node_handles.erase(entry.source->element.lock().get());
+	for (const auto& entry : p_adoption.handles) transfer_listeners(p_source, *entry.source, entry.target);
 	p_source.forget_subtree(p_root);
 	for (const auto& entry : p_adoption.fragments) {
 		bind_handle(*entry.source.ptr(), entry.target->content->detached_tree->root);
@@ -1144,6 +1147,7 @@ void HTMLDOM::release_detached_root(const std::shared_ptr<HTMLNode::DetachedTree
 }
 
 void HTMLDOM::forget_subtree(const litehtml::element& p_element) {
+	forget_subtree_listeners(p_element);
 	if (const ObjectID* id = node_handles.getptr(&p_element)) {
 		if (auto* handle = Object::cast_to<HTMLNode>(ObjectDB::get_instance(*id))) {
 			handle->element.reset();

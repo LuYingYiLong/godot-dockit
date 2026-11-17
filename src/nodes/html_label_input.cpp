@@ -103,6 +103,7 @@ void HTMLLabelCanvas::change_input(const Ref<HTMLElement>& p_input, bool p_updat
 		label->layout->update_input(*input);
 		queue_redraw();
 		if (p_update_suggestions && focused_element == p_input && input->get_attr("list")) label->open_suggestion_menu(p_input);
+		label->dispatch_control_event(StringName("input"), p_input);
 		label->emit_signal(input->editor.is_multiline() ? "textarea_changed" : "input_changed", p_input);
 	}
 }
@@ -111,6 +112,7 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 	const auto input = label->layout->text_control(p_input);
 	if (!input || !input->editor.take_user_change()) return;
 	const StringName signal = input->editor.is_multiline() ? "textarea_committed" : "input_committed";
+	label->dispatch_control_event(StringName("change"), p_input);
 	if (p_deferred) {
 		const ObjectID id(label->get_instance_id());
 		callable_mp_static(+[](uint64_t p_id, const Ref<HTMLElement>& element, uint64_t p_adoption_version,
@@ -136,6 +138,7 @@ void HTMLLabelCanvas::toggle_checkbox(const Ref<HTMLInputElement>& p_input) {
 	change_input(p_input);
 	if (auto* owner = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id)); owner && owner->layout->text_control(p_input) == input &&
 		input->editor.get_reset_version() == reset_version) {
+		owner->dispatch_control_event(StringName("change"), p_input);
 		owner->emit_signal("input_committed", p_input);
 	}
 }
