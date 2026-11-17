@@ -19,6 +19,8 @@
 #include <godot_cpp/classes/video_stream.hpp>
 #include <godot_cpp/classes/video_stream_player.hpp>
 #include <godot_cpp/classes/window.hpp>
+#include <godot_cpp/core/object.hpp>
+#include <godot_cpp/godot.hpp>
 
 #include <algorithm>
 #include <array>
@@ -41,7 +43,23 @@ namespace {
 	constexpr const char* VLC_PLAYER = "VLCMediaPlayer";
 	std::unordered_map<uint64_t, ObjectID> fullscreen_owners;
 
+	GDExtensionInterfaceClassdbConstructObject editor_video_constructor() {
+		// ClassDB::instantiate may return a placeholder for runtime extension classes.
+		// The native constructor creates the real instance and runs postinitialization.
+		static const auto construct = reinterpret_cast<GDExtensionInterfaceClassdbConstructObject>(
+			internal::gdextension_interface_get_proc_address("classdb_construct_object"));
+		return construct;
+	}
+
+	Variant instantiate_video_backend(const StringName& p_class) {
+		if (!Engine::get_singleton()->is_editor_hint()) return ClassDB::instantiate(p_class);
+		const auto construct = editor_video_constructor();
+		if (!construct) return {};
+		return internal::get_object_instance_binding(construct(p_class._native_ptr()));
+	}
+
 	bool backend_available(HTMLLabel::VideoBackend p_backend) {
+		if (Engine::get_singleton()->is_editor_hint() && !editor_video_constructor()) return false;
 		if (p_backend == HTMLLabel::VIDEO_BACKEND_FFMPEG) {
 			return ClassDB::class_exists("FFmpegVideoStream") && ClassDB::can_instantiate("FFmpegVideoStream") &&
 				ClassDB::class_has_method("FFmpegVideoStream", "set_file");
@@ -137,7 +155,7 @@ Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
 		if (path.is_empty()) continue;
 
 		if (backend == VIDEO_BACKEND_FFMPEG) {
-			const Ref<VideoStream> stream(Object::cast_to<VideoStream>(ClassDB::instantiate("FFmpegVideoStream")));
+			const Ref<VideoStream> stream = instantiate_video_backend("FFmpegVideoStream");
 			if (stream.is_null()) continue;
 			stream->call("set_file", path);
 			auto* player = memnew(VideoStreamPlayer);
@@ -154,7 +172,7 @@ Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
 		else {
 			const Ref<Resource> media = ClassDB::class_call_static("VLCMedia", "load_from_file", path);
 			if (media.is_null()) continue;
-			auto* player = Object::cast_to<Control>(ClassDB::instantiate(VLC_PLAYER));
+			auto* player = Object::cast_to<Control>(instantiate_video_backend(VLC_PLAYER));
 			if (!player) continue;
 			player->hide();
 			player->set("force_hardware", false);
@@ -313,6 +331,7 @@ void HTMLLabel::sync_videos() {
 	if (!is_inside_tree() || source_dirty) return;
 	const bool available = can_play_video();
 	const bool running_game = !Engine::get_singleton()->is_editor_hint();
+	const bool prepare_video = running_game || DisplayServer::get_singleton()->get_name() != "headless";
 	bool repaint = false;
 	for (auto it = video_playbacks.begin(); it != video_playbacks.end();) {
 		if (!layout->is_element_connected(it->element)) {
@@ -344,7 +363,7 @@ void HTMLLabel::sync_videos() {
 		if (available && running_game && element->is_autoplay_enabled()) {
 			if (auto& entry = video_entry(element); !entry.autoplay_attempted) play_video(element);
 		}
-		else if (running_game && node->has_controls()) {
+		else if (prepare_video && node->has_controls()) {
 			auto& entry = video_entry(element);
 			if (!entry.preparation_attempted) {
 				entry.preparation_attempted = true;

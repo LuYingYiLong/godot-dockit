@@ -50,7 +50,7 @@
 			Starts playback automatically at runtime. Editor previews require user input.
 		</member>
 		<member name="controls" type="bool" setter="set_controls" getter="has_controls" default="false">
-			Requests built-in controls. At runtime, the video prepares its intrinsic size before playback. The video is drawn black and its controls are disabled when no selected backend is available.
+			Requests built-in controls. The video prepares its intrinsic size before playback, including in the editor. The video is drawn black and its controls are disabled when no selected backend is available.
 		</member>
 		<member name="current_src" type="String" setter="" getter="get_current_src" default="&quot;&quot;">
 			The original local resource path of the selected video.

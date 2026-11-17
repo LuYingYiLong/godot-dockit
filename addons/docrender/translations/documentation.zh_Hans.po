@@ -4976,8 +4976,8 @@ msgid "Starts playback automatically at runtime. Editor previews require user in
 msgstr "在游戏运行时自动播放。编辑器预览需手动播放。"
 
 #. doc_classes/HTMLVideoElement.xml
-msgid "Requests built-in controls. At runtime, the video prepares its intrinsic size before playback. The video is drawn black and its controls are disabled when no selected backend is available."
-msgstr "启用内置控件。游戏运行时会在播放前读取视频的固有尺寸。所选后端均不可用时，视频内容区显示黑色，内置控件禁用。"
+msgid "Requests built-in controls. The video prepares its intrinsic size before playback, including in the editor. The video is drawn black and its controls are disabled when no selected backend is available."
+msgstr "启用内置控件。运行时和编辑器中都会在播放前读取视频的固有尺寸。所选后端均不可用时，视频内容区显示黑色，内置控件禁用。"
 
 #. doc_classes/HTMLVideoElement.xml
 msgid "The original local resource path of the selected video."

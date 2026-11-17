@@ -10,6 +10,7 @@ from run_audio import run, write
 
 
 SUCCESS = "HTML video checks finished with 0 failure(s)"
+EDITOR_SUCCESS = "Editor video dimensions passed."
 
 
 def install_backend(project, addon):
@@ -101,6 +102,24 @@ video_backend = %d
 """ % mode)
 
 
+def check_editor(project, repo, godot, workspace):
+    addon = project / "addons/video_editor_probe"
+    addon.mkdir()
+    shutil.copyfile(repo / "tests/html/video_editor.gd", addon / "video_editor.gd")
+    write(addon / "plugin.cfg", '[plugin]\nname="Video editor probe"\nscript="video_editor.gd"\n')
+    settings = project / "project.godot"
+    write(settings, settings.read_text(encoding="utf-8") +
+          '\n[editor_plugins]\nenabled=PackedStringArray("res://addons/video_editor_probe/plugin.cfg")\n')
+    editor_cache = project / ".godot/editor"
+    editor_cache.mkdir(exist_ok=True)
+    for renderer in ("gl_compatibility", "forward_plus"):
+        write(editor_cache / "editor_layout.cfg",
+              '[EditorNode]\nopen_scenes=PackedStringArray("res://main.tscn")\ncurrent_scene="res://main.tscn"\n'
+              '[ScriptEditor]\nopen_scripts=["res://pages/player.html"]\nselected_script="res://pages/player.html"\n')
+        run([godot, "--editor", "--path", str(project), "--rendering-method", renderer, "res://main.tscn"],
+            workspace, EDITOR_SUCCESS)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("godot", type=Path)
@@ -112,6 +131,7 @@ def main():
     parser.add_argument("--template", type=Path, default=Path(os.environ["APPDATA"]) /
                         "Godot/export_templates/4.7.2.stable/windows_debug_x86_64.exe")
     parser.add_argument("--skip-export", action="store_true")
+    parser.add_argument("--check-editor", action="store_true", help="also verify the scene view and live HTML preview")
     args = parser.parse_args()
     if args.backend in ("ffmpeg", "auto") and not args.ffmpeg_addon:
         parser.error("--ffmpeg-addon is required for this backend")
@@ -120,7 +140,9 @@ def main():
     if not args.skip_export and not args.template.is_file():
         parser.error("Install the Windows x64 debug export template or pass --template")
     repo = Path(__file__).resolve().parents[2]
-    with TemporaryDirectory(prefix=f"docrender-video-{args.backend}-", dir=args.work_dir) as directory:
+    # The Windows editor's shader cache can keep files pending deletion after exit.
+    with TemporaryDirectory(prefix=f"docrender-video-{args.backend}-", dir=args.work_dir,
+                            ignore_cleanup_errors=args.check_editor) as directory:
         workspace = Path(directory)
         project = workspace / "project"
         output = workspace / "export"
@@ -149,6 +171,8 @@ filesystem/on_save/safe_save_on_backup_then_rename = false
             console = output / "Video.console.exe"
             run([str(console if console.exists() else exe), "--quit-after", "1800", "--", "--pck", *expected],
                 workspace, SUCCESS, cwd=output)
+        if args.check_editor and args.backend != "none":
+            check_editor(project, repo, godot, workspace)
 
 
 if __name__ == "__main__":
