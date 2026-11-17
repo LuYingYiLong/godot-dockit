@@ -4,7 +4,6 @@
 #include "formats/html/paint/html_paint_recorder.h"
 
 #include <godot_cpp/classes/button.hpp>
-#include <godot_cpp/classes/color_picker.hpp>
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_dialog.hpp>
 #include <godot_cpp/classes/grid_container.hpp>
@@ -80,10 +79,17 @@ bool HTMLLabel::input_picker_valid() const {
 }
 
 void HTMLLabel::close_input_picker() {
+	const bool closes_color = picker_type == "color";
+	if (closes_color) {
+		if (const auto node = picker_input->get_input()) node->set_color_preview(std::nullopt);
+		if (color_picker_canvas) color_picker_canvas->hide();
+		color_picker = {};
+		layout->repaint_input();
+	}
 	++picker_sequence;
 	picker_input.unref();
 	picker_type = String();
-	color_picker = nullptr;
+	if (closes_color && canvas) canvas->update_focus_mode();
 	picker_content = nullptr;
 	if (auto* popup = std::exchange(input_popup, nullptr)) {
 		popup->hide();
@@ -121,6 +127,7 @@ Error HTMLLabel::open_input_picker(const Ref<HTMLInputElement>& p_element) {
 	picker_adoption = p_element->adoption_version;
 	picker_reset = node->editor.get_reset_version();
 	if (kind == HTMLInputNode::Type::FILE) return open_file_picker(picker_sequence);
+	if (kind == HTMLInputNode::Type::COLOR) return show_color_picker();
 
 	const auto bounds = layout->get_element_scroll_bounds(p_element);
 	if (!bounds) {
@@ -145,7 +152,7 @@ Error HTMLLabel::open_input_picker(const Ref<HTMLInputElement>& p_element) {
 	Ref<Theme> theme;
 	theme.instantiate();
 	const auto ink = docrender::html_system_color(litehtml::system_color::canvas_text, scheme);
-	for (const char* type : { "Button", "Label", "ColorPicker", "LineEdit" }) {
+	for (const char* type : { "Button", "Label", "LineEdit" }) {
 		theme->set_color("font_color", type, ink);
 		theme->set_color("font_hover_color", type, ink);
 		theme->set_color("font_pressed_color", type, ink);
@@ -169,18 +176,15 @@ Error HTMLLabel::open_input_picker(const Ref<HTMLInputElement>& p_element) {
 	theme->set_stylebox("normal", "LineEdit", button_style(litehtml::system_color::field));
 	picker_content->set_theme(theme);
 	input_popup->add_child(picker_content);
-	if (kind == HTMLInputNode::Type::COLOR) show_color_picker();
-	else {
-		const double current = node->value_as_number();
-		picker_date = std::isfinite(current) ? calendar::parts(date_kind, current) :
-			Time::get_singleton()->get_datetime_dict_from_system();
-		if (!std::isfinite(current) && date_kind == calendar::Kind::time) {
-			picker_date["hour"] = 0;
-			picker_date["minute"] = 0;
-			picker_date["second"] = 0;
-		}
-		build_time_picker();
+	const double current = node->value_as_number();
+	picker_date = std::isfinite(current) ? calendar::parts(date_kind, current) :
+		Time::get_singleton()->get_datetime_dict_from_system();
+	if (!std::isfinite(current) && date_kind == calendar::Kind::time) {
+		picker_date["hour"] = 0;
+		picker_date["minute"] = 0;
+		picker_date["second"] = 0;
 	}
+	build_time_picker();
 	const Vector2i minimum = Vector2i(picker_content->get_combined_minimum_size().ceil()) + Vector2i(16, 16);
 	const bool embedded = get_viewport()->is_embedding_subwindows();
 	const Transform2D transform = embedded ? canvas->get_global_transform_with_canvas() : canvas->get_screen_transform();
@@ -271,47 +275,6 @@ void HTMLLabel::files_selected(const PackedStringArray& p_paths, uint64_t p_sequ
 		input->type() == HTMLInputNode::Type::FILE && input->editor.get_reset_version() == reset) {
 		label->emit_signal("input_committed", element);
 	}
-}
-
-void HTMLLabel::show_color_picker() {
-	const auto node = picker_input->get_input();
-	auto* presets = memnew(HBoxContainer);
-	picker_content->add_child(presets);
-	int shown = 0;
-	for (const auto& row : layout->suggestion_menu_rows(picker_input)) {
-		const auto color = HTMLInputNode::color_preview(row.value);
-		auto* button = picker_button(*presets, "", callable_mp(this, &HTMLLabel::commit_picker_value).bind(row.value));
-		button->set_custom_minimum_size(Vector2(22, 22));
-		button->set_tooltip_text(row.value);
-		Ref<StyleBoxFlat> style;
-		style.instantiate();
-		style->set_bg_color(color);
-		style->set_border_color(Color(0.5, 0.5, 0.5));
-		style->set_border_width_all(1);
-		style->set_corner_radius_all(3);
-		button->add_theme_stylebox_override("normal", style);
-		if (++shown == 12) break;
-	}
-	color_picker = memnew(ColorPicker);
-	color_picker->set_edit_alpha(node->get_attr("alpha"));
-	color_picker->set_pick_color(HTMLInputNode::color_preview(node->get_value()));
-	picker_content->add_child(color_picker);
-	picker_button(*picker_content, "OK", callable_mp(this, &HTMLLabel::commit_picker_color));
-}
-
-void HTMLLabel::commit_picker_color() {
-	if (!color_picker || !input_picker_valid()) {
-		close_input_picker();
-		return;
-	}
-	const auto color = color_picker->get_pick_color();
-	const auto node = picker_input->get_input();
-	if (color == HTMLInputNode::color_preview(node->get_value())) {
-		close_input_picker();
-		return;
-	}
-	commit_picker_value("color(srgb " + String::num(color.r, 8) + " " + String::num(color.g, 8) + " " +
-		String::num(color.b, 8) + " / " + String::num(color.a, 8) + ")");
 }
 
 void HTMLLabel::navigate_time_picker(int p_delta) {

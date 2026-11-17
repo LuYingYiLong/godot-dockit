@@ -427,9 +427,11 @@ input[type="color" i] {
 	height: 27px;
 	border: 1px solid ButtonBorder;
 	border-radius: 2px;
+	padding: 1px 2px;
 	background-color: ButtonFace;
 	cursor: default;
 }
+input[type="color" i][list] { width: 94px; }
 
 button, input:is([type="button" i], [type="submit" i], [type="reset" i]) {
 	box-sizing: border-box;

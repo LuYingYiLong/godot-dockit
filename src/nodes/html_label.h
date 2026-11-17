@@ -24,7 +24,6 @@ namespace godot {
 	class Timer;
 	class PopupPanel;
 	class FileDialog;
-	class ColorPicker;
 	class VBoxContainer;
 }
 
@@ -323,7 +322,31 @@ private:
 	godot::Ref<HTMLInputElement> picker_input;
 	godot::PopupPanel* input_popup = nullptr;
 	godot::FileDialog* file_dialog = nullptr;
-	godot::ColorPicker* color_picker = nullptr;
+	godot::Control* color_picker_canvas = nullptr;
+	struct ColorPickerState {
+		enum Part { well, hue, opacity, eyedropper, format, channel, preset = channel + 3 };
+		enum Format { rgb, hsl, hex };
+		std::vector<godot::String> presets;
+		godot::String value;
+		godot::String editing;
+		float h = 0.0f;
+		float s = 0.0f;
+		float v = 0.0f;
+		float a = 1.0f;
+		bool alpha = false;
+		bool sampling = false;
+		bool replace_text = false;
+		int active = -1;
+		int hovered = -1;
+		int dragging = -1;
+		int format_index = rgb;
+
+		godot::Color color() const;
+		godot::Vector2 size() const;
+		godot::Rect2 part_rect(int p_part) const;
+		godot::String field_text(int p_channel) const;
+	};
+	ColorPickerState color_picker;
 	godot::VBoxContainer* picker_content = nullptr;
 	godot::Dictionary picker_date;
 	uint64_t picker_sequence = 0;
@@ -470,8 +493,16 @@ private:
 	void files_selected(const godot::PackedStringArray& p_paths, uint64_t p_sequence);
 	void file_selected(const godot::String& p_path, uint64_t p_sequence);
 	void native_files_selected(bool p_accepted, const godot::PackedStringArray& p_paths, int p_filter, uint64_t p_sequence);
-	void show_color_picker();
-	void commit_picker_color();
+	godot::Error show_color_picker();
+	void update_color_picker();
+	void draw_color_picker();
+	bool handle_color_picker_input(const godot::Ref<godot::InputEvent>& p_event);
+	void finish_color_picker(bool p_commit);
+	void select_color_picker_part(int p_part);
+	void update_color_picker_point(int p_part, const godot::Vector2& p_point);
+	void update_color_picker_value(const godot::String& p_value);
+	void update_color_picker_field();
+	void update_color_picker_preview();
 	void build_time_picker();
 	void navigate_time_picker(int p_delta);
 	void choose_time_picker_day(int p_day);

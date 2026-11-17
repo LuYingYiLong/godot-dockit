@@ -89,6 +89,8 @@ form { display: grid; grid-template-columns: repeat(3, 225px); row-gap: 8px; ali
 </form>
 <datalist id="ticks"><option value="0"><option value="25"><option value="100"></datalist>
 <datalist id="colors"><option value="red"><option value="blue"></datalist>
+<div><input id="swatch" type="color" value="#e66465"> <label for="swatch">Head<i id="swatch-baseline"
+ style="display:inline-block; width:1px; height:1px"></i></label></div>
 """)
     shutil.copyfile(Path(__file__).with_name("inputs.gd"), project / "inputs.gd")
 

@@ -15,6 +15,7 @@ func _ready() -> void:
 	_check_type_changes()
 	if DisplayServer.get_name() != "headless":
 		await _check_picker()
+		await _check_color_picker()
 		await _check_image_pixels()
 		if "--native-file-picker" not in OS.get_cmdline_user_args():
 			await _check_embedded_file_picker()
@@ -181,6 +182,63 @@ func _check_image_pixels() -> void:
 		get_viewport().push_input(click, true)
 	_check(_entry(received, "x") == "10" and _entry(received, "y") == "6",
 		"image click submission uses inverse-transformed CSS coordinates")
+
+
+func _check_color_picker() -> void:
+	var swatch: HTMLInputElement = _field("swatch")
+	var bounds: Rect2 = swatch.get_bounding_rect()
+	var marker: HTMLElement = _label.get_element_by_id("swatch-baseline")
+	_check(bounds.size.is_equal_approx(Vector2(50.0, 27.0)), "closed color well has the Blink default size")
+	_check(absf(marker.get_bounding_rect().end.y - (bounds.end.y - 6.0)) < 1.0,
+		"neighboring text aligns to the bottom of the swatch wrapper")
+	await RenderingServer.frame_post_draw
+	var pixels: Image = get_viewport().get_texture().get_image()
+	var painted: Color = pixels.get_pixelv(Vector2i(bounds.position + Vector2(36.0, 13.0)))
+	_check(painted.is_equal_approx(Color("#e66465")), "the closed well paints an unobstructed color sample")
+	_check(swatch.show_picker() == OK, "color input opens its canvas picker")
+	await get_tree().process_frame
+	var panel: Control = _label.get_node_or_null(^"_HTMLColorPicker") as Control
+	_check(panel != null and panel.visible, "the color picker is a visible canvas surface")
+	_check(_label.get_node_or_null(^"_HTMLInputPicker") == null, "the color picker uses no popup window")
+	if panel == null:
+		return
+	await RenderingServer.frame_post_draw
+	pixels = get_viewport().get_texture().get_image()
+	var light_point: Vector2i = Vector2i(panel.get_global_rect().position + Vector2(8.0, 8.0))
+	var dark_point: Vector2i = Vector2i(panel.get_global_rect().position + Vector2(8.0, 130.0))
+	_check(pixels.get_pixelv(light_point).r > 0.8 and pixels.get_pixelv(dark_point).r < 0.2,
+		"canvas picker renders the saturation and value gradient")
+	_color_picker_click(panel, Vector2(120.0, 80.0))
+	_color_picker_key(KEY_ESCAPE)
+	_check(not panel.visible and swatch.value == "#e66465", "Escape discards the preview and closes the panel")
+	_check(swatch.show_picker() == OK, "color picker reopens after cancel")
+	_color_picker_click(panel, Vector2(122.0, 80.0))
+	_color_picker_key(KEY_ENTER)
+	_check(not panel.visible and swatch.value != "#e66465", "Enter applies the selected color")
+	_check(swatch.show_picker() == OK, "opens manual color fields")
+	_color_picker_click(panel, Vector2(48.0, 198.0))
+	_color_picker_key(KEY_1, 49)
+	_color_picker_key(KEY_2, 50)
+	_color_picker_key(KEY_ENTER)
+	_check(swatch.value.begins_with("#0c"), "manual RGB field applies the typed red channel")
+
+
+func _color_picker_click(panel: Control, point: Vector2) -> void:
+	for state: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.position = panel.get_global_transform_with_canvas() * point
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = state
+		get_viewport().push_input(event, true)
+
+
+func _color_picker_key(code: Key, character: int = 0) -> void:
+	for state: bool in [true, false]:
+		var event: InputEventKey = InputEventKey.new()
+		event.keycode = code
+		event.unicode = character
+		event.pressed = state
+		get_viewport().push_input(event, true)
 
 
 func _check_file_picker() -> void:

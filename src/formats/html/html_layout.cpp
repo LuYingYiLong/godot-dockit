@@ -2593,6 +2593,10 @@ Ref<Texture2D> HTMLLayout::get_control_icon(docrender::HTMLControlIcon p_icon) c
 	return state->container ? state->container->get_control_icon(p_icon) : Ref<Texture2D>();
 }
 
+docrender::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_element, const String& p_text) const {
+	const auto node = is_element_connected(p_element) ? p_element->lock_element() : nullptr;
+	return node && state->container ? state->container->shape_input(node->css().get_font(), p_text) : docrender::HTMLTextLayout();
+}
 std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
 	std::vector<docrender::HTMLSelectMenuRow> result;
 	if (!is_focusable(p_element) || !state->container) return result;

@@ -15,6 +15,7 @@ namespace docrender {
 		godot::Rect2 range_box;
 		godot::Rect2 decoration_box;
 		godot::Rect2 image_box;
+		std::optional<godot::Color> preview_color;
 		bool image_available = false;
 		bool indeterminate = false;
 		godot::TypedArray<HTMLInputFile> files;
@@ -72,6 +73,7 @@ namespace docrender {
 		const godot::TypedArray<HTMLInputFile>& get_files() const { return files; }
 		bool set_files(const godot::TypedArray<HTMLInputFile>& p_files);
 		static godot::Color color_preview(const godot::String& p_value);
+		void set_color_preview(std::optional<godot::Color> p_color) { preview_color = p_color; }
 		int decoration_at(const godot::Vector2& p_point) const;
 		godot::Vector2i image_coordinates(const godot::Vector2& p_point) const;
 		bool edit_time_segment(int p_direction, bool p_step);

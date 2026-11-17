@@ -537,6 +537,12 @@ namespace docrender {
 	std::shared_ptr<litehtml::render_item> HTMLInputNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
 		if (type() == Type::HIDDEN) return {};
 		const auto display = css().get_display();
+		if (type() == Type::COLOR && (display == litehtml::display_inline_block || display == litehtml::display_block)) {
+			auto item = std::make_shared<HTMLControlRenderItem>(shared_from_this(), litehtml::size(get_attr("list") ? 88 : 44, 23),
+				HTMLControlRenderItem::Baseline::swatch);
+			item->parent(p_parent);
+			return item;
+		}
 		if (type() == Type::IMAGE && display != litehtml::display_none) {
 			auto item = std::make_shared<litehtml::render_item_image>(shared_from_this());
 			item->parent(p_parent);
@@ -633,11 +639,21 @@ namespace docrender {
 		const bool chrome = css().get_appearance() != litehtml::appearance_none;
 		const bool enabled = !forms::is_disabled(*this);
 		if (kind == Type::COLOR) {
-			const Rect2 swatch = p_box.grow(-3);
-			p_container.draw_input_chrome(p_box, swatch, ink, 2);
-			p_container.draw_input_chrome(p_box, swatch.grow(-1), color_preview(get_value()), 1);
-			if (chrome && p_box.size.x >= 40) p_container.draw_input_icon(HTMLControlIcon::colorize, p_box,
-				Rect2(p_box.get_end().x - 17, p_box.get_center().y - 5, 10, 10), ink);
+			Rect2 swatch = p_box.grow_individual(-2, -4, -2, -4);
+			if (chrome && get_attr("list")) {
+				const bool rtl = css().is_right_to_left();
+				swatch = p_box.grow_individual(rtl ? -24 : -8, -4, rtl ? -8 : -24, -4);
+				p_container.draw_input_icon(HTMLControlIcon::down, p_box, Rect2(rtl ? p_box.position.x + 2 :
+					p_box.get_end().x - 18, p_box.get_center().y - 8, 16, 16), ink);
+			}
+			if (!swatch.has_area()) return;
+			const Color fill = preview_color ? *preview_color : color_preview(get_value());
+			p_container.draw_input_chrome(p_box, swatch, Color::from_rgba8(119, 119, 119, enabled ? 255 : 120), 0);
+			const Rect2 inner = swatch.grow(-1);
+			if (!inner.has_area()) return;
+			if (fill.a < 1.0f) p_container.draw_input_chrome(p_box, inner,
+				html_system_color(litehtml::system_color::button_face, css().get_color_scheme()), 0);
+			p_container.draw_input_chrome(p_box, inner, fill, 0);
 			return;
 		}
 		if (kind == Type::FILE) {

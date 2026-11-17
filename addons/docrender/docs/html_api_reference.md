@@ -79,6 +79,8 @@ A single-row select uses a dropdown. The `multiple` attribute or a `size` above 
 
 `HTMLInputElement` covers the 22 HTML input states. Date and time values use the HTML civil date formats. GDScript can read date parts with `get_value_as_date()`, step numeric or temporal fields with `step_up()` and `step_down()`, and inspect constraint flags with `get_validity()`. The `pattern` attribute uses Godot's RegEx syntax. [WHATWG input states](https://html.spec.whatwg.org/multipage/input.html#states-of-the-type-attribute)
 
+The color input opens a canvas-drawn picker with saturation, brightness, hue, and RGB, HSL or hexadecimal entry. The swatch previews edits while the panel is open. Enter or a click outside applies the color, and Escape discards the preview. The eyedropper is available on display backends that support screen capture.
+
 File entries use the same `{name, value}` structure as text entries. Each file value is an `HTMLInputFile` with `name`, `size`, and `read_bytes(offset, count)`. The picker exposes the file name and content without exposing its system path. An image submitter contributes two coordinate entries, prefixed with its name when present.
 
 The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)

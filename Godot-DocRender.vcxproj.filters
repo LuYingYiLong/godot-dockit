@@ -709,6 +709,9 @@
     <ClCompile Include="src\nodes\html_label_pickers.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_color_picker.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\nodes\html_label_forms.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>

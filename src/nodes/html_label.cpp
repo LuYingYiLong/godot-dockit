@@ -522,6 +522,14 @@ void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
 }
 
 void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
+	if (picker_type == "color") {
+		const ObjectID host_id(get_instance_id()), viewport_id(get_viewport()->get_instance_id());
+		if (handle_color_picker_input(p_event)) {
+			if (auto* viewport = Object::cast_to<Viewport>(ObjectDB::get_instance(viewport_id))) viewport->set_input_as_handled();
+			return;
+		}
+		if (!ObjectDB::get_instance(host_id)) return;
+	}
 	const Ref<InputEventKey> key = p_event;
 	if (dialog_escape_held && key.is_valid() &&
 		(key->get_keycode() == KEY_ESCAPE || (key->get_keycode() == KEY_NONE && key->get_physical_keycode() == KEY_ESCAPE))) {
@@ -732,7 +740,7 @@ void HTMLLabelCanvas::update_focus_mode() {
 	const bool tab_reachable = !tab_elements.empty() || label->layout->top_modal().is_valid();
 	label->set_focus_mode(tab_reachable ? FOCUS_ALL :
 		(label->selection_enabled || has_focusable_elements ? FOCUS_CLICK : FOCUS_NONE));
-	label->set_process_input(tab_reachable || label->dialog_escape_held);
+	label->set_process_input(tab_reachable || label->dialog_escape_held || label->picker_type == "color");
 }
 
 void HTMLLabelCanvas::_notification(int p_what) {
@@ -1081,6 +1089,7 @@ void HTMLLabel::_notification(int p_what) {
 		else if (canvas && layout->top_modal().is_valid()) canvas->focus_tab_endpoint(false);
 		break;
 	case NOTIFICATION_FOCUS_EXIT:
+		if (picker_type == "color") close_input_picker();
 		if (canvas) {
 			const bool was_dragging = canvas->selection_dragged;
 			canvas->cancel_press();
@@ -1147,6 +1156,7 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	}
 	case NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		if (picker_type == "color") close_input_picker();
 		dialog_escape_held = false;
 		viewport_touch_index = -1;
 		viewport_touch_dragged = false;
@@ -2280,6 +2290,7 @@ void HTMLLabel::update_interaction() {
 		return;
 	}
 	update_select_menu();
+	if (picker_type == "color") update_color_picker();
 
 	if (std::exchange(reveal_focused_element, false)) {
 		if (const auto target = layout->scroll_element_into_view(canvas->focused_element, std::nullopt, *this,

@@ -185,6 +185,7 @@ class HTMLLayout : public godot::RefCounted {
 	std::vector<docrender::HTMLSelectMenuRow> suggestion_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	std::vector<docrender::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<godot::Texture2D> get_control_icon(docrender::HTMLControlIcon p_icon) const;
+	docrender::HTMLTextLayout shape_control_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;
 	bool is_focusable(const godot::Ref<HTMLElement>& p_element) const;
