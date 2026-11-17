@@ -78,6 +78,7 @@ application/modify_resources=false
 </video>
 <p id="after">After the video</p>
 <video id="uid_movie" src="uid://b41jy2q2ed4s2" width="100" height="40"></video>
+<video id="intrinsic" src="../media/movie.mp4" controls></video>
 """)
     shutil.copyfile(repo / "tests/html/video.gd", project / "video.gd")
     write(project / "main.tscn", """[gd_scene load_steps=3 format=3]

@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <unordered_map>
 #include <utility>
 
@@ -124,7 +125,7 @@ HTMLLabel::VideoPlayback& HTMLLabel::video_entry(const Ref<HTMLVideoElement>& p_
 	return video_playbacks.emplace_back(VideoPlayback{p_element, paths});
 }
 
-Error HTMLLabel::open_next_video(VideoPlayback& r_playback) {
+Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
 	const auto node = r_playback.element->get_video_node();
 	if (!node) return ERR_UNCONFIGURED;
 	while (r_playback.next_candidate < r_playback.paths.size() * int64_t(PLAYERS.size())) {
@@ -164,16 +165,20 @@ Error HTMLLabel::open_next_video(VideoPlayback& r_playback) {
 
 		r_playback.backend = backend;
 		r_playback.awaiting_frame = true;
+		r_playback.preparing = !p_play;
 		r_playback.opening_time = 0;
 		r_playback.controls_idle = 0;
-		r_playback.started = true;
+		r_playback.started = p_play;
+		if (node->current_src != source) node->duration = 0;
 		node->current_src = source;
 		node->time = 0;
-		node->duration = 0;
 		node->seekable = false;
-		node->paused = false;
+		node->paused = !p_play;
 		node->show_controls = true;
 		apply_video_audio(r_playback);
+		// Setting the FFmpeg stream creates the playback and exposes its dimensions.
+		// VLC exposes the video size through its first decoded texture.
+		if (!p_play && backend == VIDEO_BACKEND_FFMPEG) return OK;
 		const Variant result = r_playback.player->call("play");
 		if (result.get_type() != Variant::INT || int64_t(result) == 0) return OK;
 		stop_video_player(r_playback);
@@ -191,6 +196,8 @@ Error HTMLLabel::play_video(const Ref<HTMLVideoElement>& p_element) {
 	if (!node) return ERR_UNCONFIGURED;
 	auto& entry = video_entry(p_element);
 	entry.autoplay_attempted = true;
+	entry.preparation_attempted = true;
+	if (entry.preparing) stop_video_player(entry);
 	if (entry.player) {
 		if (!entry.started) {
 			if (entry.backend == VIDEO_BACKEND_FFMPEG) Object::cast_to<VideoStreamPlayer>(entry.player)->set_paused(false);
@@ -207,7 +214,7 @@ Error HTMLLabel::play_video(const Ref<HTMLVideoElement>& p_element) {
 		return OK;
 	}
 	entry.next_candidate = 0;
-	const Error error = open_next_video(entry);
+	const Error error = open_next_video(entry, true);
 	update_internal_processing();
 	redraw_video();
 	if (error != OK) notify_video_failure(p_element, error);
@@ -246,10 +253,11 @@ void HTMLLabel::apply_video_audio(VideoPlayback& r_playback) {
 	const auto node = r_playback.element->get_video_node();
 	if (!node || !r_playback.player) return;
 	r_playback.applied_muted = node->is_muted();
-	const double volume = r_playback.applied_muted ? 0.0 : node->volume;
+	const double volume = (r_playback.preparing || r_playback.applied_muted) ? 0.0 : node->volume;
 	const StringName bus_name = AudioServer::get_singleton()->get_bus_index(video_bus) >= 0 ? video_bus : StringName("Master");
 	r_playback.player->call("set_bus", bus_name);
-	r_playback.player->call("set_volume_db", volume > 0 ? std::max(-80.0, 20.0 * std::log10(volume)) : -80.0);
+	r_playback.player->call("set_volume_db", volume > 0 ? std::max(-80.0, 20.0 * std::log10(volume)) :
+		-std::numeric_limits<float>::infinity());
 	if (auto* native = Object::cast_to<VideoStreamPlayer>(r_playback.player)) native->set_volume(volume);
 }
 
@@ -265,10 +273,12 @@ void HTMLLabel::stop_video_player(VideoPlayback& r_playback) {
 	player->queue_free();
 	r_playback.started = false;
 	r_playback.awaiting_frame = false;
+	r_playback.preparing = false;
 }
 
 void HTMLLabel::destroy_video(VideoPlayback& r_playback) {
 	stop_video_player(r_playback);
+	r_playback.preparation_attempted = false;
 	if (const auto node = r_playback.element->get_video_node()) {
 		node->paused = true;
 		node->seekable = false;
@@ -302,6 +312,7 @@ void HTMLLabel::sync_videos() {
 	video_sync_queued = false;
 	if (!is_inside_tree() || source_dirty) return;
 	const bool available = can_play_video();
+	const bool running_game = !Engine::get_singleton()->is_editor_hint();
 	bool repaint = false;
 	for (auto it = video_playbacks.begin(); it != video_playbacks.end();) {
 		if (!layout->is_element_connected(it->element)) {
@@ -330,8 +341,16 @@ void HTMLLabel::sync_videos() {
 			node->available = available;
 			repaint = true;
 		}
-		if (available && element->is_autoplay_enabled() && !Engine::get_singleton()->is_editor_hint()) {
+		if (available && running_game && element->is_autoplay_enabled()) {
 			if (auto& entry = video_entry(element); !entry.autoplay_attempted) play_video(element);
+		}
+		else if (running_game && node->has_controls()) {
+			auto& entry = video_entry(element);
+			if (!entry.preparation_attempted) {
+				entry.preparation_attempted = true;
+				entry.next_candidate = 0;
+				open_next_video(entry, false);
+			}
 		}
 	}
 	if (repaint) {
@@ -344,7 +363,7 @@ void HTMLLabel::sync_videos() {
 
 bool HTMLLabel::has_active_video() const {
 	for (const auto& entry : video_playbacks) {
-		if (entry.player && (entry.awaiting_frame || (entry.started && !entry.element->is_paused()))) return true;
+		if (entry.player && (entry.preparing || (entry.started && !entry.element->is_paused()))) return true;
 	}
 	return false;
 }
@@ -368,17 +387,18 @@ void HTMLLabel::poll_videos(double p_delta) {
 		const Vector2i size = texture.is_valid() ? Vector2i(texture->get_size()) : Vector2i();
 		const bool valid_frame = size.x > 0 && size.y > 0 && (!vlc || size != Vector2i(1, 1));
 		const bool failed = (vlc && vlc_state(*entry.player, "STATE_ERROR")) ||
-			(entry.awaiting_frame && !node->paused && !valid_frame && (entry.opening_time += p_delta) >= OPEN_TIMEOUT);
+			(entry.awaiting_frame && !valid_frame && (entry.preparing || !node->paused) && (entry.opening_time += p_delta) >= OPEN_TIMEOUT);
 		if (failed) {
+			const bool play = !entry.preparing;
 			stop_video_player(entry);
 			node->frame.unref();
-			const Error error = open_next_video(entry);
-			if (error != OK) notify_video_failure(entry.element, error);
+			const Error error = open_next_video(entry, play);
+			if (play && error != OK) notify_video_failure(entry.element, error);
 			repaint = true;
 			continue;
 		}
 		if (valid_frame) {
-			if (entry.awaiting_frame || node->frame != texture) {
+			if (!entry.preparing && (entry.awaiting_frame || node->frame != texture)) {
 				entry.awaiting_frame = false;
 				node->frame = texture;
 				repaint = true;
@@ -394,6 +414,14 @@ void HTMLLabel::poll_videos(double p_delta) {
 			continue;
 		}
 		const double length = native ? native->get_stream_length() : double(entry.player->call("get_length")) / 1000.0;
+		if (entry.preparing) {
+			if (valid_frame) {
+				if (std::isfinite(length) && length > 0) node->duration = length;
+				stop_video_player(entry);
+				repaint = true;
+			}
+			continue;
+		}
 		const double time = native ? native->get_stream_position() : double(entry.player->call("get_time")) / 1000.0;
 		const bool seekable = std::isfinite(length) && length > 0 && (native || bool(entry.player->call("is_seekable")));
 		if (seekable != node->seekable || (std::isfinite(length) && length > 0 && node->duration != length)) {

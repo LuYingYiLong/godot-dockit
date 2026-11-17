@@ -14,6 +14,10 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	var bus_index: int = AudioServer.get_bus_count()
+	AudioServer.add_bus()
+	AudioServer.set_bus_name(bus_index, &"TestVideo")
+	label.video_bus = &"TestVideo"
 	if OS.get_cmdline_user_args().has("--embedded-window"):
 		var embedded: Window = Window.new()
 		embedded.size = frame.size
@@ -47,18 +51,31 @@ func _run() -> void:
 		_check(label.get_fullscreen_video() == null, "Unavailable playback creates no video window")
 	else:
 		_check(pixel.r > 0.8 and pixel.b > 0.35 and pixel.g < 0.2, "The poster appears while playback is idle")
-		await _check_playback(video)
+		var intrinsic: HTMLVideoElement = label.get_element_by_id("intrinsic") as HTMLVideoElement
+		var deadline: int = Time.get_ticks_msec() + 11000
+		var preparation_audible: bool = false
+		while intrinsic != null and (video.video_width == 0 or intrinsic.video_width == 0) and Time.get_ticks_msec() < deadline:
+			await get_tree().process_frame
+			preparation_audible = preparation_audible or AudioServer.get_bus_peak_volume_left_db(bus_index, 0) > -90.0
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_check(video.video_width > 0 and video.video_height > 0 and video.current_src == SOURCE,
+			"Metadata is available before the play button is pressed")
+		_check(video.paused and video.current_time == 0.0 and not preparation_audible,
+			"Metadata preparation leaves the timeline paused at zero and the video silent")
+		_check(intrinsic != null and intrinsic.video_width > 0 and intrinsic.video_height > 0 and
+			intrinsic.get_bounding_rect().size.is_equal_approx(Vector2(intrinsic.video_width, intrinsic.video_height)),
+			"An unsized video uses its intrinsic size while paused")
+		pixel = await _center_pixel()
+		_check(pixel.r > 0.8 and pixel.b > 0.35 and pixel.g < 0.2, "The poster survives metadata preparation")
+		await _check_playback(video, bus_index)
 	if _failures == 0:
 		print(SUCCESS)
 	get_tree().quit(_failures)
 
 
-func _check_playback(video: HTMLVideoElement) -> void:
+func _check_playback(video: HTMLVideoElement, bus_index: int) -> void:
 	var requested_backend: int = label.video_backend
-	var bus_index: int = AudioServer.get_bus_count()
-	AudioServer.add_bus()
-	AudioServer.set_bus_name(bus_index, &"TestVideo")
-	label.video_bus = &"TestVideo"
 	var failed: Array[String] = []
 	label.video_failed.connect(func(_video: HTMLVideoElement, _error: int, message: String) -> void: failed.append(message))
 	var changes: Array[bool] = []

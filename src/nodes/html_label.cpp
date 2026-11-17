@@ -923,6 +923,7 @@ void HTMLLabel::_notification(int p_what) {
 		ensure_controls();
 		connect_audio_buses(true);
 		queue_audio_sync();
+		queue_video_sync();
 		if (color_scheme_timer && is_visible_in_tree()) color_scheme_timer->start();
 		queue_refresh();
 		break;

@@ -207,6 +207,8 @@ private:
 		double opening_time = 0;
 		double controls_idle = 0;
 		bool awaiting_frame = false;
+		bool preparing = false;
+		bool preparation_attempted = false;
 		bool started = false;
 		bool autoplay_attempted = false;
 		bool applied_muted = false;
@@ -229,7 +231,7 @@ private:
 	VideoPlayback& video_entry(const godot::Ref<HTMLVideoElement>& p_element);
 	bool can_play_video() const;
 	godot::Error play_video(const godot::Ref<HTMLVideoElement>& p_element);
-	godot::Error open_next_video(VideoPlayback& r_playback);
+	godot::Error open_next_video(VideoPlayback& r_playback, bool p_play);
 	void pause_video(const HTMLVideoElement& p_element);
 	godot::Error seek_video(const HTMLVideoElement& p_element, double p_seconds);
 	void set_video_volume(const HTMLVideoElement& p_element);

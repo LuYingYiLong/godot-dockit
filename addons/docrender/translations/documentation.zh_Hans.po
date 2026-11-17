@@ -4976,8 +4976,8 @@ msgid "Starts playback automatically at runtime. Editor previews require user in
 msgstr "在游戏运行时自动播放。编辑器预览需手动播放。"
 
 #. doc_classes/HTMLVideoElement.xml
-msgid "Requests built-in controls. The video is drawn black and its controls are disabled when no selected backend is available."
-msgstr "启用内置控件。所选后端均不可用时，视频内容区显示黑色，内置控件禁用。"
+msgid "Requests built-in controls. At runtime, the video prepares its intrinsic size before playback. The video is drawn black and its controls are disabled when no selected backend is available."
+msgstr "启用内置控件。游戏运行时会在播放前读取视频的固有尺寸。所选后端均不可用时，视频内容区显示黑色，内置控件禁用。"
 
 #. doc_classes/HTMLVideoElement.xml
 msgid "The original local resource path of the selected video."
@@ -5016,12 +5016,12 @@ msgid "The local video source. If omitted, the player tries the child [code]<sou
 msgstr "本地视频源。省略时按顺序尝试 [code]<source>[/code] 子元素。"
 
 #. doc_classes/HTMLVideoElement.xml
-msgid "The intrinsic decoded frame height in pixels."
-msgstr "解码画面的固有高度，单位为像素。"
+msgid "The intrinsic video height in pixels, or zero while unknown."
+msgstr "视频的固有高度，单位为像素。高度未知时为零。"
 
 #. doc_classes/HTMLVideoElement.xml
-msgid "The intrinsic decoded frame width in pixels."
-msgstr "解码画面的固有宽度，单位为像素。"
+msgid "The intrinsic video width in pixels, or zero while unknown."
+msgstr "视频的固有宽度，单位为像素。宽度未知时为零。"
 
 #. doc_classes/HTMLVideoElement.xml
 msgid "Linear video audio volume from [code]0.0[/code] to [code]1.0[/code]."
