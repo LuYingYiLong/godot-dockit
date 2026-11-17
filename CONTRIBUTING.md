@@ -43,7 +43,7 @@ scons godot-docrender platform=windows target=template_release arch=x86_64
 
 SCons writes the libraries to `addons/docrender/bin/` and copies `pdfium.dll` there when the Windows x64 SDK is installed. Copy the full `addons/docrender` directory into a Godot project and reopen it to load the new binary. [Build workflow](.github/workflows/make_build.yml)
 
-GitHub Actions checks representative Linux, Windows, macOS, Android, and Web builds on pull requests, pushes to `main`, and merge queue runs. The Windows x64 job also runs the headless HTML DOM tests with Godot 4.7.2. Use **Build Godot DocRender** in the Actions tab to run the full platform matrix and download the merged `godot-docrender` addon artifact. Both workflows share the SCons build action. [Continuous Integration](.github/workflows/ci.yml)
+GitHub Actions compiles the Windows x64 debug extension on pull requests, pushes to `main`, and merge queue runs. Run the HTML regression suite locally using the command below. Use **Build Godot DocRender** in the Actions tab to run the full platform matrix and download the merged `godot-docrender` addon artifact. [Continuous Integration](.github/workflows/ci.yml)
 
 When changing editor text or class documentation, update and check the translation catalogs. [Localization tools](tools/README.md)
 

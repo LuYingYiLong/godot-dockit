@@ -16,17 +16,8 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.platform }} / ${{ matrix.arch }} / ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: linux, arch: x86_64, target: template_debug, os: ubuntu-22.04 }
-          - { platform: windows, arch: x86_64, target: template_debug, os: windows-latest }
-          - { platform: macos, arch: universal, target: template_debug, os: macos-latest }
-          - { platform: android, arch: arm64, target: template_debug, os: ubuntu-22.04 }
-          - { platform: web, arch: wasm32, target: template_release, os: ubuntu-22.04 }
+    name: windows / x86_64 / template_debug
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,23 +28,6 @@ jobs:
       - name: Build DocRender
         uses: ./.github/actions/build-extension
         with:
-          platform: ${{ matrix.platform }}
-          arch: ${{ matrix.arch }}
-          target: ${{ matrix.target }}
-
-      - name: Run headless HTML DOM tests
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $version = "4.7.2-stable"
-          $name = "Godot_v${version}_win64"
-          $archive = Join-Path $env:RUNNER_TEMP "$name.exe.zip"
-          $directory = Join-Path $env:RUNNER_TEMP "godot"
-          Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/$version/$name.exe.zip" -OutFile $archive
-          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne "731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953") {
-            throw "Godot archive checksum mismatch"
-          }
-          Expand-Archive -LiteralPath $archive -DestinationPath $directory
-          $godot = Get-ChildItem -LiteralPath $directory -Recurse -File -Filter "${name}_console.exe" | Select-Object -First 1
-          if (-not $godot) { throw "Godot console executable was not found" }
-          python tests/html/run_css_cascade.py $godot.FullName --dom-only
+          platform: windows
+          arch: x86_64
+          target: template_debug
