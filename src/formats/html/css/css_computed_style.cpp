@@ -122,7 +122,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 		_id("transition-property"), _id("transition-duration"), _id("transition-delay"),
 		_id("transition-timing-function"), _id("transition-behavior")
 	};
-	if (std::any_of(transition_names.begin(), transition_names.end(), [&](auto name) {
+	if (std::any_of(transition_names.begin(), transition_names.end(), [&](string_id name) {
 		return !context.read_declaration(context.declarations, name).is<invalid>();
 	})) {
 		static const css_transition_styles defaults;
@@ -138,7 +138,7 @@ void ComputedStyle::compute(const ComputeContext& context)
 		m_transitions.reset();
 	}
 	const auto& animation_names = css_animation_property_names();
-	if (std::any_of(animation_names.begin(), animation_names.end(), [&](auto name) {
+	if (std::any_of(animation_names.begin(), animation_names.end(), [&](string_id name) {
 		return !context.read_declaration(context.declarations, name).is<invalid>();
 	})) {
 		static const css_animation_styles defaults;

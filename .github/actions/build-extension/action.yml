@@ -25,6 +25,13 @@ runs:
         sudo apt-get update
         sudo apt-get install -y gcc-multilib g++-multilib
 
+    - name: Install Linux ARM32 toolchain
+      if: inputs.platform == 'linux' && inputs.arch == 'arm32'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-arm-linux-gnueabihf
+
     - name: Set up godot-cpp
       uses: ./godot-cpp/.github/actions/setup-godot-cpp
       with:
@@ -53,7 +60,11 @@ runs:
         BUILD_TARGET: ${{ inputs.target }}
         BUILD_PRECISION: ${{ inputs.precision }}
       run: |
-        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION"
+        toolchain=()
+        if [[ "$BUILD_PLATFORM-$BUILD_ARCH" == linux-arm32 ]]; then
+          toolchain+=(linux_toolchain_prefix=arm-linux-gnueabihf-)
+        fi
+        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION" "${toolchain[@]}"
 
     - name: Save SCons cache
       uses: ./godot-cpp/.github/actions/godot-cache-save

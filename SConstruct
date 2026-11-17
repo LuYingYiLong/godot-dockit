@@ -5,7 +5,18 @@ from scripts.litehtml.build import build_litehtml
 
 merman_sdk_option = ARGUMENTS.pop("merman_sdk", None)
 pdfium_sdk_option = ARGUMENTS.pop("pdfium_sdk", None)
-env = SConscript("godot-cpp/SConstruct")
+linux_toolchain_prefix = ARGUMENTS.pop("linux_toolchain_prefix", "")
+if linux_toolchain_prefix:
+    if ARGUMENTS.get("platform") != "linux":
+        print("linux_toolchain_prefix requires platform=linux.")
+        Exit(1)
+    # Set the tools before godot-cpp creates its own compilation targets.
+    env = Environment(tools=["default"], PLATFORM="")
+    env.Replace(CC=linux_toolchain_prefix + "gcc", CXX=linux_toolchain_prefix + "g++",
+                AR=linux_toolchain_prefix + "ar", RANLIB=linux_toolchain_prefix + "ranlib")
+    env = SConscript("godot-cpp/SConstruct", exports={"env": env})
+else:
+    env = SConscript("godot-cpp/SConstruct")
 
 env.Append(CPPPATH=["src/"])
 if env["platform"] == "windows":
@@ -131,6 +142,7 @@ if env["platform"] == "macos":
             env["platform"], env["target"], env["platform"], env["target"]
         ),
         source=sources,
+        SHLIBSUFFIX="",
     )
 elif env["platform"] == "ios":
     if env["ios_simulator"]:
