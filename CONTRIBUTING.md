@@ -41,11 +41,13 @@ scons godot-docrender platform=windows target=template_debug arch=x86_64
 scons godot-docrender platform=windows target=template_release arch=x86_64
 ```
 
-SCons writes the libraries to `addons/docrender/bin/` and copies `pdfium.dll` there when the Windows x64 SDK is installed. Copy the full `addons/docrender` directory into a Godot project and reopen it to load the new binary. Use the CI build matrix to find `platform` and `arch` values for other targets. [Build workflow](.github/workflows/make_build.yml)
+SCons writes the libraries to `addons/docrender/bin/` and copies `pdfium.dll` there when the Windows x64 SDK is installed. Copy the full `addons/docrender` directory into a Godot project and reopen it to load the new binary. [Build workflow](.github/workflows/make_build.yml)
+
+GitHub Actions checks representative Linux, Windows, macOS, Android, and Web builds on pull requests, pushes to `main`, and merge queue runs. The Windows x64 job also runs the headless HTML DOM tests with Godot 4.7.2. Use **Build Godot DocRender** in the Actions tab to run the full platform matrix and download the merged `godot-docrender` addon artifact. Both workflows share the SCons build action. [Continuous Integration](.github/workflows/ci.yml)
 
 When changing editor text or class documentation, update and check the translation catalogs. [Localization tools](tools/README.md)
 
-After building Windows x64 `template_debug`, run the HTML regression suite with Godot 4.7.2. The runner checks the GDScript DOM ports of Web Platform Tests headlessly, then runs the CSS and rendering regressions in both Compatibility and Forward+ in a temporary project. Use `--renderer gl_compatibility` or `--renderer forward_plus` to select a single renderer. [HTML API and Web standards](addons/docrender/docs/html_api_reference.md) · [WPT ports](tests/html/wpt/dom.gd)
+After building Windows x64 `template_debug`, run the HTML regression suite with Godot 4.7.2. The runner checks the GDScript DOM ports of Web Platform Tests headlessly, then runs the CSS and rendering regressions in both Compatibility and Forward+ in a temporary project. Use `--dom-only` to run just the headless tests, or `--renderer gl_compatibility` or `--renderer forward_plus` to select a single renderer. [HTML API and Web standards](addons/docrender/docs/html_api_reference.md) · [WPT ports](tests/html/wpt/dom.gd)
 
 ```powershell
 python tests/html/run_css_cascade.py "C:/path/to/Godot_v4.7.2-stable_win64_console.exe"

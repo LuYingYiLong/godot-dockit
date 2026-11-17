@@ -1,0 +1,61 @@
+name: Build DocRender
+description: Install the target SDKs and build the DocRender GDExtension with SCons.
+
+inputs:
+  platform:
+    description: SCons target platform.
+    required: true
+  arch:
+    description: SCons target architecture.
+    required: true
+  target:
+    description: SCons build target.
+    required: true
+  precision:
+    description: Godot floating-point precision.
+    default: single
+
+runs:
+  using: composite
+  steps:
+    - name: Install multilib support
+      if: inputs.platform == 'linux' && inputs.arch == 'x86_32'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib g++-multilib
+
+    - name: Set up godot-cpp
+      uses: ./godot-cpp/.github/actions/setup-godot-cpp
+      with:
+        platform: ${{ inputs.platform }}
+        windows-compiler: msvc
+        em-version: 3.1.62
+
+    - name: Install Merman and PDFium SDKs
+      if: inputs.platform == 'windows' && inputs.arch == 'x86_64'
+      shell: bash
+      run: |
+        python scripts/fetch_merman_sdk.py
+        python scripts/fetch_pdfium_sdk.py
+
+    - name: Restore SCons cache
+      uses: ./godot-cpp/.github/actions/godot-cache-restore
+      with:
+        cache-name: ${{ inputs.platform }}_${{ inputs.arch }}_${{ inputs.precision }}_${{ inputs.target }}
+
+    - name: Build GDExtension
+      shell: bash
+      env:
+        SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+        BUILD_PLATFORM: ${{ inputs.platform }}
+        BUILD_ARCH: ${{ inputs.arch }}
+        BUILD_TARGET: ${{ inputs.target }}
+        BUILD_PRECISION: ${{ inputs.precision }}
+      run: |
+        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION"
+
+    - name: Save SCons cache
+      uses: ./godot-cpp/.github/actions/godot-cache-save
+      with:
+        cache-name: ${{ inputs.platform }}_${{ inputs.arch }}_${{ inputs.precision }}_${{ inputs.target }}

@@ -669,7 +669,8 @@ Ref<HTMLAnimation> HTMLLayout::animate(const Ref<HTMLElement>& p_element, const 
 	const Dictionary& p_options) {
 	if (!is_element_connected(p_element) || !refresh_cssom()) return {};
 	const auto settings = animation_options(p_options);
-	const auto frames = settings ? script_keyframes(p_keyframes) : nullptr;
+	if (!settings) return {};
+	const auto frames = script_keyframes(p_keyframes);
 	const auto target = p_element->lock_element();
 	if (!frames || !target) return {};
 	const auto& document = state->dom->get_document();
@@ -2012,8 +2013,8 @@ docrender::HTMLSnapResult HTMLLayout::snap_nested(const litehtml::render_item& p
 		return {p_request.end.clamp(Vector2(), p_request.limit), {}};
 	}
 	const auto& scrollport = geometry->child_overflow->shape.rect;
-	p_request.axes.x = p_request.axes.x && litehtml::is_scrollable_overflow(p_container.css().get_overflow_x());
-	p_request.axes.y = p_request.axes.y && litehtml::is_scrollable_overflow(p_container.css().get_overflow_y());
+	p_request.axes.x = p_request.axes.x != 0 && litehtml::is_scrollable_overflow(p_container.css().get_overflow_x());
+	p_request.axes.y = p_request.axes.y != 0 && litehtml::is_scrollable_overflow(p_container.css().get_overflow_y());
 	p_request.limit = item_scroll_limit(p_container);
 	auto& memory = state->nested_snap_memory[element.get()];
 	memory.container = element;

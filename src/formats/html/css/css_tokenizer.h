@@ -91,7 +91,7 @@ struct css_token
 		if (is_component_value()) new(&value) vector<css_token>;
 	}
 
-	css_token(const css_token& token) : type(token.type), str(token.str), spaced_operator(token.spaced_operator), preceded_by_space(token.preceded_by_space), repr(token.repr)
+	css_token(const css_token& token) : type(token.type), str(token.str), n{}, spaced_operator(token.spaced_operator), preceded_by_space(token.preceded_by_space), repr(token.repr)
 	{
 		switch (type)
 		{

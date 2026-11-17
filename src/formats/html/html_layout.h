@@ -67,6 +67,8 @@ class HTMLAudioElement;
 class HTMLVideoElement;
 class HTMLDialogElement;
 class HTMLStyleSheet;
+class HTMLLabel;
+class HTMLLabelCanvas;
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
@@ -108,8 +110,8 @@ class HTMLLayout : public godot::RefCounted {
 	godot::TypedArray<HTMLAudioElement> audio_elements() const;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
-	friend class HTMLLabel;
-	friend class HTMLLabelCanvas;
+	friend class ::HTMLLabel;
+	friend class ::HTMLLabelCanvas;
 	friend class MarkdownLabelCanvas;
 	friend class HTMLRange;
 	friend class HTMLAnimation;

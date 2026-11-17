@@ -39,28 +39,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
-
-      # Add linux x86_32 toolchain
-      - name: Install multilib support
-        if: ${{ matrix.target.platform == 'linux' && matrix.target.arch == 'x86_32' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
-
-      # Setup dependencies
-      - name: Setup godot-cpp
-        uses: ./godot-cpp/.github/actions/setup-godot-cpp
-        with:
-          platform: ${{ matrix.target.platform }}
-          em-version: 3.1.62
-
-      - name: Install Merman SDK
-        if: ${{ matrix.target.platform == 'windows' && matrix.target.arch == 'x86_64' }}
-        run: python scripts/fetch_merman_sdk.py
-
-      - name: Install PDFium SDK
-        if: ${{ matrix.target.platform == 'windows' && matrix.target.arch == 'x86_64' }}
-        run: python scripts/fetch_pdfium_sdk.py
+          submodules: recursive
+          persist-credentials: false
 
       # Remove committed/pre-existing binaries so each matrix artifact only contains its own build output.
       - name: Clean bundled binary outputs
@@ -73,26 +53,13 @@ jobs:
           }
           Get-ChildItem addons/docrender/bin -Directory -Filter "*.framework" | Remove-Item -Recurse -Force
 
-      # Build GDExtension (with caches)
-
-      - name: Restore .scons_cache
-        uses: ./godot-cpp/.github/actions/godot-cache-restore
+      - name: Build DocRender
+        uses: ./.github/actions/build-extension
         with:
-          scons-cache: ${{ github.workspace }}/.scons-cache/
-          cache-name: ${{ matrix.target.platform }}_${{ matrix.target.arch }}_${{ matrix.float-precision }}_${{ matrix.target-type }}
-
-      - name: Build Godot DocRender GDExtension
-        shell: sh
-        env:
-          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
-        run: |
-          scons godot-docrender target=${{ matrix.target-type }} platform=${{ matrix.target.platform }} arch=${{ matrix.target.arch }} precision=${{ matrix.float-precision }}
-
-      - name: Save .scons_cache
-        uses: ./godot-cpp/.github/actions/godot-cache-save
-        with:
-          scons-cache: ${{ github.workspace }}/.scons-cache/
-          cache-name: ${{ matrix.target.platform }}_${{ matrix.target.arch }}_${{ matrix.float-precision }}_${{ matrix.target-type }}
+          platform: ${{ matrix.target.platform }}
+          arch: ${{ matrix.target.arch }}
+          target: ${{ matrix.target-type }}
+          precision: ${{ matrix.float-precision }}
 
       # Clean up compilation files
       - name: Windows - Delete compilation files

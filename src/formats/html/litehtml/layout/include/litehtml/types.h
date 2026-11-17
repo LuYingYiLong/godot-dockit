@@ -203,36 +203,10 @@ namespace litehtml
 		pixel_t							min_width;
 
 		floated_box() = default;
-		floated_box(const floated_box& val)
-		{
-			pos = val.pos;
-			float_side = val.float_side;
-			clear_floats = val.clear_floats;
-			el = val.el;
-			context = val.context;
-			min_width = val.min_width;
-		}
-
+		floated_box(const floated_box& val) = default;
 		floated_box& operator=(const floated_box& val) = default;
-
-		floated_box(floated_box&& val)
-		{
-			pos = val.pos;
-			float_side = val.float_side;
-			clear_floats = val.clear_floats;
-			el = std::move(val.el);
-			context = val.context;
-			min_width = val.min_width;
-		}
-		void operator=(floated_box&& val)
-		{
-			pos = val.pos;
-			float_side = val.float_side;
-			clear_floats = val.clear_floats;
-			el = std::move(val.el);
-			context = val.context;
-			min_width = val.min_width;
-		}
+		floated_box(floated_box&& val) noexcept = default;
+		floated_box& operator=(floated_box&& val) noexcept = default;
 	};
 
 	struct pixel_pixel_cache

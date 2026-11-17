@@ -176,7 +176,7 @@ namespace docrender::css {
 		css_underline			m_underline;
 		string					m_text_emphasis_style;
 		web_color				m_text_emphasis_color;
-		int						m_text_emphasis_position;
+		int						m_text_emphasis_position = text_emphasis_position_right;
 		font_metrics			m_font_metrics;
 		text_transform			m_text_transform;
 		web_color				m_color;
@@ -219,7 +219,7 @@ namespace docrender::css {
 		flex_align_items		m_flex_align_self;
 		flex_align_content		m_flex_align_content;
 
-		caption_side			m_caption_side;
+		caption_side			m_caption_side = caption_side_top;
 
 		int 					m_order;
 

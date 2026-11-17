@@ -64,7 +64,9 @@ def write_border_image_png(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("godot", type=Path, help="path to the Godot console executable")
-    parser.add_argument("--renderer", choices=("gl_compatibility", "forward_plus"))
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--renderer", choices=("gl_compatibility", "forward_plus"))
+    mode.add_argument("--dom-only", action="store_true", help="run only the headless DOM regression tests")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     library = repo / "addons/docrender/bin/docrender.windows.template_debug.x86_64.dll"
@@ -73,7 +75,7 @@ def main():
     if not args.godot.is_file():
         parser.error("Godot executable does not exist.")
 
-    with TemporaryDirectory(prefix="docrender-css-cascade-") as test_dir:
+    with TemporaryDirectory(prefix="docrender-css-cascade-", ignore_cleanup_errors=True) as test_dir:
         project = Path(test_dir)
         extension = project / "addons/docrender"
         (extension / "bin").mkdir(parents=True)
@@ -90,8 +92,22 @@ def main():
             encoding="utf-8", newline="\n",
         )
         tests = Path(__file__).resolve().parent
-        shutil.copyfile(tests / "css_cascade.gd", project / "css_cascade.gd")
         shutil.copyfile(tests / "wpt/dom.gd", project / "dom_wpt.gd")
+        # Keep the test process's logs and shader cache in its temporary project.
+        environment = {**os.environ, "APPDATA": str(project)}
+        dom = subprocess.run(
+            [str(args.godot.resolve()), "--headless", "--path", str(project), "--script", "dom_wpt.gd"],
+            env=environment, cwd=project, timeout=30, check=False, capture_output=True, text=True, encoding="utf-8",
+            errors="replace",
+        )
+        print(dom.stdout, end="", flush=True)
+        print(dom.stderr, end="", file=sys.stderr, flush=True)
+        if dom.returncode != 0 or "DocRender DOM WPT ports passed." not in dom.stdout or "ERROR:" in dom.stderr:
+            return dom.returncode or 1
+        if args.dom_only:
+            return 0
+
+        shutil.copyfile(tests / "css_cascade.gd", project / "css_cascade.gd")
         styles = project / "styles"
         (styles / "nested").mkdir(parents=True)
         (styles / "sheet.css").write_text(
@@ -396,17 +412,6 @@ ul { margin: 0; padding-left: 60px; }
             '<div id="above" class="variable">MMMM</div>\n',
             encoding="utf-8", newline="\n",
         )
-        # Keep the test process's logs and shader cache in its temporary project.
-        environment = {**os.environ, "APPDATA": str(project)}
-        dom = subprocess.run(
-            [str(args.godot.resolve()), "--headless", "--path", str(project), "--script", "dom_wpt.gd"],
-            env=environment, cwd=project, timeout=30, check=False, capture_output=True, text=True, encoding="utf-8",
-            errors="replace",
-        )
-        print(dom.stdout, end="", flush=True)
-        print(dom.stderr, end="", file=sys.stderr, flush=True)
-        if dom.returncode != 0 or "DocRender DOM WPT ports passed." not in dom.stdout or "ERROR:" in dom.stderr:
-            return dom.returncode or 1
         imported = subprocess.run(
             [str(args.godot.resolve()), "--headless", "--path", str(project), "--import"],
             env=environment, cwd=project, timeout=60, check=False, capture_output=True,
