@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLPointerEvent" inherits="HTMLMouseEvent" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		A pointer event for mouse and touch input.
+	</brief_description>
+	<description>
+		Pointer events report a stable pointer ID and a type of [code]mouse[/code], [code]pen[/code], or [code]touch[/code]. Pointer events are dispatched alongside compatible mouse events when applicable.
+	</description>
+	<members>
+		<member name="pointer_id" type="int" setter="set_pointer_id" getter="get_pointer_id">
+			The ID for this pointer. Mouse events use [code]0[/code].
+		</member>
+		<member name="pointer_type" type="StringName" setter="set_pointer_type" getter="get_pointer_type">
+			The pointer device type: [code]mouse[/code], [code]pen[/code], or [code]touch[/code].
+		</member>
+		<member name="is_primary" type="bool" setter="set_is_primary" getter="is_primary">
+			Whether this is the primary pointer of its type.
+		</member>
+	</members>
+</class>

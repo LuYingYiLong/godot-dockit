@@ -65,6 +65,7 @@ DOM queries reflect successful edits immediately. Geometry requires layout. Afte
 | `window` | `HTMLDocumentNode.get_default_view()` returns the document window. The propagation path is `window → document → element chain → target`, so a window listener runs first in the capture phase and last in the bubble phase. A window handle becomes invalid when the document is replaced and its listeners are cleared with the rest of the document. |
 | `dispatchEvent()` | `HTMLEventTarget.dispatch_event(event)` runs the capture, target, and bubble phases and returns `false` when a listener cancelled the default action. Build a synthetic event with `HTMLEvent.new()` or a concrete subclass, then set `type`, `bubbles`, and `cancelable` before dispatching. Dispatching an event that is already being dispatched is refused. |
 | `Event` | `HTMLEvent` exposes `type`, `target`, `current_target`, `composed_path()`, `event_phase`, `bubbles`, `cancelable`, `default_prevented`, `trusted`, and `time_stamp`. `target` and `current_target` are `HTMLEventTarget`, so they may be a node, the document node, or the window. `target`, `current_target`, `event_phase`, and `default_prevented` are read-only. Assigning `type`, `bubbles`, or `cancelable` during dispatch is ignored. |
+| Mouse and pointer events | `HTMLMouseEvent` carries button state, position, modifiers, click detail, and `related_target` during hover transitions. `HTMLPointerEvent` adds `pointer_id`, `pointer_type`, and `is_primary`; `HTMLWheelEvent` adds a pixel `delta` and `delta_mode`. |
 | `CustomEvent` | `HTMLCustomEvent.detail` is a `Dictionary` payload. Assign it before dispatching and read it in the listener to pass structured data between components. |
 | `preventDefault()` / `stopPropagation()` | `prevent_default()` cancels the built-in action when `cancelable` is set. `stop_propagation()` ends propagation after the current target. `stop_immediate_propagation()` also skips the remaining listeners on the current target. A listener registered with `passive` cannot cancel the default action; `prevent_default()` then only logs a warning once. |
 | Event delegation | Register on the document node or the window, then use `event.target.closest(selector)` to find the element that owns the action. Listeners there receive events from every connected descendant. |
@@ -72,9 +73,14 @@ DOM queries reflect successful edits immediately. Geometry requires layout. Afte
 | Event | Bubbles | Cancelable | Target |
 | --- | --- | --- | --- |
 | `mousedown`, `mouseup` | yes | `mousedown` only | Element under the pointer |
+| `pointerdown`, `pointerup`, `pointermove`, `pointercancel` | yes | `pointerdown` only | Element under the pointer |
+| `mousemove`, `mouseover`, `mouseout` | yes | no | Element under the pointer |
+| `pointerover`, `pointerout` | yes | no | Element under the pointer |
 | `click` | yes | yes | Element under the pointer |
+| `dblclick` | yes | yes | Element under the pointer |
 | `contextmenu` | yes | yes | Element under the pointer |
-| `mouseenter`, `mouseleave` | no | no | Entered or left element |
+| `mouseenter`, `mouseleave`, `pointerenter`, `pointerleave` | no | no | Entered or left element |
+| `wheel` | yes | yes | Element under the pointer |
 | `focus`, `blur` | no | no | New or previous focused element |
 | `focusin`, `focusout` | yes | no | New or previous focused element |
 | `keydown`, `keyup` | yes | `keydown` only | Focused element, else the document body |
@@ -82,7 +88,7 @@ DOM queries reflect successful edits immediately. Geometry requires layout. Afte
 | `submit`, `reset` | yes | yes | Form |
 | `scroll` | no | no | Scrolled element |
 
-Events run **before** the built-in action they describe. Cancelling `click` prevents following a link, activating a button or label, toggling a checkbox, opening a disclosure or dropdown, and submitting or resetting a form. Cancelling `keydown` suppresses Tab traversal, Enter and Space activation, and text insertion. Cancelling `contextmenu` leaves right-click handling to the script.
+Events run **before** the built-in action they describe. Cancelling `click` prevents following a link, activating a button or label, toggling a checkbox, opening a disclosure or dropdown, and submitting or resetting a form. Cancelling `keydown` suppresses Tab traversal, Enter and Space activation, and text insertion. Cancelling `wheel` prevents the wheel scroll. Cancelling `pointerdown` suppresses its compatible mouse press and default press actions. Cancelling `contextmenu` leaves right-click handling to the script.
 
 Because the event runs first, a cancelled event also suppresses the signal that reports the same action: `link_pressed`, `button_pressed`, `form_submitted`, and `form_reset`. Without listeners the signals behave exactly as documented elsewhere in this guide.
 

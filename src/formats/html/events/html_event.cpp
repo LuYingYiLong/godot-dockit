@@ -1,12 +1,22 @@
 #include "html_event.h"
 
 #include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
 
 #include <chrono>
 
 using namespace godot;
 
 namespace {
+	template <typename T>
+	Ref<HTMLEvent> instantiate_event() {
+		Ref<T> event;
+		event.instantiate();
+		return event;
+	}
+
+	using EventFactory = Ref<HTMLEvent>(*)();
+
 	int64_t now_milliseconds() {
 		return std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -139,6 +149,8 @@ void HTMLCustomEvent::set_detail(const Dictionary& p_detail) {
 }
 
 void HTMLMouseEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_related_target"), &HTMLMouseEvent::get_related_target);
+	ClassDB::bind_method(D_METHOD("set_related_target", "target"), &HTMLMouseEvent::set_related_target);
 	ClassDB::bind_method(D_METHOD("get_button"), &HTMLMouseEvent::get_button);
 	ClassDB::bind_method(D_METHOD("set_button", "button"), &HTMLMouseEvent::set_button);
 	ClassDB::bind_method(D_METHOD("get_buttons"), &HTMLMouseEvent::get_buttons);
@@ -155,6 +167,8 @@ void HTMLMouseEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_alt_pressed", "pressed"), &HTMLMouseEvent::set_alt_pressed);
 	ClassDB::bind_method(D_METHOD("is_meta_pressed"), &HTMLMouseEvent::is_meta_pressed);
 	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLMouseEvent::set_meta_pressed);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "related_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
+		PROPERTY_USAGE_NONE), "set_related_target", "get_related_target");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "button"), "set_button", "get_button");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "buttons"), "set_buttons", "get_buttons");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "detail"), "set_detail", "get_detail");
@@ -163,6 +177,28 @@ void HTMLMouseEvent::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ctrl_pressed"), "set_ctrl_pressed", "is_ctrl_pressed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "alt_pressed"), "set_alt_pressed", "is_alt_pressed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "meta_pressed"), "set_meta_pressed", "is_meta_pressed");
+}
+
+void HTMLWheelEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_delta"), &HTMLWheelEvent::get_delta);
+	ClassDB::bind_method(D_METHOD("set_delta", "delta"), &HTMLWheelEvent::set_delta);
+	ClassDB::bind_method(D_METHOD("get_delta_mode"), &HTMLWheelEvent::get_delta_mode);
+	ClassDB::bind_method(D_METHOD("set_delta_mode", "delta_mode"), &HTMLWheelEvent::set_delta_mode);
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "delta"), "set_delta", "get_delta");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "delta_mode", PROPERTY_HINT_ENUM, "Pixel"), "set_delta_mode", "get_delta_mode");
+	BIND_ENUM_CONSTANT(DELTA_MODE_PIXEL);
+}
+
+void HTMLPointerEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_pointer_id"), &HTMLPointerEvent::get_pointer_id);
+	ClassDB::bind_method(D_METHOD("set_pointer_id", "pointer_id"), &HTMLPointerEvent::set_pointer_id);
+	ClassDB::bind_method(D_METHOD("get_pointer_type"), &HTMLPointerEvent::get_pointer_type);
+	ClassDB::bind_method(D_METHOD("set_pointer_type", "pointer_type"), &HTMLPointerEvent::set_pointer_type);
+	ClassDB::bind_method(D_METHOD("is_primary"), &HTMLPointerEvent::is_primary);
+	ClassDB::bind_method(D_METHOD("set_is_primary", "primary"), &HTMLPointerEvent::set_is_primary);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "pointer_id"), "set_pointer_id", "get_pointer_id");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "pointer_type"), "set_pointer_type", "get_pointer_type");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_primary"), "set_is_primary", "is_primary");
 }
 
 void HTMLKeyboardEvent::_bind_methods() {
@@ -211,32 +247,32 @@ void HTMLSubmitEvent::_bind_methods() {
 
 namespace docrender {
 	Ref<HTMLEvent> make_dom_event(const StringName& p_type, bool p_bubbles, bool p_cancelable) {
+		static const HashMap<StringName, EventFactory> event_factories = [] {
+			HashMap<StringName, EventFactory> factories;
+			for (const StringName& type : { StringName("mousedown"), StringName("mouseup"), StringName("mousemove"),
+				StringName("mouseover"), StringName("mouseout"), StringName("mouseenter"), StringName("mouseleave"),
+				StringName("click"), StringName("dblclick"), StringName("contextmenu") }) {
+				factories.insert(type, &instantiate_event<HTMLMouseEvent>);
+			}
+			for (const StringName& type : { StringName("pointerdown"), StringName("pointerup"), StringName("pointermove"),
+				StringName("pointerover"), StringName("pointerout"), StringName("pointerenter"), StringName("pointerleave"),
+				StringName("pointercancel") }) {
+				factories.insert(type, &instantiate_event<HTMLPointerEvent>);
+			}
+			factories.insert(StringName("wheel"), &instantiate_event<HTMLWheelEvent>);
+			factories.insert(StringName("keydown"), &instantiate_event<HTMLKeyboardEvent>);
+			factories.insert(StringName("keyup"), &instantiate_event<HTMLKeyboardEvent>);
+			factories.insert(StringName("focus"), &instantiate_event<HTMLFocusEvent>);
+			factories.insert(StringName("blur"), &instantiate_event<HTMLFocusEvent>);
+			factories.insert(StringName("focusin"), &instantiate_event<HTMLFocusEvent>);
+			factories.insert(StringName("focusout"), &instantiate_event<HTMLFocusEvent>);
+			factories.insert(StringName("submit"), &instantiate_event<HTMLSubmitEvent>);
+			factories.insert(StringName("reset"), &instantiate_event<HTMLSubmitEvent>);
+			return factories;
+		}();
 		Ref<HTMLEvent> event;
-		if (p_type == StringName("mousedown") || p_type == StringName("mouseup") ||
-			p_type == StringName("click") || p_type == StringName("contextmenu")) {
-			Ref<HTMLMouseEvent> mouse;
-			mouse.instantiate();
-			event = mouse;
-		}
-		else if (p_type == StringName("keydown") || p_type == StringName("keyup")) {
-			Ref<HTMLKeyboardEvent> key;
-			key.instantiate();
-			event = key;
-		}
-		else if (p_type == StringName("focus") || p_type == StringName("blur") ||
-			p_type == StringName("focusin") || p_type == StringName("focusout")) {
-			Ref<HTMLFocusEvent> focus;
-			focus.instantiate();
-			event = focus;
-		}
-		else if (p_type == StringName("submit") || p_type == StringName("reset")) {
-			Ref<HTMLSubmitEvent> submit;
-			submit.instantiate();
-			event = submit;
-		}
-		else {
-			event.instantiate();
-		}
+		if (const EventFactory* factory = event_factories.getptr(p_type)) event = (*factory)();
+		else event.instantiate();
 		event->set_type(p_type);
 		event->set_bubbles(p_bubbles);
 		event->set_cancelable(p_cancelable);

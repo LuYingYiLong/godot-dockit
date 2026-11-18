@@ -98,6 +98,7 @@ public:
 class HTMLMouseEvent : public HTMLEvent {
 	GDCLASS(HTMLMouseEvent, HTMLEvent)
 
+	godot::Ref<HTMLEventTarget> related_target;
 	int button = 0;
 	int buttons = 0;
 	int detail = 0;
@@ -111,6 +112,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	godot::Ref<HTMLEventTarget> get_related_target() const { return related_target; }
+	void set_related_target(const godot::Ref<HTMLEventTarget>& p_target) { related_target = p_target; }
 	int get_button() const { return button; }								// 返回触发的鼠标键
 	void set_button(int p_button) { button = p_button; }
 	int get_buttons() const { return buttons; }								// 返回按键位掩码
@@ -127,6 +130,49 @@ public:
 	void set_alt_pressed(bool p_pressed) { alt = p_pressed; }
 	bool is_meta_pressed() const { return meta; }
 	void set_meta_pressed(bool p_pressed) { meta = p_pressed; }
+};
+
+class HTMLWheelEvent : public HTMLMouseEvent {
+	GDCLASS(HTMLWheelEvent, HTMLMouseEvent)
+
+public:
+	enum DeltaMode {
+		DELTA_MODE_PIXEL = 0,
+	};
+
+private:
+	godot::Vector2 delta;
+	int delta_mode = DELTA_MODE_PIXEL;
+
+protected:
+	static void _bind_methods();
+
+public:
+	godot::Vector2 get_delta() const { return delta; }
+	void set_delta(const godot::Vector2& p_delta) { delta = p_delta; }
+	int get_delta_mode() const { return delta_mode; }
+	void set_delta_mode(int p_delta_mode) { delta_mode = p_delta_mode; }
+};
+
+VARIANT_ENUM_CAST(HTMLWheelEvent::DeltaMode);
+
+class HTMLPointerEvent : public HTMLMouseEvent {
+	GDCLASS(HTMLPointerEvent, HTMLMouseEvent)
+
+	int pointer_id = 0;
+	godot::StringName pointer_type;
+	bool primary = true;
+
+protected:
+	static void _bind_methods();
+
+public:
+	int get_pointer_id() const { return pointer_id; }
+	void set_pointer_id(int p_pointer_id) { pointer_id = p_pointer_id; }
+	godot::StringName get_pointer_type() const { return pointer_type; }
+	void set_pointer_type(const godot::StringName& p_pointer_type) { pointer_type = p_pointer_type; }
+	bool is_primary() const { return primary; }
+	void set_is_primary(bool p_primary) { primary = p_primary; }
 };
 
 class HTMLKeyboardEvent : public HTMLEvent {
