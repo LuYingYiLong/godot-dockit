@@ -15,7 +15,7 @@ using namespace godot;
 using docrender::HTMLDOM;
 
 namespace {
-	// 防御监听器内部再次派发同一事件造成的无限递归。
+	// 防御监听器内部再次派发同一事件造成的无限递归
 	constexpr int MAX_EVENT_DISPATCH_DEPTH = 32;
 	constexpr std::size_t MAX_EVENT_PATH_LENGTH = 1024;
 
@@ -43,7 +43,7 @@ Error HTMLDOM::register_event_listener(ListenerStore& r_store, const StringName&
 	if (p_type == StringName()) return ERR_INVALID_PARAMETER;
 	auto& list = r_store.by_type[p_type];
 	for (const auto& entry : list) {
-		// 与 DOM 一致：同一 (类型, 回调, capture) 只注册一次。
+		// 与 DOM 一致：同一 (类型, 回调, capture) 只注册一次
 		if (entry.capture == p_capture && entry.callable == p_callable) return OK;
 	}
 	EventListener listener;
@@ -75,7 +75,7 @@ Error HTMLDOM::unregister_event_listener(ListenerStore& r_store, const StringNam
 	const std::size_t before = list.size();
 	list.erase(std::remove_if(list.begin(), list.end(), [&](const EventListener& p_entry) {
 		return p_entry.capture == p_capture && p_entry.callable == p_callable;
-	}), list.end());
+		}), list.end());
 	const std::size_t removed = before - list.size();
 	if (removed == 0) return OK;
 	r_store.count -= removed;
@@ -187,7 +187,7 @@ void HTMLDOM::forget_subtree_listeners(const litehtml::element& p_element) {
 			event_listeners.erase(&p_node);
 		}
 		for (const auto& child : p_node.children()) p_self(p_self, *child);
-	};
+		};
 	visit(visit, p_element);
 }
 
@@ -221,27 +221,27 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 	Ref<HTMLEventTarget> current;
 	const auto get_store = [this, &p_entry, &current]() -> ListenerStore* {
 		switch (p_entry.slot) {
-			case EventTargetSlot::ELEMENT:
-				if (p_entry.node.is_null() || !p_entry.node->is_valid() || !p_entry.element) return nullptr;
-				current = p_entry.node;
-				return event_listeners.getptr(p_entry.element);
-			case EventTargetSlot::DOCUMENT:
-				if (p_entry.node.is_null() || !p_entry.node->is_valid()) return nullptr;
-				current = p_entry.node;
-				return &document_event_listeners;
-			case EventTargetSlot::WINDOW:
-				if (p_entry.window.is_null() || !p_entry.window->is_valid()) return nullptr;
-				current = p_entry.window;
-				return &window_event_listeners;
+		case EventTargetSlot::ELEMENT:
+			if (p_entry.node.is_null() || !p_entry.node->is_valid() || !p_entry.element) return nullptr;
+			current = p_entry.node;
+			return event_listeners.getptr(p_entry.element);
+		case EventTargetSlot::DOCUMENT:
+			if (p_entry.node.is_null() || !p_entry.node->is_valid()) return nullptr;
+			current = p_entry.node;
+			return &document_event_listeners;
+		case EventTargetSlot::WINDOW:
+			if (p_entry.window.is_null() || !p_entry.window->is_valid()) return nullptr;
+			current = p_entry.window;
+			return &window_event_listeners;
 		}
 		return nullptr;
-	};
+		};
 	ListenerStore* store = get_store();
 	if (!store) return;
 	const StringName type = p_event->get_type();
 	auto* list_ptr = store->by_type.getptr(type);
 	if (!list_ptr) return;
-	// 派发期间允许增删监听器，因此按快照迭代。
+	// 派发期间允许增删监听器，因此按快照迭代
 	const std::vector<EventListener> snapshot = *list_ptr;
 	if (snapshot.empty()) return;
 	p_event->set_dispatch_phase(current, p_phase);
@@ -249,12 +249,12 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 		if (p_event->is_immediate_stopped()) break;
 		if (p_phase == HTMLEvent::PHASE_CAPTURING && !entry.capture) continue;
 		if (p_phase == HTMLEvent::PHASE_BUBBLING && entry.capture) continue;
-		// 回调可能移除、清空或迁移监听器，因此每次调用前都重新获取存储并检查注册 ID。
+		// 回调可能移除、清空或迁移监听器，因此每次调用前都重新获取存储并检查注册 ID
 		ListenerStore* active_store = get_store();
 		if (!active_store) continue;
 		const auto* active_list = active_store->by_type.getptr(type);
 		if (!active_list || std::none_of(active_list->begin(), active_list->end(), [&](const EventListener& p_active) {
-				return p_active.id == entry.id;
+			return p_active.id == entry.id;
 			})) continue;
 		if (entry.once) unregister_event_listener(*active_store, type, entry.callable, entry.capture);
 		if (!entry.callable.is_valid()) {
@@ -293,7 +293,8 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 			targets.push_back(Ref<HTMLEventTarget>(current));
 			if (entries.size() >= MAX_EVENT_PATH_LENGTH) break;
 		}
-	} else if (const Ref<HTMLWindow> window = p_target; window.is_valid()) {
+	}
+	else if (const Ref<HTMLWindow> window = p_target; window.is_valid()) {
 		EventPathEntry entry;
 		entry.slot = EventTargetSlot::WINDOW;
 		entry.window = window;
@@ -302,7 +303,7 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 	}
 	if (entries.empty()) return !p_event->is_default_prevented();
 
-	// 元素路径末尾是文档节点时，把 window 追加为最后一项：捕获最先进入，冒泡最后离开。
+	// 元素路径末尾是文档节点时，把 window 追加为最后一项：捕获最先进入，冒泡最后离开
 	if (entries.back().slot == EventTargetSlot::DOCUMENT) {
 		if (const Ref<HTMLWindow> window = get_window(); window.is_valid()) {
 			EventPathEntry entry;
@@ -324,7 +325,7 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 		invoke_event_listeners(entries[index - 1], p_event, HTMLEvent::PHASE_CAPTURING);
 	}
 	if (!p_event->is_propagation_stopped()) {
-		// 目标阶段：捕获与非捕获监听器按注册顺序合并执行一次。
+		// 目标阶段：捕获与非捕获监听器按注册顺序合并执行一次
 		invoke_event_listeners(entries[0], p_event, HTMLEvent::PHASE_AT_TARGET);
 	}
 	if (!p_event->is_propagation_stopped() && p_event->get_bubbles()) {
