@@ -67,7 +67,8 @@ void HTMLLabel::apply_behavior_reset() {
 	dispatching_behavior = false;
 	if (std::exchange(behavior_source_pending, false)) {
 		reset_document_source();
-	} else {
+	}
+	else {
 		queue_behavior_mount();
 	}
 }

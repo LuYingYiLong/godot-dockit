@@ -41,17 +41,19 @@ namespace {
 		// End-of-stream handling applies the current HTML loop flag independently of imported defaults.
 		if (auto* wav = Object::cast_to<AudioStreamWAV>(stream.ptr())) {
 			wav->set_loop_mode(AudioStreamWAV::LOOP_DISABLED);
-		} else if (p_fmod) {
+		}
+		else if (p_fmod) {
 			const auto loop_flags = ClassDB::class_get_integer_constant("FmodAudioStream", "MODE_LOOP") |
 				ClassDB::class_get_integer_constant("FmodAudioStream", "MODE_LOOP_BIDI");
 			stream->call("set_mode_flags", int64_t(stream->call("get_mode_flags")) & ~loop_flags);
-		} else if (stream->has_method("set_loop")) {
+		}
+		else if (stream->has_method("set_loop")) {
 			stream->call("set_loop", false);
 		}
 		return stream;
 	}
 
-	constexpr std::array AUDIO_PARTS{HTMLAudioPart::play, HTMLAudioPart::position, HTMLAudioPart::mute, HTMLAudioPart::volume};
+	constexpr std::array AUDIO_PARTS{ HTMLAudioPart::play, HTMLAudioPart::position, HTMLAudioPart::mute, HTMLAudioPart::volume };
 
 	bool is_audio_slider(HTMLAudioPart p_part) {
 		return p_part == HTMLAudioPart::position || p_part == HTMLAudioPart::volume;
@@ -62,9 +64,9 @@ namespace {
 		const float fraction = std::clamp((p_x - p_box.position.x - 5.0f) / (p_box.size.x - 10.0f), 0.0f, 1.0f);
 		if (p_part == HTMLAudioPart::position) p_element.set_current_time(p_element.get_duration() * fraction);
 		else {
-		p_element.set_volume(fraction);
-		if (fraction > 0.0f && p_element.is_muted()) p_element.set_muted(false);
-	}
+			p_element.set_volume(fraction);
+			if (fraction > 0.0f && p_element.is_muted()) p_element.set_muted(false);
+		}
 	}
 }
 
@@ -98,7 +100,7 @@ void HTMLLabel::connect_audio_buses(bool p_connect) {
 		const bool connected = p_server->is_connected(p_signal, p_callback);
 		if (p_connect && !connected) p_server->connect(p_signal, p_callback);
 		else if (!p_connect && connected) p_server->disconnect(p_signal, p_callback);
-	};
+		};
 	update(AudioServer::get_singleton(), "bus_layout_changed", layout_changed);
 	update(AudioServer::get_singleton(), "bus_renamed", renamed);
 	update(fmod_server(), "bus_layout_changed", layout_changed);
@@ -156,7 +158,7 @@ HTMLLabel::AudioPlayback& HTMLLabel::audio_entry(const Ref<HTMLAudioElement>& p_
 		}
 		return *entry;
 	}
-	audio_playbacks.push_back({p_element, sources});
+	audio_playbacks.push_back({ p_element, sources });
 	return audio_playbacks.back();
 }
 
@@ -172,7 +174,8 @@ Error HTMLLabel::prepare_audio(AudioPlayback& p_audio) {
 		if (fmod) {
 			Object* instance = ClassDB::instantiate("FmodAudioStreamPlayer");
 			player = Object::cast_to<Node>(instance);
-		} else {
+		}
+		else {
 			player = memnew(AudioStreamPlayer);
 		}
 		if (!player) return ERR_UNAVAILABLE;
@@ -203,7 +206,8 @@ Error HTMLLabel::play_audio(const Ref<HTMLAudioElement>& p_element) {
 	const auto node = p_element->get_audio_node();
 	if (audio.started) {
 		audio.player->call("set_stream_paused", false);
-	} else {
+	}
+	else {
 		if (node->duration > 0.0 && node->time >= node->duration) node->time = 0.0;
 		audio.player->call("set_stream_paused", false);
 		audio.player->call("play", node->time);
@@ -237,7 +241,8 @@ void HTMLLabel::seek_audio(const Ref<HTMLAudioElement>& p_element, double p_time
 		// The built-in player only seeks while actively playing.
 		audio.player->call("stop");
 		audio.started = false;
-	} else if (audio.started) {
+	}
+	else if (audio.started) {
 		audio.player->call("seek", node->time);
 	}
 	layout->repaint_input();
@@ -320,7 +325,7 @@ void HTMLLabel::sync_audio() {
 bool HTMLLabel::has_playing_audio() const {
 	return std::any_of(audio_playbacks.begin(), audio_playbacks.end(), [](const AudioPlayback& p_audio) {
 		return p_audio.started && !p_audio.element->is_paused();
-	});
+		});
 }
 
 void HTMLLabel::poll_audio() {
@@ -382,7 +387,8 @@ bool HTMLLabelCanvas::handle_audio_button(const InputEventMouseButton& p_button,
 		if (part == HTMLAudioPart::play) {
 			if (pressed->is_paused()) pressed->play();
 			else pressed->pause();
-		} else if (part == HTMLAudioPart::mute) pressed->set_muted(!pressed->is_muted());
+		}
+		else if (part == HTMLAudioPart::mute) pressed->set_muted(!pressed->is_muted());
 	}
 	return true;
 }
@@ -408,12 +414,14 @@ bool HTMLLabelCanvas::handle_audio_key(const InputEventKey& p_key) {
 			else if (audio->is_paused()) audio->play();
 			else audio->pause();
 		}
-	} else if (p_key.is_pressed() && (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN)) {
+	}
+	else if (p_key.is_pressed() && (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN)) {
 		const int direction = key == KEY_RIGHT || key == KEY_UP ? 1 : -1;
 		if (node->focus_part == HTMLAudioPart::position) audio->set_current_time(audio->get_current_time() + direction * 5.0);
 		else if (node->focus_part == HTMLAudioPart::volume) audio->set_volume(audio->get_volume() + direction * 0.05);
 		else return false;
-	} else return false;
+	}
+	else return false;
 	label->accept_event();
 	return true;
 }

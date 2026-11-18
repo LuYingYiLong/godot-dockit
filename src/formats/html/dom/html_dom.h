@@ -2,6 +2,7 @@
 
 #include "formats/html/elements/html_element.h"
 #include "formats/html/events/html_event.h"
+#include "formats/html/events/html_window.h"
 #include "html_mutation_observer.h"
 #include "html_selection.h"
 
@@ -59,22 +60,43 @@ namespace docrender {
 		bool delivering_observers = false;
 		uint64_t observer_delivery_epoch = 0;
 
-		// Event listeners are keyed by the litehtml element pointer.
+		// 事件监听器按目标槽位分开存放：元素按 litehtml 元素指针索引，document 与 window
+		// 各有一份独立列表，避免"文档节点"和 <html> 元素共用同一个键而重复触发。
 		struct EventListener {
 			godot::Callable callable;
 			godot::ObjectID owner;
 			bool capture = false;
 			bool once = false;
+			bool passive = false;
 		};
-		godot::HashMap<const litehtml::element*,
-			godot::HashMap<godot::StringName, std::vector<EventListener>>> event_listeners;
+		struct ListenerStore {
+			godot::HashMap<godot::StringName, std::vector<EventListener>> by_type;
+			std::size_t count = 0;
+		};
+		enum class EventTargetSlot { ELEMENT, DOCUMENT, WINDOW };
+		struct EventPathEntry {
+			EventTargetSlot slot = EventTargetSlot::ELEMENT;
+			const litehtml::element* element = nullptr;
+			godot::Ref<HTMLNode> node;
+			godot::Ref<HTMLWindow> window;
+		};
+		godot::HashMap<const litehtml::element*, ListenerStore> event_listeners;
+		ListenerStore document_event_listeners;
+		ListenerStore window_event_listeners;
+		godot::HashMap<godot::StringName, std::size_t> event_counts_by_type;
 		std::size_t event_listener_count = 0;
+		mutable godot::ObjectID window_handle;
 		int event_dispatch_depth = 0;
 		std::vector<godot::Ref<HTMLNode>> pending_scroll_targets;
 		bool scroll_delivery_queued = false;
 		uint64_t scroll_delivery_epoch = 0;
 
-		void invoke_event_listeners(const godot::Ref<HTMLNode>& p_node, const godot::Ref<HTMLEvent>& p_event, int p_phase);
+		godot::Error register_event_listener(ListenerStore& r_store, const godot::StringName& p_type,
+			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);
+		godot::Error unregister_event_listener(ListenerStore& r_store, const godot::StringName& p_type,
+			const godot::Callable& p_callable, bool p_capture);
+		static bool store_has_event_listener(const ListenerStore& p_store, const godot::StringName& p_type);
+		void invoke_event_listeners(const EventPathEntry& p_entry, const godot::Ref<HTMLEvent>& p_event, int p_phase);
 
 		struct ChildChange {
 			struct Endpoint {
@@ -169,13 +191,25 @@ namespace docrender {
 		void track_observer(godot::ObjectID p_id);
 		void queue_observer_delivery();
 		godot::Error add_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
-			const godot::Callable& p_callable, bool p_capture, bool p_once);
+			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);
+		godot::Error add_document_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+			bool p_capture, bool p_once, bool p_passive);
+		godot::Error add_window_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+			bool p_capture, bool p_once, bool p_passive);
 		godot::Error remove_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
 			const godot::Callable& p_callable, bool p_capture);
-		bool dispatch_event(const godot::Ref<HTMLNode>& p_target, const godot::Ref<HTMLEvent>& p_event);
+		godot::Error remove_document_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+			bool p_capture);
+		godot::Error remove_window_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
+			bool p_capture);
+		bool dispatch_event(const godot::Ref<HTMLEventTarget>& p_target, const godot::Ref<HTMLEvent>& p_event);
 		bool has_event_listeners() const { return event_listener_count > 0; }
 		bool has_event_listener(const litehtml::element& p_element, const godot::StringName& p_type);
+		bool has_document_event_listener(const godot::StringName& p_type) const;
+		bool has_window_event_listener(const godot::StringName& p_type) const;
+		bool has_event_listener_for_type(const godot::StringName& p_type) const;
 		std::size_t get_event_listener_count() const { return event_listener_count; }
+		godot::Ref<HTMLWindow> get_window() const; // 返回当前文档的 window 事件目标
 		uint64_t get_generation() const { return generation; }
 		void clear_event_listeners();
 		void forget_subtree_listeners(const litehtml::element& p_element);

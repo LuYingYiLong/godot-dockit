@@ -1,5 +1,7 @@
 #include "html_event.h"
 
+#include <godot_cpp/core/error_macros.hpp>
+
 #include <chrono>
 
 using namespace godot;
@@ -21,6 +23,7 @@ void HTMLEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_type", "type"), &HTMLEvent::set_type);
 	ClassDB::bind_method(D_METHOD("get_target"), &HTMLEvent::get_target);
 	ClassDB::bind_method(D_METHOD("get_current_target"), &HTMLEvent::get_current_target);
+	ClassDB::bind_method(D_METHOD("composed_path"), &HTMLEvent::composed_path);
 	ClassDB::bind_method(D_METHOD("get_event_phase"), &HTMLEvent::get_event_phase);
 	ClassDB::bind_method(D_METHOD("get_bubbles"), &HTMLEvent::get_bubbles);
 	ClassDB::bind_method(D_METHOD("set_bubbles", "bubbles"), &HTMLEvent::set_bubbles);
@@ -33,10 +36,10 @@ void HTMLEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("stop_propagation"), &HTMLEvent::stop_propagation);
 	ClassDB::bind_method(D_METHOD("stop_immediate_propagation"), &HTMLEvent::stop_immediate_propagation);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "type"), "set_type", "get_type");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLNode", PROPERTY_USAGE_NONE),
-		"", "get_target");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLNode", PROPERTY_USAGE_NONE),
-		"", "get_current_target");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
+		PROPERTY_USAGE_NONE), "", "get_target");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
+		PROPERTY_USAGE_NONE), "", "get_current_target");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "event_phase", PROPERTY_HINT_ENUM, "NONE,CAPTURING,AT_TARGET,BUBBLING"),
 		"", "get_event_phase");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "bubbles"), "set_bubbles", "get_bubbles");
@@ -50,17 +53,22 @@ void HTMLEvent::_bind_methods() {
 	BIND_ENUM_CONSTANT(PHASE_BUBBLING);
 }
 
-void HTMLEvent::begin_dispatch(const Ref<HTMLNode>& p_target) {
+bool HTMLEvent::begin_dispatch(const Ref<HTMLEventTarget>& p_target,
+	const std::vector<Ref<HTMLEventTarget>>& p_path) {
+	if (dispatching) return false;
 	target = p_target;
 	current_target = p_target;
+	path = p_path;
 	phase = PHASE_NONE;
 	propagation_stopped = false;
 	immediate_stopped = false;
+	passive_context = false;
 	dispatching = true;
 	if (!time_stamp) time_stamp = now_milliseconds();
+	return true;
 }
 
-void HTMLEvent::set_dispatch_phase(const Ref<HTMLNode>& p_node, int p_phase) {
+void HTMLEvent::set_dispatch_phase(const Ref<HTMLEventTarget>& p_node, int p_phase) {
 	current_target = p_node;
 	phase = p_phase;
 	immediate_stopped = false;
@@ -69,7 +77,17 @@ void HTMLEvent::set_dispatch_phase(const Ref<HTMLNode>& p_node, int p_phase) {
 void HTMLEvent::end_dispatch() {
 	dispatching = false;
 	phase = PHASE_NONE;
-	current_target = Ref<HTMLNode>();
+	current_target = Ref<HTMLEventTarget>();
+	passive_context = false;
+}
+
+TypedArray<HTMLEventTarget> HTMLEvent::composed_path() const {
+	TypedArray<HTMLEventTarget> result;
+	result.resize(int64_t(path.size()));
+	for (std::size_t index = 0; index < path.size(); ++index) {
+		result[int64_t(index)] = path[index];
+	}
+	return result;
 }
 
 void HTMLEvent::set_type(const StringName& p_type) {
@@ -88,6 +106,14 @@ void HTMLEvent::set_cancelable(bool p_cancelable) {
 }
 
 void HTMLEvent::prevent_default() {
+	if (passive_context) {
+		// 与浏览器一致：passive 监听器里的 prevent_default 不生效，只提示一次。
+		if (!passive_warned) {
+			passive_warned = true;
+			WARN_PRINT("prevent_default() was ignored because the listener was registered with passive = true.");
+		}
+		return;
+	}
 	if (cancelable) default_prevented = true;
 }
 
@@ -101,11 +127,24 @@ void HTMLEvent::stop_immediate_propagation() {
 	immediate_stopped = true;
 }
 
+void HTMLCustomEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_detail"), &HTMLCustomEvent::get_detail);
+	ClassDB::bind_method(D_METHOD("set_detail", "detail"), &HTMLCustomEvent::set_detail);
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "detail"), "set_detail", "get_detail");
+}
+
+void HTMLCustomEvent::set_detail(const Dictionary& p_detail) {
+	if (!accepts_configuration(*this)) return;
+	detail = p_detail;
+}
+
 void HTMLMouseEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_button"), &HTMLMouseEvent::get_button);
 	ClassDB::bind_method(D_METHOD("set_button", "button"), &HTMLMouseEvent::set_button);
 	ClassDB::bind_method(D_METHOD("get_buttons"), &HTMLMouseEvent::get_buttons);
 	ClassDB::bind_method(D_METHOD("set_buttons", "buttons"), &HTMLMouseEvent::set_buttons);
+	ClassDB::bind_method(D_METHOD("get_detail"), &HTMLMouseEvent::get_detail);
+	ClassDB::bind_method(D_METHOD("set_detail", "detail"), &HTMLMouseEvent::set_detail);
 	ClassDB::bind_method(D_METHOD("get_position"), &HTMLMouseEvent::get_position);
 	ClassDB::bind_method(D_METHOD("set_position", "position"), &HTMLMouseEvent::set_position);
 	ClassDB::bind_method(D_METHOD("is_shift_pressed"), &HTMLMouseEvent::is_shift_pressed);
@@ -118,6 +157,7 @@ void HTMLMouseEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLMouseEvent::set_meta_pressed);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "button"), "set_button", "get_button");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "buttons"), "set_buttons", "get_buttons");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "detail"), "set_detail", "get_detail");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "position"), "set_position", "get_position");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shift_pressed"), "set_shift_pressed", "is_shift_pressed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ctrl_pressed"), "set_ctrl_pressed", "is_ctrl_pressed");
@@ -158,15 +198,15 @@ void HTMLKeyboardEvent::_bind_methods() {
 void HTMLFocusEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_related_target"), &HTMLFocusEvent::get_related_target);
 	ClassDB::bind_method(D_METHOD("set_related_target", "target"), &HTMLFocusEvent::set_related_target);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "related_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLNode", PROPERTY_USAGE_NONE),
-		"set_related_target", "get_related_target");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "related_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
+		PROPERTY_USAGE_NONE), "set_related_target", "get_related_target");
 }
 
 void HTMLSubmitEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_submitter"), &HTMLSubmitEvent::get_submitter);
 	ClassDB::bind_method(D_METHOD("set_submitter", "submitter"), &HTMLSubmitEvent::set_submitter);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
-		"set_submitter", "get_submitter");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement",
+		PROPERTY_USAGE_NONE), "set_submitter", "get_submitter");
 }
 
 namespace docrender {

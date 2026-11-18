@@ -612,6 +612,12 @@
     <ClCompile Include="src\formats\html\events\html_event.cpp">
       <Filter>Source Files\formats\html\events</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\events\html_event_target.cpp">
+      <Filter>Source Files\formats\html\events</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\events\html_window.cpp">
+      <Filter>Source Files\formats\html\events</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_behavior.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
@@ -1290,6 +1296,12 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\events\html_event.h">
+      <Filter>Header Files\formats\html\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\events\html_event_target.h">
+      <Filter>Header Files\formats\html\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\events\html_window.h">
       <Filter>Header Files\formats\html\events</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_behavior.h">

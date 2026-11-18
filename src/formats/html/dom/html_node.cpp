@@ -4,6 +4,7 @@
 #include "html_dom.h"
 #include "formats/html/elements/html_element.h"
 #include "formats/html/events/html_event.h"
+#include "formats/html/events/html_window.h"
 #include "formats/html/html_layout.h"
 
 #include <litehtml/el_text.h>
@@ -12,10 +13,19 @@
 
 using namespace godot;
 
+namespace {
+	void read_event_options(const Dictionary& p_options, bool& r_capture, bool& r_once, bool& r_passive) {
+		r_capture = p_options.get("capture", false);
+		r_once = p_options.get("once", false);
+		r_passive = p_options.get("passive", false);
+	}
+}
+
 void HTMLDocumentNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLDocumentNode::get_base_uri);
 	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLDocumentNode::get_document_element);
 	ClassDB::bind_method(D_METHOD("get_body"), &HTMLDocumentNode::get_body);
+	ClassDB::bind_method(D_METHOD("get_default_view"), &HTMLDocumentNode::get_default_view);
 	ClassDB::bind_method(D_METHOD("query_selector", "selector"), &HTMLDocumentNode::query_selector);
 	ClassDB::bind_method(D_METHOD("query_selector_all", "selector"), &HTMLDocumentNode::query_selector_all);
 	ClassDB::bind_method(D_METHOD("get_element_by_id", "id"), &HTMLDocumentNode::get_element_by_id);
@@ -26,6 +36,8 @@ void HTMLDocumentNode::_bind_methods() {
 		"", "get_document_element");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "body", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
 		"", "get_body");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "default_view", PROPERTY_HINT_RESOURCE_TYPE, "HTMLWindow",
+		PROPERTY_USAGE_NONE), "", "get_default_view");
 }
 
 String HTMLDocumentNode::get_base_uri() const {
@@ -73,6 +85,11 @@ Ref<HTMLDocumentFragment> HTMLDocumentNode::create_document_fragment() {
 	return layout ? layout->create_document_fragment() : Ref<HTMLDocumentFragment>();
 }
 
+Ref<HTMLWindow> HTMLDocumentNode::get_default_view() const {
+	if (!is_valid()) return Ref<HTMLWindow>();
+	return get_dom().get_window();
+}
+
 void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_node_type"), &HTMLNode::get_node_type);
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLNode::is_valid);
@@ -86,12 +103,6 @@ void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("compare_document_position", "node"), &HTMLNode::compare_document_position);
 	ClassDB::bind_method(D_METHOD("is_equal_node", "node"), &HTMLNode::is_equal_node);
 	ClassDB::bind_method(D_METHOD("normalize"), &HTMLNode::normalize);
-	ClassDB::bind_method(D_METHOD("add_event_listener", "type", "callable", "options"),
-		&HTMLNode::add_event_listener, DEFVAL(Dictionary()));
-	ClassDB::bind_method(D_METHOD("remove_event_listener", "type", "callable", "options"),
-		&HTMLNode::remove_event_listener, DEFVAL(Dictionary()));
-	ClassDB::bind_method(D_METHOD("dispatch_event", "event"), &HTMLNode::dispatch_event);
-	ClassDB::bind_method(D_METHOD("has_event_listener", "type"), &HTMLNode::has_event_listener);
 	BIND_ENUM_CONSTANT(ELEMENT_NODE);
 	BIND_ENUM_CONSTANT(TEXT_NODE);
 	BIND_ENUM_CONSTANT(COMMENT_NODE);
@@ -251,30 +262,39 @@ Error HTMLNode::normalize() {
 
 Error HTMLNode::add_event_listener(const StringName& p_type, const Callable& p_callable, const Dictionary& p_options) {
 	if (!is_valid()) return ERR_INVALID_PARAMETER;
+	bool capture = false;
+	bool once = false;
+	bool passive = false;
+	read_event_options(p_options, capture, once, passive);
+	if (get_node_type() == DOCUMENT_NODE) {
+		return get_dom().add_document_event_listener(p_type, p_callable, capture, once, passive);
+	}
 	const auto node = lock_element();
 	if (!node) return ERR_INVALID_PARAMETER;
-	const bool capture = p_options.get("capture", false);
-	const bool once = p_options.get("once", false);
-	return get_dom().add_event_listener(node, p_type, p_callable, capture, once);
+	return get_dom().add_event_listener(node, p_type, p_callable, capture, once, passive);
 }
 
 Error HTMLNode::remove_event_listener(const StringName& p_type, const Callable& p_callable,
 	const Dictionary& p_options) {
 	if (!is_valid()) return ERR_INVALID_PARAMETER;
+	const bool capture = p_options.get("capture", false);
+	if (get_node_type() == DOCUMENT_NODE) {
+		return get_dom().remove_document_event_listener(p_type, p_callable, capture);
+	}
 	const auto node = lock_element();
 	if (!node) return ERR_INVALID_PARAMETER;
-	const bool capture = p_options.get("capture", false);
 	return get_dom().remove_event_listener(node, p_type, p_callable, capture);
 }
 
 bool HTMLNode::dispatch_event(const Ref<HTMLEvent>& p_event) {
 	if (p_event.is_null()) return true;
 	if (!is_valid()) return !p_event->is_default_prevented();
-	return get_dom().dispatch_event(Ref<HTMLNode>(this), p_event);
+	return get_dom().dispatch_event(Ref<HTMLEventTarget>(this), p_event);
 }
 
 bool HTMLNode::has_event_listener(const StringName& p_type) const {
 	if (!is_valid()) return false;
+	if (get_node_type() == DOCUMENT_NODE) return get_dom().has_document_event_listener(p_type);
 	const auto node = lock_element();
 	return node ? get_dom().has_event_listener(*node, p_type) : false;
 }

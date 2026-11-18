@@ -37,9 +37,11 @@ python scripts/fetch_pdfium_sdk.py --archive "C:/Downloads/pdfium-win-x64.tgz"
 Run SCons from the repository root. Build `template_debug` for the editor and debug exports, and `template_release` for release exports.
 
 ```powershell
-scons godot-docrender platform=windows target=template_debug arch=x86_64
-scons godot-docrender platform=windows target=template_release arch=x86_64
+scons godot-docrender platform=windows target=template_debug arch=x86_64 -j 3
+scons godot-docrender platform=windows target=template_release arch=x86_64 -j 3
 ```
+
+SCons defaults to the core count minus one, and each C++ translation unit peaks around 450 MB while compiling the HTML sources. On a 16 GB machine the default parallelism runs out of compiler heap (`fatal error C1060`); cap it with `-j 3` (`-j 4` when the machine is otherwise idle).
 
 SCons writes the libraries to `addons/docrender/bin/` and copies `pdfium.dll` there when the Windows x64 SDK is installed. Copy the full `addons/docrender` directory into a Godot project and reopen it to load the new binary. [Build workflow](.github/workflows/make_build.yml)
 

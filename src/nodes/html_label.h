@@ -152,7 +152,8 @@ class HTMLLabelCanvas : public godot::Control {
 	);
 	bool dispatch_hover_events(const godot::TypedArray<HTMLElement>& p_previous);
 	bool dispatch_key_event(const godot::StringName& p_type, const godot::InputEventKey& p_key);
-	bool dispatch_focus_events(const godot::Ref<HTMLElement>& p_previous, const godot::Ref<HTMLElement>& p_next);
+	void dispatch_blur_events(const godot::Ref<HTMLElement>& p_previous, const godot::Ref<HTMLElement>& p_next);
+	void dispatch_focus_events(const godot::Ref<HTMLElement>& p_previous, const godot::Ref<HTMLElement>& p_next);
 	void toggle_checkbox(const godot::Ref<HTMLInputElement>& p_input);
 	bool move_radio(const godot::Ref<HTMLInputElement>& p_input, int p_direction);
 	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;

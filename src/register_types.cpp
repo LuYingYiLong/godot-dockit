@@ -27,6 +27,8 @@
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/dom/html_mutation_observer.h"
 #include "formats/html/events/html_event.h"
+#include "formats/html/events/html_event_target.h"
+#include "formats/html/events/html_window.h"
 #include "formats/html/css/html_animation.h"
 #include "formats/html/css/html_style_sheet.h"
 #include "formats/html/html_behavior.h"
@@ -73,6 +75,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(PDFTexture);
 		GDREGISTER_INTERNAL_CLASS(DocRenderTexLoader);
 		GDREGISTER_CLASS(MarkdownLabel);
+		GDREGISTER_ABSTRACT_CLASS(HTMLEventTarget);
 		GDREGISTER_ABSTRACT_CLASS(HTMLNode);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDocumentNode);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTextNode);
@@ -80,7 +83,9 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLRange);
 		GDREGISTER_ABSTRACT_CLASS(HTMLSelection);
 		GDREGISTER_CLASS(HTMLMutationObserver);
+		GDREGISTER_CLASS(HTMLWindow);
 		GDREGISTER_CLASS(HTMLEvent);
+		GDREGISTER_CLASS(HTMLCustomEvent);
 		GDREGISTER_CLASS(HTMLMouseEvent);
 		GDREGISTER_CLASS(HTMLKeyboardEvent);
 		GDREGISTER_CLASS(HTMLFocusEvent);

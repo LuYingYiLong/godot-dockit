@@ -261,3 +261,11 @@ msgstr "总线"
 #. src/nodes/html_label.cpp
 msgid "Use Fmod Bus"
 msgstr "使用 FMOD 总线"
+
+#. src/nodes/html_label.cpp
+msgid "Video Backend"
+msgstr "视频后端"
+
+#. src/nodes/html_label.cpp
+msgid "Video Bus"
+msgstr "视频总线"

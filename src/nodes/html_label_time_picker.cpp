@@ -47,7 +47,7 @@ namespace {
 	}
 
 	Rect2 calendar_week_cell(int p_index) {
-		return {calendar_inset, real_t(calendar_top + p_index * day_height), week_number_width, day_height};
+		return { calendar_inset, real_t(calendar_top + p_index * day_height), week_number_width, day_height };
 	}
 
 	Rect2 calendar_month_cell(int p_index, int p_width) {
@@ -55,10 +55,10 @@ namespace {
 		return { calendar_inset + (p_index % months_per_row) * width, real_t(39 + (p_index / months_per_row) * 32), width, 32 };
 	}
 
-	Rect2 previous_month(int p_width) { return {real_t(p_width - 73), 11, 28, 24}; }
-	Rect2 next_month(int p_width) { return {real_t(p_width - 41), 11, 28, 24}; }
-	Rect2 today_button(int p_width, int p_height) { return {real_t(p_width - 100), real_t(p_height - 33), 88, 20}; }
-	Rect2 clear_button(int p_height) { return {12, real_t(p_height - 33), 44, 20}; }
+	Rect2 previous_month(int p_width) { return { real_t(p_width - 73), 11, 28, 24 }; }
+	Rect2 next_month(int p_width) { return { real_t(p_width - 41), 11, 28, 24 }; }
+	Rect2 today_button(int p_width, int p_height) { return { real_t(p_width - 100), real_t(p_height - 33), 88, 20 }; }
+	Rect2 clear_button(int p_height) { return { 12, real_t(p_height - 33), 44, 20 }; }
 
 	const Rect2 calendar_title(12, 11, 156, 24);
 	constexpr int title_id = 42;
@@ -67,9 +67,9 @@ namespace {
 	constexpr int today_id = 45;
 	constexpr int clear_id = 46;
 
-	const char* month_names[] = {"January", "February", "March", "April", "May", "June", "July", "August",
-		"September", "October", "November", "December"};
-	const char* weekdays[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+	const char* month_names[] = { "January", "February", "March", "April", "May", "June", "July", "August",
+		"September", "October", "November", "December" };
+	const char* weekdays[] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
 	std::optional<double> first_of_month(Vector2i p_month) {
 		return calendar::parse(calendar::Kind::date, vformat("%04d-%02d-01", p_month.x, p_month.y));
@@ -90,7 +90,8 @@ namespace {
 
 		CalendarBounds(calendar::Kind p_kind, const HTMLInputElement& p_input) : kind(p_kind),
 			minimum(calendar::parse(kind, p_input.get_attribute("min"))),
-			maximum(calendar::parse(kind, p_input.get_attribute("max"))) {}
+			maximum(calendar::parse(kind, p_input.get_attribute("max"))) {
+		}
 
 		std::optional<double> value(double p_day) const {
 			if (kind == calendar::Kind::week) return calendar::parse(kind, calendar::format(kind, p_day));
@@ -124,9 +125,9 @@ namespace {
 	std::pair<int, int> clock_granularity(double p_step, double p_base, int p_unit, int p_units, bool p_fraction) {
 		const double period = double(p_unit) * p_units;
 		const int fallback = p_fraction ? 100 : 1;
-		if (!std::isfinite(p_step) || p_step <= 0) return {fallback, 0};
+		if (!std::isfinite(p_step) || p_step <= 0) return { fallback, 0 };
 		if (std::fmod(p_step, period) == 0) p_step = period;
-		if (std::fmod(period, p_step) != 0 || std::fmod(p_step, p_unit) != 0) return {fallback, 0};
+		if (std::fmod(period, p_step) != 0 || std::fmod(p_step, p_unit) != 0) return { fallback, 0 };
 		int granularity = int(p_step / p_unit);
 		if (p_fraction && granularity < 100) {
 			for (int candidate : {100, 125, 200, 250, 500, 1000}) {
@@ -136,7 +137,7 @@ namespace {
 			}
 		}
 		const auto offset = int(std::fmod(std::floor(p_base / p_unit), p_units));
-		return {granularity, wrap(offset, granularity)};
+		return { granularity, wrap(offset, granularity) };
 	}
 }
 
@@ -214,7 +215,7 @@ void HTMLLabel::configure_clock_columns() {
 	state.columns.clear();
 	const auto add = [&](Unit p_unit, int p_value, int p_scale, int p_count) {
 		auto [granularity, offset] = clock_granularity(step, base, p_scale, p_count, p_unit == Unit::millisecond);
-		TimePickerState::Column column{p_unit, {}};
+		TimePickerState::Column column{ p_unit,{} };
 		for (int value = offset; value < p_count; value += granularity) column.values.push_back(value);
 		// Show the current value exactly, including a value entered manually between picker steps.
 		const auto selected = std::lower_bound(column.values.begin(), column.values.end(), p_value);
@@ -223,13 +224,13 @@ void HTMLLabel::configure_clock_columns() {
 		column.first = column.loops() ? column.selected :
 			std::min(column.selected, std::max(0, int(column.values.size()) - row_count));
 		state.columns.push_back(std::move(column));
-	};
+		};
 	add(Unit::hour, state.use_meridiem ? hour % 12 : hour, 3600000, state.use_meridiem ? 12 : 24);
 	add(Unit::minute, minute, 60000, 60);
 	const bool show_ms = std::fmod(step, 1000.0) != 0 || ms != 0 || std::fmod(base, 1000.0) != 0;
 	if (show_ms || second || std::fmod(step, 60000.0) != 0 || std::fmod(base, 60000.0) != 0) add(Unit::second, second, 1000, 60);
 	if (show_ms) add(Unit::millisecond, ms, 1, 1000);
-	if (state.use_meridiem) state.columns.push_back({Unit::meridiem, {hour / 12, 1 - hour / 12}, 0, 0});
+	if (state.use_meridiem) state.columns.push_back({ Unit::meridiem,{ hour / 12, 1 - hour / 12 }, 0, 0 });
 	state.active_column = std::min(state.active_column, int(state.columns.size()) - 1);
 }
 
@@ -260,16 +261,16 @@ void HTMLLabel::draw_clock_picker() {
 	const auto text_server = TextServerManager::get_singleton()->get_primary_interface();
 	const auto text = [&](const String& p_text, const Rect2& p_rect, const Color& p_ink, int p_size, bool p_bold = false,
 		bool p_left = false) {
-		const auto line = layout->shape_control_text(picker_input, p_text, p_size, p_bold);
-		if (!line.is_valid() || text_server.is_null()) return;
-		const Vector2 pos(p_left ? p_rect.position.x : p_rect.get_center().x - line.width() * 0.5f,
-			p_rect.get_center().y + (line.line_ascent() - line.line_descent()) * 0.5f);
-		text_server->shaped_text_draw(line.get_rid(), panel.get_canvas_item(), pos, -1, -1, p_ink);
-	};
+			const auto line = layout->shape_control_text(picker_input, p_text, p_size, p_bold);
+			if (!line.is_valid() || text_server.is_null()) return;
+			const Vector2 pos(p_left ? p_rect.position.x : p_rect.get_center().x - line.width() * 0.5f,
+				p_rect.get_center().y + (line.line_ascent() - line.line_descent()) * 0.5f);
+			text_server->shaped_text_draw(line.get_rid(), panel.get_canvas_item(), pos, -1, -1, p_ink);
+		};
 	const auto icon = [&](HTMLControlIcon p_icon, const Rect2& p_rect) {
 		const auto image = layout->get_control_icon(p_icon);
 		if (image.is_valid()) panel.draw_texture_rect(image, Rect2(p_rect.get_center() - Vector2(8, 8), Vector2(16, 16)), false, ink);
-	};
+		};
 	const auto highlight = [&](Color p_fill, bool p_border) {
 		Ref<StyleBoxFlat> box;
 		box.instantiate();
@@ -280,14 +281,14 @@ void HTMLLabel::draw_clock_picker() {
 			box->set_border_color(ink);
 		}
 		return box;
-	};
+		};
 	const auto selected_style = highlight(selected, dark);
 	const auto focused_style = dark ? selected_style : highlight(selected, true);
 	const auto hover_style = highlight(hover, false);
 	const auto cell = [&](const Rect2& p_rect, bool p_on, bool p_hover, bool p_focus) {
 		if (p_on || p_hover) panel.draw_style_box(p_on ? (p_focus ? focused_style : selected_style) : hover_style, p_rect);
 		return p_on ? selected_ink : p_hover ? hover_ink : ink;
-	};
+		};
 	const int offset_x = state.calendar_width();
 	using Unit = TimePickerState::Unit;
 	for (int col = 0; col < int(state.columns.size()); ++col) {
@@ -324,14 +325,15 @@ void HTMLLabel::draw_clock_picker() {
 	if (state.year_view) {
 		for (int i = 0; i < 12; ++i) {
 			const Rect2 rect = calendar_month_cell(i, offset_x);
-			const auto day = first_of_month({month.x, i + 1});
+			const auto day = first_of_month({ month.x, i + 1 });
 			const bool enabled = state.kind != calendar::Kind::month || (day && limits.allows(limits.value(*day)));
 			const bool on = enabled && int(picker_date["year"]) == month.x && int(picker_date["month"]) == i + 1;
 			auto color = cell(rect, on, enabled && state.calendar_hover == i, on && state.active_column < 0);
 			if (!enabled) color.a *= 0.3f;
 			text(String(month_names[i]).substr(0, 3), rect, color, 12, on);
 		}
-	} else if (const auto start = month_start(month, state.sunday_first)) {
+	}
+	else if (const auto start = month_start(month, state.sunday_first)) {
 		const bool week = state.kind == calendar::Kind::week;
 		const int week_offset = week ? week_number_width : 0;
 		if (week) {
@@ -393,7 +395,7 @@ void HTMLLabel::draw_clock_picker() {
 void HTMLLabel::preview_clock_value() {
 	auto& state = time_picker;
 	const int day_half = state.use_meridiem ? state.columns.back().values[state.columns.back().selected] : 0;
-	constexpr const char* names[] = {"hour", "minute", "second", "millisecond"};
+	constexpr const char* names[] = { "hour", "minute", "second", "millisecond" };
 	for (const auto& column : state.columns) {
 		if (column.unit == TimePickerState::meridiem) continue;
 		const int value = column.values[column.selected];
@@ -423,10 +425,12 @@ int HTMLLabel::clock_calendar_hit(const Vector2& p_point) const {
 		for (int i = 0; i < 12; ++i) {
 			if (calendar_month_cell(i, width).has_point(p_point)) return i;
 		}
-	} else if (state.kind == calendar::Kind::week) {
+	}
+	else if (state.kind == calendar::Kind::week) {
 		const Rect2 grid(calendar_inset, calendar_top, week_number_width + days_per_row * day_size, calendar_rows * day_height);
 		if (grid.has_point(p_point)) return int((p_point.y - calendar_top) / day_height);
-	} else {
+	}
+	else {
 		for (int i = 0; i < days_per_row * calendar_rows; ++i) {
 			if (calendar_day_cell(i, 0).has_point(p_point)) return i;
 		}
@@ -450,7 +454,7 @@ bool HTMLLabel::set_clock_calendar_date(double p_date) {
 	const bool month_or_week = kind == calendar::Kind::month || kind == calendar::Kind::week;
 	const auto parts = month_or_week ? calendar::parts(kind, *candidate) : calendar::parts(calendar::Kind::date, p_date);
 	if (parts.is_empty()) return false;
-	for (const char* name : {"year", "month", "day"}) picker_date[name] = parts[name];
+	for (const char* name : { "year", "month", "day" }) picker_date[name] = parts[name];
 	// The visible month follows the clicked date even when its ISO week starts in the previous month.
 	const auto view = month_or_week ? calendar::parts(calendar::Kind::date, p_date) : parts;
 	time_picker.calendar_month = Vector2i(int(view["year"]), int(view["month"]));
@@ -469,19 +473,23 @@ void HTMLLabel::activate_clock_calendar(int p_item) {
 	}
 	if (p_item == title_id) {
 		state.year_view = !state.year_view;
-	} else if (p_item == previous_id || p_item == next_id) {
+	}
+	else if (p_item == previous_id || p_item == next_id) {
 		shift_clock_calendar((p_item == previous_id ? -1 : 1) * (state.year_view ? 12 : 1));
-	} else {
+	}
+	else {
 		std::optional<double> day;
 		if (p_item == today_id) {
 			day = calendar::from_parts(calendar::Kind::date, Time::get_singleton()->get_datetime_dict_from_system());
-		} else if (state.year_view) {
-			if (state.kind == calendar::Kind::month) day = first_of_month({state.calendar_month.x, p_item + 1});
+		}
+		else if (state.year_view) {
+			if (state.kind == calendar::Kind::month) day = first_of_month({ state.calendar_month.x, p_item + 1 });
 			else {
 				state.calendar_month.y = p_item + 1;
 				state.year_view = false;
 			}
-		} else if (const auto first = month_start(state.calendar_month, state.sunday_first)) {
+		}
+		else if (const auto first = month_start(state.calendar_month, state.sunday_first)) {
 			const int offset = state.kind == calendar::Kind::week ? p_item * days_per_row : p_item;
 			day = *first + offset * calendar::day;
 		}
@@ -514,17 +522,22 @@ bool HTMLLabel::handle_clock_picker_input(const Ref<InputEvent>& p_event) {
 				if (state.has_clock()) configure_clock_columns();
 				picker_input->get_input()->set_time_preview(std::nullopt);
 				layout->repaint_input();
-			} else close_input_picker();
-		} else if (code == KEY_ENTER || code == KEY_KP_ENTER) {
+			}
+			else close_input_picker();
+		}
+		else if (code == KEY_ENTER || code == KEY_KP_ENTER) {
 			commit_time_picker();
 			return true;
-		} else if (code == KEY_TAB) {
+		}
+		else if (code == KEY_TAB) {
 			const int next = state.active_column + (key->is_shift_pressed() ? -1 : 1);
 			state.active_column = next < first ? last : next > last ? first : next;
-		} else if (state.active_column >= 0) {
+		}
+		else if (state.active_column >= 0) {
 			if (code == KEY_LEFT || code == KEY_RIGHT) {
 				state.active_column = std::clamp(state.active_column + (code == KEY_RIGHT ? 1 : -1), first, last);
-			} else if (code == KEY_UP || code == KEY_DOWN || code == KEY_HOME || code == KEY_END) {
+			}
+			else if (code == KEY_UP || code == KEY_DOWN || code == KEY_HOME || code == KEY_END) {
 				auto& column = state.columns[state.active_column];
 				const int count = int(column.values.size());
 				const int next = column.selected + (code == KEY_UP ? -1 : 1);
@@ -533,9 +546,11 @@ bool HTMLLabel::handle_clock_picker_input(const Ref<InputEvent>& p_event) {
 				column.reveal();
 				preview_clock_value();
 			}
-		} else if (code == KEY_PAGEUP || code == KEY_PAGEDOWN) {
+		}
+		else if (code == KEY_PAGEUP || code == KEY_PAGEDOWN) {
 			shift_clock_calendar((code == KEY_PAGEUP ? -1 : 1) * (state.year_view ? 12 : 1));
-		} else if (code == KEY_LEFT || code == KEY_RIGHT || code == KEY_UP || code == KEY_DOWN) {
+		}
+		else if (code == KEY_LEFT || code == KEY_RIGHT || code == KEY_UP || code == KEY_DOWN) {
 			const int sign = code == KEY_LEFT || code == KEY_UP ? -1 : 1;
 			const bool vertical = code == KEY_UP || code == KEY_DOWN;
 			if (state.kind == calendar::Kind::month) {
@@ -543,7 +558,8 @@ bool HTMLLabel::handle_clock_picker_input(const Ref<InputEvent>& p_event) {
 					const auto value = calendar::format(calendar::Kind::month, *current + sign * (vertical ? months_per_row : 1));
 					if (const auto day = calendar::parse(calendar::Kind::date, value + String("-01"))) set_clock_calendar_date(*day);
 				}
-			} else {
+			}
+			else {
 				const bool week = state.kind == calendar::Kind::week;
 				const auto current = calendar::from_parts(week ? calendar::Kind::week : calendar::Kind::date, picker_date);
 				if (current) set_clock_calendar_date(*current + sign * (week || vertical ? days_per_row : 1) * calendar::day);
@@ -613,7 +629,8 @@ bool HTMLLabel::handle_clock_picker_input(const Ref<InputEvent>& p_event) {
 			auto& column = state.columns[cell.x];
 			column.selected = column.row_index(cell.y);
 			preview_clock_value();
-		} else if (calendar_item >= 0 && pressed_calendar == calendar_item) {
+		}
+		else if (calendar_item >= 0 && pressed_calendar == calendar_item) {
 			activate_clock_calendar(calendar_item);
 		}
 	}

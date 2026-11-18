@@ -54,10 +54,19 @@
 				Returns a snapshot of all matching elements in document order.
 			</description>
 		</method>
+		<method name="get_default_view">
+			<return type="HTMLWindow" />
+			<description>
+				Returns the window event target for this document. Listeners registered on it receive events from every connected node.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="body" type="HTMLElement" setter="" getter="get_body">
 			The document's body or frameset element, if present.
+		</member>
+		<member name="default_view" type="HTMLWindow" setter="" getter="get_default_view">
+			The window event target for this document.
 		</member>
 		<member name="document_element" type="HTMLElement" setter="" getter="get_document_element">
 			The document's root element.

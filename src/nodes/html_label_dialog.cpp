@@ -13,16 +13,16 @@ using namespace godot;
 void HTMLLabel::remember_dialog_focus(const Ref<HTMLDialogElement>& p_dialog, bool p_modal) {
 	// Keep an earlier restore point when a dialog is closed and reopened before the next layout.
 	if (auto it = std::find_if(dialog_focus.begin(), dialog_focus.end(),
-			[&](const DialogFocus& entry) { return entry.dialog == p_dialog; }); it != dialog_focus.end()) {
+		[&](const DialogFocus& entry) { return entry.dialog == p_dialog; }); it != dialog_focus.end()) {
 		it->modal = p_modal;
 		it->pending = true;
 		return;
 	}
 	Control* native = is_inside_tree() ? get_viewport()->gui_get_focus_owner() : nullptr;
 	const Ref<HTMLElement> focused = get_focused_element();
-	dialog_focus.push_back({p_dialog, focused, layout->top_modal(),
+	dialog_focus.push_back({ p_dialog, focused, layout->top_modal(),
 		native && native != this ? ObjectID(native->get_instance_id()) : ObjectID(),
-		p_modal, focused.is_valid() && focused->matches(":focus-visible")});
+		p_modal, focused.is_valid() && focused->matches(":focus-visible") });
 }
 
 void HTMLLabel::on_dialog_opened() {
@@ -71,7 +71,7 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 	const auto focus_dialog = [&](const Ref<HTMLDialogElement>& p_dialog) {
 		grab_focus();
 		if (has_focus()) canvas->set_focused_element(p_has_viewport ? layout->dialog_focus_target(p_dialog) : Ref<HTMLElement>(), true);
-	};
+		};
 	if (top.is_valid()) {
 		bool pending = false;
 		for (auto& entry : dialog_focus) {
@@ -79,7 +79,8 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 		}
 		if (restore && p_has_viewport && layout->is_focusable(restore->previous) && has_focus()) {
 			canvas->set_focused_element(restore->previous, restore->keyboard, false);
-		} else if (pending || top_changed || restore || (has_focus() && !layout->is_focusable(canvas->focused_element))) {
+		}
+		else if (pending || top_changed || restore || (has_focus() && !layout->is_focusable(canvas->focused_element))) {
 			focus_dialog(top);
 		}
 		return;
@@ -92,10 +93,12 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 	}
 	if (opened.is_valid()) {
 		focus_dialog(opened);
-	} else if (restore && has_focus()) {
+	}
+	else if (restore && has_focus()) {
 		if (p_has_viewport && layout->is_focusable(restore->previous)) {
 			canvas->set_focused_element(restore->previous, restore->keyboard, false);
-		} else {
+		}
+		else {
 			canvas->set_focused_element({});
 			if (auto* previous = Object::cast_to<Control>(ObjectDB::get_instance(restore->previous_control));
 				previous && previous->is_visible_in_tree() && previous->get_viewport() == get_viewport() &&

@@ -38,8 +38,8 @@
     <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
-    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_debug arch=x86_64</NMakeBuildCommandLine>
-    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_debug arch=x86_64</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_debug arch=x86_64 -j 3</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_debug arch=x86_64 -j 3</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64</NMakeCleanCommandLine>
     <NMakeOutput>$(ProjectDir)addons\docrender\bin\docrender.windows.template_debug.x86_64.dll</NMakeOutput>
   </PropertyGroup>
@@ -47,8 +47,8 @@
     <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
-    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_release arch=x86_64</NMakeBuildCommandLine>
-    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_release arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_release arch=x86_64</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_release arch=x86_64 -j 3</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_release arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_release arch=x86_64 -j 3</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>scons -c godot-docrender platform=windows target=template_release arch=x86_64</NMakeCleanCommandLine>
     <NMakeOutput>$(ProjectDir)addons\docrender\bin\docrender.windows.template_release.x86_64.dll</NMakeOutput>
   </PropertyGroup>
@@ -223,6 +223,8 @@
     <ClCompile Include="src\formats\html\elements\html_textarea_node.cpp" />
     <ClCompile Include="src\formats\html\elements\html_video_element.cpp" />
     <ClCompile Include="src\formats\html\events\html_event.cpp" />
+    <ClCompile Include="src\formats\html\events\html_event_target.cpp" />
+    <ClCompile Include="src\formats\html\events\html_window.cpp" />
     <ClCompile Include="src\formats\html\html_behavior.cpp" />
     <ClCompile Include="src\formats\html\html_document.cpp" />
     <ClCompile Include="src\formats\html\html_layout.cpp" />
@@ -451,6 +453,8 @@
     <ClInclude Include="src\formats\html\elements\html_video_element.h" />
     <ClInclude Include="src\formats\html\elements\html_video_node.h" />
     <ClInclude Include="src\formats\html\events\html_event.h" />
+    <ClInclude Include="src\formats\html\events\html_event_target.h" />
+    <ClInclude Include="src\formats\html\events\html_window.h" />
     <ClInclude Include="src\formats\html\html_behavior.h" />
     <ClInclude Include="src\formats\html\html_document.h" />
     <ClInclude Include="src\formats\html\html_layout.h" />

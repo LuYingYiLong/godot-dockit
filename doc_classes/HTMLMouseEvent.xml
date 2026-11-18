@@ -13,6 +13,9 @@
 		<member name="buttons" type="int" setter="set_buttons" getter="get_buttons">
 			The bit mask of buttons held when the event was produced.
 		</member>
+		<member name="detail" type="int" setter="set_detail" getter="get_detail">
+			The number of consecutive clicks for [code]click[/code] and [code]dblclick[/code], and [code]0[/code] for the other pointer events.
+		</member>
 		<member name="position" type="Vector2" setter="set_position" getter="get_position">
 			The pointer position in the host control's local coordinates.
 		</member>

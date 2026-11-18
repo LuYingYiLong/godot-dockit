@@ -115,20 +115,26 @@ bool HTMLLabelCanvas::dispatch_key_event(const StringName& p_type, const InputEv
 	return event->is_default_prevented();
 }
 
-bool HTMLLabelCanvas::dispatch_focus_events(const Ref<HTMLElement>& p_previous, const Ref<HTMLElement>& p_next) {
-	if (!label || label->layout.is_null()) return false;
-	if (p_previous.ptr() == p_next.ptr()) return false;
+void HTMLLabelCanvas::dispatch_blur_events(const Ref<HTMLElement>& p_previous, const Ref<HTMLElement>& p_next) {
+	if (!label || label->layout.is_null()) return;
+	if (p_previous.ptr() == p_next.ptr()) return;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listeners()) return false;
+	if (!dom.has_event_listeners()) return;
 	if (p_previous.is_valid() && p_previous->is_valid()) {
 		dom.dispatch_event(p_previous, make_focus_event(StringName("blur"), false, p_next));
 		dom.dispatch_event(p_previous, make_focus_event(StringName("focusout"), true, p_next));
 	}
+}
+
+void HTMLLabelCanvas::dispatch_focus_events(const Ref<HTMLElement>& p_previous, const Ref<HTMLElement>& p_next) {
+	if (!label || label->layout.is_null()) return;
+	if (p_previous.ptr() == p_next.ptr()) return;
+	auto& dom = label->layout->get_dom();
+	if (!dom.has_event_listeners()) return;
 	if (p_next.is_valid() && p_next->is_valid()) {
 		dom.dispatch_event(p_next, make_focus_event(StringName("focus"), false, p_previous));
 		dom.dispatch_event(p_next, make_focus_event(StringName("focusin"), true, p_previous));
 	}
-	return false;
 }
 
 bool HTMLLabel::dispatch_form_event(const StringName& p_type, const Ref<HTMLFormElement>& p_form,

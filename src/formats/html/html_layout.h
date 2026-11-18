@@ -75,6 +75,7 @@ class HTMLLayout : public godot::RefCounted {
 
 	friend class HTMLElement;
 	friend class HTMLNode;
+	friend class HTMLWindow;
 	friend class HTMLImageElement;
 	friend class HTMLAudioElement;
 	friend class HTMLVideoElement;

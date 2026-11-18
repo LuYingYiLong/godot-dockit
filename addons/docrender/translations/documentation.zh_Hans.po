@@ -1036,65 +1036,6 @@ msgstr ""
 "左键在同一可见链接上按下和松开且期间没有拖动或滚动、按 Enter 激活已聚焦的链接，或通过 [method activate_element] "
 "激活链接时发出。[param uri] 为链接原始的非空 [code]href[/code]。"
 
-#. doc_classes/HTMLLabel.xml
-msgid ""
-"Displays [member document] or inline [member text] using [HTMLLayout]. Give the control a size "
-"with anchors, offsets, or a parent [Container]. The document wraps to the available width, and "
-"scrollbars appear as needed to reach overflowing content.\n"
-"The default canvas follows CSS [code]color-scheme[/code]. Set an HTML background with CSS, or "
-"enable [member transparent_canvas] to composite it over the scene.\n"
-"Source changes are applied on a deferred update and reset the scroll position. Resizing "
-"recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link "
-"scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.\n"
-"Drag to select rendered text. The focused control supports the standard select-all and copy "
-"shortcuts. CSS [code]::selection[/code] styles the selection highlight.\n"
-"CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates "
-"the hovered element even when the mouse is stationary. During text selection by dragging, hover "
-"styles stay fixed until the drag ends.\n"
-"CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], "
-"[code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], "
-"[code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. "
-"With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an "
-"I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the "
-"I-beam.\n"
-"[code]<button type=\"button\">[/code] has a default style that author CSS can override. Use "
-"[code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], "
-"and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even "
-"when text selection is disabled.\n"
-"Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code]"
-" or [code]data-*[/code] attributes to identify the command.\n"
-"Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and"
-" elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order "
-"before the default stops. A negative value allows direct focus. At either end, focus passes to "
-"another Godot control when one is available.\n"
-"HTML inputs are represented by [HTMLInputElement]. A focused text input handles text editing, its own selection, and system IME composition. A focused checkbox can be toggled with Space. Date, time, color, and file inputs provide pickers.\n"
-"Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo "
-"and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new "
-"value from script or resetting the form clears the field's edit history."
-msgstr ""
-"使用 [HTMLLayout] 显示 [member document] 或内联的 [member text]。通过锚点、偏移或父级 [Container] "
-"为控件分配尺寸。文档按可用宽度换行，滚动条按需出现，以便查看溢出的内容。\n"
-"默认画布遵循 CSS [code]color-scheme[/code]。可用 CSS 设置 HTML 背景，或启用 "
-"[member transparent_canvas] 将页面合成到场景上。\n"
-"源内容变更会延迟应用并重置滚动位置。调整尺寸会重新布局，并将当前滚动偏移限制在可滚动范围内。点击 [code]#id[/code] 链接会滚动到对应的 HTML 元素。连接 [signal "
-"link_pressed] 可处理其他链接。\n"
-"拖动鼠标可选中渲染后的文字。控件获得焦点时支持标准的全选和复制快捷键。CSS [code]::selection[/code] 控制选区高亮。\n"
-"CSS [code]:hover[/code] 匹配鼠标下的元素及其祖先。鼠标静止时滚动也会更新悬停目标。拖选文字时保持当前悬停样式，直到拖选结束。\n"
-"CSS [code]cursor[/code] 支持 "
-"[code]default[/code]、[code]pointer[/code]、[code]text[/code]、[code]crosshair[/code]、[code]move[/code]、[code]wait[/code]、[code]progress[/code]、[code]help[/code]、[code"
-"]not-allowed[/code]、[code]ew-resize[/code] 和 [code]ns-resize[/code]。使用 [code]auto[/code] "
-"或未支持的值时，链接上显示手形，启用文字选择时显示工字形，其余情况显示箭头。拖选文字时显示工字形。\n"
-"[code]<button type=\"button\">[/code] 有可被作者 CSS 覆盖的默认样式。可使用 "
-"[code]:active[/code]、[code]:focus[/code]、[code]:focus-visible[/code]、[code]:enabled[/code] 和 "
-"[code]:disabled[/code] 设置各状态的样式。关闭文本选择后，Enter 和空格键仍可激活获得焦点的按钮。\n"
-"连接 [signal button_pressed] 即可在 GDScript 中处理命令。通过按钮的 [code]id[/code] 或 [code]data-*[/code] 属性识别命令。"
-"\n"
-"Tab 和 Shift+Tab 遍历可见且已启用的输入框、按钮、带 [code]href[/code] 的链接以及设置了有效 [code]tabindex[/code] "
-"的元素。正值按升序优先访问。负值允许直接聚焦。到达任一边界时，若有其他 Godot 控件可用，就把焦点交给该控件。\n"
-"HTML 输入由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。日期、时间、颜色和文件输入提供选择器。\n"
-"聚焦的文本字段支持 [code]ui_undo[/code] 和 [code]ui_redo[/code] 输入动作。撤销和重做时也会恢复选区。"
-"每次输入法提交算作一次编辑。通过脚本赋予新值或重置表单时，会清空字段的编辑历史。"
-
 #. doc_classes/HTMLLabel.xml doc_classes/MarkdownLabel.xml
 msgid "Selects all text in the document."
 msgstr "选中文档中的所有文本。"
@@ -5510,3 +5451,447 @@ msgstr "当用户确认编辑时发出。文本字段通过 Enter 或失焦提�
 #. doc_classes/HTMLFormElement.xml
 msgid "Returns ordered dictionaries with [code]name[/code] and [code]value[/code] keys. Repeated names remain separate. File entries hold [HTMLInputFile] values. The optional submitter must be enabled and associated with this form. An image submitter produces two coordinate entries whose values default to [code]0[/code]."
 msgstr "返回包含 [code]name[/code] 和 [code]value[/code] 键的有序字典。重复名称各占一项。文件项的值是 [HTMLInputFile]。可选的提交按钮必须已启用并关联该表单。图像提交按钮产生两个坐标条目，默认值为 [code]0[/code]。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "A DOM event delivered to element listeners."
+msgstr "派发给元素监听器的 DOM 事件。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid "A DOM event target: a node, the document node, or the document window."
+msgstr "DOM 事件目标：节点、文档节点或文档窗口。"
+
+#. doc_classes/HTMLFocusEvent.xml
+msgid ""
+"A focus event for [code]focus[/code], [code]blur[/code], [code]focusin[/code], and "
+"[code]focusout[/code]."
+msgstr "[code]focus[/code]、[code]blur[/code]、[code]focusin[/code] 和 [code]focusout[/code] 的焦点事件。"
+
+#. doc_classes/HTMLSubmitEvent.xml
+msgid "A form event for [code]submit[/code] and [code]reset[/code]."
+msgstr "[code]submit[/code] 与 [code]reset[/code] 的表单事件。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "A key event for [code]keydown[/code] and [code]keyup[/code]."
+msgstr "[code]keydown[/code] 与 [code]keyup[/code] 的键盘事件。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid ""
+"A pointer event for [code]mousedown[/code], [code]mouseup[/code], [code]click[/code], and "
+"[code]contextmenu[/code]."
+msgstr "[code]mousedown[/code]、[code]mouseup[/code]、[code]click[/code] 和 [code]contextmenu[/code] 的指针事件。"
+
+#. doc_classes/HTMLCustomEvent.xml
+msgid "An event that carries a script-defined payload."
+msgstr "携带脚本自定义载荷的事件。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Cancels the built-in action for this event. Has no effect unless [member cancelable] is "
+"[code]true[/code], or when the running listener was registered with [code]passive[/code]."
+msgstr "取消此事件的默认动作。仅当 [member cancelable] 为 [code]true[/code] 且当前监听器不是以 [code]passive[/code] 注册时才有效。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid ""
+"Carries the pointer position in the host [HTMLLabel]'s local coordinates and the modifier state "
+"at the time of the press or release."
+msgstr "携带宿主 [HTMLLabel] 局部坐标中的指针位置，以及按下或抬起时的修饰键状态。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid ""
+"Delivered to the focused element, or to the document body when no element has focus. Cancelling "
+"[code]keydown[/code] suppresses the built-in handling for the same press, including focus "
+"traversal with Tab, activation with Enter and Space, and text insertion in focused fields. Key "
+"events are not delivered while an input method is composing text."
+msgstr ""
+"派发给获得焦点的元素；没有元素获得焦点时派发给文档 body。取消 [code]keydown[/code] 会抑制本次按键的内置处理，包括 Tab 焦点遍历、Enter "
+"与空格激活，以及在聚焦字段中插入文字。输入法组字期间不派发键盘事件。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid ""
+"Dispatches [param event] from this target using the capture, target, and bubble phases. Returns "
+"[code]false[/code] when a listener cancelled the default action. Events created by scripts report"
+" [code]is_trusted[/code] as [code]false[/code]; they still propagate and can be cancelled."
+msgstr ""
+"从此目标按捕获、目标和冒泡阶段派发 [param event]。监听器取消默认动作时返回 [code]false[/code]。脚本创建的事件 [code]is_trusted[/code] 为"
+" [code]false[/code]，但仍会传播并可被取消。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Displays [member document] or inline [member text] using [HTMLLayout]. Give the control a size "
+"with anchors, offsets, or a parent [Container]. The document wraps to the available width, and "
+"scrollbars appear as needed to reach overflowing content.\n"
+"The default canvas follows CSS [code]color-scheme[/code]. Set an HTML background with CSS, or "
+"enable [member transparent_canvas] to composite it over the scene.\n"
+"Source changes are applied on a deferred update and reset the scroll position. Resizing "
+"recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link "
+"scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.\n"
+"Drag to select rendered text. The focused control supports the standard select-all and copy "
+"shortcuts. CSS [code]::selection[/code] styles the selection highlight.\n"
+"CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates "
+"the hovered element even when the mouse is stationary. During text selection by dragging, hover "
+"styles stay fixed until the drag ends.\n"
+"Elements also report DOM events. Register a listener with [method HTMLNode.add_event_listener] on"
+" an element, or on the document node to handle events for all of its descendants. Events run "
+"before the built-in action they describe, so a listener can call [method "
+"HTMLEvent.prevent_default] to cancel following a link, activating a button or label, toggling a "
+"checkbox, opening a disclosure or dropdown, inserting typed text, traversing focus with Tab, and "
+"submitting or resetting a form. Events without listeners change nothing, and the signals below "
+"keep reporting the actions that were performed.\n"
+"When a listener cancels an event, the signal that reports the same action is not emitted. For "
+"example, cancelling [code]click[/code] on a link suppresses [signal link_pressed].\n"
+"CSS [code]cursor[/code] supports [code]default[/code], [code]pointer[/code], [code]text[/code], "
+"[code]crosshair[/code], [code]move[/code], [code]wait[/code], [code]progress[/code], "
+"[code]help[/code], [code]not-allowed[/code], [code]ew-resize[/code], and [code]ns-resize[/code]. "
+"With [code]auto[/code] or unsupported values, the control uses a pointing hand over links, an "
+"I-beam when text selection is enabled, and an arrow otherwise. Dragging to select text uses the "
+"I-beam.\n"
+"[code]<button type=\"button\">[/code] has a default style that author CSS can override. Use "
+"[code]:active[/code], [code]:focus[/code], [code]:focus-visible[/code], [code]:enabled[/code], "
+"and [code]:disabled[/code] to style its states. Enter and Space activate the focused button even "
+"when text selection is disabled.\n"
+"Connect [signal button_pressed] to handle commands in GDScript. Read the button's [code]id[/code]"
+" or [code]data-*[/code] attributes to identify the command.\n"
+"Tab and Shift+Tab traverse visible, enabled inputs, buttons, links with an [code]href[/code], and"
+" elements with a valid [code]tabindex[/code]. Positive values are visited in ascending order "
+"before the default stops. A negative value allows direct focus. At either end, focus passes to "
+"another Godot control when one is available.\n"
+"HTML inputs are represented by [HTMLInputElement]. A focused text input handles text editing, its"
+" own selection, and system IME composition. A focused checkbox can be toggled with Space. Date, "
+"time, color, and file inputs provide pickers.\n"
+"Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo"
+" and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new "
+"value from script or resetting the form clears the field's edit history."
+msgstr ""
+"使用 [HTMLLayout] 显示 [member document] 或内联的 [member text]。通过锚点、偏移或父级 [Container] "
+"为控件分配尺寸。文档按可用宽度换行，滚动条按需出现，以便查看溢出的内容。\n"
+"默认画布遵循 CSS [code]color-scheme[/code]。可用 CSS 设置 HTML 背景，或启用 [member transparent_canvas] 将页面合成到场景上。"
+"\n"
+"源内容变更会延迟应用并重置滚动位置。调整尺寸会重新布局，并将当前滚动偏移限制在可滚动范围内。点击 [code]#id[/code] 链接会滚动到对应的 HTML 元素。连接 [signal "
+"link_pressed] 可处理其他链接。\n"
+"拖动鼠标可选中渲染后的文字。控件获得焦点时支持标准的全选和复制快捷键。CSS [code]::selection[/code] 控制选区高亮。\n"
+"CSS [code]:hover[/code] 匹配鼠标下的元素及其祖先。鼠标静止时滚动也会更新悬停目标。拖选文字时保持当前悬停样式，直到拖选结束。\n"
+"元素也会上报 DOM 事件。可在元素上或文档节点上通过 [method HTMLNode.add_event_listener] "
+"注册监听器，以处理其所有后代的事件。事件先于其所描述的内置动作执行，因此监听器可以调用 [method HTMLEvent.prevent_default] "
+"来取消跟随链接、激活按钮或标签、切换复选框、展开折叠区或下拉菜单、插入文字、以 Tab 切换焦点，以及提交或重置表单。没有监听器时行为不变，下方信号仍会报告已执行的动作。\n"
+"监听器取消事件后，报告同一动作的信号不会发出。例如在链接上取消 [code]click[/code] 会抑制 [signal link_pressed]。\n"
+"CSS [code]cursor[/code] 支持 "
+"[code]default[/code]、[code]pointer[/code]、[code]text[/code]、[code]crosshair[/code]、[code]move[/code]、[code]wait[/code]、[code]progress[/code]、[code]help[/code]、[code"
+"]not-allowed[/code]、[code]ew-resize[/code] 和 [code]ns-resize[/code]。使用 [code]auto[/code] "
+"或未支持的值时，链接上显示手形，启用文字选择时显示工字形，其余情况显示箭头。拖选文字时显示工字形。\n"
+"[code]<button type=\"button\">[/code] 有可被作者 CSS 覆盖的默认样式。可使用 "
+"[code]:active[/code]、[code]:focus[/code]、[code]:focus-visible[/code]、[code]:enabled[/code] 和 "
+"[code]:disabled[/code] 设置各状态的样式。关闭文本选择后，Enter 和空格键仍可激活获得焦点的按钮。\n"
+"连接 [signal button_pressed] 即可在 GDScript 中处理命令。通过按钮的 [code]id[/code] 或 [code]data-*[/code] 属性识别命令。"
+"\n"
+"Tab 和 Shift+Tab 遍历可见且已启用的输入框、按钮、带 [code]href[/code] 的链接以及设置了有效 [code]tabindex[/code] "
+"的元素。正值按升序优先访问。负值允许直接聚焦。到达任一边界时，若有其他 Godot 控件可用，就把焦点交给该控件。\n"
+"HTML 输入由 [HTMLInputElement] 表示。获得焦点的文本框处理文字编辑、自身选区和系统输入法预编辑。获得焦点的复选框可通过空格键切换。日期、时间、颜色和文件输入提供选择器。\n"
+"聚焦的文本字段支持 [code]ui_undo[/code] 和 [code]ui_redo[/code] "
+"输入动作。撤销和重做时也会恢复选区。每次输入法提交算作一次编辑。通过脚本赋予新值或重置表单时，会清空字段的编辑历史。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Events are created by the engine for real input and layout activity, and by scripts for synthetic"
+" dispatch. Scripts assign [member type], [member bubbles], and [member cancelable] before calling"
+" [method HTMLEventTarget.dispatch_event]. [member target], [member current_target], [member "
+"event_phase], and [member default_prevented] are read-only and controlled by the dispatcher.\n"
+"The propagation path runs from the window through the document node and the element chain to the "
+"target. [method composed_path] returns that path after a dispatch. Listeners registered with "
+"[code]passive[/code] cannot cancel the default action.\n"
+"[method prevent_default] cancels the built-in action that follows the event, such as following a "
+"link, activating a button, toggling a checkbox, or inserting typed text. [method "
+"HTMLNode.dispatch_event] returns [code]false[/code] when the default action was cancelled.\n"
+"When a listener cancels an event, the [HTMLLabel] signal that reports the same action is not "
+"emitted. Events without listeners behave exactly like the documented signal-only API."
+msgstr ""
+"事件由引擎在真实输入和布局活动时创建，也可由脚本创建后手动派发。脚本在调用 [method HTMLEventTarget.dispatch_event] 之前设置 [member "
+"type]、[member bubbles] 和 [member cancelable]。[member target]、[member current_target]、[member "
+"event_phase] 和 [member default_prevented] 为只读，由派发器维护。\n"
+"传播路径从 window 经文档节点和元素链到达目标。[method composed_path] 返回派发后的完整路径。以 [code]passive[/code] "
+"注册的监听器不能取消默认动作。\n"
+"[method prevent_default] 取消事件之后的内置动作，例如跟随链接、激活按钮、切换复选框或插入文字。[method HTMLNode.dispatch_event] "
+"在默认动作被取消时返回 [code]false[/code]。\n"
+"监听器取消事件后，报告同一动作的 [HTMLLabel] 信号不会发出。没有监听器时，行为与仅使用信号的文档完全一致。"
+
+#. doc_classes/HTMLWindow.xml
+msgid ""
+"Every document exposes one window handle through [method HTMLDocumentNode.get_default_view]. "
+"Listeners registered on it run first in the capture phase and last in the bubble phase, which "
+"makes it the natural place for shortcuts and document-wide handlers. A window becomes invalid "
+"when the layout replaces or clears its document."
+msgstr ""
+"每个文档通过 [method HTMLDocumentNode.get_default_view] "
+"暴露一个窗口句柄。注册在其上的监听器在捕获阶段最先执行、冒泡阶段最后执行，因此适合放置快捷键和文档级处理逻辑。布局替换或清空文档后，窗口句柄会失效。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"If [code]true[/code], [method prevent_default] can cancel the built-in action. Assignment is "
+"ignored while the event is being dispatched."
+msgstr "为 [code]true[/code] 时，[method prevent_default] 可取消默认动作。派发期间赋值会被忽略。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"If [code]true[/code], the event propagates from the target's parent up to the document node after"
+" the target phase. Assignment is ignored while the event is being dispatched."
+msgstr "为 [code]true[/code] 时，事件在目标阶段结束后从目标的父节点向文档节点冒泡。派发期间赋值会被忽略。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid ""
+"Registers [param callable] for events of [param type] on this target. The callback receives the "
+"[HTMLEvent] as its only argument.\n"
+"[param options] accepts [code]capture[/code] to run during the capture phase, [code]once[/code] "
+"to remove the listener after its first call, and [code]passive[/code] to make [method "
+"HTMLEvent.prevent_default] a no-op that only warns once.\n"
+"Registering the same callback, type, and [code]capture[/code] flag twice is a no-op. Registering "
+"on the document node handles events for all of its descendants, which is the supported way to "
+"delegate.\n"
+"Listeners survive detaching the node and follow it back into the tree. They are discarded when "
+"the node is removed with [method HTMLElement.remove], when the document is replaced, and when the"
+" owning layout is cleared."
+msgstr ""
+"在此目标上为 [param type] 事件注册 [param callable]。回调只接收一个 [HTMLEvent] 参数。\n"
+"[param options] 支持 [code]capture[/code]（在捕获阶段执行）、[code]once[/code]（首次调用后移除）和 "
+"[code]passive[/code]（使 [method HTMLEvent.prevent_default] 失效并只提示一次）。\n"
+"同一回调、类型和 [code]capture[/code] 重复注册不产生效果。在文档节点上注册即可处理其所有后代的事件，这是推荐的委托方式。\n"
+"节点被分离后监听器仍然保留，并随节点重新接入而恢复；节点通过 [method HTMLElement.remove] 移除、文档被替换或所属布局清空时，监听器会被丢弃。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid ""
+"Removes a listener registered with [method add_event_listener]. The [code]capture[/code] entry of"
+" [param options] must match the registration."
+msgstr "移除通过 [method add_event_listener] 注册的监听器。[param options] 中的 [code]capture[/code] 必须与注册时一致。"
+
+#. doc_classes/HTMLWindow.xml
+msgid "Returns the document node this window belongs to, or [code]null[/code] when the window is invalid."
+msgstr "返回此窗口所属的文档节点；窗口失效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLLayout.xml
+msgid ""
+"Returns the elements matched by CSS [code]:hover[/code], ordered from the innermost element "
+"outward to the document root. The array is empty when the pointer is outside the content, during "
+"a selection drag, and while a modal dialog blocks interaction. The chain only updates through "
+"[method HTMLLabel] interaction processing."
+msgstr ""
+"返回匹配 CSS [code]:hover[/code] 的元素，按从最内层元素到文档根的顺序排列。指针在内容之外、拖选过程中以及模态对话框阻塞交互时，数组为空。悬停链仅在 [method "
+"HTMLLabel] 的交互处理中更新。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Returns the propagation path of the current dispatch, with the target first and the window last. "
+"The array stays available after the dispatch finishes so a handler can inspect it later."
+msgstr "返回当前派发的传播路径，目标在最前、window 在最后。派发结束后数组仍可访问，便于处理函数稍后检查。"
+
+#. doc_classes/HTMLLabel.xml
+msgid ""
+"Returns the root node of this control's live document, or [code]null[/code] when the source has "
+"not been parsed yet. Register listeners on this node to handle events for all of its descendants,"
+" then use [method HTMLElement.closest] on the event's [member HTMLEvent.target] to find the "
+"element that owns the action. The handle is invalidated when the source is reparsed."
+msgstr ""
+"返回此控件实时文档的根节点；源内容尚未解析时返回 [code]null[/code]。在此节点上注册监听器即可处理其所有后代的事件，再用事件 [member HTMLEvent.target] "
+"上的 [method HTMLElement.closest] 找到动作所属元素。源内容重新解析后句柄失效。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid ""
+"Returns the window event target for this document. Listeners registered on it receive events from"
+" every connected node."
+msgstr "返回此文档的 window 事件目标。注册在其上的监听器会收到所有已连接节点的事件。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid ""
+"Returns whether the target still belongs to the current document. Window handles become invalid "
+"when their document is replaced."
+msgstr "返回目标是否仍属于当前文档。文档被替换后 window 句柄失效。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid "Returns whether this target has at least one listener registered for [param type]."
+msgstr "返回此目标是否为 [param type] 注册了至少一个监听器。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Stops the event from reaching later nodes and skips the remaining listeners registered on the "
+"current node."
+msgstr "阻止事件到达后续节点，并跳过当前节点上剩余的监听器。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Stops the event from reaching later nodes in the propagation path. Listeners already queued on "
+"the current node still run."
+msgstr "阻止事件到达传播路径中的后续节点。当前节点上已排队的监听器仍会执行。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "The Unicode code point produced by the press, or [code]0[/code] for non-printing keys."
+msgstr "按键产生的 Unicode 码点；非打印键为 [code]0[/code]。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid "The bit mask of buttons held when the event was produced."
+msgstr "事件产生时按住的按键位掩码。"
+
+#. doc_classes/HTMLSubmitEvent.xml
+msgid ""
+"The button that initiated the submission, or [code]null[/code] for a programmatic submit or a "
+"reset."
+msgstr "触发提交的按钮；脚本提交或重置时为 [code]null[/code]。"
+
+#. doc_classes/HTMLCustomEvent.xml
+msgid "The custom payload delivered to listeners."
+msgstr "传递给监听器的自定义载荷。"
+
+#. doc_classes/HTMLWindow.xml
+msgid "The document node this window belongs to."
+msgstr "此窗口所属的文档节点。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The event is at its target."
+msgstr "事件处于目标阶段。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The event is not being dispatched."
+msgstr "事件未在派发中。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The event is travelling from the document down to the target's parent."
+msgstr "事件正从文档向下传递到目标的父节点。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The event is travelling from the target's parent up to the document node."
+msgstr "事件正从目标的父节点向上传递到文档节点。"
+
+#. doc_classes/HTMLWindow.xml
+msgid "The event target for a live document window."
+msgstr "实时文档窗口的事件目标。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"The event type, such as [code]click[/code] or [code]keydown[/code]. Assignment is ignored while "
+"the event is being dispatched."
+msgstr "事件类型，例如 [code]click[/code] 或 [code]keydown[/code]。派发期间赋值会被忽略。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "The label of the key in the user's layout, using the [enum Key] values."
+msgstr "按键在用户布局中的标签，使用 [enum Key] 值。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "The layout-dependent key code, using the [enum Key] values, or [code]0[/code] when unavailable."
+msgstr "依赖布局的键码，使用 [enum Key] 值；不可用时为 [code]0[/code]。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "The layout-independent physical key code, using the [enum Key] values."
+msgstr "与布局无关的物理键码，使用 [enum Key] 值。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The millisecond timestamp taken when the event was first dispatched."
+msgstr "事件首次派发时记录的毫秒时间戳。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid "The mouse button that produced the event, using the [enum MouseButton] values."
+msgstr "产生事件的鼠标键，使用 [enum MouseButton] 值。"
+
+#. doc_classes/HTMLFocusEvent.xml
+msgid ""
+"The node that gains focus for [code]blur[/code] and [code]focusout[/code], or the node that loses"
+" it for [code]focus[/code] and [code]focusin[/code]. It is [code]null[/code] when focus enters or"
+" leaves the document."
+msgstr ""
+"对于 [code]blur[/code] 和 [code]focusout[/code]，是获得焦点的节点；对于 [code]focus[/code] 和 "
+"[code]focusin[/code]，是失去焦点的节点。焦点进入或离开文档时为 [code]null[/code]。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid ""
+"The number of consecutive clicks for [code]click[/code] and [code]dblclick[/code], and "
+"[code]0[/code] for the other pointer events."
+msgstr "[code]click[/code] 和 [code]dblclick[/code] 的连续点击次数；其他指针事件为 [code]0[/code]。"
+
+#. doc_classes/HTMLMouseEvent.xml
+msgid "The pointer position in the host control's local coordinates."
+msgstr "宿主控件局部坐标中的指针位置。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The propagation phase the event is currently in."
+msgstr "事件当前所处的传播阶段。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The target the event was dispatched to. It does not change during propagation."
+msgstr "事件派发到的目标。传播过程中不会改变。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "The target whose listeners are running. Use it to implement a listener shared by several targets."
+msgstr "当前正在执行监听器的目标。可用于实现多个目标共享的监听器。"
+
+#. doc_classes/HTMLDocumentNode.xml
+msgid "The window event target for this document."
+msgstr "此文档的 window 事件目标。"
+
+#. doc_classes/HTMLCustomEvent.xml
+msgid ""
+"Use [HTMLCustomEvent] for application-level events. Assign [member detail] before dispatching; "
+"listeners read it to receive structured data. Only [Dictionary] payloads are supported, and the "
+"payload is not copied, so listeners share the dispatched value. Assignment is ignored while the "
+"event is being dispatched."
+msgstr ""
+"应用级事件使用 [HTMLCustomEvent]。派发前赋值 [member detail]，监听器通过它获取结构化数据。载荷仅支持 "
+"[Dictionary]，且不会复制，因此各监听器共享同一个值。派发期间赋值会被忽略。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+#. doc_classes/HTMLMouseEvent.xml
+msgid "Whether Alt was held."
+msgstr "按下时是否按住 Alt。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+#. doc_classes/HTMLMouseEvent.xml
+msgid "Whether Ctrl was held."
+msgstr "按下时是否按住 Ctrl。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+#. doc_classes/HTMLMouseEvent.xml
+msgid "Whether Meta was held."
+msgstr "按下时是否按住 Meta。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+#. doc_classes/HTMLMouseEvent.xml
+msgid "Whether Shift was held."
+msgstr "按下时是否按住 Shift。"
+
+#. doc_classes/HTMLEvent.xml
+msgid "Whether a listener cancelled the built-in action."
+msgstr "监听器是否取消了默认动作。"
+
+#. doc_classes/HTMLEvent.xml
+msgid ""
+"Whether the engine synthesized the event from real input. Events created by scripts report "
+"[code]false[/code]."
+msgstr "事件是否由引擎根据真实输入合成。脚本创建的事件为 [code]false[/code]。"
+
+#. doc_classes/HTMLKeyboardEvent.xml
+msgid "Whether the event repeats because the key is held down."
+msgstr "事件是否因按住按键而重复。"
+
+#. doc_classes/HTMLEventTarget.xml
+msgid ""
+"[HTMLNode] and [HTMLWindow] both accept listeners, dispatch events, and report which event types "
+"have listeners. The propagation path runs from the window through the document node and the "
+"element chain to the target, so a listener registered on the window observes events from every "
+"connected node."
+msgstr ""
+"[HTMLNode] 与 [HTMLWindow] 都可注册监听器、派发事件并查询哪些类型有监听器。传播路径从 window 经文档节点和元素链到达目标，因此注册在 window "
+"上的监听器能观察到所有已连接节点的事件。"
+
+#. doc_classes/HTMLFocusEvent.xml
+msgid ""
+"[code]focus[/code] and [code]blur[/code] do not bubble. [code]focusin[/code] and "
+"[code]focusout[/code] report the same transitions and bubble, which makes them suitable for "
+"delegation. When focus moves between elements, the outgoing events run before the incoming ones."
+msgstr ""
+"[code]focus[/code] 和 [code]blur[/code] 不冒泡。[code]focusin[/code] 和 [code]focusout[/code] "
+"报告相同的焦点变化但会冒泡，适合事件委托。焦点在元素之间移动时，离开的事件先于进入的事件执行。"
+
+#. doc_classes/HTMLSubmitEvent.xml
+msgid ""
+"[code]submit[/code] runs after constraint validation passes and before the entries are collected."
+" Cancelling it aborts the submission, so [signal HTMLLabel.form_submitted] is not emitted. "
+"[code]reset[/code] runs only for a reset button; calling [method HTMLFormElement.reset] from a "
+"script does not dispatch it."
+msgstr ""
+"[code]submit[/code] 在约束校验通过之后、收集表单条目之前执行。取消它会中止提交，因此不会发出 [signal "
+"HTMLLabel.form_submitted]。[code]reset[/code] 仅对重置按钮执行；在脚本中调用 [method HTMLFormElement.reset] "
+"不会派发它。"
