@@ -184,8 +184,16 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		PointerInfo pointer;
 		pointer.position = motion->get_position();
 		pointer.buttons = int(motion->get_button_mask());
+		pointer.shift = motion->is_shift_pressed();
+		pointer.ctrl = motion->is_ctrl_pressed();
+		pointer.alt = motion->is_alt_pressed();
+		pointer.meta = motion->is_meta_pressed();
 		pointer.device = motion->get_device();
 		pointer.source_event = p_event;
+		label->input_mouse_position_known = true;
+		label->input_mouse_view_position.reset();
+		if (visible_rect.has_point(pointer.position))
+			label->input_mouse_view_position = pointer.position - visible_rect.position;
 		handle_pointer_move(pointer);
 		return;
 	}
@@ -227,11 +235,61 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button.is_null()) return;
 	const Vector2 point = button->get_position();
+	const int button_index = int(button->get_button_index());
+	const bool wheel_button = button_index == MOUSE_BUTTON_WHEEL_UP || button_index == MOUSE_BUTTON_WHEEL_DOWN ||
+		button_index == MOUSE_BUTTON_WHEEL_LEFT || button_index == MOUSE_BUTTON_WHEEL_RIGHT;
+	PointerInfo pointer;
+	pointer.position = point;
+	pointer.button = button_index;
+	pointer.buttons = int(button->get_button_mask());
+	pointer.pressed = button->is_pressed();
+	pointer.canceled = button->is_canceled();
+	pointer.shift = button->is_shift_pressed();
+	pointer.ctrl = button->is_ctrl_pressed();
+	pointer.alt = button->is_alt_pressed();
+	pointer.meta = button->is_meta_pressed();
+	pointer.device = button->get_device();
+	pointer.source_event = p_event;
+	label->input_mouse_position_known = true;
+	label->input_mouse_view_position.reset();
+	if (visible_rect.has_point(point)) label->input_mouse_view_position = point - visible_rect.position;
+	label->request_hover_check();
 	if (button->get_button_index() == MOUSE_BUTTON_LEFT) {
 		if (handle_dialog_pointer(point, button->is_pressed(), button->is_canceled(), button->get_device())) return;
 	}
 	else if (button->is_pressed()) {
 		outside_dialog_press.reset();
+	}
+	if (!wheel_button) {
+		const int previous_buttons = mouse_buttons;
+		const int button_mask = button_index > 0 && button_index < 32 ? 1 << (button_index - 1) : 0;
+		if (button->is_pressed()) mouse_buttons |= button_mask;
+		else mouse_buttons &= ~button_mask;
+		pointer.buttons = mouse_buttons;
+		const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+		if (previous_buttons == 0 && mouse_buttons != 0) {
+			mouse_compatibility_suppressed = false;
+			if (!dispatch_pointer_event(StringName("pointerdown"), event_target, pointer, true)) {
+				mouse_compatibility_suppressed = true;
+				accept_event();
+				return;
+			}
+		}
+		if (!button->is_pressed() && previous_buttons != 0 && mouse_buttons == 0)
+			dispatch_pointer_event(StringName("pointerup"), event_target, pointer, false);
+		if (mouse_compatibility_suppressed) {
+			if (!button->is_pressed() && mouse_buttons == 0) mouse_compatibility_suppressed = false;
+			accept_event();
+			return;
+		}
+		if (button->is_pressed()) pointer.mouse_down_prevented =
+			!dispatch_pointer_event(StringName("mousedown"), event_target, pointer, true);
+		else dispatch_pointer_event(StringName("mouseup"), event_target, pointer, false);
+		if (button->get_button_index() == MOUSE_BUTTON_LEFT) {
+			if (pointer.pressed) handle_pointer_press(pointer);
+			else handle_pointer_release(pointer);
+			return;
+		}
 	}
 	if (handle_video_button(*button.ptr(), point) || handle_audio_button(*button.ptr(), point)) {
 		accept_event();
@@ -253,24 +311,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		accept_event();
 		return;
 	}
-	if (button->get_button_index() != MOUSE_BUTTON_LEFT) {
-		scroll(point);
-		return;
-	}
-	PointerInfo pointer;
-	pointer.position = point;
-	pointer.button = int(button->get_button_index());
-	pointer.buttons = int(button->get_button_mask());
-	pointer.pressed = button->is_pressed();
-	pointer.canceled = button->is_canceled();
-	pointer.shift = button->is_shift_pressed();
-	pointer.ctrl = button->is_ctrl_pressed();
-	pointer.alt = button->is_alt_pressed();
-	pointer.meta = button->is_meta_pressed();
-	pointer.device = button->get_device();
-	pointer.source_event = p_event;
-	if (pointer.pressed) handle_pointer_press(pointer);
-	else handle_pointer_release(pointer);
+	scroll(point);
 }
 
 bool HTMLLabelCanvas::handle_dialog_pointer(const Vector2& p_point, bool p_pressed, bool p_cancelled, int p_device, int p_touch) {
@@ -1423,6 +1464,7 @@ void HTMLLabel::ensure_controls() {
 	viewport_control->connect("gui_input", callable_mp(this, &HTMLLabel::on_viewport_gui_input));
 	viewport_control->connect("mouse_entered", callable_mp(this, &HTMLLabel::request_hover_check));
 	viewport_control->connect("mouse_exited", callable_mp(this, &HTMLLabel::set_viewport_bar_hover).bind(-1));
+	viewport_control->connect("mouse_exited", callable_mp(this, &HTMLLabel::on_viewport_mouse_exited));
 
 	scroll_content = memnew(Control);
 	scroll_content->set_name("_HTMLContent");
@@ -1860,7 +1902,17 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		return hit;
 		};
 	if (motion.is_valid()) {
-		move_bar(motion->get_position());
+		const Vector2 global_point = viewport_control->get_global_transform_with_canvas().xform(motion->get_position());
+		const Vector2 label_point = get_global_transform_with_canvas().affine_inverse().xform(global_point);
+		const int hovered_bar = move_bar(motion->get_position());
+		if (hovered_bar >= 0 || !Rect2(Vector2(), Vector2(viewport_size)).has_point(label_point)) {
+			input_mouse_position_known = true;
+			input_mouse_view_position.reset();
+		}
+		else if (!input_mouse_position_known) {
+			input_mouse_position_known = true;
+			input_mouse_view_position = label_point;
+		}
 		for (int axis = 0; axis < 2; ++axis) {
 			if (dragging_viewport_scrollbar[axis]) {
 				drag_viewport_bar(axis, motion->get_position()[axis]);
@@ -1940,6 +1992,13 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		viewport_pan_snap_timer = HTMLLayout::start_snap_timer(*this, callable_mp(this, &HTMLLabel::settle_viewport_pan));
 	}
 	if (!HTMLLayout::forward_scroll_remainder(p_event, remaining)) viewport_control->accept_event();
+}
+
+void HTMLLabel::on_viewport_mouse_exited() {
+	if (get_viewport() && get_viewport()->gui_get_hovered_control() == canvas) return;
+	input_mouse_position_known = true;
+	input_mouse_view_position.reset();
+	request_hover_check();
 }
 
 void HTMLLabel::clear_canvas_wheel_dispatch(uint64_t p_sequence) {
@@ -2089,9 +2148,13 @@ void HTMLLabel::update_interaction() {
 			}
 		}
 		set_viewport_bar_hover(hovered_bar);
-		const Vector2 mouse = canvas->get_local_mouse_position();
-		if (hovered == canvas && get_visible_rect().has_point(mouse)) {
-			point = mouse;
+		if (input_mouse_position_known) {
+			if (input_mouse_view_position && Rect2(Vector2(), Vector2(viewport_size)).has_point(*input_mouse_view_position))
+				point = *input_mouse_view_position + Vector2(scroll_offset);
+		}
+		else {
+			const Vector2 mouse = canvas->get_local_mouse_position();
+			if (hovered == canvas && get_visible_rect().has_point(mouse)) point = mouse;
 		}
 	}
 
@@ -2100,7 +2163,7 @@ void HTMLLabel::update_interaction() {
 		const TypedArray<HTMLElement> previous_hover = layout->get_hovered_elements();
 		if (layout->update_hover(point)) {
 			// 在回流之前派发 mouseenter / mouseleave，避免链已被改写
-			canvas->dispatch_hover_events(previous_hover);
+			canvas->dispatch_hover_events(previous_hover, canvas->get_local_mouse_position());
 			if (hover_passes_remaining > 0) {
 				// A hover rule can move or hide its own target. Allow one correction after sorting.
 				--hover_passes_remaining;

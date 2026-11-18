@@ -66,6 +66,9 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 	if (!label || label->layout.is_null()) return;
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
+	const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+	dispatch_pointer_event(StringName("pointermove"), event_target, p_info, false);
+	dispatch_pointer_event(StringName("mousemove"), event_target, p_info, false);
 	update_dialog_pointer(point, p_info.device);
 	if (move_video_control(point) || move_audio_control(point)) {
 		accept_pointer_event(p_info);
@@ -130,6 +133,21 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	if (button.is_null()) return;
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
+	Ref<HTMLElement> element;
+	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
+		? label->layout->find_link_at(point, &element) : HTMLLayout::LinkHit{};
+	const Ref<HTMLElement> form_target = hit.id == 0 ? get_form_click_target(element) : Ref<HTMLElement>();
+	if (p_info.mouse_down_prevented) {
+		pressed_position = point - visible_rect.position;
+		pressed_link = hit.id;
+		pressed_element = element;
+		pressed_form_target = form_target;
+		pressed_blank = false;
+		selecting = false;
+		selection_dragged = false;
+		accept_pointer_event(p_info);
+		return;
+	}
 	if (handle_video_button(*button.ptr(), point) || handle_audio_button(*button.ptr(), point)) {
 		accept_pointer_event(p_info);
 		return;
@@ -154,9 +172,6 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 			return;
 		}
 	}
-	Ref<HTMLElement> element;
-	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
-		? label->layout->find_link_at(point, &element) : HTMLLayout::LinkHit{};
 	if (element.is_null() && label->layout->top_modal().is_valid()) {
 		cancel_press();
 		accept_pointer_event(p_info);
@@ -164,7 +179,6 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	}
 	const Ref<HTMLElement> target_button = label->layout->get_button_ancestor(element);
 	if (handle_input_decoration(Ref<HTMLInputElement>(element), *button.ptr(), point, p_info.accepts_event)) return;
-	const Ref<HTMLElement> form_target = hit.id == 0 ? get_form_click_target(element) : Ref<HTMLElement>();
 	const Ref<HTMLInputElement> target_input = element;
 	if (target_input.is_valid() && target_input->get_input()->type() == HTMLInputNode::Type::RANGE &&
 		label->layout->is_focusable(target_input)) {
@@ -177,19 +191,6 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 		return;
 	}
 	if (begin_textarea_scrollbar_drag(element, point)) {
-		accept_pointer_event(p_info);
-		return;
-	}
-	if (!dispatch_pointer_event(StringName("mousedown"), label->layout->get_element_at(point),
-		*button.ptr(), point, true)) {
-		// 监听器取消了按下：只保留点击合成所需的记录，跳过焦点、光标、选区与 :active。
-		pressed_position = point - visible_rect.position;
-		pressed_link = hit.id;
-		pressed_element = element;
-		pressed_form_target = form_target;
-		pressed_blank = false;
-		selecting = false;
-		selection_dragged = false;
 		accept_pointer_event(p_info);
 		return;
 	}
@@ -254,6 +255,7 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	if (button.is_null()) return;
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
+	const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
 	if (handle_video_button(*button.ptr(), point) || handle_audio_button(*button.ptr(), point)) {
 		accept_pointer_event(p_info);
 		return;
@@ -307,7 +309,7 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		accept_pointer_event(p_info);
 		if (!p_info.canceled && checkbox == target_input) {
 			const Ref<HTMLElement> checkbox_target = checkbox;
-			if (dispatch_pointer_event(StringName("click"), checkbox_target, *button.ptr(), point, true)) {
+			if (dispatch_pointer_event(StringName("click"), checkbox_target, p_info, true)) {
 				toggle_checkbox(checkbox);
 			}
 		}
@@ -337,11 +339,9 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		callable_mp(label->layout.ptr(), &HTMLLayout::request_auto_content_update).call_deferred();
 	}
 	const ObjectID label_id(label->get_instance_id());
-	// mouseup 与可取消的 click 都在默认动作之前派发。
-	const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
-	dispatch_pointer_event(StringName("mouseup"), event_target, *button.ptr(), point, false);
+	// 可取消的 click 在对应默认动作之前派发。
 	const bool click_prevented = clicked && !dispatch_pointer_event(StringName("click"), event_target,
-		*button.ptr(), point, true);
+		p_info, true);
 	if (link_clicked && !click_prevented) {
 		label->activate_link(hit.uri);
 	}

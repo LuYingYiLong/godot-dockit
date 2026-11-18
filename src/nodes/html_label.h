@@ -52,7 +52,7 @@ class HTMLLabelCanvas : public godot::Control {
 	enum class PointerKind { MOUSE, TOUCH, PEN };
 	struct PointerInfo {
 		godot::Vector2 position;
-		int button = 0;
+		int button = -1;
 		int buttons = 0;
 		bool pressed = false;
 		bool canceled = false;
@@ -63,7 +63,9 @@ class HTMLLabelCanvas : public godot::Control {
 		int device = 0;
 		int pointer_id = 0;
 		PointerKind kind = PointerKind::MOUSE;
+		bool primary = true;
 		bool accepts_event = true;
+		bool mouse_down_prevented = false;
 		int detail = 0;
 		godot::Ref<godot::InputEvent> source_event;
 	};
@@ -71,6 +73,8 @@ class HTMLLabelCanvas : public godot::Control {
 	::HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
 	bool pressed_blank = false;
+	int mouse_buttons = 0;
+	bool mouse_compatibility_suppressed = false;
 	struct OutsideDialogPress {
 		godot::Ref<HTMLDialogElement> dialog;
 		uint64_t open_sequence;
@@ -175,7 +179,14 @@ class HTMLLabelCanvas : public godot::Control {
 		const godot::Vector2& p_point,
 		bool p_cancelable
 	);
-	bool dispatch_hover_events(const godot::TypedArray<HTMLElement>& p_previous);
+	bool dispatch_pointer_event(
+		const godot::StringName& p_type,
+		const godot::Ref<HTMLElement>& p_target,
+		const PointerInfo& p_info,
+		bool p_cancelable,
+		const godot::Ref<HTMLElement>& p_related_target = {}
+	);
+	bool dispatch_hover_events(const godot::TypedArray<HTMLElement>& p_previous, const godot::Vector2& p_position);
 	bool dispatch_key_event(const godot::StringName& p_type, const godot::InputEventKey& p_key);
 	void dispatch_blur_events(const godot::Ref<HTMLElement>& p_previous, const godot::Ref<HTMLElement>& p_next);
 	void dispatch_focus_events(const godot::Ref<HTMLElement>& p_previous, const godot::Ref<HTMLElement>& p_next);
@@ -449,6 +460,8 @@ private:
 	godot::Vector2i viewport_input_axes{1, 1};
 	bool wheel_dispatched_in_canvas = false;
 	uint64_t wheel_dispatch_sequence = 0;
+	std::optional<godot::Vector2> input_mouse_view_position;
+	bool input_mouse_position_known = false;
 	godot::Vector2i scroll_offset;
 	godot::String render_error;
 	std::optional<godot::Vector2i> pending_scroll_offset;
@@ -561,6 +574,7 @@ private:
 	void apply_scroll_offset(const godot::Vector2i& p_offset);
 	void apply_pending_scroll();
 	void on_viewport_gui_input(const godot::Ref<godot::InputEvent>& p_event);
+	void on_viewport_mouse_exited();
 	void clear_canvas_wheel_dispatch(uint64_t p_sequence);
 	void drag_viewport_bar(int p_axis, godot::real_t p_position);
 	void settle_viewport_snap(const godot::Vector2i& p_axes);

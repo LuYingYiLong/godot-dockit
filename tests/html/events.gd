@@ -9,6 +9,7 @@ func _ready() -> void:
 	await _check_event_targets()
 	await _check_delegation()
 	await _check_click_and_context_menu()
+	await _check_pointer_mouse_events()
 	await _check_wheel_events()
 	await _check_keyboard()
 	await _check_form()
@@ -250,10 +251,101 @@ func _check_click_and_context_menu() -> void:
 	right.pressed = true
 	right.position = plain.get_bounding_rect().get_center()
 	get_viewport().push_input(right, true)
+	right.pressed = false
+	get_viewport().push_input(right, true)
 	_check(menu.size() == 1, "a right click dispatches contextmenu")
 	plain.remove_event_listener(&"contextmenu", on_menu)
 	label.link_pressed.disconnect(on_link)
 
+
+
+func _check_pointer_mouse_events() -> void:
+	label.text = """<div id="outer"><button id="first" type="button">First</button><button id="second" type="button">Second</button></div>"""
+	label.size = Vector2(420.0, 180.0)
+	await _settle()
+	var dom: HTMLDocumentNode = label.get_document_node()
+	var outer: HTMLElement = label.get_element_by_id("outer")
+	var first: HTMLElement = label.get_element_by_id("first")
+	var second: HTMLElement = label.get_element_by_id("second")
+	if dom == null or outer == null or first == null or second == null:
+		_check(false, "pointer targets are available")
+		return
+	var order: Array[String] = []
+	var bubble_types: Array[StringName] = [
+		&"pointermove",
+		&"mousemove",
+		&"pointerdown",
+		&"mousedown",
+		&"pointerup",
+		&"mouseup",
+		&"click",
+		&"pointerout",
+		&"mouseout",
+		&"pointerover",
+		&"mouseover",
+	]
+	for event_type: StringName in bubble_types:
+		var bubble_listener: Callable = func(event: HTMLEvent) -> void:
+			order.append("%s:%s" % [event.type, event.target.get_attribute("id")])
+			if event is HTMLPointerEvent:
+				var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+				_check(pointer.pointer_type == &"mouse" and pointer.pointer_id == 0 and pointer.is_primary,
+					"mouse pointer events report mouse ID zero as primary")
+		dom.add_event_listener(event_type, bubble_listener)
+	for element: HTMLElement in [outer, first, second,]:
+		for event_type: StringName in [&"pointerenter", &"pointerleave", &"mouseenter", &"mouseleave",]:
+			var boundary_listener: Callable = func(event: HTMLEvent) -> void:
+				order.append("%s:%s" % [event.type, event.target.get_attribute("id")])
+			element.add_event_listener(event_type, boundary_listener)
+
+	var first_motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	first_motion.position = first.get_bounding_rect().get_center()
+	first_motion.global_position = first_motion.position
+	first_motion.relative = first_motion.position
+	get_viewport().push_input(first_motion, true)
+	order.clear()
+	await _settle()
+	_check(order == [
+		"pointerover:first",
+		"pointerenter:outer",
+		"pointerenter:first",
+		"mouseover:first",
+		"mouseenter:outer",
+		"mouseenter:first",
+	], "entering dispatches pointer and mouse boundary events in order")
+
+	order.clear()
+	_click("second")
+	var click_order: Array[String] = order.duplicate()
+	order.clear()
+	await _settle()
+	_check(order == [
+		"pointerout:first",
+		"pointerleave:first",
+		"mouseout:first",
+		"mouseleave:first",
+		"pointerover:second",
+		"pointerenter:second",
+		"mouseover:second",
+		"mouseenter:second",
+	], "moving between siblings dispatches out and over chains in order")
+	_check(click_order == [
+		"pointerdown:second",
+		"mousedown:second",
+		"pointerup:second",
+		"mouseup:second",
+		"click:second",
+	], "mouse press and release dispatch pointer events around compatibility mouse events")
+
+	var cancel_pointerdown: Callable = func(event: HTMLEvent) -> void:
+		order.append("cancel:pointerdown")
+		event.prevent_default()
+	second.add_event_listener(&"pointerdown", cancel_pointerdown)
+	order.clear()
+	_click("second")
+	_check(order == ["cancel:pointerdown", "pointerdown:second", "pointerup:second"],
+		"cancelling pointerdown suppresses compatibility mouse events and click")
+	second.remove_event_listener(&"pointerdown", cancel_pointerdown)
 
 
 func _check_wheel_events() -> void:

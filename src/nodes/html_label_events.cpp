@@ -7,6 +7,7 @@
 
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/input.hpp>
 
 using namespace godot;
 
@@ -25,38 +26,72 @@ namespace {
 
 bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
 	const InputEventMouseButton& p_event, const Vector2& p_point, bool p_cancelable) {
+	PointerInfo info;
+	info.position = p_point;
+	info.button = int(p_event.get_button_index());
+	info.buttons = int(p_event.get_button_mask());
+	info.pressed = p_event.is_pressed();
+	info.shift = p_event.is_shift_pressed();
+	info.ctrl = p_event.is_ctrl_pressed();
+	info.alt = p_event.is_alt_pressed();
+	info.meta = p_event.is_meta_pressed();
+	info.device = p_event.get_device();
+	return dispatch_pointer_event(p_type, p_target, info, p_cancelable);
+}
+
+bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
+	const PointerInfo& p_info, bool p_cancelable, const Ref<HTMLElement>& p_related_target) {
 	if (!label || label->layout.is_null()) return true;
 	if (p_target.is_null() || !p_target->is_valid()) return true;
 	auto& dom = label->layout->get_dom();
-	// 没有监听器时保持既有输入路径，避免为每次点击构造事件对象。
-	if (!dom.has_event_listeners()) return true;
+	if (!dom.has_event_listener_for_type(p_type)) return true;
+	const bool pointer = p_type == StringName("pointerdown") || p_type == StringName("pointerup") ||
+		p_type == StringName("pointermove") || p_type == StringName("pointerover") || p_type == StringName("pointerout") ||
+		p_type == StringName("pointerenter") || p_type == StringName("pointerleave") || p_type == StringName("pointercancel");
 	Ref<HTMLMouseEvent> event;
-	event.instantiate();
+	Ref<HTMLPointerEvent> pointer_event;
+	if (pointer) {
+		pointer_event.instantiate();
+		event = pointer_event;
+	}
+	else event.instantiate();
+	const bool bubbles = p_type != StringName("mouseenter") && p_type != StringName("mouseleave") &&
+		p_type != StringName("pointerenter") && p_type != StringName("pointerleave");
 	event->set_type(p_type);
-	event->set_bubbles(true);
+	event->set_bubbles(bubbles);
 	event->set_cancelable(p_cancelable);
 	event->mark_trusted();
-	const int button = int(p_event.get_button_index());
+	const int button = p_info.button;
 	event->set_button(button);
-	event->set_buttons(p_event.is_pressed() && button >= 0 && button < 32 ? 1 << button : 0);
-	event->set_position(p_point - label->get_visible_rect().position);
-	event->set_shift_pressed(p_event.is_shift_pressed());
-	event->set_ctrl_pressed(p_event.is_ctrl_pressed());
-	event->set_alt_pressed(p_event.is_alt_pressed());
-	event->set_meta_pressed(p_event.is_meta_pressed());
+	event->set_buttons(p_info.buttons);
+	event->set_detail(p_info.detail);
+	event->set_position(p_info.position - label->get_visible_rect().position);
+	event->set_related_target(p_related_target);
+	event->set_shift_pressed(p_info.shift);
+	event->set_ctrl_pressed(p_info.ctrl);
+	event->set_alt_pressed(p_info.alt);
+	event->set_meta_pressed(p_info.meta);
+	if (pointer_event.is_valid()) {
+		pointer_event->set_pointer_id(p_info.pointer_id);
+		pointer_event->set_pointer_type(p_info.kind == PointerKind::TOUCH ? StringName("touch") :
+			p_info.kind == PointerKind::PEN ? StringName("pen") : StringName("mouse"));
+		pointer_event->set_is_primary(p_info.primary);
+	}
 	dom.dispatch_event(p_target, event);
 	return !event->is_default_prevented();
 }
 
-bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_previous) {
+bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_previous, const Vector2& p_position) {
 	if (!label || label->layout.is_null()) return false;
-	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listeners()) return false;
 	const TypedArray<HTMLElement> next = label->layout->get_hovered_elements();
-	// 离开：由最内层向外层派发 mouseleave。
+	std::vector<Ref<HTMLElement>> leaving;
+	std::vector<Ref<HTMLElement>> entering;
+	Ref<HTMLElement> old_target;
+	Ref<HTMLElement> new_target;
 	for (int64_t index = 0; index < p_previous.size(); ++index) {
 		const Ref<HTMLElement> element = p_previous[index];
 		if (element.is_null() || !element->is_valid() || !element->is_connected()) continue;
+		if (old_target.is_null()) old_target = element;
 		bool present = false;
 		for (int64_t other = 0; other < next.size(); ++other) {
 			const Ref<HTMLElement> candidate = next[other];
@@ -65,13 +100,12 @@ bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_pre
 				break;
 			}
 		}
-		if (present) continue;
-		dom.dispatch_event(element, docrender::make_dom_event(StringName("mouseleave"), false, false));
+		if (!present) leaving.push_back(element);
 	}
-	// 进入：由最外层向内层派发 mouseenter。
 	for (int64_t index = next.size() - 1; index >= 0; --index) {
 		const Ref<HTMLElement> element = next[index];
 		if (element.is_null() || !element->is_valid() || !element->is_connected()) continue;
+		new_target = element;
 		bool present = false;
 		for (int64_t other = 0; other < p_previous.size(); ++other) {
 			const Ref<HTMLElement> candidate = p_previous[other];
@@ -80,8 +114,27 @@ bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_pre
 				break;
 			}
 		}
-		if (present) continue;
-		dom.dispatch_event(element, docrender::make_dom_event(StringName("mouseenter"), false, false));
+		if (!present) entering.push_back(element);
+	}
+	PointerInfo info;
+	info.position = p_position;
+	info.button = -1;
+	info.buttons = int(Input::get_singleton()->get_mouse_button_mask());
+	if (old_target != new_target && old_target.is_valid()) {
+		dispatch_pointer_event(StringName("pointerout"), old_target, info, false, new_target);
+		for (const Ref<HTMLElement>& element : leaving)
+			dispatch_pointer_event(StringName("pointerleave"), element, info, false, new_target);
+		dispatch_pointer_event(StringName("mouseout"), old_target, info, false, new_target);
+		for (const Ref<HTMLElement>& element : leaving)
+			dispatch_pointer_event(StringName("mouseleave"), element, info, false, new_target);
+	}
+	if (old_target != new_target && new_target.is_valid()) {
+		dispatch_pointer_event(StringName("pointerover"), new_target, info, false, old_target);
+		for (const Ref<HTMLElement>& element : entering)
+			dispatch_pointer_event(StringName("pointerenter"), element, info, false, old_target);
+		dispatch_pointer_event(StringName("mouseover"), new_target, info, false, old_target);
+		for (const Ref<HTMLElement>& element : entering)
+			dispatch_pointer_event(StringName("mouseenter"), element, info, false, old_target);
 	}
 	return false;
 }
