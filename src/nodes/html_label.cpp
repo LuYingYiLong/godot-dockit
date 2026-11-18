@@ -888,6 +888,8 @@ void HTMLLabel::_notification(int p_what) {
 			request_hover_check();
 		}
 		else if (canvas) {
+			input_mouse_position_known = false;
+			input_mouse_view_position.reset();
 			leave_video_fullscreen();
 			if (color_scheme_timer) color_scheme_timer->stop();
 			viewport_touch_index = -1;
@@ -907,6 +909,8 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE: {
+		input_mouse_position_known = false;
+		input_mouse_view_position.reset();
 		close_input_picker();
 		const ObjectID id(get_instance_id());
 		behavior_host_in_tree = false;
@@ -1518,6 +1522,8 @@ void HTMLLabel::source_changed() {
 }
 
 void HTMLLabel::reset_document_source() {
+	input_mouse_position_known = false;
+	input_mouse_view_position.reset();
 	close_input_picker();
 	clear_videos();
 	clear_audio();
@@ -2154,13 +2160,16 @@ void HTMLLabel::update_interaction() {
 			}
 		}
 		set_viewport_bar_hover(hovered_bar);
-		if (input_mouse_position_known) {
-			if (input_mouse_view_position && Rect2(Vector2(), Vector2(viewport_size)).has_point(*input_mouse_view_position))
-				point = *input_mouse_view_position + Vector2(scroll_offset);
+		const Vector2 live_mouse = canvas->get_local_mouse_position();
+		const bool has_recorded_mouse = input_mouse_position_known && input_mouse_view_position &&
+			Rect2(Vector2(), Vector2(viewport_size)).has_point(*input_mouse_view_position);
+		// Headless has no live cursor position; synthetic input is available through the recorded event point.
+		const bool live_mouse_available = DisplayServer::get_singleton()->get_name() != "headless";
+		if (hovered == canvas && get_visible_rect().has_point(live_mouse) && live_mouse_available) {
+			point = live_mouse;
 		}
-		else {
-			const Vector2 mouse = canvas->get_local_mouse_position();
-			if (hovered == canvas && get_visible_rect().has_point(mouse)) point = mouse;
+		else if (has_recorded_mouse) {
+			point = *input_mouse_view_position + Vector2(scroll_offset);
 		}
 	}
 
