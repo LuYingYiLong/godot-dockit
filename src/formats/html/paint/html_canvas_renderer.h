@@ -73,7 +73,8 @@ namespace docrender {
 
 		void submit(godot::CanvasItem& p_canvas, const godot::Vector2& p_position, const godot::Rect2& p_clip,
 			const std::vector<HTMLPaintRun>& p_runs, const std::vector<HTMLPaintGroup>& p_groups, const std::vector<HTMLPaintRun>& p_diagnostics,
-			const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const godot::Vector2& p_viewport_origin);
+			const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const godot::Vector2& p_viewport_origin,
+			bool p_selection_only = false);
 		void queue_redraws() const;
 	};
 }

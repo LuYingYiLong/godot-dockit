@@ -12,13 +12,9 @@
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_screen_drag.hpp>
 #include <godot_cpp/classes/input_event_screen_touch.hpp>
-#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/label.hpp>
-#include <godot_cpp/classes/display_server.hpp>
-#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/classes/viewport.hpp>
-#include <godot_cpp/classes/viewport_texture.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
 #include <algorithm>
@@ -30,46 +26,41 @@ using namespace godot;
 using docrender::HTMLInputNode;
 
 namespace {
-	Control* make_html_drag_preview(HTMLLabelCanvas* p_canvas, const TypedArray<Rect2>& p_selection_rects,
-		const String& p_text) {
+	class HTMLSelectionDragPreview : public Control {
+		GDCLASS(HTMLSelectionDragPreview, Control)
+
+		Ref<HTMLLayout> layout;
+		Vector2i selection;
+		Rect2 selection_bounds;
+
+	protected:
+		static void _bind_methods() {}
+
+	public:
+		HTMLSelectionDragPreview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection, const Rect2& p_bounds) :
+			layout(p_layout), selection(p_selection), selection_bounds(p_bounds) {
+			set_size(p_bounds.size);
+			set_custom_minimum_size(p_bounds.size);
+			set_mouse_filter(MOUSE_FILTER_IGNORE);
+			set_modulate(Color(1.0, 1.0, 1.0, 0.75));
+		}
+
+		void _draw() override {
+			if (layout.is_valid()) {
+				layout->draw_selection_drag_image(this, selection, -selection_bounds.position, Rect2(Vector2(), get_size()));
+			}
+		}
+	};
+
+	Control* make_html_drag_preview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection,
+		const TypedArray<Rect2>& p_selection_rects, const String& p_text) {
 		Rect2 bounds;
 		for (int64_t index = 0; index < p_selection_rects.size(); ++index) {
 			const Rect2 rect = p_selection_rects[index];
 			if (rect.has_area()) bounds = bounds.has_area() ? bounds.merge(rect) : rect;
 		}
-		const DisplayServer* display = DisplayServer::get_singleton();
-		const bool can_capture_viewport = display && display->get_name() != "headless";
-		if (p_canvas && bounds.has_area() && can_capture_viewport) {
-			Viewport* viewport = p_canvas->get_viewport();
-			const Ref<ViewportTexture> viewport_texture = viewport ? viewport->get_texture() : Ref<ViewportTexture>();
-			const Ref<Image> source = viewport_texture.is_valid() ? viewport_texture->get_image() : Ref<Image>();
-			const Rect2 visible = viewport ? viewport->get_visible_rect() : Rect2();
-			if (source.is_valid() && source->get_width() > 0 && source->get_height() > 0 && visible.has_area()) {
-				const Transform2D transform = p_canvas->get_global_transform_with_canvas();
-				const Rect2 viewport_bounds = transform.xform(bounds);
-				const Vector2 scale(source->get_width() / visible.size.x, source->get_height() / visible.size.y);
-				const Vector2 position = (viewport_bounds.position - visible.position) * scale;
-				const Vector2 end = (viewport_bounds.get_end() - visible.position) * scale;
-				const Vector2 floored_position = position.floor();
-				const Rect2i requested(Vector2i(floored_position), Vector2i((end.ceil() - floored_position).max(Vector2())));
-				const Rect2i image_bounds(Vector2i(), source->get_size());
-				const Rect2i crop = requested.intersection(image_bounds);
-				if (crop.has_area()) {
-					const Ref<Image> snapshot = source->get_region(crop);
-					if (snapshot.is_valid()) {
-						const Vector2 preview_size = Vector2(crop.size) / scale;
-						TextureRect* preview = memnew(TextureRect);
-						preview->set_texture(ImageTexture::create_from_image(snapshot));
-						preview->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
-						preview->set_stretch_mode(TextureRect::STRETCH_SCALE);
-						preview->set_size(preview_size);
-						preview->set_custom_minimum_size(preview_size);
-						preview->set_modulate(Color(1.0, 1.0, 1.0, 0.85));
-						preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-						return preview;
-					}
-				}
-			}
+		if (p_layout.is_valid() && bounds.has_area()) {
+			return memnew(HTMLSelectionDragPreview(p_layout, p_selection, bounds));
 		}
 
 		Label* preview = memnew(Label);
@@ -163,7 +154,7 @@ Variant HTMLLabelCanvas::begin_selection_drag(const Vector2& p_position, bool p_
 	pointer.target = source;
 	pointer.buttons = 0;
 	dispatch_pointer_event(StringName("pointercancel"), source, pointer, false);
-	Control* preview = make_html_drag_preview(this, label->get_selection_rects(), drag_text);
+	Control* preview = make_html_drag_preview(label->layout, label->get_selection_range(), label->get_selection_rects(), drag_text);
 	if (p_force_native_drag) {
 		force_drag(drag_text, preview);
 	} else {

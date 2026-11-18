@@ -37,10 +37,10 @@ namespace docrender {
 		}
 
 		Ref<ShaderMaterial> partial_selection_material(const HTMLPaintRun& p_run, const HTMLHighlight& p_selection,
-			const TextServer* p_text_server, const Vector2& p_offset) {
+			const TextServer* p_text_server, const Vector2& p_offset, bool p_selection_only = false) {
 			if (!p_text_server || p_selection.from >= p_selection.to || p_run.commands.size() != 1) return {};
 			const auto* text = std::get_if<HTMLText>(&p_run.commands.front());
-			if (!text || !text->selectable || !text->selection_foreground || text->ellipsis >= 0) return {};
+			if (!text || !text->selectable || text->ellipsis >= 0 || (!p_selection_only && !text->selection_foreground)) return {};
 			const Vector2i range = text_highlight_range(*text, p_selection);
 			if (range.x >= range.y || (range.x == 0 && range.y == text->length)) return {};
 
@@ -56,8 +56,8 @@ namespace docrender {
 			if (p_run.material.is_valid()) material = p_run.material->duplicate();
 			else material = make_html_paint_material();
 			material->set_shader_parameter("selection_span_count", static_cast<int64_t>(spans.size()));
-			material->set_shader_parameter("selection_ink", *text->selection_foreground);
-			material->set_shader_parameter("ordinary_ink", text->color);
+			material->set_shader_parameter("selection_ink", text->selection_foreground.value_or(text->color));
+			material->set_shader_parameter("ordinary_ink", p_selection_only ? Color(0, 0, 0, 0) : text->color);
 			if (spans.size() == 1) {
 				material->set_shader_parameter("selection_first_span", spans.front());
 			} else {
@@ -357,11 +357,13 @@ void fragment() {
 	}
 
 	void HTMLPaintRun::draw(RenderingServer& p_server, const RID& p_canvas, const Vector2& p_offset,
-		const TextServer* p_text_server, const HTMLHighlight& p_search, const HTMLHighlight& p_selection, const RID& p_ink_canvas) const {
+		const TextServer* p_text_server, const HTMLHighlight& p_search, const HTMLHighlight& p_selection, const RID& p_ink_canvas,
+		bool p_selection_only) const {
 		for (const HTMLPaintCommand& command : commands) {
 			std::visit([&](const auto& p_draw) {
 				using Draw = std::decay_t<decltype(p_draw)>;
 				if constexpr (std::is_same_v<Draw, HTMLFill>) {
+					if (p_selection_only) return;
 					const Rect2 rect = translate_rect(p_draw.rect, p_offset);
 					p_server.canvas_item_add_rect(p_canvas, rect, p_draw.color);
 				}
@@ -375,6 +377,7 @@ void fragment() {
 							if (interval.x >= interval.y) continue;
 							if (selection && p_draw.selection_foreground && interval.x == 0 &&
 								(interval.y == p_draw.length || p_draw.ellipsis >= 0)) ink = *p_draw.selection_foreground;
+							if (p_selection_only && selection) continue;
 							const auto& background = selection ? p_draw.selection_background : std::nullopt;
 							if (background && background->a == 0) continue;
 							for (const Vector2& range : p_draw.layout.selection(*p_text_server, interval.x, interval.y)) {
@@ -389,10 +392,12 @@ void fragment() {
 					else if (ink.a > 0) p_draw.layout.draw(p_text_server, p_canvas, p_draw.position + p_offset, ink);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLImage>) {
+					if (p_selection_only) return;
 					const Rect2 rect = translate_rect(p_draw.destination, p_offset);
 					p_draw.texture->draw_rect_region(p_canvas, rect, p_draw.source, p_draw.modulate, false, !sampling.repeat);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLCircle>) {
+					if (p_selection_only) return;
 					const Vector2 center = p_draw.center + p_offset;
 					if (p_draw.filled) {
 						p_server.canvas_item_add_circle(p_canvas, center, p_draw.radius, p_draw.color, true);
@@ -613,7 +618,7 @@ void fragment() {
 
 	void HTMLCanvasRenderer::submit(CanvasItem& p_canvas, const Vector2& p_position, const Rect2& p_clip,
 		const std::vector<HTMLPaintRun>& p_runs, const std::vector<HTMLPaintGroup>& p_groups, const std::vector<HTMLPaintRun>& p_diagnostics,
-		const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const Vector2& p_viewport_origin) {
+		const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const Vector2& p_viewport_origin, bool p_selection_only) {
 		const uint64_t instance_id = p_canvas.get_instance_id();
 		CanvasDrawing* drawing = drawings.getptr(instance_id);
 		if (!drawing) {
@@ -691,7 +696,7 @@ void fragment() {
 				projection_shader.instantiate();
 				projection_shader->set_code(PROJECTION_SHADER);
 			}
-			const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), Vector2());
+			const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), Vector2(), p_selection_only);
 			if (ink.is_valid()) drawing->materials.push_back(ink);
 			for (int y = 0; y < pixels.y; y += GROUP_TILE_SIZE) {
 				for (int x = 0; x < pixels.x; x += GROUP_TILE_SIZE) {
@@ -706,7 +711,8 @@ void fragment() {
 					const RID source = drawing->add_item(server, surface.canvas, 0);
 					if (p_run.material.is_valid()) server.canvas_item_set_material(source, p_run.material->get_rid());
 					configure_run_item(source, p_run);
-					p_run.draw(server, source, Vector2(), text_server.ptr(), p_search, p_selection, add_ink_canvas(p_run, source, ink));
+					p_run.draw(server, source, Vector2(), text_server.ptr(), p_search, p_selection,
+						add_ink_canvas(p_run, source, ink), p_selection_only);
 
 					Ref<ShaderMaterial> material;
 					material.instantiate();
@@ -747,7 +753,7 @@ void fragment() {
 
 			const bool transformed = p_run.material.is_valid() || p_run.matrix != Transform2D();
 			const Vector2 offset = transformed ? Vector2() : p_position;
-			const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), offset);
+			const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), offset, p_selection_only);
 			if (ink.is_valid()) target = RID();
 			if (!target.is_valid() || clip != previous_clip || p_run.material != previous_material || p_run.matrix != previous_matrix ||
 				p_run.sampling != previous_sampling || p_run.fixed_background != previous_fixed_background) {
@@ -779,13 +785,29 @@ void fragment() {
 				previous_sampling = p_run.sampling;
 				previous_fixed_background = p_run.fixed_background;
 			}
-			p_run.draw(server, target, offset, text_server.ptr(), p_search, p_selection, add_ink_canvas(p_run, target, ink));
+			p_run.draw(server, target, offset, text_server.ptr(), p_search, p_selection,
+				add_ink_canvas(p_run, target, ink), p_selection_only);
 			if (ink.is_valid()) {
 				drawing->materials.push_back(ink);
 				target = RID();
 			}
 		};
 		const std::optional<Rect2> clip = p_clip == Rect2() ? std::nullopt : std::optional<Rect2>(p_clip);
+		if (p_selection_only) {
+			for (const HTMLPaintRun& run : p_runs) {
+				for (const HTMLPaintCommand& command : run.commands) {
+					const auto* text = std::get_if<HTMLText>(&command);
+					if (!text || !text->selectable || text->offset < 0 || text->length <= 0) continue;
+					const Vector2i range = text_highlight_range(*text, p_selection);
+					if (range.x >= range.y) continue;
+					HTMLPaintRun selected_run = run;
+					selected_run.commands.clear();
+					selected_run.commands.push_back(*text);
+					submit_run(selected_run, root, viewport->get_viewport_rid(), clip);
+				}
+			}
+			return;
+		}
 		if (p_groups.empty()) {
 			for (const auto& run : p_runs) submit_run(run, root, viewport->get_viewport_rid(), clip);
 		} else {

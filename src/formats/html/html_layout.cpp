@@ -1238,6 +1238,26 @@ void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_pos
 		diagnostics, selection, search, p_viewport_origin);
 }
 
+void HTMLLayout::draw_selection_drag_image(CanvasItem* p_canvas, const Vector2i& p_selection,
+	const Vector2& p_position, const Rect2& p_clip) {
+	if (!state->has_layout() || !p_canvas || !p_canvas->is_inside_tree()) {
+		return;
+	}
+	if (state->input_paint_pending) record_paint();
+	const auto& runs = state->container->get_paint_recorder().get_paint_runs();
+	if (state->canvas_renderer.is_null()) {
+		state->canvas_renderer.instantiate();
+	}
+	static const std::vector<docrender::HTMLPaintGroup> no_groups;
+	static const std::vector<docrender::HTMLPaintRun> no_diagnostics;
+	const int64_t from = std::min(p_selection.x, p_selection.y);
+	const int64_t to = std::max(p_selection.x, p_selection.y);
+	const docrender::HTMLHighlight selection{ from, to, nullptr, Color(0, 0, 0, 0) };
+	const docrender::HTMLHighlight search{};
+	state->canvas_renderer->submit(*p_canvas, p_position, p_clip, runs, no_groups, no_diagnostics,
+		selection, search, Vector2(), true);
+}
+
 String HTMLLayout::get_link_at(const Vector2& p_position) const {
 	return find_link_at(p_position).uri;
 }

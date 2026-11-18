@@ -104,7 +104,8 @@ namespace docrender {
 			const godot::TextServer* p_text_server,
 			const HTMLHighlight& p_search,
 			const HTMLHighlight& p_selection,
-			const godot::RID& p_ink_canvas = {}
+			const godot::RID& p_ink_canvas = {},
+			bool p_selection_only = false
 		) const;
 	};
 

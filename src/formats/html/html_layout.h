@@ -339,6 +339,8 @@ public:
 		const godot::StyleBox* p_search_style = nullptr,
 		const godot::Vector2& p_viewport_origin = {}
 	);																			// 在指定画布上绘制 HTML，并显示选区与搜索高亮
+	void draw_selection_drag_image(godot::CanvasItem* p_canvas, const godot::Vector2i& p_selection,
+		const godot::Vector2& p_position, const godot::Rect2& p_clip);
 	godot::String get_link_at(const godot::Vector2& p_position) const;			// 返回指定文档坐标处链接的原始 href
 	LinkHit find_link_at(
 		const godot::Vector2& p_position,
