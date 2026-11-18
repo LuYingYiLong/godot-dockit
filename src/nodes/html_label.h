@@ -45,6 +45,8 @@ class HTMLDocumentNode;
 class HTMLFormElement;
 class HTMLLabelElement;
 class HTMLSelectElement;
+class HTMLDataTransfer;
+class HTMLDragEvent;
 
 namespace godot { class CanvasLayer; class Window; }
 namespace docrender { enum class HTMLVideoPart; }
@@ -186,6 +188,15 @@ class HTMLLabelCanvas : public godot::Control {
 	docrender::HTMLSelectionPoint selection_origin;
 	bool selecting = false;
 	bool selection_dragged = false;
+	bool selection_drag_attempt = false;
+	bool native_drag_started = false;
+	bool suppress_next_release = false;
+	godot::Ref<HTMLElement> drag_source;
+	godot::String drag_text;
+	double drag_elapsed = 0.0;
+	mutable godot::Ref<HTMLElement> drop_target;
+	mutable godot::String drop_text;
+	mutable bool drop_accepted = false;
 	bool has_focusable_elements = false;
 	::HTMLLabel* diagnostic_panel = nullptr;
 	godot::Timer* diagnostic_timer = nullptr;
@@ -281,6 +292,13 @@ class HTMLLabelCanvas : public godot::Control {
 	void update_cursor(const std::optional<godot::Vector2>& p_point);
 	void refresh_diagnostic_tooltip(const std::optional<godot::Vector2>& p_point);
 	void show_diagnostic_tooltip();
+	bool dispatch_drag_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_target,
+		const godot::Ref<HTMLDataTransfer>& p_transfer, const godot::Vector2& p_position,
+		const godot::Ref<HTMLElement>& p_related_target = {});
+	void update_drop_target(const godot::Ref<HTMLElement>& p_target, const godot::String& p_text,
+		const godot::Vector2& p_position) const;
+	void clear_drop_target(const godot::Vector2& p_position) const;
+	godot::Variant begin_selection_drag(const godot::Vector2& p_position, bool p_force_native_drag);
 
 protected:
 	static void _bind_methods() {}
@@ -290,6 +308,10 @@ public:
 	void _draw() override;
 	bool _has_point(const godot::Vector2& p_point) const override;
 	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
+	void _process(double p_delta) override;
+	godot::Variant _get_drag_data(const godot::Vector2& p_at_position) override;
+	bool _can_drop_data(const godot::Vector2& p_at_position, const godot::Variant& p_data) const override;
+	void _drop_data(const godot::Vector2& p_at_position, const godot::Variant& p_data) override;
 };
 
 class HTMLLabel : public godot::Control {
@@ -557,6 +579,7 @@ private:
 	bool capturing_node_selection = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
+	bool drag_and_drop_selection_enabled = true;
 	bool transparent_canvas = false;
 	bool context_menu_enabled = true;
 	bool event_debug = false;
@@ -857,6 +880,8 @@ public:
 		const godot::Ref<HTMLElement>& p_element,
 		const godot::Dictionary& p_options = {}
 	);																			// 按指定对齐方式滚动到元素
+	void set_drag_and_drop_selection_enabled(bool p_enabled);
+	bool is_drag_and_drop_selection_enabled() const { return drag_and_drop_selection_enabled; }
 };
 
 VARIANT_ENUM_CAST(::HTMLLabel::AnimationProcessMode);

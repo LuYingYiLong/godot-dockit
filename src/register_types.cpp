@@ -96,6 +96,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLInputEvent);
 		GDREGISTER_CLASS(HTMLCompositionEvent);
 		GDREGISTER_CLASS(HTMLDataTransfer);
+		GDREGISTER_CLASS(HTMLDragEvent);
 		GDREGISTER_CLASS(HTMLClipboardEvent);
 		GDREGISTER_CLASS(HTMLToggleEvent);
 		GDREGISTER_CLASS(HTMLMediaEvent);

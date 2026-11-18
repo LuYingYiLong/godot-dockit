@@ -283,27 +283,40 @@ void HTMLDataTransfer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_data", "type", "value"), &HTMLDataTransfer::set_data);
 	ClassDB::bind_method(D_METHOD("clear_data", "type"), &HTMLDataTransfer::clear_data, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_types"), &HTMLDataTransfer::get_types);
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "types"), "", "get_types");
+	BIND_ENUM_CONSTANT(MODE_READ_WRITE);
+	BIND_ENUM_CONSTANT(MODE_READ_ONLY);
+	BIND_ENUM_CONSTANT(MODE_PROTECTED);
 }
 
 String HTMLDataTransfer::get_data(const String& p_type) const {
-	return p_type.to_lower() == "text/plain" ? text : String();
+	return mode != MODE_PROTECTED && has_text && p_type.to_lower() == "text/plain" ? text : String();
 }
 
 Error HTMLDataTransfer::set_data(const String& p_type, const String& p_value) {
-	if (read_only || p_type.to_lower() != "text/plain") return ERR_INVALID_PARAMETER;
+	if (mode != MODE_READ_WRITE || p_type.to_lower() != "text/plain") return ERR_INVALID_PARAMETER;
 	text = p_value;
+	has_text = true;
 	return OK;
 }
 
 void HTMLDataTransfer::clear_data(const String& p_type) {
-	if (read_only || (!p_type.is_empty() && p_type.to_lower() != "text/plain")) return;
+	if (mode != MODE_READ_WRITE || (!p_type.is_empty() && p_type.to_lower() != "text/plain")) return;
 	text = String();
+	has_text = false;
 }
 
 PackedStringArray HTMLDataTransfer::get_types() const {
 	PackedStringArray result;
-	if (!text.is_empty()) result.push_back("text/plain");
+	if (has_text) result.push_back("text/plain");
 	return result;
+}
+
+void HTMLDragEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_data_transfer"), &HTMLDragEvent::get_data_transfer);
+	ClassDB::bind_method(D_METHOD("set_data_transfer", "data_transfer"), &HTMLDragEvent::set_data_transfer);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "data_transfer", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDataTransfer"),
+		"set_data_transfer", "get_data_transfer");
 }
 
 void HTMLClipboardEvent::_bind_methods() {
@@ -410,6 +423,10 @@ namespace docrender {
 				StringName("click"), StringName("dblclick"), StringName("contextmenu"), StringName("auxclick") }) {
 				factories.insert(type, &instantiate_event<HTMLMouseEvent>);
 			}
+			for (const StringName& type : { StringName("dragstart"), StringName("drag"), StringName("dragenter"),
+				StringName("dragover"), StringName("dragleave"), StringName("drop"), StringName("dragend") }) {
+				factories.insert(type, &instantiate_event<HTMLDragEvent>);
+			}
 			for (const StringName& type : { StringName("pointerdown"), StringName("pointerup"), StringName("pointermove"),
 				StringName("pointerover"), StringName("pointerout"), StringName("pointerenter"), StringName("pointerleave"),
 				StringName("pointercancel"), StringName("gotpointercapture"), StringName("lostpointercapture") }) {
@@ -459,6 +476,13 @@ namespace docrender {
 		event->set_cancelable(p_cancelable);
 		event->set_composed(true);
 		event->mark_trusted();
+		if (Ref<HTMLDragEvent> drag_event = event; drag_event.is_valid()) {
+			Ref<HTMLDataTransfer> transfer;
+			transfer.instantiate();
+			if (p_type == StringName("drop")) transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
+			else if (p_type != StringName("dragstart")) transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+			drag_event->set_data_transfer(transfer);
+		}
 		return event;
 	}
 }

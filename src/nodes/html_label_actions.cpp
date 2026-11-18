@@ -12,7 +12,13 @@
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_screen_drag.hpp>
 #include <godot_cpp/classes/input_event_screen_touch.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/label.hpp>
+#include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/viewport_texture.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
 #include <algorithm>
@@ -22,6 +28,229 @@
 using namespace godot;
 
 using docrender::HTMLInputNode;
+
+namespace {
+	Control* make_html_drag_preview(HTMLLabelCanvas* p_canvas, const TypedArray<Rect2>& p_selection_rects,
+		const String& p_text) {
+		Rect2 bounds;
+		for (int64_t index = 0; index < p_selection_rects.size(); ++index) {
+			const Rect2 rect = p_selection_rects[index];
+			if (rect.has_area()) bounds = bounds.has_area() ? bounds.merge(rect) : rect;
+		}
+		const DisplayServer* display = DisplayServer::get_singleton();
+		const bool can_capture_viewport = display && display->get_name() != "headless";
+		if (p_canvas && bounds.has_area() && can_capture_viewport) {
+			Viewport* viewport = p_canvas->get_viewport();
+			const Ref<ViewportTexture> viewport_texture = viewport ? viewport->get_texture() : Ref<ViewportTexture>();
+			const Ref<Image> source = viewport_texture.is_valid() ? viewport_texture->get_image() : Ref<Image>();
+			const Rect2 visible = viewport ? viewport->get_visible_rect() : Rect2();
+			if (source.is_valid() && source->get_width() > 0 && source->get_height() > 0 && visible.has_area()) {
+				const Transform2D transform = p_canvas->get_global_transform_with_canvas();
+				const Rect2 viewport_bounds = transform.xform(bounds);
+				const Vector2 scale(source->get_width() / visible.size.x, source->get_height() / visible.size.y);
+				const Vector2 position = (viewport_bounds.position - visible.position) * scale;
+				const Vector2 end = (viewport_bounds.get_end() - visible.position) * scale;
+				const Vector2 floored_position = position.floor();
+				const Rect2i requested(Vector2i(floored_position), Vector2i((end.ceil() - floored_position).max(Vector2())));
+				const Rect2i image_bounds(Vector2i(), source->get_size());
+				const Rect2i crop = requested.intersection(image_bounds);
+				if (crop.has_area()) {
+					const Ref<Image> snapshot = source->get_region(crop);
+					if (snapshot.is_valid()) {
+						const Vector2 preview_size = Vector2(crop.size) / scale;
+						TextureRect* preview = memnew(TextureRect);
+						preview->set_texture(ImageTexture::create_from_image(snapshot));
+						preview->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
+						preview->set_stretch_mode(TextureRect::STRETCH_SCALE);
+						preview->set_size(preview_size);
+						preview->set_custom_minimum_size(preview_size);
+						preview->set_modulate(Color(1.0, 1.0, 1.0, 0.85));
+						preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+						return preview;
+					}
+				}
+			}
+		}
+
+		Label* preview = memnew(Label);
+		preview->set_text(p_text);
+		preview->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED);
+		preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+		return preview;
+	}
+}
+
+bool HTMLLabelCanvas::dispatch_drag_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
+	const Ref<HTMLDataTransfer>& p_transfer, const Vector2& p_position, const Ref<HTMLElement>& p_related_target) {
+	if (!label || label->layout.is_null() || p_target.is_null() || !p_target->is_valid()) return true;
+	Ref<HTMLEvent> base_event = docrender::make_dom_event(p_type, true,
+		p_type == StringName("dragstart") || p_type == StringName("drag") || p_type == StringName("dragenter") ||
+		p_type == StringName("dragover") || p_type == StringName("drop"));
+	Ref<HTMLDragEvent> event = base_event;
+	if (event.is_null()) return true;
+	if (p_transfer.is_valid()) event->set_data_transfer(p_transfer);
+	event->set_position(p_position - label->get_visible_rect().position);
+	event->set_buttons(mouse_buttons);
+	if (p_related_target.is_valid()) event->set_related_target(p_related_target);
+	label->layout->get_dom().dispatch_event(p_target, event);
+	return !event->is_default_prevented();
+}
+
+void HTMLLabelCanvas::update_drop_target(const Ref<HTMLElement>& p_target, const String& p_text,
+	const Vector2& p_position) const {
+	if (drop_target == p_target && drop_text == p_text) return;
+	if (drop_target.is_valid()) {
+		Ref<HTMLDataTransfer> transfer;
+		transfer.instantiate();
+		transfer->set_text(drop_text);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer,
+			p_position, p_target);
+	}
+	drop_target = p_target;
+	drop_text = p_text;
+	drop_accepted = false;
+	if (drop_target.is_valid()) {
+		Ref<HTMLDataTransfer> transfer;
+		transfer.instantiate();
+		transfer->set_text(drop_text);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragenter"), drop_target, transfer, p_position);
+	}
+}
+
+void HTMLLabelCanvas::clear_drop_target(const Vector2& p_position) const {
+	if (drop_target.is_valid()) {
+		Ref<HTMLDataTransfer> transfer;
+		transfer.instantiate();
+		transfer->set_text(drop_text);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer, p_position);
+	}
+	drop_target.unref();
+	drop_text = String();
+	drop_accepted = false;
+}
+
+Variant HTMLLabelCanvas::begin_selection_drag(const Vector2& p_position, bool p_force_native_drag) {
+	const Variant inherited_data = Control::_get_drag_data(p_position);
+	if (inherited_data.get_type() != Variant::NIL) return inherited_data;
+	if (native_drag_started) return drag_text;
+	if (!label || !label->drag_and_drop_selection_enabled || !selection_drag_attempt ||
+		!label->selection_enabled || label->layout.is_null()) return {};
+	const String selected_text = label->get_selected_text();
+	if (selected_text.is_empty()) return {};
+
+	Ref<HTMLDataTransfer> transfer;
+	transfer.instantiate();
+	transfer->set_text(selected_text);
+	transfer->set_mode(HTMLDataTransfer::MODE_READ_WRITE);
+	const Ref<HTMLElement> source = drag_source.is_valid() ? drag_source : label->layout->get_document_element();
+	if (!dispatch_drag_event(StringName("dragstart"), source, transfer, p_position)) return {};
+	const String drag_text = transfer->get_data("text/plain");
+	if (drag_text.is_empty()) return {};
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	this->drag_text = drag_text;
+	drag_source = source;
+	native_drag_started = true;
+	drag_elapsed = 0.0;
+	set_process(true);
+	cancel_click();
+	selecting = false;
+	selection_dragged = false;
+	PointerInfo pointer;
+	pointer.position = p_position;
+	pointer.target = source;
+	pointer.buttons = 0;
+	dispatch_pointer_event(StringName("pointercancel"), source, pointer, false);
+	Control* preview = make_html_drag_preview(this, label->get_selection_rects(), drag_text);
+	if (p_force_native_drag) {
+		force_drag(drag_text, preview);
+	} else {
+		set_drag_preview(preview);
+	}
+	return drag_text;
+}
+
+Variant HTMLLabelCanvas::_get_drag_data(const Vector2& p_at_position) {
+	return begin_selection_drag(p_at_position, false);
+}
+
+bool HTMLLabelCanvas::_can_drop_data(const Vector2& p_at_position, const Variant& p_data) const {
+	if (!label || label->layout.is_null() || p_data.get_type() != Variant::STRING || String(p_data).is_empty()) {
+		clear_drop_target(p_at_position);
+		return false;
+	}
+	Ref<HTMLElement> target = label->layout->get_element_at(p_at_position);
+	if (target.is_null()) target = label->layout->get_document_element();
+	if (target.is_null()) {
+		clear_drop_target(p_at_position);
+		return false;
+	}
+	const String text = p_data;
+	update_drop_target(target, text, p_at_position);
+	Ref<HTMLDataTransfer> transfer;
+	transfer.instantiate();
+	transfer->set_text(text);
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	const bool dragover_prevented = !const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(
+		StringName("dragover"), target, transfer, p_at_position);
+	const auto control = label->layout->text_control(target);
+	const bool text_input = control && control->is_text_control() && control->is_editable();
+	drop_accepted = dragover_prevented || text_input;
+	return drop_accepted;
+}
+
+void HTMLLabelCanvas::_drop_data(const Vector2& p_at_position, const Variant& p_data) {
+	if (!label || label->layout.is_null() || p_data.get_type() != Variant::STRING || String(p_data).is_empty()) {
+		clear_drop_target(p_at_position);
+		return;
+	}
+	if (!_can_drop_data(p_at_position, p_data)) {
+		clear_drop_target(p_at_position);
+		return;
+	}
+	const String text = p_data;
+	const Ref<HTMLElement> target = drop_target;
+	Ref<HTMLDataTransfer> transfer;
+	transfer.instantiate();
+	transfer->set_text(text);
+	transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
+	const bool drop_not_canceled = dispatch_drag_event(StringName("drop"), target, transfer, p_at_position);
+	if (drop_not_canceled) {
+		const auto control = label->layout->text_control(target);
+		if (control && control->is_text_control() && control->is_editable() && !control->editor.has_preedit() &&
+			label->layout->is_element_connected(target) && label->focus_element(target)) {
+			set_input_caret(target, p_at_position, false);
+			if (label->dispatch_input_event(StringName("beforeinput"), target, StringName("insertFromDrop"), text, false)) {
+				const auto* field = dynamic_cast<const HTMLInputNode*>(control.get());
+				const String maxlength_value = field ? String(field->maxlength()) : control->get_attr("maxlength", "");
+				const CharString maxlength = maxlength_value.utf8();
+				if (control->editor.insert(text, maxlength.get_data())) {
+					change_input(target, true, StringName("insertFromDrop"), text, false);
+				}
+			}
+		}
+	}
+	clear_drop_target(p_at_position);
+}
+
+void HTMLLabelCanvas::_process(double p_delta) {
+	if (!native_drag_started || !drag_source.is_valid()) {
+		set_process(false);
+		return;
+	}
+	drag_elapsed += p_delta;
+	if (drag_elapsed < 0.35) return;
+	drag_elapsed = 0.0;
+	Ref<HTMLDataTransfer> transfer;
+	transfer.instantiate();
+	transfer->set_text(drag_text);
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	if (!dispatch_drag_event(StringName("drag"), drag_source, transfer, get_local_mouse_position())) {
+		if (Viewport* viewport = get_viewport()) viewport->gui_cancel_drag();
+	}
+}
 
 int HTMLLabelCanvas::click_detail_for(const Ref<HTMLElement>& p_target, const Vector2& p_position) const {
 	if (click_count == 0 || p_target.is_null() || !p_target->is_valid() || last_click_target != p_target ||
@@ -318,6 +547,16 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 		if (p_info.kind == PointerKind::MOUSE) queue_pointer_move_event(StringName("mousemove"), event_target, p_info);
 	};
 	update_dialog_pointer(point, p_info.device);
+	if (native_drag_started) return;
+	if (selection_drag_attempt) {
+		const Vector2 selection_press = pressed_position + visible_rect.position;
+		if ((p_info.buttons & MOUSE_BUTTON_MASK_LEFT) &&
+			point.distance_squared_to(selection_press) > DRAG_DEADZONE * DRAG_DEADZONE) {
+			begin_selection_drag(point, true);
+		}
+		queue_moves();
+		return;
+	}
 	if (move_video_control(point) || move_audio_control(point)) {
 		queue_moves();
 		accept_pointer_event(p_info);
@@ -386,6 +625,11 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	if (!label || label->layout.is_null()) return;
 	const Ref<InputEventMouseButton> button = p_info.source_event;
 	if (button.is_null()) return;
+	if (!native_drag_started) {
+		suppress_next_release = false;
+		selection_drag_attempt = false;
+		drag_source.unref();
+	}
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
 	Ref<HTMLElement> element;
@@ -456,9 +700,25 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	pressed_element = element;
 	pressed_form_target = form_target;
 	pressed_blank = false;
+	selection_drag_attempt = false;
+	suppress_next_release = false;
 	selecting = visible_rect.has_point(point) && label->layout->hit_test_selectable_text(point, &pressed_blank) &&
 		label->selection_enabled;
 	pressed_blank = pressed_blank && hit.id == 0 && target_button.is_null() && form_target.is_null();
+	const Vector2i current_selection = label->get_selection_range();
+	if (p_info.button == MOUSE_BUTTON_LEFT && label->drag_and_drop_selection_enabled &&
+		current_selection.x != current_selection.y && selecting) {
+		for (const Rect2& rect : label->get_selection_rects()) {
+			if (!rect.has_point(point)) continue;
+			selection_drag_attempt = true;
+			drag_source = element.is_valid() ? element : label->layout->get_document_element();
+			selecting = false;
+			selection_dragged = false;
+			cancel_click();
+			accept_pointer_event(p_info);
+			return;
+		}
+	}
 	if (selecting) {
 		selection_origin = label->layout->selection_point_at(point);
 		selecting = !selection_origin.excluded;
@@ -542,6 +802,25 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		box_drag.reset();
 		label->layout->set_scrollbar_pressed(std::nullopt);
 		label->request_hover_check();
+		accept_pointer_event(p_info);
+		return;
+	}
+	if (suppress_next_release || native_drag_started) {
+		suppress_next_release = false;
+		accept_pointer_event(p_info);
+		return;
+	}
+	if (selection_drag_attempt) {
+		selection_drag_attempt = false;
+		if (!p_info.canceled) {
+			for (const Rect2& rect : label->get_selection_rects()) {
+				if (rect.has_point(point)) {
+					label->clear_selection();
+					break;
+				}
+			}
+		}
+		drag_source.unref();
 		accept_pointer_event(p_info);
 		return;
 	}

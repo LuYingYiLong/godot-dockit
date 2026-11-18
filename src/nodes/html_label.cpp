@@ -3,6 +3,7 @@
 #include "editor/docrender_source_editor.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_behavior.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/css/css_values.h"
@@ -520,7 +521,24 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	if (!label) {
 		return;
 	}
-	if (p_what == NOTIFICATION_MOUSE_ENTER || p_what == NOTIFICATION_MOUSE_EXIT) {
+	if (p_what == NOTIFICATION_DRAG_END) {
+		if (native_drag_started && drag_source.is_valid()) {
+			Ref<HTMLDataTransfer> transfer;
+			transfer.instantiate();
+			transfer->set_text(drag_text);
+			transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+			dispatch_drag_event(StringName("dragend"), drag_source, transfer, get_local_mouse_position());
+			suppress_next_release = true;
+		}
+		native_drag_started = false;
+		selection_drag_attempt = false;
+		drag_source.unref();
+		drag_text = String();
+		drag_elapsed = 0.0;
+		set_process(false);
+		clear_drop_target(get_local_mouse_position());
+	}
+	else if (p_what == NOTIFICATION_MOUSE_ENTER || p_what == NOTIFICATION_MOUSE_EXIT) {
 		if (p_what == NOTIFICATION_MOUSE_EXIT) {
 			cancel_click();
 		}
@@ -574,6 +592,10 @@ void HTMLLabelCanvas::cancel_press() {
 	cancel_key_press();
 	selecting = false;
 	selection_dragged = false;
+	if (!native_drag_started) {
+		selection_drag_attempt = false;
+		drag_source.unref();
+	}
 	set_process_internal(false);
 }
 
@@ -691,6 +713,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_text_range", "from", "to"), &HTMLLabel::scroll_to_text_range);
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_drag_and_drop_selection_enabled", "enabled"), &HTMLLabel::set_drag_and_drop_selection_enabled);
+	ClassDB::bind_method(D_METHOD("is_drag_and_drop_selection_enabled"), &HTMLLabel::is_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("set_transparent_canvas", "enabled"), &HTMLLabel::set_transparent_canvas);
 	ClassDB::bind_method(D_METHOD("is_transparent_canvas"), &HTMLLabel::is_transparent_canvas);
 	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &HTMLLabel::set_context_menu_enabled);
@@ -754,6 +778,8 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "transparent_canvas"), "set_transparent_canvas", "is_transparent_canvas");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"),
+		"set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
 		"set_animation_process_mode", "get_animation_process_mode");
@@ -1257,6 +1283,15 @@ void HTMLLabel::set_selection_enabled(bool p_enabled) {
 
 bool HTMLLabel::is_selection_enabled() const {
 	return selection_enabled;
+}
+
+void HTMLLabel::set_drag_and_drop_selection_enabled(bool p_enabled) {
+	drag_and_drop_selection_enabled = p_enabled;
+	if (!p_enabled && canvas) {
+		canvas->selection_drag_attempt = false;
+		canvas->drag_source.unref();
+		canvas->drag_text = String();
+	}
 }
 
 void HTMLLabel::set_context_menu_enabled(bool p_enabled) {

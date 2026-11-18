@@ -270,8 +270,18 @@ public:
 
 class HTMLDataTransfer : public godot::RefCounted {
 	GDCLASS(HTMLDataTransfer, godot::RefCounted)
+
+public:
+	enum Mode {
+		MODE_READ_WRITE,
+		MODE_READ_ONLY,
+		MODE_PROTECTED,
+	};
+
+private:
 	godot::String text;
-	bool read_only = false;
+	Mode mode = MODE_READ_WRITE;
+	bool has_text = false;
 protected:
 	static void _bind_methods();
 public:
@@ -279,8 +289,21 @@ public:
 	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);
 	void clear_data(const godot::String& p_type = {});
 	godot::PackedStringArray get_types() const;
-	void set_text(const godot::String& p_text) { text = p_text; }
-	void set_read_only(bool p_read_only) { read_only = p_read_only; }
+	void set_text(const godot::String& p_text) { text = p_text; has_text = true; }
+	void set_mode(Mode p_mode) { mode = p_mode; }
+	void set_read_only(bool p_read_only) { mode = p_read_only ? MODE_READ_ONLY : MODE_READ_WRITE; }
+};
+
+VARIANT_ENUM_CAST(HTMLDataTransfer::Mode);
+
+class HTMLDragEvent : public HTMLMouseEvent {
+	GDCLASS(HTMLDragEvent, HTMLMouseEvent)
+	godot::Ref<HTMLDataTransfer> data_transfer;
+protected:
+	static void _bind_methods();
+public:
+	godot::Ref<HTMLDataTransfer> get_data_transfer() const { return data_transfer; }
+	void set_data_transfer(const godot::Ref<HTMLDataTransfer>& p_data_transfer) { data_transfer = p_data_transfer; }
 };
 
 class HTMLClipboardEvent : public HTMLEvent {
