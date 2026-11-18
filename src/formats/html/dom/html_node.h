@@ -14,6 +14,8 @@ namespace docrender { class HTMLDOM; }
 class HTMLLayout;
 class HTMLElement;
 class HTMLDocumentFragment;
+class HTMLLabel;
+class HTMLLabelCanvas;
 class HTMLTextNode;
 class HTMLRange;
 class HTMLMutationObserver;
@@ -24,8 +26,8 @@ class HTMLNode : public godot::RefCounted {
 	friend class docrender::HTMLDOM;
 	friend class HTMLLayout;
 	friend class HTMLDocumentFragment;
-	friend class HTMLLabel;
-	friend class HTMLLabelCanvas;
+	friend class ::HTMLLabel;
+	friend class ::HTMLLabelCanvas;
 	friend class HTMLRange;
 	friend class HTMLMutationObserver;
 

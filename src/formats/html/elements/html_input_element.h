@@ -28,8 +28,8 @@ public:
 
 class HTMLInputElement : public HTMLElement {
 	GDCLASS(HTMLInputElement, HTMLElement)
-	friend class HTMLLabel;
-	friend class HTMLLabelCanvas;
+	friend class ::HTMLLabel;
+	friend class ::HTMLLabelCanvas;
 	friend class HTMLLayout;
 
 	std::shared_ptr<docrender::HTMLInputNode> get_input() const;

@@ -29,8 +29,8 @@ VARIANT_ENUM_CAST(HTMLDialogCloseRequest::Reason);
 
 class HTMLDialogElement : public HTMLElement {
 	GDCLASS(HTMLDialogElement, HTMLElement)
-	friend class HTMLLabel;
-	friend class HTMLLabelCanvas;
+	friend class ::HTMLLabel;
+	friend class ::HTMLLabelCanvas;
 
 	godot::Error open_dialog(bool p_modal);
 	uint64_t get_open_sequence() const;

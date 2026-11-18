@@ -30,8 +30,8 @@ class HTMLElement : public HTMLNode {
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 	friend class HTMLTemplateElement;
-	friend class HTMLLabelCanvas;
-	friend class HTMLLabel;
+	friend class ::HTMLLabelCanvas;
+	friend class ::HTMLLabel;
 	friend class HTMLDocumentFragment;
 
 protected:
