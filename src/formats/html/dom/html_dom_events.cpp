@@ -18,6 +18,23 @@ namespace {
 	// 防御监听器内部再次派发同一事件造成的无限递归。
 	constexpr int MAX_EVENT_DISPATCH_DEPTH = 32;
 	constexpr std::size_t MAX_EVENT_PATH_LENGTH = 1024;
+
+	class EventDispatchScope {
+		int& depth;
+		Ref<HTMLEvent> event;
+
+	public:
+		EventDispatchScope(int& p_depth, const Ref<HTMLEvent>& p_event) : depth(p_depth), event(p_event) {
+			++depth;
+		}
+		EventDispatchScope(const EventDispatchScope&) = delete;
+		EventDispatchScope& operator=(const EventDispatchScope&) = delete;
+
+		~EventDispatchScope() {
+			--depth;
+			event->end_dispatch();
+		}
+	};
 }
 
 Error HTMLDOM::register_event_listener(ListenerStore& r_store, const StringName& p_type,
@@ -33,6 +50,7 @@ Error HTMLDOM::register_event_listener(ListenerStore& r_store, const StringName&
 	listener.callable = p_callable;
 	const Object* object = p_callable.get_object();
 	listener.owner = object ? ObjectID(object->get_instance_id()) : ObjectID();
+	listener.id = allocate_event_listener_id();
 	listener.capture = p_capture;
 	listener.once = p_once;
 	listener.passive = p_passive;
@@ -41,6 +59,12 @@ Error HTMLDOM::register_event_listener(ListenerStore& r_store, const StringName&
 	++event_listener_count;
 	++event_counts_by_type[p_type];
 	return OK;
+}
+
+uint64_t HTMLDOM::allocate_event_listener_id() {
+	const uint64_t id = next_event_listener_id++;
+	if (next_event_listener_id == 0) next_event_listener_id = 1;
+	return id;
 }
 
 Error HTMLDOM::unregister_event_listener(ListenerStore& r_store, const StringName& p_type,
@@ -143,7 +167,6 @@ void HTMLDOM::clear_event_listeners() {
 	window_event_listeners.count = 0;
 	event_counts_by_type.clear();
 	event_listener_count = 0;
-	event_dispatch_depth = 0;
 	window_handle = ObjectID();
 	pending_scroll_targets.clear();
 	scroll_delivery_queued = false;
@@ -179,7 +202,10 @@ void HTMLDOM::transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_f
 	auto& target = event_listeners[p_to.get()];
 	for (auto& entry : moved.by_type) {
 		auto& list = target.by_type[entry.key];
-		for (auto& listener : entry.value) list.push_back(listener);
+		for (auto& listener : entry.value) {
+			listener.id = allocate_event_listener_id();
+			list.push_back(listener);
+		}
 		if (auto* count = p_source.event_counts_by_type.getptr(entry.key)) {
 			if (*count > entry.value.size()) *count -= entry.value.size();
 			else p_source.event_counts_by_type.erase(entry.key);
@@ -192,24 +218,25 @@ void HTMLDOM::transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_f
 
 void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HTMLEvent>& p_event, int p_phase) {
 	if (p_event->is_immediate_stopped()) return;
-	ListenerStore* store = nullptr;
 	Ref<HTMLEventTarget> current;
-	switch (p_entry.slot) {
-		case EventTargetSlot::ELEMENT:
-			if (p_entry.node.is_null() || !p_entry.node->is_valid() || !p_entry.element) return;
-			store = event_listeners.getptr(p_entry.element);
-			current = p_entry.node;
-			break;
-		case EventTargetSlot::DOCUMENT:
-			if (p_entry.node.is_null() || !p_entry.node->is_valid()) return;
-			store = &document_event_listeners;
-			current = p_entry.node;
-			break;
-		case EventTargetSlot::WINDOW:
-			store = &window_event_listeners;
-			current = p_entry.window;
-			break;
-	}
+	const auto get_store = [this, &p_entry, &current]() -> ListenerStore* {
+		switch (p_entry.slot) {
+			case EventTargetSlot::ELEMENT:
+				if (p_entry.node.is_null() || !p_entry.node->is_valid() || !p_entry.element) return nullptr;
+				current = p_entry.node;
+				return event_listeners.getptr(p_entry.element);
+			case EventTargetSlot::DOCUMENT:
+				if (p_entry.node.is_null() || !p_entry.node->is_valid()) return nullptr;
+				current = p_entry.node;
+				return &document_event_listeners;
+			case EventTargetSlot::WINDOW:
+				if (p_entry.window.is_null() || !p_entry.window->is_valid()) return nullptr;
+				current = p_entry.window;
+				return &window_event_listeners;
+		}
+		return nullptr;
+	};
+	ListenerStore* store = get_store();
 	if (!store) return;
 	const StringName type = p_event->get_type();
 	auto* list_ptr = store->by_type.getptr(type);
@@ -222,9 +249,18 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 		if (p_event->is_immediate_stopped()) break;
 		if (p_phase == HTMLEvent::PHASE_CAPTURING && !entry.capture) continue;
 		if (p_phase == HTMLEvent::PHASE_BUBBLING && entry.capture) continue;
-		if (entry.once) unregister_event_listener(*store, type, entry.callable, entry.capture);
+		// 回调可能移除、清空或迁移监听器，因此每次调用前都重新获取存储并检查注册 ID。
+		ListenerStore* active_store = get_store();
+		if (!active_store) continue;
+		const auto* active_list = active_store->by_type.getptr(type);
+		if (!active_list || std::none_of(active_list->begin(), active_list->end(), [&](const EventListener& p_active) {
+				return p_active.id == entry.id;
+			})) continue;
+		if (entry.once) unregister_event_listener(*active_store, type, entry.callable, entry.capture);
 		if (!entry.callable.is_valid()) {
-			unregister_event_listener(*store, type, entry.callable, entry.capture);
+			if (ListenerStore* invalid_store = get_store()) {
+				unregister_event_listener(*invalid_store, type, entry.callable, entry.capture);
+			}
 			continue;
 		}
 		p_event->set_passive_context(entry.passive);
@@ -235,7 +271,6 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 
 bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTMLEvent>& p_event) {
 	if (p_event.is_null()) return true;
-	if (event_listener_count == 0) return !p_event->is_default_prevented();
 	if (event_dispatch_depth >= MAX_EVENT_DISPATCH_DEPTH) {
 		ERR_PRINT("HTML event dispatch exceeded the maximum depth and was ignored.");
 		return !p_event->is_default_prevented();
@@ -282,7 +317,7 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 		ERR_PRINT("The event is already being dispatched.");
 		return !p_event->is_default_prevented();
 	}
-	++event_dispatch_depth;
+	EventDispatchScope dispatch_scope(event_dispatch_depth, p_event);
 
 	for (std::size_t index = entries.size(); index > 1; --index) {
 		if (p_event->is_propagation_stopped()) break;
@@ -299,8 +334,6 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 		}
 	}
 
-	--event_dispatch_depth;
-	p_event->end_dispatch();
 	return !p_event->is_default_prevented();
 }
 

@@ -65,6 +65,7 @@ namespace docrender {
 		struct EventListener {
 			godot::Callable callable;
 			godot::ObjectID owner;
+			uint64_t id = 0;
 			bool capture = false;
 			bool once = false;
 			bool passive = false;
@@ -85,6 +86,7 @@ namespace docrender {
 		ListenerStore window_event_listeners;
 		godot::HashMap<godot::StringName, std::size_t> event_counts_by_type;
 		std::size_t event_listener_count = 0;
+		uint64_t next_event_listener_id = 1;
 		mutable godot::ObjectID window_handle;
 		int event_dispatch_depth = 0;
 		std::vector<godot::Ref<HTMLNode>> pending_scroll_targets;
@@ -93,6 +95,7 @@ namespace docrender {
 
 		godot::Error register_event_listener(ListenerStore& r_store, const godot::StringName& p_type,
 			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);
+		uint64_t allocate_event_listener_id();
 		godot::Error unregister_event_listener(ListenerStore& r_store, const godot::StringName& p_type,
 			const godot::Callable& p_callable, bool p_capture);
 		static bool store_has_event_listener(const ListenerStore& p_store, const godot::StringName& p_type);
