@@ -900,6 +900,9 @@
     <ClCompile Include="src\nodes\html_label.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_actions.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\nodes\html_label_audio.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>

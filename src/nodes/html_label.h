@@ -24,6 +24,7 @@
 namespace godot {
 	class InputEventKey;
 	class InputEventMouseButton;
+	class InputEvent;
 	class Timer;
 	class FileDialog;
 	class TextureRect;
@@ -48,6 +49,24 @@ class HTMLLabelCanvas : public godot::Control {
 	GDCLASS(HTMLLabelCanvas, godot::Control)
 
 	friend class ::HTMLLabel;
+	enum class PointerKind { MOUSE, TOUCH, PEN };
+	struct PointerInfo {
+		godot::Vector2 position;
+		int button = 0;
+		int buttons = 0;
+		bool pressed = false;
+		bool canceled = false;
+		bool shift = false;
+		bool ctrl = false;
+		bool alt = false;
+		bool meta = false;
+		int device = 0;
+		int pointer_id = 0;
+		PointerKind kind = PointerKind::MOUSE;
+		bool accepts_event = true;
+		int detail = 0;
+		godot::Ref<godot::InputEvent> source_event;
+	};
 
 	::HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
@@ -142,7 +161,12 @@ class HTMLLabelCanvas : public godot::Control {
 	void cancel_button_press();
 	void cancel_key_press();
 	bool handle_dom_key(const godot::InputEventKey& p_key);
+	bool handle_key_default_action(const godot::InputEventKey& p_key);
 	void handle_selection_key(const godot::InputEventKey& p_key);
+	void accept_pointer_event(const PointerInfo& p_info);
+	void handle_pointer_press(const PointerInfo& p_info);
+	void handle_pointer_release(const PointerInfo& p_info);
+	void handle_pointer_move(const PointerInfo& p_info);
 	bool dispatch_pointer_event(
 		const godot::StringName& p_type,
 		const godot::Ref<HTMLElement>& p_target,
@@ -160,7 +184,7 @@ class HTMLLabelCanvas : public godot::Control {
 	void move_range(const godot::Ref<HTMLInputElement>& p_input, const godot::Vector2& p_point, bool p_commit);
 	bool handle_input_key(const godot::InputEventKey& p_key);
 	bool handle_input_decoration(const godot::Ref<HTMLInputElement>& p_input, const godot::InputEventMouseButton& p_event,
-		const godot::Vector2& p_point);
+		const godot::Vector2& p_point, bool p_accepts_event = true);
 	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
 	void close_input_menu();
 	void on_input_menu_selected(int p_command);

@@ -14,7 +14,7 @@ def main():
     parser.add_argument("--work-dir", type=Path)
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
-    with TemporaryDirectory(prefix="docrender-dialog-", dir=args.work_dir) as directory:
+    with TemporaryDirectory(prefix="docrender-dialog-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         project = Path(directory)
         addon = project / "addons/docrender"
         (addon / "bin").mkdir(parents=True)

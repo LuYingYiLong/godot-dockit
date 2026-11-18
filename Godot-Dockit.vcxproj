@@ -320,6 +320,7 @@
     <ClCompile Include="src\formats\remote_images.cpp" />
     <ClCompile Include="src\nodes\html_label.cpp" />
     <ClCompile Include="src\nodes\html_label_audio.cpp" />
+    <ClCompile Include="src\nodes\html_label_actions.cpp" />
     <ClCompile Include="src\nodes\html_label_behaviors.cpp" />
     <ClCompile Include="src\nodes\html_label_color_picker.cpp" />
     <ClCompile Include="src\nodes\html_label_dialog.cpp" />

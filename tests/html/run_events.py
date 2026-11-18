@@ -1,11 +1,25 @@
 """Test DOM event dispatch, cancelable default actions, and document-level delegation."""
 
 import argparse
+import os
 from pathlib import Path
 import shutil
+import subprocess
 from tempfile import TemporaryDirectory
 
 from run_audio import run, write
+
+
+def run_event_checks(command, workspace):
+    result = subprocess.run(command, env={**os.environ, "APPDATA": str(workspace)}, cwd=workspace,
+                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+    print(result.stdout, end="")
+    print(result.stderr, end="")
+    expected_error = "ERROR: The event is already being dispatched."
+    unexpected_errors = [line for line in result.stderr.splitlines()
+                         if line.startswith("ERROR:") and line != expected_error]
+    if result.returncode or "HTML event checks passed" not in result.stdout or unexpected_errors:
+        raise SystemExit(f"Event test command failed: {command}")
 
 
 def create_project(project, repo):
@@ -45,10 +59,15 @@ def main():
     with TemporaryDirectory(prefix="docrender-html-events-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         project = workspace / "project"
+        settings = workspace / "Godot"
+        settings.mkdir()
+        write(settings / "editor_settings-4.7.tres", """[gd_resource type="EditorSettings" format=3]
+[resource]
+filesystem/on_save/safe_save_on_backup_then_rename = false
+""")
         create_project(project, repo)
         run([godot, "--headless", "--path", str(project), "--import"], workspace)
-        run([godot, "--headless", "--path", str(project), "--quit-after", "360"],
-            workspace, "HTML event checks passed")
+        run_event_checks([godot, "--headless", "--path", str(project), "--quit-after", "360"], workspace)
 
 
 if __name__ == "__main__":

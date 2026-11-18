@@ -173,7 +173,7 @@ void HTMLLabelCanvas::move_range(const Ref<HTMLInputElement>& p_input, const Vec
 }
 
 bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_input, const InputEventMouseButton& p_event,
-	const Vector2& p_point) {
+	const Vector2& p_point, bool p_accepts_event) {
 	const auto node = p_input.is_valid() ? p_input->get_input() : nullptr;
 	const auto local = node ? label->layout->input_local_point(*p_input.ptr(), p_point) : std::nullopt;
 	const int part = local && node->is_editable() && label->layout->is_focusable(p_input) ? node->decoration_at(*local) : 0;
@@ -183,12 +183,12 @@ bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_inp
 		cancel_press();
 		pressed_input_decoration = p_input;
 		pressed_input_part = part;
-		accept_event();
+		if (p_accepts_event) accept_event();
 		return true;
 	}
 	const auto pressed = std::exchange(pressed_input_decoration, {});
 	if (pressed.is_null()) return false;
-	accept_event();
+	if (p_accepts_event) accept_event();
 	if (p_event.is_canceled() || !part || pressed != p_input || part != pressed_input_part) return true;
 	const ObjectID id(label->get_instance_id());
 	if (!label->focus_element(p_input) || !ObjectDB::get_instance(id)) return true;

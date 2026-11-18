@@ -25,11 +25,11 @@ namespace {
 
 bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
 	const InputEventMouseButton& p_event, const Vector2& p_point, bool p_cancelable) {
-	if (!label || label->layout.is_null()) return false;
-	if (p_target.is_null() || !p_target->is_valid()) return false;
+	if (!label || label->layout.is_null()) return true;
+	if (p_target.is_null() || !p_target->is_valid()) return true;
 	auto& dom = label->layout->get_dom();
 	// 没有监听器时保持既有输入路径，避免为每次点击构造事件对象。
-	if (!dom.has_event_listeners()) return false;
+	if (!dom.has_event_listeners()) return true;
 	Ref<HTMLMouseEvent> event;
 	event.instantiate();
 	event->set_type(p_type);
@@ -45,7 +45,7 @@ bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref
 	event->set_alt_pressed(p_event.is_alt_pressed());
 	event->set_meta_pressed(p_event.is_meta_pressed());
 	dom.dispatch_event(p_target, event);
-	return event->is_default_prevented();
+	return !event->is_default_prevented();
 }
 
 bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_previous) {

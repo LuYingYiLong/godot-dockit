@@ -165,7 +165,8 @@ func _check_dispatch() -> void:
 		stopped.stop_propagation()
 	mid.add_event_listener(&"click", stop)
 	inner.dispatch_event(_event())
-	_check(order == ["target:inner", "stop"], "stop_propagation ends propagation after the current node")
+	_check(order == ["target:inner", "bubble:mid", "stop"],
+		"stop_propagation ends propagation after all listeners on the current node")
 	mid.remove_event_listener(&"click", stop)
 
 	order.clear()
