@@ -16,6 +16,7 @@
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/typed_dictionary.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
 
 #include <optional>
 #include <array>
@@ -40,6 +41,7 @@ namespace docrender {
 
 class HTMLLabel;
 class HTMLBehavior;
+class HTMLBehaviorStorage;
 class HTMLButtonElement;
 class HTMLDocumentNode;
 class HTMLFormElement;
@@ -316,6 +318,7 @@ public:
 
 class HTMLLabel : public godot::Control {
 	GDCLASS(HTMLLabel, godot::Control)
+	friend class HTMLBehavior;
 
 public:
 	enum VideoBackend {
@@ -567,8 +570,26 @@ private:
 	bool dispatching_behavior = false;
 	bool behavior_source_pending = false;
 	uint64_t behavior_version = 0;
+	bool behavior_reload_pending = false;
 	godot::TypedDictionary<godot::StringName, godot::GDScript> behavior_scripts;
+	std::vector<godot::Dictionary> behavior_diagnostics;
+	bool behavior_source_error_reported = false;
 	std::vector<godot::Ref<HTMLBehavior>> attached_behaviors;
+	godot::Ref<HTMLBehaviorStorage> session_storage;
+	godot::String storage_namespace;
+	struct NavigationEntry {
+		godot::String location;
+		godot::String text;
+		godot::Ref<HTMLDocument> document;
+		godot::String base_dir;
+		godot::String source_path;
+	};
+	std::vector<NavigationEntry> navigation_history;
+	int64_t navigation_position = -1;
+	uint64_t navigation_sequence = 0;
+	uint64_t navigation_request_id = 0;
+	godot::String current_location;
+	godot::String pending_navigation_anchor;
 	bool parsed = false;
 	bool document_ready_events_queued = false;
 	bool document_ready_events_sent = false;
@@ -617,6 +638,13 @@ private:
 	void apply_behavior_reset();
 	bool can_mount_behaviors() const;
 	void queue_behavior_mount();
+	void update_behavior_processing();
+	void add_behavior_diagnostic(const godot::String& p_src, const godot::String& p_path,
+		const godot::String& p_reason);
+	void on_navigation_response(uint64_t p_sequence, const godot::String& p_url, bool p_replace,
+		int p_status_code, const godot::PackedByteArray& p_body, const godot::String& p_error);
+	void apply_navigation_source(const godot::String& p_url, const godot::String& p_text, bool p_replace);
+	void navigate_to_history(int64_t p_position);
 	void queue_document_ready_events();
 	void dispatch_document_ready_events();
 	static void mount_behaviors(uint64_t p_id, uint64_t p_version);
@@ -774,6 +802,8 @@ public:
 	godot::Ref<HTMLDocument> get_document() const;								// 返回控件当前关联的文档资源
 	void set_behaviors_enabled(bool p_enabled);									// 设置是否挂载登记的文档行为
 	bool are_behaviors_enabled() const;											// 返回是否允许挂载文档行为
+	void reload_behaviors();
+	godot::TypedArray<godot::Dictionary> get_behavior_diagnostics() const;
 	void set_behavior_scripts(
 		const godot::TypedDictionary<godot::StringName,
 		godot::GDScript>& p_scripts
@@ -783,6 +813,13 @@ public:
 	godot::String get_text() const;												// 返回控件的内联 HTML 文本
 	void set_base_dir(const godot::String& p_base_dir);							// 设置内联 HTML 的相对资源路径基准目录
 	godot::String get_base_uri() const;											// 返回当前 DOM 的生效基准
+	void set_storage_namespace(const godot::String& p_namespace);
+	godot::String get_storage_namespace() const;
+	godot::Error navigate(const godot::String& p_url, bool p_replace = false);
+	bool back();
+	bool forward();
+	bool go(int64_t p_delta);
+	godot::String get_location() const;
 	void set_source_path(const godot::String& p_path);							// 设置编辑器实时预览对应的源文件
 	godot::String get_base_dir() const;											// 返回内联 HTML 的资源基准目录
 	void set_stylesheet(const godot::String& p_stylesheet);						// 设置应用于内联 HTML 的附加 CSS

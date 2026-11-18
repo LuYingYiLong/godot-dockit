@@ -68,30 +68,28 @@ for (auto& element : query_selector_all("script")) {
 }
 ```
 
-- `type` 必须**恰好**是 `text/gdscript`（带 `;charset=utf-8` 就不匹配），`language=` 被忽略
-- `src` **不是路径、不是 URL**，是字典 key 的字符串字面量。`<script src="res://ui/app.gd">` 只有在字典里存在 `"res://ui/app.gd"` 这个 key 时才工作
-- 对比：`<img src>`、`<link href>`、`<audio src>`、`<video src>`、`@font-face` 全都有 `html_resource_paths.cpp` 的完整解析器（`res://`、`user://`、`uid://`、`<base href>`、相对路径），并且导入时会收集依赖。**只有 `<script>` 没有解析器**
+- `type` 现在会忽略 MIME 参数，`text/gdscript; charset=utf-8` 也可匹配
+- `src` 先按 `behavior_scripts` 精确匹配别名，未命中时按文档生效基准解析本地路径。支持 `res://`、`user://`、`uid://` 和相对路径；远程脚本 URL 被拒绝
 - 内联 `<script>…</script>` 的 body 永不执行，只当数据
 - `<template>` 内和 SVG foreign content 内的 `<script>` 不会被选中
-- 挂载失败**完全静默**：未注册的 `src`、基类不对、抽象类、`_init` 有必填参数 → 直接跳过，无 `push_warning`、无 `get_render_error()` 条目
-- 任何一个 `render_error` 非空都会**整体禁用**所有 behavior（`html_label_behaviors.cpp:79`）
+- 挂载失败通过 `push_warning` 和 `HTMLLabel.get_behavior_diagnostics()` 报告，包含原始 `src`、解析路径和失败原因
+- `render_error` 非空时仍会跳过 behavior 挂载，并记录文档渲染失败诊断
 
 ### 2.2 能力矩阵
 
 | 能力 | 状态 | 说明 |
 | --- | --- | --- |
-| `setTimeout` / `setInterval` | **无** | behavior 是 `RefCounted` 不是 `Node`，只能 `Engine.get_main_loop().create_timer()` 自己造；`_detach` 没有统一清理 |
-| `requestAnimationFrame` | **无** | 没有逐帧钩子；只有声明式 `element.animate()` |
-| `fetch` / `XMLHttpRequest` | **无** | `http_requests.h` 是 C++ 命名空间函数，`RemoteImage`/`RemoteStylesheet` 非 `GDCLASS`，只服务图片和 CSS。GDScript 拿不到，也无法复用文档 base URL |
-| `localStorage` / `sessionStorage` | **无** | 无任何存储类；只能 `user://` + `FileAccess`/`ConfigFile`，全局无命名空间、无变更事件 |
-| `location` / `navigate` / `history` | **部分（只读）** | `get_base_uri()` 只读；`link_pressed` 只是建议；只有 `#fragment` 有内置行为。无 `pushState`/前进后退/URL 变更事件 |
+| 计时器 / 帧回调 | 已实现 | `HTMLBehavior.set_timeout/set_interval/on_frame`；以行为实例为所有者，`_detach` 后自动清理 |
+| HTTP 请求 | 已实现 | `HTMLBehavior.request` 支持常见方法、headers、文本 body、异步响应和取消，并复用请求队列 |
+| 行为存储 | 已实现 | `local_storage` 按文档/自定义命名空间写入 `user://`；`session_storage` 随每个 `HTMLLabel` 存活 |
+| 导航 / 历史 | 已实现 | `HTMLLabel.navigate/back/forward/go` 支持本地 HTML 和 HTTP(S) HTML；同页 fragment 不新增历史项 |
 | `console` / 错误上报 | **部分（只能用 Godot 的）** | 无页面日志缓冲、无按 `<script>` 归因、无运行期错误捕获（GDScript 无 try/catch） |
 | 多脚本顺序 | 可用 | 文档顺序、同步、每个匹配元素一个独立实例 |
 | `defer` / `async` / `nomodule` | **属性是死的** | 只反射属性（`html_metadata_elements.cpp:125-138`），挂载只看 `type` 和 `src` |
 | 模块 / import | **无** | 扁平 `Dictionary[StringName, GDScript]`，无解析、无 import map、无依赖图 |
 | 动态插入 `<script>` | **无** | `create_element("script")` + append 不执行；改 `src` 不重跑 |
-| 热重载 / remount API | **无** | 全仓库无文件监听；`set_behavior_scripts` 字典相等就早退；编辑器里直接禁用 behavior。改一行 .gd 要换文档或切 `behaviors_enabled`，会销毁全部实例 |
-| 拿到宿主 label | **部分** | 只有 `_attach(label)` 能拿到；`_attach_document(dom)` 是死路（`HTMLBehavior` 没有 `get_label()`，`HTMLDocumentNode` 无 owner 访问器）。而文档却把 `_attach_document` 写成首选 |
+| 热重载 / remount API | 部分实现 | `HTMLLabel.reload_behaviors()` 显式刷新资源并重挂；不自动监视文件变化 |
+| 拿到宿主 label | 已实现 | `HTMLBehavior.label` / `get_label()` 在两个 attach hook 和 `_detach` 期间有效 |
 
 ---
 
@@ -168,12 +166,12 @@ for (auto& element : query_selector_all("script")) {
 3. 已实现 GDScript 行为方法形式的 `on*` 属性；不支持 JavaScript 内联脚本。
 4. 后续测试重点：多指触摸与 pointercancel、异步媒体后端事件顺序、动画删除时的 cancel/end 边界、重复输入合帧期间的捕获目标，以及 on* 动态属性反射。
 
-**P1 — 脚本宿主**
+**P1 — 脚本宿主（运行时基础能力已实现）**
 
-5. `<script src>` 走 `html_resource_paths.cpp` 的资源解析（`.gd` 或 `.gd` 打包资源），支持相对路径与 `<base href>`；内联 body 可选支持为一段 GDScript。
-6. 挂载失败必须 `push_warning` + 进入诊断；`_attach_document` 增加 `get_label()`，别让首选钩子成死路。
-7. `HTMLLabel.fetch(url, callback)`（复用现成的 `queue_http_request`）、`set_timeout/set_interval/on_frame`（`_detach` 自动清理）、`remount()`/热重载。
-8. `storage` 与 `location/history`：`user://` 下按文档标识命名空间化；`navigate(url)` + 前进后退栈。
+5. 脚本别名与本地路径加载并存；`res://`、`user://`、`uid://`、相对路径可解析，远程脚本拒绝。
+6. 挂载失败通过警告和结构化诊断报告；`_attach_document(document)` 可通过 `behavior.label` 访问宿主。
+7. `HTMLBehavior` 提供请求、计时器和帧回调；行为卸载时取消所有关联任务。
+8. 持久/会话存储与 `HTMLLabel` 导航历史已接入；显式 `reload_behaviors()` 可刷新并重挂脚本。自动文件监视、内联 GDScript 正文和 JavaScript 仍未实现。
 
 **P2 — 文档形态**
 

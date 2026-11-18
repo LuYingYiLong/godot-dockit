@@ -1,5 +1,6 @@
 #include "html_resource_paths.h"
 
+#include "formats/http_url.h"
 #include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/resource_uid.hpp>
@@ -66,7 +67,13 @@ namespace docrender {
 
 	HTMLResourceBase resolve_html_document_base(const HTMLResourceBase& p_fallback, const char* p_href) {
 		if (!p_href) return p_fallback;
-		const String uri = resolve_local_url(String::utf8(p_href).strip_edges(), p_fallback);
+		const String href = String::utf8(p_href).strip_edges();
+		if (is_http_url(p_fallback.uri) || is_http_url(href)) {
+			const String uri = resolve_http_url(href, p_fallback.uri);
+			if (uri.is_empty()) return p_fallback;
+			return { uri, resolve_http_url(".", uri) };
+		}
+		const String uri = resolve_local_url(href, p_fallback);
 		if (uri.is_empty()) return p_fallback;
 		const String path = without_url_suffix(uri);
 		return { uri, path.ends_with("/") ? normalize_html_resource_path(path).value_or(p_fallback.directory) : path.get_base_dir() };
@@ -74,6 +81,9 @@ namespace docrender {
 
 	String resolve_html_link_href(const String& p_href, const HTMLResourceBase& p_base) {
 		const String href = p_href.strip_edges();
+		if (href.begins_with("res://") || href.begins_with("user://") || href.begins_with("uid://"))
+			return resolve_local_url(href, p_base);
+		if (is_http_url(p_base.uri) || is_http_url(href)) return resolve_http_url(href, p_base.uri);
 		const String prefix = without_url_suffix(href).get_slice("/", 0);
 		if (prefix.contains(":") && !href.begins_with("res://") && !href.begins_with("user://") && !href.begins_with("uid://"))
 			return href;

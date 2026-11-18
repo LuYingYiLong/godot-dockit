@@ -45,6 +45,7 @@
 #include "formats/pdf/writer/pdf_writer.h"
 
 #include "nodes/html_label.h"
+#include "nodes/html_selection_drag_preview.h"
 #include "nodes/latex_label.h"
 #include "nodes/latex_label_3d.h"
 #include "nodes/markdown_label.h"
@@ -107,6 +108,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLTouchEvent);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
 		GDREGISTER_ABSTRACT_CLASS(HTMLStyleSheet);
+		GDREGISTER_CLASS(HTMLBehaviorStorage);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHtmlElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHeadElement);
@@ -167,6 +169,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
 		GDREGISTER_CLASS(HTMLDocument);
 		GDREGISTER_INTERNAL_CLASS(HTMLLabelCanvas);
+		GDREGISTER_INTERNAL_CLASS(HTMLSelectionDragPreview);
 		GDREGISTER_CLASS(HTMLLabel);
 		GDREGISTER_CLASS(TeXRender);
 		GDREGISTER_CLASS(LatexLabel);

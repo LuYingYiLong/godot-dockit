@@ -19,9 +19,9 @@ namespace docrender {
 		constexpr int MAX_REDIRECTS = 8;
 
 		struct Request {
+			uint64_t id = 0;
 			String url;
-			int max_body;
-			bool track_redirects;
+			HTTPRequestOptions options;
 			std::function<void(const HTTPResponse&)> complete;
 			ObjectID request;
 			int redirects = 0;
@@ -46,7 +46,7 @@ namespace docrender {
 			const auto entry = active.find(p_id);
 			if (entry == active.end()) return;
 			auto& job = entry->second;
-			if (job.track_redirects && p_result == HTTPRequest::RESULT_REDIRECT_LIMIT_REACHED &&
+			if (job.options.track_redirects && p_result == HTTPRequest::RESULT_REDIRECT_LIMIT_REACHED &&
 				job.redirects < MAX_REDIRECTS) {
 				const String location = http_response_header(p_headers, "Location");
 				const String next = location.is_empty() ? String() : resolve_http_url(location, job.url);
@@ -54,14 +54,13 @@ namespace docrender {
 				if (!next.is_empty() && request) {
 					++job.redirects;
 					job.url = http_request_url(next);
-					if (request->request(job.url) == OK) return;
+					if (request->request(job.url, job.options.headers, job.options.method, job.options.body) == OK) return;
 				}
 			}
-			if (p_result != HTTPRequest::RESULT_SUCCESS || p_code < 200 || p_code >= 300) {
-				finish(entry, {job.url, {}, {}, "request_failed"});
-			} else {
-				finish(entry, {job.url, p_headers, p_body, {}});
-			}
+			const bool transport_error = p_result != HTTPRequest::RESULT_SUCCESS;
+			const bool status_error = p_code < 200 || p_code >= 300;
+			finish(entry, {job.url, p_code, p_headers, p_body,
+				transport_error ? String("request_failed") : status_error ? String("http_error") : String()});
 		}
 
 		void start_requests() {
@@ -72,21 +71,24 @@ namespace docrender {
 				auto job = std::move(pending.front());
 				pending.pop_front();
 				if (!root || !root->is_inside_tree()) {
-					job.complete({job.url, {}, {}, "scene_tree_unavailable"});
+					job.complete({job.url, 0, {}, {}, "scene_tree_unavailable"});
 					continue;
 				}
 				auto* request = memnew(HTTPRequest);
 				request->set_use_threads(true);
-				request->set_timeout(12.0);
-				request->set_body_size_limit(job.max_body);
-				request->set_max_redirects(job.track_redirects ? 0 : MAX_REDIRECTS);
+				request->set_timeout(job.options.timeout);
+				request->set_body_size_limit(job.options.max_body);
+				request->set_max_redirects(job.options.track_redirects ? 0 : MAX_REDIRECTS);
 				request->set_process_mode(Node::PROCESS_MODE_ALWAYS);
 				job.request = ObjectID(request->get_instance_id());
-				const auto token = ++next_id;
+				const uint64_t token = job.id;
 				const auto entry = active.emplace(token, std::move(job)).first;
 				request->connect("request_completed", callable_mp_static(&completed).bind(token));
 				root->add_child(request, false, Node::INTERNAL_MODE_BACK);
-				if (request->request(entry->second.url) != OK) finish(entry, {entry->second.url, {}, {}, "request_start_failed"});
+				if (request->request(entry->second.url, entry->second.options.headers,
+					entry->second.options.method, entry->second.options.body) != OK) {
+					finish(entry, {entry->second.url, 0, {}, {}, "request_start_failed"});
+				}
 			}
 		}
 
@@ -107,10 +109,40 @@ namespace docrender {
 		return {};
 	}
 
-	void queue_http_request(const String& p_url, int p_max_body, bool p_track_redirects,
+	uint64_t queue_http_request(const String& p_url, const HTTPRequestOptions& p_options,
 		std::function<void(const HTTPResponse&)> p_complete) {
-		if (stopping) return;
-		pending.push_back({p_url, p_max_body, p_track_redirects, std::move(p_complete), {}});
+		if (stopping) return 0;
+		const uint64_t id = ++next_id;
+		pending.push_back({id, p_url, p_options, std::move(p_complete), {}, 0});
+		queue_start();
+		return id;
+	}
+
+	uint64_t queue_http_request(const String& p_url, int p_max_body, bool p_track_redirects,
+		std::function<void(const HTTPResponse&)> p_complete) {
+		HTTPRequestOptions options;
+		options.max_body = p_max_body;
+		options.track_redirects = p_track_redirects;
+		return queue_http_request(p_url, options, std::move(p_complete));
+	}
+
+	void cancel_http_request(uint64_t p_request_id) {
+		if (p_request_id == 0) return;
+		for (auto it = pending.begin(); it != pending.end(); ++it) {
+			if (it->id == p_request_id) {
+				pending.erase(it);
+				return;
+			}
+		}
+		const auto entry = active.find(p_request_id);
+		if (entry == active.end()) return;
+		const ObjectID request_id = entry->second.request;
+		active.erase(entry);
+		if (auto* request = Object::cast_to<HTTPRequest>(ObjectDB::get_instance(request_id))) {
+			request->disconnect("request_completed", callable_mp_static(&completed).bind(p_request_id));
+			request->cancel_request();
+			request->queue_free();
+		}
 		queue_start();
 	}
 

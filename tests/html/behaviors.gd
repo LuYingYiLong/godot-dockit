@@ -15,16 +15,16 @@ func _ready() -> void:
 
 	label.behaviors_enabled = true
 	await _settle()
-	_check(_events(label) == ["attach:direct:A", "attach:direct:A", "attach:indirect:A"],
-		"matching declarations mount in order and duplicate tags create separate instances")
-	_check(not Engine.has_meta(&"unregistered_loaded") and not Engine.has_meta(&"wrong_instantiated"),
-		"HTML does not load an unregistered path or construct a registered script with the wrong base")
+	_check(_events(label) == ["attach:direct:A", "attach:direct:A", "attach:indirect:A", "attach:path:A"],
+		"aliases and local paths mount in declaration order, and duplicate tags create separate instances")
+	_check(Engine.has_meta(&"unregistered_loaded") and not Engine.has_meta(&"wrong_instantiated"),
+		"a local unregistered path loads, while a registered script with the wrong base is not constructed")
 	var original_instances: Array[WeakRef] = label.get_meta(&"instances")
 	var original_refs: Array[WeakRef] = original_instances.duplicate()
-	_check(original_refs.size() == 3 and original_refs[0].get_ref() != original_refs[1].get_ref(),
+	_check(original_refs.size() == 4 and original_refs[0].get_ref() != original_refs[1].get_ref(),
 		"duplicate declarations are independently instantiated")
 	_check(label.activate_element(label.get_element_by_id("test-button")), "button activates through the host DOM")
-	_check(_events(label).slice(3) == ["button:direct", "button:direct", "button:indirect"],
+	_check(_events(label).slice(4) == ["button:direct", "button:direct", "button:indirect", "button:path"],
 		"the attached scripts receive button_pressed")
 	_events(label).clear()
 

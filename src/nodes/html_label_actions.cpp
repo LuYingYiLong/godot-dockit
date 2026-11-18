@@ -6,6 +6,7 @@
 #include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 #include "formats/html/text/html_text_selection.h"
+#include "nodes/html_selection_drag_preview.h"
 
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
@@ -26,32 +27,6 @@ using namespace godot;
 using docrender::HTMLInputNode;
 
 namespace {
-	class HTMLSelectionDragPreview : public Control {
-		GDCLASS(HTMLSelectionDragPreview, Control)
-
-		Ref<HTMLLayout> layout;
-		Vector2i selection;
-		Rect2 selection_bounds;
-
-	protected:
-		static void _bind_methods() {}
-
-	public:
-		HTMLSelectionDragPreview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection, const Rect2& p_bounds) :
-			layout(p_layout), selection(p_selection), selection_bounds(p_bounds) {
-			set_size(p_bounds.size);
-			set_custom_minimum_size(p_bounds.size);
-			set_mouse_filter(MOUSE_FILTER_IGNORE);
-			set_modulate(Color(1.0, 1.0, 1.0, 0.75));
-		}
-
-		void _draw() override {
-			if (layout.is_valid()) {
-				layout->draw_selection_drag_image(this, selection, -selection_bounds.position, Rect2(Vector2(), get_size()));
-			}
-		}
-	};
-
 	Control* make_html_drag_preview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection,
 		const TypedArray<Rect2>& p_selection_rects, const String& p_text) {
 		Rect2 bounds;
@@ -68,6 +43,20 @@ namespace {
 		preview->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED);
 		preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 		return preview;
+	}
+}
+
+HTMLSelectionDragPreview::HTMLSelectionDragPreview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection,
+	const Rect2& p_bounds) : layout(p_layout), selection(p_selection), selection_bounds(p_bounds) {
+	set_size(p_bounds.size);
+	set_custom_minimum_size(p_bounds.size);
+	set_mouse_filter(MOUSE_FILTER_IGNORE);
+	set_modulate(Color(1.0, 1.0, 1.0, 0.75));
+}
+
+void HTMLSelectionDragPreview::_draw() {
+	if (layout.is_valid()) {
+		layout->draw_selection_drag_image(this, selection, -selection_bounds.position, Rect2(Vector2(), get_size()));
 	}
 }
 

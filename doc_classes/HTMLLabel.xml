@@ -26,6 +26,43 @@
 				Returns the effective base URL of the displayed document. See [method HTMLLayout.get_base_uri].
 			</description>
 		</method>
+		<method name="back">
+			<return type="bool" />
+			<description>
+				Loads the previous entry in this label's navigation history. Returns [code]false[/code] when there is no previous entry.
+			</description>
+		</method>
+		<method name="forward">
+			<return type="bool" />
+			<description>
+				Loads the next entry in this label's navigation history. Returns [code]false[/code] when there is no next entry.
+			</description>
+		</method>
+		<method name="get_behavior_diagnostics" qualifiers="const">
+			<return type="Dictionary[]" />
+			<description>
+				Returns a snapshot of behavior mounting failures. Each Dictionary contains [code]src[/code], [code]path[/code], and [code]reason[/code]. Failures are also reported with [code]push_warning[/code].
+			</description>
+		</method>
+		<method name="get_location" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the current navigation URL, or the effective document base URL when no navigation has occurred.
+			</description>
+		</method>
+		<method name="get_storage_namespace" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the configured storage namespace, or the document source and host identity used by persistent behavior storage.
+			</description>
+		</method>
+		<method name="go">
+			<return type="bool" />
+			<param index="0" name="delta" type="int" />
+			<description>
+				Moves by [param delta] entries in this label's navigation history. Returns [code]false[/code] when the target is outside the history or is the current entry.
+			</description>
+		</method>
 		<method name="activate_element">
 			<return type="bool" />
 			<param index="0" name="element" type="HTMLElement" />
@@ -148,6 +185,20 @@
 			<param index="0" name="selector" type="String" />
 			<description>
 				Returns all matches in this label's parsed document. See [method HTMLLayout.query_selector_all].
+			</description>
+		</method>
+		<method name="navigate">
+			<return type="int" enum="Error" />
+			<param index="0" name="url" type="String" />
+			<param index="1" name="replace" type="bool" default="false" />
+			<description>
+				Loads a local HTML file or an HTTP(S) HTML page and adds it to this label's navigation history. Set [param replace] to replace the current history entry. Navigating to a fragment in the current document scrolls to its anchor without adding an entry. Remote page loading is asynchronous; connect to [signal navigation_failed] to handle failures.
+			</description>
+		</method>
+		<method name="reload_behaviors">
+			<return type="void" />
+			<description>
+				Detaches and remounts behaviors declared in the current document. Resource-path scripts are reloaded from the resource cache before mounting.
 			</description>
 		</method>
 		<method name="scroll_to_anchor">
@@ -370,10 +421,10 @@
 			The base directory in [code]res://[/code] or [code]user://[/code] for relative asset paths in [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
 		</member>
 		<member name="behavior_scripts" type="Dictionary" setter="set_behavior_scripts" getter="get_behavior_scripts" default="{}">
-			A [code]Dictionary[StringName, GDScript][/code] of registered [HTMLBehavior] scripts. Each key matches a script element's [code]src[/code] name. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors.
+			A [code]Dictionary[StringName, GDScript][/code] of optional [HTMLBehavior] aliases. A script element first selects an exact [code]src[/code] alias; otherwise [code]src[/code] is resolved as a local script path. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors.
 		</member>
 		<member name="behaviors_enabled" type="bool" setter="set_behaviors_enabled" getter="are_behaviors_enabled" default="false">
-			Enables registered [HTMLBehavior] scripts at runtime. Each document is scanned once per mount. Replacing the document, disabling behaviors, or leaving the scene tree detaches the current instances.
+			Enables local and registered [HTMLBehavior] scripts at runtime. Network script URLs are rejected. Replacing the document, disabling behaviors, or leaving the scene tree detaches current instances and cancels their asynchronous work.
 		</member>
 		<member name="caret_blink" type="bool" setter="set_caret_blink_enabled" getter="is_caret_blink_enabled" default="true">
 			If [code]true[/code], the caret in a focused text field blinks. If [code]false[/code], it stays visible while the field is focused.
@@ -392,6 +443,12 @@
 		</member>
 		<member name="event_debug" type="bool" setter="set_event_debug" getter="is_event_debug_enabled" default="false">
 			Prints a summary of each DOM event dispatched by this label, including its target, propagation path size, registered listener count, and default-canceled state.
+		</member>
+		<member name="location" type="String" setter="" getter="get_location">
+			The current navigation URL. Read-only.
+		</member>
+		<member name="storage_namespace" type="String" setter="set_storage_namespace" getter="get_storage_namespace" default="">
+			Persistent behavior storage namespace. When empty, the label derives one from its document source or node identity.
 		</member>
 		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true">
 			Enables text selection. Disabling it clears the current selection.
@@ -473,6 +530,19 @@
 			<param index="0" name="uri" type="String" />
 			<description>
 				Emitted when the left mouse button is pressed and released over the same visible link without dragging or scrolling, when Enter activates a focused link, or when [method activate_element] activates a link. [param uri] is the link's original nonempty [code]href[/code].
+			</description>
+		</signal>
+		<signal name="location_changed">
+			<param index="0" name="location" type="String" />
+			<description>
+				Emitted after a navigation or history traversal changes the current URL.
+			</description>
+		</signal>
+		<signal name="navigation_failed">
+			<param index="0" name="url" type="String" />
+			<param index="1" name="error" type="String" />
+			<description>
+				Emitted when a local or remote page cannot be loaded.
 			</description>
 		</signal>
 		<signal name="select_changed">

@@ -134,6 +134,10 @@ func _init() -> void:
 
 static func _static_init() -> void:
 	Engine.set_meta(&"unregistered_loaded", true)
+
+
+func _kind() -> String:
+	return "path"
 """)
     write(project / "required.gd", """extends HTMLBehavior
 

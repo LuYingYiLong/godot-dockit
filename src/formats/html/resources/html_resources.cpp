@@ -179,7 +179,12 @@ namespace docrender {
 	}
 
 	void HTMLResources::set_source_path(const String& p_path) {
-		fallback_base = make_html_resource_base(fallback_base.directory, p_path);
+		if (is_http_url(p_path)) {
+			fallback_base = { p_path, resolve_http_url(".", p_path) };
+		}
+		else {
+			fallback_base = make_html_resource_base(fallback_base.directory, p_path);
+		}
 		document_base = fallback_base;
 	}
 
@@ -199,7 +204,7 @@ namespace docrender {
 
 	String HTMLResources::resolve_remote_resource(const String& p_url, std::string_view p_css_base) const {
 		const auto path = stylesheet_path(p_css_base);
-		const String base = path.empty() ? String() : String::utf8(path.data(), path.size());
+		const String base = path.empty() ? document_base.uri : String::utf8(path.data(), path.size());
 		return resolve_http_url(p_url, base);
 	}
 
@@ -226,7 +231,8 @@ namespace docrender {
 			return document_base.directory;
 		}
 		const auto path = stylesheet_path(p_css_base);
-		return String::utf8(path.data(), path.size()).get_base_dir();
+		const String url = String::utf8(path.data(), path.size());
+		return is_http_url(url) ? resolve_http_url(".", url) : url.get_base_dir();
 	}
 
 	String HTMLResources::resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const {
@@ -274,6 +280,12 @@ namespace docrender {
 	String HTMLResources::resolve_image_source(std::string_view p_source) const {
 		const String source = String::utf8(p_source.data(), p_source.size()).strip_edges();
 		if (is_remote_image_url(source)) return source;
+		if (source.begins_with("res://") || source.begins_with("user://") || source.begins_with("uid://")) {
+			const String path = resolve_html_image_path(source, document_base.directory);
+			const int64_t fragment = source.find("#");
+			return !path.is_empty() && fragment >= 0 ? path + source.substr(fragment) : path;
+		}
+		if (is_http_url(document_base.uri)) return resolve_http_url(source, document_base.uri);
 		const String path = resolve_html_image_path(source, document_base.directory);
 		const int64_t fragment = source.find("#");
 		return !path.is_empty() && fragment >= 0 ? path + source.substr(fragment) : path;

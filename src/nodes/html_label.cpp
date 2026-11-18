@@ -7,6 +7,7 @@
 #include "formats/html/html_behavior.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/css/css_values.h"
+#include "formats/http_requests.h"
 
 #include "formats/html/markup/html_markup.h"
 
@@ -658,6 +659,8 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 
 HTMLLabel::HTMLLabel() {
 	layout.instantiate();
+	session_storage.instantiate();
+	session_storage->configure_session();
 	layout->set_event_host_id(ObjectID(get_instance_id()));
 	layout->get_dom().set_event_debug(event_debug);
 	layout->uses_document_viewport = true;
@@ -675,12 +678,21 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("are_behaviors_enabled"), &HTMLLabel::are_behaviors_enabled);
 	ClassDB::bind_method(D_METHOD("set_behavior_scripts", "scripts"), &HTMLLabel::set_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("get_behavior_scripts"), &HTMLLabel::get_behavior_scripts);
+	ClassDB::bind_method(D_METHOD("reload_behaviors"), &HTMLLabel::reload_behaviors);
+	ClassDB::bind_method(D_METHOD("get_behavior_diagnostics"), &HTMLLabel::get_behavior_diagnostics);
 	ClassDB::bind_method(D_METHOD("get_document"), &HTMLLabel::get_document);
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &HTMLLabel::set_text);
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLLabel::get_text);
 	ClassDB::bind_method(D_METHOD("set_base_dir", "base_dir"), &HTMLLabel::set_base_dir);
 	ClassDB::bind_method(D_METHOD("get_base_dir"), &HTMLLabel::get_base_dir);
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLLabel::get_base_uri);
+	ClassDB::bind_method(D_METHOD("set_storage_namespace", "namespace"), &HTMLLabel::set_storage_namespace);
+	ClassDB::bind_method(D_METHOD("get_storage_namespace"), &HTMLLabel::get_storage_namespace);
+	ClassDB::bind_method(D_METHOD("navigate", "url", "replace"), &HTMLLabel::navigate, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("back"), &HTMLLabel::back);
+	ClassDB::bind_method(D_METHOD("forward"), &HTMLLabel::forward);
+	ClassDB::bind_method(D_METHOD("go", "delta"), &HTMLLabel::go);
+	ClassDB::bind_method(D_METHOD("get_location"), &HTMLLabel::get_location);
 	ClassDB::bind_method(D_METHOD("set_stylesheet", "stylesheet"), &HTMLLabel::set_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &HTMLLabel::get_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_content_size"), &HTMLLabel::get_content_size);
@@ -770,6 +782,8 @@ void HTMLLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "storage_namespace"), "set_storage_namespace", "get_storage_namespace");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "location", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_location");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "behaviors_enabled"), "set_behaviors_enabled", "are_behaviors_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "behavior_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"),
@@ -794,6 +808,8 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "css_diagnostics_enabled"), "set_css_diagnostics_enabled", "is_css_diagnostics_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "event_debug"), "set_event_debug", "is_event_debug_enabled");
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
+	ADD_SIGNAL(MethodInfo("location_changed", PropertyInfo(Variant::STRING, "location")));
+	ADD_SIGNAL(MethodInfo("navigation_failed", PropertyInfo(Variant::STRING, "url"), PropertyInfo(Variant::STRING, "error")));
 	ADD_SIGNAL(MethodInfo("element_clicked", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
 		String(), PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
 	ADD_SIGNAL(MethodInfo("textarea_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
@@ -886,6 +902,7 @@ void HTMLLabel::_notification(int p_what) {
 			update_internal_processing();
 		}
 		if (canvas && canvas->ime_window) canvas->update_ime();
+		update_behavior_processing();
 		break;
 	case NOTIFICATION_INTERNAL_PHYSICS_PROCESS:
 		if (animation_process_mode == ANIMATION_PROCESS_PHYSICS && viewport_size.x > 0) {
@@ -942,6 +959,11 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE: {
+		if (navigation_request_id != 0) {
+			docrender::cancel_http_request(navigation_request_id);
+			navigation_request_id = 0;
+			++navigation_sequence;
+		}
 		input_mouse_position_known = false;
 		input_mouse_view_position.reset();
 		close_input_picker();
@@ -998,10 +1020,17 @@ void HTMLLabel::set_document(const Ref<HTMLDocument>& p_document) {
 	if (document == p_document) {
 		return;
 	}
+	if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+	navigation_request_id = 0;
+	++navigation_sequence;
 	if (document.is_valid()) {
 		document->disconnect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	document = p_document;
+	navigation_history.clear();
+	navigation_position = -1;
+	current_location = document.is_valid() ?
+		(document->get_source_path().is_empty() ? document->get_path() : document->get_source_path()) : source_path;
 	if (document.is_valid()) {
 		DocRenderSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
@@ -1017,6 +1046,12 @@ void HTMLLabel::set_text(const String& p_text) {
 	if (text != p_text) {
 		text = p_text;
 		if (document.is_null()) {
+			if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+			navigation_request_id = 0;
+			++navigation_sequence;
+			navigation_history.clear();
+			navigation_position = -1;
+			current_location = source_path;
 			source_changed();
 		}
 	}
@@ -1044,7 +1079,15 @@ String HTMLLabel::get_base_uri() const { return layout->get_base_uri(); }
 void HTMLLabel::set_source_path(const String& p_path) {
 	if (source_path != p_path) {
 		source_path = p_path;
-		if (document.is_null()) source_changed();
+		if (document.is_null()) {
+			if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+			navigation_request_id = 0;
+			++navigation_sequence;
+			navigation_history.clear();
+			navigation_position = -1;
+			current_location = p_path;
+			source_changed();
+		}
 	}
 }
 
@@ -1651,8 +1694,22 @@ void HTMLLabel::update_internal_processing() {
 	const bool in_tree = is_inside_tree();
 	const bool animate = in_tree && viewport_size.x > 0 && layout->has_active_css_animations();
 	const bool track_ime = in_tree && canvas && canvas->ime_window.has_value();
-	set_process_internal(track_ime || (in_tree && (has_playing_audio() || has_active_video())) || (animate && animation_process_mode == ANIMATION_PROCESS_IDLE));
+	const bool behavior_processing = in_tree && std::any_of(attached_behaviors.begin(), attached_behaviors.end(),
+		[](const Ref<HTMLBehavior>& p_behavior) { return p_behavior.is_valid() && p_behavior->has_async_work(); });
+	set_process_internal(track_ime || (in_tree && (has_playing_audio() || has_active_video())) ||
+		(animate && animation_process_mode == ANIMATION_PROCESS_IDLE) || behavior_processing);
 	set_physics_process_internal(animate && animation_process_mode == ANIMATION_PROCESS_PHYSICS);
+}
+
+void HTMLLabel::update_behavior_processing() {
+	const ObjectID id(get_instance_id());
+	const auto behaviors = attached_behaviors;
+	const double delta = get_process_delta_time();
+	for (const Ref<HTMLBehavior>& behavior : behaviors) {
+		if (behavior.is_null() || behavior->get_label() != this) continue;
+		behavior->process_async(delta);
+		if (!ObjectDB::get_instance(id)) return;
+	}
 }
 
 Vector2i HTMLLabel::get_content_selection_range() const {
@@ -1897,6 +1954,10 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	viewport_control->queue_redraw();
 	viewport_bars->queue_redraw();
 	sync_viewport_scroll();
+	if (!pending_navigation_anchor.is_empty() && p_viewport.x > 0 && p_viewport.y > 0) {
+		const String anchor = std::exchange(pending_navigation_anchor, String());
+		scroll_to_anchor(anchor);
+	}
 	callable_mp(this, &HTMLLabel::apply_pending_scroll).call_deferred();
 	if (render_error != p_error) {
 		render_error = p_error;
