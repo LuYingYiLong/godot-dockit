@@ -5505,7 +5505,7 @@ msgid ""
 "[member related_target] during pointer transitions. For clicks on the same target, [member "
 "detail] continues when clicks are less than 500 milliseconds apart and less than 5 pixels apart. "
 "The second click dispatches [code]dblclick[/code] after the [code]click[/code] default action."
-msgstr "携带指针在宿主 [HTMLLabel] 局部坐标中的位置、修饰键状态，以及指针转换期间的 [member related_target]。同一目标上的连续点击间隔小于 500 毫秒且移动距离小于 5 像素时，[member detail] 会递增。第二次点击的默认动作执行后会派发 [code]dblclick[/code]。"
+msgstr "携带指针在宿主 [HTMLLabel] 局部坐标中的位置、修饰键状态，以及指针转换期间的 [member related_target]。同一目标上的连续点击间隔小于 500 毫秒且移动距离小于 5 像素时，[member detail] 会递增。第二次点击会在 [code]click[/code] 默认动作之后派发 [code]dblclick[/code]。"
 
 #. doc_classes/HTMLPointerEvent.xml
 msgid ""
