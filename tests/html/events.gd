@@ -9,6 +9,7 @@ func _ready() -> void:
 	await _check_event_targets()
 	await _check_delegation()
 	await _check_click_and_context_menu()
+	await _check_wheel_events()
 	await _check_keyboard()
 	await _check_form()
 	await _check_passive_and_recursion()
@@ -252,6 +253,52 @@ func _check_click_and_context_menu() -> void:
 	_check(menu.size() == 1, "a right click dispatches contextmenu")
 	plain.remove_event_listener(&"contextmenu", on_menu)
 	label.link_pressed.disconnect(on_link)
+
+
+
+func _check_wheel_events() -> void:
+	var source: String = "<div id=\"wheel-target\">Wheel target</div>"
+	for index: int in range(30):
+		source += "<p>Scrollable line %d</p>" % index
+	label.text = source
+	label.size = Vector2(420.0, 180.0)
+	await _settle()
+	var target: HTMLElement = label.get_element_by_id("wheel-target")
+	if target == null:
+		_check(false, "the wheel target is available")
+		return
+	var received: Array[HTMLWheelEvent]
+	var inspect: Callable = func(event: HTMLEvent) -> void:
+		var wheel: HTMLWheelEvent = event as HTMLWheelEvent
+		if wheel == null:
+			_check(false, "wheel dispatch uses HTMLWheelEvent")
+			return
+		received.append(wheel)
+		_check(wheel.delta.y > 0.0, "wheel down reports a positive pixel delta")
+		_check(wheel.delta_mode == HTMLWheelEvent.DELTA_MODE_PIXEL, "wheel deltas use pixel units")
+		_check(wheel.target == target, "wheel targets the element under the pointer")
+	target.add_event_listener(&"wheel", inspect)
+	var input: InputEventMouseButton = InputEventMouseButton.new()
+	input.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	input.pressed = true
+	input.factor = 1.0
+	input.position = target.get_bounding_rect().get_center()
+	get_viewport().push_input(input, true)
+	_check(received.size() == 1, "a wheel input dispatches once across the canvas and viewport")
+	_check(label.get_scroll_offset().y > 0, "an uncancelled wheel input scrolls the document")
+	target.remove_event_listener(&"wheel", inspect)
+
+	label.set_scroll_offset(Vector2i.ZERO)
+	var veto: Callable = func(event: HTMLEvent) -> void: event.prevent_default()
+	target.add_event_listener(&"wheel", veto)
+	input = InputEventMouseButton.new()
+	input.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	input.pressed = true
+	input.factor = 1.0
+	input.position = target.get_bounding_rect().get_center()
+	get_viewport().push_input(input, true)
+	_check(label.get_scroll_offset() == Vector2i.ZERO, "cancelling wheel prevents overflow and viewport scrolling")
+	target.remove_event_listener(&"wheel", veto)
 
 
 func _check_keyboard() -> void:

@@ -3,6 +3,7 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 #include "formats/html/text/html_text_selection.h"
 
@@ -31,6 +32,34 @@ namespace {
 
 void HTMLLabelCanvas::accept_pointer_event(const PointerInfo& p_info) {
 	if (p_info.accepts_event) accept_event();
+}
+
+bool HTMLLabelCanvas::handle_wheel_input(const PointerInfo& p_info, float p_pixels_per_step) {
+	if (!label || label->layout.is_null() || p_info.source_event.is_null()) return true;
+	auto& dom = label->layout->get_dom();
+	if (!dom.has_event_listener_for_type(StringName("wheel"))) return true;
+	const Ref<HTMLElement> target = label->layout->get_element_at(p_info.position);
+	if (target.is_null() || !target->is_valid()) return true;
+	const Vector2 steps = HTMLLayout::scroll_input_steps(p_info.source_event);
+	if (steps.is_zero_approx()) return true;
+	Ref<HTMLWheelEvent> event;
+	event.instantiate();
+	event->set_type(StringName("wheel"));
+	event->set_bubbles(true);
+	event->set_cancelable(true);
+	event->mark_trusted();
+	event->set_delta(steps * p_pixels_per_step);
+	event->set_delta_mode(HTMLWheelEvent::DELTA_MODE_PIXEL);
+	event->set_position(p_info.position - label->get_visible_rect().position);
+	event->set_shift_pressed(p_info.shift);
+	event->set_ctrl_pressed(p_info.ctrl);
+	event->set_alt_pressed(p_info.alt);
+	event->set_meta_pressed(p_info.meta);
+	dom.dispatch_event(target, event);
+	label->wheel_dispatched_in_canvas = true;
+	const uint64_t sequence = ++label->wheel_dispatch_sequence;
+	callable_mp(label, &HTMLLabel::clear_canvas_wheel_dispatch).call_deferred(sequence);
+	return !event->is_default_prevented();
 }
 
 void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {

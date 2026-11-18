@@ -194,6 +194,21 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventMouseButton> button = p_event;
 	const auto scroll = [&](const Vector2& position) {
 		if (!visible_rect.has_point(position)) return;
+		if (button.is_valid() && button->is_pressed() &&
+			(button->get_button_index() == MOUSE_BUTTON_WHEEL_UP || button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN ||
+				button->get_button_index() == MOUSE_BUTTON_WHEEL_LEFT || button->get_button_index() == MOUSE_BUTTON_WHEEL_RIGHT)) {
+			HTMLLabelCanvas::PointerInfo pointer;
+			pointer.position = position;
+			pointer.shift = button->is_shift_pressed();
+			pointer.ctrl = button->is_ctrl_pressed();
+			pointer.alt = button->is_alt_pressed();
+			pointer.meta = button->is_meta_pressed();
+			pointer.source_event = p_event;
+			if (!handle_wheel_input(pointer, 36.0f)) {
+				accept_event();
+				return;
+			}
+		}
 		const auto result = label->layout->scroll_overflow_from_input(position, p_event, *label,
 			callable_mp(label, &HTMLLabel::on_nested_scroll_advanced));
 		if (result == docrender::HTMLScrollInput::ignored) {
@@ -1875,6 +1890,28 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		}
 		return;
 	}
+	if (button.is_valid() && button->is_pressed() &&
+		(button->get_button_index() == MOUSE_BUTTON_WHEEL_UP || button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN ||
+			button->get_button_index() == MOUSE_BUTTON_WHEEL_LEFT || button->get_button_index() == MOUSE_BUTTON_WHEEL_RIGHT)) {
+		if (wheel_dispatched_in_canvas) {
+			wheel_dispatched_in_canvas = false;
+			++wheel_dispatch_sequence;
+		}
+		else if (canvas) {
+			const Vector2 global_point = viewport_control->get_global_transform_with_canvas().xform(button->get_position());
+			HTMLLabelCanvas::PointerInfo pointer;
+			pointer.position = canvas->get_global_transform_with_canvas().affine_inverse().xform(global_point);
+			pointer.shift = button->is_shift_pressed();
+			pointer.ctrl = button->is_ctrl_pressed();
+			pointer.alt = button->is_alt_pressed();
+			pointer.meta = button->is_meta_pressed();
+			pointer.source_event = p_event;
+			if (!canvas->handle_wheel_input(pointer, 36.0f)) {
+				viewport_control->accept_event();
+				return;
+			}
+		}
+	}
 
 	const Vector2 steps = HTMLLayout::scroll_input_steps(p_event);
 	if (steps == Vector2()) return;
@@ -1903,6 +1940,10 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		viewport_pan_snap_timer = HTMLLayout::start_snap_timer(*this, callable_mp(this, &HTMLLabel::settle_viewport_pan));
 	}
 	if (!HTMLLayout::forward_scroll_remainder(p_event, remaining)) viewport_control->accept_event();
+}
+
+void HTMLLabel::clear_canvas_wheel_dispatch(uint64_t p_sequence) {
+	if (wheel_dispatch_sequence == p_sequence) wheel_dispatched_in_canvas = false;
 }
 
 void HTMLLabel::place_overlay(Control& p_overlay, const Vector2& p_point) {

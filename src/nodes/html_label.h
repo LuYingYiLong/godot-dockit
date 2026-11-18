@@ -167,6 +167,7 @@ class HTMLLabelCanvas : public godot::Control {
 	void handle_pointer_press(const PointerInfo& p_info);
 	void handle_pointer_release(const PointerInfo& p_info);
 	void handle_pointer_move(const PointerInfo& p_info);
+	bool handle_wheel_input(const PointerInfo& p_info, float p_pixels_per_step);
 	bool dispatch_pointer_event(
 		const godot::StringName& p_type,
 		const godot::Ref<HTMLElement>& p_target,
@@ -446,6 +447,8 @@ private:
 	godot::Vector2i viewport_size;
 	godot::Vector2i content_size;
 	godot::Vector2i viewport_input_axes{1, 1};
+	bool wheel_dispatched_in_canvas = false;
+	uint64_t wheel_dispatch_sequence = 0;
 	godot::Vector2i scroll_offset;
 	godot::String render_error;
 	std::optional<godot::Vector2i> pending_scroll_offset;
@@ -558,6 +561,7 @@ private:
 	void apply_scroll_offset(const godot::Vector2i& p_offset);
 	void apply_pending_scroll();
 	void on_viewport_gui_input(const godot::Ref<godot::InputEvent>& p_event);
+	void clear_canvas_wheel_dispatch(uint64_t p_sequence);
 	void drag_viewport_bar(int p_axis, godot::real_t p_position);
 	void settle_viewport_snap(const godot::Vector2i& p_axes);
 	void settle_viewport_pan();
