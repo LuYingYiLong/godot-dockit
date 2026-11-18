@@ -4,7 +4,7 @@
 		A mouse event for [code]mousedown[/code], [code]mouseup[/code], [code]mousemove[/code], [code]mouseover[/code], [code]mouseout[/code], [code]mouseenter[/code], [code]mouseleave[/code], [code]click[/code], [code]dblclick[/code], and [code]contextmenu[/code].
 	</brief_description>
 	<description>
-		Carries the pointer position in the host [HTMLLabel]'s local coordinates, the modifier state, and the related target for pointer transitions.
+		Carries the pointer position in the host [HTMLLabel]'s local coordinates, modifier state, and [member related_target] during pointer transitions. For clicks on the same target, [member detail] continues when clicks are less than 500 milliseconds apart and less than 5 pixels apart. The second click dispatches [code]dblclick[/code] after the [code]click[/code] default action.
 	</description>
 	<members>
 		<member name="related_target" type="HTMLEventTarget" setter="set_related_target" getter="get_related_target">
@@ -17,7 +17,7 @@
 			The bit mask of buttons held when the event was produced.
 		</member>
 		<member name="detail" type="int" setter="set_detail" getter="get_detail">
-			The number of consecutive clicks for [code]click[/code] and [code]dblclick[/code], and [code]0[/code] for the other pointer events.
+			The consecutive click count for [code]mousedown[/code], [code]mouseup[/code], [code]pointerdown[/code], [code]pointerup[/code], [code]click[/code], and [code]dblclick[/code]. Other event types report [code]0[/code]. A new sequence starts when the target changes, clicks are at least 500 milliseconds apart, or the pointer moves at least 5 pixels.
 		</member>
 		<member name="position" type="Vector2" setter="set_position" getter="get_position">
 			The pointer position in the host control's local coordinates.

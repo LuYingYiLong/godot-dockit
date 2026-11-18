@@ -5476,9 +5476,18 @@ msgstr "[code]keydown[/code] 与 [code]keyup[/code] 的键盘事件。"
 
 #. doc_classes/HTMLMouseEvent.xml
 msgid ""
-"A pointer event for [code]mousedown[/code], [code]mouseup[/code], [code]click[/code], and "
-"[code]contextmenu[/code]."
-msgstr "[code]mousedown[/code]、[code]mouseup[/code]、[code]click[/code] 和 [code]contextmenu[/code] 的指针事件。"
+"A mouse event for [code]mousedown[/code], [code]mouseup[/code], [code]mousemove[/code], "
+"[code]mouseover[/code], [code]mouseout[/code], [code]mouseenter[/code], [code]mouseleave[/code], "
+"[code]click[/code], [code]dblclick[/code], and [code]contextmenu[/code]."
+msgstr "[code]mousedown[/code]、[code]mouseup[/code]、[code]mousemove[/code]、[code]mouseover[/code]、[code]mouseout[/code]、[code]mouseenter[/code]、[code]mouseleave[/code]、[code]click[/code]、[code]dblclick[/code] 和 [code]contextmenu[/code] 的鼠标事件。"
+
+#. doc_classes/HTMLPointerEvent.xml
+msgid "A pointer event for mouse and touch input."
+msgstr "鼠标和触摸输入对应的指针事件。"
+
+#. doc_classes/HTMLWheelEvent.xml
+msgid "A cancelable wheel event with pixel deltas."
+msgstr "具有像素增量且可取消的滚轮事件。"
 
 #. doc_classes/HTMLCustomEvent.xml
 msgid "An event that carries a script-defined payload."
@@ -5492,9 +5501,29 @@ msgstr "取消此事件的默认动作。仅当 [member cancelable] 为 [code]tr
 
 #. doc_classes/HTMLMouseEvent.xml
 msgid ""
-"Carries the pointer position in the host [HTMLLabel]'s local coordinates and the modifier state "
-"at the time of the press or release."
-msgstr "携带宿主 [HTMLLabel] 局部坐标中的指针位置，以及按下或抬起时的修饰键状态。"
+"Carries the pointer position in the host [HTMLLabel]'s local coordinates, modifier state, and "
+"[member related_target] during pointer transitions. For clicks on the same target, [member "
+"detail] continues when clicks are less than 500 milliseconds apart and less than 5 pixels apart. "
+"The second click dispatches [code]dblclick[/code] after the [code]click[/code] default action."
+msgstr "携带指针在宿主 [HTMLLabel] 局部坐标中的位置、修饰键状态，以及指针转换期间的 [member related_target]。同一目标上的连续点击间隔小于 500 毫秒且移动距离小于 5 像素时，[member detail] 会递增。第二次点击的默认动作执行后会派发 [code]dblclick[/code]。"
+
+#. doc_classes/HTMLPointerEvent.xml
+msgid ""
+"Pointer events report a stable pointer ID and a type of [code]mouse[/code], [code]pen[/code], or "
+"[code]touch[/code]. [HTMLLabel] currently synthesizes mouse and touch pointer events. Touch "
+"pointer IDs remain stable for each device and touch index pair. When Godot emulates mouse input "
+"from touch, [HTMLLabel] uses that mouse input instead of also dispatching touch pointer events. "
+"A touch pointer receives [code]pointercancel[/code] when viewport scrolling takes over the "
+"gesture or the touch is canceled."
+msgstr "指针事件报告稳定的指针 ID，类型为 [code]mouse[/code]、[code]pen[/code] 或 [code]touch[/code]。[HTMLLabel] 当前会合成鼠标和触摸指针事件。每组设备和触摸索引对应的触摸指针 ID 保持稳定。Godot 从触摸模拟鼠标输入时，[HTMLLabel] 使用该鼠标输入，不会再派发对应的触摸指针事件。视口滚动接管手势或触摸被取消时，触摸指针会收到 [code]pointercancel[/code]。"
+
+#. doc_classes/HTMLWheelEvent.xml
+msgid ""
+"Dispatched before the host [HTMLLabel] applies wheel scrolling. Positive [member delta] values "
+"move down and right. Each Godot wheel step maps to 36 pixels. Calling [method "
+"HTMLEvent.prevent_default] prevents the label's default wheel scrolling. The event uses "
+"[constant DELTA_MODE_PIXEL]."
+msgstr "宿主 [HTMLLabel] 应用滚轮滚动前会派发此事件。[member delta] 的正值表示向下和向右移动。Godot 的每个滚轮步进对应 36 像素。调用 [method HTMLEvent.prevent_default] 会阻止标签的默认滚轮滚动。此事件使用 [constant DELTA_MODE_PIXEL]。"
 
 #. doc_classes/HTMLKeyboardEvent.xml
 msgid ""
@@ -5727,6 +5756,10 @@ msgstr "按键产生的 Unicode 码点；非打印键为 [code]0[/code]。"
 msgid "The bit mask of buttons held when the event was produced."
 msgstr "事件产生时按住的按键位掩码。"
 
+#. doc_classes/HTMLMouseEvent.xml
+msgid "The other event target involved in an over, out, enter, or leave transition, or [code]null[/code]."
+msgstr "进入、离开等悬停转换中涉及的另一个事件目标；没有目标时为 [code]null[/code]。"
+
 #. doc_classes/HTMLSubmitEvent.xml
 msgid ""
 "The button that initiated the submission, or [code]null[/code] for a programmatic submit or a "
@@ -5798,9 +5831,35 @@ msgstr ""
 
 #. doc_classes/HTMLMouseEvent.xml
 msgid ""
-"The number of consecutive clicks for [code]click[/code] and [code]dblclick[/code], and "
-"[code]0[/code] for the other pointer events."
-msgstr "[code]click[/code] 和 [code]dblclick[/code] 的连续点击次数；其他指针事件为 [code]0[/code]。"
+"The consecutive click count for [code]mousedown[/code], [code]mouseup[/code], "
+"[code]pointerdown[/code], [code]pointerup[/code], [code]click[/code], and [code]dblclick[/code]. "
+"Other event types report [code]0[/code]. A new sequence starts when the target changes, clicks "
+"are at least 500 milliseconds apart, or the pointer moves at least 5 pixels."
+msgstr "[code]mousedown[/code]、[code]mouseup[/code]、[code]pointerdown[/code]、[code]pointerup[/code]、[code]click[/code] 和 [code]dblclick[/code] 的连续点击次数。其他事件类型为 [code]0[/code]。目标改变、点击间隔达到 500 毫秒或指针移动达到 5 像素时，会开始新的点击序列。"
+
+#. doc_classes/HTMLPointerEvent.xml
+msgid "The ID for this pointer. Mouse events use [code]0[/code], while a touch keeps the same ID for its device and touch index pair."
+msgstr "此指针的 ID。鼠标事件使用 [code]0[/code]；同一设备和触摸索引对应的触摸输入会保持相同 ID。"
+
+#. doc_classes/HTMLPointerEvent.xml
+msgid "The pointer device type: [code]mouse[/code], [code]pen[/code], or [code]touch[/code]."
+msgstr "指针设备类型：[code]mouse[/code]、[code]pen[/code] 或 [code]touch[/code]。"
+
+#. doc_classes/HTMLPointerEvent.xml
+msgid "Whether this is the primary pointer of its type."
+msgstr "此指针是否为其类型中的主指针。"
+
+#. doc_classes/HTMLWheelEvent.xml
+msgid "The delta values are measured in pixels."
+msgstr "增量值以像素计量。"
+
+#. doc_classes/HTMLWheelEvent.xml
+msgid "The wheel delta in pixels. Positive Y scrolls down and positive X scrolls right."
+msgstr "以像素计量的滚轮增量。正 Y 向下滚动，正 X 向右滚动。"
+
+#. doc_classes/HTMLWheelEvent.xml
+msgid "The units used by [member delta]. This event always uses [constant DELTA_MODE_PIXEL]."
+msgstr "[member delta] 使用的单位。此事件始终使用 [constant DELTA_MODE_PIXEL]。"
 
 #. doc_classes/HTMLMouseEvent.xml
 msgid "The pointer position in the host control's local coordinates."

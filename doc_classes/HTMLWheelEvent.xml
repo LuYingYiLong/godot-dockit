@@ -4,7 +4,7 @@
 		A cancelable wheel event with pixel deltas.
 	</brief_description>
 	<description>
-		Dispatched before the host [HTMLLabel] applies wheel scrolling. Positive [member delta] values move down and right. The event uses [constant DELTA_MODE_PIXEL].
+		Dispatched before the host [HTMLLabel] applies wheel scrolling. Positive [member delta] values move down and right. Each Godot wheel step maps to 36 pixels. Calling [method HTMLEvent.prevent_default] prevents the label's default wheel scrolling. The event uses [constant DELTA_MODE_PIXEL].
 	</description>
 	<constants>
 		<constant name="DELTA_MODE_PIXEL" value="0" enum="DeltaMode">
