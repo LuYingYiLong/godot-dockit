@@ -164,17 +164,17 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	// Touch-generated mouse events use the same path as a mouse click.
 	if (p_event->get_device() != InputEvent::DEVICE_ID_EMULATION && !Input::get_singleton()->is_emulating_mouse_from_touch()) {
 		if (const Ref<InputEventScreenTouch> touch = p_event; touch.is_valid()) {
-			const int index = touch->get_index();
-			if (touch->is_pressed() && dialog_touch_index < 0) dialog_touch_index = index;
-			if (dialog_touch_index == index) {
-				if (!touch->is_pressed()) dialog_touch_index = -1;
-				if (!label->viewport_touch_dragged)
-					handle_dialog_pointer(touch->get_position(), touch->is_pressed(), touch->is_canceled(), touch->get_device(), index);
+			const bool dialog_handled = handle_dialog_pointer(touch->get_position(), touch->is_pressed(),
+				touch->is_canceled(), touch->get_device(), touch->get_index());
+			if (!dialog_handled) {
+				if (touch->is_pressed()) handle_touch_press(*touch.ptr());
+				else handle_touch_release(*touch.ptr());
 			}
 			return;
 		}
 		if (const Ref<InputEventScreenDrag> drag = p_event; drag.is_valid()) {
 			update_dialog_pointer(drag->get_position(), drag->get_device(), drag->get_index());
+			handle_touch_drag(*drag.ptr());
 			return;
 		}
 	}
@@ -527,7 +527,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	}
 	else if (p_what == NOTIFICATION_EXIT_TREE) {
 		cancel_press();
-		dialog_touch_index = -1;
+		cancel_all_touch_pointers();
 		set_focused_element({});
 		caret_window_active = true;
 		tab_elements.clear();
@@ -890,7 +890,7 @@ void HTMLLabel::_notification(int p_what) {
 			if (color_scheme_timer) color_scheme_timer->stop();
 			viewport_touch_index = -1;
 			viewport_touch_dragged = false;
-			canvas->dialog_touch_index = -1;
+			canvas->cancel_all_touch_pointers();
 			dragging_viewport_scrollbar = {};
 			cancel_viewport_scroll();
 			cancel_viewport_pan_snap();
@@ -941,7 +941,7 @@ void HTMLLabel::_notification(int p_what) {
 		if (viewport_bars) viewport_bars->queue_redraw();
 		close_select_menu();
 		if (canvas) {
-			canvas->dialog_touch_index = -1;
+			canvas->cancel_all_touch_pointers();
 			canvas->close_input_menu();
 			canvas->cancel_press();
 			canvas->caret_window_active = false;
@@ -1519,6 +1519,7 @@ void HTMLLabel::reset_document_source() {
 	close_input_picker();
 	clear_videos();
 	clear_audio();
+	if (canvas) canvas->cancel_all_touch_pointers();
 	cancel_viewport_scroll();
 	cancel_viewport_pan_snap();
 	viewport_touch_index = -1;
@@ -1891,6 +1892,9 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 		return;
 	}
 	if (handle_viewport_touch(p_event)) {
+		const Ref<InputEventScreenDrag> drag = p_event;
+		if (drag.is_valid() && viewport_touch_dragged && canvas)
+			canvas->cancel_touch_pointer(drag->get_device(), drag->get_index());
 		viewport_control->accept_event();
 		return;
 	}

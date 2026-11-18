@@ -19,11 +19,15 @@
 
 #include <optional>
 #include <array>
+#include <map>
+#include <utility>
 #include <vector>
 
 namespace godot {
 	class InputEventKey;
 	class InputEventMouseButton;
+	class InputEventScreenTouch;
+	class InputEventScreenDrag;
 	class InputEvent;
 	class Timer;
 	class FileDialog;
@@ -68,13 +72,30 @@ class HTMLLabelCanvas : public godot::Control {
 		bool mouse_down_prevented = false;
 		int detail = 0;
 		godot::Ref<godot::InputEvent> source_event;
+		godot::Ref<HTMLElement> target;
 	};
+	struct TouchPointer {
+		int device = 0;
+		int index = 0;
+		int pointer_id = 0;
+		godot::Vector2 start;
+		godot::Vector2 last;
+		godot::Ref<HTMLElement> target;
+		bool dragged = false;
+		bool canceled = false;
+		bool primary = false;
+		bool compatibility_suppressed = false;
+	};
+	using TouchKey = std::pair<int, int>;
 
 	::HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
 	bool pressed_blank = false;
 	int mouse_buttons = 0;
 	bool mouse_compatibility_suppressed = false;
+	std::map<TouchKey, TouchPointer> active_touch_pointers;
+	std::map<TouchKey, int> touch_pointer_ids;
+	int next_touch_pointer_id = 1;
 	struct OutsideDialogPress {
 		godot::Ref<HTMLDialogElement> dialog;
 		uint64_t open_sequence;
@@ -83,7 +104,6 @@ class HTMLLabelCanvas : public godot::Control {
 		int touch;
 	};
 	std::optional<OutsideDialogPress> outside_dialog_press;
-	int dialog_touch_index = -1;
 	godot::Ref<HTMLElement> pressed_element;
 	godot::Ref<HTMLElement> pressed_button;
 	godot::Ref<HTMLElement> pressed_form_target;
@@ -171,6 +191,14 @@ class HTMLLabelCanvas : public godot::Control {
 	void handle_pointer_press(const PointerInfo& p_info);
 	void handle_pointer_release(const PointerInfo& p_info);
 	void handle_pointer_move(const PointerInfo& p_info);
+	void handle_touch_press(const godot::InputEventScreenTouch& p_touch);
+	void handle_touch_drag(const godot::InputEventScreenDrag& p_drag);
+	void handle_touch_release(const godot::InputEventScreenTouch& p_touch);
+	PointerInfo make_touch_pointer_info(const TouchPointer& p_touch, const godot::Vector2& p_position,
+		bool p_pressed, bool p_canceled) const;
+	godot::Ref<godot::InputEventMouseButton> make_touch_mouse_event(const PointerInfo& p_info) const;
+	void cancel_touch_pointer(int p_device, int p_index);
+	void cancel_all_touch_pointers();
 	bool handle_wheel_input(const PointerInfo& p_info, float p_pixels_per_step);
 	bool dispatch_pointer_event(
 		const godot::StringName& p_type,

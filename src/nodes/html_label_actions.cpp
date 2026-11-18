@@ -10,6 +10,8 @@
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/input_event_screen_drag.hpp>
+#include <godot_cpp/classes/input_event_screen_touch.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
 #include <algorithm>
@@ -62,11 +64,131 @@ bool HTMLLabelCanvas::handle_wheel_input(const PointerInfo& p_info, float p_pixe
 	return !event->is_default_prevented();
 }
 
+HTMLLabelCanvas::PointerInfo HTMLLabelCanvas::make_touch_pointer_info(const TouchPointer& p_touch,
+	const Vector2& p_position, bool p_pressed, bool p_canceled) const {
+	PointerInfo info;
+	info.position = p_position;
+	info.button = MOUSE_BUTTON_LEFT;
+	info.buttons = p_pressed ? 1 : 0;
+	info.pressed = p_pressed;
+	info.canceled = p_canceled;
+	info.device = p_touch.device;
+	info.pointer_id = p_touch.pointer_id;
+	info.kind = PointerKind::TOUCH;
+	info.primary = p_touch.primary;
+	info.accepts_event = false;
+	info.target = p_touch.target;
+	return info;
+}
+
+Ref<InputEventMouseButton> HTMLLabelCanvas::make_touch_mouse_event(const PointerInfo& p_info) const {
+	Ref<InputEventMouseButton> event;
+	event.instantiate();
+	event->set_button_index(MouseButton(MOUSE_BUTTON_LEFT));
+	event->set_pressed(p_info.pressed);
+	event->set_canceled(p_info.canceled);
+	event->set_device(p_info.device);
+	event->set_position(p_info.position);
+	return event;
+}
+
+void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
+	if (!label || label->layout.is_null()) return;
+	const TouchKey key{ p_touch.get_device(), p_touch.get_index() };
+	if (active_touch_pointers.find(key) != active_touch_pointers.end()) cancel_touch_pointer(key.first, key.second);
+	auto id = touch_pointer_ids.find(key);
+	if (id == touch_pointer_ids.end()) id = touch_pointer_ids.emplace(key, next_touch_pointer_id++).first;
+	TouchPointer touch;
+	touch.device = key.first;
+	touch.index = key.second;
+	touch.pointer_id = id->second;
+	touch.start = p_touch.get_position();
+	touch.last = p_touch.get_position();
+	touch.target = label->layout->get_element_at(touch.start);
+	touch.primary = active_touch_pointers.empty();
+	touch.compatibility_suppressed = !touch.primary;
+	auto [active, inserted] = active_touch_pointers.emplace(key, touch);
+	if (!inserted) return;
+	PointerInfo info = make_touch_pointer_info(active->second, touch.start, true, false);
+	if (!dispatch_pointer_event(StringName("pointerdown"), active->second.target, info, true)) {
+		active->second.compatibility_suppressed = true;
+		return;
+	}
+	if (active->second.compatibility_suppressed) return;
+	Ref<InputEventMouseButton> mouse = make_touch_mouse_event(info);
+	info.source_event = mouse;
+	info.mouse_down_prevented = !dispatch_pointer_event(StringName("mousedown"), active->second.target, info, true);
+	handle_pointer_press(info);
+}
+
+void HTMLLabelCanvas::handle_touch_drag(const InputEventScreenDrag& p_drag) {
+	const TouchKey key{ p_drag.get_device(), p_drag.get_index() };
+	auto active = active_touch_pointers.find(key);
+	if (active == active_touch_pointers.end() || active->second.canceled) return;
+	TouchPointer& touch = active->second;
+	touch.last = p_drag.get_position();
+	PointerInfo info = make_touch_pointer_info(touch, touch.last, true, false);
+	if (!touch.dragged && (touch.last - touch.start).length_squared() > DRAG_DEADZONE * DRAG_DEADZONE) {
+		touch.dragged = true;
+		cancel_press();
+	}
+	if (label->viewport_touch_dragged) {
+		cancel_touch_pointer(key.first, key.second);
+		return;
+	}
+	if (!touch.dragged && !touch.compatibility_suppressed) handle_pointer_move(info);
+	else dispatch_pointer_event(StringName("pointermove"), touch.target, info, false);
+}
+
+void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch) {
+	const TouchKey key{ p_touch.get_device(), p_touch.get_index() };
+	auto active = active_touch_pointers.find(key);
+	if (active == active_touch_pointers.end()) return;
+	TouchPointer touch = active->second;
+	active_touch_pointers.erase(active);
+	if (p_touch.is_canceled()) {
+		PointerInfo canceled = make_touch_pointer_info(touch, p_touch.get_position(), false, true);
+		dispatch_pointer_event(StringName("pointercancel"), touch.target, canceled, false);
+		cancel_press();
+		return;
+	}
+	touch.last = p_touch.get_position();
+	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, false);
+	dispatch_pointer_event(StringName("pointerup"), touch.target, info, false);
+	const Ref<HTMLElement> release_target = label->layout->get_element_at(touch.last);
+	if (!touch.primary || touch.compatibility_suppressed || touch.dragged || release_target != touch.target) {
+		cancel_press();
+		return;
+	}
+	Ref<InputEventMouseButton> mouse = make_touch_mouse_event(info);
+	info.source_event = mouse;
+	dispatch_pointer_event(StringName("mouseup"), release_target, info, false);
+	handle_pointer_release(info);
+}
+
+void HTMLLabelCanvas::cancel_touch_pointer(int p_device, int p_index) {
+	const TouchKey key{ p_device, p_index };
+	auto active = active_touch_pointers.find(key);
+	if (active == active_touch_pointers.end()) return;
+	const TouchPointer touch = active->second;
+	active_touch_pointers.erase(active);
+	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, true);
+	dispatch_pointer_event(StringName("pointercancel"), touch.target, info, false);
+	cancel_press();
+}
+
+void HTMLLabelCanvas::cancel_all_touch_pointers() {
+	while (!active_touch_pointers.empty()) {
+		const TouchKey key = active_touch_pointers.begin()->first;
+		cancel_touch_pointer(key.first, key.second);
+	}
+}
+
 void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 	if (!label || label->layout.is_null()) return;
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
-	const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+	const Ref<HTMLElement> event_target = p_info.target.is_valid() ? p_info.target : label->layout->get_element_at(point);
 	dispatch_pointer_event(StringName("pointermove"), event_target, p_info, false);
 	dispatch_pointer_event(StringName("mousemove"), event_target, p_info, false);
 	update_dialog_pointer(point, p_info.device);

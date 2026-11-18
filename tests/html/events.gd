@@ -11,6 +11,7 @@ func _ready() -> void:
 	await _check_click_and_context_menu()
 	await _check_pointer_mouse_events()
 	await _check_wheel_events()
+	await _check_touch_events()
 	await _check_keyboard()
 	await _check_form()
 	await _check_passive_and_recursion()
@@ -391,6 +392,95 @@ func _check_wheel_events() -> void:
 	get_viewport().push_input(input, true)
 	_check(label.get_scroll_offset() == Vector2i.ZERO, "cancelling wheel prevents overflow and viewport scrolling")
 	target.remove_event_listener(&"wheel", veto)
+
+
+
+func _check_touch_events() -> void:
+	Input.set_emulate_mouse_from_touch(false)
+	var source: String = "<button id=\"touch-target\" type=\"button\">Touch target</button>"
+	for index: int in range(30):
+		source += "<p>Scrollable touch line %d</p>" % index
+	label.text = source
+	label.size = Vector2(420.0, 180.0)
+	label.set_scroll_offset(Vector2i.ZERO)
+	await _settle()
+	var dom: HTMLDocumentNode = label.get_document_node()
+	var target: HTMLElement = label.get_element_by_id("touch-target")
+	if dom == null or target == null:
+		_check(false, "the touch target is available")
+		return
+	var order: Array[String] = []
+	var pointer_ids: Array[int] = []
+	var inspect: Callable = func(event: HTMLEvent) -> void:
+		order.append(String(event.type))
+		if event is HTMLPointerEvent:
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			_check(pointer.pointer_type == &"touch", "screen input reports a touch pointer type")
+			_check(pointer.is_primary, "the first active touch is primary")
+			if event.type == &"pointerdown":
+				pointer_ids.append(pointer.pointer_id)
+	for event_type: StringName in [
+		&"pointerdown",
+		&"pointerup",
+		&"pointermove",
+		&"pointercancel",
+		&"mousedown",
+		&"mouseup",
+		&"click",
+	]:
+		dom.add_event_listener(event_type, inspect)
+
+	var position: Vector2 = target.get_bounding_rect().get_center()
+	var touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	touch.device = 7
+	touch.index = 4
+	touch.position = position
+	touch.pressed = true
+	get_viewport().push_input(touch, true)
+	touch.pressed = false
+	get_viewport().push_input(touch, true)
+	_check(order == ["pointerdown", "mousedown", "pointerup", "mouseup", "click"],
+		"a touch tap dispatches pointer and compatibility mouse events")
+	_check(pointer_ids.size() == 1 and pointer_ids[0] > 0, "touch IDs do not collide with mouse ID zero")
+	var stable_id: int = pointer_ids[0] if not pointer_ids.is_empty() else -1
+	order.clear()
+	var repeat_touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	repeat_touch.device = 7
+	repeat_touch.index = 4
+	repeat_touch.position = position
+	repeat_touch.pressed = true
+	get_viewport().push_input(repeat_touch, true)
+	repeat_touch.pressed = false
+	get_viewport().push_input(repeat_touch, true)
+	_check(pointer_ids.size() == 2 and pointer_ids[1] == stable_id,
+		"the same device and touch index keep a stable pointer ID")
+
+	label.set_scroll_offset(Vector2i.ZERO)
+	await _settle()
+	var pan_target: HTMLElement = label.get_element_at(Vector2(40.0, 70.0))
+	position = Vector2(40.0, 70.0)
+	order.clear()
+	var pan_touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	pan_touch.device = 7
+	pan_touch.index = 6
+	pan_touch.position = position
+	pan_touch.pressed = true
+	get_viewport().push_input(pan_touch, true)
+	var drag: InputEventScreenDrag = InputEventScreenDrag.new()
+	drag.device = 7
+	drag.index = 6
+	drag.position = position + Vector2(0.0, -20.0)
+	drag.relative = Vector2(0.0, -20.0)
+	drag.velocity = Vector2(0.0, -120.0)
+	get_viewport().push_input(drag, true)
+	_check(order.has("pointercancel"), "viewport pan cancels its active touch pointer")
+	_check(label.get_scroll_offset().y > 0, "touch scrolling still reaches the viewport")
+	pan_touch.pressed = false
+	pan_touch.position = drag.position
+	get_viewport().push_input(pan_touch, true)
+	_check(not order.has("pointerup") and not order.has("click"), "a canceled pan does not synthesize a tap")
+	if pan_target == null:
+		_check(false, "the touch pan starts over an HTML target")
 
 
 func _check_keyboard() -> void:
