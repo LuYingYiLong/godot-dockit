@@ -5,6 +5,7 @@
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -37,6 +38,7 @@ private:
 	int phase = PHASE_NONE;
 	bool bubbles = false;
 	bool cancelable = false;
+	bool composed = false;
 	bool default_prevented = false;
 	bool trusted = false;
 	bool propagation_stopped = false;
@@ -72,6 +74,8 @@ public:
 	void set_bubbles(bool p_bubbles);											// 设置是否冒泡，派发期间无效
 	bool get_cancelable() const { return cancelable; }							// 返回是否可取消
 	void set_cancelable(bool p_cancelable);										// 设置是否可取消，派发期间无效
+	bool get_composed() const { return composed; }
+	void set_composed(bool p_composed);
 	bool is_default_prevented() const { return default_prevented; }				// 返回默认动作是否已被取消
 	bool is_trusted() const { return trusted; }									// 返回是否由引擎合成
 	int64_t get_time_stamp() const { return time_stamp; }						// 返回事件创建时间的毫秒时间戳
@@ -236,6 +240,174 @@ protected:
 public:
 	godot::Ref<HTMLElement> get_submitter() const { return submitter; } // 返回触发提交的按钮，可能为空
 	void set_submitter(const godot::Ref<HTMLElement>& p_submitter) { submitter = p_submitter; }
+};
+
+class HTMLInputEvent : public HTMLEvent {
+	GDCLASS(HTMLInputEvent, HTMLEvent)
+	godot::String data;
+	godot::StringName input_type;
+	bool composing = false;
+protected:
+	static void _bind_methods();
+public:
+	godot::String get_data() const { return data; }
+	void set_data(const godot::String& p_data);
+	godot::StringName get_input_type() const { return input_type; }
+	void set_input_type(const godot::StringName& p_input_type);
+	bool is_composing() const { return composing; }
+	void set_is_composing(bool p_composing);
+};
+
+class HTMLCompositionEvent : public HTMLEvent {
+	GDCLASS(HTMLCompositionEvent, HTMLEvent)
+	godot::String data;
+protected:
+	static void _bind_methods();
+public:
+	godot::String get_data() const { return data; }
+	void set_data(const godot::String& p_data);
+};
+
+class HTMLDataTransfer : public godot::RefCounted {
+	GDCLASS(HTMLDataTransfer, godot::RefCounted)
+	godot::String text;
+	bool read_only = false;
+protected:
+	static void _bind_methods();
+public:
+	godot::String get_data(const godot::String& p_type) const;
+	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);
+	void clear_data(const godot::String& p_type = {});
+	godot::PackedStringArray get_types() const;
+	void set_text(const godot::String& p_text) { text = p_text; }
+	void set_read_only(bool p_read_only) { read_only = p_read_only; }
+};
+
+class HTMLClipboardEvent : public HTMLEvent {
+	GDCLASS(HTMLClipboardEvent, HTMLEvent)
+	godot::Ref<HTMLDataTransfer> clipboard_data;
+protected:
+	static void _bind_methods();
+public:
+	godot::Ref<HTMLDataTransfer> get_clipboard_data() const { return clipboard_data; }
+	void set_clipboard_data(const godot::Ref<HTMLDataTransfer>& p_data) { clipboard_data = p_data; }
+};
+
+class HTMLToggleEvent : public HTMLEvent {
+	GDCLASS(HTMLToggleEvent, HTMLEvent)
+	godot::String old_state;
+	godot::String new_state;
+protected:
+	static void _bind_methods();
+public:
+	const godot::String& get_old_state() const { return old_state; }
+	void set_old_state(const godot::String& p_state) { old_state = p_state; }
+	const godot::String& get_new_state() const { return new_state; }
+	void set_new_state(const godot::String& p_state) { new_state = p_state; }
+};
+
+class HTMLMediaEvent : public HTMLEvent {
+	GDCLASS(HTMLMediaEvent, HTMLEvent)
+protected:
+	static void _bind_methods() {}
+};
+
+class HTMLErrorEvent : public HTMLEvent {
+	GDCLASS(HTMLErrorEvent, HTMLEvent)
+	godot::String message;
+	godot::String filename;
+	int32_t line_number = 0;
+	int32_t column_number = 0;
+	godot::Variant error;
+protected:
+	static void _bind_methods();
+public:
+	const godot::String& get_message() const { return message; }
+	void set_message(const godot::String& p_value) { message = p_value; }
+	const godot::String& get_filename() const { return filename; }
+	void set_filename(const godot::String& p_value) { filename = p_value; }
+	int32_t get_line_number() const { return line_number; }
+	void set_line_number(int32_t p_value) { line_number = p_value; }
+	int32_t get_column_number() const { return column_number; }
+	void set_column_number(int32_t p_value) { column_number = p_value; }
+	godot::Variant get_error() const { return error; }
+	void set_error(const godot::Variant& p_value) { error = p_value; }
+};
+
+class HTMLAnimationEvent : public HTMLEvent {
+	GDCLASS(HTMLAnimationEvent, HTMLEvent)
+	godot::String animation_name;
+	double elapsed_time = 0.0;
+	godot::String pseudo_element;
+protected:
+	static void _bind_methods();
+public:
+	const godot::String& get_animation_name() const { return animation_name; }
+	void set_animation_name(const godot::String& p_value) { animation_name = p_value; }
+	double get_elapsed_time() const { return elapsed_time; }
+	void set_elapsed_time(double p_value) { elapsed_time = p_value; }
+	const godot::String& get_pseudo_element() const { return pseudo_element; }
+	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }
+};
+
+class HTMLTransitionEvent : public HTMLEvent {
+	GDCLASS(HTMLTransitionEvent, HTMLEvent)
+	godot::String property_name;
+	double elapsed_time = 0.0;
+	godot::String pseudo_element;
+protected:
+	static void _bind_methods();
+public:
+	const godot::String& get_property_name() const { return property_name; }
+	void set_property_name(const godot::String& p_value) { property_name = p_value; }
+	double get_elapsed_time() const { return elapsed_time; }
+	void set_elapsed_time(double p_value) { elapsed_time = p_value; }
+	const godot::String& get_pseudo_element() const { return pseudo_element; }
+	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }
+};
+
+class HTMLTouchPoint : public godot::RefCounted {
+	GDCLASS(HTMLTouchPoint, godot::RefCounted)
+	int32_t identifier = 0;
+	godot::Ref<HTMLElement> target;
+	godot::Vector2 position;
+protected:
+	static void _bind_methods();
+public:
+	int32_t get_identifier() const { return identifier; }
+	void set_identifier(int32_t p_value) { identifier = p_value; }
+	godot::Ref<HTMLElement> get_target() const { return target; }
+	void set_target(const godot::Ref<HTMLElement>& p_value) { target = p_value; }
+	godot::Vector2 get_position() const { return position; }
+	void set_position(const godot::Vector2& p_value) { position = p_value; }
+};
+
+class HTMLTouchEvent : public HTMLEvent {
+	GDCLASS(HTMLTouchEvent, HTMLEvent)
+	godot::TypedArray<HTMLTouchPoint> touches;
+	godot::TypedArray<HTMLTouchPoint> target_touches;
+	godot::TypedArray<HTMLTouchPoint> changed_touches;
+	bool shift = false;
+	bool ctrl = false;
+	bool alt = false;
+	bool meta = false;
+protected:
+	static void _bind_methods();
+public:
+	godot::TypedArray<HTMLTouchPoint> get_touches() const { return touches; }
+	void set_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { touches = p_value; }
+	godot::TypedArray<HTMLTouchPoint> get_target_touches() const { return target_touches; }
+	void set_target_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { target_touches = p_value; }
+	godot::TypedArray<HTMLTouchPoint> get_changed_touches() const { return changed_touches; }
+	void set_changed_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { changed_touches = p_value; }
+	bool is_shift_pressed() const { return shift; }
+	void set_shift_pressed(bool p_value) { shift = p_value; }
+	bool is_ctrl_pressed() const { return ctrl; }
+	void set_ctrl_pressed(bool p_value) { ctrl = p_value; }
+	bool is_alt_pressed() const { return alt; }
+	void set_alt_pressed(bool p_value) { alt = p_value; }
+	bool is_meta_pressed() const { return meta; }
+	void set_meta_pressed(bool p_value) { meta = p_value; }
 };
 
 namespace docrender {

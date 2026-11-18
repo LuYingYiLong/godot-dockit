@@ -266,6 +266,9 @@ Error HTMLNode::add_event_listener(const StringName& p_type, const Callable& p_c
 	bool once = false;
 	bool passive = false;
 	read_event_options(p_options, capture, once, passive);
+	if (!p_options.has("passive") && get_node_type() == DOCUMENT_NODE) {
+		passive = p_type == StringName("wheel") || p_type == StringName("touchstart") || p_type == StringName("touchmove");
+	}
 	if (get_node_type() == DOCUMENT_NODE) {
 		return get_dom().add_document_event_listener(p_type, p_callable, capture, once, passive);
 	}

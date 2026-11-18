@@ -4,7 +4,7 @@
 		An HTML disclosure widget.
 	</brief_description>
 	<description>
-		Represents [code]&lt;details&gt;[/code]. Activate the first [code]&lt;summary&gt;[/code] child to toggle it.
+		Represents [code]&lt;details&gt;[/code]. Activate the first [code]&lt;summary&gt;[/code] child to toggle it. Setting [member open] through this element API dispatches cancelable [code]beforetoggle[/code]; accepted changes produce a coalesced [code]toggle[/code] event and the [signal toggled] signal.
 	</description>
 	<members>
 		<member name="open" type="bool" setter="set_open" getter="is_open">

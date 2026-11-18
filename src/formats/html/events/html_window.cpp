@@ -41,6 +41,9 @@ Error HTMLWindow::add_event_listener(const StringName& p_type, const Callable& p
 	bool once = false;
 	bool passive = false;
 	read_event_options(p_options, capture, once, passive);
+	if (!p_options.has("passive")) {
+		passive = p_type == StringName("wheel") || p_type == StringName("touchstart") || p_type == StringName("touchmove");
+	}
 	return layout->get_dom().add_window_event_listener(p_type, p_callable, capture, once, passive);
 }
 

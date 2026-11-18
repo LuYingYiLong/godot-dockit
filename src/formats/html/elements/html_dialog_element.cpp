@@ -1,6 +1,7 @@
 #include "html_dialog_element.h"
 #include "html_dialog_node.h"
 
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 #include "nodes/html_label.h"
 
@@ -132,6 +133,8 @@ Error HTMLDialogElement::request_close(const Variant& p_return_value) {
 }
 
 Error HTMLDialogElement::dispatch_close_request(HTMLDialogCloseRequest::Reason p_reason, const Variant& p_return_value) {
+	HTMLLayout* owner = get_owner();
+	if (!owner) return ERR_INVALID_PARAMETER;
 	const auto node = std::dynamic_pointer_cast<HTMLDialogNode>(lock_element());
 	if (!node) return ERR_INVALID_PARAMETER;
 	if (!node->open_sequence || !is_open() || !is_connected()) return OK;
@@ -141,9 +144,15 @@ Error HTMLDialogElement::dispatch_close_request(HTMLDialogCloseRequest::Reason p
 		const String policy = get_closed_by();
 		if (policy == "none" || (p_reason == HTMLDialogCloseRequest::BACKDROP && policy != "any")) return ERR_SKIP;
 	}
-
 	const Ref<HTMLDialogElement> keep_alive(this);
 	const uint64_t sequence = node->open_sequence;
+	const ObjectID owner_id(owner->get_instance_id());
+	Ref<HTMLEvent> cancel_event = docrender::make_dom_event(StringName("cancel"), false, true);
+	dispatch_event(cancel_event);
+	if (cancel_event->is_default_prevented()) return ERR_SKIP;
+	HTMLLayout* current_owner = get_owner();
+	if (!current_owner || ObjectID(current_owner->get_instance_id()) != owner_id || !is_valid() || node != lock_element() ||
+		node->open_sequence != sequence || !is_open() || !is_connected()) return OK;
 	Ref<HTMLDialogCloseRequest> request;
 	request.instantiate();
 	request->reason = p_reason;
@@ -154,11 +163,16 @@ Error HTMLDialogElement::dispatch_close_request(HTMLDialogCloseRequest::Reason p
 	node->dispatching_close_request = false;
 	request->dispatching = false;
 	if (request->is_default_prevented()) return ERR_SKIP;
-	if (node != lock_element() || node->open_sequence != sequence || !is_open() || !is_connected()) return OK;
-	if (p_reason != HTMLDialogCloseRequest::SCRIPT && get_owner()->active_dialog().ptr() != this) return OK;
+	current_owner = get_owner();
+	if (!current_owner || ObjectID(current_owner->get_instance_id()) != owner_id || node != lock_element() ||
+		node->open_sequence != sequence || !is_open() || !is_connected()) return OK;
+	if (p_reason != HTMLDialogCloseRequest::SCRIPT && current_owner->active_dialog().ptr() != this) return OK;
 	return close(p_return_value);
 }
 
 void HTMLDialogElement::emit_closed(const String& p_value) {
+	if (!is_valid()) return;
+	const Ref<HTMLDialogElement> keep_alive(this);
+	dispatch_event(docrender::make_dom_event(StringName("close"), false, false));
 	if (is_valid()) emit_signal("closed", p_value);
 }

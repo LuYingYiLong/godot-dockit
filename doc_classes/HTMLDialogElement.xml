@@ -11,7 +11,7 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="return_value" type="Variant" default="null" />
 			<description>
-				Closes the dialog. Pass a [String] to replace [member return_value], or leave the argument as [code]null[/code] to keep the current value. Returns [constant OK] if the dialog is already closed.
+				Closes the dialog. Pass a [String] to replace [member return_value], or leave the argument as [code]null[/code] to keep the current value. The DOM [code]close[/code] event is dispatched after focus restoration, followed by [signal closed]. Returns [constant OK] if the dialog is already closed.
 			</description>
 		</method>
 		<method name="is_modal" qualifiers="const">
@@ -24,7 +24,7 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="return_value" type="Variant" default="null" />
 			<description>
-				Emits [signal close_requested] synchronously for an open, connected dialog, regardless of [member closed_by]. If a listener cancels the request, returns [constant ERR_SKIP]. Otherwise the dialog closes using the same result rules as [method close]. Returns [constant OK] for a closed or detached dialog.
+				Dispatches a cancelable [code]cancel[/code] event and emits [signal close_requested] synchronously for an open, connected dialog, regardless of [member closed_by]. If either handler cancels the request, returns [constant ERR_SKIP]. Otherwise the dialog closes using the same result rules as [method close]. Returns [constant OK] for a closed or detached dialog.
 			</description>
 		</method>
 		<method name="show">

@@ -68,7 +68,6 @@ void HTMLLabelCanvas::accept_pointer_event(const PointerInfo& p_info) {
 bool HTMLLabelCanvas::handle_wheel_input(const PointerInfo& p_info, float p_pixels_per_step) {
 	if (!label || label->layout.is_null() || p_info.source_event.is_null()) return true;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listener_for_type(StringName("wheel"))) return true;
 	const Ref<HTMLElement> target = label->layout->get_element_at(p_info.position);
 	if (target.is_null() || !target->is_valid()) return true;
 	const Vector2 steps = HTMLLayout::scroll_input_steps(p_info.source_event);
@@ -93,6 +92,54 @@ bool HTMLLabelCanvas::handle_wheel_input(const PointerInfo& p_info, float p_pixe
 	return !event->is_default_prevented();
 }
 
+void HTMLLabelCanvas::queue_pointer_move_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
+	const PointerInfo& p_info) {
+	auto pending = std::find_if(pending_move_events.begin(), pending_move_events.end(), [&](const PendingMoveEvent& p_event) {
+		return !p_event.is_touch && p_event.type == p_type && p_event.pointer.pointer_id == p_info.pointer_id;
+	});
+	if (pending == pending_move_events.end()) {
+		pending_move_events.push_back({p_type, p_target, p_info, {}, false});
+	} else {
+		pending->target = p_target;
+		pending->pointer = p_info;
+	}
+	if (!movement_flush_queued) {
+		movement_flush_queued = true;
+		callable_mp(this, &HTMLLabelCanvas::flush_move_events).call_deferred();
+	}
+}
+
+void HTMLLabelCanvas::queue_touch_move_event(const StringName& p_type, const TouchPointer& p_touch) {
+	auto pending = std::find_if(pending_move_events.begin(), pending_move_events.end(), [&](const PendingMoveEvent& p_event) {
+		return p_event.is_touch && p_event.type == p_type && p_event.touch.pointer_id == p_touch.pointer_id;
+	});
+	if (pending == pending_move_events.end()) {
+		PendingMoveEvent event;
+		event.type = p_type;
+		event.touch = p_touch;
+		event.is_touch = true;
+		pending_move_events.push_back(event);
+	} else {
+		pending->touch = p_touch;
+	}
+	if (!movement_flush_queued) {
+		movement_flush_queued = true;
+		callable_mp(this, &HTMLLabelCanvas::flush_move_events).call_deferred();
+	}
+}
+
+void HTMLLabelCanvas::flush_move_events() {
+	movement_flush_queued = false;
+	std::vector<PendingMoveEvent> pending = std::move(pending_move_events);
+	pending_move_events.clear();
+	const ObjectID self(get_instance_id());
+	for (const PendingMoveEvent& event : pending) {
+		if (!ObjectDB::get_instance(self)) return;
+		if (event.is_touch) dispatch_touch_event(event.type, event.touch);
+		else dispatch_pointer_event(event.type, event.target, event.pointer, false);
+	}
+}
+
 HTMLLabelCanvas::PointerInfo HTMLLabelCanvas::make_touch_pointer_info(const TouchPointer& p_touch,
 	const Vector2& p_position, bool p_pressed, bool p_canceled) const {
 	PointerInfo info;
@@ -111,6 +158,42 @@ HTMLLabelCanvas::PointerInfo HTMLLabelCanvas::make_touch_pointer_info(const Touc
 	return info;
 }
 
+bool HTMLLabelCanvas::dispatch_touch_event(const StringName& p_type, const TouchPointer& p_changed) {
+	if (!label || label->layout.is_null()) return true;
+	Ref<HTMLElement> target = p_changed.target;
+	if (target.is_null() || !target->is_valid()) target = label->layout->get_body();
+	if (target.is_null() || !target->is_valid()) return true;
+	Ref<HTMLTouchEvent> event;
+	event.instantiate();
+	event->set_type(p_type);
+	event->set_bubbles(true);
+	event->set_cancelable(p_type == StringName("touchstart") || p_type == StringName("touchmove"));
+	event->set_composed(true);
+	event->mark_trusted();
+	TypedArray<HTMLTouchPoint> touches;
+	TypedArray<HTMLTouchPoint> target_touches;
+	for (const auto& [key, touch] : active_touch_pointers) {
+		Ref<HTMLTouchPoint> point;
+		point.instantiate();
+		point->set_identifier(touch.pointer_id);
+		point->set_target(touch.target);
+		point->set_position(touch.last - label->get_visible_rect().position);
+		touches.push_back(point);
+		if (touch.target.ptr() == p_changed.target.ptr()) target_touches.push_back(point);
+	}
+	Ref<HTMLTouchPoint> changed;
+	changed.instantiate();
+	changed->set_identifier(p_changed.pointer_id);
+	changed->set_target(p_changed.target);
+	changed->set_position(p_changed.last - label->get_visible_rect().position);
+	TypedArray<HTMLTouchPoint> changed_touches;
+	changed_touches.push_back(changed);
+	event->set_touches(touches);
+	event->set_target_touches(target_touches);
+	event->set_changed_touches(changed_touches);
+	return label->layout->get_dom().dispatch_event(target, event);
+}
+
 Ref<InputEventMouseButton> HTMLLabelCanvas::make_touch_mouse_event(const PointerInfo& p_info) const {
 	Ref<InputEventMouseButton> event;
 	event.instantiate();
@@ -123,6 +206,7 @@ Ref<InputEventMouseButton> HTMLLabelCanvas::make_touch_mouse_event(const Pointer
 }
 
 void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
+	flush_move_events();
 	if (!label || label->layout.is_null()) return;
 	const TouchKey key{ p_touch.get_device(), p_touch.get_index() };
 	if (active_touch_pointers.find(key) != active_touch_pointers.end()) cancel_touch_pointer(key.first, key.second);
@@ -141,10 +225,9 @@ void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
 	auto [active, inserted] = active_touch_pointers.emplace(key, touch);
 	if (!inserted) return;
 	PointerInfo info = make_touch_pointer_info(active->second, touch.start, true, false);
-	if (!dispatch_pointer_event(StringName("pointerdown"), active->second.target, info, true)) {
-		active->second.compatibility_suppressed = true;
-		return;
-	}
+	const bool pointer_allowed = dispatch_pointer_event(StringName("pointerdown"), active->second.target, info, true);
+	const bool touch_allowed = dispatch_touch_event(StringName("touchstart"), active->second);
+	if (!pointer_allowed || !touch_allowed) active->second.compatibility_suppressed = true;
 	if (active->second.compatibility_suppressed) return;
 	Ref<InputEventMouseButton> mouse = make_touch_mouse_event(info);
 	info.source_event = mouse;
@@ -169,10 +252,12 @@ void HTMLLabelCanvas::handle_touch_drag(const InputEventScreenDrag& p_drag) {
 		return;
 	}
 	if (!touch.dragged && !touch.compatibility_suppressed) handle_pointer_move(info);
-	else dispatch_pointer_event(StringName("pointermove"), touch.target, info, false);
+	else queue_pointer_move_event(StringName("pointermove"), touch.target, info);
+	queue_touch_move_event(StringName("touchmove"), touch);
 }
 
 void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch) {
+	flush_move_events();
 	const TouchKey key{ p_touch.get_device(), p_touch.get_index() };
 	auto active = active_touch_pointers.find(key);
 	if (active == active_touch_pointers.end()) return;
@@ -182,6 +267,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 		reset_click_sequence();
 		PointerInfo canceled = make_touch_pointer_info(touch, p_touch.get_position(), false, true);
 		dispatch_pointer_event(StringName("pointercancel"), touch.target, canceled, false);
+		dispatch_touch_event(StringName("touchcancel"), touch);
 		cancel_press();
 		return;
 	}
@@ -189,6 +275,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, false);
 	info.detail = click_detail_for(touch.target, touch.last - label->get_visible_rect().position);
 	dispatch_pointer_event(StringName("pointerup"), touch.target, info, false);
+	dispatch_touch_event(StringName("touchend"), touch);
 	const Ref<HTMLElement> release_target = label->layout->get_element_at(touch.last);
 	if (!touch.primary || touch.compatibility_suppressed || touch.dragged || release_target != touch.target) {
 		reset_click_sequence();
@@ -202,6 +289,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 }
 
 void HTMLLabelCanvas::cancel_touch_pointer(int p_device, int p_index) {
+	flush_move_events();
 	const TouchKey key{ p_device, p_index };
 	auto active = active_touch_pointers.find(key);
 	if (active == active_touch_pointers.end()) return;
@@ -209,6 +297,7 @@ void HTMLLabelCanvas::cancel_touch_pointer(int p_device, int p_index) {
 	active_touch_pointers.erase(active);
 	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, true);
 	dispatch_pointer_event(StringName("pointercancel"), touch.target, info, false);
+	dispatch_touch_event(StringName("touchcancel"), touch);
 	cancel_press();
 }
 
@@ -224,32 +313,39 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 	const Rect2 visible_rect = label->get_visible_rect();
 	const Vector2 point = p_info.position;
 	const Ref<HTMLElement> event_target = p_info.target.is_valid() ? p_info.target : label->layout->get_element_at(point);
-	dispatch_pointer_event(StringName("pointermove"), event_target, p_info, false);
-	dispatch_pointer_event(StringName("mousemove"), event_target, p_info, false);
+	const auto queue_moves = [&]() {
+		queue_pointer_move_event(StringName("pointermove"), event_target, p_info);
+		if (p_info.kind == PointerKind::MOUSE) queue_pointer_move_event(StringName("mousemove"), event_target, p_info);
+	};
 	update_dialog_pointer(point, p_info.device);
 	if (move_video_control(point) || move_audio_control(point)) {
+		queue_moves();
 		accept_pointer_event(p_info);
 		return;
 	}
 	if (dragging_range.is_valid()) {
 		const auto range = dragging_range;
+		queue_moves();
 		accept_pointer_event(p_info);
 		move_range(range, point, false);
 		return;
 	}
 	if (scrollbar_drag) {
 		label->layout->drag_scrollbar(*scrollbar_drag, point);
+		queue_moves();
 		accept_pointer_event(p_info);
 		return;
 	}
 	if (box_drag) {
 		move_box_drag(point);
+		queue_moves();
 		accept_pointer_event(p_info);
 		return;
 	}
 	if (dragging_input.is_valid()) {
 		set_input_caret(dragging_input, point, true);
 		label->request_hover_check();
+		queue_moves();
 		accept_pointer_event(p_info);
 		return;
 	}
@@ -282,9 +378,11 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 		accept_pointer_event(p_info);
 	}
 	label->request_hover_check();
+	queue_moves();
 }
 
 void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
+	flush_move_events();
 	if (!label || label->layout.is_null()) return;
 	const Ref<InputEventMouseButton> button = p_info.source_event;
 	if (button.is_null()) return;
@@ -407,6 +505,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 }
 
 void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
+	flush_move_events();
 	if (!label || label->layout.is_null()) return;
 	reset_click_sequence();
 	const Ref<InputEventMouseButton> button = p_info.source_event;
@@ -476,7 +575,9 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		}
 		return;
 	}
-	const bool clicked = !selection_dragged && !p_info.canceled &&
+	const bool clicked = p_info.button == MOUSE_BUTTON_LEFT && !selection_dragged && !p_info.canceled &&
+		(point - visible_rect.position).distance_squared_to(pressed_position) <= DRAG_DEADZONE * DRAG_DEADZONE;
+	const bool aux_clicked = p_info.button != MOUSE_BUTTON_LEFT && !selection_dragged && !p_info.canceled &&
 		(point - visible_rect.position).distance_squared_to(pressed_position) <= DRAG_DEADZONE * DRAG_DEADZONE;
 	const bool blank_clicked = clicked && pressed_blank && visible_rect.has_point(point);
 	const bool link_clicked = clicked && pressed_link != 0 && pressed_link == hit.id;
@@ -504,6 +605,7 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	if (clicked) record_click(event_target, point - visible_rect.position, p_info.detail);
 	const bool click_prevented = clicked && !dispatch_pointer_event(StringName("click"), event_target,
 		p_info, true);
+	if (aux_clicked) dispatch_pointer_event(StringName("auxclick"), event_target, p_info, true);
 	if (link_clicked && !click_prevented) {
 		label->activate_link(hit.uri);
 	}

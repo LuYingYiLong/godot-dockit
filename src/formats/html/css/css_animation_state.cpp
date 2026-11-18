@@ -215,7 +215,8 @@ namespace docrender::css {
 					const char* pseudo_name = pseudo == __tag_before_ ? "::before" : pseudo == __tag_after_ ? "::after" :
 						pseudo == marker_tag() ? "::marker" : "";
 					return PlaybackInfo{target, track.name, pseudo_name, track.playback.time(now, track.end(), track.animation.paused),
-						track.duration(), track.playback.state(now, track.end(), track.animation.paused), bool(track.scripted)};
+						track.duration(), track.playback.state(now, track.end(), track.animation.paused), bool(track.scripted),
+						track.animation.duration, track.animation.delay};
 				}
 			}
 		}

@@ -7,7 +7,9 @@ class HTMLDetailsElement : public HTMLElement {
 	friend class docrender::HTMLDOM;
 
 	bool toggle_pending = false;
-	void queue_toggle();
+	bool toggle_old_open = false;
+	bool toggle_new_open = false;
+	void queue_toggle(bool p_old_open);
 	void emit_toggle();
 
 protected:

@@ -2,6 +2,7 @@
 
 #include "editor/docrender_source_editor.h"
 #include "formats/html/dom/html_document_fragment.h"
+#include "formats/html/dom/html_dom.h"
 #include "formats/html/html_behavior.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/css/css_values.h"
@@ -635,6 +636,8 @@ void HTMLLabelCanvas::update_cursor(const std::optional<Vector2>& p_point) {
 
 HTMLLabel::HTMLLabel() {
 	layout.instantiate();
+	layout->set_event_host_id(ObjectID(get_instance_id()));
+	layout->get_dom().set_event_debug(event_debug);
 	layout->uses_document_viewport = true;
 	layout->uses_owner_animation_clock = true;
 	set_mouse_filter(MOUSE_FILTER_IGNORE);
@@ -663,6 +666,9 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_css_diagnostics_enabled", "enabled"), &HTMLLabel::set_css_diagnostics_enabled);
 	ClassDB::bind_method(D_METHOD("is_css_diagnostics_enabled"), &HTMLLabel::is_css_diagnostics_enabled);
 	ClassDB::bind_method(D_METHOD("get_css_diagnostics"), &HTMLLabel::get_css_diagnostics);
+	ClassDB::bind_method(D_METHOD("set_event_debug", "enabled"), &HTMLLabel::set_event_debug);
+	ClassDB::bind_method(D_METHOD("is_event_debug_enabled"), &HTMLLabel::is_event_debug_enabled);
+	ClassDB::bind_method(D_METHOD("get_event_listener_count", "type"), &HTMLLabel::get_event_listener_count);
 	ClassDB::bind_method(D_METHOD("get_scroll_offset"), &HTMLLabel::get_scroll_offset);
 	ClassDB::bind_method(D_METHOD("set_scroll_offset", "offset"), &HTMLLabel::set_scroll_offset);
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "id", "align"), &HTMLLabel::scroll_to_anchor, DEFVAL(0.0f));
@@ -760,6 +766,7 @@ void HTMLLabel::_bind_methods() {
 		"set_caret_blink_interval", "get_caret_blink_interval");
 	ADD_GROUP("Debug", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "css_diagnostics_enabled"), "set_css_diagnostics_enabled", "is_css_diagnostics_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "event_debug"), "set_event_debug", "is_event_debug_enabled");
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("element_clicked", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE,
 		String(), PROPERTY_USAGE_DEFAULT, HTMLElement::get_class_static())));
@@ -1538,6 +1545,8 @@ void HTMLLabel::reset_document_source() {
 	closed_dialogs.clear();
 	focused_modal.unref();
 	source_dirty = true;
+	document_ready_events_queued = false;
+	document_ready_events_sent = false;
 	layout->clear();
 	update_internal_processing();
 	pending_scroll_offset = Vector2i();
@@ -1576,6 +1585,7 @@ void HTMLLabel::parse_pending_source() {
 	else {
 		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), source_path, false, DOCUMENT_DEFAULTS) == OK;
 	}
+	layout->get_dom().set_event_debug(event_debug);
 	sync_videos();
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
 	queue_audio_sync();
@@ -2199,6 +2209,7 @@ void HTMLLabel::update_interaction() {
 		if (!ObjectDB::get_instance(id)) return;
 	}
 	queue_behavior_mount();
+	queue_document_ready_events();
 	if (layout_signal_pending && !refresh_queued) {
 		layout_signal_pending = false;
 		emit_signal("layout_changed");

@@ -4,7 +4,7 @@
 		The event target for a live document window.
 	</brief_description>
 	<description>
-		Every document exposes one window handle through [method HTMLDocumentNode.get_default_view]. Listeners registered on it run first in the capture phase and last in the bubble phase, which makes it the natural place for shortcuts and document-wide handlers. A window becomes invalid when the layout replaces or clears its document.
+		Every document exposes one window handle through [method HTMLDocumentNode.get_default_view]. Listeners registered on it run first in the capture phase and last in the bubble phase, which makes it the natural place for shortcuts and document-wide handlers. The first successful layout dispatches [code]DOMContentLoaded[/code] on the document and then [code]load[/code] on the window. A window becomes invalid when the layout replaces or clears its document. Omitted [code]passive[/code] defaults to [code]true[/code] for [code]wheel[/code], [code]touchstart[/code], and [code]touchmove[/code].
 	</description>
 	<methods>
 		<method name="get_document">

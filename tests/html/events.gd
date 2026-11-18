@@ -37,7 +37,10 @@ func _check_event_targets() -> void:
 	var inner: HTMLElement = label.get_element_by_id("inner")
 	var root: HTMLElement = dom.get_document_element()
 	var order: Array[String] = []
-	var on_target: Callable = func(_event: HTMLEvent) -> void: order.append("target")
+	var path_during_dispatch: Array[Array] = []
+	var on_target: Callable = func(_event: HTMLEvent) -> void:
+		order.append("target")
+		path_during_dispatch.append(_event.composed_path())
 
 	var window_capture: Callable = func(_event: HTMLEvent) -> void: order.append("window")
 	var document_capture: Callable = func(_event: HTMLEvent) -> void: order.append("document")
@@ -50,9 +53,11 @@ func _check_event_targets() -> void:
 	inner.dispatch_event(event)
 	_check(order == ["window", "document", "root", "target"],
 		"capture runs window, document, root, then the target")
-	var path: Array = event.composed_path()
-	_check(path.size() >= 4 and path[0] == inner, "composed_path starts at the target")
-	_check(path[path.size() - 1] == window, "composed_path ends at the window")
+	_check(path_during_dispatch.size() == 1 and path_during_dispatch[0].size() >= 4 and path_during_dispatch[0][0] == inner,
+		"composed_path starts at the target during dispatch")
+	_check(path_during_dispatch[0][path_during_dispatch[0].size() - 1] == window,
+		"composed_path ends at the window during dispatch")
+	_check(event.composed_path().is_empty(), "composed_path is empty after dispatch")
 
 	window.remove_event_listener(&"ping", window_capture, {"capture": true})
 	dom.remove_event_listener(&"ping", document_capture, {"capture": true})
@@ -304,8 +309,8 @@ func _check_pointer_mouse_events() -> void:
 	first_motion.position = first.get_bounding_rect().get_center()
 	first_motion.global_position = first_motion.position
 	first_motion.relative = first_motion.position
-	get_viewport().push_input(first_motion, true)
 	order.clear()
+	get_viewport().push_input(first_motion, true)
 	await _settle()
 	_check(order == [
 		"pointerover:first",
@@ -314,6 +319,8 @@ func _check_pointer_mouse_events() -> void:
 		"mouseover:first",
 		"mouseenter:outer",
 		"mouseenter:first",
+		"pointermove:first",
+		"mousemove:first",
 	], "entering dispatches pointer and mouse boundary events in order")
 
 	order.clear()

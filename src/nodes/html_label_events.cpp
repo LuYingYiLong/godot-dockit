@@ -11,6 +11,35 @@
 
 using namespace godot;
 
+void HTMLLabel::set_event_debug(bool p_enabled) {
+	event_debug = p_enabled;
+	if (layout.is_valid()) layout->get_dom().set_event_debug(p_enabled);
+}
+
+int64_t HTMLLabel::get_event_listener_count(const StringName& p_type) const {
+	return layout.is_valid() ? int64_t(layout->get_dom().get_event_listener_count(p_type)) : 0;
+}
+
+void HTMLLabel::queue_document_ready_events() {
+	if (!parsed || source_dirty || document_ready_events_queued || document_ready_events_sent) return;
+	document_ready_events_queued = true;
+	callable_mp(this, &HTMLLabel::dispatch_document_ready_events).call_deferred();
+}
+
+void HTMLLabel::dispatch_document_ready_events() {
+	document_ready_events_queued = false;
+	if (document_ready_events_sent || source_dirty || !parsed || layout.is_null()) return;
+	document_ready_events_sent = true;
+	const ObjectID id(get_instance_id());
+	const Ref<HTMLLayout> keep_layout = layout;
+	auto& dom = keep_layout->get_dom();
+	const Ref<HTMLDocumentNode> document_node = dom.get_document_node();
+	if (document_node.is_valid()) dom.dispatch_event(document_node, docrender::make_dom_event(StringName("DOMContentLoaded"), true, false));
+	if (!ObjectDB::get_instance(id)) return;
+	const Ref<HTMLWindow> window = dom.get_window();
+	if (window.is_valid()) dom.dispatch_event(window, docrender::make_dom_event(StringName("load"), false, false));
+}
+
 namespace {
 	Ref<HTMLFocusEvent> make_focus_event(const StringName& p_type, bool p_bubbles, const Ref<HTMLElement>& p_related) {
 		Ref<HTMLFocusEvent> event;
@@ -44,10 +73,14 @@ bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref
 	if (!label || label->layout.is_null()) return true;
 	if (p_target.is_null() || !p_target->is_valid()) return true;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listener_for_type(p_type)) return true;
 	const bool pointer = p_type == StringName("pointerdown") || p_type == StringName("pointerup") ||
 		p_type == StringName("pointermove") || p_type == StringName("pointerover") || p_type == StringName("pointerout") ||
 		p_type == StringName("pointerenter") || p_type == StringName("pointerleave") || p_type == StringName("pointercancel");
+	if (p_type == StringName("pointerdown")) dom.begin_pointer(p_info.pointer_id);
+	Ref<HTMLElement> dispatch_target = p_target;
+	if (pointer && p_type != StringName("pointerdown")) {
+		if (const Ref<HTMLElement> captured = dom.get_pointer_capture(p_info.pointer_id); captured.is_valid()) dispatch_target = captured;
+	}
 	Ref<HTMLMouseEvent> event;
 	Ref<HTMLPointerEvent> pointer_event;
 	if (pointer) {
@@ -60,6 +93,7 @@ bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref
 	event->set_type(p_type);
 	event->set_bubbles(bubbles);
 	event->set_cancelable(p_cancelable);
+	event->set_composed(true);
 	event->mark_trusted();
 	const int button = p_info.button;
 	event->set_button(button);
@@ -77,8 +111,10 @@ bool HTMLLabelCanvas::dispatch_pointer_event(const StringName& p_type, const Ref
 			p_info.kind == PointerKind::PEN ? StringName("pen") : StringName("mouse"));
 		pointer_event->set_is_primary(p_info.primary);
 	}
-	dom.dispatch_event(p_target, event);
-	return !event->is_default_prevented();
+	dom.dispatch_event(dispatch_target, event);
+	const bool not_canceled = !event->is_default_prevented();
+	if (p_type == StringName("pointerup") || p_type == StringName("pointercancel")) dom.end_pointer(p_info.pointer_id);
+	return not_canceled;
 }
 
 bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_previous, const Vector2& p_position) {
@@ -142,7 +178,6 @@ bool HTMLLabelCanvas::dispatch_hover_events(const TypedArray<HTMLElement>& p_pre
 bool HTMLLabelCanvas::dispatch_key_event(const StringName& p_type, const InputEventKey& p_key) {
 	if (!label || label->layout.is_null()) return false;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listeners()) return false;
 	const bool pressed = p_type == StringName("keydown");
 	Ref<HTMLKeyboardEvent> event;
 	event.instantiate();
@@ -172,7 +207,6 @@ void HTMLLabelCanvas::dispatch_blur_events(const Ref<HTMLElement>& p_previous, c
 	if (!label || label->layout.is_null()) return;
 	if (p_previous.ptr() == p_next.ptr()) return;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listeners()) return;
 	if (p_previous.is_valid() && p_previous->is_valid()) {
 		dom.dispatch_event(p_previous, make_focus_event(StringName("blur"), false, p_next));
 		dom.dispatch_event(p_previous, make_focus_event(StringName("focusout"), true, p_next));
@@ -183,7 +217,6 @@ void HTMLLabelCanvas::dispatch_focus_events(const Ref<HTMLElement>& p_previous, 
 	if (!label || label->layout.is_null()) return;
 	if (p_previous.ptr() == p_next.ptr()) return;
 	auto& dom = label->layout->get_dom();
-	if (!dom.has_event_listeners()) return;
 	if (p_next.is_valid() && p_next->is_valid()) {
 		dom.dispatch_event(p_next, make_focus_event(StringName("focus"), false, p_previous));
 		dom.dispatch_event(p_next, make_focus_event(StringName("focusin"), true, p_previous));
@@ -194,7 +227,6 @@ bool HTMLLabel::dispatch_form_event(const StringName& p_type, const Ref<HTMLForm
 	const Ref<HTMLElement>& p_submitter) {
 	if (layout.is_null() || p_form.is_null() || !p_form->is_valid()) return false;
 	auto& dom = layout->get_dom();
-	if (!dom.has_event_listeners()) return false;
 	Ref<HTMLSubmitEvent> event;
 	event.instantiate();
 	event->set_type(p_type);
@@ -208,10 +240,58 @@ bool HTMLLabel::dispatch_form_event(const StringName& p_type, const Ref<HTMLForm
 
 bool HTMLLabel::dispatch_control_event(const StringName& p_type, const Ref<HTMLElement>& p_element) {
 	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return false;
+	if (p_type == StringName("input")) return dispatch_input_event(p_type, p_element, {}, {}, false);
 	auto& dom = layout->get_dom();
-	if (!dom.has_event_listeners()) return false;
 	dom.dispatch_event(p_element, docrender::make_dom_event(p_type, true, false));
 	return false;
+}
+
+bool HTMLLabel::dispatch_input_event(const StringName& p_type, const Ref<HTMLElement>& p_element,
+	const StringName& p_input_type, const String& p_data, bool p_is_composing) {
+	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return false;
+	Ref<HTMLInputEvent> event;
+	event.instantiate();
+	event->set_type(p_type);
+	event->set_bubbles(true);
+	event->set_cancelable(p_type == StringName("beforeinput"));
+	event->set_composed(true);
+	event->set_data(p_data);
+	event->set_input_type(p_input_type);
+	event->set_is_composing(p_is_composing);
+	event->mark_trusted();
+	layout->get_dom().dispatch_event(p_element, event);
+	return !event->is_default_prevented();
+}
+
+void HTMLLabel::dispatch_composition_event(const StringName& p_type, const Ref<HTMLElement>& p_element, const String& p_data) {
+	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return;
+	Ref<HTMLCompositionEvent> event;
+	event.instantiate();
+	event->set_type(p_type);
+	event->set_bubbles(true);
+	event->set_cancelable(false);
+	event->set_composed(true);
+	event->set_data(p_data);
+	event->mark_trusted();
+	layout->get_dom().dispatch_event(p_element, event);
+}
+
+void HTMLLabel::dispatch_media_event(const StringName& p_type, const Ref<HTMLElement>& p_element) {
+	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return;
+	layout->get_dom().dispatch_event(p_element, docrender::make_dom_event(p_type, false, false));
+}
+
+void HTMLLabel::dispatch_media_error_event(const Ref<HTMLElement>& p_element, const String& p_message, Error p_error) {
+	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return;
+	Ref<HTMLErrorEvent> event;
+	event.instantiate();
+	event->set_type(StringName("error"));
+	event->set_bubbles(false);
+	event->set_composed(false);
+	event->set_message(p_message);
+	event->set_error(p_error);
+	event->mark_trusted();
+	layout->get_dom().dispatch_event(p_element, event);
 }
 
 void HTMLLabel::dispatch_scroll_event(const Ref<HTMLElement>& p_element) {

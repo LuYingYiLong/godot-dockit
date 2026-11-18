@@ -19,6 +19,7 @@ std::vector<litehtml::element::ptr> controls(const litehtml::element& p_form);
 std::vector<litehtml::element::ptr> radio_group(const litehtml::element& p_radio);
 std::vector<litehtml::element::ptr> datalist_options(const litehtml::element& p_control);
 litehtml::element::ptr first_invalid(const litehtml::element& p_form);
+std::vector<litehtml::element::ptr> invalid_controls(const litehtml::element& p_form);
 bool update_validity(litehtml::element& p_control);
 void synchronize(const litehtml::element::ptr& p_tree, const litehtml::element::ptr& p_preferred = {});
 }

@@ -2,9 +2,11 @@
 
 #include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
+#include "nodes/html_label.h"
 
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 #include <litehtml/document.h>
 
 #include <algorithm>
@@ -22,18 +24,25 @@ namespace {
 	class EventDispatchScope {
 		int& depth;
 		Ref<HTMLEvent> event;
+		std::function<void()> on_outermost_end;
+		bool finished = false;
 
 	public:
-		EventDispatchScope(int& p_depth, const Ref<HTMLEvent>& p_event) : depth(p_depth), event(p_event) {
+		EventDispatchScope(int& p_depth, const Ref<HTMLEvent>& p_event, std::function<void()> p_on_outermost_end) :
+			depth(p_depth), event(p_event), on_outermost_end(std::move(p_on_outermost_end)) {
 			++depth;
 		}
 		EventDispatchScope(const EventDispatchScope&) = delete;
 		EventDispatchScope& operator=(const EventDispatchScope&) = delete;
 
-		~EventDispatchScope() {
+		void finish() {
+			if (finished) return;
+			finished = true;
 			--depth;
 			event->end_dispatch();
+			if (depth == 0 && on_outermost_end) on_outermost_end();
 		}
+		~EventDispatchScope() { finish(); }
 	};
 }
 
@@ -146,6 +155,11 @@ bool HTMLDOM::has_event_listener_for_type(const StringName& p_type) const {
 	return count && *count > 0;
 }
 
+std::size_t HTMLDOM::get_event_listener_count(const StringName& p_type) const {
+	const auto* count = event_counts_by_type.getptr(p_type);
+	return count ? *count : 0;
+}
+
 Ref<HTMLWindow> HTMLDOM::get_window() const {
 	if (!document || !document->root()) return Ref<HTMLWindow>();
 	if (auto* handle = Object::cast_to<HTMLWindow>(ObjectDB::get_instance(window_handle))) {
@@ -171,6 +185,9 @@ void HTMLDOM::clear_event_listeners() {
 	pending_scroll_targets.clear();
 	scroll_delivery_queued = false;
 	++scroll_delivery_epoch;
+	active_pointer_ids.clear();
+	pointer_capture_targets.clear();
+	pending_pointer_capture_events.clear();
 }
 
 void HTMLDOM::forget_subtree_listeners(const litehtml::element& p_element) {
@@ -189,6 +206,70 @@ void HTMLDOM::forget_subtree_listeners(const litehtml::element& p_element) {
 		for (const auto& child : p_node.children()) p_self(p_self, *child);
 		};
 	visit(visit, p_element);
+}
+
+void HTMLDOM::begin_pointer(int32_t p_pointer_id) {
+	active_pointer_ids.insert(p_pointer_id);
+}
+
+void HTMLDOM::end_pointer(int32_t p_pointer_id) {
+	if (active_pointer_ids.has(p_pointer_id)) release_pointer_capture(p_pointer_id);
+	active_pointer_ids.erase(p_pointer_id);
+	if (event_dispatch_depth == 0) flush_pointer_capture_events();
+}
+
+Error HTMLDOM::set_pointer_capture(const Ref<HTMLElement>& p_target, int32_t p_pointer_id) {
+	if (!active_pointer_ids.has(p_pointer_id) || p_target.is_null() || !p_target->is_valid() || !p_target->is_connected()) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (const auto* previous = pointer_capture_targets.getptr(p_pointer_id); previous && previous->ptr() == p_target.ptr()) {
+		return OK;
+	}
+	if (const auto* previous = pointer_capture_targets.getptr(p_pointer_id); previous && previous->is_valid()) {
+		pending_pointer_capture_events.push_back({ StringName("lostpointercapture"), *previous, p_pointer_id });
+	}
+	pointer_capture_targets[p_pointer_id] = p_target;
+	pending_pointer_capture_events.push_back({ StringName("gotpointercapture"), p_target, p_pointer_id });
+	if (event_dispatch_depth == 0) flush_pointer_capture_events();
+	return OK;
+}
+
+Error HTMLDOM::release_pointer_capture(int32_t p_pointer_id) {
+	if (!active_pointer_ids.has(p_pointer_id)) return ERR_INVALID_PARAMETER;
+	const auto* captured = pointer_capture_targets.getptr(p_pointer_id);
+	if (!captured) return OK;
+	const Ref<HTMLElement> target = *captured;
+	pointer_capture_targets.erase(p_pointer_id);
+	if (target.is_valid()) pending_pointer_capture_events.push_back({ StringName("lostpointercapture"), target, p_pointer_id });
+	if (event_dispatch_depth == 0) flush_pointer_capture_events();
+	return OK;
+}
+
+bool HTMLDOM::has_pointer_capture(const Ref<HTMLElement>& p_target, int32_t p_pointer_id) const {
+	const auto* captured = pointer_capture_targets.getptr(p_pointer_id);
+	return captured && captured->ptr() == p_target.ptr() && p_target.is_valid() && p_target->is_connected();
+}
+
+Ref<HTMLElement> HTMLDOM::get_pointer_capture(int32_t p_pointer_id) const {
+	const auto* captured = pointer_capture_targets.getptr(p_pointer_id);
+	return captured && captured->is_valid() && (*captured)->is_connected() ? *captured : Ref<HTMLElement>();
+}
+
+void HTMLDOM::flush_pointer_capture_events() {
+	if (flushing_pointer_capture_events || event_dispatch_depth > 0) return;
+	flushing_pointer_capture_events = true;
+	std::size_t delivered = 0;
+	while (!pending_pointer_capture_events.empty() && delivered++ < 256) {
+		const PendingPointerCaptureEvent pending = pending_pointer_capture_events.front();
+		pending_pointer_capture_events.erase(pending_pointer_capture_events.begin());
+		if (pending.target.is_null() || !pending.target->is_valid()) continue;
+		Ref<HTMLEvent> event = make_dom_event(pending.type, true, false);
+		const Ref<HTMLPointerEvent> pointer_event = event;
+		if (pointer_event.is_valid()) pointer_event->set_pointer_id(pending.pointer_id);
+		dispatch_event(pending.target, event);
+	}
+	if (delivered >= 256) pending_pointer_capture_events.clear();
+	flushing_pointer_capture_events = false;
 }
 
 void HTMLDOM::transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_from,
@@ -237,13 +318,11 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 		return nullptr;
 		};
 	ListenerStore* store = get_store();
-	if (!store) return;
 	const StringName type = p_event->get_type();
-	auto* list_ptr = store->by_type.getptr(type);
-	if (!list_ptr) return;
+	auto* list_ptr = store ? store->by_type.getptr(type) : nullptr;
 	// 派发期间允许增删监听器，因此按快照迭代
-	const std::vector<EventListener> snapshot = *list_ptr;
-	if (snapshot.empty()) return;
+	const std::vector<EventListener> snapshot = list_ptr ? *list_ptr : std::vector<EventListener>();
+	if (snapshot.empty() && p_phase == HTMLEvent::PHASE_CAPTURING) return;
 	p_event->set_dispatch_phase(current, p_phase);
 	for (const EventListener& entry : snapshot) {
 		if (p_event->is_immediate_stopped()) break;
@@ -267,6 +346,24 @@ void HTMLDOM::invoke_event_listeners(const EventPathEntry& p_entry, const Ref<HT
 		entry.callable.call(p_event);
 		p_event->set_passive_context(false);
 	}
+	if (p_phase == HTMLEvent::PHASE_CAPTURING || p_event->is_immediate_stopped()) return;
+	store = get_store();
+	if (current.is_null()) return;
+	if (current->has_event_handler_override(type)) {
+		const Callable handler = current->get_event_handler(type);
+		if (handler.is_valid()) {
+			const Variant result = handler.call(p_event);
+			if (result.get_type() == Variant::BOOL && !bool(result)) p_event->prevent_default();
+		}
+		return;
+	}
+	const Ref<HTMLNode> current_node = current;
+	if (current_node.is_null() || current_node->get_node_type() != HTMLNode::ELEMENT_NODE) return;
+	const Ref<HTMLElement> element = current_node;
+	HTMLLayout* layout = get_layout();
+	if (!layout) return;
+	auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(layout->get_event_host_id())));
+	if (label) label->invoke_inline_event_handler(element, p_event);
 }
 
 bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTMLEvent>& p_event) {
@@ -318,7 +415,10 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 		ERR_PRINT("The event is already being dispatched.");
 		return !p_event->is_default_prevented();
 	}
-	EventDispatchScope dispatch_scope(event_dispatch_depth, p_event);
+	const std::shared_ptr<HTMLDOM> keep_alive = shared_from_this();
+	EventDispatchScope dispatch_scope(event_dispatch_depth, p_event, [keep_alive]() {
+		keep_alive->flush_pointer_capture_events();
+	});
 
 	for (std::size_t index = entries.size(); index > 1; --index) {
 		if (p_event->is_propagation_stopped()) break;
@@ -335,11 +435,40 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 		}
 	}
 
-	return !p_event->is_default_prevented();
+	const bool not_canceled = !p_event->is_default_prevented();
+	if (event_debug) {
+		UtilityFunctions::print(String("[HTML event] ") + String(p_event->get_type()) +
+			" target=" + p_target->get_class() + " path=" + String::num_int64(int64_t(entries.size())) +
+			" listeners=" + String::num_int64(int64_t(get_event_listener_count(p_event->get_type()))) +
+			" default_prevented=" + String(p_event->is_default_prevented() ? "true" : "false"));
+	}
+	return not_canceled;
+}
+
+void HTMLDOM::queue_selectionchange() {
+	if (selectionchange_queued) return;
+	selectionchange_queued = true;
+	callable_mp_static(&HTMLDOM::deliver_selectionchange).bind(
+		static_cast<uint64_t>(owner_id), ++selectionchange_epoch, lifetime).call_deferred();
+}
+
+void HTMLDOM::deliver_selectionchange(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime) {
+	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_owner_id)));
+	if (!layout) return;
+	const auto dom = layout->get_dom().shared_from_this();
+	if (dom->selectionchange_epoch != p_epoch || dom->lifetime != p_lifetime) return;
+	dom->selectionchange_queued = false;
+	const Ref<HTMLDocumentNode> document = dom->get_document_node();
+	if (document.is_valid()) dom->dispatch_event(document, docrender::make_dom_event(StringName("selectionchange"), false, false));
 }
 
 void HTMLDOM::queue_scroll_event(const Ref<HTMLNode>& p_node) {
-	if (p_node.is_null() || event_listener_count == 0) return;
+	if (p_node.is_null()) return;
+	++scrollend_delivery_epoch;
+	if (std::none_of(pending_scrollend_targets.begin(), pending_scrollend_targets.end(),
+		[&](const Ref<HTMLNode>& p_target) { return p_target.ptr() == p_node.ptr(); })) {
+		pending_scrollend_targets.push_back(p_node);
+	}
 	for (const auto& entry : pending_scroll_targets) {
 		if (entry.ptr() == p_node.ptr()) return;
 	}
@@ -362,5 +491,28 @@ void HTMLDOM::deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint6
 		if (dom->lifetime != p_lifetime) break;
 		if (node.is_null() || !node.is_valid()) continue;
 		dom->dispatch_event(Ref<HTMLEventTarget>(node), docrender::make_dom_event(StringName("scroll"), false, false));
+	}
+	if (!dom->scrollend_delivery_queued) {
+		dom->scrollend_delivery_queued = true;
+		callable_mp_static(&HTMLDOM::deliver_scrollend).bind(p_owner_id, dom->scrollend_delivery_epoch, p_lifetime).call_deferred();
+	}
+}
+
+void HTMLDOM::deliver_scrollend(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime) {
+	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_owner_id)));
+	if (!layout) return;
+	const auto dom = layout->get_dom().shared_from_this();
+	if (dom->lifetime != p_lifetime) return;
+	if (dom->scrollend_delivery_epoch != p_epoch) {
+		callable_mp_static(&HTMLDOM::deliver_scrollend).bind(p_owner_id, dom->scrollend_delivery_epoch, p_lifetime).call_deferred();
+		return;
+	}
+	dom->scrollend_delivery_queued = false;
+	std::vector<Ref<HTMLNode>> pending = std::move(dom->pending_scrollend_targets);
+	dom->pending_scrollend_targets.clear();
+	for (const Ref<HTMLNode>& node : pending) {
+		if (dom->lifetime != p_lifetime) break;
+		if (node.is_null() || !node.is_valid()) continue;
+		dom->dispatch_event(Ref<HTMLEventTarget>(node), docrender::make_dom_event(StringName("scrollend"), false, false));
 	}
 }

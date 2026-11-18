@@ -139,7 +139,8 @@ namespace docrender::css {
 				const auto target = weak.lock();
 				if (!target) return std::nullopt;
 				return PlaybackInfo{target, _s(animated_properties()[index].name), {},
-					track.playback.time(now, track.end(), false), track.duration, track.playback.state(now, track.end(), false)};
+					track.playback.time(now, track.end(), false), track.duration, track.playback.state(now, track.end(), false),
+					false, 0.0, track.delay};
 			}
 		}
 		return std::nullopt;

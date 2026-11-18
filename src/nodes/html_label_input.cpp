@@ -88,22 +88,30 @@ void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vec
 	const auto input = label->layout->text_control(p_input);
 	const auto local = label->layout->input_local_point(*p_input.ptr(), p_point);
 	if (input && local) {
+		const int64_t old_start = input->editor.selection_start();
+		const int64_t old_end = input->editor.selection_end();
 		const auto mode = input->user_selection_mode();
 		if (mode == litehtml::css_user_select::none) return;
 		if (mode == litehtml::css_user_select::all) input->editor.set_selection(0, input->editor.get_value().length());
 		else input->editor.hit_caret(*local, p_extend);
+		if (old_start != input->editor.selection_start() || old_end != input->editor.selection_end()) {
+			label->dispatch_control_event(StringName("select"), p_input);
+			label->layout->get_dom().queue_selectionchange();
+			label->layout->get_dom().dispatch_event(p_input, docrender::make_dom_event(StringName("selectionchange"), true, false));
+		}
 		restart_caret_blink();
 		label->layout->repaint_input();
 		queue_redraw();
 	}
 }
 
-void HTMLLabelCanvas::change_input(const Ref<HTMLElement>& p_input, bool p_update_suggestions) {
+void HTMLLabelCanvas::change_input(const Ref<HTMLElement>& p_input, bool p_update_suggestions,
+	const StringName& p_input_type, const String& p_data, bool p_is_composing) {
 	if (const auto input = label->layout->text_control(p_input)) {
 		label->layout->update_input(*input);
 		queue_redraw();
 		if (p_update_suggestions && focused_element == p_input && input->get_attr("list")) label->open_suggestion_menu(p_input);
-		label->dispatch_control_event(StringName("input"), p_input);
+		label->dispatch_input_event(StringName("input"), p_input, p_input_type, p_data, p_is_composing);
 		label->emit_signal(input->editor.is_multiline() ? "textarea_changed" : "input_changed", p_input);
 	}
 }
@@ -300,6 +308,10 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	const bool alt_gr_text = p_key.is_alt_pressed() && p_key.is_ctrl_pressed();
 	const bool inserts_text = unicode >= 0x20 && unicode != 0x7f && !p_key.is_meta_pressed() &&
 		(!p_key.is_ctrl_pressed() || alt_gr_text);
+	const bool was_composing = editor.has_preedit();
+	const String composition_data = editor.get_preedit();
+	const int64_t old_selection_start = editor.selection_start();
+	const int64_t old_selection_end = editor.selection_end();
 	if (input->editor.has_preedit() && !inserts_text) {
 		if (key == KEY_ESCAPE) {
 			label->accept_event();
@@ -318,6 +330,8 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	if (!inserts_text) editor.finish_ime_edit();
 
 	bool changed = false;
+	StringName edit_type;
+	String edit_data;
 	const auto selection_mode = input->user_selection_mode();
 	const bool extend = p_key.is_shift_pressed() && selection_mode != litehtml::css_user_select::none;
 	const char* maxlength = edit_maxlength(*input);
@@ -340,8 +354,12 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	if (inserts_text) {
 		// IME character events can retain the key code of the confirmation key.
 		if (editable) {
-			changed = editor.insert_character(unicode, maxlength, Engine::get_singleton()->get_process_frames(),
-				key == KEY_NONE || enter);
+			edit_type = StringName("insertText");
+			edit_data = String::chr(unicode);
+			if (label->dispatch_input_event(StringName("beforeinput"), handle, edit_type, edit_data, was_composing)) {
+				changed = editor.insert_character(unicode, maxlength, Engine::get_singleton()->get_process_frames(),
+					key == KEY_NONE || enter);
+			}
 		}
 	} else if (key == KEY_LEFT || key == KEY_RIGHT) {
 		input->editor.move_caret(key == KEY_LEFT ? -1 : 1, extend);
@@ -350,17 +368,32 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	} else if (editor.is_multiline() && (key == KEY_UP || key == KEY_DOWN)) {
 		editor.move_vertical(key == KEY_UP ? -1 : 1, extend);
 	} else if (enter) {
-		if (editable) changed = editor.insert("\n", maxlength);
+		if (editable) {
+			edit_type = StringName("insertLineBreak");
+			if (label->dispatch_input_event(StringName("beforeinput"), handle, edit_type, {}, false))
+				changed = editor.insert("\n", maxlength);
+		}
 	} else if (key == KEY_BACKSPACE || key == KEY_DELETE) {
-		if (editable) changed = input->editor.erase(key == KEY_BACKSPACE ? -1 : 1);
+		if (editable) {
+			edit_type = StringName(key == KEY_BACKSPACE ? "deleteContentBackward" : "deleteContentForward");
+			if (label->dispatch_input_event(StringName("beforeinput"), handle, edit_type, {}, false))
+				changed = input->editor.erase(key == KEY_BACKSPACE ? -1 : 1);
+		}
 	} else {
 		return false;
 	}
 	if (extend && selection_mode == litehtml::css_user_select::all && editor.selection_start() != editor.selection_end()) {
 		editor.set_selection(0, editor.get_value().length());
 	}
+	if (old_selection_start != editor.selection_start() || old_selection_end != editor.selection_end()) {
+		label->dispatch_control_event(StringName("select"), handle);
+		label->layout->get_dom().queue_selectionchange();
+		label->layout->get_dom().dispatch_event(handle, docrender::make_dom_event(StringName("selectionchange"), true, false));
+	}
 	label->accept_event();
-	if (changed) change_input(handle);
+	if (changed && was_composing && !editor.has_preedit())
+		label->dispatch_composition_event(StringName("compositionend"), handle, composition_data);
+	if (changed) change_input(handle, true, edit_type, edit_data, editor.has_preedit());
 	else {
 		label->layout->repaint_input();
 		queue_redraw();
@@ -548,12 +581,22 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 	const bool editable = input->is_editable() && !editor.has_preedit();
 	const char* maxlength = edit_maxlength(*input);
 	bool changed = false;
+	StringName edit_type;
+	String edit_data;
 	switch (p_command) {
 		case INPUT_UNDO:
-			if (editable) changed = editor.undo();
+			if (editable && label->dispatch_input_event(StringName("beforeinput"), p_element,
+				StringName("historyUndo"), {}, false)) {
+				edit_type = StringName("historyUndo");
+				changed = editor.undo();
+			}
 			break;
 		case INPUT_REDO:
-			if (editable) changed = editor.redo();
+			if (editable && label->dispatch_input_event(StringName("beforeinput"), p_element,
+				StringName("historyRedo"), {}, false)) {
+				edit_type = StringName("historyRedo");
+				changed = editor.redo();
+			}
 			break;
 		case INPUT_CUT:
 		case INPUT_COPY: {
@@ -562,25 +605,69 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 			const int64_t start = editor.selection_start();
 			const int64_t length = editor.selection_end() - start;
 			if (length > 0 && (p_command == INPUT_COPY || editable)) {
-				DisplayServer::get_singleton()->clipboard_set(editor.get_value().substr(start, length));
-				if (p_command == INPUT_CUT) changed = editor.insert({});
+				const String selected = editor.get_value().substr(start, length);
+				Ref<HTMLDataTransfer> transfer;
+				transfer.instantiate();
+				transfer->set_text(selected);
+				Ref<HTMLClipboardEvent> event;
+				event.instantiate();
+				event->set_type(p_command == INPUT_COPY ? StringName("copy") : StringName("cut"));
+				event->set_bubbles(true);
+				event->set_cancelable(true);
+				event->set_composed(true);
+				event->set_clipboard_data(transfer);
+				event->mark_trusted();
+				label->layout->get_dom().dispatch_event(p_element, event);
+				const String clipboard = event->is_default_prevented() ? transfer->get_data("text/plain") : selected;
+				DisplayServer::get_singleton()->clipboard_set(clipboard);
+				if (p_command == INPUT_CUT && !event->is_default_prevented() &&
+					label->dispatch_input_event(StringName("beforeinput"), p_element, StringName("deleteByCut"), {}, false)) {
+					edit_type = StringName("deleteByCut");
+					changed = editor.insert({});
+				}
 			}
 			break;
 		}
 		case INPUT_PASTE:
 			if (editable) {
 				const String clipboard = DisplayServer::get_singleton()->clipboard_get();
-				if (!clipboard.is_empty()) changed = editor.insert(clipboard, maxlength);
+				Ref<HTMLDataTransfer> transfer;
+				transfer.instantiate();
+				transfer->set_text(clipboard);
+				transfer->set_read_only(true);
+				Ref<HTMLClipboardEvent> event;
+				event.instantiate();
+				event->set_type(StringName("paste"));
+				event->set_bubbles(true);
+				event->set_cancelable(true);
+				event->set_composed(true);
+				event->set_clipboard_data(transfer);
+				event->mark_trusted();
+				label->layout->get_dom().dispatch_event(p_element, event);
+				if (!event->is_default_prevented() && !clipboard.is_empty() &&
+					label->dispatch_input_event(StringName("beforeinput"), p_element, StringName("insertFromPaste"), clipboard, false)) {
+					edit_type = StringName("insertFromPaste");
+					edit_data = clipboard;
+					changed = editor.insert(clipboard, maxlength);
+				}
 			}
 			break;
 		case INPUT_SELECT_ALL:
-			if (input->user_selection_mode() != litehtml::css_user_select::none) editor.set_selection(0, editor.get_value().length());
+			if (input->user_selection_mode() != litehtml::css_user_select::none) {
+				const int64_t old_start = editor.selection_start();
+				const int64_t old_end = editor.selection_end();
+				editor.set_selection(0, editor.get_value().length());
+				if (old_start != editor.selection_start() || old_end != editor.selection_end()) {
+					label->dispatch_control_event(StringName("select"), p_element);
+					label->layout->get_dom().queue_selectionchange();
+				}
+			}
 			break;
 		default:
 			return;
 	}
 	restart_caret_blink();
-	if (changed) change_input(p_element);
+	if (changed) change_input(p_element, true, edit_type, edit_data, false);
 	else {
 		label->layout->repaint_input();
 		queue_redraw();
@@ -640,9 +727,13 @@ void HTMLLabelCanvas::close_ime() {
 		display->window_set_ime_active(false, window);
 	}
 	const auto handle = focused_element;
-	if (const auto input = label->layout->text_control(handle); input && input->editor.cancel_preedit()) {
-		label->layout->repaint_input();
-		queue_redraw();
+	if (const auto input = label->layout->text_control(handle); input && input->editor.has_preedit()) {
+		const String data = input->editor.get_preedit();
+		if (input->editor.cancel_preedit()) {
+			label->dispatch_composition_event(StringName("compositionend"), handle, data);
+			label->layout->repaint_input();
+			queue_redraw();
+		}
 	}
 }
 
@@ -703,8 +794,16 @@ void HTMLLabelCanvas::on_ime_update() {
 	const auto input = label->layout->text_control(handle);
 	if (!input || !input->is_editable()) return;
 	auto* display = DisplayServer::get_singleton();
-	input->editor.update_preedit(display->ime_get_text(), display->ime_get_selection(),
+	const String previous = input->editor.get_preedit();
+	const String next = display->ime_get_text();
+	const bool was_composing = input->editor.has_preedit();
+	if (!was_composing && !next.is_empty()) label->dispatch_composition_event(StringName("compositionstart"), handle, {});
+	input->editor.update_preedit(next, display->ime_get_selection(),
 		Engine::get_singleton()->get_process_frames());
+	if (!next.is_empty() && next != previous)
+		label->dispatch_composition_event(StringName("compositionupdate"), handle, next);
+	else if (was_composing && next.is_empty())
+		label->dispatch_composition_event(StringName("compositionend"), handle, previous);
 	restart_caret_blink();
 	label->layout->repaint_input();
 	queue_redraw();

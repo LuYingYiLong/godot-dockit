@@ -137,6 +137,10 @@ HTMLLabel::VideoPlayback& HTMLLabel::video_entry(const Ref<HTMLVideoElement>& p_
 			destroy_video(*entry);
 			entry->paths = paths;
 			entry->autoplay_attempted = false;
+			entry->load_started = false;
+			entry->loaded_metadata = false;
+			entry->loaded_data = false;
+			entry->playing_event_sent = false;
 		}
 		return *entry;
 	}
@@ -146,6 +150,10 @@ HTMLLabel::VideoPlayback& HTMLLabel::video_entry(const Ref<HTMLVideoElement>& p_
 Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
 	const auto node = r_playback.element->get_video_node();
 	if (!node) return ERR_UNCONFIGURED;
+	if (!r_playback.load_started) {
+		r_playback.load_started = true;
+		dispatch_media_event(StringName("loadstart"), r_playback.element);
+	}
 	while (r_playback.next_candidate < r_playback.paths.size() * int64_t(PLAYERS.size())) {
 		const int64_t index = r_playback.next_candidate++;
 		const String source = r_playback.paths[index / PLAYERS.size()];
@@ -212,6 +220,7 @@ Error HTMLLabel::play_video(const Ref<HTMLVideoElement>& p_element) {
 	if (!is_inside_tree() || !layout->is_element_connected(p_element)) return ERR_UNCONFIGURED;
 	const auto node = p_element->get_video_node();
 	if (!node) return ERR_UNCONFIGURED;
+	const bool was_paused = node->paused;
 	auto& entry = video_entry(p_element);
 	entry.autoplay_attempted = true;
 	entry.preparation_attempted = true;
@@ -227,12 +236,14 @@ Error HTMLLabel::play_video(const Ref<HTMLVideoElement>& p_element) {
 			else entry.player->call("set_pause", false);
 		}
 		node->paused = false;
+		if (was_paused) dispatch_media_event(StringName("play"), p_element);
 		wake_video_controls(*p_element.ptr());
 		update_internal_processing();
 		return OK;
 	}
 	entry.next_candidate = 0;
 	const Error error = open_next_video(entry, true);
+	if (error == OK && was_paused) dispatch_media_event(StringName("play"), p_element);
 	update_internal_processing();
 	redraw_video();
 	if (error != OK) notify_video_failure(p_element, error);
@@ -246,6 +257,7 @@ void HTMLLabel::pause_video(const HTMLVideoElement& p_element) {
 	if (entry->backend == VIDEO_BACKEND_FFMPEG) Object::cast_to<VideoStreamPlayer>(entry->player)->set_paused(true);
 	else entry->player->call("set_pause", true);
 	node->paused = true;
+	dispatch_media_event(StringName("pause"), Ref<HTMLVideoElement>(const_cast<HTMLVideoElement*>(&p_element)));
 	wake_video_controls(p_element);
 	update_internal_processing();
 }
@@ -256,6 +268,7 @@ Error HTMLLabel::seek_video(const HTMLVideoElement& p_element, double p_seconds)
 	const auto node = p_element.get_video_node();
 	if (!entry || !entry->player || !node || !node->seekable) return ERR_UNAVAILABLE;
 	const double target = std::min(p_seconds, node->duration);
+	dispatch_media_event(StringName("seeking"), Ref<HTMLVideoElement>(const_cast<HTMLVideoElement*>(&p_element)));
 	if (entry->backend == VIDEO_BACKEND_FFMPEG) {
 		Object::cast_to<VideoStreamPlayer>(entry->player)->set_stream_position(target);
 	}
@@ -263,6 +276,8 @@ Error HTMLLabel::seek_video(const HTMLVideoElement& p_element, double p_seconds)
 		return FAILED;
 	}
 	node->time = target;
+	dispatch_media_event(StringName("seeked"), Ref<HTMLVideoElement>(const_cast<HTMLVideoElement*>(&p_element)));
+	dispatch_media_event(StringName("timeupdate"), Ref<HTMLVideoElement>(const_cast<HTMLVideoElement*>(&p_element)));
 	wake_video_controls(p_element);
 	return OK;
 }
@@ -281,6 +296,7 @@ void HTMLLabel::apply_video_audio(VideoPlayback& r_playback) {
 
 void HTMLLabel::set_video_volume(const HTMLVideoElement& p_element) {
 	if (auto* entry = find_video(p_element)) apply_video_audio(*entry);
+	dispatch_media_event(StringName("volumechange"), Ref<HTMLVideoElement>(const_cast<HTMLVideoElement*>(&p_element)));
 	redraw_video();
 }
 
@@ -292,6 +308,7 @@ void HTMLLabel::stop_video_player(VideoPlayback& r_playback) {
 	r_playback.started = false;
 	r_playback.awaiting_frame = false;
 	r_playback.preparing = false;
+	r_playback.playing_event_sent = false;
 }
 
 void HTMLLabel::destroy_video(VideoPlayback& r_playback) {
@@ -347,6 +364,10 @@ void HTMLLabel::sync_videos() {
 			destroy_video(*it);
 			it->paths = paths;
 			it->autoplay_attempted = false;
+			it->load_started = false;
+			it->loaded_metadata = false;
+			it->loaded_data = false;
+			it->playing_event_sent = false;
 			repaint = true;
 		}
 		if (it->element->is_muted() != it->applied_muted) apply_video_audio(*it);
@@ -390,7 +411,14 @@ bool HTMLLabel::has_active_video() const {
 void HTMLLabel::notify_video_failure(const Ref<HTMLVideoElement>& p_element, Error p_error) {
 	const String message = p_error == ERR_FILE_NOT_FOUND ? "No supported local video source was found." :
 		"The selected video backends could not open any source.";
-	call_deferred("emit_signal", "video_failed", p_element, p_error, message);
+	const ObjectID id(get_instance_id());
+	dispatch_media_error_event(p_element, message, p_error);
+	if (ObjectDB::get_instance(id)) callable_mp_static(&HTMLLabel::emit_video_failure).call_deferred(id, p_element, p_error, message);
+}
+
+void HTMLLabel::emit_video_failure(uint64_t p_id, const Ref<HTMLVideoElement>& p_element, Error p_error, const String& p_message) {
+	if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(p_id))))
+		label->emit_signal("video_failed", p_element, p_error, p_message);
 }
 
 void HTMLLabel::poll_videos(double p_delta) {
@@ -417,6 +445,15 @@ void HTMLLabel::poll_videos(double p_delta) {
 			continue;
 		}
 		if (valid_frame) {
+			if (!entry.loaded_data) {
+				entry.loaded_data = true;
+				dispatch_media_event(StringName("loadeddata"), entry.element);
+				dispatch_media_event(StringName("canplay"), entry.element);
+			}
+			if (entry.started && !entry.playing_event_sent) {
+				entry.playing_event_sent = true;
+				dispatch_media_event(StringName("playing"), entry.element);
+			}
 			if (!entry.preparing && (entry.awaiting_frame || node->frame != texture)) {
 				entry.awaiting_frame = false;
 				node->frame = texture;
@@ -435,7 +472,14 @@ void HTMLLabel::poll_videos(double p_delta) {
 		const double length = native ? native->get_stream_length() : double(entry.player->call("get_length")) / 1000.0;
 		if (entry.preparing) {
 			if (valid_frame) {
-				if (std::isfinite(length) && length > 0) node->duration = length;
+				if (std::isfinite(length) && length > 0) {
+					if (node->duration != length) dispatch_media_event(StringName("durationchange"), entry.element);
+					node->duration = length;
+					if (!entry.loaded_metadata) {
+						entry.loaded_metadata = true;
+						dispatch_media_event(StringName("loadedmetadata"), entry.element);
+					}
+				}
 				stop_video_player(entry);
 				repaint = true;
 			}
@@ -444,12 +488,21 @@ void HTMLLabel::poll_videos(double p_delta) {
 		const double time = native ? native->get_stream_position() : double(entry.player->call("get_time")) / 1000.0;
 		const bool seekable = std::isfinite(length) && length > 0 && (native || bool(entry.player->call("is_seekable")));
 		if (seekable != node->seekable || (std::isfinite(length) && length > 0 && node->duration != length)) {
+			const bool duration_changed = std::isfinite(length) && length > 0 && node->duration != length;
 			node->seekable = seekable;
-			if (std::isfinite(length) && length > 0) node->duration = length;
+			if (duration_changed) {
+				node->duration = length;
+				dispatch_media_event(StringName("durationchange"), entry.element);
+				if (!entry.loaded_metadata) {
+					entry.loaded_metadata = true;
+					dispatch_media_event(StringName("loadedmetadata"), entry.element);
+				}
+			}
 			repaint = true;
 		}
 		if (!node->paused && std::isfinite(time) && time >= 0 && std::abs(node->time - time) >= 0.1) {
 			node->time = time;
+			dispatch_media_event(StringName("timeupdate"), entry.element);
 			repaint |= node->show_controls && (node->has_controls() || node->fullscreen);
 		}
 		const bool focused = node->fullscreen ? video_surface && video_surface->has_focus() && fullscreen_keyboard_focus :
@@ -480,6 +533,7 @@ void HTMLLabel::video_finished(uint64_t p_id) {
 			node->paused = true;
 			node->show_controls = true;
 			if (entry.element->is_looping()) play_video(entry.element);
+			else dispatch_media_event(StringName("ended"), entry.element);
 		}
 		break;
 	}

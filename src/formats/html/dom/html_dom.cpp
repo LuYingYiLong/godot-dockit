@@ -336,7 +336,7 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 		publish_attribute(node, "open", old_value);
 		if (p_notify) {
 			const Ref<HTMLDetailsElement> details = make_element(node);
-			if (details.is_valid()) details->queue_toggle();
+			if (details.is_valid()) details->queue_toggle(true);
 		}
 	}
 }
@@ -350,6 +350,14 @@ void HTMLDOM::clear() {
 	++lifetime;
 	++observer_delivery_epoch;
 	observer_delivery_queued = false;
+	selectionchange_queued = false;
+	++selectionchange_epoch;
+	scroll_delivery_queued = false;
+	++scroll_delivery_epoch;
+	pending_scroll_targets.clear();
+	scrollend_delivery_queued = false;
+	++scrollend_delivery_epoch;
+	pending_scrollend_targets.clear();
 	for (ObjectID id : observers) {
 		if (auto* observer = Object::cast_to<HTMLMutationObserver>(ObjectDB::get_instance(id))) observer->clear_owner(*this);
 	}
@@ -1316,7 +1324,7 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	if (p_element->tag() == litehtml::_details_) {
 		if (open_presence_changed) {
 			const Ref<HTMLDetailsElement> details = make_element(p_element);
-			if (details.is_valid()) details->queue_toggle();
+			if (details.is_valid()) details->queue_toggle(bool(previous));
 			if (p_value) normalize_details(p_element, {p_element}, true);
 		} else if (std::string_view(p_name) == "name" && p_element->get_attr("open")) {
 			normalize_details(p_element, {p_element});

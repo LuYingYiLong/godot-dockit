@@ -236,6 +236,14 @@ element::ptr first_invalid(const element& p_form) {
 	return {};
 }
 
+std::vector<element::ptr> invalid_controls(const element& p_form) {
+	std::vector<element::ptr> result;
+	for (const auto& node : controls(p_form)) {
+		if (!control_validity(*node).value_or(true)) result.push_back(node);
+	}
+	return result;
+}
+
 bool update_validity(element& p_control) {
 	std::unordered_map<const element*, element::ptr> containers;
 	bool changed = false;

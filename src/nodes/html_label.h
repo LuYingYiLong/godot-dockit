@@ -88,6 +88,13 @@ class HTMLLabelCanvas : public godot::Control {
 		bool compatibility_suppressed = false;
 	};
 	using TouchKey = std::pair<int, int>;
+	struct PendingMoveEvent {
+		godot::StringName type;
+		godot::Ref<HTMLElement> target;
+		PointerInfo pointer;
+		TouchPointer touch;
+		bool is_touch = false;
+	};
 
 	::HTMLLabel* label = nullptr;
 	godot::Vector2 pressed_position;
@@ -102,6 +109,8 @@ class HTMLLabelCanvas : public godot::Control {
 	std::map<TouchKey, TouchPointer> active_touch_pointers;
 	std::map<TouchKey, int> touch_pointer_ids;
 	int next_touch_pointer_id = 1;
+	std::vector<PendingMoveEvent> pending_move_events;
+	bool movement_flush_queued = false;
 	struct OutsideDialogPress {
 		godot::Ref<HTMLDialogElement> dialog;
 		uint64_t open_sequence;
@@ -200,11 +209,16 @@ class HTMLLabelCanvas : public godot::Control {
 	void handle_pointer_press(const PointerInfo& p_info);
 	void handle_pointer_release(const PointerInfo& p_info);
 	void handle_pointer_move(const PointerInfo& p_info);
+	void queue_pointer_move_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_target,
+		const PointerInfo& p_info);
+	void queue_touch_move_event(const godot::StringName& p_type, const TouchPointer& p_touch);
+	void flush_move_events();
 	void handle_touch_press(const godot::InputEventScreenTouch& p_touch);
 	void handle_touch_drag(const godot::InputEventScreenDrag& p_drag);
 	void handle_touch_release(const godot::InputEventScreenTouch& p_touch);
 	PointerInfo make_touch_pointer_info(const TouchPointer& p_touch, const godot::Vector2& p_position,
 		bool p_pressed, bool p_canceled) const;
+	bool dispatch_touch_event(const godot::StringName& p_type, const TouchPointer& p_changed);
 	godot::Ref<godot::InputEventMouseButton> make_touch_mouse_event(const PointerInfo& p_info) const;
 	void cancel_touch_pointer(int p_device, int p_index);
 	void cancel_all_touch_pointers();
@@ -242,7 +256,8 @@ class HTMLLabelCanvas : public godot::Control {
 	bool handle_input_menu_key(const godot::InputEventKey& p_key);
 	godot::Rect2 input_menu_row_rect(int p_command) const;
 	void run_input_command(const godot::Ref<HTMLElement>& p_element, int p_command);
-	void change_input(const godot::Ref<HTMLElement>& p_input, bool p_update_suggestions = true);
+	void change_input(const godot::Ref<HTMLElement>& p_input, bool p_update_suggestions = true,
+		const godot::StringName& p_input_type = {}, const godot::String& p_data = {}, bool p_is_composing = false);
 	void commit_input(const godot::Ref<HTMLElement>& p_input, bool p_deferred = false);
 	void set_input_caret(const godot::Ref<HTMLElement>& p_input, const godot::Vector2& p_point, bool p_extend);
 	bool begin_resize_drag(const godot::Vector2& p_point);
@@ -308,6 +323,8 @@ private:
 		bool started = false;
 		bool autoplay_attempted = false;
 		bool muted = false;
+		bool load_started = false;
+		bool loaded = false;
 	};
 	std::vector<AudioPlayback> audio_playbacks;
 	struct VideoPlayback {
@@ -324,6 +341,10 @@ private:
 		bool started = false;
 		bool autoplay_attempted = false;
 		bool applied_muted = false;
+		bool load_started = false;
+		bool loaded_metadata = false;
+		bool loaded_data = false;
+		bool playing_event_sent = false;
 	};
 	std::vector<VideoPlayback> video_playbacks;
 	VideoBackend video_backend = VIDEO_BACKEND_AUTO;
@@ -357,6 +378,8 @@ private:
 	bool has_active_video() const;
 	void video_finished(uint64_t p_id);
 	void notify_video_failure(const godot::Ref<HTMLVideoElement>& p_element, godot::Error p_error);
+	static void emit_video_failure(uint64_t p_id, const godot::Ref<HTMLVideoElement>& p_element,
+		godot::Error p_error, const godot::String& p_message);
 	void redraw_video();
 	godot::Error enter_video_fullscreen(const godot::Ref<HTMLVideoElement>& p_element);
 	void leave_video_fullscreen();
@@ -525,6 +548,8 @@ private:
 	godot::TypedDictionary<godot::StringName, godot::GDScript> behavior_scripts;
 	std::vector<godot::Ref<HTMLBehavior>> attached_behaviors;
 	bool parsed = false;
+	bool document_ready_events_queued = false;
+	bool document_ready_events_sent = false;
 	bool refresh_queued = false;
 	bool resource_refresh_only = false;
 	bool layout_updated = false;
@@ -534,6 +559,7 @@ private:
 	bool selection_enabled = true;
 	bool transparent_canvas = false;
 	bool context_menu_enabled = true;
+	bool event_debug = false;
 	AnimationProcessMode animation_process_mode = ANIMATION_PROCESS_IDLE;
 	bool caret_blink = true;
 	double caret_blink_interval = 0.65;
@@ -568,6 +594,8 @@ private:
 	void apply_behavior_reset();
 	bool can_mount_behaviors() const;
 	void queue_behavior_mount();
+	void queue_document_ready_events();
+	void dispatch_document_ready_events();
 	static void mount_behaviors(uint64_t p_id, uint64_t p_version);
 	struct DialogFocus {
 		godot::Ref<HTMLDialogElement> dialog;
@@ -628,6 +656,13 @@ private:
 	bool dispatch_form_event(const godot::StringName& p_type, const godot::Ref<HTMLFormElement>& p_form,
 		const godot::Ref<HTMLElement>& p_submitter);
 	bool dispatch_control_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_element);
+	bool dispatch_input_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_element,
+		const godot::StringName& p_input_type, const godot::String& p_data, bool p_is_composing = false);
+	void dispatch_composition_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_element,
+		const godot::String& p_data);
+	void dispatch_media_event(const godot::StringName& p_type, const godot::Ref<HTMLElement>& p_element);
+	void dispatch_media_error_event(const godot::Ref<HTMLElement>& p_element, const godot::String& p_message,
+		godot::Error p_error);
 	void dispatch_scroll_event(const godot::Ref<HTMLElement>& p_element);
 	friend class HTMLInputElement;
 	godot::Error open_input_picker(const godot::Ref<HTMLInputElement>& p_element);
@@ -688,6 +723,7 @@ protected:
 public:
 	HTMLLabel();
 	~HTMLLabel() override;
+	bool invoke_inline_event_handler(const godot::Ref<HTMLElement>& p_element, const godot::Ref<HTMLEvent>& p_event);
 	void set_bus(const godot::StringName& p_bus);								// 设置音频输出总线
 	godot::StringName get_bus() const;											// 返回配置的音频总线
 	void set_video_backend(VideoBackend p_backend);								// 选择视频解码后端
@@ -702,6 +738,9 @@ public:
 	void _input(const godot::Ref<godot::InputEvent>& p_event) override;
 	void set_transparent_canvas(bool p_enabled);
 	bool is_transparent_canvas() const;
+	void set_event_debug(bool p_enabled);
+	bool is_event_debug_enabled() const { return event_debug; }
+	int64_t get_event_listener_count(const godot::StringName& p_type) const;
 	void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
 	bool is_css_diagnostics_enabled() const;									// 返回是否收集 CSS 声明诊断
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;			// 返回 CSS 声明诊断的快照

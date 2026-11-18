@@ -521,6 +521,27 @@
 				Returns the animation handles for this element, including its generated pseudo-elements.
 			</description>
 		</method>
+		<method name="set_pointer_capture">
+			<return type="int" enum="Error" />
+			<param index="0" name="pointer_id" type="int" />
+			<description>
+				Captures an active pointer to this connected element. Later pointer events for that pointer target this element until capture is released or the pointer ends.
+			</description>
+		</method>
+		<method name="release_pointer_capture">
+			<return type="int" enum="Error" />
+			<param index="0" name="pointer_id" type="int" />
+			<description>
+				Releases this pointer's active capture. Returns [constant ERR_UNAVAILABLE] if the pointer is not captured by an element.
+			</description>
+		</method>
+		<method name="has_pointer_capture" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="pointer_id" type="int" />
+			<description>
+				Returns whether this element currently captures the pointer.
+			</description>
+		</method>
 		<method name="animate">
 			<return type="HTMLAnimation" />
 			<param index="0" name="keyframes" type="Dictionary[]" />

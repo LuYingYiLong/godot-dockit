@@ -1,6 +1,7 @@
 #include "html_label.h"
 
 #include "formats/html/elements/html_metadata_elements.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_behavior.h"
 
 #include <godot_cpp/classes/engine.hpp>
@@ -24,6 +25,35 @@ namespace {
 		}
 		return true;
 	}
+
+	bool parse_inline_handler(const String& p_source, StringName& r_method, bool& r_with_event) {
+		const String source = p_source.strip_edges();
+		const int64_t open = source.find("(");
+		if (open <= 0 || !source.ends_with(")")) return false;
+		const String name = source.substr(0, open).strip_edges();
+		const String argument = source.substr(open + 1, source.length() - open - 2).strip_edges();
+		if (argument != "" && argument != "event") return false;
+		for (int64_t index = 0; index < name.length(); ++index) {
+			const char32_t ch = name[index];
+			const bool valid = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' ||
+				(index > 0 && ch >= '0' && ch <= '9');
+			if (!valid) return false;
+		}
+		r_method = StringName(name);
+		r_with_event = argument == "event";
+		return true;
+	}
+
+	bool has_compatible_method(const Object& p_object, const StringName& p_method, int p_argument_count) {
+		for (const Dictionary& method : p_object.get_method_list()) {
+			if (StringName(method.get("name", StringName())) != p_method) continue;
+			const Array arguments = method.get("args", Array());
+			const Array defaults = method.get("default_args", Array());
+			const int required = std::max(0, int(arguments.size() - defaults.size()));
+			return p_argument_count >= required && p_argument_count <= arguments.size();
+		}
+		return false;
+	}
 }
 
 HTMLLabel::~HTMLLabel() = default;
@@ -32,6 +62,25 @@ void HTMLLabel::set_behaviors_enabled(bool p_enabled) {
 	if (behaviors_enabled == p_enabled) return;
 	behaviors_enabled = p_enabled;
 	request_behavior_reset();
+}
+
+bool HTMLLabel::invoke_inline_event_handler(const Ref<HTMLElement>& p_element, const Ref<HTMLEvent>& p_event) {
+	if (p_element.is_null() || p_event.is_null() || !p_element->is_valid()) return false;
+	const String attribute = String("on") + String(p_event->get_type());
+	if (!p_element->has_attribute(attribute)) return false;
+	StringName method;
+	bool with_event = false;
+	if (!parse_inline_handler(p_element->get_attribute(attribute), method, with_event)) return false;
+	const int argument_count = with_event ? 1 : 0;
+	for (const Ref<HTMLBehavior>& behavior : attached_behaviors) {
+		if (behavior.is_null() || !has_compatible_method(*behavior.ptr(), method, argument_count)) continue;
+		Array arguments;
+		if (with_event) arguments.push_back(p_event);
+		const Variant result = behavior->callv(method, arguments);
+		if (result.get_type() == Variant::BOOL && !bool(result)) p_event->prevent_default();
+		return true;
+	}
+	return false;
 }
 
 bool HTMLLabel::are_behaviors_enabled() const {

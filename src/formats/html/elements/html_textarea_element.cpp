@@ -2,6 +2,8 @@
 #include "html_form_elements.h"
 
 #include "html_textarea_node.h"
+#include "formats/html/dom/html_dom.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 
 #include <algorithm>
@@ -57,7 +59,15 @@ int64_t HTMLTextAreaElement::get_selection_end() const {
 }
 
 void HTMLTextAreaElement::set_selection_range(int64_t p_start, int64_t p_end) {
-	if (const auto node = get_textarea(); node && node->editor.set_selection(std::min(p_start, p_end), p_end)) {
+	if (const auto node = get_textarea()) {
+		const int64_t old_start = node->editor.selection_start();
+		const int64_t old_end = node->editor.selection_end();
+		if (!node->editor.set_selection(std::min(p_start, p_end), p_end)) return;
 		get_owner()->update_input(*node);
+		if (old_start != node->editor.selection_start() || old_end != node->editor.selection_end()) {
+			dispatch_event(docrender::make_dom_event(StringName("select"), true, false));
+			dispatch_event(docrender::make_dom_event(StringName("selectionchange"), true, false));
+			get_dom().queue_selectionchange();
+		}
 	}
 }

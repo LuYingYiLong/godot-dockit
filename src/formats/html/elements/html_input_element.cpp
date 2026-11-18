@@ -2,6 +2,8 @@
 #include "html_form_elements.h"
 
 #include "html_input_node.h"
+#include "formats/html/dom/html_dom.h"
+#include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 #include "nodes/html_label.h"
 
@@ -197,8 +199,15 @@ int64_t HTMLInputElement::get_selection_end() const {
 }
 
 void HTMLInputElement::set_selection_range(int64_t p_start, int64_t p_end) {
-	if (const auto input = get_input(); input && input->supports_selection() &&
-		input->editor.set_selection(std::min(p_start, p_end), p_end)) {
+	if (const auto input = get_input(); input && input->supports_selection()) {
+		const int64_t old_start = input->editor.selection_start();
+		const int64_t old_end = input->editor.selection_end();
+		if (!input->editor.set_selection(std::min(p_start, p_end), p_end)) return;
 		get_owner()->update_input(*input);
+		if (old_start != input->editor.selection_start() || old_end != input->editor.selection_end()) {
+			dispatch_event(docrender::make_dom_event(StringName("select"), true, false));
+			dispatch_event(docrender::make_dom_event(StringName("selectionchange"), true, false));
+			get_dom().queue_selectionchange();
+		}
 	}
 }

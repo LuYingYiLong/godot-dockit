@@ -12,6 +12,7 @@
 #include "formats/html/text/html_text_selection.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -130,6 +131,7 @@ class HTMLLayout : public godot::RefCounted {
 	uint64_t parse_version = 0;
 	bool uses_document_viewport = false;
 	bool uses_owner_animation_clock = false;
+	godot::ObjectID event_host_id;
 
 	bool initialize_document(const godot::CharString& p_html);
 	godot::Ref<HTMLElement> get_title_element() const;
@@ -174,6 +176,7 @@ class HTMLLayout : public godot::RefCounted {
 	bool has_active_css_animations() const;
 	void advance_css_animations(double p_delta);
 	void sample_css_animations(bool p_force = false);
+	void dispatch_css_animation_events();
 	double animation_clock_time() const;
 	godot::Ref<HTMLAnimation> animation_handle(uint64_t p_track, bool p_transition);
 	std::optional<docrender::css::PlaybackInfo> animation_info(uint64_t p_track, bool p_transition) const;
@@ -260,6 +263,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	void set_event_host_id(godot::ObjectID p_id) { event_host_id = p_id; }
+	uint64_t get_event_host_id() const { return uint64_t(event_host_id); }
 	godot::TypedArray<HTMLAnimation> get_animations(const godot::Ref<HTMLElement>& p_element = {}); // 返回 CSS 动画、过渡和脚本动画
 	godot::Ref<HTMLAnimation> animate(const godot::Ref<HTMLElement>& p_element,
 		const godot::TypedArray<godot::Dictionary>& p_keyframes, const godot::Dictionary& p_options = {}); // 创建并播放脚本关键帧动画

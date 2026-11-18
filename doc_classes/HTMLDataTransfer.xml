@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HTMLDataTransfer" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		The limited text payload available to clipboard events.
+	</brief_description>
+	<description>
+		This implementation supports only [code]text/plain[/code]. Data passed to a [code]paste[/code] event is read-only; [code]copy[/code] and [code]cut[/code] handlers may replace the copied text.
+	</description>
+	<methods>
+		<method name="get_data" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="type" type="String" />
+			<description>
+				Returns the payload for [code]text/plain[/code], or an empty string for an unsupported type.
+			</description>
+		</method>
+		<method name="set_data">
+			<return type="int" enum="Error" />
+			<param index="0" name="type" type="String" />
+			<param index="1" name="value" type="String" />
+			<description>
+				Sets the [code]text/plain[/code] payload unless this transfer is read-only.
+			</description>
+		</method>
+		<method name="clear_data">
+			<return type="void" />
+			<param index="0" name="type" type="String" default="&quot;&quot;" />
+			<description>
+				Clears the text payload when the transfer is writable. An empty type clears all supported data.
+			</description>
+		</method>
+		<method name="get_types" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the supported data types currently present.
+			</description>
+		</method>
+	</methods>
+</class>

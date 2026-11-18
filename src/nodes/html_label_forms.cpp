@@ -33,13 +33,20 @@ Error HTMLLabel::submit_form_at(const Ref<HTMLFormElement>& p_form, const Ref<HT
 	if (p_submitter.is_valid() && (!submitter || forms::button_action(*submitter) != forms::ButtonAction::SUBMIT ||
 		forms::owner(*submitter) != form || forms::is_disabled(*submitter))) return ERR_INVALID_PARAMETER;
 	if (!form->get_attr("novalidate") && !(submitter && submitter->get_attr("formnovalidate"))) {
-		if (const auto invalid = forms::first_invalid(*form)) {
-			const auto control = layout->get_dom().make_element(invalid);
+		const auto invalid_controls = forms::invalid_controls(*form);
+		if (!invalid_controls.empty()) {
+			Ref<HTMLElement> first_invalid;
+			for (const auto& invalid : invalid_controls) {
+				const Ref<HTMLElement> control = layout->get_dom().make_element(invalid);
+				if (!first_invalid.is_valid()) first_invalid = control;
+				Ref<HTMLEvent> event = docrender::make_dom_event(StringName("invalid"), false, true);
+				layout->get_dom().dispatch_event(control, event);
+			}
 			const ObjectID id(get_instance_id());
-			focus_element(control);
+			focus_element(first_invalid);
 			if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) {
-				if (label->layout->is_element_connected(p_form) && label->layout->is_element_connected(control)) {
-					label->emit_signal("form_validation_failed", p_form, control);
+				if (label->layout->is_element_connected(p_form) && label->layout->is_element_connected(first_invalid)) {
+					label->emit_signal("form_validation_failed", p_form, first_invalid);
 				}
 			}
 			return ERR_INVALID_DATA;
@@ -319,6 +326,7 @@ void HTMLLabel::commit_select_row(int p_row) {
 	const Ref<HTMLSelectElement> select = target;
 	if (select.is_null() || index == select->get_selected_index()) return;
 	select->set_selected_index(index);
+	dispatch_control_event(StringName("input"), select);
 	dispatch_control_event(StringName("change"), select);
 	emit_signal("select_changed", select);
 }
@@ -368,6 +376,7 @@ bool HTMLLabel::handle_listbox_mouse(const Ref<HTMLElement>& p_element, const In
 	const bool changed = select->select_list_row(row, p_event.is_shift_pressed(), p_event.is_ctrl_pressed() || p_event.is_meta_pressed());
 	if (changed) {
 		layout->get_dom().form_state_changed(select);
+		dispatch_control_event(StringName("input"), p_element);
 		dispatch_control_event(StringName("change"), p_element);
 		emit_signal("select_changed", p_element);
 	} else layout->repaint_input();
@@ -400,6 +409,7 @@ bool HTMLLabel::handle_select_key(const InputEventKey& p_key) {
 				toggle && key != KEY_SPACE && list->is_multiple());
 			if (changed) {
 				layout->get_dom().form_state_changed(list);
+				dispatch_control_event(StringName("input"), select);
 				dispatch_control_event(StringName("change"), select);
 				emit_signal("select_changed", select);
 			} else layout->repaint_input();

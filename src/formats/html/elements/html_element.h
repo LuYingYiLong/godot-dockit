@@ -40,6 +40,9 @@ protected:
 	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
+	godot::Error set_pointer_capture(int64_t p_pointer_id);
+	godot::Error release_pointer_capture(int64_t p_pointer_id);
+	bool has_pointer_capture(int64_t p_pointer_id) const;
 	godot::TypedArray<HTMLAnimation> get_animations(); // 返回以该元素为目标的动画
 	godot::Ref<HTMLAnimation> animate(const godot::TypedArray<godot::Dictionary>& p_keyframes,
 		const godot::Dictionary& p_options = {}); // 在该元素上创建并播放关键帧动画

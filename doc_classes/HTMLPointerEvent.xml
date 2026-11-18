@@ -4,7 +4,7 @@
 		A pointer event for mouse and touch input.
 	</brief_description>
 	<description>
-		Pointer events report a stable pointer ID and a type of [code]mouse[/code], [code]pen[/code], or [code]touch[/code]. [HTMLLabel] currently synthesizes mouse and touch pointer events. Touch pointer IDs remain stable for each device and touch index pair. When Godot emulates mouse input from touch, [HTMLLabel] uses that mouse input instead of also dispatching touch pointer events. A touch pointer receives [code]pointercancel[/code] when viewport scrolling takes over the gesture or the touch is canceled.
+		Pointer events report a stable pointer ID and a type of [code]mouse[/code], [code]pen[/code], or [code]touch[/code]. [HTMLLabel] synthesizes mouse and touch pointer events. Touch pointer IDs remain stable for each device and touch index pair. When Godot emulates mouse input from touch, [HTMLLabel] uses that mouse input instead of also dispatching touch pointer events. A touch pointer receives [code]pointercancel[/code] when viewport scrolling takes over the gesture or the touch is canceled. Call [method HTMLElement.set_pointer_capture] from an active pointer handler to keep subsequent pointer events targeted at an element. Move events are coalesced per frame.
 	</description>
 	<members>
 		<member name="pointer_id" type="int" setter="set_pointer_id" getter="get_pointer_id">

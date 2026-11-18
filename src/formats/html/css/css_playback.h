@@ -85,5 +85,7 @@ namespace docrender::css {
 		double duration = 0;
 		PlaybackState state = PlaybackState::idle;
 		bool scripted = false;
+		double iteration_duration = 0.0;
+		double delay = 0.0;
 	};
 }

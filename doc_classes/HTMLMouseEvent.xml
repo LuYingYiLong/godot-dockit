@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="HTMLMouseEvent" inherits="HTMLEvent" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<brief_description>
-		A mouse event for [code]mousedown[/code], [code]mouseup[/code], [code]mousemove[/code], [code]mouseover[/code], [code]mouseout[/code], [code]mouseenter[/code], [code]mouseleave[/code], [code]click[/code], [code]dblclick[/code], and [code]contextmenu[/code].
+		A mouse event for [code]mousedown[/code], [code]mouseup[/code], [code]mousemove[/code], [code]mouseover[/code], [code]mouseout[/code], [code]mouseenter[/code], [code]mouseleave[/code], [code]click[/code], [code]auxclick[/code], [code]dblclick[/code], and [code]contextmenu[/code].
 	</brief_description>
 	<description>
 		Carries the pointer position in the host [HTMLLabel]'s local coordinates, modifier state, and [member related_target] during pointer transitions. For clicks on the same target, [member detail] continues when clicks are less than 500 milliseconds apart and less than 5 pixels apart. The second click dispatches [code]dblclick[/code] after the [code]click[/code] default action.

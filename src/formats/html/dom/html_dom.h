@@ -7,6 +7,7 @@
 #include "html_selection.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <litehtml/element.h>
@@ -86,12 +87,27 @@ namespace docrender {
 		ListenerStore window_event_listeners;
 		godot::HashMap<godot::StringName, std::size_t> event_counts_by_type;
 		std::size_t event_listener_count = 0;
+	bool event_debug = false;
+	godot::HashSet<int32_t> active_pointer_ids;
+	godot::HashMap<int32_t, godot::Ref<HTMLElement>> pointer_capture_targets;
+	struct PendingPointerCaptureEvent {
+		godot::StringName type;
+		godot::Ref<HTMLElement> target;
+		int32_t pointer_id = 0;
+	};
+	std::vector<PendingPointerCaptureEvent> pending_pointer_capture_events;
+	bool flushing_pointer_capture_events = false;
 		uint64_t next_event_listener_id = 1;
 		mutable godot::ObjectID window_handle;
 		int event_dispatch_depth = 0;
 		std::vector<godot::Ref<HTMLNode>> pending_scroll_targets;
+		std::vector<godot::Ref<HTMLNode>> pending_scrollend_targets;
 		bool scroll_delivery_queued = false;
 		uint64_t scroll_delivery_epoch = 0;
+		bool selectionchange_queued = false;
+		uint64_t selectionchange_epoch = 0;
+		bool scrollend_delivery_queued = false;
+		uint64_t scrollend_delivery_epoch = 0;
 
 		godot::Error register_event_listener(ListenerStore& r_store, const godot::StringName& p_type,
 			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);
@@ -189,7 +205,9 @@ namespace docrender {
 		godot::Ref<HTMLRange> create_range();
 		godot::Ref<HTMLSelection> get_selection();
 		void range_changed(const HTMLRange& p_range);
-		void selection_changed() { if (on_selection_change) on_selection_change(); }
+		void selection_changed() { queue_selectionchange(); if (on_selection_change) on_selection_change(); }
+		void queue_selectionchange();
+		static void deliver_selectionchange(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
 		void set_selection_callback(std::function<void()> p_callback) { on_selection_change = std::move(p_callback); }
 		void track_observer(godot::ObjectID p_id);
 		void queue_observer_delivery();
@@ -211,14 +229,24 @@ namespace docrender {
 		bool has_document_event_listener(const godot::StringName& p_type) const;
 		bool has_window_event_listener(const godot::StringName& p_type) const;
 		bool has_event_listener_for_type(const godot::StringName& p_type) const;
+	std::size_t get_event_listener_count(const godot::StringName& p_type) const;
+	void set_event_debug(bool p_enabled) { event_debug = p_enabled; }
 		std::size_t get_event_listener_count() const { return event_listener_count; }
 		godot::Ref<HTMLWindow> get_window() const; // 返回当前文档的 window 事件目标
 		uint64_t get_generation() const { return generation; }
 		void clear_event_listeners();
+	void begin_pointer(int32_t p_pointer_id);
+	void end_pointer(int32_t p_pointer_id);
+	godot::Error set_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id);
+	godot::Error release_pointer_capture(int32_t p_pointer_id);
+	bool has_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id) const;
+	godot::Ref<HTMLElement> get_pointer_capture(int32_t p_pointer_id) const;
+	void flush_pointer_capture_events();
 		void forget_subtree_listeners(const litehtml::element& p_element);
 		void transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_from, const litehtml::element::ptr& p_to);
 		void queue_scroll_event(const godot::Ref<HTMLNode>& p_node);
 		static void deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
+		static void deliver_scrollend(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
 		void normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved = {}, bool p_prefer_moved = false, bool p_notify = true);
 		void form_state_changed(const litehtml::element::ptr& p_node);
 

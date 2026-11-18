@@ -178,6 +178,19 @@ namespace {
 
 struct HTMLLayout::State {
 	enum class Update { NONE, LAYOUT, STYLE };
+	struct AnimationEventTrack {
+		std::weak_ptr<litehtml::element> target;
+		String name;
+		String pseudo;
+		double time = 0.0;
+		double duration = 0.0;
+		double iteration_duration = 0.0;
+		double delay = 0.0;
+		docrender::css::PlaybackState playback_state = docrender::css::PlaybackState::idle;
+		uint64_t iteration = 0;
+		bool started = false;
+		bool scripted = false;
+	};
 	struct ScrollMotion {
 		std::weak_ptr<litehtml::element> element;
 		Vector2 from;
@@ -230,6 +243,7 @@ struct HTMLLayout::State {
 	docrender::css::TransitionState transitions;
 	docrender::css::AnimationState animations;
 	std::map<std::pair<bool, uint64_t>, ObjectID> animation_handles;
+	std::map<std::pair<bool, uint64_t>, AnimationEventTrack> animation_event_tracks;
 	docrender::css::TransitionState::Snapshot animation_underlying;
 	Callable transition_callback;
 	Callable transition_frame;
@@ -1566,7 +1580,119 @@ void HTMLLayout::sample_css_animations(bool p_force) {
 		return;
 	}
 	if (current.canvas_renderer.is_valid()) current.canvas_renderer->queue_redraws();
+	dispatch_css_animation_events();
 	if (current.transition_callback.is_valid()) current.transition_callback.call(current.content_size != previous_size);
+}
+
+void HTMLLayout::dispatch_css_animation_events() {
+	using EventKey = std::pair<bool, uint64_t>;
+	using PlaybackState = docrender::css::PlaybackState;
+	const auto dom = state->dom;
+	if (!dom) return;
+	const double now = animation_clock_time();
+	std::map<EventKey, State::AnimationEventTrack> current_tracks;
+	const auto dispatch_event = [&](bool p_transition, const Ref<HTMLElement>& p_target, const String& p_name,
+		const String& p_pseudo, const StringName& p_type, double p_elapsed) {
+		if (p_target.is_null() || !p_target->is_valid()) return;
+		Ref<HTMLEvent> event;
+		if (p_transition) {
+			Ref<HTMLTransitionEvent> transition_event;
+			transition_event.instantiate();
+			transition_event->set_property_name(p_name);
+			transition_event->set_pseudo_element(p_pseudo);
+			transition_event->set_elapsed_time(p_elapsed);
+			event = transition_event;
+		} else {
+			Ref<HTMLAnimationEvent> animation_event;
+			animation_event.instantiate();
+			animation_event->set_animation_name(p_name);
+			animation_event->set_pseudo_element(p_pseudo);
+			animation_event->set_elapsed_time(p_elapsed);
+			event = animation_event;
+		}
+		event->set_type(p_type);
+		event->set_bubbles(true);
+		event->set_composed(true);
+		event->mark_trusted();
+		dom->dispatch_event(p_target, event);
+	};
+	const auto collect = [&](bool p_transition, const std::vector<uint64_t>& p_ids) {
+		for (uint64_t id : p_ids) {
+			const auto info = p_transition ? state->transitions.info(id, now) : state->animations.info(id, now);
+			if (!info || !dom->is_element_connected(*info->target) || (!p_transition && info->scripted)) continue;
+			const EventKey key{p_transition, id};
+			State::AnimationEventTrack track;
+			track.target = info->target;
+			track.name = String::utf8(info->name.c_str());
+			track.pseudo = String::utf8(info->pseudo.c_str());
+			track.time = info->time;
+			track.duration = info->duration;
+			track.iteration_duration = info->iteration_duration;
+			track.delay = info->delay;
+			track.playback_state = info->state;
+			track.scripted = info->scripted;
+			track.started = track.time >= track.delay;
+			if (track.iteration_duration > 0.0 && std::isfinite(track.time)) {
+				const double active_time = std::max(0.0, track.time - track.delay);
+				track.iteration = uint64_t(std::floor(active_time / track.iteration_duration));
+				if (std::isfinite(track.duration)) {
+					const double total_iterations = track.duration / track.iteration_duration;
+					const uint64_t last_iteration_boundary = total_iterations > 0.0 ?
+						uint64_t(std::max(0.0, std::ceil(total_iterations) - 1.0)) : 0;
+					track.iteration = std::min(track.iteration, last_iteration_boundary);
+				}
+			}
+			const auto previous = state->animation_event_tracks.find(key);
+			if (previous == state->animation_event_tracks.end()) {
+				const Ref<HTMLElement> target = dom->make_element(info->target);
+				if (p_transition) dispatch_event(true, target, track.name, track.pseudo, StringName("transitionrun"), 0.0);
+				if (track.started) {
+					dispatch_event(p_transition, target, track.name, track.pseudo,
+						p_transition ? StringName("transitionstart") : StringName("animationstart"),
+						p_transition ? 0.0 : std::max(0.0, -track.delay));
+				}
+				if (!p_transition && track.started && track.iteration_duration > 0.0) {
+					for (uint64_t iteration = 0; iteration < track.iteration && iteration < 1000; ++iteration)
+						dispatch_event(false, target, track.name, track.pseudo, StringName("animationiteration"), track.iteration_duration);
+				}
+				if (track.playback_state == PlaybackState::finished)
+					dispatch_event(p_transition, target, track.name, track.pseudo,
+						p_transition ? StringName("transitionend") : StringName("animationend"), track.duration);
+			} else {
+				const State::AnimationEventTrack& old = previous->second;
+				const Ref<HTMLElement> target = dom->make_element(info->target);
+				if (!old.started && track.started) {
+					dispatch_event(p_transition, target, track.name, track.pseudo,
+						p_transition ? StringName("transitionstart") : StringName("animationstart"),
+						p_transition ? 0.0 : std::max(0.0, -track.delay));
+				}
+				if (!p_transition && track.started && track.iteration > old.iteration && track.iteration_duration > 0.0) {
+					for (uint64_t iteration = old.iteration; iteration < track.iteration && iteration - old.iteration < 1000; ++iteration)
+						dispatch_event(false, target, track.name, track.pseudo, StringName("animationiteration"), track.iteration_duration);
+				}
+				if (old.playback_state != PlaybackState::finished && track.playback_state == PlaybackState::finished)
+					dispatch_event(p_transition, target, track.name, track.pseudo,
+						p_transition ? StringName("transitionend") : StringName("animationend"), track.duration);
+			}
+			current_tracks.emplace(key, std::move(track));
+		}
+	};
+	collect(false, state->animations.list(nullptr));
+	collect(true, state->transitions.list(nullptr, now));
+	for (const auto& [key, previous] : state->animation_event_tracks) {
+		if (current_tracks.count(key)) continue;
+		const bool transition = key.first;
+		const auto info = transition ? state->transitions.info(key.second, now) : state->animations.info(key.second, now);
+		const bool finished = info && info->state == PlaybackState::finished;
+		if (const auto target_node = previous.target.lock()) {
+			const Ref<HTMLElement> target = dom->make_element(target_node);
+			dispatch_event(transition, target, previous.name, previous.pseudo,
+				finished ? (transition ? StringName("transitionend") : StringName("animationend")) :
+					(transition ? StringName("transitioncancel") : StringName("animationcancel")),
+				finished ? previous.duration : std::clamp(previous.time - previous.delay, 0.0, previous.duration));
+		}
+	}
+	state->animation_event_tracks = std::move(current_tracks);
 }
 
 void HTMLLayout::invalidate_styles() {
@@ -3206,6 +3332,7 @@ void HTMLLayout::clear() {
 	state->stylesheet_identities.clear();
 	state->extra_stylesheet_id = 0;
 	state->animation_handles.clear();
+	state->animation_event_tracks.clear();
 	disconnect_transition_frames();
 	state->transitions = {};
 	state->animations = {};

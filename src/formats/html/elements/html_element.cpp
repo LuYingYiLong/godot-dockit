@@ -20,6 +20,21 @@ Ref<HTMLFormElement> HTMLElement::get_form_owner() const {
 	return {};
 }
 
+Error HTMLElement::set_pointer_capture(int64_t p_pointer_id) {
+	if (p_pointer_id < 0 || p_pointer_id > INT32_MAX || !is_valid() || !is_connected()) return ERR_INVALID_PARAMETER;
+	return get_dom().set_pointer_capture(Ref<HTMLElement>(this), int32_t(p_pointer_id));
+}
+
+Error HTMLElement::release_pointer_capture(int64_t p_pointer_id) {
+	if (p_pointer_id < 0 || p_pointer_id > INT32_MAX || !is_valid()) return ERR_INVALID_PARAMETER;
+	return get_dom().release_pointer_capture(int32_t(p_pointer_id));
+}
+
+bool HTMLElement::has_pointer_capture(int64_t p_pointer_id) const {
+	if (p_pointer_id < 0 || p_pointer_id > INT32_MAX || !is_valid()) return false;
+	return get_dom().has_pointer_capture(Ref<HTMLElement>(const_cast<HTMLElement*>(this)), int32_t(p_pointer_id));
+}
+
 namespace {
 	void append_text(const litehtml::element& p_element, litehtml::string& r_text) {
 		const auto tag = p_element.tag();
@@ -117,6 +132,9 @@ namespace {
 }
 
 void HTMLElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_pointer_capture", "pointer_id"), &HTMLElement::set_pointer_capture);
+	ClassDB::bind_method(D_METHOD("release_pointer_capture", "pointer_id"), &HTMLElement::release_pointer_capture);
+	ClassDB::bind_method(D_METHOD("has_pointer_capture", "pointer_id"), &HTMLElement::has_pointer_capture);
 	ClassDB::bind_method(D_METHOD("get_animations"), &HTMLElement::get_animations);
 	ClassDB::bind_method(D_METHOD("animate", "keyframes", "options"), &HTMLElement::animate, DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("get_style_property", "name"), &HTMLElement::get_style_property);

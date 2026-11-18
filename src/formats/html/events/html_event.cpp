@@ -39,6 +39,8 @@ void HTMLEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_bubbles", "bubbles"), &HTMLEvent::set_bubbles);
 	ClassDB::bind_method(D_METHOD("get_cancelable"), &HTMLEvent::get_cancelable);
 	ClassDB::bind_method(D_METHOD("set_cancelable", "cancelable"), &HTMLEvent::set_cancelable);
+	ClassDB::bind_method(D_METHOD("get_composed"), &HTMLEvent::get_composed);
+	ClassDB::bind_method(D_METHOD("set_composed", "composed"), &HTMLEvent::set_composed);
 	ClassDB::bind_method(D_METHOD("is_default_prevented"), &HTMLEvent::is_default_prevented);
 	ClassDB::bind_method(D_METHOD("is_trusted"), &HTMLEvent::is_trusted);
 	ClassDB::bind_method(D_METHOD("get_time_stamp"), &HTMLEvent::get_time_stamp);
@@ -54,6 +56,7 @@ void HTMLEvent::_bind_methods() {
 		"", "get_event_phase");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "bubbles"), "set_bubbles", "get_bubbles");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "cancelable"), "set_cancelable", "get_cancelable");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "composed"), "set_composed", "get_composed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "default_prevented"), "", "is_default_prevented");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "trusted"), "", "is_trusted");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "time_stamp"), "", "get_time_stamp");
@@ -88,6 +91,7 @@ void HTMLEvent::end_dispatch() {
 	dispatching = false;
 	phase = PHASE_NONE;
 	current_target = Ref<HTMLEventTarget>();
+	path.clear();
 	passive_context = false;
 }
 
@@ -113,6 +117,11 @@ void HTMLEvent::set_bubbles(bool p_bubbles) {
 void HTMLEvent::set_cancelable(bool p_cancelable) {
 	if (!accepts_configuration(*this)) return;
 	cancelable = p_cancelable;
+}
+
+void HTMLEvent::set_composed(bool p_composed) {
+	if (!accepts_configuration(*this)) return;
+	composed = p_composed;
 }
 
 void HTMLEvent::prevent_default() {
@@ -245,19 +254,169 @@ void HTMLSubmitEvent::_bind_methods() {
 		PROPERTY_USAGE_NONE), "set_submitter", "get_submitter");
 }
 
+void HTMLInputEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_data"), &HTMLInputEvent::get_data);
+	ClassDB::bind_method(D_METHOD("set_data", "data"), &HTMLInputEvent::set_data);
+	ClassDB::bind_method(D_METHOD("get_input_type"), &HTMLInputEvent::get_input_type);
+	ClassDB::bind_method(D_METHOD("set_input_type", "input_type"), &HTMLInputEvent::set_input_type);
+	ClassDB::bind_method(D_METHOD("is_composing"), &HTMLInputEvent::is_composing);
+	ClassDB::bind_method(D_METHOD("set_is_composing", "composing"), &HTMLInputEvent::set_is_composing);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data"), "set_data", "get_data");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "input_type"), "set_input_type", "get_input_type");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_composing"), "set_is_composing", "is_composing");
+}
+
+void HTMLInputEvent::set_data(const String& p_data) { if (accepts_configuration(*this)) data = p_data; }
+void HTMLInputEvent::set_input_type(const StringName& p_input_type) { if (accepts_configuration(*this)) input_type = p_input_type; }
+void HTMLInputEvent::set_is_composing(bool p_composing) { if (accepts_configuration(*this)) composing = p_composing; }
+
+void HTMLCompositionEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_data"), &HTMLCompositionEvent::get_data);
+	ClassDB::bind_method(D_METHOD("set_data", "data"), &HTMLCompositionEvent::set_data);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data"), "set_data", "get_data");
+}
+
+void HTMLCompositionEvent::set_data(const String& p_data) { if (accepts_configuration(*this)) data = p_data; }
+
+void HTMLDataTransfer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_data", "type"), &HTMLDataTransfer::get_data);
+	ClassDB::bind_method(D_METHOD("set_data", "type", "value"), &HTMLDataTransfer::set_data);
+	ClassDB::bind_method(D_METHOD("clear_data", "type"), &HTMLDataTransfer::clear_data, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("get_types"), &HTMLDataTransfer::get_types);
+}
+
+String HTMLDataTransfer::get_data(const String& p_type) const {
+	return p_type.to_lower() == "text/plain" ? text : String();
+}
+
+Error HTMLDataTransfer::set_data(const String& p_type, const String& p_value) {
+	if (read_only || p_type.to_lower() != "text/plain") return ERR_INVALID_PARAMETER;
+	text = p_value;
+	return OK;
+}
+
+void HTMLDataTransfer::clear_data(const String& p_type) {
+	if (read_only || (!p_type.is_empty() && p_type.to_lower() != "text/plain")) return;
+	text = String();
+}
+
+PackedStringArray HTMLDataTransfer::get_types() const {
+	PackedStringArray result;
+	if (!text.is_empty()) result.push_back("text/plain");
+	return result;
+}
+
+void HTMLClipboardEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_clipboard_data"), &HTMLClipboardEvent::get_clipboard_data);
+	ClassDB::bind_method(D_METHOD("set_clipboard_data", "clipboard_data"), &HTMLClipboardEvent::set_clipboard_data);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "clipboard_data", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDataTransfer"),
+		"set_clipboard_data", "get_clipboard_data");
+}
+
+void HTMLToggleEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_old_state"), &HTMLToggleEvent::get_old_state);
+	ClassDB::bind_method(D_METHOD("set_old_state", "state"), &HTMLToggleEvent::set_old_state);
+	ClassDB::bind_method(D_METHOD("get_new_state"), &HTMLToggleEvent::get_new_state);
+	ClassDB::bind_method(D_METHOD("set_new_state", "state"), &HTMLToggleEvent::set_new_state);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "old_state"), "set_old_state", "get_old_state");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "new_state"), "set_new_state", "get_new_state");
+}
+
+void HTMLErrorEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_message"), &HTMLErrorEvent::get_message);
+	ClassDB::bind_method(D_METHOD("set_message", "value"), &HTMLErrorEvent::set_message);
+	ClassDB::bind_method(D_METHOD("get_filename"), &HTMLErrorEvent::get_filename);
+	ClassDB::bind_method(D_METHOD("set_filename", "value"), &HTMLErrorEvent::set_filename);
+	ClassDB::bind_method(D_METHOD("get_line_number"), &HTMLErrorEvent::get_line_number);
+	ClassDB::bind_method(D_METHOD("set_line_number", "value"), &HTMLErrorEvent::set_line_number);
+	ClassDB::bind_method(D_METHOD("get_column_number"), &HTMLErrorEvent::get_column_number);
+	ClassDB::bind_method(D_METHOD("set_column_number", "value"), &HTMLErrorEvent::set_column_number);
+	ClassDB::bind_method(D_METHOD("get_error"), &HTMLErrorEvent::get_error);
+	ClassDB::bind_method(D_METHOD("set_error", "value"), &HTMLErrorEvent::set_error);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "message"), "set_message", "get_message");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "filename"), "set_filename", "get_filename");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "line_number"), "set_line_number", "get_line_number");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "column_number"), "set_column_number", "get_column_number");
+	ADD_PROPERTY(PropertyInfo(Variant::NIL, "error", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT),
+		"set_error", "get_error");
+}
+
+void HTMLAnimationEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_animation_name"), &HTMLAnimationEvent::get_animation_name);
+	ClassDB::bind_method(D_METHOD("set_animation_name", "value"), &HTMLAnimationEvent::set_animation_name);
+	ClassDB::bind_method(D_METHOD("get_elapsed_time"), &HTMLAnimationEvent::get_elapsed_time);
+	ClassDB::bind_method(D_METHOD("set_elapsed_time", "value"), &HTMLAnimationEvent::set_elapsed_time);
+	ClassDB::bind_method(D_METHOD("get_pseudo_element"), &HTMLAnimationEvent::get_pseudo_element);
+	ClassDB::bind_method(D_METHOD("set_pseudo_element", "value"), &HTMLAnimationEvent::set_pseudo_element);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "animation_name"), "set_animation_name", "get_animation_name");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "elapsed_time"), "set_elapsed_time", "get_elapsed_time");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "pseudo_element"), "set_pseudo_element", "get_pseudo_element");
+}
+
+void HTMLTransitionEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_property_name"), &HTMLTransitionEvent::get_property_name);
+	ClassDB::bind_method(D_METHOD("set_property_name", "value"), &HTMLTransitionEvent::set_property_name);
+	ClassDB::bind_method(D_METHOD("get_elapsed_time"), &HTMLTransitionEvent::get_elapsed_time);
+	ClassDB::bind_method(D_METHOD("set_elapsed_time", "value"), &HTMLTransitionEvent::set_elapsed_time);
+	ClassDB::bind_method(D_METHOD("get_pseudo_element"), &HTMLTransitionEvent::get_pseudo_element);
+	ClassDB::bind_method(D_METHOD("set_pseudo_element", "value"), &HTMLTransitionEvent::set_pseudo_element);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "property_name"), "set_property_name", "get_property_name");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "elapsed_time"), "set_elapsed_time", "get_elapsed_time");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "pseudo_element"), "set_pseudo_element", "get_pseudo_element");
+}
+
+void HTMLTouchPoint::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_identifier"), &HTMLTouchPoint::get_identifier);
+	ClassDB::bind_method(D_METHOD("set_identifier", "value"), &HTMLTouchPoint::set_identifier);
+	ClassDB::bind_method(D_METHOD("get_target"), &HTMLTouchPoint::get_target);
+	ClassDB::bind_method(D_METHOD("set_target", "value"), &HTMLTouchPoint::set_target);
+	ClassDB::bind_method(D_METHOD("get_position"), &HTMLTouchPoint::get_position);
+	ClassDB::bind_method(D_METHOD("set_position", "value"), &HTMLTouchPoint::set_position);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "identifier"), "set_identifier", "get_identifier");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement"), "set_target", "get_target");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "position"), "set_position", "get_position");
+}
+
+void HTMLTouchEvent::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_touches"), &HTMLTouchEvent::get_touches);
+	ClassDB::bind_method(D_METHOD("set_touches", "touches"), &HTMLTouchEvent::set_touches);
+	ClassDB::bind_method(D_METHOD("get_target_touches"), &HTMLTouchEvent::get_target_touches);
+	ClassDB::bind_method(D_METHOD("set_target_touches", "touches"), &HTMLTouchEvent::set_target_touches);
+	ClassDB::bind_method(D_METHOD("get_changed_touches"), &HTMLTouchEvent::get_changed_touches);
+	ClassDB::bind_method(D_METHOD("set_changed_touches", "touches"), &HTMLTouchEvent::set_changed_touches);
+	ClassDB::bind_method(D_METHOD("is_shift_pressed"), &HTMLTouchEvent::is_shift_pressed);
+	ClassDB::bind_method(D_METHOD("set_shift_pressed", "pressed"), &HTMLTouchEvent::set_shift_pressed);
+	ClassDB::bind_method(D_METHOD("is_ctrl_pressed"), &HTMLTouchEvent::is_ctrl_pressed);
+	ClassDB::bind_method(D_METHOD("set_ctrl_pressed", "pressed"), &HTMLTouchEvent::set_ctrl_pressed);
+	ClassDB::bind_method(D_METHOD("is_alt_pressed"), &HTMLTouchEvent::is_alt_pressed);
+	ClassDB::bind_method(D_METHOD("set_alt_pressed", "pressed"), &HTMLTouchEvent::set_alt_pressed);
+	ClassDB::bind_method(D_METHOD("is_meta_pressed"), &HTMLTouchEvent::is_meta_pressed);
+	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLTouchEvent::set_meta_pressed);
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_touches", "get_touches");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "target_touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_target_touches", "get_target_touches");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "changed_touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_changed_touches", "get_changed_touches");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shift_pressed"), "set_shift_pressed", "is_shift_pressed");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ctrl_pressed"), "set_ctrl_pressed", "is_ctrl_pressed");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "alt_pressed"), "set_alt_pressed", "is_alt_pressed");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "meta_pressed"), "set_meta_pressed", "is_meta_pressed");
+}
+
 namespace docrender {
 	Ref<HTMLEvent> make_dom_event(const StringName& p_type, bool p_bubbles, bool p_cancelable) {
 		static const HashMap<StringName, EventFactory> event_factories = [] {
 			HashMap<StringName, EventFactory> factories;
 			for (const StringName& type : { StringName("mousedown"), StringName("mouseup"), StringName("mousemove"),
 				StringName("mouseover"), StringName("mouseout"), StringName("mouseenter"), StringName("mouseleave"),
-				StringName("click"), StringName("dblclick"), StringName("contextmenu") }) {
+				StringName("click"), StringName("dblclick"), StringName("contextmenu"), StringName("auxclick") }) {
 				factories.insert(type, &instantiate_event<HTMLMouseEvent>);
 			}
 			for (const StringName& type : { StringName("pointerdown"), StringName("pointerup"), StringName("pointermove"),
 				StringName("pointerover"), StringName("pointerout"), StringName("pointerenter"), StringName("pointerleave"),
-				StringName("pointercancel") }) {
+				StringName("pointercancel"), StringName("gotpointercapture"), StringName("lostpointercapture") }) {
 				factories.insert(type, &instantiate_event<HTMLPointerEvent>);
+			}
+			for (const StringName& type : { StringName("touchstart"), StringName("touchmove"), StringName("touchend"), StringName("touchcancel") }) {
+				factories.insert(type, &instantiate_event<HTMLTouchEvent>);
 			}
 			factories.insert(StringName("wheel"), &instantiate_event<HTMLWheelEvent>);
 			factories.insert(StringName("keydown"), &instantiate_event<HTMLKeyboardEvent>);
@@ -268,6 +427,28 @@ namespace docrender {
 			factories.insert(StringName("focusout"), &instantiate_event<HTMLFocusEvent>);
 			factories.insert(StringName("submit"), &instantiate_event<HTMLSubmitEvent>);
 			factories.insert(StringName("reset"), &instantiate_event<HTMLSubmitEvent>);
+			factories.insert(StringName("beforeinput"), &instantiate_event<HTMLInputEvent>);
+			factories.insert(StringName("input"), &instantiate_event<HTMLInputEvent>);
+			for (const StringName& type : { StringName("compositionstart"), StringName("compositionupdate"), StringName("compositionend") })
+				factories.insert(type, &instantiate_event<HTMLCompositionEvent>);
+			for (const StringName& type : { StringName("copy"), StringName("cut"), StringName("paste") })
+				factories.insert(type, &instantiate_event<HTMLClipboardEvent>);
+			for (const StringName& type : { StringName("beforetoggle"), StringName("toggle") })
+				factories.insert(type, &instantiate_event<HTMLToggleEvent>);
+			for (const StringName& type : { StringName("loadstart"), StringName("progress"), StringName("suspend"), StringName("abort"),
+				StringName("emptied"), StringName("stalled"), StringName("loadedmetadata"), StringName("loadeddata"),
+				StringName("canplay"), StringName("canplaythrough"), StringName("play"), StringName("playing"),
+				StringName("pause"), StringName("waiting"), StringName("seeking"), StringName("seeked"), StringName("ended"),
+				StringName("durationchange"), StringName("timeupdate"), StringName("ratechange"), StringName("volumechange") })
+				factories.insert(type, &instantiate_event<HTMLMediaEvent>);
+			factories.insert(StringName("error"), &instantiate_event<HTMLErrorEvent>);
+			for (const StringName& type : { StringName("animationstart"), StringName("animationiteration"),
+				StringName("animationend"), StringName("animationcancel") })
+				factories.insert(type, &instantiate_event<HTMLAnimationEvent>);
+			for (const StringName& type : { StringName("transitionrun"), StringName("transitionstart"),
+				StringName("transitionend"), StringName("transitioncancel") })
+				factories.insert(type, &instantiate_event<HTMLTransitionEvent>);
+			factories.insert(StringName("scrollend"), &instantiate_event<HTMLEvent>);
 			return factories;
 		}();
 		Ref<HTMLEvent> event;
@@ -276,6 +457,7 @@ namespace docrender {
 		event->set_type(p_type);
 		event->set_bubbles(p_bubbles);
 		event->set_cancelable(p_cancelable);
+		event->set_composed(true);
 		event->mark_trusted();
 		return event;
 	}

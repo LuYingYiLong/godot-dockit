@@ -155,6 +155,8 @@ HTMLLabel::AudioPlayback& HTMLLabel::audio_entry(const Ref<HTMLAudioElement>& p_
 			destroy_audio(*entry);
 			entry->sources = sources;
 			entry->autoplay_attempted = false;
+			entry->load_started = false;
+			entry->loaded = false;
 		}
 		return *entry;
 	}
@@ -166,6 +168,10 @@ Error HTMLLabel::prepare_audio(AudioPlayback& p_audio) {
 	if (p_audio.player) return OK;
 	const auto node = p_audio.element->get_audio_node();
 	if (!node || !is_inside_tree() || !layout->is_element_connected(p_audio.element)) return ERR_UNCONFIGURED;
+	if (!p_audio.load_started) {
+		p_audio.load_started = true;
+		dispatch_media_event(StringName("loadstart"), p_audio.element);
+	}
 	const bool fmod = uses_fmod_audio();
 	for (const String& path : p_audio.sources) {
 		const auto stream = private_audio_stream(layout->audio_resource(path, fmod), fmod);
@@ -192,8 +198,15 @@ Error HTMLLabel::prepare_audio(AudioPlayback& p_audio) {
 		const double duration = stream->call("get_length");
 		node->duration = std::isfinite(duration) && duration > 0.0 ? duration : 0.0;
 		set_audio_player_volume(p_audio);
+		if (!p_audio.loaded) {
+			p_audio.loaded = true;
+			dispatch_media_event(StringName("loadedmetadata"), p_audio.element);
+			dispatch_media_event(StringName("loadeddata"), p_audio.element);
+			dispatch_media_event(StringName("canplay"), p_audio.element);
+		}
 		return OK;
 	}
+	dispatch_media_error_event(p_audio.element, "No supported audio source could be opened.", ERR_FILE_NOT_FOUND);
 	return ERR_FILE_NOT_FOUND;
 }
 
@@ -204,6 +217,7 @@ Error HTMLLabel::play_audio(const Ref<HTMLAudioElement>& p_element) {
 	const Error error = prepare_audio(audio);
 	if (error != OK) return error;
 	const auto node = p_element->get_audio_node();
+	const bool was_paused = node->paused;
 	if (audio.started) {
 		audio.player->call("set_stream_paused", false);
 	}
@@ -215,6 +229,10 @@ Error HTMLLabel::play_audio(const Ref<HTMLAudioElement>& p_element) {
 		audio.started = true;
 	}
 	node->paused = false;
+	if (was_paused) {
+		dispatch_media_event(StringName("play"), p_element);
+		dispatch_media_event(StringName("playing"), p_element);
+	}
 	layout->repaint_input();
 	update_internal_processing();
 	return OK;
@@ -227,6 +245,7 @@ void HTMLLabel::pause_audio(const HTMLAudioElement& p_element) {
 	node->time = entry->player->call("get_playback_position");
 	entry->player->call("set_stream_paused", true);
 	node->paused = true;
+	dispatch_media_event(StringName("pause"), entry->element);
 	layout->repaint_input();
 	update_internal_processing();
 }
@@ -236,6 +255,7 @@ void HTMLLabel::seek_audio(const Ref<HTMLAudioElement>& p_element, double p_time
 	auto& audio = audio_entry(p_element);
 	if (prepare_audio(audio) != OK) return;
 	const auto node = p_element->get_audio_node();
+	dispatch_media_event(StringName("seeking"), p_element);
 	node->time = std::clamp(p_time, 0.0, node->duration);
 	if (audio.started && node->paused) {
 		// The built-in player only seeks while actively playing.
@@ -245,6 +265,8 @@ void HTMLLabel::seek_audio(const Ref<HTMLAudioElement>& p_element, double p_time
 	else if (audio.started) {
 		audio.player->call("seek", node->time);
 	}
+	dispatch_media_event(StringName("seeked"), p_element);
+	dispatch_media_event(StringName("timeupdate"), p_element);
 	layout->repaint_input();
 }
 
@@ -258,6 +280,7 @@ void HTMLLabel::set_audio_player_volume(AudioPlayback& p_audio) {
 
 void HTMLLabel::set_audio_volume(const HTMLAudioElement& p_element) {
 	if (auto* entry = find_audio(p_element)) set_audio_player_volume(*entry);
+	dispatch_media_event(StringName("volumechange"), Ref<HTMLAudioElement>(const_cast<HTMLAudioElement*>(&p_element)));
 	layout->repaint_input();
 }
 
@@ -268,6 +291,8 @@ void HTMLLabel::destroy_audio(AudioPlayback& p_audio) {
 		p_audio.player = nullptr;
 	}
 	p_audio.started = false;
+	p_audio.load_started = false;
+	p_audio.loaded = false;
 	if (const auto node = p_audio.element->get_audio_node()) {
 		node->current_src = String();
 		node->paused = true;
@@ -334,8 +359,9 @@ void HTMLLabel::poll_audio() {
 		const auto node = playback.element->get_audio_node();
 		if (!node || node->paused || !playback.started) continue;
 		const double next = playback.player->call("get_playback_position");
-		if (std::isfinite(next) && std::abs(node->time - next) > 0.02) {
+		if (std::isfinite(next) && std::abs(node->time - next) >= 0.25) {
 			node->time = next;
+			dispatch_media_event(StringName("timeupdate"), playback.element);
 			repaint |= node->has_controls();
 		}
 	}
@@ -350,6 +376,7 @@ void HTMLLabel::audio_finished(uint64_t p_player) {
 			node->paused = true;
 			node->time = node->duration;
 			if (playback.element->is_looping()) play_audio(playback.element);
+			else dispatch_media_event(StringName("ended"), playback.element);
 			layout->repaint_input();
 		}
 		break;

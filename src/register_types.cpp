@@ -76,6 +76,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(DocRenderTexLoader);
 		GDREGISTER_CLASS(MarkdownLabel);
 		GDREGISTER_ABSTRACT_CLASS(HTMLEventTarget);
+		GDREGISTER_CLASS(HTMLListenerHandle);
 		GDREGISTER_ABSTRACT_CLASS(HTMLNode);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDocumentNode);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTextNode);
@@ -92,6 +93,17 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLKeyboardEvent);
 		GDREGISTER_CLASS(HTMLFocusEvent);
 		GDREGISTER_CLASS(HTMLSubmitEvent);
+		GDREGISTER_CLASS(HTMLInputEvent);
+		GDREGISTER_CLASS(HTMLCompositionEvent);
+		GDREGISTER_CLASS(HTMLDataTransfer);
+		GDREGISTER_CLASS(HTMLClipboardEvent);
+		GDREGISTER_CLASS(HTMLToggleEvent);
+		GDREGISTER_CLASS(HTMLMediaEvent);
+		GDREGISTER_CLASS(HTMLErrorEvent);
+		GDREGISTER_CLASS(HTMLAnimationEvent);
+		GDREGISTER_CLASS(HTMLTransitionEvent);
+		GDREGISTER_CLASS(HTMLTouchPoint);
+		GDREGISTER_CLASS(HTMLTouchEvent);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
 		GDREGISTER_ABSTRACT_CLASS(HTMLStyleSheet);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);

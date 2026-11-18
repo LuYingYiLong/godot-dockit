@@ -16,75 +16,40 @@
 | CSS（Grid + Subgrid、容器查询、`:has()/is()/where()`、`@layer`、`@scope`、`oklch/color-mix`、masks、3D transform、scroll snap） | **接近现代浏览器** |
 | 表单（22 种 input 状态、日期/时间/取色器、`<datalist>`、约束校验、`method=dialog`） | **完整** |
 | 媒体（`<video>`/`<audio>` 控件、字幕除外） | **基本完整** |
-| **交互 / 事件层** | **几乎为 0** |
+| **交互 / 事件层** | **基础层已实现**：派发、输入/触摸、控件编辑、状态事件与监听 API；仍有浏览器标准覆盖差距 |
 | **脚本运行时（GDScript 后端）** | **只有一个"挂载钩子"** |
 
-一句话：**缺的不是"能画什么"，而是"页面怎么响应"和"后端怎么运行"。**
-布局引擎已经是浏览器级的，但事件与运行时还停在"库"的水平——这对一个以 GDScript 为唯一后端的方案是致命的，因为 JS 消失后，事件分发和运行时必须由引擎侧自己补上，不能指望宿主项目各自实现。
+一句话：**渲染、DOM 和 GDScript 行为宿主都已存在；本次补齐了事件层的可用基础设施。**
+事件层目前支持元素/document/window 目标、capture/target/bubble、取消默认动作、pointer capture、GDScript 行为处理器、控件编辑事件和常见组件状态事件；它仍是面向项目需求的子集，不等同于完整浏览器运行时。
 
 ---
 
-## 1. 最大缺口：DOM 事件模型（完全缺失）
+## 1. DOM 事件模型状态
 
-### 1.1 现状
+### 1.1 已实现能力
 
-全仓库（`src` 排除 thirdparty）检索结果：
+| 能力 | 当前行为 |
+| --- | --- |
+| 事件目标 | 元素、document、window；通过 `HTMLEventTarget` 监听和派发 |
+| 传播 | capture、target、bubble；`stop_propagation()`、`stop_immediate_propagation()` 和 `prevent_default()` |
+| 监听器 | `add_event_listener()` / `remove_event_listener()` 保持 Error API；`listen()` 返回可 `cancel()` 的句柄；支持 `once`、`capture`、`passive` |
+| 默认 passive | 未指定时，window/document 上的 `wheel`、`touchstart`、`touchmove` 为 passive；显式选项覆盖默认值 |
+| GDScript handler | `onclick="_on_click()"` 或 `onclick="_on_click(event)"` 在行为脚本中按文档顺序解析；Callable `on*` 属性覆盖同一事件的属性处理器 |
+| 输入 | 鼠标、键盘、触摸、pointer capture；`mousemove`、`pointermove`、`touchmove` 合帧，wheel 保持同步 |
+| 编辑 | `beforeinput` / `input`、IME composition、受限 `text/plain` 剪贴板、控件 `select` 和 document `selectionchange` |
+| 组件状态 | 表单 `invalid`、details `beforetoggle` / `toggle`、dialog `cancel` / `close`、`scrollend`、媒体与 CSS animation/transition 生命周期事件 |
+| 诊断 | `HTMLLabel.event_debug` 输出派发摘要，`get_event_listener_count(type)` 查询显式监听器数量 |
 
-| 关键词 | 命中 | 说明 |
-| --- | --- | --- |
-| `addEventListener` / `removeEventListener` | **0** | — |
-| `dispatchEvent` | **0** | — |
-| `Event` 类（DOM 意义） | **0** | 115 处 `Event` 全是 `godot::InputEvent` |
-| `onclick` / `onload` / `onsubmit` 等内联属性 | **0** | 属性被当普通字符串保留，从不解释 |
-| `bubbl` / `capture` / `stopPropagation` | **0** | 无传播模型 |
-| `MouseEvent` / `KeyboardEvent` / `FocusEvent` / `CustomEvent` | **0** | — |
-| `dblclick` / `上下文菜单事件` | **0** | 连双击检测都不存在 |
-| `preventDefault` | **2** | 仅 `HTMLDialogCloseRequest::prevent_default()` |
+事件对象在派发期间保留 `composed_path()` 快照，派发结束后路径清空。`composed` 可读写，但当前没有 Shadow DOM，因此它不会改变传播路径。`DOMContentLoaded` 在首次成功布局后发往 document，随后 `load` 发往 window。
 
-`HTMLNode` / `HTMLElement` / `HTMLDocumentNode` **没有注册监听器的能力**，也没有任何 `Callable` 成员。
-`HTMLElement` 上甚至没有 `click()` / `focus()` / `blur()` / `scrollIntoView()` 方法（这些能力散落在 `HTMLLabel` 上）。
+### 1.2 剩余覆盖差距
 
-### 1.2 现在能"观察到"什么
-
-全部可观察交互 = **`HTMLLabel` 的 14 个信号 + 3 个元素级信号**：
-
-- `HTMLLabel`：`element_clicked`、`link_pressed`、`button_pressed`、`input_changed`、`input_committed`、`textarea_changed`、`textarea_committed`、`select_changed`、`form_submitted`、`form_validation_failed`、`form_reset`、`layout_changed`、`video_failed`、`video_fullscreen_changed`
-- 元素级：`HTMLDialogElement.close_requested/closed`、`HTMLDetailsElement.toggled`
-- `HTMLMutationObserver.mutations_delivered`（只报 DOM 变更，不报输入）
-
-注意 `element_clicked` 的语义是"**默认行为已经执行完之后**的通知"（`html_label.cpp:462-481`：先跑链接跳转/按钮/表单，再发信号），且文本输入框和开关控件会**抑制**该信号（`:393`）。
-
-### 1.3 事件覆盖差距表
-
-| 事件 | 现状 | 机制 / 原因 |
-| --- | --- | --- |
-| `click` | 部分 | 只有 label 级 `element_clicked`，无元素订阅；文本框/toggle 不发；仅左键；需按下抬起同元素且未拖动 |
-| `dblclick` | **无** | 全仓库无双击检测，连双击选词都没有 |
-| `contextmenu` | **无** | 右键只弹内置文本编辑菜单，不可取消、不可观察 |
-| `mousedown` / `mouseup` | **无** | 被内部消费（`pressed_element`/`pressed_button`/`pressed_link`） |
-| `mouseenter` / `mouseleave` | **无** | 只有 CSS `:hover`；无 hovered 元素 getter，也无信号 |
-| `focus` / `blur` | **无** | `set_focused_element()` 静默改伪类，只能轮询 `get_focused_element()` |
-| `keydown` / `keyup` | **无** | `handle_dom_key()` 只处理 Tab/Enter/Space/Escape；任何键码都不进 DOM、不进脚本 |
-| `input` / `change` | 部分 | label 级信号，只带元素句柄，无事件对象 |
-| `submit` | 部分，**不可取消** | `form_submitted` 在校验通过后已提交才发；无法否决 |
-| `reset` | 部分，**不可取消** | `form_reset` 是重置完之后的通知 |
-| `load` / `DOMContentLoaded` | 部分 | 只能靠 `layout_changed`（但 hover 回流也会触发）或 `HTMLBehavior._attach_document` |
-| `scroll` | **无** | 滚动偏移变化完全静默，只能轮询 `get_scroll_offset()` |
-| `error` | 只能轮询 | `get_render_error()`；唯一的异步错误信号是 `video_failed` |
-
-### 1.4 为什么这是"基础功能"缺口
-
-没有事件层时，GDScript 后端要写一个按钮回调，必须：
-
-```gdscript
-func _attach(label: HTMLLabel) -> void:
-    label.element_clicked.connect(func(el):
-        if el.closest("#save-btn"): _save())
-```
-
-也就是说：**每个行为脚本都要自己重新实现一遍事件分发**，还必须连 label 才能做（`_attach_document` 拿不到 label）。这与 JS 是否存在无关——事件冒泡、焦点事件、键盘事件是"文档 UI"的公共基础设施，属于引擎该提供的部分，而不是留给每个使用者。
-
-参考实现已经存在：`HTMLDialogElement.close_requested` + `prevent_default()` 就是这套 API 应有的形状（同步派发、可取消、带 reason），只是没有被抽象成通用 `Event`/`EventTarget`。
+- 没有 JavaScript 引擎；`on*` 属性只接受方法调用形式，不执行任意内联表达式
+- 没有 Shadow DOM、slotting 或跨 shadow root 传播语义
+- 移动事件只保留每帧最后坐标；没有公开 `event_throttle_ms`，wheel 不做合并
+- 媒体事件由当前本地音频/视频后端状态映射；下载进度、网络缓冲和播放速率等后端未提供的状态不会伪造
+- 事件类型工厂和 `on*` 属性集合是显式白名单；未列出的 DOM 标准事件仍可用基础 `HTMLEvent` 手动派发，但不会自动产生
+- 行为脚本中的属性处理器没有 JavaScript 的 `this` 绑定、词法环境或表达式求值；返回布尔 `false` 只在事件可取消时阻止默认动作
 
 ---
 
@@ -196,12 +161,12 @@ for (auto& element : query_selector_all("script")) {
 
 ## 6. 建议优先级
 
-**P0 — 事件层（这是"GDScript 后端"的前提，不是可选项）**
+**P0 — 事件层：已实现基础目标，后续以行为缺口为主**
 
-1. 引入 `HTMLEvent`（`type`/`target`/`current_target`/`phase`/`cancelable`/`default_prevented`）与 `HTMLElement.add_event_listener(type, callable, options)` / `remove_event_listener` / `dispatch_event`。
-2. 先覆盖最小可用集：`click`、`dblclick`、`contextmenu`、`mousedown/up`、`mouseenter/leave`、`focus/blur`、`keydown/up`、`input`、`change`、`submit`（可取消）、`scroll`、`DOMContentLoaded`。
-3. 冒泡沿祖先链走（`closest` 已经有，事件委托是文档 UI 的关键）；`preventDefault` 要在默认行为之前生效——现在默认行为先跑，这个顺序必须改。
-4. 内联 `on*` 属性可以解释为"在该元素上按 `type="text/gdscript"` 挂一个行为"，这样保持零 JS 且不自造表达式语言。
+1. 已有 `HTMLEvent` / `HTMLEventTarget`、事件路径与传播阶段、监听器 options、可取消默认动作、`listen()` 句柄、passive 默认值和事件诊断接口。
+2. 已接入鼠标/键盘/触摸/pointer、表单提交与校验、文本输入/IME/剪贴板、选区、details/dialog、滚动、媒体和 CSS 动画/过渡事件。
+3. 已实现 GDScript 行为方法形式的 `on*` 属性；不支持 JavaScript 内联脚本。
+4. 后续测试重点：多指触摸与 pointercancel、异步媒体后端事件顺序、动画删除时的 cancel/end 边界、重复输入合帧期间的捕获目标，以及 on* 动态属性反射。
 
 **P1 — 脚本宿主**
 

@@ -1,6 +1,8 @@
 #include "html_details_element.h"
 #include "html_details_node.h"
 
+#include "formats/html/events/html_event.h"
+
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <litehtml/render_item.h>
 
@@ -22,6 +24,20 @@ void HTMLDetailsElement::_bind_methods() {
 bool HTMLDetailsElement::is_open() const { return has_attribute("open"); }
 
 void HTMLDetailsElement::set_open(bool p_open) {
+	const bool was_open = is_open();
+	if (was_open == p_open) return;
+	const Ref<HTMLDetailsElement> keep_alive(this);
+	Ref<HTMLToggleEvent> event;
+	event.instantiate();
+	event->set_type(StringName("beforetoggle"));
+	event->set_bubbles(true);
+	event->set_cancelable(true);
+	event->set_composed(true);
+	event->set_old_state(was_open ? "open" : "closed");
+	event->set_new_state(p_open ? "open" : "closed");
+	event->mark_trusted();
+	dispatch_event(event);
+	if (event->is_default_prevented() || !is_valid() || is_open() != was_open) return;
 	if (p_open) set_attribute("open", "");
 	else remove_attribute("open");
 }
@@ -29,7 +45,9 @@ void HTMLDetailsElement::set_open(bool p_open) {
 String HTMLDetailsElement::get_name() const { return get_attribute("name"); }
 void HTMLDetailsElement::set_name(const String& p_name) { set_attribute("name", p_name); }
 
-void HTMLDetailsElement::queue_toggle() {
+void HTMLDetailsElement::queue_toggle(bool p_old_open) {
+	if (!toggle_pending) toggle_old_open = p_old_open;
+	toggle_new_open = is_open();
 	if (toggle_pending) return;
 	toggle_pending = true;
 	callable_mp(this, &HTMLDetailsElement::emit_toggle).call_deferred();
@@ -37,6 +55,17 @@ void HTMLDetailsElement::queue_toggle() {
 
 void HTMLDetailsElement::emit_toggle() {
 	toggle_pending = false;
+	if (!is_valid()) return;
+	Ref<HTMLToggleEvent> event;
+	event.instantiate();
+	event->set_type(StringName("toggle"));
+	event->set_bubbles(false);
+	event->set_composed(true);
+	event->set_old_state(toggle_old_open ? "open" : "closed");
+	event->set_new_state(toggle_new_open ? "open" : "closed");
+	event->mark_trusted();
+	const Ref<HTMLDetailsElement> keep_alive(this);
+	dispatch_event(event);
 	if (is_valid()) emit_signal("toggled", is_open());
 }
 
