@@ -10,6 +10,7 @@ func _ready() -> void:
 	await _check_delegation()
 	await _check_click_and_context_menu()
 	await _check_pointer_mouse_events()
+	await _check_double_click_events()
 	await _check_wheel_events()
 	await _check_touch_events()
 	await _check_keyboard()
@@ -347,6 +348,52 @@ func _check_pointer_mouse_events() -> void:
 	_check(order == ["cancel:pointerdown", "pointerdown:second", "pointerup:second"],
 		"cancelling pointerdown suppresses compatibility mouse events and click")
 	second.remove_event_listener(&"pointerdown", cancel_pointerdown)
+
+
+func _check_double_click_events() -> void:
+	label.text = "<button id=\"double-click\" type=\"button\">Double click</button>"
+	label.size = Vector2(420.0, 160.0)
+	await _settle()
+	var target: HTMLElement = label.get_element_by_id("double-click")
+	if target == null:
+		_check(false, "the double-click target is available")
+		return
+	var click_details: Array[int] = []
+	var down_details: Array[int] = []
+	var up_details: Array[int] = []
+	var sequence: Array[String] = []
+	var on_click: Callable = func(event: HTMLEvent) -> void:
+		var mouse_event: HTMLMouseEvent = event as HTMLMouseEvent
+		click_details.append(mouse_event.detail)
+		sequence.append("click:%d" % mouse_event.detail)
+	var on_down: Callable = func(event: HTMLEvent) -> void:
+		down_details.append((event as HTMLMouseEvent).detail)
+	var on_up: Callable = func(event: HTMLEvent) -> void:
+		up_details.append((event as HTMLMouseEvent).detail)
+	var on_double_click: Callable = func(event: HTMLEvent) -> void:
+		var mouse_event: HTMLMouseEvent = event as HTMLMouseEvent
+		sequence.append("dblclick:%d" % mouse_event.detail)
+	target.add_event_listener(&"click", on_click)
+	target.add_event_listener(&"mousedown", on_down)
+	target.add_event_listener(&"mouseup", on_up)
+	target.add_event_listener(&"dblclick", on_double_click)
+
+	_click("double-click")
+	_click("double-click")
+	_check(click_details == [1, 2,], "two quick clicks report click detail one then two")
+	_check(down_details == [1, 2,] and up_details == [1, 2,],
+		"mousedown and mouseup use the corresponding click detail")
+	_check(sequence == ["click:1", "click:2", "dblclick:2",], "dblclick follows the second click")
+
+	await get_tree().create_timer(0.55).timeout
+	_click("double-click")
+	_check(click_details == [1, 2, 1,], "a click after the time window starts a new sequence")
+	_check(sequence == ["click:1", "click:2", "dblclick:2", "click:1",],
+		"a new click sequence does not dispatch another dblclick")
+	target.remove_event_listener(&"click", on_click)
+	target.remove_event_listener(&"mousedown", on_down)
+	target.remove_event_listener(&"mouseup", on_up)
+	target.remove_event_listener(&"dblclick", on_double_click)
 
 
 func _check_wheel_events() -> void:

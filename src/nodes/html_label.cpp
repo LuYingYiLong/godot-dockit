@@ -267,6 +267,8 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		else mouse_buttons &= ~button_mask;
 		pointer.buttons = mouse_buttons;
 		const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+		if (button_index == MOUSE_BUTTON_LEFT)
+			pointer.detail = click_detail_for(event_target, point - visible_rect.position);
 		if (previous_buttons == 0 && mouse_buttons != 0) {
 			mouse_compatibility_suppressed = false;
 			if (!dispatch_pointer_event(StringName("pointerdown"), event_target, pointer, true)) {

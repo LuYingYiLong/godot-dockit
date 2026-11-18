@@ -12,6 +12,7 @@
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_screen_drag.hpp>
 #include <godot_cpp/classes/input_event_screen_touch.hpp>
+#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
 #include <algorithm>
@@ -21,6 +22,34 @@
 using namespace godot;
 
 using docrender::HTMLInputNode;
+
+int HTMLLabelCanvas::click_detail_for(const Ref<HTMLElement>& p_target, const Vector2& p_position) const {
+	if (click_count == 0 || p_target.is_null() || !p_target->is_valid() || last_click_target != p_target ||
+		last_click_version != p_target->adoption_version) return 1;
+	const uint64_t now = Time::get_singleton()->get_ticks_msec();
+	if (now < last_click_msec || now - last_click_msec >= 500 ||
+		p_position.distance_squared_to(last_click_position) >= 25.0) return 1;
+	return click_count + 1;
+}
+
+void HTMLLabelCanvas::record_click(const Ref<HTMLElement>& p_target, const Vector2& p_position, int p_detail) {
+	if (p_target.is_null() || !p_target->is_valid()) {
+		reset_click_sequence();
+		return;
+	}
+	click_count = p_detail;
+	last_click_msec = Time::get_singleton()->get_ticks_msec();
+	last_click_version = p_target->adoption_version;
+	last_click_position = p_position;
+	last_click_target = p_target;
+}
+
+void HTMLLabelCanvas::reset_click_sequence() {
+	click_count = 0;
+	last_click_msec = 0;
+	last_click_version = 0;
+	last_click_target.unref();
+}
 
 namespace {
 	constexpr int DRAG_DEADZONE = 6;
@@ -74,6 +103,7 @@ HTMLLabelCanvas::PointerInfo HTMLLabelCanvas::make_touch_pointer_info(const Touc
 	info.canceled = p_canceled;
 	info.device = p_touch.device;
 	info.pointer_id = p_touch.pointer_id;
+	info.detail = p_touch.detail;
 	info.kind = PointerKind::TOUCH;
 	info.primary = p_touch.primary;
 	info.accepts_event = false;
@@ -105,6 +135,7 @@ void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
 	touch.start = p_touch.get_position();
 	touch.last = p_touch.get_position();
 	touch.target = label->layout->get_element_at(touch.start);
+	touch.detail = click_detail_for(touch.target, touch.start - label->get_visible_rect().position);
 	touch.primary = active_touch_pointers.empty();
 	touch.compatibility_suppressed = !touch.primary;
 	auto [active, inserted] = active_touch_pointers.emplace(key, touch);
@@ -128,6 +159,7 @@ void HTMLLabelCanvas::handle_touch_drag(const InputEventScreenDrag& p_drag) {
 	TouchPointer& touch = active->second;
 	touch.last = p_drag.get_position();
 	PointerInfo info = make_touch_pointer_info(touch, touch.last, true, false);
+	info.detail = 0;
 	if (!touch.dragged && (touch.last - touch.start).length_squared() > DRAG_DEADZONE * DRAG_DEADZONE) {
 		touch.dragged = true;
 		cancel_press();
@@ -147,6 +179,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 	TouchPointer touch = active->second;
 	active_touch_pointers.erase(active);
 	if (p_touch.is_canceled()) {
+		reset_click_sequence();
 		PointerInfo canceled = make_touch_pointer_info(touch, p_touch.get_position(), false, true);
 		dispatch_pointer_event(StringName("pointercancel"), touch.target, canceled, false);
 		cancel_press();
@@ -154,9 +187,11 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 	}
 	touch.last = p_touch.get_position();
 	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, false);
+	info.detail = click_detail_for(touch.target, touch.last - label->get_visible_rect().position);
 	dispatch_pointer_event(StringName("pointerup"), touch.target, info, false);
 	const Ref<HTMLElement> release_target = label->layout->get_element_at(touch.last);
 	if (!touch.primary || touch.compatibility_suppressed || touch.dragged || release_target != touch.target) {
+		reset_click_sequence();
 		cancel_press();
 		return;
 	}
@@ -373,6 +408,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 
 void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	if (!label || label->layout.is_null()) return;
+	reset_click_sequence();
 	const Ref<InputEventMouseButton> button = p_info.source_event;
 	if (button.is_null()) return;
 	const Rect2 visible_rect = label->get_visible_rect();
@@ -431,9 +467,12 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		accept_pointer_event(p_info);
 		if (!p_info.canceled && checkbox == target_input) {
 			const Ref<HTMLElement> checkbox_target = checkbox;
+			const Vector2 click_position = point - visible_rect.position;
+			record_click(checkbox_target, click_position, p_info.detail);
 			if (dispatch_pointer_event(StringName("click"), checkbox_target, p_info, true)) {
 				toggle_checkbox(checkbox);
 			}
+			if (p_info.detail == 2) dispatch_pointer_event(StringName("dblclick"), checkbox_target, p_info, true);
 		}
 		return;
 	}
@@ -462,6 +501,7 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	}
 	const ObjectID label_id(label->get_instance_id());
 	// 可取消的 click 在对应默认动作之前派发。
+	if (clicked) record_click(event_target, point - visible_rect.position, p_info.detail);
 	const bool click_prevented = clicked && !dispatch_pointer_event(StringName("click"), event_target,
 		p_info, true);
 	if (link_clicked && !click_prevented) {
@@ -484,6 +524,9 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);
 		}
+	}
+	if (clicked && p_info.detail == 2 && event_target.is_valid()) {
+		dispatch_pointer_event(StringName("dblclick"), event_target, p_info, true);
 	}
 }
 

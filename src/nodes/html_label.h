@@ -78,6 +78,7 @@ class HTMLLabelCanvas : public godot::Control {
 		int device = 0;
 		int index = 0;
 		int pointer_id = 0;
+		int detail = 0;
 		godot::Vector2 start;
 		godot::Vector2 last;
 		godot::Ref<HTMLElement> target;
@@ -93,6 +94,11 @@ class HTMLLabelCanvas : public godot::Control {
 	bool pressed_blank = false;
 	int mouse_buttons = 0;
 	bool mouse_compatibility_suppressed = false;
+	int click_count = 0;
+	uint64_t last_click_msec = 0;
+	uint64_t last_click_version = 0;
+	godot::Vector2 last_click_position;
+	godot::Ref<HTMLElement> last_click_target;
 	std::map<TouchKey, TouchPointer> active_touch_pointers;
 	std::map<TouchKey, int> touch_pointer_ids;
 	int next_touch_pointer_id = 1;
@@ -178,6 +184,9 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Vector2 diagnostic_location;
 
 	void cancel_press();
+	int click_detail_for(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position) const;
+	void record_click(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position, int p_detail);
+	void reset_click_sequence();
 	bool handle_dialog_pointer(const godot::Vector2& p_point, bool p_pressed, bool p_cancelled, int p_device, int p_touch = -1);
 	void update_dialog_pointer(const godot::Vector2& p_point, int p_device, int p_touch = -1);
 	void extend_document_selection(const godot::Vector2& p_point);
