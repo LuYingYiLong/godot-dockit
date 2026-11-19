@@ -31,6 +31,46 @@ namespace dockit {
 		constexpr uint32_t PETITE_CAPS = 0x70636170; // OpenType tag "pcap".
 		constexpr uint32_t UPPERCASE_PETITE_CAPS = 0x63327063; // OpenType tag "c2pc".
 
+		struct BidiText {
+			String text;
+			int64_t prefix = 0;
+			int64_t suffix = 0;
+		};
+
+		BidiText apply_unicode_bidi(const String& p_text, bool p_right_to_left, css_unicode_bidi p_mode) {
+			if (p_text.is_empty() || p_mode == css_unicode_bidi::normal) return { p_text };
+			const char32_t override_start = p_right_to_left ? 0x202e : 0x202d;
+			const char32_t embed_start = p_right_to_left ? 0x202b : 0x202a;
+			const char32_t isolate_start = p_right_to_left ? 0x2067 : 0x2066;
+			String prefix;
+			String suffix;
+			switch (p_mode) {
+				case css_unicode_bidi::embed:
+					prefix = String::chr(embed_start);
+					suffix = String::chr(0x202c);
+					break;
+				case css_unicode_bidi::bidi_override:
+					prefix = String::chr(override_start);
+					suffix = String::chr(0x202c);
+					break;
+				case css_unicode_bidi::isolate:
+					prefix = String::chr(isolate_start);
+					suffix = String::chr(0x2069);
+					break;
+				case css_unicode_bidi::isolate_override:
+					prefix = String::chr(isolate_start) + String::chr(override_start);
+					suffix = String::chr(0x202c) + String::chr(0x2069);
+					break;
+				case css_unicode_bidi::plaintext:
+					prefix = String::chr(0x2068);
+					suffix = String::chr(0x2069);
+					break;
+				case css_unicode_bidi::normal:
+					return { p_text };
+			}
+			return { prefix + p_text + suffix, prefix.length(), suffix.length() };
+		}
+
 #ifdef WINDOWS_ENABLED
 		enum class HanScript { none, simplified, traditional };
 
@@ -96,6 +136,8 @@ namespace dockit {
 
 		bool is_shaping_control(char32_t p_character) {
 			return p_character == 0x200c || p_character == 0x200d ||
+				(p_character >= 0x202a && p_character <= 0x202e) ||
+				(p_character >= 0x2066 && p_character <= 0x2069) ||
 				(p_character >= 0xfe00 && p_character <= 0xfe0f) ||
 				(p_character >= 0xe0100 && p_character <= 0xe01ef);
 		}
@@ -558,10 +600,13 @@ namespace dockit {
 		}
 		Ref<TextLine> line;
 		line.instantiate();
+		const BidiText shaped = apply_unicode_bidi(p_text, description.right_to_left, description.unicode_bidi);
+		line->set_direction(description.unicode_bidi == css_unicode_bidi::plaintext ? TextServer::DIRECTION_AUTO :
+			(description.right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR));
 		std::vector<FontStack::ShapingRun> runs;
 		const bool needs_run_metrics = stack->has_size_adjust && description.use_font_line_gap;
-		stack->add_text(*line.ptr(), p_text, description.size, needs_run_metrics ? &runs : nullptr);
-		HTMLTextLayout layout{ line, ascent };
+		stack->add_text(*line.ptr(), shaped.text, description.size, needs_run_metrics ? &runs : nullptr);
+		HTMLTextLayout layout{ line, ascent, shaped.prefix, shaped.suffix };
 		layout.descent = descent;
 		if (!runs.empty()) adjust_normal_line_metrics(layout, runs);
 		layout.spacing = HTMLTextSpacing::create(layout, p_text, description.letter_spacing, description.word_spacing);
@@ -648,8 +693,11 @@ namespace dockit {
 				features[halt] = 1;
 				Ref<TextLine> line;
 				line.instantiate();
-				if (server->shaped_text_add_string(line->get_rid(), p_text, chosen->get_rids(), font_size, features, stack->language)) {
-					HTMLTextLayout candidate{ line, layout.ascent };
+				const BidiText shaped = apply_unicode_bidi(p_text, description.right_to_left, description.unicode_bidi);
+				line->set_direction(description.unicode_bidi == css_unicode_bidi::plaintext ? TextServer::DIRECTION_AUTO :
+					(description.right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR));
+				if (server->shaped_text_add_string(line->get_rid(), shaped.text, chosen->get_rids(), font_size, features, stack->language)) {
+					HTMLTextLayout candidate{ line, layout.ascent, shaped.prefix, shaped.suffix };
 					candidate.descent = layout.descent;
 					if (candidate.width() > 0 && candidate.width() < layout.width()) return candidate;
 				}
@@ -1236,9 +1284,11 @@ namespace dockit {
 		r_scale = font.description.size / size;
 		Ref<TextLine> line;
 		line.instantiate();
-		line->set_direction(p_right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
-		font.stack->add_text(*line.ptr(), p_text, size);
-		HTMLTextLayout layout{ line };
+		const BidiText shaped = apply_unicode_bidi(p_text, p_right_to_left, font.description.unicode_bidi);
+		line->set_direction(font.description.unicode_bidi == css_unicode_bidi::plaintext ? TextServer::DIRECTION_AUTO :
+			(p_right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR));
+		font.stack->add_text(*line.ptr(), shaped.text, size);
+		HTMLTextLayout layout{ line, 0, shaped.prefix, shaped.suffix };
 		layout.spacing = HTMLTextSpacing::create(layout, p_text,
 			font.description.letter_spacing / r_scale, font.description.word_spacing / r_scale);
 		return layout;

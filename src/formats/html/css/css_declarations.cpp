@@ -163,6 +163,7 @@ namespace {
 			{ _id("image-orientation"), { property_family::background } },
 			{ _id("image-resolution"), { property_family::background } },
 			{ _id("direction"), { property_family::keyword, {}, direction_keywords } },
+			{ _id("unicode-bidi"), { property_family::keyword, {}, "normal;embed;bidi-override;isolate;isolate-override;plaintext" } },
 			{ _background_image_, { property_family::background, { _background_image_, _background_image_baseurl_ } } },
 			{ _background_position_, { property_family::background, { _background_position_x_, _background_position_y_ } } },
 			{ _background_position_x_, { property_family::background } },

@@ -37,6 +37,8 @@ namespace dockit {
 		std::shared_ptr<const HTMLTextSlice> slice;
 		std::shared_ptr<const LayoutMetrics> layout_metrics;
 		godot::Vector2 inline_trim;
+		int64_t source_prefix = 0;
+		int64_t source_suffix = 0;
 
 	public:
 		float ascent = 0;
@@ -44,7 +46,8 @@ namespace dockit {
 		std::shared_ptr<const HTMLTextSpacing> spacing;
 
 		HTMLTextLayout() = default;
-		explicit HTMLTextLayout(const godot::Ref<godot::TextLine>& p_line, float p_ascent = 0);
+		explicit HTMLTextLayout(const godot::Ref<godot::TextLine>& p_line, float p_ascent = 0,
+			int64_t p_source_prefix = 0, int64_t p_source_suffix = 0);
 		bool is_valid() const { return line.is_valid(); }
 		bool is_subrange() const { return bool(slice); }
 		godot::RID get_rid() const;

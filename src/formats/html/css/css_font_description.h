@@ -15,12 +15,24 @@
 
 namespace litehtml
 {
+	enum class css_unicode_bidi : int
+	{
+		normal,
+		embed,
+		bidi_override,
+		isolate,
+		isolate_override,
+		plaintext,
+	};
+
 	struct font_description
 	{
 		css_font_families		families;	// Font Family
 		std::string				language;	// Effective BCP 47 language for shaping and fallback
 		bool					language_is_declared = false;
 		bool					use_font_line_gap = true;
+		bool					right_to_left = false;
+		css_unicode_bidi		unicode_bidi = css_unicode_bidi::normal;
 		pixel_t					size = 0;	// Font size
 		css_font_style			style;	// Font style and oblique angle
 		float					width = 100.0f;	// Font width in percent
@@ -84,6 +96,8 @@ namespace litehtml
 			out += ":lang=" + std::to_string(language.size()) + ':' + language;
 			if (language_is_declared) out += ":declared-lang";
 			if (!use_font_line_gap) out += ":fixed-line-height";
+			out += ":rtl=" + std::to_string(right_to_left);
+			out += ":unicode-bidi=" + std::to_string(static_cast<int>(unicode_bidi));
 			out += opentype_key();
 			out += ":ls=" + std::to_string(letter_spacing);
 			out += ":ws=" + std::to_string(word_spacing);

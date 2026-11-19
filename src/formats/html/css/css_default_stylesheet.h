@@ -56,6 +56,14 @@ b, strong {
 	font-weight:bolder;
 }
 
+bdi {
+	unicode-bidi: isolate;
+}
+
+bdo {
+	unicode-bidi: bidi-override;
+}
+
 i, em, cite, dfn, var, address { font-style: italic; }
 address { display: block; }
 small { font-size: smaller; }

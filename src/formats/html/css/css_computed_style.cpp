@@ -158,6 +158,16 @@ void ComputedStyle::compute(const ComputeContext& context)
 	}
 	m_mix_blend_mode = read_property(context, _id("mix-blend-mode"), false, 0, parent ? &parent->m_mix_blend_mode : nullptr);
 	m_isolation = read_property(context, _id("isolation"), false, 0, parent ? &parent->m_isolation : nullptr);
+	const auto& unicode_bidi = context.read_declaration(context.declarations, _id("unicode-bidi"));
+	if (unicode_bidi.is<int>()) {
+		m_unicode_bidi = unicode_bidi.get<int>();
+	} else if (unicode_bidi.is<initial_value>()) {
+		m_unicode_bidi = 0;
+	} else if (unicode_bidi.is<inherit>()) {
+		m_unicode_bidi = parent ? parent->m_unicode_bidi : 0;
+	} else {
+		m_unicode_bidi = parent ? parent->m_unicode_bidi : 0;
+	}
 	m_box_sizing	 = (box_sizing)			read_property<int>(context,  _box_sizing_,		false,	box_sizing_content_box,	 (parent ? &parent->m_box_sizing : nullptr));
 	m_overflow_x = static_cast<overflow>(read_property<int>(context, _id("overflow-x"), false, overflow_visible,
 		parent ? &parent->m_overflow_x : nullptr));
@@ -923,6 +933,8 @@ void ComputedStyle::compute_font(const ComputeContext& context)
 	descr.variations = m_font_variations;
 	descr.size_adjust = m_font_size_adjust;
 	descr.weight				= m_font_weight.val();
+	descr.right_to_left = is_right_to_left();
+	descr.unicode_bidi = static_cast<css_unicode_bidi>(m_unicode_bidi);
 	const auto* painted_decoration = boxless ? decorating_parent : this;
 	if (painted_decoration && painted_decoration->m_text_decoration_line)
 	{

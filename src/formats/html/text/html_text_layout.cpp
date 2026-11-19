@@ -32,14 +32,15 @@ namespace dockit {
 		}
 	};
 
-	HTMLTextLayout::HTMLTextLayout(const Ref<TextLine>& p_line, float p_ascent) : line(p_line), ascent(p_ascent) {}
+	HTMLTextLayout::HTMLTextLayout(const Ref<TextLine>& p_line, float p_ascent, int64_t p_source_prefix, int64_t p_source_suffix) :
+		line(p_line), source_prefix(p_source_prefix), source_suffix(p_source_suffix), ascent(p_ascent) {}
 
 	RID HTMLTextLayout::get_rid() const {
 		return slice ? slice->rid : line->get_rid();
 	}
 
 	int64_t HTMLTextLayout::text_start(const TextServer& p_server) const {
-		return slice ? slice->start : p_server.shaped_text_get_range(get_rid()).x;
+		return slice ? slice->start : p_server.shaped_text_get_range(get_rid()).x + source_prefix;
 	}
 
 	Vector2 HTMLTextLayout::size() const {
@@ -141,13 +142,17 @@ namespace dockit {
 		const auto server = TextServerManager::get_singleton()->get_primary_interface();
 		if (!is_valid() || server.is_null() || p_start < 0 || p_end <= p_start) return {};
 		const auto range = server->shaped_text_get_range(get_rid());
-		if (p_end > int64_t(range.y) - range.x) return {};
-		if (p_start == 0 && p_end == int64_t(range.y) - range.x) return *this;
-		const auto metrics = metrics_in_range(range.x + p_start, range.x + p_end);
+		const int64_t prefix = slice ? 0 : source_prefix;
+		const int64_t suffix = slice ? 0 : source_suffix;
+		const int64_t source_length = int64_t(range.y) - range.x - prefix - suffix;
+		if (p_end > source_length) return {};
+		if (p_start == 0 && p_end == source_length) return *this;
+		const int64_t shaped_start = range.x + prefix + p_start;
+		const auto metrics = metrics_in_range(shaped_start, shaped_start + p_end - p_start);
 		HTMLTextLayout result(line, metrics.x);
 		result.descent = metrics.y;
 		result.layout_metrics = layout_metrics;
-		result.slice = std::make_shared<HTMLTextSlice>(server, line, range.x + p_start, range.x + p_end);
+		result.slice = std::make_shared<HTMLTextSlice>(server, line, shaped_start, shaped_start + p_end - p_start);
 		return result.slice->rid.is_valid() ? result : HTMLTextLayout{};
 	}
 
@@ -178,7 +183,10 @@ namespace dockit {
 			const auto server = TextServerManager::get_singleton()->get_primary_interface();
 			return server->shaped_text_hit_test_position(slice->rid, native) - slice->start;
 		}
-		return line->hit_test(native);
+		const auto server = TextServerManager::get_singleton()->get_primary_interface();
+		const auto range = server.is_valid() ? server->shaped_text_get_range(line->get_rid()) : Vector2i();
+		const int64_t source_length = std::max<int64_t>(0, int64_t(range.y) - range.x - source_prefix - source_suffix);
+		return std::clamp<int64_t>(line->hit_test(native) - source_prefix, 0, source_length);
 	}
 
 	void HTMLTextLayout::draw(const TextServer* p_server, const RID& p_canvas, const Vector2& p_position,

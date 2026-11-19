@@ -83,6 +83,10 @@ std::string auto_direction(const element& p_element) {
 
 } // namespace
 
+std::string compute_auto_direction(const element& p_element) {
+	return auto_direction(p_element);
+}
+
 struct selector_dom final : syntax::SelectorDOM {
 	SelectorNode parent(SelectorNode node) const override {
 		return as_element(node).parent().get();

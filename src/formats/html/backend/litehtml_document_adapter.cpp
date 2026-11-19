@@ -6,6 +6,7 @@
 #include "formats/html/css/css_selector_matcher.h"
 #include "formats/html/css/css_shadows.h"
 #include "formats/html/css/css_default_stylesheet.h"
+#include "formats/html/css/css_litehtml_dom.h"
 #include "litehtml_container.h"
 
 #include "formats/html/elements/html_form_state.h"
@@ -530,8 +531,11 @@ namespace litehtml {
 					const auto rows = std::min<int64_t>(select->display_size(), 1000);
 					tag->m_style.add_property(_height_, "calc(" + std::to_string(rows) + "lh + " + std::to_string(rows * 2 + 2) + "px)");
 				}
-				if (const auto direction = lowcase(tag->get_attr("dir", "")); is_one_of(direction, "ltr", "rtl")) {
+				const std::string direction = lowcase(tag->get_attr("dir", ""));
+				if (is_one_of(direction, "ltr", "rtl")) {
 					tag->m_style.add_property(_id("direction"), direction);
+				} else if (tag->tag() == _bdi_) {
+					tag->m_style.add_property(_id("direction"), compute_auto_direction(*tag));
 				}
 				if (const char* rule = tag->get_attr("clip-rule")) {
 					tag->m_style.add_property(_id("clip-rule"), rule);

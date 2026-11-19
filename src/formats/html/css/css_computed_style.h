@@ -109,6 +109,7 @@ namespace dockit::css {
 		std::shared_ptr<const css_animation_styles> m_animations;
 		int m_mix_blend_mode = 0;
 		int m_isolation = 0;
+		int m_unicode_bidi = 0;
 		css_filter_list m_filters;
 		css_filter_list m_backdrop_filters;
 		int m_will_change = 0;
