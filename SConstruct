@@ -84,7 +84,7 @@ if env["platform"] == "windows" and env["arch"] == "x86_64":
     pdfium_library = pdfium_sdk / "bin/pdfium.dll"
     if (pdfium_sdk / "include/fpdfview.h").is_file() and pdfium_library.is_file():
         pdfium_env.AppendUnique(CPPPATH=[str(pdfium_sdk / "include")], CPPDEFINES=["DOCRENDER_PDFIUM_ENABLED"])
-        pdfium_dll = env.Install("addons/docrender/bin", str(pdfium_library))
+        pdfium_dll = env.Install("addons/dockit/bin", str(pdfium_library))
     elif pdfium_sdk_option:
         print(f"Missing PDFium headers or DLL in {pdfium_sdk}.")
         Exit(1)
@@ -151,7 +151,7 @@ if env["target"] in ["editor", "template_debug"]:
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(
-        "addons/docrender/bin/libdocrender.{}.{}.framework/libdocrender.{}.{}".format(
+        "addons/dockit/bin/libdockit.{}.{}.framework/libdockit.{}.{}".format(
             env["platform"], env["target"], env["platform"], env["target"]
         ),
         source=sources,
@@ -160,19 +160,19 @@ if env["platform"] == "macos":
 elif env["platform"] == "ios":
     if env["ios_simulator"]:
         library = env.StaticLibrary(
-            "addons/docrender/bin/libdocrender.{}.{}.simulator.a".format(env["platform"], env["target"]),
+            "addons/dockit/bin/libdockit.{}.{}.simulator.a".format(env["platform"], env["target"]),
             source=sources,
         )
     else:
         library = env.StaticLibrary(
-            "addons/docrender/bin/libdocrender.{}.{}.a".format(env["platform"], env["target"]),
+            "addons/dockit/bin/libdockit.{}.{}.a".format(env["platform"], env["target"]),
             source=sources,
         )
 else:
     library = env.SharedLibrary(
-        "addons/docrender/bin/docrender{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+        "addons/dockit/bin/dockit{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
         source=sources,
     )
 
 # The GDExtension descriptor loads the packaged libraries by their existing paths.
-Default(Alias("godot-docrender", library + pdfium_dll))
+Default(Alias("godot-dockit", library + pdfium_dll))

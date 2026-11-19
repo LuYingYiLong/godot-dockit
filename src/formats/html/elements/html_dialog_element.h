@@ -2,9 +2,12 @@
 
 #include "html_element.h"
 
+class HTMLDialogElement;
+
 class HTMLDialogCloseRequest : public godot::RefCounted {
 	GDCLASS(HTMLDialogCloseRequest, godot::RefCounted)
-	friend class HTMLDialogElement;
+
+	friend class ::HTMLDialogElement;
 
 public:
 	enum Reason { SCRIPT, ESCAPE, BACKDROP };
@@ -29,6 +32,7 @@ VARIANT_ENUM_CAST(HTMLDialogCloseRequest::Reason);
 
 class HTMLDialogElement : public HTMLElement {
 	GDCLASS(HTMLDialogElement, HTMLElement)
+
 	friend class ::HTMLLabel;
 	friend class ::HTMLLabelCanvas;
 

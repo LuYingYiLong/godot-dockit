@@ -340,7 +340,7 @@ public:
 private:
 	friend class ::HTMLLabelCanvas;
 	friend class HTMLAudioElement;
-	friend class HTMLDialogElement;
+	friend class ::HTMLDialogElement;
 	friend class HTMLVideoElement;
 
 	godot::Ref<HTMLDocument> document;
