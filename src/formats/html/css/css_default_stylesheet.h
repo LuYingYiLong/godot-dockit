@@ -513,7 +513,10 @@ dialog {
 }
 dialog:modal {
 	position: fixed;
-	inset-block: 0;
+	top: 50%;
+	bottom: auto;
+	height: auto;
+	transform: translateY(-50%);
 	max-width: calc(100% - 6px - 2em);
 	max-height: calc(100% - 6px - 2em);
 	overflow: auto;
