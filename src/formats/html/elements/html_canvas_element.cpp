@@ -2,6 +2,8 @@
 #include "html_canvas_node.h"
 
 #include "formats/html/backend/litehtml_container.h"
+#include "formats/html/css/css_parser.h"
+#include "formats/html/css/css_web_color.h"
 #include "formats/html/html_layout.h"
 
 #include <godot_cpp/classes/marshalls.hpp>
@@ -20,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <optional>
 
 using namespace godot;
 
@@ -54,6 +57,15 @@ namespace {
 		if (p_style.get_type() != Variant::OBJECT) return false;
 		Object* object = p_style;
 		return Object::cast_to<HTMLCanvasGradient>(object) || Object::cast_to<HTMLCanvasPattern>(object);
+	}
+
+	std::optional<Color> parse_canvas_color(const String& p_value) {
+		const auto tokens = dockit::css::normalize(p_value.utf8().get_data(),
+			dockit::css::f_componentize | dockit::css::f_remove_whitespace);
+		litehtml::web_color parsed;
+		if (tokens.size() != 1 || !litehtml::parse_color(tokens.front(), parsed, nullptr) || parsed.needs_current_color()) return {};
+		const auto color = parsed.to_srgb();
+		return Color(color.red / 255.0f, color.green / 255.0f, color.blue / 255.0f, color.alpha / 255.0f);
 	}
 }
 
@@ -118,8 +130,11 @@ Error HTMLCanvasGradient::add_color_stop(double p_offset, const Variant& p_color
 	if (!std::isfinite(p_offset) || p_offset < 0.0 || p_offset > 1.0) return ERR_INVALID_PARAMETER;
 	Color color;
 	if (p_color.get_type() == Variant::COLOR) color = p_color;
-	else if (p_color.get_type() == Variant::STRING && Color::html_is_valid(String(p_color))) color = Color::html(String(p_color));
-	else return ERR_INVALID_PARAMETER;
+	else if (p_color.get_type() == Variant::STRING) {
+		const auto parsed = parse_canvas_color(String(p_color));
+		if (!parsed) return ERR_INVALID_PARAMETER;
+		color = *parsed;
+	} else return ERR_INVALID_PARAMETER;
 	stops.push_back({ p_offset, color });
 	std::stable_sort(stops.begin(), stops.end(), [](const Stop& p_left, const Stop& p_right) { return p_left.offset < p_right.offset; });
 	return OK;
@@ -188,15 +203,15 @@ void HTMLCanvasRenderingContext2D::reset(int64_t p_width, int64_t p_height) {
 }
 
 void HTMLCanvasRenderingContext2D::set_fill_style(const Variant& p_style) {
-	if (p_style.get_type() == Variant::COLOR || (p_style.get_type() == Variant::STRING && Color::html_is_valid(String(p_style))) ||
-		is_canvas_paint(p_style)) {
-		state.fill_style = p_style.get_type() == Variant::STRING ? Variant(Color::html(String(p_style))) : p_style;
+	if (p_style.get_type() == Variant::COLOR || is_canvas_paint(p_style)) state.fill_style = p_style;
+	else if (p_style.get_type() == Variant::STRING) {
+		if (const auto color = parse_canvas_color(String(p_style))) state.fill_style = *color;
 	}
 }
 void HTMLCanvasRenderingContext2D::set_stroke_style(const Variant& p_style) {
-	if (p_style.get_type() == Variant::COLOR || (p_style.get_type() == Variant::STRING && Color::html_is_valid(String(p_style))) ||
-		is_canvas_paint(p_style)) {
-		state.stroke_style = p_style.get_type() == Variant::STRING ? Variant(Color::html(String(p_style))) : p_style;
+	if (p_style.get_type() == Variant::COLOR || is_canvas_paint(p_style)) state.stroke_style = p_style;
+	else if (p_style.get_type() == Variant::STRING) {
+		if (const auto color = parse_canvas_color(String(p_style))) state.stroke_style = *color;
 	}
 }
 void HTMLCanvasRenderingContext2D::set_line_width(double p_width) {
@@ -248,8 +263,7 @@ void HTMLCanvasRenderingContext2D::clear_rect(double p_x, double p_y, double p_w
 Color HTMLCanvasRenderingContext2D::style_color(const Variant& p_style, const Vector2& p_position) const {
 	if (p_style.get_type() == Variant::COLOR) return p_style;
 	if (p_style.get_type() == Variant::STRING) {
-		const String value = p_style;
-		if (Color::html_is_valid(value)) return Color::html(value);
+		if (const auto color = parse_canvas_color(String(p_style))) return *color;
 	}
 	if (p_style.get_type() == Variant::OBJECT) {
 		Object* object = p_style;
