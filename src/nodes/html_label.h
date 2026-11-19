@@ -69,6 +69,7 @@ class HTMLLabelCanvas : public godot::Control {
 		bool alt = false;
 		bool meta = false;
 		int device = 0;
+		int touch_index = -1;
 		int pointer_id = 0;
 		PointerKind kind = PointerKind::MOUSE;
 		bool primary = true;
@@ -550,6 +551,11 @@ private:
 	uint64_t wheel_dispatch_sequence = 0;
 	std::optional<godot::Vector2> input_mouse_view_position;
 	bool input_mouse_position_known = false;
+	std::optional<godot::Vector2i> last_window_resize_event_size;
+	std::optional<godot::Vector2i> pending_window_resize_event_size;
+	std::optional<bool> document_visibility_state;
+	std::optional<bool> window_focus_state;
+	bool window_resize_event_queued = false;
 	godot::Vector2i scroll_offset;
 	godot::String render_error;
 	std::optional<godot::Vector2i> pending_scroll_offset;
@@ -650,6 +656,10 @@ private:
 	void navigate_to_history(int64_t p_position);
 	void queue_document_ready_events();
 	void dispatch_document_ready_events();
+	void queue_window_resize_event(const godot::Vector2i& p_viewport_size);
+	void dispatch_window_resize_event();
+	void update_document_visibility_state(bool p_visible, bool p_dispatch);
+	void dispatch_window_focus_event(bool p_focused);
 	static void mount_behaviors(uint64_t p_id, uint64_t p_version);
 	struct DialogFocus {
 		godot::Ref<HTMLDialogElement> dialog;
@@ -798,6 +808,7 @@ public:
 	bool is_transparent_canvas() const;
 	void set_event_debug(bool p_enabled);
 	bool is_event_debug_enabled() const { return event_debug; }
+	godot::String get_document_visibility_state() const;
 	int64_t get_event_listener_count(const godot::StringName& p_type) const;
 	void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
 	bool is_css_diagnostics_enabled() const;									// 返回是否收集 CSS 声明诊断

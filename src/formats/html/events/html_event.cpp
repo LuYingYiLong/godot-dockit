@@ -481,6 +481,8 @@ namespace docrender {
 				StringName("transitionend"), StringName("transitioncancel") })
 				factories.insert(type, &instantiate_event<HTMLTransitionEvent>);
 			factories.insert(StringName("scrollend"), &instantiate_event<HTMLEvent>);
+			factories.insert(StringName("resize"), &instantiate_event<HTMLEvent>);
+			factories.insert(StringName("visibilitychange"), &instantiate_event<HTMLEvent>);
 			return factories;
 		}();
 		Ref<HTMLEvent> event;

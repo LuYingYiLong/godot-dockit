@@ -174,6 +174,7 @@ Ref<HTMLWindow> HTMLDOM::get_window() const {
 }
 
 void HTMLDOM::clear_event_listeners() {
+	release_all_pointer_captures();
 	event_listeners.clear();
 	document_event_listeners.by_type.clear();
 	document_event_listeners.count = 0;
@@ -185,7 +186,6 @@ void HTMLDOM::clear_event_listeners() {
 	pending_scroll_targets.clear();
 	scroll_delivery_queued = false;
 	++scroll_delivery_epoch;
-	active_pointer_ids.clear();
 	pointer_capture_targets.clear();
 	pending_pointer_capture_events.clear();
 }
@@ -216,6 +216,41 @@ void HTMLDOM::end_pointer(int32_t p_pointer_id) {
 	if (active_pointer_ids.has(p_pointer_id)) release_pointer_capture(p_pointer_id);
 	active_pointer_ids.erase(p_pointer_id);
 	if (event_dispatch_depth == 0) flush_pointer_capture_events();
+}
+
+void HTMLDOM::release_pointer_captures_in_subtree(const litehtml::element& p_element) {
+	std::vector<int32_t> pointer_ids;
+	for (const auto& entry : pointer_capture_targets) {
+		if (entry.value.is_null() || !entry.value->is_valid()) continue;
+		const auto captured_element = entry.value->lock_element();
+		if (captured_element && is_host_including_ancestor(p_element, captured_element)) {
+			pointer_ids.push_back(entry.key);
+		}
+	}
+	for (const int32_t pointer_id : pointer_ids) {
+		if (active_pointer_ids.has(pointer_id)) release_pointer_capture(pointer_id);
+		else pointer_capture_targets.erase(pointer_id);
+	}
+}
+
+void HTMLDOM::release_all_pointer_captures() {
+	struct Capture {
+		Ref<HTMLElement> target;
+		int32_t pointer_id = 0;
+	};
+	std::vector<Capture> captures;
+	captures.reserve(pointer_capture_targets.size());
+	for (const auto& entry : pointer_capture_targets) captures.push_back({ entry.value, entry.key });
+	pointer_capture_targets.clear();
+	active_pointer_ids.clear();
+	pending_pointer_capture_events.clear();
+	for (const Capture& capture : captures) {
+		if (capture.target.is_null() || !capture.target->is_valid()) continue;
+		Ref<HTMLEvent> event = make_dom_event(StringName("lostpointercapture"), true, false);
+		const Ref<HTMLPointerEvent> pointer_event = event;
+		if (pointer_event.is_valid()) pointer_event->set_pointer_id(capture.pointer_id);
+		dispatch_event(capture.target, event);
+	}
 }
 
 Error HTMLDOM::set_pointer_capture(const Ref<HTMLElement>& p_target, int32_t p_pointer_id) {

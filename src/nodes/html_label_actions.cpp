@@ -629,6 +629,7 @@ HTMLLabelCanvas::PointerInfo HTMLLabelCanvas::make_touch_pointer_info(const Touc
 	info.pressed = p_pressed;
 	info.canceled = p_canceled;
 	info.device = p_touch.device;
+	info.touch_index = p_touch.index;
 	info.pointer_id = p_touch.pointer_id;
 	info.detail = p_touch.detail;
 	info.kind = PointerKind::TOUCH;
@@ -797,7 +798,7 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 		queue_pointer_move_event(StringName("pointermove"), event_target, p_info);
 		if (p_info.kind == PointerKind::MOUSE) queue_pointer_move_event(StringName("mousemove"), event_target, p_info);
 	};
-	update_dialog_pointer(point, p_info.device);
+	update_dialog_pointer(point, p_info.device, p_info.touch_index);
 	if (native_drag_started) return;
 	if (selection_drag_attempt || element_drag_attempt) {
 		const Vector2 selection_press = pressed_position + visible_rect.position;

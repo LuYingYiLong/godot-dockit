@@ -7,9 +7,11 @@ var failures: int
 func _ready() -> void:
 	await _check_dispatch()
 	await _check_event_targets()
+	await _check_lifecycle_events()
 	await _check_delegation()
 	await _check_click_and_context_menu()
 	await _check_pointer_mouse_events()
+	await _check_pointer_capture()
 	await _check_double_click_events()
 	await _check_wheel_events()
 	await _check_touch_events()
@@ -96,6 +98,65 @@ func _check_event_targets() -> void:
 		"a replaced document starts with a listener-free window")
 
 
+func _check_lifecycle_events() -> void:
+	label.text = "<p id=\"lifecycle\">Lifecycle</p>"
+	label.size = Vector2(420.0, 240.0)
+	await _settle()
+	var document: HTMLDocumentNode = label.get_document_node()
+	var window: HTMLWindow = document.get_default_view() if document != null else null
+	if document == null or window == null:
+		_check(false, "lifecycle events have document and window targets")
+		return
+	_check(document.visibility_state == "visible", "the document reports its initial effective visibility")
+	var resize_events: Array[HTMLEvent] = []
+	var property_resize_events: Array[int] = []
+	var resize_listener: Callable = func(event: HTMLEvent) -> void:
+		resize_events.append(event)
+		_check(event.target == window and not event.bubbles and not event.cancelable and not event.composed,
+			"resize is a non-bubbling, non-cancelable window event")
+	var on_resize: Callable = func(_event: HTMLEvent) -> void: property_resize_events.append(1)
+	window.add_event_listener(&"resize", resize_listener)
+	window.set("onresize", on_resize)
+	_check(window.get("onresize") == on_resize, "window onresize reflects its assigned callable")
+	label.size = Vector2(380.0, 220.0)
+	await _settle()
+	_check(resize_events.size() == 1 and property_resize_events.size() == 1,
+		"a completed viewport size change dispatches one resize event to listeners and onresize")
+	window.remove_event_listener(&"resize", resize_listener)
+	window.set("onresize", null)
+
+	var visibility_states: Array[String] = []
+	var visibility_listener: Callable = func(event: HTMLEvent) -> void:
+		visibility_states.append(document.visibility_state)
+		_check(event.target == document and not event.bubbles and not event.cancelable and not event.composed,
+			"visibilitychange targets the document without bubbling or cancellation")
+	document.add_event_listener(&"visibilitychange", visibility_listener)
+	label.hide()
+	await _settle()
+	_check(document.visibility_state == "hidden" and visibility_states == ["hidden",],
+		"hiding the label updates and dispatches document visibility")
+	label.show()
+	await _settle()
+	_check(document.visibility_state == "visible" and visibility_states == ["hidden", "visible",],
+		"showing the label dispatches the matching visibility transition")
+	document.remove_event_listener(&"visibilitychange", visibility_listener)
+
+	var focus_events: Array[StringName] = []
+	var focus_listener: Callable = func(event: HTMLEvent) -> void:
+		focus_events.append(event.type)
+		_check(event.target == window and not event.bubbles and not event.cancelable and not event.composed,
+			"window focus events are non-bubbling and non-cancelable")
+	window.add_event_listener(&"focus", focus_listener)
+	window.add_event_listener(&"blur", focus_listener)
+	label.notification(NOTIFICATION_WM_WINDOW_FOCUS_IN)
+	label.notification(NOTIFICATION_WM_WINDOW_FOCUS_IN)
+	label.notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+	label.notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+	_check(focus_events == [&"focus", &"blur",], "window focus notifications are dispatched once per state change")
+	window.remove_event_listener(&"focus", focus_listener)
+	window.remove_event_listener(&"blur", focus_listener)
+
+
 func _check_passive_and_recursion() -> void:
 	label.text = """<button id="button" type="button">Button</button>"""
 	label.size = Vector2(420.0, 160.0)
@@ -116,6 +177,27 @@ func _check_passive_and_recursion() -> void:
 	_check(not_cancelled and not passive_event.is_default_prevented(),
 		"a passive listener cannot cancel the default action")
 	button.remove_event_listener(&"passive-check", passive, {"capture": false})
+	var document: HTMLDocumentNode = label.get_document_node()
+	var window: HTMLWindow = document.get_default_view() if document != null else null
+	if window != null:
+		var default_passive_hits: Array[StringName] = []
+		var default_passive: Callable = func(event: HTMLEvent) -> void:
+			default_passive_hits.append(event.type)
+			event.prevent_default()
+		for event_type: StringName in [&"wheel", &"touchstart", &"touchmove",]:
+			window.add_event_listener(event_type, default_passive, {"capture": true})
+			var default_event: HTMLEvent = _event_of(event_type)
+			_check(button.dispatch_event(default_event) and not default_event.is_default_prevented(),
+				"window input listeners default to passive for %s" % event_type)
+			window.remove_event_listener(event_type, default_passive, {"capture": true})
+		_check(default_passive_hits == [&"wheel", &"touchstart", &"touchmove",],
+			"default-passive window listeners run for wheel and touch events")
+		var explicit_active: Callable = func(event: HTMLEvent) -> void: event.prevent_default()
+		window.add_event_listener(&"wheel", explicit_active, {"passive": false})
+		var active_event: HTMLEvent = _event_of(&"wheel")
+		_check(not button.dispatch_event(active_event) and active_event.is_default_prevented(),
+			"an explicit passive false option overrides the window default")
+		window.remove_event_listener(&"wheel", explicit_active)
 
 	var recursive: Array[bool] = []
 	var recurse: Callable = func(event: HTMLEvent) -> void:
@@ -193,6 +275,29 @@ func _check_dispatch() -> void:
 	inner.dispatch_event(_event())
 	_check(hits.size() == 1, "once listeners run a single time")
 
+	var mutation_order: Array[String] = []
+	var removed_during_dispatch: Callable = func(_event: HTMLEvent) -> void: mutation_order.append("removed")
+	var added_during_dispatch: Callable = func(_event: HTMLEvent) -> void: mutation_order.append("added")
+	var mutate_listeners: Callable = func(_event: HTMLEvent) -> void:
+		mutation_order.append("mutator")
+		inner.remove_event_listener(&"listener-mutation", removed_during_dispatch)
+		inner.add_event_listener(&"listener-mutation", added_during_dispatch)
+	inner.add_event_listener(&"listener-mutation", mutate_listeners)
+	inner.add_event_listener(&"listener-mutation", removed_during_dispatch)
+	inner.dispatch_event(_event_of(&"listener-mutation"))
+	_check(mutation_order == ["mutator",], "removed and added listeners do not alter the current dispatch snapshot")
+	mutation_order.clear()
+	inner.dispatch_event(_event_of(&"listener-mutation"))
+	_check(mutation_order == ["mutator", "added",], "listener changes apply to the next dispatch")
+	inner.remove_event_listener(&"listener-mutation", mutate_listeners)
+	inner.remove_event_listener(&"listener-mutation", added_during_dispatch)
+	var handle_hits: Array[int] = []
+	var handle_listener: Callable = func(_event: HTMLEvent) -> void: handle_hits.append(1)
+	var listener_handle: HTMLListenerHandle = inner.listen(&"handle-cancel", handle_listener)
+	listener_handle.cancel()
+	inner.dispatch_event(_event_of(&"handle-cancel"))
+	_check(handle_hits.is_empty(), "canceling a listener handle removes its listener")
+
 	var clone: HTMLElement = inner.clone_node()
 	_check(not clone.has_event_listener(&"click"), "clones do not copy listeners")
 
@@ -234,9 +339,19 @@ func _check_click_and_context_menu() -> void:
 	var on_link: Callable = func(uri: String) -> void:
 		pressed.append(uri)
 	label.link_pressed.connect(on_link)
+	var document: HTMLDocumentNode = label.get_document_node()
+	var window: HTMLWindow = document.get_default_view() if document != null else null
+	var window_click_targets: Array[String] = []
+	var observe_window_click: Callable = func(event: HTMLEvent) -> void:
+		window_click_targets.append(event.target.get_attribute("id"))
+	if window != null:
+		window.add_event_listener(&"click", observe_window_click)
 
 	_click("link")
 	_check(pressed.size() == 1, "a plain click still reports link_pressed")
+	_check(window_click_targets == ["link",], "a real click bubbles from its element to the window")
+	if window != null:
+		window.remove_event_listener(&"click", observe_window_click)
 
 	pressed.clear()
 	var veto: Callable = func(event: HTMLEvent) -> void:
@@ -263,7 +378,6 @@ func _check_click_and_context_menu() -> void:
 	_check(menu.size() == 1, "a right click dispatches contextmenu")
 	plain.remove_event_listener(&"contextmenu", on_menu)
 	label.link_pressed.disconnect(on_link)
-
 
 
 func _check_pointer_mouse_events() -> void:
@@ -357,6 +471,143 @@ func _check_pointer_mouse_events() -> void:
 	second.remove_event_listener(&"pointerdown", cancel_pointerdown)
 
 
+func _check_pointer_capture() -> void:
+	label.text = "<button id=\"capture\">Capture</button><button id=\"release\">Release area</button>"
+	label.size = Vector2(420.0, 180.0)
+	await _settle()
+	var first: HTMLElement = label.get_element_by_id("capture")
+	var second: HTMLElement = label.get_element_by_id("release")
+	if first == null or second == null:
+		_check(false, "pointer capture targets are available")
+		return
+	var order: Array[String] = []
+	var capture_on_down: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointerdown":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			_check(first.set_pointer_capture(pointer.pointer_id) == OK, "an active pointer can be captured")
+	var observe: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointermove" or event.type == &"pointerup":
+			order.append("%s:%s" % [event.type, event.target.get_attribute("id")])
+		else:
+			order.append(String(event.type))
+	first.add_event_listener(&"pointerdown", capture_on_down)
+	for event_type: StringName in [&"gotpointercapture", &"pointermove", &"pointerup", &"lostpointercapture",]:
+		first.add_event_listener(event_type, observe)
+
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = first.get_bounding_rect().get_center()
+	get_viewport().push_input(press, true)
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = second.get_bounding_rect().get_center()
+	motion.global_position = motion.position
+	motion.relative = motion.position - press.position
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(motion, true)
+	await _settle()
+	var release: InputEventMouseButton = InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = motion.position
+	get_viewport().push_input(release, true)
+	await _settle()
+	_check(order == ["gotpointercapture", "pointermove:capture", "pointerup:capture", "lostpointercapture",],
+		"capture keeps pointer events on its target and releases after pointerup")
+	first.remove_event_listener(&"pointerdown", capture_on_down)
+	for event_type: StringName in [&"gotpointercapture", &"pointermove", &"pointerup", &"lostpointercapture",]:
+		first.remove_event_listener(event_type, observe)
+	var transfer_results: Array[int] = []
+	var transfer_on_down: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointerdown":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			first.set_pointer_capture(pointer.pointer_id)
+	var transfer_on_move: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointermove":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			transfer_results.append(second.set_pointer_capture(pointer.pointer_id))
+	var transfer_events: Array[String] = []
+	var observe_first_transfer: Callable = func(event: HTMLEvent) -> void:
+		if event.type in [&"gotpointercapture", &"pointermove", &"lostpointercapture",]:
+			transfer_events.append("first:%s" % event.type)
+	var observe_second_transfer: Callable = func(event: HTMLEvent) -> void:
+		if event.type in [&"gotpointercapture", &"pointermove", &"pointerup", &"lostpointercapture",]:
+			transfer_events.append("second:%s" % event.type)
+	first.add_event_listener(&"pointerdown", transfer_on_down)
+	first.add_event_listener(&"pointermove", transfer_on_move)
+	first.add_event_listener(&"gotpointercapture", observe_first_transfer)
+	first.add_event_listener(&"pointermove", observe_first_transfer)
+	first.add_event_listener(&"lostpointercapture", observe_first_transfer)
+	second.add_event_listener(&"gotpointercapture", observe_second_transfer)
+	second.add_event_listener(&"pointermove", observe_second_transfer)
+	second.add_event_listener(&"pointerup", observe_second_transfer)
+	second.add_event_listener(&"lostpointercapture", observe_second_transfer)
+	press = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = first.get_bounding_rect().get_center()
+	get_viewport().push_input(press, true)
+	motion = InputEventMouseMotion.new()
+	motion.position = second.get_bounding_rect().get_center()
+	motion.global_position = motion.position
+	motion.relative = motion.position - press.position
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(motion, true)
+	await _settle()
+	var second_motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	second_motion.position = first.get_bounding_rect().get_center()
+	second_motion.global_position = second_motion.position
+	second_motion.relative = second_motion.position - motion.position
+	second_motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(second_motion, true)
+	await _settle()
+	release = InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = second_motion.position
+	get_viewport().push_input(release, true)
+	await _settle()
+	_check(transfer_results == [OK,] and transfer_events == [
+		"first:gotpointercapture",
+		"first:pointermove",
+		"first:lostpointercapture",
+		"second:gotpointercapture",
+		"second:pointermove",
+		"second:pointerup",
+		"second:lostpointercapture",
+	], "pointer capture transfers future events and releases the final target")
+	first.remove_event_listener(&"pointerdown", transfer_on_down)
+	first.remove_event_listener(&"pointermove", transfer_on_move)
+	first.remove_event_listener(&"gotpointercapture", observe_first_transfer)
+	first.remove_event_listener(&"pointermove", observe_first_transfer)
+	first.remove_event_listener(&"lostpointercapture", observe_first_transfer)
+	second.remove_event_listener(&"gotpointercapture", observe_second_transfer)
+	second.remove_event_listener(&"pointermove", observe_second_transfer)
+	second.remove_event_listener(&"pointerup", observe_second_transfer)
+	second.remove_event_listener(&"lostpointercapture", observe_second_transfer)
+	var removal_order: Array[StringName] = []
+	var capture_before_removal: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointerdown":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			_check(second.set_pointer_capture(pointer.pointer_id) == OK, "the second pointer can be captured")
+	var observe_removal: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"gotpointercapture" or event.type == &"lostpointercapture":
+			removal_order.append(event.type)
+	second.add_event_listener(&"pointerdown", capture_before_removal)
+	second.add_event_listener(&"gotpointercapture", observe_removal)
+	second.add_event_listener(&"lostpointercapture", observe_removal)
+	press = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = second.get_bounding_rect().get_center()
+	get_viewport().push_input(press, true)
+	second.remove()
+	_check(removal_order == [&"gotpointercapture", &"lostpointercapture",] and not second.is_valid(),
+		"removing a captured target dispatches lostpointercapture before invalidating its handle")
+	press.pressed = false
+	get_viewport().push_input(press, true)
+
+
 func _check_double_click_events() -> void:
 	label.text = "<button id=\"double-click\" type=\"button\">Double click</button>"
 	label.size = Vector2(420.0, 160.0)
@@ -428,10 +679,11 @@ func _check_wheel_events() -> void:
 	var input: InputEventMouseButton = InputEventMouseButton.new()
 	input.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	input.pressed = true
-	input.factor = 1.0
+	input.factor = 2.0
 	input.position = target.get_bounding_rect().get_center()
 	get_viewport().push_input(input, true)
 	_check(received.size() == 1, "a wheel input dispatches once across the canvas and viewport")
+	_check(is_equal_approx(received[0].delta.y, 72.0), "wheel delta preserves a non-default Godot factor")
 	_check(label.get_scroll_offset().y > 0, "an uncancelled wheel input scrolls the document")
 	target.remove_event_listener(&"wheel", inspect)
 
@@ -446,7 +698,6 @@ func _check_wheel_events() -> void:
 	get_viewport().push_input(input, true)
 	_check(label.get_scroll_offset() == Vector2i.ZERO, "cancelling wheel prevents overflow and viewport scrolling")
 	target.remove_event_listener(&"wheel", veto)
-
 
 
 func _check_touch_events() -> void:
@@ -508,6 +759,125 @@ func _check_touch_events() -> void:
 	get_viewport().push_input(repeat_touch, true)
 	_check(pointer_ids.size() == 2 and pointer_ids[1] == stable_id,
 		"the same device and touch index keep a stable pointer ID")
+	for event_type: StringName in [
+		&"pointerdown",
+		&"pointerup",
+		&"pointermove",
+		&"pointercancel",
+		&"mousedown",
+		&"mouseup",
+		&"click",
+	]:
+		dom.remove_event_listener(event_type, inspect)
+
+	var multi_primary: Array[bool] = []
+	var multi_ids: Array[int] = []
+	var multi_order: Array[StringName] = []
+	var touch_counts: Array[int] = []
+	var multi_inspect: Callable = func(event: HTMLEvent) -> void:
+		multi_order.append(event.type)
+		if event.type == &"pointerdown":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			multi_primary.append(pointer.is_primary)
+			multi_ids.append(pointer.pointer_id)
+		elif event.type == &"touchstart":
+			var touch_event: HTMLTouchEvent = event as HTMLTouchEvent
+			touch_counts.append(touch_event.touches.size())
+	for event_type: StringName in [
+		&"pointerdown",
+		&"pointerup",
+		&"pointercancel",
+		&"mousedown",
+		&"mouseup",
+		&"click",
+		&"touchstart",
+		&"touchend",
+		&"touchcancel",
+	]:
+		dom.add_event_listener(event_type, multi_inspect)
+	var first_touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	first_touch.device = 7
+	first_touch.index = 11
+	first_touch.position = position
+	first_touch.pressed = true
+	get_viewport().push_input(first_touch, true)
+	var second_touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	second_touch.device = 7
+	second_touch.index = 12
+	second_touch.position = position
+	second_touch.pressed = true
+	get_viewport().push_input(second_touch, true)
+	second_touch.pressed = false
+	get_viewport().push_input(second_touch, true)
+	first_touch.pressed = false
+	get_viewport().push_input(first_touch, true)
+	_check(multi_primary == [true, false,] and multi_ids.size() == 2 and multi_ids[0] != multi_ids[1],
+		"simultaneous touches have distinct pointer IDs and one primary pointer")
+	_check(touch_counts == [1, 2,] and multi_order.count(&"mousedown") == 1 and
+		multi_order.count(&"mouseup") == 1 and multi_order.count(&"click") == 1,
+		"multitouch exposes active touch counts and suppresses secondary compatibility mouse events")
+	for event_type: StringName in [
+		&"pointerdown",
+		&"pointerup",
+		&"pointercancel",
+		&"mousedown",
+		&"mouseup",
+		&"click",
+		&"touchstart",
+		&"touchend",
+		&"touchcancel",
+	]:
+		dom.remove_event_listener(event_type, multi_inspect)
+
+	var cancel_order: Array[StringName] = []
+	var capture_cancelled_pointer: Callable = func(event: HTMLEvent) -> void:
+		if event.type == &"pointerdown":
+			var pointer: HTMLPointerEvent = event as HTMLPointerEvent
+			_check(target.set_pointer_capture(pointer.pointer_id) == OK, "a touch pointer can be captured")
+	var observe_cancel: Callable = func(event: HTMLEvent) -> void:
+		if event.type in [&"gotpointercapture", &"pointercancel", &"pointerup", &"lostpointercapture", &"touchcancel",]:
+			cancel_order.append(event.type)
+	for event_type: StringName in [
+		&"pointerdown",
+		&"gotpointercapture",
+		&"pointercancel",
+		&"pointerup",
+		&"lostpointercapture",
+		&"touchcancel",
+	]:
+		dom.add_event_listener(event_type, observe_cancel)
+	dom.add_event_listener(&"pointerdown", capture_cancelled_pointer)
+	var canceled_touch: InputEventScreenTouch = InputEventScreenTouch.new()
+	canceled_touch.device = 7
+	canceled_touch.index = 13
+	canceled_touch.position = position
+	canceled_touch.pressed = true
+	get_viewport().push_input(canceled_touch, true)
+	canceled_touch.pressed = false
+	canceled_touch.canceled = true
+	get_viewport().push_input(canceled_touch, true)
+	_check(cancel_order == [&"gotpointercapture", &"pointercancel", &"lostpointercapture", &"touchcancel",] and
+		not cancel_order.has(&"pointerup"), "canceling a captured touch releases capture without pointerup")
+	dom.remove_event_listener(&"pointerdown", capture_cancelled_pointer)
+	for event_type: StringName in [
+		&"pointerdown",
+		&"gotpointercapture",
+		&"pointercancel",
+		&"pointerup",
+		&"lostpointercapture",
+		&"touchcancel",
+	]:
+		dom.remove_event_listener(event_type, observe_cancel)
+	for event_type: StringName in [
+		&"pointerdown",
+		&"pointerup",
+		&"pointermove",
+		&"pointercancel",
+		&"mousedown",
+		&"mouseup",
+		&"click",
+	]:
+		dom.add_event_listener(event_type, inspect)
 
 	label.set_scroll_offset(Vector2i.ZERO)
 	await _settle()

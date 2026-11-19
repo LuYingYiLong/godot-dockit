@@ -878,6 +878,7 @@ void HTMLLabel::_notification(int p_what) {
 		break;
 	case NOTIFICATION_POST_ENTER_TREE:
 		behavior_host_in_tree = true;
+		update_document_visibility_state(is_visible_in_tree(), true);
 		ensure_controls();
 		connect_audio_buses(true);
 		queue_audio_sync();
@@ -904,6 +905,7 @@ void HTMLLabel::_notification(int p_what) {
 			canvas->restart_caret_blink();
 			canvas->update_ime();
 		}
+		dispatch_window_focus_event(true);
 		break;
 	case NOTIFICATION_INTERNAL_PROCESS:
 		poll_audio();
@@ -940,6 +942,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_VISIBILITY_CHANGED:
+		update_document_visibility_state(is_visible_in_tree(), true);
 		queue_accessibility_update();
 		if (!is_visible_in_tree()) close_input_picker();
 		if (is_visible_in_tree()) {
@@ -971,6 +974,9 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE: {
+		update_document_visibility_state(false, true);
+		pending_window_resize_event_size.reset();
+		window_resize_event_queued = false;
 		clear_accessibility_tree();
 		if (navigation_request_id != 0) {
 			docrender::cancel_http_request(navigation_request_id);
@@ -1022,6 +1028,7 @@ void HTMLLabel::_notification(int p_what) {
 			canvas->stop_caret_blink();
 			canvas->close_ime();
 		}
+		dispatch_window_focus_event(false);
 		break;
 	case NOTIFICATION_WM_MOUSE_EXIT:
 		stop_color_eyedropper();
@@ -2523,6 +2530,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 	layout_signal_pending |= p_layout_changed || viewport_size != p_viewport ||
 		content_size != p_content || render_error != p_error;
 	viewport_size = p_viewport;
+	queue_window_resize_event(p_viewport);
 	queue_accessibility_update();
 	update_internal_processing();
 	content_size = p_content;

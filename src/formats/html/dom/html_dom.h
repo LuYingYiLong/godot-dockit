@@ -240,6 +240,8 @@ namespace docrender {
 		void clear_event_listeners();
 	void begin_pointer(int32_t p_pointer_id);
 	void end_pointer(int32_t p_pointer_id);
+	void release_pointer_captures_in_subtree(const litehtml::element& p_element);
+	void release_all_pointer_captures();
 	godot::Error set_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id);
 	godot::Error release_pointer_capture(int32_t p_pointer_id);
 	bool has_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id) const;

@@ -82,6 +82,7 @@ protected:
 public:
 	NodeType get_node_type() const override { return DOCUMENT_NODE; } // 返回文档节点类型
 	godot::String get_base_uri() const; // 返回当前文档的生效基准
+	godot::String get_visibility_state() const;
 	godot::String get_design_mode() const;
 	void set_design_mode(const godot::String& p_mode);
 	godot::Ref<HTMLElement> get_active_element() const;

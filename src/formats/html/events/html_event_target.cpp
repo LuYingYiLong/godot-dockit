@@ -16,10 +16,10 @@ namespace {
 		"gotpointercapture", "input", "invalid", "keydown", "keyup", "load", "loadstart", "loadeddata", "loadedmetadata",
 		"mousedown", "mouseenter", "mouseleave", "mousemove", "mouseout", "mouseover", "mouseup", "paste",
 		"pause", "play", "playing", "pointercancel", "pointerdown", "pointerenter", "pointerleave", "pointermove",
-		"pointerout", "pointerover", "pointerup", "progress", "ratechange", "reset", "scroll", "scrollend",
+		"pointerout", "pointerover", "pointerup", "progress", "ratechange", "reset", "resize", "scroll", "scrollend",
 		"seeked", "seeking", "select", "selectionchange", "stalled", "submit", "suspend", "timeupdate",
 		"toggle", "touchcancel", "touchend", "touchmove", "touchstart", "transitioncancel", "transitionend",
-		"transitionrun", "transitionstart", "volumechange", "waiting", "wheel", "lostpointercapture"
+		"transitionrun", "transitionstart", "visibilitychange", "volumechange", "waiting", "wheel", "lostpointercapture"
 	};
 
 	StringName event_type_from_handler_property(const StringName& p_name) {

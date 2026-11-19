@@ -24,6 +24,7 @@ namespace {
 
 void HTMLDocumentNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLDocumentNode::get_base_uri);
+	ClassDB::bind_method(D_METHOD("get_visibility_state"), &HTMLDocumentNode::get_visibility_state);
 	ClassDB::bind_method(D_METHOD("get_design_mode"), &HTMLDocumentNode::get_design_mode);
 	ClassDB::bind_method(D_METHOD("set_design_mode", "mode"), &HTMLDocumentNode::set_design_mode);
 	ClassDB::bind_method(D_METHOD("get_active_element"), &HTMLDocumentNode::get_active_element);
@@ -39,6 +40,7 @@ void HTMLDocumentNode::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document_element", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
 		"", "get_document_element");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "design_mode"), "set_design_mode", "get_design_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "visibility_state"), "", "get_visibility_state");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "active_element", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
 		"", "get_active_element");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "body", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
@@ -50,6 +52,13 @@ void HTMLDocumentNode::_bind_methods() {
 String HTMLDocumentNode::get_base_uri() const {
 	const auto* layout = get_owner();
 	return layout ? layout->get_base_uri() : String();
+}
+
+String HTMLDocumentNode::get_visibility_state() const {
+	const auto* layout = get_owner();
+	if (!layout) return String("hidden");
+	const auto* host = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(layout->get_event_host_id())));
+	return host ? host->get_document_visibility_state() : String("hidden");
 }
 
 String HTMLDocumentNode::get_design_mode() const {

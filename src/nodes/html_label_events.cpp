@@ -3,11 +3,14 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/events/html_event.h"
+#include "formats/html/events/html_window.h"
 #include "formats/html/html_layout.h"
 
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input.hpp>
+
+#include <utility>
 
 using namespace godot;
 
@@ -18,6 +21,10 @@ void HTMLLabel::set_event_debug(bool p_enabled) {
 
 int64_t HTMLLabel::get_event_listener_count(const StringName& p_type) const {
 	return layout.is_valid() ? int64_t(layout->get_dom().get_event_listener_count(p_type)) : 0;
+}
+
+String HTMLLabel::get_document_visibility_state() const {
+	return document_visibility_state.value_or(is_visible_in_tree()) ? String("visible") : String("hidden");
 }
 
 void HTMLLabel::queue_document_ready_events() {
@@ -38,6 +45,59 @@ void HTMLLabel::dispatch_document_ready_events() {
 	if (!ObjectDB::get_instance(id)) return;
 	const Ref<HTMLWindow> window = dom.get_window();
 	if (window.is_valid()) dom.dispatch_event(window, docrender::make_dom_event(StringName("load"), false, false));
+}
+
+void HTMLLabel::queue_window_resize_event(const Vector2i& p_viewport_size) {
+	if (p_viewport_size.x <= 0 || p_viewport_size.y <= 0) return;
+	if (!last_window_resize_event_size) {
+		last_window_resize_event_size = p_viewport_size;
+		return;
+	}
+	if (*last_window_resize_event_size == p_viewport_size) return;
+	pending_window_resize_event_size = p_viewport_size;
+	if (window_resize_event_queued) return;
+	window_resize_event_queued = true;
+	callable_mp(this, &HTMLLabel::dispatch_window_resize_event).call_deferred();
+}
+
+void HTMLLabel::dispatch_window_resize_event() {
+	window_resize_event_queued = false;
+	const std::optional<Vector2i> pending = std::exchange(pending_window_resize_event_size, std::nullopt);
+	if (!pending || !is_inside_tree() || *pending != viewport_size ||
+		(last_window_resize_event_size && *last_window_resize_event_size == *pending) || layout.is_null()) return;
+	last_window_resize_event_size = *pending;
+	const Ref<HTMLWindow> window = layout->get_dom().get_window();
+	if (!window.is_valid()) return;
+	Ref<HTMLEvent> event = docrender::make_dom_event(StringName("resize"), false, false);
+	event->set_composed(false);
+	layout->get_dom().dispatch_event(window, event);
+}
+
+void HTMLLabel::update_document_visibility_state(bool p_visible, bool p_dispatch) {
+	if (!document_visibility_state) {
+		document_visibility_state = p_visible;
+		return;
+	}
+	if (*document_visibility_state == p_visible) return;
+	document_visibility_state = p_visible;
+	if (!p_dispatch || layout.is_null()) return;
+	const Ref<HTMLDocumentNode> document_node = layout->get_dom().get_document_node();
+	if (!document_node.is_valid()) return;
+	Ref<HTMLEvent> event = docrender::make_dom_event(StringName("visibilitychange"), false, false);
+	event->set_composed(false);
+	layout->get_dom().dispatch_event(document_node, event);
+}
+
+void HTMLLabel::dispatch_window_focus_event(bool p_focused) {
+	if (window_focus_state && *window_focus_state == p_focused) return;
+	window_focus_state = p_focused;
+	if (layout.is_null()) return;
+	const Ref<HTMLWindow> window = layout->get_dom().get_window();
+	if (!window.is_valid()) return;
+	Ref<HTMLEvent> event = docrender::make_dom_event(
+		p_focused ? StringName("focus") : StringName("blur"), false, false);
+	event->set_composed(false);
+	layout->get_dom().dispatch_event(window, event);
 }
 
 namespace {

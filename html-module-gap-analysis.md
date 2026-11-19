@@ -38,6 +38,7 @@
 | 输入 | 鼠标、键盘、触摸、pointer capture；`mousemove`、`pointermove`、`touchmove` 合帧，wheel 保持同步 |
 | 编辑 | `beforeinput` / `input`、IME composition、受限 `text/plain` 剪贴板、控件 `select` 和 document `selectionchange` |
 | 组件状态 | 表单 `invalid`、details `beforetoggle` / `toggle`、dialog `cancel` / `close`、`scrollend`、媒体与 CSS animation/transition 生命周期事件 |
+| 宿主生命周期 | 实际视口尺寸变化时在 window 派发 `resize`；有效树可见性变化时在 document 派发 `visibilitychange`，并可读 `document.visibility_state`；OS 窗口焦点变化映射为 window `focus` / `blur` |
 | 诊断 | `HTMLLabel.event_debug` 输出派发摘要，`get_event_listener_count(type)` 查询显式监听器数量 |
 
 事件对象在派发期间保留 `composed_path()` 快照，派发结束后路径清空。`composed` 可读写，但当前没有 Shadow DOM，因此它不会改变传播路径。`DOMContentLoaded` 在首次成功布局后发往 document，随后 `load` 发往 window。
@@ -164,7 +165,7 @@ for (auto& element : query_selector_all("script")) {
 1. 已有 `HTMLEvent` / `HTMLEventTarget`、事件路径与传播阶段、监听器 options、可取消默认动作、`listen()` 句柄、passive 默认值和事件诊断接口。
 2. 已接入鼠标/键盘/触摸/pointer、表单提交与校验、文本输入/IME/剪贴板、选区、details/dialog、滚动、媒体和 CSS 动画/过渡事件。
 3. 已实现 GDScript 行为方法形式的 `on*` 属性；不支持 JavaScript 内联脚本。
-4. 后续测试重点：多指触摸与 pointercancel、异步媒体后端事件顺序、动画删除时的 cancel/end 边界、重复输入合帧期间的捕获目标，以及 on* 动态属性反射。
+4. 已覆盖宿主生命周期事件、pointer capture 释放、多指触摸、非默认 wheel factor、监听器派发期间增删和 on* 动态属性；后续可继续扩展异步媒体后端顺序与动画移除时的 cancel/end 边界。
 
 **P1 — 脚本宿主（运行时基础能力已实现）**
 

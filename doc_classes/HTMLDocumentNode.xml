@@ -4,7 +4,7 @@
 		The root node of a live HTMLLayout document.
 	</brief_description>
 	<description>
-		Queries and edits the live DOM of one layout. It becomes invalid when that layout clears or replaces its document. Queries and creation methods on an invalid document node return [code]null[/code] or empty arrays.
+		Queries and edits the live DOM of one layout. It becomes invalid when that layout clears or replaces its document. Queries and creation methods on an invalid document node return [code]null[/code] or empty arrays. [member visibility_state] reflects whether the owning [HTMLLabel] is effectively visible in the scene tree; changes dispatch [code]visibilitychange[/code] on this document.
 	</description>
 	<methods>
 		<method name="create_document_fragment">
@@ -31,6 +31,12 @@
 			<return type="String" />
 			<description>
 				Returns the current base URL of this document.
+			</description>
+		</method>
+		<method name="get_visibility_state" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns [code]visible[/code] or [code]hidden[/code] based on the owning [HTMLLabel]'s effective scene-tree visibility.
 			</description>
 		</method>
 		<method name="get_element_by_id" qualifiers="const">
@@ -76,6 +82,9 @@
 		</member>
 		<member name="design_mode" type="String" setter="set_design_mode" getter="get_design_mode" default="&quot;off&quot;">
 			Set to [code]on[/code] to make the document body editable, or [code]off[/code] to disable document-wide editing. Other values are ignored.
+		</member>
+		<member name="visibility_state" type="String" setter="" getter="get_visibility_state">
+			The effective visibility of the owning [HTMLLabel]: [code]visible[/code] or [code]hidden[/code]. A change dispatches [code]visibilitychange[/code] on this document.
 		</member>
 	</members>
 </class>

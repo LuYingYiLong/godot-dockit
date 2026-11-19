@@ -245,6 +245,7 @@ HTMLNode::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const liteh
 
 HTMLNode::DetachedTree::~DetachedTree() {
 	if (const auto dom = owner.lock(); root && dom) {
+		dom->release_pointer_captures_in_subtree(*root);
 		dom->detached_trees.erase(root.get());
 		dom->forget_subtree_listeners(*root);
 		const auto remove_entries = [&](const auto& p_visit, const litehtml::element& p_node) -> void {
@@ -1030,6 +1031,7 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	if (!copy) {
 		return false;
 	}
+	p_source_dom.release_pointer_captures_in_subtree(*p_source);
 	// Stage the detached target before editing the source. Its owner cleans up on failure.
 	const auto target_tree = register_detached_tree(copy);
 	if (parent && !parent->removeChild(p_source)) {
@@ -1158,6 +1160,7 @@ void HTMLDOM::release_detached_root(const std::shared_ptr<HTMLNode::DetachedTree
 }
 
 void HTMLDOM::forget_subtree(const litehtml::element& p_element) {
+	release_pointer_captures_in_subtree(p_element);
 	forget_subtree_listeners(p_element);
 	if (const ObjectID* id = node_handles.getptr(&p_element)) {
 		if (auto* handle = Object::cast_to<HTMLNode>(ObjectDB::get_instance(*id))) {
@@ -1580,6 +1583,7 @@ Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_noti
 	if (!parent->removeChild(p_element)) {
 		return ERR_INVALID_PARAMETER;
 	}
+	release_pointer_captures_in_subtree(*p_element);
 	retain_detached_subtree(p_element);
 	finish_children(children_change);
 	docrender::forms::synchronize(parent);
@@ -1600,6 +1604,7 @@ Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
 	if (!parent->removeChild(p_element)) {
 		return ERR_INVALID_PARAMETER;
 	}
+	release_pointer_captures_in_subtree(*p_element);
 	forget_subtree(*p_element);
 	finish_children(children_change);
 	docrender::forms::synchronize(parent);
