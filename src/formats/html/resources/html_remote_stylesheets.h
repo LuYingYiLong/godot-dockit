@@ -6,7 +6,7 @@
 
 #include <optional>
 
-namespace docrender {
+namespace dockit {
 	inline constexpr int MAX_HTML_SOURCE_BYTES = 1024 * 1024;
 
 	enum class RemoteStylesheetStatus { loading, ready, failed };

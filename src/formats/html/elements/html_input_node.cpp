@@ -20,7 +20,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	HTMLInputNode::HTMLInputNode(const std::shared_ptr<litehtml::document>& p_document) : HTMLTextControlNode(p_document, false) {
 		update_pseudos();
 	}

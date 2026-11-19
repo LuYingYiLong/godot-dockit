@@ -6,7 +6,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		using Side = css_border_image_offsets::Side;
 

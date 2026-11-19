@@ -1,6 +1,6 @@
 #include "mermaid_label.h"
 
-#include "editor/docrender_source_editor.h"
+#include "editor/dockit_source_editor.h"
 
 using namespace godot;
 
@@ -77,7 +77,7 @@ void MermaidLabel::set_document(const Ref<MermaidDocument>& p_document) {
 	}
 	document = p_document;
 	if (document.is_valid()) {
-		DocRenderSourceEditorPlugin::observe_source_document(document);
+		DockitSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", changed, CONNECT_DEFERRED);
 	}
 	refresh_render();

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <string_view>
 
-namespace docrender {
+namespace dockit {
 	inline int read_table_span(std::string_view p_value, int p_minimum, int p_maximum) {
 		const auto start = p_value.find_first_not_of(" \t\n\r\f");
 		if (start == std::string_view::npos) return 1;

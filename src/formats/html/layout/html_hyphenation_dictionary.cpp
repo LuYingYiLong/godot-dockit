@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr uint32_t HYB_MAGIC = 0x62ad7968;
 		constexpr size_t MAX_WORD_LENGTH = 128;

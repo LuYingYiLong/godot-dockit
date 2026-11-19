@@ -5,7 +5,7 @@
 #include "css_property_value.h"
 #include "css_units.h"
 
-namespace docrender::css {
+namespace dockit::css {
 
 	// The host supplies the display scale and resource queries for the current document.
 	class StyleHost {

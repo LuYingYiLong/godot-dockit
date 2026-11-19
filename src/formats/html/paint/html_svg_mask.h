@@ -8,7 +8,7 @@
 #include <optional>
 #include <string_view>
 
-namespace docrender {
+namespace dockit {
 	class HTMLPlaneTransform;
 
 	struct HTMLSVGMask {

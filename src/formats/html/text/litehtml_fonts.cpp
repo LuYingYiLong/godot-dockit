@@ -24,7 +24,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int64_t WIDTH_AXIS = 0x77647468; // OpenType tag "wdth".
 		constexpr uint32_t OPTICAL_SIZE_AXIS = 0x6f70737a; // OpenType tag "opsz".
@@ -974,7 +974,7 @@ namespace docrender {
 				if (const auto* authored = faces_by_family.getptr(folded)) {
 					append_authored_fonts(choices, *authored, folded, p_description, size_dependent);
 				}
-				else if (folded == "docrender-code-block" && fonts.code_block.is_valid()) {
+				else if (folded == "dockit-code-block" && fonts.code_block.is_valid()) {
 					append(with_style(fonts.code_block, true, folded));
 				}
 				else if (folded == text_name) {
@@ -1286,4 +1286,4 @@ namespace docrender {
 			description.decoration_color, thickness, font.emphasis, font.get_emphasis_centers(text, layout),
 			description.emphasis_color, (description.emphasis_position & text_emphasis_position_under) != 0 };
 	}
-} // namespace docrender
+} // namespace dockit

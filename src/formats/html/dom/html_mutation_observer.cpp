@@ -69,7 +69,7 @@ TypedArray<Dictionary> HTMLMutationObserver::take_records() {
 	return records;
 }
 
-TypedArray<Dictionary> HTMLMutationObserver::take_owner(docrender::HTMLDOM& p_owner) {
+TypedArray<Dictionary> HTMLMutationObserver::take_owner(dockit::HTMLDOM& p_owner) {
 	TypedArray<Dictionary> records;
 	pending.erase(std::remove_if(pending.begin(), pending.end(), [&](const Pending& p_item) {
 		if (p_item.owner.lock().get() != &p_owner) return false;
@@ -82,7 +82,7 @@ TypedArray<Dictionary> HTMLMutationObserver::take_owner(docrender::HTMLDOM& p_ow
 	return records;
 }
 
-void HTMLMutationObserver::clear_owner(const docrender::HTMLDOM& p_owner) {
+void HTMLMutationObserver::clear_owner(const dockit::HTMLDOM& p_owner) {
 	registrations.erase(std::remove_if(registrations.begin(), registrations.end(), [&](const Registration& p_item) {
 		return p_item.owner.lock().get() == &p_owner;
 	}), registrations.end());
@@ -94,9 +94,9 @@ void HTMLMutationObserver::clear_owner(const docrender::HTMLDOM& p_owner) {
 	}), pending.end());
 }
 
-void HTMLMutationObserver::enqueue(docrender::HTMLDOM& p_owner, const docrender::HTMLMutation& p_change,
+void HTMLMutationObserver::enqueue(dockit::HTMLDOM& p_owner, const dockit::HTMLMutation& p_change,
 	const std::vector<Ref<HTMLNode>>& p_ancestry) {
-	using Mutation = docrender::HTMLMutation;
+	using Mutation = dockit::HTMLMutation;
 	bool observed = false;
 	bool old_value = false;
 	std::vector<Transient> extra;

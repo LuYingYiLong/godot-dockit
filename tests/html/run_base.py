@@ -11,16 +11,16 @@ from run_audio import run, write
 
 
 def create_project(project, repo, template):
-    extension = project / "addons/docrender"
+    extension = project / "addons/dockit"
     (extension / "bin").mkdir(parents=True)
-    for asset in ("docrender.gdextension", "bin/docrender.windows.template_debug.x86_64.dll"):
-        shutil.copyfile(repo / "addons/docrender" / asset, extension / asset)
+    for asset in ("dockit.gdextension", "bin/dockit.windows.template_debug.x86_64.dll"):
+        shutil.copyfile(repo / "addons/dockit" / asset, extension / asset)
     (project / ".godot").mkdir()
-    write(project / ".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+    write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
     write(project / "project.godot", """config_version=5
 
 [application]
-config/name="DocRender HTML document base"
+config/name="Dockit HTML document base"
 run/main_scene="res://main.tscn"
 
 [display]
@@ -125,7 +125,7 @@ def main():
                         "Godot/export_templates/4.7.2.stable/windows_debug_x86_64.exe")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
-    with TemporaryDirectory(prefix="docrender-html-base-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    with TemporaryDirectory(prefix="dockit-html-base-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         project, export = workspace / "project", workspace / "export"
         export.mkdir()

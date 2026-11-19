@@ -4,7 +4,7 @@
 
 #include <godot_cpp/variant/rect2.hpp>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLBoundary {
 		godot::Ref<HTMLNode> node;
 		int64_t offset = 0;
@@ -18,18 +18,18 @@ class HTMLSelection;
 
 class HTMLRange : public godot::RefCounted {
 	GDCLASS(HTMLRange, godot::RefCounted)
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 	friend class HTMLSelection;
 
-	std::weak_ptr<docrender::HTMLDOM> owner;
+	std::weak_ptr<dockit::HTMLDOM> owner;
 	uint64_t version = 0;
-	docrender::HTMLBoundary start;
-	docrender::HTMLBoundary end;
+	dockit::HTMLBoundary start;
+	dockit::HTMLBoundary end;
 
 	static void _bind_methods();
-	bool accepts(const docrender::HTMLBoundary& p_boundary) const;
-	void set_boundaries(docrender::HTMLBoundary p_start, docrender::HTMLBoundary p_end);
+	bool accepts(const dockit::HTMLBoundary& p_boundary) const;
+	void set_boundaries(dockit::HTMLBoundary p_start, dockit::HTMLBoundary p_end);
 	enum class Contents { CLONE, EXTRACT, DELETE };
 	godot::Ref<HTMLDocumentFragment> process_contents(Contents p_action);
 

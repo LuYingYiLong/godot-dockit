@@ -10,7 +10,7 @@
 #include <litehtml/html.h>
 
 using namespace godot;
-using docrender::HTMLDialogNode;
+using dockit::HTMLDialogNode;
 
 void HTMLDialogCloseRequest::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_reason"), &HTMLDialogCloseRequest::get_reason);
@@ -147,7 +147,7 @@ Error HTMLDialogElement::dispatch_close_request(HTMLDialogCloseRequest::Reason p
 	const Ref<HTMLDialogElement> keep_alive(this);
 	const uint64_t sequence = node->open_sequence;
 	const ObjectID owner_id(owner->get_instance_id());
-	Ref<HTMLEvent> cancel_event = docrender::make_dom_event(StringName("cancel"), false, true);
+	Ref<HTMLEvent> cancel_event = dockit::make_dom_event(StringName("cancel"), false, true);
 	dispatch_event(cancel_event);
 	if (cancel_event->is_default_prevented()) return ERR_SKIP;
 	HTMLLayout* current_owner = get_owner();
@@ -173,6 +173,6 @@ Error HTMLDialogElement::dispatch_close_request(HTMLDialogCloseRequest::Reason p
 void HTMLDialogElement::emit_closed(const String& p_value) {
 	if (!is_valid()) return;
 	const Ref<HTMLDialogElement> keep_alive(this);
-	dispatch_event(docrender::make_dom_event(StringName("close"), false, false));
+	dispatch_event(dockit::make_dom_event(StringName("close"), false, false));
 	if (is_valid()) emit_signal("closed", p_value);
 }

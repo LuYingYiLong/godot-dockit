@@ -2,7 +2,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLGaugeReading {
 		double fraction;
 		bool indeterminate;

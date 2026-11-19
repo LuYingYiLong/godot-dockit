@@ -29,7 +29,7 @@ func _run() -> void:
 	var video: HTMLVideoElement = label.get_element_by_id("movie") as HTMLVideoElement
 	var unavailable: bool = OS.get_cmdline_user_args().has("--unavailable")
 	var exported: bool = OS.get_cmdline_user_args().has("--pck")
-	var alias: String = "res://.docrender/video/" + SOURCE.sha256_text() + ".mp4"
+	var alias: String = "res://.dockit/video/" + SOURCE.sha256_text() + ".mp4"
 	_check(video != null, "The document loads the specialized video handle")
 	_check(label.get_element_by_id("after") != null, "HTML following the media still loads")
 	if exported:

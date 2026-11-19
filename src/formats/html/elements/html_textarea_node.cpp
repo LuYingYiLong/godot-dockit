@@ -10,7 +10,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		int64_t dimension_hint(const char* p_text, int64_t p_default) {
 			const String text = String::utf8(p_text).strip_edges();

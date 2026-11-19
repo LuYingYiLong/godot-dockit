@@ -13,7 +13,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_ACTIVE = 6;
 		constexpr int MAX_REDIRECTS = 8;

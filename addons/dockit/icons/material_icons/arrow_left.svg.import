@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/arrow_left.svg"
+source_file="res://addons/dockit/icons/material_icons/arrow_left.svg"
 dest_files=["res://.godot/imported/arrow_left.svg-4c3f1b189cc9556877b6db0be170e868.ctex"]
 
 [params]

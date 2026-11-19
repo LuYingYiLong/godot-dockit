@@ -6,7 +6,7 @@
 #include <map>
 #include <cstdint>
 
-namespace docrender::css {
+namespace dockit::css {
 
 // Layer ranks follow normal precedence. Special ranks represent the baseline, unlayered rules and inline declarations.
 inline constexpr int css_default_layer = -1;
@@ -41,4 +41,4 @@ public:
 	bool has_layers() const { return layers.size() > 1; }
 };
 
-} // namespace docrender::css
+} // namespace dockit::css

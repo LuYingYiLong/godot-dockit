@@ -12,7 +12,7 @@ namespace litehtml {
 	class document;
 }
 
-namespace docrender::svg {
+namespace dockit::svg {
 	const litehtml::element* resolve_fragment(const litehtml::element& p_root, std::string_view p_url); // 在当前文档解析片段引用
 	std::shared_ptr<litehtml::document> reference_document(const litehtml::element& p_target,
 		std::string_view p_url, const std::string& p_css_base); // 取得片段引用所属的文档

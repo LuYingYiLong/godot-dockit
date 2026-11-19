@@ -10,7 +10,7 @@
 
 namespace litehtml { class element; }
 
-namespace docrender::css {
+namespace dockit::css {
 	class TransitionState {
 		using ElementKey = std::weak_ptr<litehtml::element>;
 		using Value = AnimatedValue;

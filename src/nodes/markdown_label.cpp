@@ -642,13 +642,13 @@ namespace {
 			return entry;
 		}
 
-		if (docrender::is_remote_image_url(p_uri)) {
-			const auto key = docrender::remote_image_request_url(p_uri);
+		if (dockit::is_remote_image_url(p_uri)) {
+			const auto key = dockit::remote_image_request_url(p_uri);
 			if (const auto* cached = s_image_cache.getptr(key)) return *cached;
 			const auto callback = p_canvas ?
 				callable_mp_static(&MarkdownLabelCanvas::remote_image_completed).bind(p_canvas->get_instance_id()) : Callable();
-			const auto image = docrender::request_remote_image(p_uri, callback);
-			using Status = docrender::RemoteImageStatus;
+			const auto image = dockit::request_remote_image(p_uri, callback);
+			using Status = dockit::RemoteImageStatus;
 			MarkdownImageCacheEntry entry;
 			entry.status = image.status == Status::ready ? MARKDOWN_IMAGE_READY :
 				image.status == Status::loading ? MARKDOWN_IMAGE_LOADING : MARKDOWN_IMAGE_FAILED;
@@ -679,7 +679,7 @@ namespace {
 
 		if (p_uri.begins_with("user://")) {
 			MarkdownImageCacheEntry entry;
-			entry.texture = docrender::load_html_image_file(p_uri);
+			entry.texture = dockit::load_html_image_file(p_uri);
 			entry.status = entry.texture.is_valid() ? MARKDOWN_IMAGE_READY : MARKDOWN_IMAGE_FAILED;
 			if (entry.texture.is_valid()) s_image_cache[p_uri] = entry;
 			return entry;
@@ -1220,8 +1220,8 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 
 String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) const {
 	if (p_html) {
-		if (docrender::is_remote_image_url(p_uri)) return p_uri;
-		const String path = docrender::resolve_html_image_path(p_uri, label ? label->get_html_base_dir() : String("res://"));
+		if (dockit::is_remote_image_url(p_uri)) return p_uri;
+		const String path = dockit::resolve_html_image_path(p_uri, label ? label->get_html_base_dir() : String("res://"));
 		if (path.is_empty()) return {};
 		const bool available = ResourceLoader::get_singleton()->exists(path, "Texture2D") ||
 			(path.begins_with("user://") && FileAccess::file_exists(path));
@@ -1229,7 +1229,7 @@ String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) 
 	}
 	if (p_uri.begins_with("user://") || (label && label->image_base_dir.begins_with("user://") &&
 		!p_uri.is_absolute_path() && !p_uri.contains(":"))) {
-		return docrender::resolve_html_image_path(p_uri, label ? label->image_base_dir : String("user://"));
+		return dockit::resolve_html_image_path(p_uri, label ? label->image_base_dir : String("user://"));
 	}
 	if (label == nullptr || label->image_base_dir.is_empty() || p_uri.is_absolute_path() || p_uri.contains(":")) {
 		return p_uri;
@@ -1909,7 +1909,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	const String html_defaults = options.parse_html
 		? "html { color: #" + theme_cache.color.text.to_html(true) + "; font-size: " +
 			String::num_int64(theme_cache.font_size.text) + "px; } a:link { color: #" + theme_cache.color.link.to_html(true) +
-			"; } pre, xmp, plaintext, listing, pre code, pre tt, pre kbd, pre samp { font-family: docrender-code-block; }"
+			"; } pre, xmp, plaintext, listing, pre code, pre tt, pre kbd, pre samp { font-family: dockit-code-block; }"
 		: String();
 	const auto& font = theme_cache.font;
 	const auto html_theme_font = [&](const StringName& p_name, const Ref<Font>& p_font) {
@@ -1917,7 +1917,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	};
 	const Ref<Font> html_code_font = html_theme_font("code_text_font", font.code);
 	const Ref<Font> html_code_block_font = html_theme_font("code_block_font", font.code_block);
-	const docrender::HTMLFontConfig html_fonts{ font.text,
+	const dockit::HTMLFontConfig html_fonts{ font.text,
 		html_theme_font("bold_font", font.bold), html_theme_font("italic_font", font.italic),
 		html_theme_font("bold_italic_font", font.bold_italic), html_code_font,
 		html_code_block_font.is_valid() ? html_code_block_font : html_code_font };
@@ -3484,7 +3484,7 @@ int64_t MarkdownLabelCanvas::hit_test_document(const Vector2& p_position) const 
 	}
 	if (p_position.y <= item.rect.get_end().y) {
 		if (item.html_layout.is_valid()) {
-			return item.global_start + item.html_layout->hit_test_text(docrender::to_local_point(p_position, item.text_rect.position));
+			return item.global_start + item.html_layout->hit_test_text(dockit::to_local_point(p_position, item.text_rect.position));
 		}
 		if (item.type == MARKDOWN_BLOCK_TABLE) {
 			for (const MarkdownTableCell& cell : item.cells) {
@@ -3511,7 +3511,7 @@ int64_t MarkdownLabelCanvas::hit_test_document(const Vector2& p_position) const 
 			for (const MarkdownContainerLine& line : item.container_lines) {
 				if (p_position.y <= line.rect.get_end().y) {
 					if (line.html_layout.is_valid()) {
-						return line.global_start + line.html_layout->hit_test_text(docrender::to_local_point(p_position, line.text_rect.position));
+						return line.global_start + line.html_layout->hit_test_text(dockit::to_local_point(p_position, line.text_rect.position));
 					}
 					if (line.paragraph.is_null()) {
 						return p_position.x < line.rect.get_center().x ? line.global_start : line.global_end;
@@ -3555,13 +3555,13 @@ Ref<HTMLLayout> MarkdownLabelCanvas::html_at_position(const Vector2& p_position,
 			continue;
 		}
 		if (item.html_layout.is_valid() && item.text_rect.has_point(p_position)) {
-			r_local_position = docrender::to_local_point(p_position, item.text_rect.position);
+			r_local_position = dockit::to_local_point(p_position, item.text_rect.position);
 			if (r_offset) *r_offset = item.global_start;
 			return item.html_layout;
 		}
 		for (const MarkdownContainerLine& line : item.container_lines) {
 			if (line.html_layout.is_valid() && line.text_rect.has_point(p_position)) {
-				r_local_position = docrender::to_local_point(p_position, line.text_rect.position);
+				r_local_position = dockit::to_local_point(p_position, line.text_rect.position);
 				if (r_offset) *r_offset = line.global_start;
 				return line.html_layout;
 			}
@@ -3571,7 +3571,7 @@ Ref<HTMLLayout> MarkdownLabelCanvas::html_at_position(const Vector2& p_position,
 	return {};
 }
 
-docrender::HTMLSelectionPoint MarkdownLabelCanvas::selection_point_at(const Vector2& p_position) const {
+dockit::HTMLSelectionPoint MarkdownLabelCanvas::selection_point_at(const Vector2& p_position) const {
 	Vector2 local;
 	int64_t offset = 0;
 	const Ref<HTMLLayout> html = html_at_position(p_position, local, &offset);
@@ -3582,7 +3582,7 @@ docrender::HTMLSelectionPoint MarkdownLabelCanvas::selection_point_at(const Vect
 }
 
 void MarkdownLabelCanvas::extend_document_selection(const Vector2& p_position) {
-	const Vector2i selection = docrender::html_selection_between(selection_origin, selection_point_at(p_position));
+	const Vector2i selection = dockit::html_selection_between(selection_origin, selection_point_at(p_position));
 	selection_anchor = selection.x;
 	selection_caret = selection.y;
 }
@@ -3775,11 +3775,11 @@ void MarkdownLabelCanvas::scroll_html_input(const Vector2& p_position, const Ref
 	if (html.is_null()) return;
 	const auto result = html->scroll_overflow_from_input(html_position, p_event, *this,
 		callable_mp(this, &MarkdownLabelCanvas::queue_pointer_update));
-	if (result == docrender::HTMLScrollInput::ignored) return;
+	if (result == dockit::HTMLScrollInput::ignored) return;
 	pressed_html_link = 0;
 	pressed_blank = false;
 	queue_pointer_update();
-	if (result == docrender::HTMLScrollInput::handled) accept_event();
+	if (result == dockit::HTMLScrollInput::handled) accept_event();
 }
 
 namespace {
@@ -3987,7 +3987,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 					selection_origin = selection_point_at(press_position);
 					dragging_selection = !selection_origin.excluded;
 					if (dragging_selection) {
-						const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
+						const Vector2i selection = dockit::html_selection_between(selection_origin, selection_origin);
 						selection_anchor = selection.x;
 						selection_caret = selection.y;
 						queue_redraw();
@@ -4815,7 +4815,7 @@ String MarkdownLabel::get_link_uri_at_point(const Vector2& p_position) {
 
 void MarkdownLabel::activate_link_uri(const String& p_uri) {
 	if (p_uri.begins_with("#")) {
-		scroll_to_anchor(docrender::decode_html_fragment(p_uri.substr(1)));
+		scroll_to_anchor(dockit::decode_html_fragment(p_uri.substr(1)));
 	}
 	emit_signal("link_pressed", p_uri);
 	if (open_external_links && (p_uri.begins_with("http://") || p_uri.begins_with("https://"))) {

@@ -194,7 +194,7 @@ litehtml::element::ptr litehtml::html_tag::select_one( const css_selector& selec
 }
 
 bool html_tag::apply_auxiliary_pseudo(int match, const css_selector& selector,
-	const docrender::css::CascadePriority& priority)
+	const dockit::css::CascadePriority& priority)
 {
 	if (match & select_match_with_backdrop)
 	{
@@ -250,7 +250,7 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 		const auto& right = sel->m_syntax->m_right;
 		if (right.m_tag != "*" && right.m_tag != tag_name)
 			continue;
-		if (!right.m_attrs.empty() && right.m_attrs.front().type == docrender::css::select_class &&
+		if (!right.m_attrs.empty() && right.m_attrs.front().type == dockit::css::select_class &&
 			std::find(m_str_classes.begin(), m_str_classes.end(), right.m_attrs.front().name) == m_str_classes.end())
 			continue;
 
@@ -496,7 +496,7 @@ int html_tag::match_style_selector(const css_selector& selector, bool apply_pseu
 {
 	proximity = std::numeric_limits<int>::max();
 	if (!selector.m_syntax) return select_no_match;
-	namespace syntax = docrender::css;
+	namespace syntax = dockit::css;
 	const auto mode = apply_pseudo ? syntax::MatchMode::complete : syntax::MatchMode::candidate;
 	int flags;
 	if (selector.m_scope)

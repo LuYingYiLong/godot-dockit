@@ -11,7 +11,7 @@ namespace litehtml {
 	class render_item;
 }
 
-namespace docrender {
+namespace dockit {
 	using HTMLLexicalBreaks = std::unordered_map<const litehtml::render_item*, std::vector<int64_t>>;
 
 	struct HTMLInlineWordBreaks {

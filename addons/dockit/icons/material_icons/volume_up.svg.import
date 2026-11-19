@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/volume_up.svg"
+source_file="res://addons/dockit/icons/material_icons/volume_up.svg"
 dest_files=["res://.godot/imported/volume_up.svg-aed6975b884b490686d614298dc88b17.ctex"]
 
 [params]

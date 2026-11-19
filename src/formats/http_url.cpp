@@ -4,7 +4,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		int64_t suffix_start(const String& p_url) {
 			const auto query = p_url.find("?");

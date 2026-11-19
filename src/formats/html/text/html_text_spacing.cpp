@@ -9,7 +9,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		bool word_separator(char32_t p_character) {
 			switch (p_character) {

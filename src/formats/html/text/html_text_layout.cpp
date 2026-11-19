@@ -8,7 +8,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextSlice {
 		Ref<TextServer> server;
 		Ref<TextLine> source;

@@ -11,7 +11,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		String resolve_local_path(const String& p_src, const String& p_base_dir) {
 			const String source = decode_html_fragment(p_src.strip_edges()).replace("\\", "/");
@@ -135,7 +135,7 @@ namespace docrender {
 
 	String packed_html_video_path(const String& p_path) {
 		return p_path.begins_with("res://")
-			? String("res://.docrender/video/") + p_path.sha256_text() + "." + p_path.get_extension().to_lower()
+			? String("res://.dockit/video/") + p_path.sha256_text() + "." + p_path.get_extension().to_lower()
 			: String();
 	}
 

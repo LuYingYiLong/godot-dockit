@@ -28,7 +28,7 @@ def main():
         args.work_dir.mkdir(parents=True, exist_ok=True)
     repo = Path(__file__).resolve().parents[2]
     godot = str(args.godot.resolve())
-    with TemporaryDirectory(prefix="docrender-html-canvas-editing-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    with TemporaryDirectory(prefix="dockit-html-canvas-editing-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         project = workspace / "project"
         settings = workspace / "Godot"
@@ -37,16 +37,16 @@ def main():
 [resource]
 filesystem/on_save/safe_save_on_backup_then_rename = false
 """)
-        addon = project / "addons/docrender"
+        addon = project / "addons/dockit"
         (addon / "bin").mkdir(parents=True)
-        shutil.copyfile(repo / "addons/docrender/docrender.gdextension", addon / "docrender.gdextension")
-        shutil.copyfile(repo / "addons/docrender/bin/docrender.windows.template_debug.x86_64.dll",
-                        addon / "bin/docrender.windows.template_debug.x86_64.dll")
+        shutil.copyfile(repo / "addons/dockit/dockit.gdextension", addon / "dockit.gdextension")
+        shutil.copyfile(repo / "addons/dockit/bin/dockit.windows.template_debug.x86_64.dll",
+                        addon / "bin/dockit.windows.template_debug.x86_64.dll")
         (project / ".godot").mkdir()
-        write(project / ".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+        write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
         write(project / "project.godot", """config_version=5
 [application]
-config/name="DocRender Canvas Editing"
+config/name="Dockit Canvas Editing"
 run/main_scene="res://main.tscn"
 [display]
 window/size/viewport_width=520

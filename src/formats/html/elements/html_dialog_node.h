@@ -5,7 +5,7 @@
 #include <godot_cpp/variant/string.hpp>
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLDialogNode : public litehtml::html_tag, public HTMLNodeCopyState {
 	public:
 		using html_tag::html_tag;

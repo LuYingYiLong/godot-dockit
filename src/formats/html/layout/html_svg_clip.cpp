@@ -15,7 +15,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		class SVGClipResolver {
 			static constexpr size_t MAX_NESTED_SOURCES = 24; // At most two pending shader operands per source

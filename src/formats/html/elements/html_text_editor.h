@@ -10,7 +10,7 @@
 
 namespace litehtml { class html_tag; }
 
-namespace docrender {
+namespace dockit {
 	class LiteHTMLContainer;
 	namespace css { class ComputedStyle; }
 

@@ -2,12 +2,12 @@
 
 #include "html_element.h"
 
-namespace docrender { class HTMLTextAreaNode; }
+namespace dockit { class HTMLTextAreaNode; }
 
 class HTMLTextAreaElement : public HTMLElement {
 	GDCLASS(HTMLTextAreaElement, HTMLElement)
 
-	std::shared_ptr<docrender::HTMLTextAreaNode> get_textarea() const;
+	std::shared_ptr<dockit::HTMLTextAreaNode> get_textarea() const;
 
 protected:
 	static void _bind_methods();

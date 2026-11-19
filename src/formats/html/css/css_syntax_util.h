@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #pragma once
 
@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-namespace docrender::css::detail {
+namespace dockit::css::detail {
 
 inline int value_index(std::string_view value, std::string_view keywords, int fallback = -1) {
 	if (value.empty()) return fallback;
@@ -90,4 +90,4 @@ inline bool is_surrogate(int ch) {
 	return ch >= 0xD800 && ch < 0xE000;
 }
 
-} // namespace docrender::css::detail
+} // namespace dockit::css::detail

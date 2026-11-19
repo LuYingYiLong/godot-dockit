@@ -9,7 +9,7 @@
 // 因此脚本可以把监听器挂在 window 上观察整篇文档的冒泡事件。
 class HTMLWindow : public HTMLEventTarget {
 	GDCLASS(HTMLWindow, HTMLEventTarget)
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 
 	godot::ObjectID layout_id;
 	uint64_t parse_version = 0;

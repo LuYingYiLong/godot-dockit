@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	// A mapping between planes. The last row computes the homogeneous divisor.
 	class HTMLPlaneTransform {
 		godot::Basis matrix;

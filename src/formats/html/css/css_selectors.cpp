@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_selectors.h"
 
@@ -11,7 +11,7 @@
 #include <charconv>
 #include <set>
 
-namespace docrender::css {
+namespace dockit::css {
 
 using namespace detail;
 using std::make_shared;
@@ -883,4 +883,4 @@ bool has_balanced_selector_tokens(const css_token_vector& tokens) {
 	return closing.empty();
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

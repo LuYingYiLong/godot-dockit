@@ -20,7 +20,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		const element& source_svg(const element& p_mask) {
 			const element* root = &p_mask;

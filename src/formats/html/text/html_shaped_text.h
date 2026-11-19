@@ -11,7 +11,7 @@ namespace godot {
 	class TextServer;
 }
 
-namespace docrender {
+namespace dockit {
 	bool has_text_justification_gap(litehtml::text_justify p_method, char32_t p_left, char32_t p_right);
 
 	class HTMLTextSpacing {

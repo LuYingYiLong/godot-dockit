@@ -7,19 +7,19 @@
 #include "formats/html/css/css_animation.h"
 #include "formats/html/css/css_variables.h"
 
-namespace docrender::css { struct StylesheetImport; }
+namespace dockit::css { struct StylesheetImport; }
 
 namespace litehtml
 {
 	class document;
 
-using docrender::css::raw_rule;
-using docrender::css::raw_declaration;
+using dockit::css::raw_rule;
+using dockit::css::raw_declaration;
 
 class css
 {
 	css_selector::vector m_selectors;
-	docrender::css::CascadeLayers cascade_layers;
+	dockit::css::CascadeLayers cascade_layers;
 	std::map<string, std::pair<int, css_counter_style>> m_counter_styles;
 	struct counter_style_rule
 	{
@@ -88,8 +88,8 @@ private:
 		const shared_ptr<document>& doc;
 		media_query_list_list::ptr media;
 		size_t layer_id;
-		std::shared_ptr<const docrender::css::NestingSelectorList> nesting;
-		std::shared_ptr<const docrender::css::ScopeRule> scope;
+		std::shared_ptr<const dockit::css::NestingSelectorList> nesting;
+		std::shared_ptr<const dockit::css::ScopeRule> scope;
 		const element* implicit_scope_root;
 		bool in_style_rule = false;
 		int depth = 0;
@@ -100,7 +100,7 @@ private:
 	bool	parse_style_rule(const raw_rule& rule, const RuleContext& context);
 	bool	parse_scope_rule(const raw_rule& rule, const RuleContext& context);
 	void	apply_declarations(const raw_declaration::vector& declarations, const RuleContext& context);
-	bool	apply_import(const docrender::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
+	bool	apply_import(const dockit::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
 	void	add_selector(const css_selector::ptr& selector);
 };
 

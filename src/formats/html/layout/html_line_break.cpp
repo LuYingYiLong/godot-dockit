@@ -149,7 +149,7 @@ bool litehtml::is_soft_hyphen(const element& p_element) {
 }
 
 bool litehtml::is_hyphenation_fallback(const element& p_element) {
-	const auto* fragment = dynamic_cast<const docrender::HTMLInlineTextFragment*>(&p_element);
+	const auto* fragment = dynamic_cast<const dockit::HTMLInlineTextFragment*>(&p_element);
 	return fragment && fragment->is_hyphenation_fallback();
 }
 
@@ -178,8 +178,8 @@ bool litehtml::is_grapheme_boundary(const element& p_left, const element& p_righ
 	if (left_text.empty() || right_text.empty()) return false;
 	if (static_cast<unsigned char>(left_text.back()) < 0x80 &&
 		static_cast<unsigned char>(right_text.front()) < 0x80) return true;
-	const auto* left_fragment = dynamic_cast<const docrender::HTMLInlineTextFragment*>(left);
-	const auto* right_fragment = dynamic_cast<const docrender::HTMLInlineTextFragment*>(right);
+	const auto* left_fragment = dynamic_cast<const dockit::HTMLInlineTextFragment*>(left);
+	const auto* right_fragment = dynamic_cast<const dockit::HTMLInlineTextFragment*>(right);
 	if (left_fragment && right_fragment && left_fragment->original_renderer() == right_fragment->original_renderer()) return true;
 	const auto server = TextServerManager::get_singleton()->get_primary_interface();
 	if (server.is_null()) return false;
@@ -236,7 +236,7 @@ bool litehtml::allows_text_boundary_wrap(const element& p_left, const element& p
 		if (left_ideograph || right_ideograph) return true;
 	}
 	else {
-		const auto* fragment = dynamic_cast<const docrender::HTMLInlineTextFragment*>(right);
+		const auto* fragment = dynamic_cast<const dockit::HTMLInlineTextFragment*>(right);
 		if (fragment && fragment->has_lexical_break_before()) return word_break_mode != word_break_manual;
 		if ((right_group == LineGroup::southeast_asian && extends_lexical_character(before)) ||
 			(left_group == LineGroup::southeast_asian && extends_lexical_character(after))) return false;
@@ -252,7 +252,7 @@ bool litehtml::allows_text_boundary_wrap(const element& p_left, const element& p
 		!(right_group == LineGroup::southeast_asian || word_character(after));
 }
 
-void docrender::LiteHTMLContainer::split_text(const char* p_text, const std::function<void(const char*)>& p_word,
+void dockit::LiteHTMLContainer::split_text(const char* p_text, const std::function<void(const char*)>& p_word,
 	const std::function<void(const char*)>& p_space) {
 	const String text = String::utf8(p_text);
 	if (text.is_empty()) return;

@@ -11,7 +11,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/html_label.svg"
+source_file="res://addons/dockit/icons/html_label.svg"
 dest_files=["res://.godot/imported/html_label.svg-024ffb4b917c2990216f06d97cfee80a.ctex"]
 
 [params]

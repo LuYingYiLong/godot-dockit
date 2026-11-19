@@ -523,20 +523,20 @@ int64_t HTMLCanvasElement::get_width() const { return canvas_dimension(get_attri
 void HTMLCanvasElement::set_width(int64_t p_width) {
 	if (p_width < 1 || p_width > MAX_CANVAS_DIMENSION) return;
 	set_attribute("width", String::num_int64(p_width));
-	if (auto* node = dynamic_cast<docrender::HTMLCanvasNode*>(lock_element().get()); node && node->context.is_valid()) node->context->reset(get_width(), get_height());
+	if (auto* node = dynamic_cast<dockit::HTMLCanvasNode*>(lock_element().get()); node && node->context.is_valid()) node->context->reset(get_width(), get_height());
 	if (auto* layout = get_owner()) layout->repaint_input();
 }
 int64_t HTMLCanvasElement::get_height() const { return canvas_dimension(get_attribute("height"), 150); }
 void HTMLCanvasElement::set_height(int64_t p_height) {
 	if (p_height < 1 || p_height > MAX_CANVAS_DIMENSION) return;
 	set_attribute("height", String::num_int64(p_height));
-	if (auto* node = dynamic_cast<docrender::HTMLCanvasNode*>(lock_element().get()); node && node->context.is_valid()) node->context->reset(get_width(), get_height());
+	if (auto* node = dynamic_cast<dockit::HTMLCanvasNode*>(lock_element().get()); node && node->context.is_valid()) node->context->reset(get_width(), get_height());
 	if (auto* layout = get_owner()) layout->repaint_input();
 }
 
 Ref<HTMLCanvasRenderingContext2D> HTMLCanvasElement::get_context(const String& p_context_id) {
 	if (p_context_id.to_lower() != "2d") return {};
-	auto* node = dynamic_cast<docrender::HTMLCanvasNode*>(lock_element().get());
+	auto* node = dynamic_cast<dockit::HTMLCanvasNode*>(lock_element().get());
 	if (!node) return {};
 	if (node->context.is_null()) {
 		node->context.instantiate();
@@ -551,7 +551,7 @@ void HTMLCanvasElement::canvas_changed() {
 }
 
 Ref<Image> HTMLCanvasElement::get_image() const {
-	const auto* node = dynamic_cast<const docrender::HTMLCanvasNode*>(lock_element().get());
+	const auto* node = dynamic_cast<const dockit::HTMLCanvasNode*>(lock_element().get());
 	if (node && node->context.is_valid()) return node->context->get_image();
 	Ref<Image> blank = Image::create(static_cast<int32_t>(get_width()), static_cast<int32_t>(get_height()), false, Image::FORMAT_RGBA8);
 	blank->fill(Color(0, 0, 0, 0));
@@ -574,7 +574,7 @@ String HTMLCanvasElement::to_data_url(const String& p_type, double p_quality) co
 	return "data:" + mime + ";base64," + Marshalls::get_singleton()->raw_to_base64(bytes);
 }
 
-namespace docrender {
+namespace dockit {
 void HTMLCanvasNode::parse_attributes() {
 	if (const char* width = get_attr("width")) map_to_dimension_property(litehtml::_width_, width);
 	if (const char* height = get_attr("height")) map_to_dimension_property(litehtml::_height_, height);

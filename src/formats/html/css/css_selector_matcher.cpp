@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_selector_matcher.h"
 
@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace docrender::css {
+namespace dockit::css {
 
 struct NestingMatchCache {
 	std::unordered_map<const NestingSelectorList*, std::unordered_map<SelectorNode, unsigned>> matches;
@@ -450,4 +450,4 @@ SelectorMatch match_scoped_selector(const SelectorDOM& dom, SelectorNode node, c
 	return {};
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

@@ -4,7 +4,7 @@
 		A link to an external document resource.
 	</brief_description>
 	<description>
-		Represents [code]&lt;link&gt;[/code]. DocRender loads local and absolute HTTP(S) stylesheets for [code]rel="stylesheet"[/code]. Local stylesheet text and dependencies can be baked into an imported [HTMLDocument]. HTTP(S) stylesheets load asynchronously and [member sheet] becomes available after a successful response. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules.
+		Represents [code]&lt;link&gt;[/code]. Dockit loads local and absolute HTTP(S) stylesheets for [code]rel="stylesheet"[/code]. Local stylesheet text and dependencies can be baked into an imported [HTMLDocument]. HTTP(S) stylesheets load asynchronously and [member sheet] becomes available after a successful response. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules.
 	</description>
 	<methods>
 		<method name="get_resolved_href" qualifiers="const">

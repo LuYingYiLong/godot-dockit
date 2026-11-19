@@ -1,6 +1,6 @@
 #include "css_cascade_order.h"
 
-namespace docrender::css {
+namespace dockit::css {
 
 bool takes_cascade_precedence(const CascadePriority& candidate, bool candidate_important,
 	const CascadePriority& current, bool current_important) {
@@ -51,4 +51,4 @@ void CascadeLayers::assign_ranks() {
 	}
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

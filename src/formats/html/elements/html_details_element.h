@@ -4,7 +4,7 @@
 
 class HTMLDetailsElement : public HTMLElement {
 	GDCLASS(HTMLDetailsElement, HTMLElement)
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 
 	bool toggle_pending = false;
 	bool toggle_old_open = false;

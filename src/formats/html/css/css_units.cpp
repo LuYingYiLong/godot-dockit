@@ -2,7 +2,7 @@
 #include "css_math.h"
 #include "css_syntax_util.h"
 
-namespace docrender::css {
+namespace dockit::css {
 
 using detail::is_one_of;
 

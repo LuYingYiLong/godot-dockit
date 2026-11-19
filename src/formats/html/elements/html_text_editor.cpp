@@ -17,7 +17,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr size_t MAX_UNDO_EDITS = 100;
 

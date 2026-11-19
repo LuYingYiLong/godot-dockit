@@ -23,7 +23,7 @@ namespace godot {
 
 namespace litehtml { enum class css_filter_type; }
 
-namespace docrender {
+namespace dockit {
 	void release_html_paint_shader();
 	godot::Ref<godot::ShaderMaterial> make_html_paint_material(bool p_composite = false);
 

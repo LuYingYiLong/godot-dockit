@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include <litehtml/css_properties.h>
 #include <litehtml/document.h>
@@ -33,7 +33,7 @@ namespace {
 		return {locale.replace("_", "-").utf8().get_data(), false};
 	}
 
-	class DocumentStyleHost final : public docrender::css::StyleHost
+	class DocumentStyleHost final : public dockit::css::StyleHost
 	{
 		document& doc;
 		const element& subject;
@@ -77,7 +77,7 @@ namespace {
 		static const auto svg = _id("svg");
 		static const auto wbr = _id("wbr");
 		return element.is_replaced() ||
-			docrender::css::detail::is_one_of(element.tag(), _input_, _textarea_, _select_, _progress_, _meter_, _br_, wbr, svg);
+			dockit::css::detail::is_one_of(element.tag(), _input_, _textarea_, _select_, _progress_, _meter_, _br_, wbr, svg);
 	}
 
 	bool uses_native_chrome(const html_tag& host, const element* parent) {
@@ -107,7 +107,7 @@ namespace {
 			}
 		}
 		if (input.suppress_chrome && value.priority.layer == css_default_layer &&
-			docrender::css::detail::is_one_of(name, _background_color_,
+			dockit::css::detail::is_one_of(name, _background_color_,
 				_border_top_width_, _border_right_width_, _border_bottom_width_, _border_left_width_,
 				_border_top_style_, _border_right_style_, _border_bottom_style_, _border_left_style_,
 				_border_top_color_, _border_right_color_, _border_bottom_color_, _border_left_color_,
@@ -125,7 +125,7 @@ namespace {
 	const property_value& read_placeholder(const void* declarations, string_id name)
 	{
 		const std::string_view spelling = _s(name);
-		if (spelling.compare(0, 5, "font-") == 0 || docrender::css::detail::is_one_of(spelling, "color", "line-height", "opacity")) {
+		if (spelling.compare(0, 5, "font-") == 0 || dockit::css::detail::is_one_of(spelling, "color", "line-height", "opacity")) {
 			return static_cast<const style*>(declarations)->get_property(name);
 		}
 		static const property_value absent;
@@ -142,13 +142,13 @@ void litehtml::css_properties::compute(const html_tag* element, const document::
 		box_parent = box_parent->parent();
 	const DocumentStyleHost host(*doc, *element);
 	const auto root = doc->root();
-	const bool control = docrender::css::detail::is_one_of(element->tag(), _input_, _textarea_, _select_, _button_);
+	const bool control = dockit::css::detail::is_one_of(element->tag(), _input_, _textarea_, _select_, _button_);
 	const bool native = control && uses_native_chrome(*element, parent.get());
 	const auto input_type = element->tag() == _input_ ?
-		docrender::css::detail::lowcase(std::string(element->get_attr("type", ""))) : std::string();
+		dockit::css::detail::lowcase(std::string(element->get_attr("type", ""))) : std::string();
 	const bool toggle = input_type == "checkbox" || input_type == "radio";
 	const bool replace_content = (!control || toggle) &&
-		!docrender::css::detail::is_one_of(element->tag(), marker_tag(), _progress_, _meter_);
+		!dockit::css::detail::is_one_of(element->tag(), marker_tag(), _progress_, _meter_);
 	const ElementStyleInput input{*element, control && !native, *doc->container(), keyframe};
 	const auto viewport = doc->get_viewport_unit_features();
 	ComputedStyle::compute({&input, read_declaration, parent ? &parent->css() : nullptr, host,

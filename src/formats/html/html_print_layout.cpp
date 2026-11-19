@@ -565,13 +565,13 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 		pending_error = writer->get_last_error();
 		return {};
 	}
-	const docrender::HTMLPaintRecorder* recorder = layout->get_paint_recorder();
+	const dockit::HTMLPaintRecorder* recorder = layout->get_paint_recorder();
 	if (!recorder) {
 		pending_error = ERR_UNCONFIGURED;
 		return {};
 	}
 	int64_t standard_font = 0;
-	const std::vector<docrender::HTMLPaintRun>& runs = recorder->get_paint_runs();
+	const std::vector<dockit::HTMLPaintRun>& runs = recorder->get_paint_runs();
 	const String plain_text = layout->get_plain_text();
 	for (size_t page_index = 0; page_index < pages.size(); ++page_index) {
 		const Page& page = pages[page_index];
@@ -585,14 +585,14 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 			(page.size.y - page.content_rect.position.y - page.content_rect.size.y) * CSS_PX_TO_PT,
 			page.content_rect.size.x * CSS_PX_TO_PT, page.content_rect.size.y * CSS_PX_TO_PT);
 		writer->clip_page(inserted, content_pt);
-		for (const docrender::HTMLPaintRun& run : runs) {
+		for (const dockit::HTMLPaintRun& run : runs) {
 			if (run.material.is_valid()) {
 				add_diagnostic_once("Some CSS effects use materials that PDF export cannot preserve as vector content.");
 			}
 			if (!run.clips.empty()) add_diagnostic_once("Element overflow clips are not reproduced in the exported PDF.");
-			if (run.matrix != docrender::HTMLPlaneTransform()) add_diagnostic_once("CSS transforms are not reproduced in the exported PDF.");
-			for (const docrender::HTMLPaintCommand& command : run.commands) {
-				if (const auto* fill = std::get_if<docrender::HTMLFill>(&command)) {
+			if (run.matrix != dockit::HTMLPlaneTransform()) add_diagnostic_once("CSS transforms are not reproduced in the exported PDF.");
+			for (const dockit::HTMLPaintCommand& command : run.commands) {
+				if (const auto* fill = std::get_if<dockit::HTMLFill>(&command)) {
 					const Rect2 transformed = run.matrix.xform(fill->rect);
 					const Rect2 pdf_rect = rect_for_pdf(transformed, page.source_y, page.source_end, page.content_rect, size_pt.y);
 					if (!pdf_rect.has_area() || fill->color.a <= 0) continue;
@@ -602,7 +602,7 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 					writer->set_path_draw_mode(object, PDFWriter::FILL_WINDING, false);
 					writer->insert_object(inserted, object);
 				}
-				else if (const auto* text = std::get_if<docrender::HTMLText>(&command)) {
+				else if (const auto* text = std::get_if<dockit::HTMLText>(&command)) {
 					if (!text->layout.is_valid() || text->offset < 0 || text->offset >= plain_text.length()) continue;
 					const int64_t text_length = std::max<int64_t>(0, std::min<int64_t>(text->length, plain_text.length() - text->offset));
 					if (text_length == 0 || text->color.a <= 0) continue;
@@ -626,7 +626,7 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 					writer->set_object_fill_color(object, text->color);
 					writer->insert_object(inserted, object);
 				}
-				else if (const auto* image = std::get_if<docrender::HTMLImage>(&command)) {
+				else if (const auto* image = std::get_if<dockit::HTMLImage>(&command)) {
 					if (image->texture.is_null()) continue;
 					const Rect2 transformed = run.matrix.xform(image->destination);
 					const Rect2 pdf_rect = rect_for_pdf(transformed, page.source_y, page.source_end, page.content_rect, size_pt.y);
@@ -642,7 +642,7 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 						Vector2(pdf_rect.position.x, pdf_rect.position.y)));
 					writer->insert_object(inserted, object);
 				}
-				else if (const auto* circle = std::get_if<docrender::HTMLCircle>(&command)) {
+				else if (const auto* circle = std::get_if<dockit::HTMLCircle>(&command)) {
 					const Vector2 center = run.matrix.xform(circle->center);
 					if (center.y < page.source_y || center.y >= page.source_end) continue;
 					const double y = page.content_rect.position.y + center.y - page.source_y;

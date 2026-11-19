@@ -180,10 +180,10 @@ int64_t HTMLBehavior::request(const String& p_url, const Dictionary& p_options, 
 	if (!label || !p_callback.is_valid()) return 0;
 
 	String url = p_url.strip_edges();
-	url = docrender::resolve_http_url(url, label->get_base_uri());
-	if (!docrender::is_http_url(url)) return 0;
+	url = dockit::resolve_http_url(url, label->get_base_uri());
+	if (!dockit::is_http_url(url)) return 0;
 
-	docrender::HTTPRequestOptions options;
+	dockit::HTTPRequestOptions options;
 	const String method = String(p_options.get("method", "GET")).to_upper();
 	if (method == "GET") options.method = HTTPClient::METHOD_GET;
 	else if (method == "HEAD") options.method = HTTPClient::METHOD_HEAD;
@@ -208,8 +208,8 @@ int64_t HTMLBehavior::request(const String& p_url, const Dictionary& p_options, 
 
 	const ObjectID behavior_id(get_instance_id());
 	const auto request_id_holder = std::make_shared<uint64_t>(0);
-	const uint64_t request_id = docrender::queue_http_request(url, options,
-		[behavior_id, request_id_holder, p_callback](const docrender::HTTPResponse& p_response) {
+	const uint64_t request_id = dockit::queue_http_request(url, options,
+		[behavior_id, request_id_holder, p_callback](const dockit::HTTPResponse& p_response) {
 			auto* behavior = Object::cast_to<HTMLBehavior>(ObjectDB::get_instance(behavior_id));
 			if (behavior) behavior->complete_request(*request_id_holder, p_callback,
 				p_response.url, p_response.status_code, p_response.headers, p_response.body, p_response.error);
@@ -223,7 +223,7 @@ int64_t HTMLBehavior::request(const String& p_url, const Dictionary& p_options, 
 void HTMLBehavior::cancel_request(int64_t p_id) {
 	const uint64_t request_id = static_cast<uint64_t>(p_id);
 	if (!requests.erase(request_id)) return;
-	docrender::cancel_http_request(request_id);
+	dockit::cancel_http_request(request_id);
 }
 
 void HTMLBehavior::process_async(double p_delta) {
@@ -261,7 +261,7 @@ void HTMLBehavior::process_async(double p_delta) {
 }
 
 void HTMLBehavior::cancel_async_work() {
-	for (const auto& [id, callback] : requests) docrender::cancel_http_request(id);
+	for (const auto& [id, callback] : requests) dockit::cancel_http_request(id);
 	requests.clear();
 	timers.clear();
 	frame_callbacks.clear();

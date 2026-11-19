@@ -3,7 +3,7 @@ from pathlib import Path
 from SCons.Errors import UserError
 
 
-# These implementations are built with the DocRender HTML sources.
+# These implementations are built with the Dockit HTML sources.
 MIGRATED_CSS_SOURCES = {
     "src/background.cpp",
     "src/css_borders.cpp",
@@ -38,7 +38,7 @@ def find_litehtml_overrides(env):
 
 def embed_hyphenation_patterns(target, source, env):
     with Path(str(target[0])).open("w", encoding="utf-8", newline="\n") as output:
-        output.write('#include "formats/html/layout/html_hyphenation_dictionary.h"\n\nnamespace docrender {\nnamespace {\n')
+        output.write('#include "formats/html/layout/html_hyphenation_dictionary.h"\n\nnamespace dockit {\nnamespace {\n')
         for index, pattern in enumerate(source):
             data = Path(str(pattern)).read_bytes()
             output.write(f"constexpr uint8_t dictionary_{index}[] = {{\n")
@@ -59,7 +59,7 @@ def embed_hyphenation_patterns(target, source, env):
 def embed_default_font(target, source, env):
     data = Path(str(source[0])).read_bytes()
     with Path(str(target[0])).open("w", encoding="utf-8", newline="\n") as output:
-        output.write("#include <cstdint>\n\nnamespace docrender {\nconstexpr uint8_t html_default_font[] = {\n")
+        output.write("#include <cstdint>\n\nnamespace dockit {\nconstexpr uint8_t html_default_font[] = {\n")
         for offset in range(0, len(data), 24):
             output.write("\t" + ", ".join(f"0x{byte:02x}" for byte in data[offset:offset + 24]) + ",\n")
         output.write("};\n}\n")
@@ -67,7 +67,7 @@ def embed_default_font(target, source, env):
 
 def embed_html_control_icons(target, source, env):
     with Path(str(target[0])).open("w", encoding="utf-8", newline="\n") as output:
-        output.write("#pragma once\n\nnamespace docrender::control_icons {\n")
+        output.write("#pragma once\n\nnamespace dockit::control_icons {\n")
         for icon in source:
             path = Path(str(icon))
             svg = path.read_text(encoding="utf-8-sig").strip()
@@ -102,7 +102,7 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
                                    "src/thirdparty/html-fonts/OpenSans_SemiBold.woff2",
                                    html_env.Action(embed_default_font, "Embedding the default HTML font"))
     html_env.Depends([obj for obj in html_objects if obj.name.startswith("litehtml_fonts.")], font_header)
-    icon_files = [f"addons/docrender/icons/material_icons/{name}.svg"
+    icon_files = [f"addons/dockit/icons/material_icons/{name}.svg"
                   for name in ("play_arrow", "pause", "volume_up", "volume_off", "resize_window", "fullscreen",
                                "fullscreen_exit", "arrow_drop_down", "arrow_drop_up", "arrow_left", "arrow_right",
                                "radio_button_checked", "calendar_today", "schedule", "colorize", "unfold_more",
@@ -112,7 +112,7 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
     html_env.Depends([obj for obj in html_objects if obj.name.startswith("html_paint_recorder.")], icon_header)
     patterns = sorted(html_env.Glob("src/thirdparty/hyphenation-patterns/hyph-*.hyb"))
     if not patterns:
-        raise UserError("Missing DocRender hyphenation patterns.")
+        raise UserError("Missing Dockit hyphenation patterns.")
     embedded_patterns = html_env.Command(f"{staged_dir}/src/hyphenation_patterns.gen.cpp", patterns,
                                          html_env.Action(embed_hyphenation_patterns, "Embedding HTML hyphenation patterns"))
     html_env.Depends(embedded_patterns, html_env.File(__file__))

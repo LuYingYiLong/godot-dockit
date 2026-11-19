@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include <litehtml/html.h>
 #include <litehtml/style.h>
@@ -81,7 +81,7 @@ void style::remember_diagnostic(const css_diagnostic& diagnostic)
 		diagnostics->push_back(diagnostic);
 }
 
-void style::combine(const style& src, docrender::css::CascadePriority priority)
+void style::combine(const style& src, dockit::css::CascadePriority priority)
 {
 	if (src.diagnostics)
 	{

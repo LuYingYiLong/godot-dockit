@@ -22,7 +22,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		enum PositionKind { X, Y, DX, DY, ROTATE, POSITION_COUNT };
 		using Position = std::array<std::optional<double>, POSITION_COUNT>;
@@ -39,7 +39,7 @@ namespace docrender {
 					may_separate = false;
 					continue;
 				}
-				if (token.type == docrender::css::NUMBER) {
+				if (token.type == dockit::css::NUMBER) {
 					if (!std::isfinite(token.n.number)) return {};
 					values.push_back(token.n.number);
 				} else {
@@ -180,7 +180,7 @@ namespace docrender {
 				if (value.size() == 1) {
 					offset = value.front();
 					if (!zero_length) offset *= length / authored_length;
-					else if (tokens.size() == 1 && tokens.front().type != docrender::css::PERCENTAGE && offset != 0) {
+					else if (tokens.size() == 1 && tokens.front().type != dockit::css::PERCENTAGE && offset != 0) {
 						offset = std::copysign(std::numeric_limits<double>::infinity(), offset);
 					}
 				}

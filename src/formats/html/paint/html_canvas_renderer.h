@@ -11,7 +11,7 @@ namespace godot {
 	class CanvasItem;
 }
 
-namespace docrender {
+namespace dockit {
 	class HTMLCanvasRenderer : public godot::RefCounted {
 		GDCLASS(HTMLCanvasRenderer, godot::RefCounted)
 

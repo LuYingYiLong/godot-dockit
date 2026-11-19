@@ -69,9 +69,9 @@ func _run() -> void:
 	var frames: PackedByteArray
 	frames.resize(8000)
 	sample.data = frames
-	_check(sample.save_to_wav("user://docrender-tone.wav") == OK, "Create a user:// audio file")
-	unavailable.src = "user://docrender-tone.wav"
-	_check(unavailable.play() == OK and unavailable.current_src == "user://docrender-tone.wav" and
+	_check(sample.save_to_wav("user://dockit-tone.wav") == OK, "Create a user:// audio file")
+	unavailable.src = "user://dockit-tone.wav"
+	_check(unavailable.play() == OK and unavailable.current_src == "user://dockit-tone.wav" and
 		is_equal_approx(unavailable.duration, 0.5), "Play an unimported user:// WAV")
 	unavailable.pause()
 	_check(audio.play() == OK and not audio.paused and audio.current_src == TONE and audio.duration > 2.0,

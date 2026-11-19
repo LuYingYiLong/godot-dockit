@@ -16,7 +16,7 @@
 using namespace godot;
 
 Ref<HTMLFormElement> HTMLElement::get_form_owner() const {
-	if (const auto node = lock_element()) return get_dom().make_element(docrender::forms::owner(*node));
+	if (const auto node = lock_element()) return get_dom().make_element(dockit::forms::owner(*node));
 	return {};
 }
 
@@ -120,8 +120,8 @@ namespace {
 		return attribute;
 	}
 
-	std::optional<docrender::HTMLDOM::TreeEdit> adjacent_position(const String& p_position) {
-		using Edit = docrender::HTMLDOM::TreeEdit;
+	std::optional<dockit::HTMLDOM::TreeEdit> adjacent_position(const String& p_position) {
+		using Edit = dockit::HTMLDOM::TreeEdit;
 		const String value = p_position.to_lower();
 		if (value == "beforebegin") return Edit::BEFORE;
 		if (value == "afterbegin") return Edit::PREPEND;
@@ -588,32 +588,32 @@ void HTMLElement::set_tab_index(int64_t p_value) {
 
 Error HTMLElement::append(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::APPEND, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::APPEND, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::prepend(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::PREPEND, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::PREPEND, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::before(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::BEFORE, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::BEFORE, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::after(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::AFTER, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::AFTER, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::replace_with(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::REPLACE, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::REPLACE, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLElement::replace_children(const Array& p_items) {
 	const auto node = lock_element();
-	return node ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::REPLACE_CHILDREN, p_items) : ERR_INVALID_PARAMETER;
+	return node ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::REPLACE_CHILDREN, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Ref<HTMLElement> HTMLElement::get_first_element_child() const {
@@ -650,12 +650,12 @@ int64_t HTMLElement::get_child_element_count() const {
 
 TypedArray<HTMLElement> HTMLElement::get_elements_by_tag_name(const String& p_name) const {
 	const auto node = lock_element();
-	return node ? get_dom().get_elements(p_name, docrender::HTMLDOM::Lookup::TAG, node) : TypedArray<HTMLElement>();
+	return node ? get_dom().get_elements(p_name, dockit::HTMLDOM::Lookup::TAG, node) : TypedArray<HTMLElement>();
 }
 
 TypedArray<HTMLElement> HTMLElement::get_elements_by_class_name(const String& p_names) const {
 	const auto node = lock_element();
-	return node ? get_dom().get_elements(p_names, docrender::HTMLDOM::Lookup::CLASS, node) : TypedArray<HTMLElement>();
+	return node ? get_dom().get_elements(p_names, dockit::HTMLDOM::Lookup::CLASS, node) : TypedArray<HTMLElement>();
 }
 
 PackedStringArray HTMLElement::get_attribute_names() const {
@@ -719,7 +719,7 @@ Error HTMLElement::insert_adjacent_html(const String& p_position, const String& 
 	const auto node = lock_element();
 	const auto edit = adjacent_position(p_position);
 	if (!node || !edit) return ERR_INVALID_PARAMETER;
-	using Edit = docrender::HTMLDOM::TreeEdit;
+	using Edit = dockit::HTMLDOM::TreeEdit;
 	const bool outside = *edit == Edit::BEFORE || *edit == Edit::AFTER;
 	const auto context = outside ? node->parent() : node;
 	if (!context) return ERR_INVALID_PARAMETER;
@@ -743,7 +743,7 @@ Error HTMLElement::set_outer_html(const String& p_html) {
 	if (!parent) return is_connected() ? ERR_INVALID_PARAMETER : OK;
 	try {
 		const auto fragment = get_dom().parse_fragment(p_html, parent);
-		return fragment.is_valid() ? get_dom().edit_nodes(node, docrender::HTMLDOM::TreeEdit::REPLACE, Array::make(fragment)) : ERR_PARSE_ERROR;
+		return fragment.is_valid() ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::REPLACE, Array::make(fragment)) : ERR_PARSE_ERROR;
 	} catch (const std::exception&) {
 		return ERR_PARSE_ERROR;
 	}

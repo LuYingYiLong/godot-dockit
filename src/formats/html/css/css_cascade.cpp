@@ -2,7 +2,7 @@
 
 #include "css_declarations.h"
 
-namespace docrender::css {
+namespace dockit::css {
 
 namespace {
 
@@ -230,4 +230,4 @@ const css_token_vector* Cascade::get_custom_property(Property name, bool& local)
 	return local && found->second ? &*found->second : nullptr;
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

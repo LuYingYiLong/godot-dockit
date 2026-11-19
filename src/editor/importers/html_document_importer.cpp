@@ -1,16 +1,16 @@
 #include "html_document_importer.h"
 
-#include "formats/docrender_source.h"
+#include "formats/dockit_source.h"
 #include "formats/html/html_document.h"
 #include "formats/html/resources/html_asset_collector.h"
 
 namespace godot {
 	String HTMLDocumentImporter::_get_importer_name() const {
-		return "docrender.html_document";
+		return "dockit.html_document";
 	}
 
 	String HTMLDocumentImporter::_get_visible_name() const {
-		return tr("HTML Document", "Godot DocRender");
+		return tr("HTML Document", "Godot Dockit");
 	}
 
 	PackedStringArray HTMLDocumentImporter::_get_recognized_extensions() const {
@@ -40,7 +40,7 @@ namespace godot {
 	Error HTMLDocumentImporter::_import(const String& p_source_file, const String& p_save_path, const Dictionary&,
 		const TypedArray<String>&, const TypedArray<String>&) const {
 		String text;
-		const Error error = docrender::read_document_text(p_source_file, text);
+		const Error error = dockit::read_document_text(p_source_file, text);
 		if (error != OK) {
 			return error;
 		}
@@ -50,7 +50,7 @@ namespace godot {
 		document->set_text(text);
 		document->set_base_dir(base_dir);
 		document->set_source_path(p_source_file);
-		const auto assets = docrender::collect_html_assets(text, base_dir, p_source_file);
+		const auto assets = dockit::collect_html_assets(text, base_dir, p_source_file);
 		document->set_textures(assets.textures);
 		document->set_audio_streams(assets.audio_streams);
 		document->set_video_sources(assets.video_sources);

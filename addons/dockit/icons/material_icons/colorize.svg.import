@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/colorize.svg"
+source_file="res://addons/dockit/icons/material_icons/colorize.svg"
 dest_files=["res://.godot/imported/colorize.svg-1d6f2416f27bbb786f93eb38ffc400bc.ctex"]
 
 [params]

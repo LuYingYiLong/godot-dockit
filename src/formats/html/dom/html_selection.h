@@ -4,10 +4,10 @@
 
 class HTMLSelection : public godot::RefCounted {
 	GDCLASS(HTMLSelection, godot::RefCounted)
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 
-	std::weak_ptr<docrender::HTMLDOM> owner;
+	std::weak_ptr<dockit::HTMLDOM> owner;
 	uint64_t version = 0;
 	godot::Ref<HTMLRange> range;
 	bool backward = false;

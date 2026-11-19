@@ -382,7 +382,7 @@ int litehtml::render_item_table::collect_columns()
     m_declared_columns.clear();
     int next = 0;
     const auto append = [&](const std::shared_ptr<element>& source) {
-        const int count = docrender::read_table_span(source->get_attr("span", ""), 1, 1000);
+        const int count = dockit::read_table_span(source->get_attr("span", ""), 1, 1000);
         if (next > std::numeric_limits<int>::max() - count)
             throw std::length_error("HTML table column range is too large.");
         const int start = next;

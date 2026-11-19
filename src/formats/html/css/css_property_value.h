@@ -30,9 +30,9 @@ namespace litehtml {
 	struct revert_layer_value {};
 
 	// Layers use their normal cascade order. Special ranks sit outside the named layers.
-	using docrender::css::css_default_layer;
-	using docrender::css::css_unlayered;
-	using docrender::css::css_inline_layer;
+	using dockit::css::css_default_layer;
+	using dockit::css::css_unlayered;
+	using dockit::css::css_inline_layer;
 
 	struct property_value : variant<
 		invalid,
@@ -102,7 +102,7 @@ namespace litehtml {
 	>
 	{
 		bool m_important = false;
-		docrender::css::CascadePriority priority;
+		dockit::css::CascadePriority priority;
 		string_id declaration_property = empty_id;
 
 		struct deferred_declaration

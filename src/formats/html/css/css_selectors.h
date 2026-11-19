@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #pragma once
 
@@ -12,7 +12,7 @@
 #include <tuple>
 #include <utility>
 
-namespace docrender::css {
+namespace dockit::css {
 
 struct selector_specificity {
 	int a = 0;
@@ -145,4 +145,4 @@ Selector::vector parse_scoped_selector_list(const css_token_vector& tokens, Sele
 bool has_balanced_selector_tokens(const css_token_vector& tokens);
 bool supports_css_selector(const css_token_vector& tokens, SelectorMode mode);
 
-} // namespace docrender::css
+} // namespace dockit::css

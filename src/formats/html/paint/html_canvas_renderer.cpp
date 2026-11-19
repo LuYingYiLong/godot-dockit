@@ -25,7 +25,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		Vector2i text_highlight_range(const HTMLText& p_text, const HTMLHighlight& p_highlight) {
 			if (p_text.offset < 0) return {};
@@ -499,7 +499,7 @@ void fragment() {
 				parent = surface;
 			}
 		} else {
-			ERR_PRINT("DocRender: cyclic dependencies between HTML paint passes.");
+			ERR_PRINT("Dockit: cyclic dependencies between HTML paint passes.");
 		}
 		pass_indices.clear();
 		pass_parents.clear();

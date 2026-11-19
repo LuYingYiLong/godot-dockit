@@ -1,5 +1,5 @@
-#ifndef DOCRENDER_LITEHTML_CONTAINER_H
-#define DOCRENDER_LITEHTML_CONTAINER_H
+#ifndef DOCKIT_LITEHTML_CONTAINER_H
+#define DOCKIT_LITEHTML_CONTAINER_H
 
 #include "formats/html/paint/html_paint_recorder.h"
 #include "formats/html/resources/html_resources.h"
@@ -16,7 +16,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	namespace css { class AnimationState; class TransitionState; }
 	class HTMLDOM;
 	struct HTMLSVGClipDocument;
@@ -237,6 +237,6 @@ namespace docrender {
 		void draw_conic_gradient(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
 			const litehtml::background_layer::conic_gradient& p_gradient) override;
 	};
-} // namespace docrender
+} // namespace dockit
 
 #endif

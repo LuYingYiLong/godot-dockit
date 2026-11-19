@@ -40,7 +40,7 @@ func _ready() -> void:
 
 	var second_document: HTMLDocument = _document("B", "indirect")
 	label.document = second_document
-	_check(_events(label) == ["detach:indirect:A", "detach:direct:A", "detach:direct:A"],
+	_check(_events(label) == ["detach:path:A", "detach:indirect:A", "detach:direct:A", "detach:direct:A"],
 		"replacement detaches in reverse order with the old DOM still available")
 	for reference: WeakRef in original_refs:
 		_check(reference.get_ref() == null, "detached instances are released")

@@ -1,6 +1,6 @@
 # For syntax, see https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 
-name: Build Godot DocRender
+name: Build Godot Dockit
 
 on:
   workflow_dispatch:
@@ -82,7 +82,7 @@ jobs:
             fi
           fi
           title="${INPUT_TITLE:-$tag}"
-          asset="godot-docrender-$tag.zip"
+          asset="godot-dockit-$tag.zip"
           {
             echo "tag=$tag"
             echo "title=$title"
@@ -129,7 +129,7 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Build DocRender
+      - name: Build Dockit
         uses: ./.github/actions/build-extension
         with:
           platform: ${{ matrix.target.platform }}
@@ -144,7 +144,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: godot-docrender-${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
+          name: godot-dockit-${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
           if-no-files-found: error
           overwrite: true
           path: artifact/
@@ -160,7 +160,7 @@ jobs:
       - name: Download Target Artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: godot-docrender-*
+          pattern: godot-dockit-*
           merge-multiple: true
           path: artifact/
 
@@ -170,7 +170,7 @@ jobs:
       - name: Upload Complete Addon
         uses: actions/upload-artifact@v4
         with:
-          name: godot-docrender
+          name: godot-dockit
           if-no-files-found: error
           overwrite: true
           path: artifact/
@@ -186,7 +186,7 @@ jobs:
       - name: Download Verified Addon
         uses: actions/download-artifact@v4
         with:
-          name: godot-docrender
+          name: godot-dockit
           path: artifact/
 
       # A manual run creates its tag from the commit it was dispatched on.

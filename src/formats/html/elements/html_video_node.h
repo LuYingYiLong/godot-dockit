@@ -5,7 +5,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 enum class HTMLVideoPart { none, play, position, mute, volume, fullscreen };
 
 struct HTMLVideoControlPainter {

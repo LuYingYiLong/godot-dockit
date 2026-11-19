@@ -4369,7 +4369,7 @@ func _check_outlines() -> void:
 	if is_zero_approx(accent.a):
 		accent = Color("#2563eb")
 	_check_pixel(output, _label_rect(label, "accent").position + Vector2(16.0, -1.0), accent,
-		"Lone auto uses the display's accent color or DocRender's fallback")
+		"Lone auto uses the display's accent color or Dockit's fallback")
 
 	var dash: Vector2 = _label_rect(label, "dashed").position
 	var yellow_pixels: int
@@ -5867,7 +5867,7 @@ func _check_local_font_faces(assets: Dictionary, regular: FontFile, narrow: Font
 	document.text = """<!doctype html><style>
 		@font-face { font-family: FullName; src: local("Arial Bold"), url(fonts/cour.ttf); }
 		@font-face { font-family: PostScript; src: local(Georgia-Italic); font-style: italic; }
-		@font-face { font-family: Missing; src: local("Arial Regular"), local("Uninstalled DocRender face"), url(fonts/cour.ttf); }
+		@font-face { font-family: Missing; src: local("Arial Regular"), local("Uninstalled Dockit face"), url(fonts/cour.ttf); }
 		@font-face { font-family: WrongStyle; src: local("Georgia"), url(fonts/cour.ttf); font-style: italic; }
 		@font-face { font-family: MathFace; src: local(CambriaMath), url(fonts/cour.ttf); }
 		@font-face { font-family: CambriaFace; src: local(Cambria), url(fonts/cour.ttf); }
@@ -13751,8 +13751,8 @@ func _check_dom_input() -> void:
 	copy.pressed = true
 	_check(edited.get_selection_start() == 0 and edited.get_selection_end() == 3,
 		"Keyboard selection reports logical offsets for bidirectional text")
-	DisplayServer.clipboard_set("DocRender clipboard probe")
-	if DisplayServer.clipboard_get() == "DocRender clipboard probe":
+	DisplayServer.clipboard_set("Dockit clipboard probe")
+	if DisplayServer.clipboard_get() == "Dockit clipboard probe":
 		viewport.push_input(copy)
 		_check(DisplayServer.clipboard_get() == "Aאב", "Copy uses the field's logical text order")
 		DisplayServer.clipboard_set(clipboard)

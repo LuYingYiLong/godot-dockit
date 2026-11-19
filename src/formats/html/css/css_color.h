@@ -2,12 +2,12 @@
 
 #include <array>
 
-namespace docrender::css {
+namespace dockit::css {
 	struct css_token;
 }
 
 namespace litehtml {
-	using docrender::css::css_token;
+	using dockit::css::css_token;
 	class document_container;
 	struct web_color;
 

@@ -35,7 +35,7 @@ namespace godot {
 	class TextureRect;
 }
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextEditor;
 }
 
@@ -51,7 +51,7 @@ class HTMLDataTransfer;
 class HTMLDragEvent;
 
 namespace godot { class CanvasLayer; class Window; }
-namespace docrender { enum class HTMLVideoPart; }
+namespace dockit { enum class HTMLVideoPart; }
 
 class HTMLLabelCanvas : public godot::Control {
 	GDCLASS(HTMLLabelCanvas, godot::Control)
@@ -133,23 +133,23 @@ class HTMLLabelCanvas : public godot::Control {
 	struct BoxDrag {
 		godot::Ref<HTMLElement> element;
 		godot::Vector2i axes;
-		docrender::HTMLPlaneTransform inverse;
+		dockit::HTMLPlaneTransform inverse;
 		godot::Vector2 start_point;
 		godot::Vector2 start_size;
 		float scrollbar_grab = 0;
 		bool vertical_scrollbar = false;
 	};
 	std::optional<BoxDrag> box_drag;
-	std::optional<docrender::HTMLScrollbarDrag> scrollbar_drag;
+	std::optional<dockit::HTMLScrollbarDrag> scrollbar_drag;
 	std::optional<godot::Vector2> resize_pending;
 	bool resize_queued = false;
 	bool dragged_resize = false;
 	bool applying_box_resize = false;
 	godot::Ref<HTMLAudioElement> pressed_audio;
-	docrender::HTMLAudioPart pressed_audio_part = docrender::HTMLAudioPart::none;
+	dockit::HTMLAudioPart pressed_audio_part = dockit::HTMLAudioPart::none;
 	godot::Ref<HTMLVideoElement> pressed_video;
 	godot::Vector2 video_press_position;
-	docrender::HTMLVideoPart pressed_video_part{};
+	dockit::HTMLVideoPart pressed_video_part{};
 	bool handle_video_button(const godot::InputEventMouseButton& p_button, const godot::Vector2& p_point);
 	bool is_video_control_at(const godot::Vector2& p_point) const;
 	bool move_video_control(const godot::Vector2& p_point);
@@ -169,8 +169,8 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Timer* caret_blink_timer = nullptr;
 	bool caret_window_active = true;
 	struct InputMenuRow {
-		docrender::HTMLTextLayout caption;
-		docrender::HTMLTextLayout shortcut;
+		dockit::HTMLTextLayout caption;
+		dockit::HTMLTextLayout shortcut;
 		bool enabled = false;
 	};
 	godot::Control* input_menu = nullptr;
@@ -188,7 +188,7 @@ class HTMLLabelCanvas : public godot::Control {
 	uintptr_t pressed_link = 0;
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
-	docrender::HTMLSelectionPoint selection_origin;
+	dockit::HTMLSelectionPoint selection_origin;
 	bool selecting = false;
 	bool selection_dragged = false;
 	bool selection_drag_attempt = false;
@@ -282,7 +282,7 @@ class HTMLLabelCanvas : public godot::Control {
 	void flush_box_resize();
 	void update_input_autoscroll();
 	std::optional<CursorShape> box_resize_cursor(const godot::Vector2& p_point) const;
-	void set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible);
+	void set_input_caret_visible(dockit::HTMLTextEditor& p_editor, bool p_visible);
 	void restart_caret_blink();
 	void stop_caret_blink();
 	void blink_caret();
@@ -386,7 +386,7 @@ private:
 	godot::Window* video_window = nullptr;
 	godot::CanvasLayer* video_overlay_layer = nullptr;
 	godot::Control* video_surface = nullptr;
-	docrender::HTMLVideoPart fullscreen_pressed_part{};
+	dockit::HTMLVideoPart fullscreen_pressed_part{};
 	bool fullscreen_keyboard_focus = false;
 	godot::Vector2 fullscreen_press_position;
 	VideoPlayback* find_video(const HTMLVideoElement& p_element);
@@ -416,8 +416,8 @@ private:
 	void draw_video_fullscreen();
 	void on_video_fullscreen_input(const godot::Ref<godot::InputEvent>& p_event);
 	void wake_video_controls(const HTMLVideoElement& p_element);
-	void activate_video_part(const godot::Ref<HTMLVideoElement>& p_element, docrender::HTMLVideoPart p_part);
-	void update_video_slider(const godot::Ref<HTMLVideoElement>& p_element, docrender::HTMLVideoPart p_part,
+	void activate_video_part(const godot::Ref<HTMLVideoElement>& p_element, dockit::HTMLVideoPart p_part);
+	void update_video_slider(const godot::Ref<HTMLVideoElement>& p_element, dockit::HTMLVideoPart p_part,
 		const godot::Rect2& p_box, float p_x, bool p_commit);
 	bool video_key(const godot::Ref<HTMLVideoElement>& p_element, const godot::InputEventKey& p_key, const godot::Rect2& p_box);
 
@@ -453,7 +453,7 @@ private:
 	godot::Timer* color_scheme_timer = nullptr;
 	godot::Control* select_menu = nullptr;
 	godot::Ref<HTMLElement> open_select;
-	std::vector<docrender::HTMLSelectMenuRow> select_rows;
+	std::vector<dockit::HTMLSelectMenuRow> select_rows;
 	int select_highlight = -1;
 	int select_pressed = -1;
 	int select_scroll = 0;
@@ -518,7 +518,7 @@ private:
 		godot::Vector2i hovered_cell{-1, -1};
 		godot::Vector2i pressed_cell{-1, -1};
 		godot::Vector2 press_position;
-		docrender::input_time::Kind kind = docrender::input_time::Kind::none;
+		dockit::input_time::Kind kind = dockit::input_time::Kind::none;
 		bool use_meridiem = false;
 		bool sunday_first = false;
 		bool year_view = false;
@@ -528,8 +528,8 @@ private:
 		int calendar_hover = -1;
 		int pressed_calendar = -1;
 
-		bool has_calendar() const { return kind != docrender::input_time::Kind::time; }
-		bool has_clock() const { return !has_calendar() || kind == docrender::input_time::Kind::local; }
+		bool has_calendar() const { return kind != dockit::input_time::Kind::time; }
+		bool has_clock() const { return !has_calendar() || kind == dockit::input_time::Kind::local; }
 		int calendar_width() const;
 		int calendar_height() const;
 	};
@@ -624,7 +624,7 @@ private:
 	bool interaction_styles_dirty = false;
 	bool reveal_focused_element = false;
 	int hover_passes_remaining = 0;
-	docrender::HTMLScrollbarAppearance viewport_scrollbar_style;
+	dockit::HTMLScrollbarAppearance viewport_scrollbar_style;
 	litehtml::color_scheme page_color_scheme = litehtml::color_scheme::light;
 	godot::Vector2 viewport_painted_gutters;
 
@@ -691,7 +691,7 @@ private:
 	void refresh();
 	void draw_viewport_gutters();
 	void draw_viewport_scrollbars();
-	docrender::HTMLScrollbar viewport_scrollbar(int p_axis) const;
+	dockit::HTMLScrollbar viewport_scrollbar(int p_axis) const;
 	void set_viewport_bar_hover(int p_axis);
 	void place_overlay(godot::Control& p_overlay, const godot::Vector2& p_point);
 	bool handle_viewport_touch(const godot::Ref<godot::InputEvent>& p_event);
@@ -699,8 +699,8 @@ private:
 		const godot::Vector2i& p_visible_bars, const godot::Vector2i& p_input_axes, bool p_layout_changed,
 		const godot::String& p_error = {}, const godot::Vector2& p_painted_gutters = {});
 	godot::Rect2 get_visible_rect() const;
-	void apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align,
-		const docrender::HTMLScrollOptions* p_options = nullptr);
+	void apply_scroll_target(const dockit::HTMLScrollTarget& p_target, std::optional<float> p_align,
+		const dockit::HTMLScrollOptions* p_options = nullptr);
 	void advance_viewport_scroll(double p_fraction, godot::Vector2 p_from, godot::Vector2 p_to);
 	void cancel_viewport_scroll();
 	void on_nested_scroll_advanced();
@@ -772,7 +772,7 @@ private:
 	void commit_picker_value(const godot::String& p_value);
 	void submit_from_text(const godot::Ref<HTMLElement>& p_element);
 	bool open_suggestion_menu(const godot::Ref<HTMLElement>& p_element);
-	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows);
+	bool show_select_menu(const godot::Ref<HTMLElement>& p_element, std::vector<dockit::HTMLSelectMenuRow> p_rows);
 	bool handle_listbox_mouse(const godot::Ref<HTMLElement>& p_element, const godot::InputEventMouseButton& p_event, const godot::Vector2& p_point);
 	bool open_select_menu(const godot::Ref<HTMLSelectElement>& p_element);
 	void close_select_menu();

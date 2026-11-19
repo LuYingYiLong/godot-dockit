@@ -3,7 +3,7 @@
 #include "html_audio_element.h"
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 class HTMLAudioNode final : public litehtml::html_tag {
 	godot::Rect2 content_box;
 

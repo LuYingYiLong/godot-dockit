@@ -8,7 +8,7 @@
 #include <optional>
 #include <string_view>
 
-namespace docrender {
+namespace dockit {
 	class HTMLInputNode final : public HTMLTextControlNode, public HTMLNodeCopyState {
 		bool checked = false;
 		bool dirty_checked = false;

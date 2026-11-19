@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_stylesheet_rules.h"
 
@@ -9,7 +9,7 @@
 
 #include <utility>
 
-namespace docrender::css {
+namespace dockit::css {
 
 namespace {
 
@@ -155,4 +155,4 @@ void visit_stylesheet_rules(const raw_rule::vector& rules, bool top_level,
 	}
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

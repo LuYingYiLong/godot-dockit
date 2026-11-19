@@ -1,4 +1,4 @@
-#include "docrender_source_editor.h"
+#include "dockit_source_editor.h"
 
 #include "formats/html/html_document.h"
 #include "formats/latex/latex_document.h"
@@ -138,9 +138,9 @@ namespace godot {
 				}
 				const String importer = config->get_value("remap", "importer", "");
 				const int64_t version = config->get_value("remap", "importer_version", 0);
-				const bool outdated_html = importer == "docrender.html_document" &&
+				const bool outdated_html = importer == "dockit.html_document" &&
 					version < HTMLDocumentImporter::FORMAT_VERSION;
-				if (importer == "docrender.source" || outdated_html) {
+				if (importer == "dockit.source" || outdated_html) {
 					r_paths.append(path);
 				}
 			}
@@ -150,9 +150,9 @@ namespace godot {
 		}
 	} // namespace
 
-	HashMap<uint64_t, String> DocRenderSourceEditorPlugin::source_tabs;
+	HashMap<uint64_t, String> DockitSourceEditorPlugin::source_tabs;
 
-	void DocRenderSourceEditorPlugin::observe_source_document(const Ref<Resource>& p_document) {
+	void DockitSourceEditorPlugin::observe_source_document(const Ref<Resource>& p_document) {
 		if (p_document.is_null() || !Engine::get_singleton()->is_editor_hint()) {
 			return;
 		}
@@ -164,12 +164,12 @@ namespace godot {
 		observe_document(path, p_document);
 	}
 
-	String DocRenderSourceEditorPlugin::get_source_path(uint64_t p_tab_id) {
+	String DockitSourceEditorPlugin::get_source_path(uint64_t p_tab_id) {
 		const String* path = source_tabs.getptr(p_tab_id);
 		return path != nullptr ? *path : String();
 	}
 
-	void DocRenderSourceEditorPlugin::prepare_registration() {
+	void DockitSourceEditorPlugin::prepare_registration() {
 		const EditorInterface* editor = EditorInterface::get_singleton();
 		if (editor == nullptr || editor->get_resource_filesystem() == nullptr) {
 			return;
@@ -177,7 +177,7 @@ namespace godot {
 
 		// Godot can discover this extension during its first scan. It defers
 		// creating editor plugins, so register the importers before that scan continues.
-		DocRenderSourceEditorPlugin* registrar = memnew(DocRenderSourceEditorPlugin);
+		DockitSourceEditorPlugin* registrar = memnew(DockitSourceEditorPlugin);
 		registrar->install_importers();
 		startup_html_importer = registrar->html_importer;
 		startup_latex_importer = registrar->latex_importer;
@@ -186,7 +186,7 @@ namespace godot {
 		memdelete(registrar);
 	}
 
-	void DocRenderSourceEditorPlugin::install_importers() {
+	void DockitSourceEditorPlugin::install_importers() {
 		html_importer.instantiate();
 		html_importer->set_translation_domain("godot.editor");
 		add_import_plugin(html_importer);
@@ -203,7 +203,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::_enter_tree() {
+	void DockitSourceEditorPlugin::_enter_tree() {
 		editor_translations.load();
 		video_exporter.instantiate();
 		add_export_plugin(video_exporter);
@@ -220,18 +220,18 @@ namespace godot {
 			install_importers();
 		}
 
-		const Callable import_sources = callable_mp(this, &DocRenderSourceEditorPlugin::import_existing_sources);
+		const Callable import_sources = callable_mp(this, &DockitSourceEditorPlugin::import_existing_sources);
 		// Reimport opens a progress dialog, which requires a regular editor frame.
 		get_tree()->connect("process_frame", import_sources, CONNECT_ONE_SHOT);
 
 		const Dictionary version = Engine::get_singleton()->get_version_info();
 		if (int64_t(version["major"]) == 4 && int64_t(version["minor"]) == 7 && int64_t(version["patch"]) == 2) {
-			connect("scene_changed", callable_mp(this, &DocRenderSourceEditorPlugin::observe_restored_scene_sources), CONNECT_ONE_SHOT);
-			callable_mp(this, &DocRenderSourceEditorPlugin::attach_source_editor).call_deferred();
+			connect("scene_changed", callable_mp(this, &DockitSourceEditorPlugin::observe_restored_scene_sources), CONNECT_ONE_SHOT);
+			callable_mp(this, &DockitSourceEditorPlugin::attach_source_editor).call_deferred();
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::observe_restored_scene_sources(Node* p_scene) {
+	void DockitSourceEditorPlugin::observe_restored_scene_sources(Node* p_scene) {
 		if (p_scene == nullptr) {
 			return;
 		}
@@ -243,13 +243,13 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::import_existing_sources() {
+	void DockitSourceEditorPlugin::import_existing_sources() {
 		if (!is_inside_tree()) {
 			return;
 		}
 		EditorFileSystem* filesystem = EditorInterface::get_singleton()->get_resource_filesystem();
 		if (filesystem->is_scanning()) {
-			get_tree()->connect("process_frame", callable_mp(this, &DocRenderSourceEditorPlugin::import_existing_sources), CONNECT_ONE_SHOT);
+			get_tree()->connect("process_frame", callable_mp(this, &DockitSourceEditorPlugin::import_existing_sources), CONNECT_ONE_SHOT);
 			return;
 		}
 
@@ -262,7 +262,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::_exit_tree() {
+	void DockitSourceEditorPlugin::_exit_tree() {
 		detach_source_editor();
 		remove_export_plugin(video_exporter);
 		video_exporter.unref();
@@ -283,14 +283,14 @@ namespace godot {
 		editor_translations.unload();
 	}
 
-	void DocRenderSourceEditorPlugin::_set_window_layout(const Ref<ConfigFile>& p_configuration) {
+	void DockitSourceEditorPlugin::_set_window_layout(const Ref<ConfigFile>& p_configuration) {
 		if (p_configuration.is_valid() && p_configuration->has_section_key("ScriptEditor", "open_scripts")) {
 			const Array paths = p_configuration->get_value("ScriptEditor", "open_scripts");
-			callable_mp(this, &DocRenderSourceEditorPlugin::restore_open_source_paths).call_deferred(paths);
+			callable_mp(this, &DockitSourceEditorPlugin::restore_open_source_paths).call_deferred(paths);
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::attach_source_editor() {
+	void DockitSourceEditorPlugin::attach_source_editor() {
 		if (!is_inside_tree()) {
 			return;
 		}
@@ -341,28 +341,28 @@ namespace godot {
 		}
 
 		tree_activation.signal.disconnect(tree_activation.callback);
-		tree_activation.signal.connect(callable_mp(this, &DocRenderSourceEditorPlugin::activate_tree_item));
+		tree_activation.signal.connect(callable_mp(this, &DockitSourceEditorPlugin::activate_tree_item));
 		list_activation.signal.disconnect(list_activation.callback);
-		list_activation.signal.connect(callable_mp(this, &DocRenderSourceEditorPlugin::activate_list_item));
+		list_activation.signal.connect(callable_mp(this, &DockitSourceEditorPlugin::activate_list_item));
 		file_selection.signal.disconnect(file_selection.callback);
-		file_selection.signal.connect(callable_mp(this, &DocRenderSourceEditorPlugin::select_file));
+		file_selection.signal.connect(callable_mp(this, &DockitSourceEditorPlugin::select_file));
 		ObjectDB::get_instance(script_tabs_id)->connect("child_order_changed",
-			callable_mp(this, &DocRenderSourceEditorPlugin::sync_open_sources), CONNECT_DEFERRED);
+			callable_mp(this, &DockitSourceEditorPlugin::sync_open_sources), CONNECT_DEFERRED);
 		sync_open_sources();
 	}
 
-	void DocRenderSourceEditorPlugin::detach_source_editor() {
+	void DockitSourceEditorPlugin::detach_source_editor() {
 		auto restore = [](NativeConnection& p_connection, const Callable& p_hook) {
 			if (p_connection.signal.get_object() != nullptr && p_connection.signal.is_connected(p_hook)) {
 				p_connection.signal.disconnect(p_hook);
 				p_connection.signal.connect(p_connection.callback);
 			}
 		};
-		restore(tree_activation, callable_mp(this, &DocRenderSourceEditorPlugin::activate_tree_item));
-		restore(list_activation, callable_mp(this, &DocRenderSourceEditorPlugin::activate_list_item));
-		restore(file_selection, callable_mp(this, &DocRenderSourceEditorPlugin::select_file));
+		restore(tree_activation, callable_mp(this, &DockitSourceEditorPlugin::activate_tree_item));
+		restore(list_activation, callable_mp(this, &DockitSourceEditorPlugin::activate_list_item));
+		restore(file_selection, callable_mp(this, &DockitSourceEditorPlugin::select_file));
 		if (Object* tabs = ObjectDB::get_instance(script_tabs_id)) {
-			const Callable sync = callable_mp(this, &DocRenderSourceEditorPlugin::sync_open_sources);
+			const Callable sync = callable_mp(this, &DockitSourceEditorPlugin::sync_open_sources);
 			if (tabs->is_connected("child_order_changed", sync)) {
 				tabs->disconnect("child_order_changed", sync);
 			}
@@ -370,7 +370,7 @@ namespace godot {
 		source_tabs.clear();
 	}
 
-	void DocRenderSourceEditorPlugin::activate_tree_item() {
+	void DockitSourceEditorPlugin::activate_tree_item() {
 		Tree* tree = Object::cast_to<Tree>(tree_activation.signal.get_object());
 		TreeItem* item = tree == nullptr ? nullptr : tree->get_selected();
 		if (item == nullptr || !open_imported_source(item->get_metadata(0))) {
@@ -378,7 +378,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::activate_list_item(int32_t p_index) {
+	void DockitSourceEditorPlugin::activate_list_item(int32_t p_index) {
 		ItemList* list = Object::cast_to<ItemList>(list_activation.signal.get_object());
 		if (list == nullptr || p_index < 0 || p_index >= list->get_item_count() ||
 			!open_imported_source(list->get_item_metadata(p_index))) {
@@ -386,15 +386,15 @@ namespace godot {
 		}
 	}
 
-	bool DocRenderSourceEditorPlugin::open_imported_source(const Variant& p_metadata) {
+	bool DockitSourceEditorPlugin::open_imported_source(const Variant& p_metadata) {
 		if (p_metadata.get_type() != Variant::STRING || !is_imported_source(p_metadata)) {
 			return false;
 		}
-		callable_mp(this, &DocRenderSourceEditorPlugin::open_source_text).call_deferred(String(p_metadata));
+		callable_mp(this, &DockitSourceEditorPlugin::open_source_text).call_deferred(String(p_metadata));
 		return true;
 	}
 
-	void DocRenderSourceEditorPlugin::open_source_text(const String& p_path) {
+	void DockitSourceEditorPlugin::open_source_text(const String& p_path) {
 		if (!is_inside_tree() || !FileAccess::file_exists(p_path)) {
 			return;
 		}
@@ -431,7 +431,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::sync_open_sources() {
+	void DockitSourceEditorPlugin::sync_open_sources() {
 		ItemList* list = Object::cast_to<ItemList>(ObjectDB::get_instance(script_list_id));
 		TabContainer* tabs = Object::cast_to<TabContainer>(ObjectDB::get_instance(script_tabs_id));
 		if (!is_inside_tree() || list == nullptr || tabs == nullptr) {
@@ -452,7 +452,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderSourceEditorPlugin::restore_open_source_paths(const Array& p_paths) {
+	void DockitSourceEditorPlugin::restore_open_source_paths(const Array& p_paths) {
 		if (!is_inside_tree() || !open_text_result.is_valid()) {
 			return;
 		}
@@ -467,19 +467,19 @@ namespace godot {
 		sync_open_sources();
 	}
 
-	void DocRenderSourceEditorPlugin::remember_source(ScriptEditorBase* p_tab, const String& p_path) {
+	void DockitSourceEditorPlugin::remember_source(ScriptEditorBase* p_tab, const String& p_path) {
 		const uint64_t id = p_tab->get_instance_id();
 		if (!source_tabs.has(id)) {
-			p_tab->connect("tree_exiting", callable_mp(this, &DocRenderSourceEditorPlugin::forget_source).bind(id), CONNECT_ONE_SHOT);
+			p_tab->connect("tree_exiting", callable_mp(this, &DockitSourceEditorPlugin::forget_source).bind(id), CONNECT_ONE_SHOT);
 		}
 		source_tabs[id] = p_path;
 	}
 
-	void DocRenderSourceEditorPlugin::forget_source(uint64_t p_tab_id) {
+	void DockitSourceEditorPlugin::forget_source(uint64_t p_tab_id) {
 		source_tabs.erase(p_tab_id);
 	}
 
-	void DocRenderSourceEditorPlugin::select_file(const String& p_path) {
+	void DockitSourceEditorPlugin::select_file(const String& p_path) {
 		EditorInterface* editor = EditorInterface::get_singleton();
 		ScriptEditor* scripts = editor->get_script_editor();
 		const EditorFileDialog* dialog = Object::cast_to<EditorFileDialog>(file_selection.signal.get_object());

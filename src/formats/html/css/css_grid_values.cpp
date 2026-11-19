@@ -6,8 +6,8 @@
 #include <limits>
 
 namespace litehtml {
-	using docrender::css::detail::is_one_of;
-	using docrender::css::detail::lowcase;
+	using dockit::css::detail::is_one_of;
+	using dockit::css::detail::lowcase;
 
 	namespace {
 		bool read_integer(const css_token& token, std::int64_t& integer) {

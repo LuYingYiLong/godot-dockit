@@ -3,7 +3,7 @@
 #include <litehtml/render_block.h>
 #include <cmath>
 
-namespace docrender {
+namespace dockit {
 	// Controls paint their current label themselves, but its intrinsic width still participates in layout.
 	class HTMLControlRenderItem final : public litehtml::render_item_block {
 		litehtml::size intrinsic;

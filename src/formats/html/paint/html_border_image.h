@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLBorderImagePatch {
 		godot::Rect2 source;
 		godot::Rect2 destination;

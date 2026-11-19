@@ -8,7 +8,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		struct MetadataView {
 			FileAccess& file;

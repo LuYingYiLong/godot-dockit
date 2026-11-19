@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace docrender::forms {
+namespace dockit::forms {
 	enum class ButtonAction { NONE, BUTTON, SUBMIT, RESET };
 
 bool is_listed(const litehtml::element& p_node);

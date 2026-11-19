@@ -182,7 +182,7 @@ void el_before_after_base::resolve_content(const css_generated_content& content,
 
 void el_before_after_base::add_text(const string& text)
 {
-	for (const auto& run : docrender_editor::create_text(get_document(), text.c_str(), true))
+	for (const auto& run : dockit_editor::create_text(get_document(), text.c_str(), true))
 		appendChild(run);
 }
 

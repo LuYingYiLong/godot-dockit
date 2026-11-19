@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_compute_context.h"
 #include "css_declarations.h"
@@ -9,7 +9,7 @@
 
 #include <cmath>
 
-namespace docrender::css {
+namespace dockit::css {
 namespace {
 
 	using detail::index_value;
@@ -1124,11 +1124,11 @@ void ComputedStyle::compute_mask(const ComputeContext& context)
 	layers.m_current_color = m_color;
 	layers.m_direction = m_bg.m_direction;
 	read("mask-image", layers.m_image, inherited.m_image);
-	read("__docrender-mask-image-baseurl", layers.m_baseurl, inherited.m_baseurl);
-	read("__docrender-mask-position-x", layers.m_position_x, inherited.m_position_x);
-	read("__docrender-mask-position-y", layers.m_position_y, inherited.m_position_y);
-	read("__docrender-mask-repeat-x", layers.m_repeat_x, inherited.m_repeat_x);
-	read("__docrender-mask-repeat-y", layers.m_repeat_y, inherited.m_repeat_y);
+	read("__dockit-mask-image-baseurl", layers.m_baseurl, inherited.m_baseurl);
+	read("__dockit-mask-position-x", layers.m_position_x, inherited.m_position_x);
+	read("__dockit-mask-position-y", layers.m_position_y, inherited.m_position_y);
+	read("__dockit-mask-repeat-x", layers.m_repeat_x, inherited.m_repeat_x);
+	read("__dockit-mask-repeat-y", layers.m_repeat_y, inherited.m_repeat_y);
 	read("mask-size", layers.m_size, inherited.m_size);
 	read("mask-origin", layers.m_origin, inherited.m_origin);
 	read("mask-clip", layers.m_clip, inherited.m_clip);

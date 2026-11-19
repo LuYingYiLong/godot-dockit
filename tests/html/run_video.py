@@ -23,11 +23,11 @@ def install_backend(project, addon):
 
 
 def fixture(project, repo, media, ffmpeg, vlc, template, mode):
-    addon = project / "addons/docrender"
+    addon = project / "addons/dockit"
     (addon / "bin").mkdir(parents=True)
-    for asset in ("docrender.gdextension", "bin/docrender.windows.template_debug.x86_64.dll"):
-        shutil.copyfile(repo / "addons/docrender" / asset, addon / asset)
-    extensions = ["res://addons/docrender/docrender.gdextension"]
+    for asset in ("dockit.gdextension", "bin/dockit.windows.template_debug.x86_64.dll"):
+        shutil.copyfile(repo / "addons/dockit" / asset, addon / asset)
+    extensions = ["res://addons/dockit/dockit.gdextension"]
     extensions += install_backend(project, ffmpeg)
     extensions += install_backend(project, vlc)
     (project / ".godot").mkdir()
@@ -35,7 +35,7 @@ def fixture(project, repo, media, ffmpeg, vlc, template, mode):
     write(project / "project.godot", """config_version=5
 
 [application]
-config/name="DocRender HTML video"
+config/name="Dockit HTML video"
 run/main_scene="res://main.tscn"
 
 [display]
@@ -141,7 +141,7 @@ def main():
         parser.error("Install the Windows x64 debug export template or pass --template")
     repo = Path(__file__).resolve().parents[2]
     # The Windows editor's shader cache can keep files pending deletion after exit.
-    with TemporaryDirectory(prefix=f"docrender-video-{args.backend}-", dir=args.work_dir,
+    with TemporaryDirectory(prefix=f"dockit-video-{args.backend}-", dir=args.work_dir,
                             ignore_cleanup_errors=args.check_editor) as directory:
         workspace = Path(directory)
         project = workspace / "project"

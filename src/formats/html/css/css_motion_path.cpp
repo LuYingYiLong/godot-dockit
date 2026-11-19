@@ -120,7 +120,7 @@ namespace litehtml {
 				path = &token;
 			}
 		}
-		const auto function = path && path->type == CV_FUNCTION ? docrender::css::detail::lowcase(path->name) : std::string();
+		const auto function = path && path->type == CV_FUNCTION ? dockit::css::detail::lowcase(path->name) : std::string();
 		if (function == "ray") {
 			result.ray = parse_ray(path->value);
 			return result.ray ? std::optional<css_offset_path>(result) : std::nullopt;

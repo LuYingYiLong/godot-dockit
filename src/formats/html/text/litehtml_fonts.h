@@ -11,7 +11,7 @@
 #include <array>
 #include <optional>
 
-namespace docrender {
+namespace dockit {
 	class HTMLResources;
 
 	class LiteHTMLFonts {

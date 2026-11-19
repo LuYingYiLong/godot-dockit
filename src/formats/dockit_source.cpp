@@ -1,10 +1,10 @@
-#include "docrender_source.h"
+#include "dockit_source.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 
 using namespace godot;
 
-Error docrender::read_document_text(const String& p_path, String& r_text) {
+Error dockit::read_document_text(const String& p_path, String& r_text) {
 	const Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 	if (file.is_null()) {
 		return FileAccess::get_open_error();

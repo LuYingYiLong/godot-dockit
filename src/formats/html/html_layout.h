@@ -1,5 +1,5 @@
-#ifndef DOCRENDER_HTML_LAYOUT_H
-#define DOCRENDER_HTML_LAYOUT_H
+#ifndef DOCKIT_HTML_LAYOUT_H
+#define DOCKIT_HTML_LAYOUT_H
 
 #include "elements/html_input_element.h"
 #include "elements/html_textarea_element.h"
@@ -37,7 +37,7 @@ namespace godot {
 	class Tween;
 }
 
-namespace docrender {
+namespace dockit {
 	class HTMLDOM;
 	class HTMLPaintRecorder;
 	class HTMLTextControlNode;
@@ -108,7 +108,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::TypedArray<HTMLVideoElement> video_elements() const;
 	godot::PackedStringArray video_paths(const HTMLVideoElement& p_element) const;
 	godot::Ref<godot::Texture2D> video_poster(const HTMLVideoElement& p_element);
-	godot::Ref<godot::Texture2D> video_control_icon(docrender::HTMLControlIcon p_icon);
+	godot::Ref<godot::Texture2D> video_control_icon(dockit::HTMLControlIcon p_icon);
 	void video_dimensions_changed();
 	godot::ObjectID audio_host;
 	godot::PackedStringArray audio_sources(const HTMLAudioElement& p_element) const;
@@ -122,9 +122,9 @@ class HTMLLayout : public godot::RefCounted {
 	friend class MarkdownLabelCanvas;
 	friend class HTMLRange;
 	friend class HTMLAnimation;
-	friend class docrender::HTMLDOM;
-	int64_t document_text_offset(const docrender::HTMLBoundary& p_boundary, bool p_forward = true) const;
-	docrender::HTMLBoundary text_boundary_at(int64_t p_offset) const;
+	friend class dockit::HTMLDOM;
+	int64_t document_text_offset(const dockit::HTMLBoundary& p_boundary, bool p_forward = true) const;
+	dockit::HTMLBoundary text_boundary_at(int64_t p_offset) const;
 	godot::TypedArray<godot::Rect2> range_client_rects(const HTMLRange& p_range) const;
 	godot::Vector2i get_node_selection_offsets() const;
 	bool set_node_selection_offsets(int64_t p_anchor, int64_t p_focus);
@@ -141,9 +141,9 @@ class HTMLLayout : public godot::RefCounted {
 	bool initialize_document(const godot::CharString& p_html);
 	godot::Ref<HTMLElement> get_title_element() const;
 	bool ensure_document_for_editing();
-	docrender::HTMLDOM& get_dom() const;
+	dockit::HTMLDOM& get_dom() const;
 	bool has_current_layout() const;
-	const docrender::RenderGeometry* element_geometry(const HTMLElement& p_element) const;
+	const dockit::RenderGeometry* element_geometry(const HTMLElement& p_element) const;
 	std::shared_ptr<litehtml::render_item> offset_parent_of(const litehtml::render_item& p_item) const;
 	godot::Vector2 element_client_size(const HTMLElement& p_element) const;
 	godot::Vector2 element_client_offset(const HTMLElement& p_element) const;
@@ -184,8 +184,8 @@ class HTMLLayout : public godot::RefCounted {
 	void dispatch_css_animation_events();
 	double animation_clock_time() const;
 	godot::Ref<HTMLAnimation> animation_handle(uint64_t p_track, bool p_transition);
-	std::optional<docrender::css::PlaybackInfo> animation_info(uint64_t p_track, bool p_transition) const;
-	bool control_animation(uint64_t p_track, bool p_transition, docrender::css::PlaybackCommand p_command, double p_value);
+	std::optional<dockit::css::PlaybackInfo> animation_info(uint64_t p_track, bool p_transition) const;
+	bool control_animation(uint64_t p_track, bool p_transition, dockit::css::PlaybackCommand p_command, double p_value);
 	godot::TypedArray<godot::Rect2> get_element_rects(const std::shared_ptr<litehtml::element>& p_element) const;
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
 		bool p_text_selection = false) const;
@@ -195,10 +195,10 @@ class HTMLLayout : public godot::RefCounted {
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
 	bool is_enabled_button(const godot::Ref<HTMLElement>& p_element) const;
-	std::vector<docrender::HTMLSelectMenuRow> suggestion_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
-	std::vector<docrender::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
-	godot::Ref<godot::Texture2D> get_control_icon(docrender::HTMLControlIcon p_icon) const;
-	docrender::HTMLTextLayout shape_control_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text,
+	std::vector<dockit::HTMLSelectMenuRow> suggestion_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
+	std::vector<dockit::HTMLSelectMenuRow> select_menu_rows(const godot::Ref<HTMLElement>& p_element) const;
+	godot::Ref<godot::Texture2D> get_control_icon(dockit::HTMLControlIcon p_icon) const;
+	dockit::HTMLTextLayout shape_control_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text,
 		int p_size = 0, bool p_bold = false) const;
 	godot::Vector2 get_image_intrinsic_size(const HTMLElement& p_element) const;
 	godot::String get_image_current_src(const HTMLElement& p_element) const;
@@ -208,12 +208,12 @@ class HTMLLayout : public godot::RefCounted {
 	std::vector<godot::Ref<HTMLElement>> get_tab_elements(bool& r_has_focusable_elements) const;
 	std::optional<godot::Vector2> input_local_point(const HTMLElement& p_input, const godot::Vector2& p_point) const;
 	std::optional<godot::Vector2> input_caret_point(const HTMLElement& p_input) const;
-	void update_input(docrender::HTMLTextControlNode& p_input);
-	std::shared_ptr<docrender::HTMLTextControlNode> text_control(const godot::Ref<HTMLElement>& p_element) const;
-	std::optional<docrender::HTMLPlaneTransform> input_inverse(const HTMLElement& p_input) const;
+	void update_input(dockit::HTMLTextControlNode& p_input);
+	std::shared_ptr<dockit::HTMLTextControlNode> text_control(const godot::Ref<HTMLElement>& p_element) const;
+	std::optional<dockit::HTMLPlaneTransform> input_inverse(const HTMLElement& p_input) const;
 	struct ResizeTarget {
 		godot::Ref<HTMLElement> element;
-		docrender::HTMLPlaneTransform inverse;
+		dockit::HTMLPlaneTransform inverse;
 		godot::Vector2 size;
 		godot::Vector2i axes;
 	};
@@ -223,13 +223,13 @@ class HTMLLayout : public godot::RefCounted {
 		godot::Node* p_pan_owner, const godot::Callable& p_changed);
 	void refresh_overflow_paint(bool p_moved_boxes);
 	void rebuild_scroll_geometry();
-	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const litehtml::element& p_element,
+	std::optional<dockit::HTMLScrollTarget> scroll_element_into_view(const litehtml::element& p_element,
 		std::optional<float> p_align, bool p_allow_fallback, godot::Node& p_owner, const godot::Callable& p_changed,
-		const docrender::HTMLScrollOptions* p_options = nullptr);
+		const dockit::HTMLScrollOptions* p_options = nullptr);
 	bool viewport_uses_smooth_scroll() const;
 	godot::Vector2i viewport_snap_axes() const;
-	docrender::HTMLSnapResult snap_viewport(const godot::Vector2& p_viewport, docrender::HTMLSnapRequest p_request);
-	docrender::HTMLSnapResult snap_nested(const litehtml::render_item& p_container, docrender::HTMLSnapRequest p_request);
+	dockit::HTMLSnapResult snap_viewport(const godot::Vector2& p_viewport, dockit::HTMLSnapRequest p_request);
+	dockit::HTMLSnapResult snap_nested(const litehtml::render_item& p_container, dockit::HTMLSnapRequest p_request);
 	void resnap_nested(const godot::Vector2i& p_viewport_size);
 	static godot::Ref<godot::Tween> start_scroll_tween(godot::Node& p_owner, const godot::Callable& p_update);
 	static godot::Ref<godot::Tween> start_snap_timer(godot::Node& p_owner, const godot::Callable& p_callback);
@@ -245,9 +245,9 @@ class HTMLLayout : public godot::RefCounted {
 	void set_viewport_gutters(const godot::Vector2& p_gutters);
 	void draw_viewport_background(godot::CanvasItem& p_canvas, const godot::Vector2& p_position,
 		const godot::Rect2& p_clip, const godot::Vector2& p_viewport_origin);
-	docrender::HTMLViewportStyle get_viewport_style() const;
+	dockit::HTMLViewportStyle get_viewport_style() const;
 	litehtml::color_scheme get_element_color_scheme(const godot::Ref<HTMLElement>& p_element) const;
-	docrender::HTMLTextLayout shape_element_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
+	dockit::HTMLTextLayout shape_element_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
 	bool update_preferred_color_scheme();
 	godot::Vector2 viewport_contained_scroll(const godot::Vector2& p_delta) const;
 	static godot::Vector2 scroll_input_steps(const godot::Ref<godot::InputEvent>& p_event);
@@ -259,7 +259,7 @@ class HTMLLayout : public godot::RefCounted {
 	void set_print_media(bool p_enabled);
 	int pending_resource_count() const;
 	int get_failed_remote_resource_count() const;
-	const docrender::HTMLPaintRecorder* get_paint_recorder() const;
+	const dockit::HTMLPaintRecorder* get_paint_recorder() const;
 	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const;
 	void record_css_diagnostics();
 	bool refresh_cssom();
@@ -311,7 +311,7 @@ public:
 		const godot::String& p_source_path = {},
 		bool p_fit_images = false,
 		const godot::String& p_default_stylesheet = {},
-		const docrender::HTMLFontConfig& p_fonts = {},
+		const dockit::HTMLFontConfig& p_fonts = {},
 		const godot::Dictionary& p_local_stylesheets = {},
 		const godot::Dictionary& p_local_fonts = {},
 		const godot::Dictionary& p_image_dpi = {},
@@ -327,7 +327,7 @@ public:
 	godot::String get_accessible_text() const;									// 返回应用 CSS 替代文本后的无障碍文本
 	int64_t hit_test_text(const godot::Vector2& p_position) const;				// 返回离指定文档坐标最近的文本光标偏移
 	bool hit_test_selectable_text(const godot::Vector2& p_position, bool* r_blank = nullptr) const;	// 检查是否命中可选择的文字，并可选地报告空白命中
-	docrender::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
+	dockit::HTMLSelectionPoint selection_point_at(const godot::Vector2& p_position) const;
 	godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 	godot::TypedArray<godot::Rect2> get_selection_rects(
 		int64_t p_from,
@@ -356,12 +356,12 @@ public:
 		godot::Ref<HTMLElement>* r_element = nullptr
 	) const;																	// 命中文档坐标处的链接，可同时写出命中的元素
 	godot::Rect2 get_anchor_rect(const godot::String& p_id) const;				// 返回指定 HTML ID 的锚点矩形
-	const godot::HashMap<godot::String, docrender::HTMLAnchor>& get_anchors() const; // 提供当前布局的锚点位置及节点
-	std::optional<docrender::HTMLScrollTarget> scroll_anchor_into_view(const godot::String& p_id, float p_align,
+	const godot::HashMap<godot::String, dockit::HTMLAnchor>& get_anchors() const; // 提供当前布局的锚点位置及节点
+	std::optional<dockit::HTMLScrollTarget> scroll_anchor_into_view(const godot::String& p_id, float p_align,
 		godot::Node& p_owner, const godot::Callable& p_changed = {});
-	std::optional<docrender::HTMLScrollTarget> scroll_element_into_view(const godot::Ref<HTMLElement>& p_element,
+	std::optional<dockit::HTMLScrollTarget> scroll_element_into_view(const godot::Ref<HTMLElement>& p_element,
 		std::optional<float> p_align, godot::Node& p_owner, const godot::Callable& p_changed,
-		const docrender::HTMLScrollOptions* p_options = nullptr);
+		const dockit::HTMLScrollOptions* p_options = nullptr);
 	void cancel_scroll_activity();
 	godot::Ref<HTMLElement> create_element(const godot::String& p_tag_name);	// 创建同一布局中尚未插入文档的元素
 	godot::Ref<HTMLDocumentFragment> create_document_fragment();				// 创建属于当前布局的空片段
@@ -391,12 +391,12 @@ public:
 	godot::Ref<HTMLElement> get_element_by_id(const godot::String& p_id) const;		// 按区分大小写的 HTML ID 查找第一个元素
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
 	godot::TypedArray<HTMLElement> get_elements_at(const godot::Vector2& p_position) const; // 按命中顺序返回文档坐标下的元素
-	std::optional<docrender::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
+	std::optional<dockit::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
 	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position); // 更新滚动条的可见悬停状态
-	void set_scrollbar_pressed(const std::optional<docrender::HTMLScrollbarDrag>& p_drag); // 更新滚动条的可见按压状态
-	void drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, const godot::Vector2& p_position); // 按文档坐标移动滑块
-	void finish_scrollbar_drag(const docrender::HTMLScrollbarDrag& p_drag);
-	docrender::HTMLScrollInput scroll_overflow_from_input(const godot::Vector2& p_position, const godot::Ref<godot::InputEvent>& p_event,
+	void set_scrollbar_pressed(const std::optional<dockit::HTMLScrollbarDrag>& p_drag); // 更新滚动条的可见按压状态
+	void drag_scrollbar(const dockit::HTMLScrollbarDrag& p_drag, const godot::Vector2& p_position); // 按文档坐标移动滑块
+	void finish_scrollbar_drag(const dockit::HTMLScrollbarDrag& p_drag);
+	dockit::HTMLScrollInput scroll_overflow_from_input(const godot::Vector2& p_position, const godot::Ref<godot::InputEvent>& p_event,
 		godot::Node& p_owner, const godot::Callable& p_changed = {});
 	std::optional<godot::Rect2> get_element_scroll_bounds(
 		const godot::Ref<HTMLElement>& p_element

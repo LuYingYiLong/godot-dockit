@@ -300,7 +300,7 @@ public:
 	void set_read_only(bool p_read_only) { mode = p_read_only ? MODE_READ_ONLY : MODE_READ_WRITE; }
 };
 
-namespace docrender {
+namespace dockit {
 	void set_current_drag_transfer(const godot::Ref<HTMLDataTransfer>& p_transfer);
 	godot::Ref<HTMLDataTransfer> get_current_drag_transfer();
 }
@@ -444,7 +444,7 @@ public:
 	void set_meta_pressed(bool p_value) { meta = p_value; }
 };
 
-namespace docrender {
+namespace dockit {
 	// 构造一个已标记为 trusted 的空事件，按类型选择具体子类。
 	godot::Ref<HTMLEvent> make_dom_event(const godot::StringName& p_type, bool p_bubbles, bool p_cancelable);
 }

@@ -37,16 +37,16 @@ namespace {
 
 	String resolve_behavior_path(HTMLLabel* p_label, const String& p_src) {
 		if (p_src.begins_with("res://") || p_src.begins_with("user://") || p_src.begins_with("uid://")) {
-			const docrender::HTMLResourceBase local_base{ p_label->get_base_dir(), p_label->get_base_dir() };
-			return docrender::resolve_html_link_href(p_src, local_base);
+			const dockit::HTMLResourceBase local_base{ p_label->get_base_dir(), p_label->get_base_dir() };
+			return dockit::resolve_html_link_href(p_src, local_base);
 		}
 		const String base_uri = p_label->get_base_uri();
-		if (docrender::is_http_url(base_uri)) return {};
+		if (dockit::is_http_url(base_uri)) return {};
 		const String fallback = p_label->get_base_dir();
 		const String directory = base_uri.is_empty() ? fallback :
 			(base_uri.ends_with("/") ? base_uri : base_uri.get_base_dir());
-		const docrender::HTMLResourceBase base{ base_uri.is_empty() ? directory : base_uri, directory };
-		return docrender::resolve_html_link_href(p_src, base);
+		const dockit::HTMLResourceBase base{ base_uri.is_empty() ? directory : base_uri, directory };
+		return dockit::resolve_html_link_href(p_src, base);
 	}
 
 	Ref<GDScript> load_behavior_script(ResourceLoader* p_loader, const String& p_path, bool p_reload, String& r_error) {
@@ -271,12 +271,12 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 			}
 		}
 		if (script.is_null()) {
-			if (docrender::is_http_url(src) || src.begins_with("//")) {
+			if (dockit::is_http_url(src) || src.begins_with("//")) {
 				diagnose(src, {}, "remote_scripts_are_not_allowed");
 				continue;
 			}
 			path = resolve_behavior_path(label, src);
-			const auto normalized = docrender::normalize_html_resource_path(path);
+			const auto normalized = dockit::normalize_html_resource_path(path);
 			if (!normalized || normalized->get_extension().nocasecmp_to("gd") != 0) {
 				diagnose(src, path, "invalid_local_script_path");
 				continue;
@@ -313,7 +313,7 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 		instance->document = document;
 		instance->label_id = ObjectID(id);
 		instance->local_storage.instantiate();
-		instance->local_storage->configure_persistent(String("user://docrender/html_storage/") +
+		instance->local_storage->configure_persistent(String("user://dockit/html_storage/") +
 			label->get_storage_namespace().sha256_text() + ".cfg");
 		instance->session_storage = label->session_storage;
 		label->attached_behaviors.push_back(instance);
@@ -330,7 +330,7 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 void HTMLLabel::set_storage_namespace(const String& p_namespace) {
 	if (storage_namespace == p_namespace) return;
 	storage_namespace = p_namespace.strip_edges();
-	const String path = String("user://docrender/html_storage/") + get_storage_namespace().sha256_text() + ".cfg";
+	const String path = String("user://dockit/html_storage/") + get_storage_namespace().sha256_text() + ".cfg";
 	for (const Ref<HTMLBehavior>& behavior : attached_behaviors) {
 		if (behavior.is_valid() && behavior->local_storage.is_valid()) behavior->local_storage->configure_persistent(path);
 	}

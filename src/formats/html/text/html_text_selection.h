@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLSelectionPoint {
 		int64_t offset = 0;
 		godot::Vector2i scope;

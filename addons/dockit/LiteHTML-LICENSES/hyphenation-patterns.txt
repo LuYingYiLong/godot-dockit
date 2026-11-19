@@ -1,4 +1,4 @@
-Hyphenation patterns distributed with DocRender
+Hyphenation patterns distributed with Dockit
 
 The binary files are unchanged from Chromium 142.0.7444.59, which redistributes
 Android's hyphenation patterns in Minikin's HYB format.

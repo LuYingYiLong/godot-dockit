@@ -69,24 +69,24 @@ def main():
     mode.add_argument("--dom-only", action="store_true", help="run only the headless DOM regression tests")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
-    library = repo / "addons/docrender/bin/docrender.windows.template_debug.x86_64.dll"
+    library = repo / "addons/dockit/bin/dockit.windows.template_debug.x86_64.dll"
     if not library.is_file():
         parser.error("Build the Windows x64 template_debug target first.")
     if not args.godot.is_file():
         parser.error("Godot executable does not exist.")
 
-    with TemporaryDirectory(prefix="docrender-css-cascade-", ignore_cleanup_errors=True) as test_dir:
+    with TemporaryDirectory(prefix="dockit-css-cascade-", ignore_cleanup_errors=True) as test_dir:
         project = Path(test_dir)
-        extension = project / "addons/docrender"
+        extension = project / "addons/dockit"
         (extension / "bin").mkdir(parents=True)
         shutil.copyfile(library, extension / "bin" / library.name)
-        shutil.copyfile(repo / "addons/docrender/docrender.gdextension", extension / "docrender.gdextension")
+        shutil.copyfile(repo / "addons/dockit/dockit.gdextension", extension / "dockit.gdextension")
         (project / ".godot").mkdir()
         (project / ".godot/extension_list.cfg").write_text(
-            "res://addons/docrender/docrender.gdextension\n", encoding="utf-8", newline="\n",
+            "res://addons/dockit/dockit.gdextension\n", encoding="utf-8", newline="\n",
         )
         (project / "project.godot").write_text(
-            'config_version=5\n\n[application]\nconfig/name="DocRender CSS cascade test"\n'
+            'config_version=5\n\n[application]\nconfig/name="Dockit CSS cascade test"\n'
             '\n[debug]\nfile_logging/enable_file_logging=false\n'
             '\n[rendering]\nshader_compiler/shader_cache/enabled=false\n',
             encoding="utf-8", newline="\n",
@@ -102,7 +102,7 @@ def main():
         )
         print(dom.stdout, end="", flush=True)
         print(dom.stderr, end="", file=sys.stderr, flush=True)
-        if dom.returncode != 0 or "DocRender DOM WPT ports passed." not in dom.stdout or "ERROR:" in dom.stderr:
+        if dom.returncode != 0 or "Dockit DOM WPT ports passed." not in dom.stdout or "ERROR:" in dom.stderr:
             return dom.returncode or 1
         if args.dom_only:
             return 0

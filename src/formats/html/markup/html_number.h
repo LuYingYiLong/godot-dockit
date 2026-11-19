@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string_view>
 
-namespace docrender {
+namespace dockit {
 	// HTML attributes accept a numeric prefix; form values require a complete number.
 	inline std::optional<double> html_number(std::string_view input, bool p_entire) {
 		if (!p_entire) {

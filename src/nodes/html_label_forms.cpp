@@ -18,8 +18,8 @@
 #include <algorithm>
 
 using namespace godot;
-using docrender::HTMLInputNode;
-namespace forms = docrender::forms;
+using dockit::HTMLInputNode;
+namespace forms = dockit::forms;
 
 Error HTMLLabel::submit_form(const Ref<HTMLFormElement>& p_form, const Ref<HTMLElement>& p_submitter) {
 	return submit_form_at(p_form, p_submitter, {});
@@ -39,7 +39,7 @@ Error HTMLLabel::submit_form_at(const Ref<HTMLFormElement>& p_form, const Ref<HT
 			for (const auto& invalid : invalid_controls) {
 				const Ref<HTMLElement> control = layout->get_dom().make_element(invalid);
 				if (!first_invalid.is_valid()) first_invalid = control;
-				Ref<HTMLEvent> event = docrender::make_dom_event(StringName("invalid"), false, true);
+				Ref<HTMLEvent> event = dockit::make_dom_event(StringName("invalid"), false, true);
 				layout->get_dom().dispatch_event(control, event);
 			}
 			const ObjectID id(get_instance_id());
@@ -104,14 +104,14 @@ bool HTMLLabel::activate_form_control(const Ref<HTMLElement>& p_element, const V
 	if (const Ref<HTMLLabelElement> label = p_element; label.is_valid()) return activate_form_control(label->get_control());
 	const auto node = p_element->lock_element();
 	if (!node) return false;
-	if (const auto disclosure = docrender::details_activation_target(node)) {
+	if (const auto disclosure = dockit::details_activation_target(node)) {
 		const Ref<HTMLDetailsElement> details = layout->get_dom().make_element(disclosure);
 		if (details.is_null()) return false;
 		details->set_open(!details->is_open());
 		return true;
 	}
 	if (const Ref<HTMLSelectElement> select = p_element; select.is_valid()) {
-		const auto list = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(node);
+		const auto list = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(node);
 		return list && list->is_list_box() ? focus_element(select) : open_select_menu(select);
 	}
 	if (const auto* field = dynamic_cast<const HTMLInputNode*>(node.get()); field &&
@@ -152,7 +152,7 @@ Ref<HTMLElement> HTMLLabelCanvas::get_form_click_target(const Ref<HTMLElement>& 
 			(input->type() == HTMLInputNode::Type::COLOR || input->type() == HTMLInputNode::Type::FILE)) {
 			return label->layout->get_dom().make_element(node);
 		}
-		if (docrender::forms::is_listed(*node) || (tag == litehtml::_a_ && node->get_attr("href"))) return {};
+		if (dockit::forms::is_listed(*node) || (tag == litehtml::_a_ && node->get_attr("href"))) return {};
 	}
 	return {};
 }
@@ -178,7 +178,7 @@ bool HTMLLabel::open_suggestion_menu(const Ref<HTMLElement>& p_element) {
 	return show_select_menu(p_element, std::move(rows));
 }
 
-bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<docrender::HTMLSelectMenuRow> p_rows) {
+bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<dockit::HTMLSelectMenuRow> p_rows) {
 	close_select_menu();
 	if (!select_menu) {
 		select_menu = memnew(Control);
@@ -195,7 +195,7 @@ bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<
 	select_rows = std::move(p_rows);
 	update_select_menu();
 	if (open_select.is_null()) return false;
-	if (const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element())) {
+	if (const auto select = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(p_element->lock_element())) {
 		select->set_dropdown_open(true);
 		layout->repaint_input();
 	}
@@ -211,7 +211,7 @@ bool HTMLLabel::show_select_menu(const Ref<HTMLElement>& p_element, std::vector<
 
 void HTMLLabel::close_select_menu() {
 	if (open_select.is_valid()) {
-		if (const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(open_select->lock_element())) {
+		if (const auto select = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(open_select->lock_element())) {
 			select->set_dropdown_open(false);
 			layout->repaint_input();
 		}
@@ -263,9 +263,9 @@ void HTMLLabel::draw_select_menu() {
 	const auto size = select_menu->get_size();
 	const auto server = TextServerManager::get_singleton()->get_primary_interface();
 	const auto scheme = layout->get_element_color_scheme(open_select);
-	const auto menu_border = docrender::html_system_color(litehtml::system_color::menu_border, scheme);
-	const auto menu_face = docrender::html_system_color(litehtml::system_color::menu_face, scheme);
-	const auto menu_hover = docrender::html_system_color(litehtml::system_color::menu_hover, scheme);
+	const auto menu_border = dockit::html_system_color(litehtml::system_color::menu_border, scheme);
+	const auto menu_face = dockit::html_system_color(litehtml::system_color::menu_face, scheme);
+	const auto menu_hover = dockit::html_system_color(litehtml::system_color::menu_hover, scheme);
 	select_menu->draw_rect(Rect2(Vector2(), size), menu_face);
 	for (int i = 0; i < select_visible_rows; ++i) {
 		const int index = select_scroll + i;
@@ -353,7 +353,7 @@ void HTMLLabel::select_menu_input(const Ref<InputEvent>& p_event) {
 bool HTMLLabel::handle_listbox_mouse(const Ref<HTMLElement>& p_element, const InputEventMouseButton& p_event,
 	const Vector2& p_point) {
 	if (!p_event.is_pressed() || !layout->is_focusable(p_element)) return false;
-	const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element());
+	const auto select = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(p_element->lock_element());
 	if (!select || !select->is_list_box()) return false;
 	const auto button = p_event.get_button_index();
 	if (button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN) {
@@ -384,7 +384,7 @@ bool HTMLLabel::handle_select_key(const InputEventKey& p_key) {
 	const bool toggle = p_key.is_ctrl_pressed() || p_key.is_meta_pressed();
 	const Ref<HTMLSelectElement> select = focused;
 	if (select.is_valid()) {
-		const auto list = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(select->lock_element());
+		const auto list = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(select->lock_element());
 		if (list && list->is_list_box()) {
 			if (key != KEY_UP && key != KEY_DOWN && key != KEY_HOME && key != KEY_END && key != KEY_SPACE) return false;
 			if (key == KEY_SPACE && p_key.is_echo()) return true;

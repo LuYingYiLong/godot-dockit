@@ -6,7 +6,7 @@
 #include "types.h"
 #include "formats/html/resources/html_image_sources.h"
 
-namespace docrender { class HTMLImageAltText; }
+namespace dockit { class HTMLImageAltText; }
 
 namespace litehtml
 {
@@ -24,18 +24,18 @@ namespace litehtml
 		string	m_src;
 		string	m_baseurl;
 		string m_current_src;
-		std::optional<docrender::HTMLImageSelection> m_selection;
-		std::shared_ptr<docrender::HTMLImageAltText> m_alt_text;
+		std::optional<dockit::HTMLImageSelection> m_selection;
+		std::shared_ptr<dockit::HTMLImageAltText> m_alt_text;
 		std::unique_ptr<css_replaced_image> m_generated_image;
 		bool m_list_marker = false;
 		const string& image_source() const;
 	public:
 		el_image(const document::ptr& doc, const string& baseurl = {});
 		void set_generated_image(const image& value, const string& base, bool list_marker); // 更新匿名图片的 CSS 来源
-		bool select_source(docrender::HTMLImageSelection p_selection); // 更新本轮选图并报告尺寸提示是否变化
+		bool select_source(dockit::HTMLImageSelection p_selection); // 更新本轮选图并报告尺寸提示是否变化
 		void commit_source(); // 发布最近一次成功排版的图片来源
 		const string& get_current_src() const { return m_current_src; }
-		docrender::HTMLImageAltText* get_alt_text() const { return m_alt_text.get(); }
+		dockit::HTMLImageAltText* get_alt_text() const { return m_alt_text.get(); }
 
 		bool	is_replaced() const override;
 		void	parse_attributes() override;

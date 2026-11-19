@@ -2,7 +2,7 @@
 
 #include "css_length.h"
 
-namespace docrender::css {
+namespace dockit::css {
 
 	using namespace litehtml;
 

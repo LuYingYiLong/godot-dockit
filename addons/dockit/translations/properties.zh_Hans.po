@@ -1,8 +1,8 @@
-# Godot DocRender Simplified Chinese translations.
+# Godot Dockit Simplified Chinese translations.
 # Distributed under the project license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Godot DocRender VERSION\n"
+"Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2026-11-11 22:15+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"

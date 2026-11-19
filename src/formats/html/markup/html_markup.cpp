@@ -10,7 +10,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		struct GumboDeleter {
 			void operator()(GumboOutput* p_output) const {

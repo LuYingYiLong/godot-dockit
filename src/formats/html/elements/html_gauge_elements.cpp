@@ -19,10 +19,10 @@ namespace {
 	};
 
 	ProgressValue progress_value(const element* p_node) {
-		const auto raw_max = docrender::html_number(p_node ? p_node->get_attr("max") : nullptr).value_or(1);
+		const auto raw_max = dockit::html_number(p_node ? p_node->get_attr("max") : nullptr).value_or(1);
 		const double max = raw_max > 0 ? raw_max : 1;
 		const auto* raw_value = p_node ? p_node->get_attr("value") : nullptr;
-		return { std::clamp(docrender::html_number(raw_value).value_or(0), 0.0, max), max, !raw_value };
+		return { std::clamp(dockit::html_number(raw_value).value_or(0), 0.0, max), max, !raw_value };
 	}
 
 	struct MeterValue {
@@ -36,7 +36,7 @@ namespace {
 
 	MeterValue meter_value(const element* p_node) {
 		const auto number = [&](const char* p_name, double p_default) {
-			return docrender::html_number(p_node ? p_node->get_attr(p_name) : nullptr).value_or(p_default);
+			return dockit::html_number(p_node ? p_node->get_attr(p_name) : nullptr).value_or(p_default);
 		};
 		const double min = number("min", 0);
 		const double max = std::max(min, number("max", 1));
@@ -54,7 +54,7 @@ namespace {
 	}
 }
 
-docrender::HTMLGaugeReading docrender::read_html_gauge(const element& p_node) {
+dockit::HTMLGaugeReading dockit::read_html_gauge(const element& p_node) {
 	if (p_node.tag() == _progress_) {
 		const auto progress = progress_value(&p_node);
 		return { progress.value / progress.max, progress.indeterminate, 0 };
@@ -104,7 +104,7 @@ double HTMLProgressElement::get_position() const {
 TypedArray<HTMLElement> HTMLProgressElement::get_labels() const {
 	const auto node = lock_element();
 	TypedArray<HTMLElement> result;
-	if (node) for (const auto& label : docrender::forms::labels(*node)) result.append(get_dom().make_element(label));
+	if (node) for (const auto& label : dockit::forms::labels(*node)) result.append(get_dom().make_element(label));
 	return result;
 }
 
@@ -181,6 +181,6 @@ void HTMLMeterElement::set_optimum(double p_value) {
 TypedArray<HTMLElement> HTMLMeterElement::get_labels() const {
 	const auto node = lock_element();
 	TypedArray<HTMLElement> result;
-	if (node) for (const auto& label : docrender::forms::labels(*node)) result.append(get_dom().make_element(label));
+	if (node) for (const auto& label : dockit::forms::labels(*node)) result.append(get_dom().make_element(label));
 	return result;
 }

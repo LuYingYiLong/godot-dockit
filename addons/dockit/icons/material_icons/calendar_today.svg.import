@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/calendar_today.svg"
+source_file="res://addons/dockit/icons/material_icons/calendar_today.svg"
 dest_files=["res://.godot/imported/calendar_today.svg-9f9e7f133b39f6000a3f33628defe93d.ctex"]
 
 [params]

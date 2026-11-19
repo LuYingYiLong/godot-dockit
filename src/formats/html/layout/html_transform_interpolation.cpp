@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-namespace docrender {
+namespace dockit {
 	using namespace godot;
 
 	namespace {

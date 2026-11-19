@@ -4,7 +4,7 @@ namespace litehtml {
 	class element;
 }
 
-namespace docrender {
+namespace dockit {
 	enum class HTMLNodeCopyMode { COPY, ADOPT };
 
 	class HTMLNodeCopyState {

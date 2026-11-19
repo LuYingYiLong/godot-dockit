@@ -1,6 +1,6 @@
 #pragma once
 
-#include "docrender_editor_translations.h"
+#include "dockit_editor_translations.h"
 #include "html_video_export_plugin.h"
 #include "editor/importers/html_document_importer.h"
 #include "editor/importers/latex_document_importer.h"
@@ -15,8 +15,8 @@
 namespace godot {
 	class ScriptEditorBase;
 
-	class DocRenderSourceEditorPlugin : public EditorPlugin {
-		GDCLASS(DocRenderSourceEditorPlugin, EditorPlugin)
+	class DockitSourceEditorPlugin : public EditorPlugin {
+		GDCLASS(DockitSourceEditorPlugin, EditorPlugin)
 
 	public:
 		static void prepare_registration();
@@ -35,7 +35,7 @@ namespace godot {
 			Callable callback;
 		};
 
-		DocRenderEditorTranslations editor_translations;
+		DockitEditorTranslations editor_translations;
 		Ref<HTMLDocumentImporter> html_importer;
 		Ref<HTMLVideoExportPlugin> video_exporter;
 		Ref<LatexDocumentImporter> latex_importer;

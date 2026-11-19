@@ -14,7 +14,7 @@
 #include <utility>
 
 using namespace godot;
-using docrender::HTMLDOM;
+using dockit::HTMLDOM;
 
 namespace {
 	// 防御监听器内部再次派发同一事件造成的无限递归
@@ -494,7 +494,7 @@ void HTMLDOM::deliver_selectionchange(uint64_t p_owner_id, uint64_t p_epoch, uin
 	if (dom->selectionchange_epoch != p_epoch || dom->lifetime != p_lifetime) return;
 	dom->selectionchange_queued = false;
 	const Ref<HTMLDocumentNode> document = dom->get_document_node();
-	if (document.is_valid()) dom->dispatch_event(document, docrender::make_dom_event(StringName("selectionchange"), false, false));
+	if (document.is_valid()) dom->dispatch_event(document, dockit::make_dom_event(StringName("selectionchange"), false, false));
 }
 
 void HTMLDOM::queue_scroll_event(const Ref<HTMLNode>& p_node) {
@@ -525,7 +525,7 @@ void HTMLDOM::deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint6
 	for (const Ref<HTMLNode>& node : pending) {
 		if (dom->lifetime != p_lifetime) break;
 		if (node.is_null() || !node.is_valid()) continue;
-		dom->dispatch_event(Ref<HTMLEventTarget>(node), docrender::make_dom_event(StringName("scroll"), false, false));
+		dom->dispatch_event(Ref<HTMLEventTarget>(node), dockit::make_dom_event(StringName("scroll"), false, false));
 	}
 	if (!dom->scrollend_delivery_queued) {
 		dom->scrollend_delivery_queued = true;
@@ -548,6 +548,6 @@ void HTMLDOM::deliver_scrollend(uint64_t p_owner_id, uint64_t p_epoch, uint64_t 
 	for (const Ref<HTMLNode>& node : pending) {
 		if (dom->lifetime != p_lifetime) break;
 		if (node.is_null() || !node.is_valid()) continue;
-		dom->dispatch_event(Ref<HTMLEventTarget>(node), docrender::make_dom_event(StringName("scrollend"), false, false));
+		dom->dispatch_event(Ref<HTMLEventTarget>(node), dockit::make_dom_event(StringName("scrollend"), false, false));
 	}
 }

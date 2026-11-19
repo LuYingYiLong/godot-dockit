@@ -148,7 +148,7 @@ namespace litehtml {
 		}
 	}
 
-	void docrender_editor::trim_white_space(render_item& p_root) {
+	void dockit_editor::trim_white_space(render_item& p_root) {
 		if (!uses_trim(p_root)) return;
 		TrimmedItems removed;
 		trim_context(p_root, removed);

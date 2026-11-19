@@ -2,13 +2,13 @@
 
 #include "formats/html/elements/html_element.h"
 
-namespace docrender { class HTMLTemplateNode; }
+namespace dockit { class HTMLTemplateNode; }
 
 class HTMLDocumentFragment : public HTMLNode {
 	GDCLASS(HTMLDocumentFragment, HTMLNode)
 
-	friend class docrender::HTMLDOM;
-	friend class docrender::HTMLTemplateNode;
+	friend class dockit::HTMLDOM;
+	friend class dockit::HTMLTemplateNode;
 protected:
 	static void _bind_methods();
 

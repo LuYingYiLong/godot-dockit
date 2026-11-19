@@ -13,7 +13,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_TILE_SIDE = 2048;
 		const Color TRANSPARENT(0, 0, 0, 0);

@@ -4,7 +4,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 class HTMLCanvasNode final : public litehtml::html_tag {
 public:
 	using html_tag::html_tag;

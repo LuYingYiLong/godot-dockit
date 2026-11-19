@@ -1,4 +1,4 @@
-#include "docrender_editor_translations.h"
+#include "dockit_editor_translations.h"
 
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/translation_domain.hpp>
@@ -12,13 +12,13 @@ namespace godot {
 		};
 
 		constexpr TranslationCatalog TRANSLATION_CATALOGS[] = {
-			{ "godot.editor", "res://addons/docrender/translations/editor.zh_Hans.po" },
-			{ "godot.properties", "res://addons/docrender/translations/properties.zh_Hans.po" },
-			{ "godot.documentation", "res://addons/docrender/translations/documentation.zh_Hans.po" },
+			{ "godot.editor", "res://addons/dockit/translations/editor.zh_Hans.po" },
+			{ "godot.properties", "res://addons/dockit/translations/properties.zh_Hans.po" },
+			{ "godot.documentation", "res://addons/dockit/translations/documentation.zh_Hans.po" },
 		};
 	} // namespace
 
-	void DocRenderEditorTranslations::load() {
+	void DockitEditorTranslations::load() {
 		ResourceLoader* loader = ResourceLoader::get_singleton();
 		TranslationServer* server = TranslationServer::get_singleton();
 		for (const TranslationCatalog& catalog : TRANSLATION_CATALOGS) {
@@ -33,7 +33,7 @@ namespace godot {
 		}
 	}
 
-	void DocRenderEditorTranslations::unload() {
+	void DockitEditorTranslations::unload() {
 		TranslationServer* server = TranslationServer::get_singleton();
 		for (const KeyValue<StringName, Ref<Translation>>& entry : translations) {
 			server->get_or_add_domain(entry.key)->remove_translation(entry.value);

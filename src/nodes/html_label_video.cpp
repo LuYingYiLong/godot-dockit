@@ -30,9 +30,9 @@
 #include <utility>
 
 using namespace godot;
-using docrender::HTMLVideoNode;
-using docrender::HTMLVideoPart;
-using docrender::HTMLControlIcon;
+using dockit::HTMLVideoNode;
+using dockit::HTMLVideoPart;
+using dockit::HTMLControlIcon;
 
 namespace {
 	constexpr double OPEN_TIMEOUT = 8.0;
@@ -80,7 +80,7 @@ namespace {
 	}
 
 	String local_video_file(const String& p_path) {
-		const String packed = docrender::packed_html_video_path(p_path);
+		const String packed = dockit::packed_html_video_path(p_path);
 		if (!packed.is_empty() && FileAccess::file_exists(packed)) return packed;
 		return FileAccess::file_exists(p_path) ? p_path : String();
 	}

@@ -2,7 +2,7 @@
 
 #include <godot_cpp/classes/resource_saver.hpp>
 
-namespace docrender {
+namespace dockit {
 	godot::Error read_document_text(
 		const godot::String& p_path,
 		godot::String& r_text
@@ -24,4 +24,4 @@ namespace docrender {
 		document->set_text(text);
 		return godot::ResourceSaver::get_singleton()->save(document, p_save_path + godot::String(".res"));
 	}
-} // namespace docrender
+} // namespace dockit

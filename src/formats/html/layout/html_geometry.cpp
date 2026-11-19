@@ -17,7 +17,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	Rect2 html_scroll_margin_area(const Rect2& p_box, const css::ComputedStyle& p_style) {
 		const auto& margin = p_style.get_scroll_margin();
 		const Vector2 start = p_box.position - Vector2(margin[3].calc_percent(0), margin[0].calc_percent(0));

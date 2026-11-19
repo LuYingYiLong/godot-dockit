@@ -23,12 +23,12 @@ def run_event_checks(command, workspace):
 
 
 def create_project(project, repo):
-    addon = project / "addons/docrender"
+    addon = project / "addons/dockit"
     (addon / "bin").mkdir(parents=True)
-    for asset in ("docrender.gdextension", "bin/docrender.windows.template_debug.x86_64.dll"):
-        shutil.copyfile(repo / "addons/docrender" / asset, addon / asset)
+    for asset in ("dockit.gdextension", "bin/dockit.windows.template_debug.x86_64.dll"):
+        shutil.copyfile(repo / "addons/dockit" / asset, addon / asset)
     (project / ".godot").mkdir()
-    write(project / ".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+    write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
     write(project / "project.godot", """config_version=5
 [application]
 run/main_scene="res://main.tscn"
@@ -56,7 +56,7 @@ def main():
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     godot = str(args.godot.resolve())
-    with TemporaryDirectory(prefix="docrender-html-events-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    with TemporaryDirectory(prefix="dockit-html-events-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         project = workspace / "project"
         settings = workspace / "Godot"

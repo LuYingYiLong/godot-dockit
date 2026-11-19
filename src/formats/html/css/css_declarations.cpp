@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_declarations.h"
 #include "css_variables.h"
@@ -128,15 +128,15 @@ namespace {
 			{ _id("backdrop-filter"), { property_family::background } },
 			{ _id("will-change"), { property_family::box } },
 			{ _id("mask"), { property_family::mask, {
-				_id("mask-image"), _id("__docrender-mask-image-baseurl"),
-				_id("__docrender-mask-position-x"), _id("__docrender-mask-position-y"),
-				_id("mask-size"), _id("__docrender-mask-repeat-x"), _id("__docrender-mask-repeat-y"),
+				_id("mask-image"), _id("__dockit-mask-image-baseurl"),
+				_id("__dockit-mask-position-x"), _id("__dockit-mask-position-y"),
+				_id("mask-size"), _id("__dockit-mask-repeat-x"), _id("__dockit-mask-repeat-y"),
 				_id("mask-origin"), _id("mask-clip"), _id("mask-mode"), _id("mask-composite") } } },
-			{ _id("mask-image"), { property_family::mask, { _id("mask-image"), _id("__docrender-mask-image-baseurl") } } },
+			{ _id("mask-image"), { property_family::mask, { _id("mask-image"), _id("__dockit-mask-image-baseurl") } } },
 			{ _id("mask-position"), { property_family::mask, {
-				_id("__docrender-mask-position-x"), _id("__docrender-mask-position-y") } } },
+				_id("__dockit-mask-position-x"), _id("__dockit-mask-position-y") } } },
 			{ _id("mask-repeat"), { property_family::mask, {
-				_id("__docrender-mask-repeat-x"), _id("__docrender-mask-repeat-y") } } },
+				_id("__dockit-mask-repeat-x"), _id("__dockit-mask-repeat-y") } } },
 			{ _id("mask-size"), { property_family::mask } },
 			{ _id("mask-origin"), { property_family::mask } },
 			{ _id("mask-clip"), { property_family::mask } },
@@ -567,7 +567,7 @@ string_id css_canonical_property(string_id name) {
 		{ _id("font-stretch"), _id("font-width") },
 		{ _id("word-wrap"), _id("overflow-wrap") },
 		{ _id("-webkit-user-select"), _id("user-select") },
-		// DocRender currently lays out boxes in the horizontal writing mode.
+		// Dockit currently lays out boxes in the horizontal writing mode.
 		{ _id("inline-size"), _width_ },
 		{ _id("min-inline-size"), _min_width_ },
 		{ _id("max-inline-size"), _max_width_ },

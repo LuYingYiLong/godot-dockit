@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace docrender::css {
+namespace dockit::css {
 	using namespace litehtml;
 
 	namespace {

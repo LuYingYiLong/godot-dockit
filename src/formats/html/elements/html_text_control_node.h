@@ -5,7 +5,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextControlNode : public litehtml::html_tag {
 	protected:
 		bool focused = false;

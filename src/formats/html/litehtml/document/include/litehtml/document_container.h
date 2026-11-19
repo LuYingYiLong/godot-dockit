@@ -11,7 +11,7 @@
 #include <memory>
 #include <functional>
 
-namespace docrender { class HTMLImageAltText; }
+namespace dockit { class HTMLImageAltText; }
 
 namespace litehtml
 {
@@ -52,8 +52,8 @@ namespace litehtml
 		virtual void				load_image(const char* src, const char* baseurl, bool redraw_on_ready, css_image_orientation orientation = css_image_orientation::from_image) = 0;
 		virtual void				get_image_size(const char* src, const char* baseurl, litehtml::size& sz, css_image_orientation orientation = css_image_orientation::from_image) = 0;
 		virtual bool				is_image_available(const char* src, const char* baseurl, css_image_orientation orientation);
-		virtual std::shared_ptr<docrender::HTMLImageAltText> shape_image_alt(const char*, const html_tag&) { return {}; }
-		virtual void				draw_image_alt(docrender::HTMLImageAltText&, const position&, const html_tag&) {}
+		virtual std::shared_ptr<dockit::HTMLImageAltText> shape_image_alt(const char*, const html_tag&) { return {}; }
+		virtual void				draw_image_alt(dockit::HTMLImageAltText&, const position&, const html_tag&) {}
 		virtual double get_image_dpi(const char*, const char*) { return 0; }
 		virtual void				get_css_image_size(const char* src, const char* baseurl, double density, litehtml::size& sz, css_image_orientation orientation = css_image_orientation::from_image);
 		virtual void				draw_image(litehtml::uint_ptr hdc, const background_layer& layer, const std::string& url, const std::string& base_url) = 0;

@@ -6,7 +6,7 @@
 #include <array>
 #include <cmath>
 
-namespace docrender::css {
+namespace dockit::css {
 	namespace {
 		using Point = SVGPathPoint;
 		using Segment = SVGPathSegment;

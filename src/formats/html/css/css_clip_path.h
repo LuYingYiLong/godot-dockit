@@ -18,8 +18,8 @@ namespace litehtml {
 		bool center_explicit = false;
 		std::vector<std::array<css_length, 2>> vertices;
 		css_length polygon_radius;
-		std::shared_ptr<const docrender::css::SVGPath> svg_path;
-		std::optional<docrender::css::CSSShapePath> shape_path;
+		std::shared_ptr<const dockit::css::SVGPath> svg_path;
+		std::optional<dockit::css::CSSShapePath> shape_path;
 		std::string url;
 		std::string base_url;
 		bool even_odd = false;

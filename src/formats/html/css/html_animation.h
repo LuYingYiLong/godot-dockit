@@ -18,8 +18,8 @@ class HTMLAnimation : public godot::RefCounted {
 	bool transition = false;
 
 	HTMLLayout* get_layout() const;
-	std::optional<docrender::css::PlaybackInfo> get_info() const;
-	bool control(docrender::css::PlaybackCommand p_command, double p_value = 0.0);
+	std::optional<dockit::css::PlaybackInfo> get_info() const;
+	bool control(dockit::css::PlaybackCommand p_command, double p_value = 0.0);
 
 protected:
 	static void _bind_methods();

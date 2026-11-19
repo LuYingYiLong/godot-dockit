@@ -11,7 +11,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/pdf_texture.svg"
+source_file="res://addons/dockit/icons/pdf_texture.svg"
 dest_files=["res://.godot/imported/pdf_texture.svg-52f7406c28539c045d8b275408673434.ctex"]
 
 [params]

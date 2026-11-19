@@ -58,7 +58,7 @@ func _ready() -> void:
 
 
 func _on_html_drag_start(event: HTMLDragEvent) -> void:
-	event.data_transfer.set_data("application/x-docrender-demo", "custom HTML drag payload")
+	event.data_transfer.set_data("application/x-dockit-demo", "custom HTML drag payload")
 	status.text = "HTML dragstart: " + event.data_transfer.get_data("text/plain")
 
 
@@ -72,4 +72,4 @@ func _on_html_drag_over(event: HTMLDragEvent) -> void:
 
 
 func _on_html_drop(event: HTMLDragEvent) -> void:
-	status.text = "HTML drop: " + event.data_transfer.get_data("text/plain") + " / " + event.data_transfer.get_data("application/x-docrender-demo")
+	status.text = "HTML drop: " + event.data_transfer.get_data("text/plain") + " / " + event.data_transfer.get_data("application/x-dockit-demo")

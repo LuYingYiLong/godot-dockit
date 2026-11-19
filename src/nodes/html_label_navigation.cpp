@@ -3,7 +3,7 @@
 #include "formats/http_requests.h"
 #include "formats/http_url.h"
 #include "formats/html/resources/html_resource_paths.h"
-#include "editor/docrender_source_editor.h"
+#include "editor/dockit_source_editor.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -21,12 +21,12 @@ Error HTMLLabel::navigate(const String& p_url, bool p_replace) {
 
 	String resolved;
 	if (reference.begins_with("res://") || reference.begins_with("user://") || reference.begins_with("uid://")) {
-		const docrender::HTMLResourceBase local_base{ "res://", "res://" };
-		resolved = docrender::resolve_html_link_href(reference, local_base);
+		const dockit::HTMLResourceBase local_base{ "res://", "res://" };
+		resolved = dockit::resolve_html_link_href(reference, local_base);
 	}
-	else if (docrender::is_http_url(reference) || docrender::is_http_url(current_location)) {
+	else if (dockit::is_http_url(reference) || dockit::is_http_url(current_location)) {
 		const String base = current_location.is_empty() ? get_base_uri() : current_location;
-		resolved = docrender::resolve_http_url(reference, base);
+		resolved = dockit::resolve_http_url(reference, base);
 	}
 	else {
 		resolved = layout->resolve_link_href(reference);
@@ -46,19 +46,19 @@ Error HTMLLabel::navigate(const String& p_url, bool p_replace) {
 		return OK;
 	}
 	if (navigation_request_id != 0) {
-		docrender::cancel_http_request(navigation_request_id);
+		dockit::cancel_http_request(navigation_request_id);
 		navigation_request_id = 0;
 	}
 	const uint64_t sequence = ++navigation_sequence;
 
-	if (docrender::is_http_url(resolved)) {
+	if (dockit::is_http_url(resolved)) {
 		const ObjectID label_id(get_instance_id());
-		const String request_url = docrender::http_request_url(resolved);
-		docrender::HTTPRequestOptions options;
+		const String request_url = dockit::http_request_url(resolved);
+		dockit::HTTPRequestOptions options;
 		options.max_body = 8 * 1024 * 1024;
 		options.timeout = 12.0;
-		navigation_request_id = docrender::queue_http_request(request_url, options,
-			[label_id, sequence, resolved, p_replace](const docrender::HTTPResponse& p_response) {
+		navigation_request_id = dockit::queue_http_request(request_url, options,
+			[label_id, sequence, resolved, p_replace](const dockit::HTTPResponse& p_response) {
 				auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id));
 				if (label) label->on_navigation_response(sequence, resolved, p_replace, p_response.status_code,
 					p_response.body, p_response.error);
@@ -70,7 +70,7 @@ Error HTMLLabel::navigate(const String& p_url, bool p_replace) {
 	const int64_t fragment = resolved.find("#");
 	const int64_t suffix = query < 0 ? fragment : fragment < 0 ? query : std::min(query, fragment);
 	const String path_with_uid = suffix < 0 ? resolved : resolved.left(suffix);
-	const auto normalized = docrender::normalize_html_resource_path(path_with_uid);
+	const auto normalized = dockit::normalize_html_resource_path(path_with_uid);
 	if (!normalized) return ERR_INVALID_PARAMETER;
 	const String path = *normalized;
 	const Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -112,13 +112,13 @@ void HTMLLabel::apply_navigation_source(const String& p_url, const String& p_tex
 	String source = p_url;
 	const int64_t suffix_fragment = source.find("#");
 	if (suffix_fragment >= 0) source = source.left(suffix_fragment);
-	if (!docrender::is_http_url(source)) {
+	if (!dockit::is_http_url(source)) {
 		const int64_t suffix_query = source.find("?");
 		if (suffix_query >= 0) source = source.left(suffix_query);
 	}
 
 	NavigationEntry entry{ p_url, p_text, {}, base_dir, source };
-	if (!docrender::is_http_url(source)) entry.base_dir = source.get_base_dir();
+	if (!dockit::is_http_url(source)) entry.base_dir = source.get_base_dir();
 	else if (entry.base_dir.is_empty()) entry.base_dir = "res://";
 
 	if (p_replace && navigation_position >= 0) {
@@ -147,7 +147,7 @@ void HTMLLabel::apply_navigation_source(const String& p_url, const String& p_tex
 void HTMLLabel::navigate_to_history(int64_t p_position) {
 	if (p_position < 0 || p_position >= static_cast<int64_t>(navigation_history.size()) || p_position == navigation_position) return;
 	if (navigation_request_id != 0) {
-		docrender::cancel_http_request(navigation_request_id);
+		dockit::cancel_http_request(navigation_request_id);
 		navigation_request_id = 0;
 		++navigation_sequence;
 	}
@@ -158,7 +158,7 @@ void HTMLLabel::navigate_to_history(int64_t p_position) {
 	}
 	document = entry.document;
 	if (document.is_valid()) {
-		DocRenderSourceEditorPlugin::observe_source_document(document);
+		DockitSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	text = entry.text;

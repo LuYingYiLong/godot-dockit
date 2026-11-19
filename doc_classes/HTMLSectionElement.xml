@@ -4,6 +4,6 @@
 		An HTML section element.
 	</brief_description>
 	<description>
-		DocRender's typed handle for [code]&lt;section&gt;[/code]. The element uses the shared [HTMLElement] API and normal block layout.
+		Dockit's typed handle for [code]&lt;section&gt;[/code]. The element uses the shared [HTMLElement] API and normal block layout.
 	</description>
 </class>

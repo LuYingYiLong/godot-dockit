@@ -7,7 +7,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		using CodepointMapping = std::pair<char32_t, char32_t>;
 

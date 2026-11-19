@@ -41,10 +41,10 @@ void HTMLLabel::dispatch_document_ready_events() {
 	const Ref<HTMLLayout> keep_layout = layout;
 	auto& dom = keep_layout->get_dom();
 	const Ref<HTMLDocumentNode> document_node = dom.get_document_node();
-	if (document_node.is_valid()) dom.dispatch_event(document_node, docrender::make_dom_event(StringName("DOMContentLoaded"), true, false));
+	if (document_node.is_valid()) dom.dispatch_event(document_node, dockit::make_dom_event(StringName("DOMContentLoaded"), true, false));
 	if (!ObjectDB::get_instance(id)) return;
 	const Ref<HTMLWindow> window = dom.get_window();
-	if (window.is_valid()) dom.dispatch_event(window, docrender::make_dom_event(StringName("load"), false, false));
+	if (window.is_valid()) dom.dispatch_event(window, dockit::make_dom_event(StringName("load"), false, false));
 }
 
 void HTMLLabel::queue_window_resize_event(const Vector2i& p_viewport_size) {
@@ -68,7 +68,7 @@ void HTMLLabel::dispatch_window_resize_event() {
 	last_window_resize_event_size = *pending;
 	const Ref<HTMLWindow> window = layout->get_dom().get_window();
 	if (!window.is_valid()) return;
-	Ref<HTMLEvent> event = docrender::make_dom_event(StringName("resize"), false, false);
+	Ref<HTMLEvent> event = dockit::make_dom_event(StringName("resize"), false, false);
 	event->set_composed(false);
 	layout->get_dom().dispatch_event(window, event);
 }
@@ -83,7 +83,7 @@ void HTMLLabel::update_document_visibility_state(bool p_visible, bool p_dispatch
 	if (!p_dispatch || layout.is_null()) return;
 	const Ref<HTMLDocumentNode> document_node = layout->get_dom().get_document_node();
 	if (!document_node.is_valid()) return;
-	Ref<HTMLEvent> event = docrender::make_dom_event(StringName("visibilitychange"), false, false);
+	Ref<HTMLEvent> event = dockit::make_dom_event(StringName("visibilitychange"), false, false);
 	event->set_composed(false);
 	layout->get_dom().dispatch_event(document_node, event);
 }
@@ -94,7 +94,7 @@ void HTMLLabel::dispatch_window_focus_event(bool p_focused) {
 	if (layout.is_null()) return;
 	const Ref<HTMLWindow> window = layout->get_dom().get_window();
 	if (!window.is_valid()) return;
-	Ref<HTMLEvent> event = docrender::make_dom_event(
+	Ref<HTMLEvent> event = dockit::make_dom_event(
 		p_focused ? StringName("focus") : StringName("blur"), false, false);
 	event->set_composed(false);
 	layout->get_dom().dispatch_event(window, event);
@@ -302,7 +302,7 @@ bool HTMLLabel::dispatch_control_event(const StringName& p_type, const Ref<HTMLE
 	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return false;
 	if (p_type == StringName("input")) return dispatch_input_event(p_type, p_element, {}, {}, false);
 	auto& dom = layout->get_dom();
-	dom.dispatch_event(p_element, docrender::make_dom_event(p_type, true, false));
+	dom.dispatch_event(p_element, dockit::make_dom_event(p_type, true, false));
 	return false;
 }
 
@@ -338,7 +338,7 @@ void HTMLLabel::dispatch_composition_event(const StringName& p_type, const Ref<H
 
 void HTMLLabel::dispatch_media_event(const StringName& p_type, const Ref<HTMLElement>& p_element) {
 	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return;
-	layout->get_dom().dispatch_event(p_element, docrender::make_dom_event(p_type, false, false));
+	layout->get_dom().dispatch_event(p_element, dockit::make_dom_event(p_type, false, false));
 }
 
 void HTMLLabel::dispatch_media_error_event(const Ref<HTMLElement>& p_element, const String& p_message, Error p_error) {

@@ -8,7 +8,7 @@
 
 namespace {
 	using namespace litehtml;
-	using namespace docrender::css::detail;
+	using namespace dockit::css::detail;
 
 	std::optional<std::string> keyframes_name(const css_token& token) {
 		if (token.type == STRING) return token.str;
@@ -45,7 +45,7 @@ namespace litehtml {
 		const bool shorthand = name == _id("animation");
 		const auto accepts = [&](std::size_t index) { return shorthand || name == fields[index]; };
 		css_animation_styles lists{{}, {}, {}, {}, {}, {}, {}, {}};
-		const auto groups = docrender::css::parse_comma_separated_list(value);
+		const auto groups = dockit::css::parse_comma_separated_list(value);
 		if (groups.empty()) return;
 		for (const auto& group : groups) {
 			if (group.empty() || (!shorthand && group.size() != 1)) return;
@@ -107,7 +107,7 @@ namespace litehtml {
 	}
 }
 
-namespace docrender::css {
+namespace dockit::css {
 	std::optional<KeyframeRule> parse_keyframe_rule(const css_token_vector& prelude, const css_token_vector& body) {
 		const auto name_tokens = normalize(prelude, f_remove_whitespace);
 		if (name_tokens.size() != 1) return std::nullopt;

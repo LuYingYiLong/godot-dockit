@@ -12,7 +12,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 std::shared_ptr<render_item> HTMLGaugeNode::create_render_item(const std::shared_ptr<render_item>& p_parent) {
 	auto children = std::exchange(m_children, {});
 	auto item = html_tag::create_render_item(p_parent);

@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextLayout;
 
 	struct TextDecorationMask {

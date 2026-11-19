@@ -26,13 +26,13 @@ def png(width, height, rgb, oversized=False):
 
 
 def create_project(project, repo, script):
-    addon = project / "addons/docrender"
+    addon = project / "addons/dockit"
     (addon / "bin").mkdir(parents=True)
-    for asset in ("docrender.gdextension", "bin/docrender.windows.template_debug.x86_64.dll"):
-        shutil.copyfile(repo / "addons/docrender" / asset, addon / asset)
-    shutil.copytree(repo / "addons/docrender/icons", addon / "icons")
+    for asset in ("dockit.gdextension", "bin/dockit.windows.template_debug.x86_64.dll"):
+        shutil.copyfile(repo / "addons/dockit" / asset, addon / asset)
+    shutil.copytree(repo / "addons/dockit/icons", addon / "icons")
     (project / ".godot").mkdir()
-    write(project / ".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+    write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
     write(project / "project.godot", """config_version=5
 [application]
 run/main_scene="res://main.tscn"
@@ -124,7 +124,7 @@ def main():
             pass
 
     suite = "css" if args.css else "images"
-    with TemporaryDirectory(prefix=f"docrender-remote-{suite}-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    with TemporaryDirectory(prefix=f"dockit-remote-{suite}-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         create_project(workspace / "project", repo, f"remote_{suite}.gd")
         with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:

@@ -3,7 +3,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLAssets {
 		godot::Dictionary textures;
 		godot::Dictionary stylesheets;

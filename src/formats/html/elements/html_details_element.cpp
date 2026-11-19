@@ -69,7 +69,7 @@ void HTMLDetailsElement::emit_toggle() {
 	if (is_valid()) emit_signal("toggled", is_open());
 }
 
-namespace docrender {
+namespace dockit {
 element::ptr details_summary(const element& p_details) {
 	const auto& children = p_details.children();
 	const auto first = std::find_if(children.begin(), children.end(), [](const auto& child) { return child->tag() == _summary_; });

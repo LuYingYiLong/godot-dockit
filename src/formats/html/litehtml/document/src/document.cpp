@@ -327,7 +327,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 	break;
 	case GUMBO_NODE_TEXT:
 	{
-		auto text = docrender_editor::create_text(shared_from_this(), node->v.text.text, parseTextNode);
+		auto text = dockit_editor::create_text(shared_from_this(), node->v.text.text, parseTextNode);
 		elements.splice(elements.end(), text);
 	}
 	break;
@@ -349,7 +349,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 	{
 		if (!parseTextNode)
 		{
-			auto text = docrender_editor::create_text(shared_from_this(), node->v.text.text, false);
+			auto text = dockit_editor::create_text(shared_from_this(), node->v.text.text, false);
 			elements.splice(elements.end(), text);
 			break;
 		}
@@ -359,7 +359,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 		{
 			parts.push_back(std::make_shared<el_space>(str.substr(i, 1).c_str(), shared_from_this()));
 		}
-		docrender_editor::mark_text_node(parts, str.c_str());
+		dockit_editor::mark_text_node(parts, str.c_str());
 		elements.splice(elements.end(), parts);
 	}
 	break;
@@ -646,7 +646,7 @@ pixel_t document::to_pixels(const css_length& val, const font_metrics& metrics, 
 {
 	const auto viewport = context.viewport ? *context.viewport : get_viewport_unit_features();
 	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
-	return docrender::css::length_to_pixels(val, metrics, size,
+	return dockit::css::length_to_pixels(val, metrics, size,
 		{viewport, root, m_container, css_points_to_pixels, context.container_units});
 }
 
@@ -654,7 +654,7 @@ void document::cvt_units(css_length& val, const font_metrics& metrics, pixel_t s
 {
 	const auto viewport = context.viewport ? *context.viewport : get_viewport_unit_features();
 	const auto& root = context.root_font ? *context.root_font : m_root ? m_root->css().get_font_metrics() : metrics;
-	docrender::css::compute_length(val, metrics, size,
+	dockit::css::compute_length(val, metrics, size,
 		{viewport, root, m_container, css_points_to_pixels, context.container_units});
 }
 

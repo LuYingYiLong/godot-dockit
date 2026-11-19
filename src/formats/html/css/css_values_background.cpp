@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_value_parser.h"
 #include <litehtml/html.h>
@@ -642,7 +642,7 @@ namespace {
 	{
 		using mode = background_repeat;
 		const auto first = at(tokens, index).ident();
-		// DocRender currently lays out boxes in the horizontal writing mode.
+		// Dockit currently lays out boxes in the horizontal writing mode.
 		if (first == "repeat-x" || first == "repeat-inline") {
 			r_pair = { mode::repeat, mode::no_repeat };
 			++index;
@@ -795,14 +795,14 @@ void css_value_parser::parse_mask(string_id name, const css_token_vector& tokens
 	};
 	add("mask-image", layers.m_image);
 	if (shorthand || name == _id("mask-image"))
-		add_parsed_property(_id("__docrender-mask-image-baseurl"), property_value(baseurl, important));
+		add_parsed_property(_id("__dockit-mask-image-baseurl"), property_value(baseurl, important));
 	if (shorthand || name == _id("mask-position")) {
-		add_parsed_property(_id("__docrender-mask-position-x"), property_value(std::move(layers.m_position_x), important));
-		add_parsed_property(_id("__docrender-mask-position-y"), property_value(std::move(layers.m_position_y), important));
+		add_parsed_property(_id("__dockit-mask-position-x"), property_value(std::move(layers.m_position_x), important));
+		add_parsed_property(_id("__dockit-mask-position-y"), property_value(std::move(layers.m_position_y), important));
 	}
 	if (shorthand || name == _id("mask-repeat")) {
-		add_parsed_property(_id("__docrender-mask-repeat-x"), property_value(std::move(layers.m_repeat_x), important));
-		add_parsed_property(_id("__docrender-mask-repeat-y"), property_value(std::move(layers.m_repeat_y), important));
+		add_parsed_property(_id("__dockit-mask-repeat-x"), property_value(std::move(layers.m_repeat_x), important));
+		add_parsed_property(_id("__dockit-mask-repeat-y"), property_value(std::move(layers.m_repeat_y), important));
 	}
 	add("mask-size", layers.m_size);
 	add("mask-origin", layers.m_origin);
@@ -1058,7 +1058,7 @@ bool parse_bg_image(const css_token& tok, image& bg_image, document_container* c
 // https://drafts.csswg.org/css-values-4/#urls
 bool parse_url(const css_token& tok, string& url)
 {
-	return docrender::css::parse_url_token(tok, url);
+	return dockit::css::parse_url_token(tok, url);
 }
 
 void css_value_parser::parse_keyword_comma_list(string_id name, const css_token_vector& tokens, bool important)

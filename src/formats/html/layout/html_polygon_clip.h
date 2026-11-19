@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	class HTMLPlaneTransform;
 	struct HTMLClipPolygon;
 

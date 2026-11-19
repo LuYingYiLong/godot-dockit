@@ -22,7 +22,7 @@ namespace litehtml {
 	struct list_marker;
 }
 
-namespace docrender {
+namespace dockit {
 	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit,
 		down, up, left, right, radio_checked, calendar, clock, colorize, unfold_more, radio_unchecked,
 		checkbox_checked, checkbox_unchecked, checkbox_indeterminate, count };

@@ -6,10 +6,10 @@ namespace litehtml {
 		hard_light, soft_light, difference, exclusion, hue, saturation, color, luminosity, plus_lighter,
 	};
 
-#define DOCRENDER_CSS_BLEND_MODES \
+#define DOCKIT_CSS_BLEND_MODES \
 		"normal;multiply;screen;overlay;darken;lighten;color-dodge;color-burn;" \
 		"hard-light;soft-light;difference;exclusion;hue;saturation;color;luminosity"
-	inline constexpr const char* css_blend_mode_keywords = DOCRENDER_CSS_BLEND_MODES;
-	inline constexpr const char* css_mix_blend_mode_keywords = DOCRENDER_CSS_BLEND_MODES ";plus-lighter";
-#undef DOCRENDER_CSS_BLEND_MODES
+	inline constexpr const char* css_blend_mode_keywords = DOCKIT_CSS_BLEND_MODES;
+	inline constexpr const char* css_mix_blend_mode_keywords = DOCKIT_CSS_BLEND_MODES ";plus-lighter";
+#undef DOCKIT_CSS_BLEND_MODES
 }

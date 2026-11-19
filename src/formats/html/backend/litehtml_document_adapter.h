@@ -8,14 +8,14 @@
 
 #include <array>
 
-namespace docrender {
+namespace dockit {
 	class LiteHTMLContainer;
 }
 
 namespace litehtml {
 	struct box_shadow;
 	// 分阶段的 litehtml 头文件让这个适配器可以访问原生的文档和元素状态
-	struct docrender_editor {
+	struct dockit_editor {
 		struct ContainerUpdate {
 			std::vector<bool> rule_matches;
 			std::vector<std::array<pixel_t, 2>> dimensions;
@@ -25,12 +25,12 @@ namespace litehtml {
 
 		static document::ptr parse(
 			const godot::CharString& p_html,
-			docrender::LiteHTMLContainer& p_container,
+			dockit::LiteHTMLContainer& p_container,
 			const string& p_default_styles,
 			const string& p_user_styles
 		);																			// 解析 UTF-8 文档并应用初始样式
 		static document::ptr parse_svg_clip_source(const godot::String& p_svg,
-			docrender::LiteHTMLContainer& p_container);								// 解析 XML 裁剪源并计算独立的样式
+			dockit::LiteHTMLContainer& p_container);								// 解析 XML 裁剪源并计算独立的样式
 		static bool media_changed(document& p_document);							// 检查媒体条件的匹配结果是否改变
 		static void set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size); // 设置视口百分比单位的参考尺寸
 		static void compute_styles(document& p_document);							// 按文档顺序更新计算样式与计数器
@@ -43,7 +43,7 @@ namespace litehtml {
 		static std::array<overflow, 2> propagate_viewport_overflow(document& p_document); // 应用文档视口的 overflow 并更新来源元素的使用值
 		static void restyle(
 			const document::ptr& p_document,
-			docrender::LiteHTMLContainer& p_container,
+			dockit::LiteHTMLContainer& p_container,
 			const string& p_default_styles,
 			const string& p_user_styles,
 			bool p_build_render_tree = true
@@ -81,7 +81,7 @@ namespace litehtml {
 
 	private:
 		static document::ptr parse_tree(const godot::CharString& p_html, document_container& p_container);
-		static void apply_author_styles(const document::ptr& p_document, docrender::LiteHTMLContainer& p_container,
+		static void apply_author_styles(const document::ptr& p_document, dockit::LiteHTMLContainer& p_container,
 			const string& p_additional_styles);
 		static void remove_attribute(html_tag& p_element, const char* p_name);
 		static void reset_tree(element& p_element);

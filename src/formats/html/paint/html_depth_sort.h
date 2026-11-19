@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLDepthLayer {
 		godot::Rect2 bounds;
 		godot::Vector3 depth;

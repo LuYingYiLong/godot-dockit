@@ -5,7 +5,7 @@
 
 #include <array>
 
-namespace docrender::css {
+namespace dockit::css {
 	struct ComputeContext;
 
 	struct ShapeControlPoint {

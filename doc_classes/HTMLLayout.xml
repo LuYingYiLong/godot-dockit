@@ -12,7 +12,7 @@
 		CSS [code]transform[/code] supports 2D and 3D transforms, individual [code]translate[/code], [code]rotate[/code], and [code]scale[/code] properties, perspective, and [code]transform-origin[/code]. Drawing, element and link hit tests, and text selection follow the transformed boxes.
 	</description>
 	<tutorials>
-		<link title="CSS support reference">https://github.com/LuYingYiLong/godot-docrender/blob/main/addons/docrender/docs/html_css_support.md</link>
+		<link title="CSS support reference">https://github.com/LuYingYiLong/godot-dockit/blob/main/addons/dockit/docs/html_css_support.md</link>
 	</tutorials>
 	<methods>
 		<method name="get_base_uri" qualifiers="const">

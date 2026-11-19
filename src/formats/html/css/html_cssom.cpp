@@ -11,7 +11,7 @@
 #include <locale>
 #include <sstream>
 
-namespace docrender::css {
+namespace dockit::css {
 namespace {
 	using namespace litehtml;
 

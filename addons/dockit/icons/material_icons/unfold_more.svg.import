@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/unfold_more.svg"
+source_file="res://addons/dockit/icons/material_icons/unfold_more.svg"
 dest_files=["res://.godot/imported/unfold_more.svg-8fc7b1356b4b6d5a3dbec80fb2808c52.ctex"]
 
 [params]

@@ -162,7 +162,7 @@ HTMLLayout* HTMLNode::get_owner() const {
 	return layout && layout->parse_version == parse_version ? layout : nullptr;
 }
 
-docrender::HTMLDOM& HTMLNode::get_dom() const {
+dockit::HTMLDOM& HTMLNode::get_dom() const {
 	return get_owner()->get_dom();
 }
 

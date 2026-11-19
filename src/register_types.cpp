@@ -1,6 +1,6 @@
 #include "register_types.h"
 
-#include "editor/docrender_source_editor.h"
+#include "editor/dockit_source_editor.h"
 #include "editor/html_preview_editor_plugin.h"
 #include "editor/importers/html_document_importer.h"
 #include "editor/importers/latex_document_importer.h"
@@ -65,7 +65,7 @@ using namespace godot;
 
 namespace {
 	bool editor_plugins_registered = false;
-	Ref<DocRenderTexLoader> tex_loader;
+	Ref<DockitTexLoader> tex_loader;
 }
 
 void initialize_dockit_module(ModuleInitializationLevel p_level) {
@@ -76,7 +76,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(PDFReader);
 		GDREGISTER_CLASS(PDFWriter);
 		GDREGISTER_CLASS(PDFTexture);
-		GDREGISTER_INTERNAL_CLASS(DocRenderTexLoader);
+		GDREGISTER_INTERNAL_CLASS(DockitTexLoader);
 		GDREGISTER_CLASS(MarkdownLabel);
 		GDREGISTER_ABSTRACT_CLASS(HTMLEventTarget);
 		GDREGISTER_CLASS(HTMLListenerHandle);
@@ -170,7 +170,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableRowElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableSectionElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableElement);
-		GDREGISTER_INTERNAL_CLASS(docrender::HTMLCanvasRenderer);
+		GDREGISTER_INTERNAL_CLASS(dockit::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
 		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
 		GDREGISTER_CLASS(HTMLDocument);
@@ -203,16 +203,16 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		if (PDFTextureImporter::is_supported()) {
 			GDREGISTER_INTERNAL_CLASS(PDFTextureImporter);
 		}
-		GDREGISTER_INTERNAL_CLASS(DocRenderSourceEditorPlugin);
-		DocRenderSourceEditorPlugin::prepare_registration();
-		EditorPlugins::add_by_type<DocRenderSourceEditorPlugin>();
+		GDREGISTER_INTERNAL_CLASS(DockitSourceEditorPlugin);
+		DockitSourceEditorPlugin::prepare_registration();
+		EditorPlugins::add_by_type<DockitSourceEditorPlugin>();
 		editor_plugins_registered = true;
 	}
 }
 
 void uninitialize_dockit_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR && editor_plugins_registered) {
-		EditorPlugins::remove_by_type<DocRenderSourceEditorPlugin>();
+		EditorPlugins::remove_by_type<DockitSourceEditorPlugin>();
 		EditorPlugins::remove_by_type<MermaidPreviewEditorPlugin>();
 		EditorPlugins::remove_by_type<MarkdownPreviewEditorPlugin>();
 		EditorPlugins::remove_by_type<HTMLPreviewEditorPlugin>();
@@ -220,13 +220,13 @@ void uninitialize_dockit_module(ModuleInitializationLevel p_level) {
 	}
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		ResourceLoader::get_singleton()->remove_resource_format_loader(tex_loader);
-		docrender::shutdown_http_requests();
-		docrender::shutdown_remote_images();
-		docrender::shutdown_remote_stylesheets();
+		dockit::shutdown_http_requests();
+		dockit::shutdown_remote_images();
+		dockit::shutdown_remote_stylesheets();
 		tex_loader.unref();
 		PDFReader::shutdown_backend();
 		TeXRender::shutdown_renderer();
-		docrender::release_html_paint_shader();
+		dockit::release_html_paint_shader();
 	}
 }
 

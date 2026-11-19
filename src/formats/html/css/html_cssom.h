@@ -5,7 +5,7 @@
 
 #include <godot_cpp/variant/string.hpp>
 
-namespace docrender::css {
+namespace dockit::css {
 	class ComputedStyle;
 	std::string property_name(const godot::String& name);
 	raw_declaration::vector inline_declarations(const godot::String& text);

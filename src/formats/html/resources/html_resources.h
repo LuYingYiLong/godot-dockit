@@ -17,7 +17,7 @@
 #include <string>
 #include <string_view>
 
-namespace docrender {
+namespace dockit {
 	bool is_html_stylesheet_link(const char* p_rel);								// 判断 rel 是否声明默认应用的样式表
 	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path); // 读取大小受限的本地 UTF-8 样式表
 	std::optional<godot::String> read_html_svg_source(const godot::String& p_path); // 读取大小受限的本地 UTF-8 SVG 文件

@@ -8,7 +8,7 @@
 
 namespace litehtml { class element; class document; class html_tag; }
 
-namespace docrender::css {
+namespace dockit::css {
 	class AnimationState {
 		using Sample = std::map<std::size_t, AnimatedValue>;
 		struct Stop {

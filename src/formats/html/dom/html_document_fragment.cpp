@@ -25,7 +25,7 @@ Error HTMLDocumentFragment::append_child(const Ref<HTMLNode>& p_child) {
 }
 
 Error HTMLDocumentFragment::insert_before(const Ref<HTMLNode>& p_child, const Ref<HTMLNode>& p_reference) {
-	using Edit = docrender::HTMLDOM::TreeEdit;
+	using Edit = dockit::HTMLDOM::TreeEdit;
 	const auto parent = lock_element();
 	const auto reference = lock_related_node(p_reference);
 	if (!parent || !p_child.is_valid() || (p_reference.is_valid() && (!reference || reference->parent() != parent))) return ERR_INVALID_PARAMETER;
@@ -36,19 +36,19 @@ Error HTMLDocumentFragment::remove_child(const Ref<HTMLNode>& p_child) {
 	const auto parent = lock_element();
 	const auto child = lock_related_node(p_child);
 	return parent && child && child->parent() == parent ?
-		get_dom().edit_nodes(child, docrender::HTMLDOM::TreeEdit::REPLACE, {}) : ERR_INVALID_PARAMETER;
+		get_dom().edit_nodes(child, dockit::HTMLDOM::TreeEdit::REPLACE, {}) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLDocumentFragment::replace_child(const Ref<HTMLNode>& p_new_child, const Ref<HTMLNode>& p_old_child) {
 	const auto parent = lock_element();
 	const auto child = lock_related_node(p_old_child);
 	return parent && child && child->parent() == parent ?
-		get_dom().edit_nodes(child, docrender::HTMLDOM::TreeEdit::REPLACE, Array::make(p_new_child)) : ERR_INVALID_PARAMETER;
+		get_dom().edit_nodes(child, dockit::HTMLDOM::TreeEdit::REPLACE, Array::make(p_new_child)) : ERR_INVALID_PARAMETER;
 }
 
 Error HTMLDocumentFragment::replace_children(const Array& p_items) {
 	const auto parent = lock_element();
-	return parent ? get_dom().edit_nodes(parent, docrender::HTMLDOM::TreeEdit::REPLACE_CHILDREN, p_items) : ERR_INVALID_PARAMETER;
+	return parent ? get_dom().edit_nodes(parent, dockit::HTMLDOM::TreeEdit::REPLACE_CHILDREN, p_items) : ERR_INVALID_PARAMETER;
 }
 
 Ref<HTMLElement> HTMLDocumentFragment::get_first_element_child() const {

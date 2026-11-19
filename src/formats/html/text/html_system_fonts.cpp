@@ -11,7 +11,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 #ifdef WINDOWS_ENABLED
 		struct ReleaseCom {

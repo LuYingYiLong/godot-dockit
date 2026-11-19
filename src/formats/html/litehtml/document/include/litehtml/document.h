@@ -52,7 +52,7 @@ namespace litehtml
 
 	class document : public std::enable_shared_from_this<document>
 	{
-		friend struct docrender_editor;
+		friend struct dockit_editor;
 		friend class render_item;
 	public:
 		typedef std::shared_ptr<document>	ptr;

@@ -2,7 +2,7 @@
 
 #include <godot_cpp/classes/font.hpp>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLFontConfig {
 		godot::Ref<godot::Font> text;
 		godot::Ref<godot::Font> bold;

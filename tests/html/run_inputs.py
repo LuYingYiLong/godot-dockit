@@ -10,16 +10,16 @@ from run_audio import run, write
 
 
 def create_project(project, repo, template):
-    addon = project / "addons/docrender"
+    addon = project / "addons/dockit"
     (addon / "bin").mkdir(parents=True)
-    shutil.copyfile(repo / "addons/docrender/docrender.gdextension", addon / "docrender.gdextension")
-    library = "bin/docrender.windows.template_debug.x86_64.dll"
-    shutil.copyfile(repo / "addons/docrender" / library, addon / library)
+    shutil.copyfile(repo / "addons/dockit/dockit.gdextension", addon / "dockit.gdextension")
+    library = "bin/dockit.windows.template_debug.x86_64.dll"
+    shutil.copyfile(repo / "addons/dockit" / library, addon / library)
     (project / ".godot").mkdir()
-    write(project / ".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+    write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
     write(project / "project.godot", """config_version=5
 [application]
-config/name="DocRender Input Tests"
+config/name="Dockit Input Tests"
 run/main_scene="uid://bjfh2y6885rsu"
 [display]
 window/size/viewport_width=760
@@ -122,7 +122,7 @@ def main():
     repo = Path(__file__).resolve().parents[2]
     engine = str(args.godot.resolve())
     success = "HTML inputs completed with 0 failures"
-    with TemporaryDirectory(prefix="docrender-html-inputs-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
+    with TemporaryDirectory(prefix="dockit-html-inputs-", dir=args.work_dir, ignore_cleanup_errors=True) as directory:
         workspace = Path(directory)
         project = workspace / "project"
         export = workspace / "export"

@@ -12,7 +12,7 @@ litehtml::el_image::el_image(const document::ptr& doc, const string& baseurl) :
 	m_css.set_display(display_inline_block);
 }
 
-bool litehtml::el_image::select_source(docrender::HTMLImageSelection p_selection)
+bool litehtml::el_image::select_source(dockit::HTMLImageSelection p_selection)
 {
 	const bool dimensions_changed = m_selection ?
 		!(m_selection->dimensions == p_selection.dimensions) : p_selection.dimensions.has_value();

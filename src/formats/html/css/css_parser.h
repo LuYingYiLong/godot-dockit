@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #pragma once
 
@@ -10,7 +10,7 @@
 #include <functional>
 #include <memory>
 
-namespace docrender::css {
+namespace dockit::css {
 
 using std::shared_ptr;
 
@@ -90,4 +90,4 @@ bool is_declaration_value(const css_token_vector& tokens, int index = 0);
 bool is_any_value(const css_token_vector& tokens);
 bool skip_whitespace(const css_token_vector& tokens, int& index);
 
-} // namespace docrender::css
+} // namespace dockit::css

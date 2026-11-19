@@ -30,12 +30,12 @@ def run(command, workspace, expected=None, cwd=None):
 
 
 def create_project(project, repo, fmod_bin, fmod_runtime, template):
-    extension = project / "addons/docrender"
+    extension = project / "addons/dockit"
     (extension / "bin").mkdir(parents=True)
-    shutil.copyfile(repo / "addons/docrender/docrender.gdextension", extension / "docrender.gdextension")
-    library = "bin/docrender.windows.template_debug.x86_64.dll"
-    shutil.copyfile(repo / "addons/docrender" / library, extension / library)
-    extensions = ["res://addons/docrender/docrender.gdextension"]
+    shutil.copyfile(repo / "addons/dockit/dockit.gdextension", extension / "dockit.gdextension")
+    library = "bin/dockit.windows.template_debug.x86_64.dll"
+    shutil.copyfile(repo / "addons/dockit" / library, extension / library)
+    extensions = ["res://addons/dockit/dockit.gdextension"]
     if fmod_bin:
         selected = project / "addons/fmod_player/bin"
         selected.mkdir(parents=True)
@@ -74,7 +74,7 @@ fmod/sync_godot_audio_buses=false
     write(project / "project.godot", """config_version=5
 
 [application]
-config/name="DocRender HTML Audio"
+config/name="Dockit HTML Audio"
 run/main_scene="res://main.tscn"
 
 [debug]
@@ -164,7 +164,7 @@ def main():
     backends = ("godot", "fmod") if args.backend == "both" else (args.backend,)
     godot = str(args.godot.resolve())
     for backend in backends:
-        with TemporaryDirectory(prefix=f"docrender-audio-{backend}-", dir=args.work_dir) as directory:
+        with TemporaryDirectory(prefix=f"dockit-audio-{backend}-", dir=args.work_dir) as directory:
             workspace = Path(directory)
             project = workspace / "project"
             output = workspace / "export"

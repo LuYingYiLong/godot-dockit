@@ -5,7 +5,7 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <mutex>
 
-namespace docrender { class HTMLInputNode; }
+namespace dockit { class HTMLInputNode; }
 
 class HTMLInputFile : public godot::RefCounted {
 	GDCLASS(HTMLInputFile, godot::RefCounted)
@@ -32,7 +32,7 @@ class HTMLInputElement : public HTMLElement {
 	friend class ::HTMLLabelCanvas;
 	friend class HTMLLayout;
 
-	std::shared_ptr<docrender::HTMLInputNode> get_input() const;
+	std::shared_ptr<dockit::HTMLInputNode> get_input() const;
 
 protected:
 	static void _bind_methods();

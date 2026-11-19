@@ -31,9 +31,9 @@ namespace litehtml {
 	struct css_transform_function;
 }
 
-namespace docrender::css { class ComputedStyle; }
+namespace dockit::css { class ComputedStyle; }
 
-namespace docrender {
+namespace dockit {
 	struct HTMLClipPolygon;
 	inline constexpr int MAX_ROUNDED_CLIPS = 16;
 

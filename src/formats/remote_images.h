@@ -3,7 +3,7 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable.hpp>
 
-namespace docrender {
+namespace dockit {
 	enum class RemoteImageStatus { loading, ready, failed };
 
 	struct RemoteImage {

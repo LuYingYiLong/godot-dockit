@@ -21,7 +21,7 @@ const SOURCE_MARKERS: Array[String] = [
 
 
 func _enter_tree() -> void:
-	if OS.get_environment("DOCRENDER_REFERENCE_PROBE") == "1":
+	if OS.get_environment("DOCKIT_REFERENCE_PROBE") == "1":
 		_probe.call_deferred()
 
 
@@ -90,7 +90,7 @@ func _probe() -> void:
 		get_tree().quit(1)
 		return
 	var merman_status: String = "passed" if MermaidRender.is_available() else "unavailable"
-	print("DocRender editor source resource references passed. Merman rendering: %s." % merman_status)
+	print("Dockit editor source resource references passed. Merman rendering: %s." % merman_status)
 	get_tree().quit()
 
 
@@ -191,26 +191,26 @@ def main():
     parser.add_argument("godot", type=Path, help="path to the Godot 4.7.2 console executable")
     args = parser.parse_args()
     godot = args.godot.resolve()
-    addon = Path(__file__).resolve().parents[2] / "addons/docrender"
-    library = addon / "bin/docrender.windows.template_debug.x86_64.dll"
+    addon = Path(__file__).resolve().parents[2] / "addons/dockit"
+    library = addon / "bin/dockit.windows.template_debug.x86_64.dll"
     if not godot.is_file() or not library.is_file():
         parser.error("Use the Godot console executable and build the Windows x64 template_debug target first.")
 
-    with TemporaryDirectory(prefix="docrender-editor-reference-") as folder:
+    with TemporaryDirectory(prefix="dockit-editor-reference-", ignore_cleanup_errors=True) as folder:
         root = Path(folder)
         project = root / "project"
         profile = root / "profile"
-        for directory in (project / "addons/docrender/bin", project / "addons/probe", project / ".godot/editor", profile):
+        for directory in (project / "addons/dockit/bin", project / "addons/probe", project / ".godot/editor", profile):
             directory.mkdir(parents=True)
-        shutil.copyfile(library, project / "addons/docrender/bin" / library.name)
-        shutil.copyfile(addon / "docrender.gdextension", project / "addons/docrender/docrender.gdextension")
+        shutil.copyfile(library, project / "addons/dockit/bin" / library.name)
+        shutil.copyfile(addon / "dockit.gdextension", project / "addons/dockit/dockit.gdextension")
 
         def write(path, contents):
             (project / path).write_text(contents, encoding="utf-8", newline="\n")
 
-        write("project.godot", 'config_version=5\n[application]\nconfig/name="DocRender editor reference test"\n'
+        write("project.godot", 'config_version=5\n[application]\nconfig/name="Dockit editor reference test"\n'
               '[editor_plugins]\nenabled=PackedStringArray("res://addons/probe/plugin.cfg")\n')
-        write(".godot/extension_list.cfg", "res://addons/docrender/docrender.gdextension\n")
+        write(".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
         write("addons/probe/plugin.cfg", '[plugin]\nname="Reference Probe"\nscript="probe.gd"\n')
         write("addons/probe/probe.gd", PROBE)
         write("source.html", "<p>Shared document</p>\n")
@@ -222,7 +222,7 @@ def main():
 
 @export var other_document: MermaidDocument
 ''')
-        env = {**os.environ, "APPDATA": str(profile), "DOCRENDER_REFERENCE_PROBE": "0"}
+        env = {**os.environ, "APPDATA": str(profile), "DOCKIT_REFERENCE_PROBE": "0"}
         command = [str(godot), "--headless", "--path", str(project)]
         imported = subprocess.run([*command, "--import"], env=env, cwd=project, timeout=60, capture_output=True)
         sources = ("source.html", "source.tex", "source_3d.tex", "source.mmd", "other.mermaid")
@@ -272,10 +272,10 @@ document = ExtResource("4_mermaid")
               'open_scripts=["res://source.html", "res://source.tex", "res://source_3d.tex", "res://source.mmd", "res://other.mermaid"]\n'
               'selected_script="res://source.html"\n')
         result = subprocess.run([*command, "--editor", "--quit-after", "600"],
-                                env={**env, "DOCRENDER_REFERENCE_PROBE": "1"}, cwd=project,
+                                env={**env, "DOCKIT_REFERENCE_PROBE": "1"}, cwd=project,
                                 timeout=60, capture_output=True)
         output = result.stdout.decode(errors="replace")
-        summary = next((line for line in output.splitlines() if "DocRender editor source resource references passed." in line), None)
+        summary = next((line for line in output.splitlines() if "Dockit editor source resource references passed." in line), None)
         if result.returncode or summary is None:
             print(output, result.stderr.decode(errors="replace"))
             return result.returncode or 1

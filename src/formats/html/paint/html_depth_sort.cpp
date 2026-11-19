@@ -6,7 +6,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		using Slice = HTMLDepthSlice;
 		using Polygon = std::vector<Vector2>;

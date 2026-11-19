@@ -8,7 +8,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	HTMLImageAltText::HTMLImageAltText(HTMLTextLayout p_text, float p_line_height, bool p_wrap) :
 		text(std::move(p_text)), line_height(std::max(1.0f, p_line_height)), wrap(p_wrap) {}
 

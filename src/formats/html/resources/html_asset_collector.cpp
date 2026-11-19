@@ -20,7 +20,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_STYLESHEETS = 128;
 

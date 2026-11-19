@@ -6,23 +6,23 @@
 
 namespace litehtml {
 
-using docrender::css::raw_rule;
-using docrender::css::raw_declaration;
-using docrender::css::keep_whitespace_fn;
-using docrender::css::remove_whitespace;
-using docrender::css::normalize;
-using docrender::css::parse_comma_separated_list;
-using docrender::css::is_declaration_value;
-using docrender::css::is_any_value;
-using docrender::css::skip_whitespace;
+using dockit::css::raw_rule;
+using dockit::css::raw_declaration;
+using dockit::css::keep_whitespace_fn;
+using dockit::css::remove_whitespace;
+using dockit::css::normalize;
+using dockit::css::parse_comma_separated_list;
+using dockit::css::is_declaration_value;
+using dockit::css::is_any_value;
+using dockit::css::skip_whitespace;
 
-inline constexpr auto f_componentize = docrender::css::f_componentize;
-inline constexpr auto f_remove_whitespace = docrender::css::f_remove_whitespace;
+inline constexpr auto f_componentize = dockit::css::f_componentize;
+inline constexpr auto f_remove_whitespace = dockit::css::f_remove_whitespace;
 
-class css_parser : public docrender::css::css_parser {
+class css_parser : public dockit::css::css_parser {
 public:
-	using docrender::css::css_parser::css_parser;
-	using docrender::css::css_parser::parse_stylesheet;
+	using dockit::css::css_parser::css_parser;
+	using dockit::css::css_parser::parse_stylesheet;
 
 	static raw_rule::vector parse_stylesheet(const string& input, bool top_level);
 };

@@ -9,8 +9,8 @@
 #include <string_view>
 
 namespace litehtml {
-	using docrender::css::detail::index_value;
-	using docrender::css::detail::lowcase;
+	using dockit::css::detail::index_value;
+	using dockit::css::detail::lowcase;
 	namespace {
 		enum class MathOp {
 			LITERAL, INPUT, ADD, SUBTRACT, MULTIPLY, DIVIDE,

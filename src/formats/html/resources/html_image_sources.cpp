@@ -16,7 +16,7 @@
 #include <limits>
 #include <utility>
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr std::string_view HTML_WHITESPACE = " \t\n\r\f";
 

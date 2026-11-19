@@ -47,9 +47,9 @@
 #include <utility>
 
 using namespace godot;
-using docrender::HTMLDOM;
-using docrender::HTMLBoundary;
-using DocumentAdapter = litehtml::docrender_editor;
+using dockit::HTMLDOM;
+using dockit::HTMLBoundary;
+using DocumentAdapter = litehtml::dockit_editor;
 
 namespace {
 	bool is_valid_tag_name(std::string_view p_name) {
@@ -92,8 +92,8 @@ namespace {
 	}
 
 	void sync_dom_children(const litehtml::element::ptr& p_node) {
-		if (auto* textarea = dynamic_cast<docrender::HTMLTextAreaNode*>(p_node.get())) textarea->sync_default_value();
-		docrender::forms::synchronize(p_node);
+		if (auto* textarea = dynamic_cast<dockit::HTMLTextAreaNode*>(p_node.get())) textarea->sync_default_value();
+		dockit::forms::synchronize(p_node);
 	}
 
 	void append_escaped(std::string& r_html, std::string_view p_value, bool p_attribute) {
@@ -268,7 +268,7 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	for (const auto& entry : detached_trees) {
 		if (const auto tree = entry.value.lock()) {
 			if (const auto handle = find_node_handle(*entry.key); handle.is_valid()) bind_handle(*handle.ptr(), tree->root);
-			docrender::forms::synchronize(tree->root);
+			dockit::forms::synchronize(tree->root);
 		}
 	}
 }
@@ -299,7 +299,7 @@ void HTMLDOM::sync_open_dialogs() {
 	}
 }
 
-std::shared_ptr<docrender::HTMLDialogNode> HTMLDOM::last_open_dialog() const {
+std::shared_ptr<dockit::HTMLDialogNode> HTMLDOM::last_open_dialog() const {
 	std::shared_ptr<HTMLDialogNode> result;
 	for (const auto& candidate : dialog_nodes) {
 		const auto dialog = candidate.lock();
@@ -345,7 +345,7 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 }
 
 void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
-	docrender::forms::synchronize(p_node);
+	dockit::forms::synchronize(p_node);
 	if (is_element_connected(*p_node)) on_change();
 }
 
@@ -553,7 +553,7 @@ CharString HTMLDOM::normalize_tag_name(const String& p_tag_name) {
 
 Ref<HTMLElement> HTMLDOM::create_element(const CharString& p_tag) {
 	const auto node = document->create_element(p_tag.get_data(), {});
-	if (node && (docrender::forms::is_listed(*node) || node->tag() == litehtml::_form_)) docrender::forms::synchronize(node);
+	if (node && (dockit::forms::is_listed(*node) || node->tag() == litehtml::_form_)) dockit::forms::synchronize(node);
 	return make_detached_element(node);
 }
 
@@ -584,7 +584,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::copy_fragment(const litehtml::element& p_root
 	if (p_deep && !clone_children(*this, p_root, *fragment->detached_tree->root)) {
 		return {};
 	}
-	docrender::forms::synchronize(fragment->detached_tree->root);
+	dockit::forms::synchronize(fragment->detached_tree->root);
 	return fragment;
 }
 
@@ -594,7 +594,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::parse_fragment(const String& p_html, const li
 	const auto context = p_context ? p_context : document->create_element("body", {});
 	const auto fragment = create_document_fragment();
 	DocumentAdapter::replace_children(*fragment->detached_tree->root, DocumentAdapter::parse_fragment(*document, *context, source));
-	docrender::forms::synchronize(fragment->detached_tree->root);
+	dockit::forms::synchronize(fragment->detached_tree->root);
 	return fragment;
 }
 
@@ -602,7 +602,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::import_fragment(const HTMLDocumentFragment& p
 	if (const auto node = p_source.lock_element()) {
 		const auto copy = create_document_fragment();
 		if (clone_children(p_source.get_dom(), *node, *copy->detached_tree->root)) {
-			docrender::forms::synchronize(copy->detached_tree->root);
+			dockit::forms::synchronize(copy->detached_tree->root);
 			return copy;
 		}
 	}
@@ -622,7 +622,7 @@ bool HTMLDOM::adopt_fragment(HTMLDocumentFragment& r_source) {
 	++r_source.adoption_version;
 	bind_handle(r_source, copy->detached_tree->root);
 	transfer_observers(source);
-	docrender::forms::synchronize(r_source.detached_tree->root);
+	dockit::forms::synchronize(r_source.detached_tree->root);
 	return true;
 }
 
@@ -1014,7 +1014,7 @@ Ref<HTMLElement> HTMLDOM::make_detached_element(const litehtml::element::ptr& p_
 
 Ref<HTMLElement> HTMLDOM::copy_node(const HTMLDOM& p_source_dom, const litehtml::element& p_source, bool p_deep) {
 	const auto copy = clone_subtree(p_source_dom, p_source, p_deep);
-	docrender::forms::synchronize(copy);
+	dockit::forms::synchronize(copy);
 	return make_detached_element(copy);
 }
 
@@ -1040,8 +1040,8 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	p_source_dom.release_detached_root(source_tree, p_source);
 	transfer_adoption(p_source_dom, *p_source, adoption);
 	p_source_dom.finish_children(children_change);
-	docrender::forms::synchronize(copy, copy);
-	docrender::forms::synchronize(parent);
+	dockit::forms::synchronize(copy, copy);
+	dockit::forms::synchronize(parent);
 	if (source_connected) {
 		p_source_dom.on_change();
 	}
@@ -1187,8 +1187,8 @@ TypedArray<HTMLElement> HTMLDOM::select_elements(const String& p_selector, Selec
 	TypedArray<HTMLElement> matches;
 	const CharString utf8 = p_selector.utf8();
 	const auto tokens = litehtml::tokenize(std::string(utf8.get_data(), utf8.length()));
-	ERR_FAIL_COND_V_MSG(!docrender::css::has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
-	namespace syntax = docrender::css;
+	ERR_FAIL_COND_V_MSG(!dockit::css::has_balanced_selector_tokens(tokens), matches, "Invalid HTML selector: " + p_selector);
+	namespace syntax = dockit::css;
 	const auto selectors = syntax::parse_selector_list(syntax::normalize(tokens, syntax::f_componentize),
 		syntax::strict_mode | syntax::forbid_pseudo_elements,
 		litehtml::selector_mode(document ? document->mode() : litehtml::no_quirks_mode));
@@ -1343,19 +1343,19 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	}
 	const std::string_view name(p_name);
 	if (name == "multiple" && !p_value) {
-		if (auto* select = dynamic_cast<docrender::HTMLSelectNode*>(p_element.get())) select->use_single_selection();
+		if (auto* select = dynamic_cast<dockit::HTMLSelectNode*>(p_element.get())) select->use_single_selection();
 	}
 	if (name == "selected") {
-		if (auto* option = dynamic_cast<docrender::HTMLOptionNode*>(p_element.get())) option->attribute_changed();
+		if (auto* option = dynamic_cast<dockit::HTMLOptionNode*>(p_element.get())) option->attribute_changed();
 	}
 	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected" || name == "multiple" || name == "size") {
-		docrender::forms::synchronize(p_element, p_element);
+		dockit::forms::synchronize(p_element, p_element);
 	} else if (name == "value" || name == "required" || name == "readonly" || name == "minlength" || name == "maxlength" ||
 		name == "min" || name == "max" || name == "step" || name == "command" || name == "commandfor") {
-		if (const auto* option = dynamic_cast<const docrender::HTMLOptionNode*>(p_element.get())) {
-			if (auto* select = option->select()) docrender::forms::update_validity(*select);
-		} else if (docrender::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
-			docrender::forms::update_validity(*p_element);
+		if (const auto* option = dynamic_cast<const dockit::HTMLOptionNode*>(p_element.get())) {
+			if (auto* select = option->select()) dockit::forms::update_validity(*select);
+		} else if (dockit::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
+			dockit::forms::update_validity(*p_element);
 		}
 	}
 	if (is_element_connected(*p_element)) {
@@ -1441,7 +1441,7 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 	if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->sync_default_value();
 	}
-	docrender::forms::synchronize(target, target);
+	dockit::forms::synchronize(target, target);
 	normalize_details(target, {target});
 	if (!node && is_element_connected(*p_element)) {
 		on_change();
@@ -1488,7 +1488,7 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 	finish_children(source_change);
 	finish_children(target_change);
 	normalize_details(p_parent, moved);
-	docrender::forms::synchronize(p_parent, p_parent);
+	dockit::forms::synchronize(p_parent, p_parent);
 	if (!target_tree) {
 		on_change();
 	}
@@ -1530,13 +1530,13 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	}
 	if (p_replace_reference) {
 		retain_detached_subtree(p_reference);
-		docrender::forms::synchronize(p_reference);
+		dockit::forms::synchronize(p_reference);
 	}
 	finish_children(source_change);
 	finish_children(target_change, {p_child});
-	docrender::forms::synchronize(p_parent, p_child);
+	dockit::forms::synchronize(p_parent, p_child);
 	normalize_details(p_parent, {p_child});
-	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) docrender::forms::synchronize(old_parent);
+	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) dockit::forms::synchronize(old_parent);
 	if (p_notify && (!source_tree || !target_tree)) {
 		on_change();
 	}
@@ -1586,8 +1586,8 @@ Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_noti
 	release_pointer_captures_in_subtree(*p_element);
 	retain_detached_subtree(p_element);
 	finish_children(children_change);
-	docrender::forms::synchronize(parent);
-	docrender::forms::synchronize(p_element);
+	dockit::forms::synchronize(parent);
+	dockit::forms::synchronize(p_element);
 	if (!old_tree && p_notify) {
 		on_change();
 	}
@@ -1607,7 +1607,7 @@ Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
 	release_pointer_captures_in_subtree(*p_element);
 	forget_subtree(*p_element);
 	finish_children(children_change);
-	docrender::forms::synchronize(parent);
+	dockit::forms::synchronize(parent);
 	if (!old_tree) {
 		on_change();
 	}

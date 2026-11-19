@@ -5,7 +5,7 @@
 
 #include <optional>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLInlineColors {
 		std::optional<godot::Color> text;
 		std::optional<godot::Color> background;

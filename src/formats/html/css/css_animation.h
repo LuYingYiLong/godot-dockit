@@ -42,7 +42,7 @@ namespace litehtml {
 	void parse_css_animation(css_value_parser& parser, string_id name, const css_token_vector& value, bool important);
 }
 
-namespace docrender::css {
+namespace dockit::css {
 	struct KeyframeRule {
 		std::string name;
 		std::map<double, raw_declaration::vector> frames;

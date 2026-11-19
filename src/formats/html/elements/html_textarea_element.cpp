@@ -11,7 +11,7 @@
 using namespace godot;
 
 Ref<HTMLFormElement> HTMLTextAreaElement::get_form() const { return get_form_owner(); }
-using docrender::HTMLTextAreaNode;
+using dockit::HTMLTextAreaNode;
 
 void HTMLTextAreaElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLTextAreaElement::get_form);
@@ -65,8 +65,8 @@ void HTMLTextAreaElement::set_selection_range(int64_t p_start, int64_t p_end) {
 		if (!node->editor.set_selection(std::min(p_start, p_end), p_end)) return;
 		get_owner()->update_input(*node);
 		if (old_start != node->editor.selection_start() || old_end != node->editor.selection_end()) {
-			dispatch_event(docrender::make_dom_event(StringName("select"), true, false));
-			dispatch_event(docrender::make_dom_event(StringName("selectionchange"), true, false));
+			dispatch_event(dockit::make_dom_event(StringName("select"), true, false));
+			dispatch_event(dockit::make_dom_event(StringName("selectionchange"), true, false));
 			get_dom().queue_selectionchange();
 		}
 	}

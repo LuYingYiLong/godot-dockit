@@ -5,7 +5,7 @@
 
 #include <optional>
 
-namespace docrender::input_time {
+namespace dockit::input_time {
 	enum class Kind { none, date, month, week, time, local };
 	constexpr double day = 86400000.0;
 

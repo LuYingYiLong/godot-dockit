@@ -303,10 +303,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\editor\docrender_editor_translations.cpp">
+    <ClCompile Include="src\editor\dockit_editor_translations.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\docrender_source_editor.cpp">
+    <ClCompile Include="src\editor\dockit_source_editor.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\html_preview_editor_plugin.cpp">
@@ -336,7 +336,7 @@
     <ClCompile Include="src\editor\script_editor_preview_plugin.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
-    <ClCompile Include="src\formats\docrender_source.cpp">
+    <ClCompile Include="src\formats\dockit_source.cpp">
       <Filter>Source Files\formats</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\backend\litehtml_container.cpp">
@@ -953,10 +953,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\editor\docrender_editor_translations.h">
+    <ClInclude Include="src\editor\dockit_editor_translations.h">
       <Filter>Header Files\editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\editor\docrender_source_editor.h">
+    <ClInclude Include="src\editor\dockit_source_editor.h">
       <Filter>Header Files\editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\html_preview_editor_plugin.h">
@@ -986,7 +986,7 @@
     <ClInclude Include="src\editor\script_editor_preview_plugin.h">
       <Filter>Header Files\editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\formats\docrender_source.h">
+    <ClInclude Include="src\formats\dockit_source.h">
       <Filter>Header Files\formats</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\backend\litehtml_container.h">

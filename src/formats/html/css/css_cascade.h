@@ -6,7 +6,7 @@
 
 namespace litehtml { struct css_parsed_declaration; }
 
-namespace docrender::css {
+namespace dockit::css {
 
 class Cascade {
 	using Property = litehtml::string_id;
@@ -40,4 +40,4 @@ public:
 	const vector<litehtml::css_diagnostic>& get_diagnostics() const { return diagnostics; }
 };
 
-} // namespace docrender::css
+} // namespace dockit::css

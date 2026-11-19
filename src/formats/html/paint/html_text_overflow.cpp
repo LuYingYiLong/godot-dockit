@@ -13,7 +13,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		struct LinePiece {
 			const render_item* renderer;

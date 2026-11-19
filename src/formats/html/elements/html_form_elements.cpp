@@ -13,11 +13,11 @@
 #include <iterator>
 
 using namespace godot;
-namespace forms = docrender::forms;
-using docrender::HTMLInputNode;
-using docrender::HTMLOptionNode;
-using docrender::HTMLSelectNode;
-using docrender::HTMLTextAreaNode;
+namespace forms = dockit::forms;
+using dockit::HTMLInputNode;
+using dockit::HTMLOptionNode;
+using dockit::HTMLSelectNode;
+using dockit::HTMLTextAreaNode;
 
 void HTMLFormElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_controls"), &HTMLFormElement::get_controls);
@@ -332,22 +332,22 @@ void HTMLOptionElement::set_selected(bool p_value) {
 	}
 }
 
-bool docrender::HTMLOutputNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode) const {
+bool dockit::HTMLOutputNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode) const {
 	auto* target = dynamic_cast<HTMLOutputNode*>(&p_target);
 	if (!target) return false;
 	target->default_override = default_override;
 	if (default_override && target->children().empty()) {
 		litehtml::string text;
 		get_text(text);
-		auto children = litehtml::docrender_editor::create_text(target->get_document(), text.c_str(), true);
-		litehtml::docrender_editor::replace_children(*target, std::move(children));
+		auto children = litehtml::dockit_editor::create_text(target->get_document(), text.c_str(), true);
+		litehtml::dockit_editor::replace_children(*target, std::move(children));
 	}
 	return true;
 }
 
 String HTMLOutputElement::get_value() const { return get_text_content(); }
 void HTMLOutputElement::set_value(const String& p_value) {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLOutputNode>(lock_element());
 	if (!node) return;
 	const auto previous_default = node->default_override;
 	if (!previous_default) node->default_override = get_value();
@@ -355,19 +355,19 @@ void HTMLOutputElement::set_value(const String& p_value) {
 }
 
 String HTMLOutputElement::get_default_value() const {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLOutputNode>(lock_element());
 	return node && node->default_override ? *node->default_override : get_value();
 }
 
 void HTMLOutputElement::set_default_value(const String& p_value) {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLOutputNode>(lock_element());
 	if (!node) return;
 	if (node->default_override) node->default_override = p_value;
 	else set_text_content(p_value);
 }
 
 void HTMLOutputElement::reset() {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLOutputNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLOutputNode>(lock_element());
 	if (!node || !node->default_override) return;
 	if (set_text_content(*node->default_override) == OK) node->default_override.reset();
 }

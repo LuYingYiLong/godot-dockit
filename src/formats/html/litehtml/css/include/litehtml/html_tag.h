@@ -15,7 +15,7 @@ namespace litehtml
 
 	class html_tag : public element
 	{
-		friend struct docrender_editor;
+		friend struct dockit_editor;
 		friend struct selector_dom;
 		friend class document;
 		friend class elements_iterator;
@@ -45,7 +45,7 @@ namespace litehtml
 		std::shared_ptr<const cascaded_selection_colors> m_selection_colors;
 		int match_style_selector(const css_selector& selector, bool apply_pseudo, int& proximity);
 		void apply_matched_style(int match, const css_selector& selector, int proximity, bool create_generated);
-		bool apply_auxiliary_pseudo(int match, const css_selector& selector, const docrender::css::CascadePriority& priority);
+		bool apply_auxiliary_pseudo(int match, const css_selector& selector, const dockit::css::CascadePriority& priority);
 		void compute_selection_colors();
 		string_map				m_attrs;
 		vector<string_id>		m_pseudo_classes;

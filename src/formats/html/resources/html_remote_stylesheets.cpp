@@ -10,7 +10,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_ENTRIES = 128;
 		constexpr uint64_t RETRY_DELAY_MS = 20'000;

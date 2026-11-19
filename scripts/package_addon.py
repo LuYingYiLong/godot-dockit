@@ -8,7 +8,7 @@ from shutil import copy2, copytree, ignore_patterns
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ADDON = ROOT / "addons/docrender"
+ADDON = ROOT / "addons/dockit"
 SDK_DIR = ROOT / "src/thirdparty"
 MERMAN_NOTICES = (
     "LICENSE-APACHE",
@@ -19,7 +19,7 @@ MERMAN_NOTICES = (
 
 
 def read_libraries():
-    descriptor = (ADDON / "docrender.gdextension").read_text(encoding="utf-8")
+    descriptor = (ADDON / "dockit.gdextension").read_text(encoding="utf-8")
     section = descriptor.split("[libraries]", 1)[1].split("[", 1)[0]
     config = ConfigParser(interpolation=None)
     config.read_string("[libraries]" + section)

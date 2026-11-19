@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include <litehtml/html.h>
 #include "css_web_color.h"
@@ -271,24 +271,24 @@ namespace {
 		{"highlighttext", 0xffffffff, 0xffffffff},
 		{"accentcolor", 0x0075ffff, 0x99c8ffff},
 		{"accentcolortext", 0xffffffff, 0x101010ff},
-		{"-docrender-button-hover", 0xe5e5e5ff, 0x7b7b7bff},
-		{"-docrender-button-active", 0xf5f5f5ff, 0x565656ff},
-		{"-docrender-border-hover", 0x4f4f4fff, 0xabababff},
-		{"-docrender-border-active", 0x8d8d8dff, 0x838383ff},
-		{"-docrender-disabled-face", 0xefefef4d, 0x8d8d8d4d},
-		{"-docrender-disabled-border", 0x7676764d, 0x9b9b9b4d},
-		{"-docrender-disabled-text", 0x1010104d, 0xffffff4d},
-		{"-docrender-focus-ring", 0x101010ff, 0xb8d7ffff},
-		{"-docrender-gauge-track", 0xefefefff, 0x3b3b3bff},
-		{"-docrender-gauge-border", 0xb7b7b7ff, 0x797979ff},
-		{"-docrender-scrollbar-track", 0xf1f1f1ff, 0x2c2c2cff},
-		{"-docrender-scrollbar-thumb", 0x00000072, 0xffffff80},
-		{"-docrender-scrollbar-pressed", 0x00000080, 0xffffff99},
-		{"-docrender-menu-face", 0xf5f7fcff, 0x333333ff},
-		{"-docrender-menu-border", 0x63738aff, 0x8c8c8cff},
-		{"-docrender-menu-hover", 0x4a82e352, 0x85b1ff52},
-		{"-docrender-list-selected", 0x3369c2ff, 0x3564acff},
-		{"-docrender-list-hover", 0xc2d4f5ff, 0x4d5564ff},
+		{"-dockit-button-hover", 0xe5e5e5ff, 0x7b7b7bff},
+		{"-dockit-button-active", 0xf5f5f5ff, 0x565656ff},
+		{"-dockit-border-hover", 0x4f4f4fff, 0xabababff},
+		{"-dockit-border-active", 0x8d8d8dff, 0x838383ff},
+		{"-dockit-disabled-face", 0xefefef4d, 0x8d8d8d4d},
+		{"-dockit-disabled-border", 0x7676764d, 0x9b9b9b4d},
+		{"-dockit-disabled-text", 0x1010104d, 0xffffff4d},
+		{"-dockit-focus-ring", 0x101010ff, 0xb8d7ffff},
+		{"-dockit-gauge-track", 0xefefefff, 0x3b3b3bff},
+		{"-dockit-gauge-border", 0xb7b7b7ff, 0x797979ff},
+		{"-dockit-scrollbar-track", 0xf1f1f1ff, 0x2c2c2cff},
+		{"-dockit-scrollbar-thumb", 0x00000072, 0xffffff80},
+		{"-dockit-scrollbar-pressed", 0x00000080, 0xffffff99},
+		{"-dockit-menu-face", 0xf5f7fcff, 0x333333ff},
+		{"-dockit-menu-border", 0x63738aff, 0x8c8c8cff},
+		{"-dockit-menu-hover", 0x4a82e352, 0x85b1ff52},
+		{"-dockit-list-selected", 0x3369c2ff, 0x3564acff},
+		{"-dockit-list-hover", 0xc2d4f5ff, 0x4d5564ff},
 	};
 	static_assert(std::size(palette) == static_cast<size_t>(system_color::list_hover) + 1);
 }

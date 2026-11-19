@@ -14,7 +14,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_ENTRIES = 128;
 		constexpr int MAX_BODY_BYTES = 8 * 1024 * 1024;

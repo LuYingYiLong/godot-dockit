@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/radio_button_checked.svg"
+source_file="res://addons/dockit/icons/material_icons/radio_button_checked.svg"
 dest_files=["res://.godot/imported/radio_button_checked.svg-2835cdf0e22ac7c655d1ed78f817c3a6.ctex"]
 
 [params]

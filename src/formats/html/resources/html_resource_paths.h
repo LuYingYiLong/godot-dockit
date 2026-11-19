@@ -7,7 +7,7 @@
 
 namespace godot { class Texture2D; }
 
-namespace docrender {
+namespace dockit {
 	struct HTMLResourceBase {
 		godot::String uri;
 		godot::String directory;

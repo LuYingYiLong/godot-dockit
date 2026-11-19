@@ -38,19 +38,19 @@
     <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
-    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_debug arch=x86_64 -j 3</NMakeBuildCommandLine>
-    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_debug arch=x86_64 -j 3</NMakeReBuildCommandLine>
-    <NMakeCleanCommandLine>scons -c godot-docrender platform=windows target=template_debug arch=x86_64</NMakeCleanCommandLine>
-    <NMakeOutput>$(ProjectDir)addons\docrender\bin\docrender.windows.template_debug.x86_64.dll</NMakeOutput>
+    <NMakeBuildCommandLine>scons godot-dockit platform=windows target=template_debug arch=x86_64 -j 3</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>scons -c godot-dockit platform=windows target=template_debug arch=x86_64 &amp;&amp; scons godot-dockit platform=windows target=template_debug arch=x86_64 -j 3</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>scons -c godot-dockit platform=windows target=template_debug arch=x86_64</NMakeCleanCommandLine>
+    <NMakeOutput>$(ProjectDir)addons\dockit\bin\dockit.windows.template_debug.x86_64.dll</NMakeOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
-    <NMakeBuildCommandLine>scons godot-docrender platform=windows target=template_release arch=x86_64 -j 3</NMakeBuildCommandLine>
-    <NMakeReBuildCommandLine>scons -c godot-docrender platform=windows target=template_release arch=x86_64 &amp;&amp; scons godot-docrender platform=windows target=template_release arch=x86_64 -j 3</NMakeReBuildCommandLine>
-    <NMakeCleanCommandLine>scons -c godot-docrender platform=windows target=template_release arch=x86_64</NMakeCleanCommandLine>
-    <NMakeOutput>$(ProjectDir)addons\docrender\bin\docrender.windows.template_release.x86_64.dll</NMakeOutput>
+    <NMakeBuildCommandLine>scons godot-dockit platform=windows target=template_release arch=x86_64 -j 3</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>scons -c godot-dockit platform=windows target=template_release arch=x86_64 &amp;&amp; scons godot-dockit platform=windows target=template_release arch=x86_64 -j 3</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>scons -c godot-dockit platform=windows target=template_release arch=x86_64</NMakeCleanCommandLine>
+    <NMakeOutput>$(ProjectDir)addons\dockit\bin\dockit.windows.template_release.x86_64.dll</NMakeOutput>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -75,34 +75,34 @@
        properties are set here. The editor takes the include roots from the VC++ include directories
        and the compiler switches from the ClCompile item definition below. -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <DocRenderConfigDefines>WIN32;_DEBUG</DocRenderConfigDefines>
+    <DockitConfigDefines>WIN32;_DEBUG</DockitConfigDefines>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DocRenderConfigDefines>_DEBUG</DocRenderConfigDefines>
+    <DockitConfigDefines>_DEBUG</DockitConfigDefines>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <DocRenderConfigDefines>WIN32;NDEBUG</DocRenderConfigDefines>
+    <DockitConfigDefines>WIN32;NDEBUG</DockitConfigDefines>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <DocRenderConfigDefines>NDEBUG</DocRenderConfigDefines>
+    <DockitConfigDefines>NDEBUG</DockitConfigDefines>
   </PropertyGroup>
   <!-- SCons puts src/ first on the include path, so every include inside the project is written
        relative to it ("formats/html/...", "editor/...", "nodes/..."); the other roots provide the
        upstream, staged and generated headers the sources include by bare name ("types.h",
        "internal.h", "gumbo.h", "latex.h", "tinyxml2.h"). -->
   <PropertyGroup>
-    <DocRenderIncludeRoots>$(ProjectDir)src;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include\gumbo;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\visualc\include;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include</DocRenderIncludeRoots>
+    <DockitIncludeRoots>$(ProjectDir)src;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include\gumbo;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\visualc\include;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include</DockitIncludeRoots>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64' And Exists('$(ProjectDir)src\thirdparty\merman-sdk\include\merman.h') And Exists('$(ProjectDir)src\thirdparty\merman-sdk\lib\merman_ffi.lib')">
-    <DocRenderIncludeRoots>$(ProjectDir)src\thirdparty\merman-sdk\include;$(DocRenderIncludeRoots)</DocRenderIncludeRoots>
-    <DocRenderSdkDefines>MARKDOWN_LABEL_MERMAN_ENABLED;$(DocRenderSdkDefines)</DocRenderSdkDefines>
+    <DockitIncludeRoots>$(ProjectDir)src\thirdparty\merman-sdk\include;$(DockitIncludeRoots)</DockitIncludeRoots>
+    <DockitSdkDefines>MARKDOWN_LABEL_MERMAN_ENABLED;$(DockitSdkDefines)</DockitSdkDefines>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64' And Exists('$(ProjectDir)src\thirdparty\pdfium-sdk\include\fpdfview.h') And Exists('$(ProjectDir)src\thirdparty\pdfium-sdk\bin\pdfium.dll')">
-    <DocRenderIncludeRoots>$(ProjectDir)src\thirdparty\pdfium-sdk\include;$(DocRenderIncludeRoots)</DocRenderIncludeRoots>
-    <DocRenderSdkDefines>DOCRENDER_PDFIUM_ENABLED;$(DocRenderSdkDefines)</DocRenderSdkDefines>
+    <DockitIncludeRoots>$(ProjectDir)src\thirdparty\pdfium-sdk\include;$(DockitIncludeRoots)</DockitIncludeRoots>
+    <DockitSdkDefines>DOCKIT_PDFIUM_ENABLED;$(DockitSdkDefines)</DockitSdkDefines>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(DocRenderIncludeRoots);$(IncludePath)</IncludePath>
+    <IncludePath>$(DockitIncludeRoots);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <!-- These ClCompile settings are what Visual Studio's IntelliSense parses with. /permissive- is
        deliberately NOT passed: it is a cl.exe switch and the IntelliSense front end does not emulate
@@ -115,13 +115,13 @@
     <ClCompile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/std:c++17 /utf-8 /permissive- %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(DocRenderIncludeRoots);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NOMINMAX;TYPED_METHOD_BIND;WINDOWS_ENABLED;GDEXTENSION;$(DocRenderSdkDefines);$(DocRenderConfigDefines);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(DockitIncludeRoots);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NOMINMAX;TYPED_METHOD_BIND;WINDOWS_ENABLED;GDEXTENSION;$(DockitSdkDefines);$(DockitConfigDefines);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\editor\docrender_editor_translations.cpp" />
-    <ClCompile Include="src\editor\docrender_source_editor.cpp" />
+    <ClCompile Include="src\editor\dockit_editor_translations.cpp" />
+    <ClCompile Include="src\editor\dockit_source_editor.cpp" />
     <ClCompile Include="src\editor\html_preview_editor_plugin.cpp" />
     <ClCompile Include="src\editor\html_video_export_plugin.cpp" />
     <ClCompile Include="src\editor\importers\html_document_importer.cpp" />
@@ -131,7 +131,7 @@
     <ClCompile Include="src\editor\markdown_preview_editor_plugin.cpp" />
     <ClCompile Include="src\editor\mermaid_preview_editor_plugin.cpp" />
     <ClCompile Include="src\editor\script_editor_preview_plugin.cpp" />
-    <ClCompile Include="src\formats\docrender_source.cpp" />
+    <ClCompile Include="src\formats\dockit_source.cpp" />
     <ClCompile Include="src\formats\html\backend\litehtml_container.cpp" />
     <ClCompile Include="src\formats\html\backend\litehtml_document_adapter.cpp" />
     <ClCompile Include="src\formats\html\css\css_animated_property.cpp" />
@@ -338,8 +338,8 @@
     <ClCompile Include="src\register_types.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\editor\docrender_editor_translations.h" />
-    <ClInclude Include="src\editor\docrender_source_editor.h" />
+    <ClInclude Include="src\editor\dockit_editor_translations.h" />
+    <ClInclude Include="src\editor\dockit_source_editor.h" />
     <ClInclude Include="src\editor\html_preview_editor_plugin.h" />
     <ClInclude Include="src\editor\html_video_export_plugin.h" />
     <ClInclude Include="src\editor\importers\html_document_importer.h" />
@@ -349,7 +349,7 @@
     <ClInclude Include="src\editor\markdown_preview_editor_plugin.h" />
     <ClInclude Include="src\editor\mermaid_preview_editor_plugin.h" />
     <ClInclude Include="src\editor\script_editor_preview_plugin.h" />
-    <ClInclude Include="src\formats\docrender_source.h" />
+    <ClInclude Include="src\formats\dockit_source.h" />
     <ClInclude Include="src\formats\html\backend\litehtml_container.h" />
     <ClInclude Include="src\formats\html\backend\litehtml_document_adapter.h" />
     <ClInclude Include="src\formats\html\css\css_animated_property.h" />

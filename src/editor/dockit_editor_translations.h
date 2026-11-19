@@ -4,7 +4,7 @@
 #include <godot_cpp/templates/hash_map.hpp>
 
 namespace godot {
-	class DocRenderEditorTranslations {
+	class DockitEditorTranslations {
 		HashMap<StringName, Ref<Translation>> translations;
 
 	public:

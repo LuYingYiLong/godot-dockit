@@ -10,8 +10,8 @@
 #include <algorithm>
 
 using namespace godot;
-using docrender::HTMLInputNode;
-namespace calendar = docrender::input_time;
+using dockit::HTMLInputNode;
+namespace calendar = dockit::input_time;
 
 namespace {
 	PackedStringArray file_filters(const String& p_accept) {
@@ -55,7 +55,7 @@ bool HTMLLabel::input_picker_valid() const {
 	return input && picker_input->adoption_version == picker_adoption && input->type_name() == picker_type &&
 		input->editor.get_reset_version() == picker_reset && is_inside_tree() && is_visible_in_tree() &&
 		!source_dirty && layout->is_element_connected(picker_input) && layout->allows_modal_interaction(picker_input) &&
-		!docrender::forms::is_disabled(*input) && !(input->supports_readonly() && input->get_attr("readonly"));
+		!dockit::forms::is_disabled(*input) && !(input->supports_readonly() && input->get_attr("readonly"));
 }
 
 bool HTMLLabel::is_time_picker_open() const {

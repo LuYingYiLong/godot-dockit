@@ -4,7 +4,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLTemplateNode final : public litehtml::html_tag {
 		friend class HTMLDOM;
 		godot::Ref<HTMLDocumentFragment> content;

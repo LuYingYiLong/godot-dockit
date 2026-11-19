@@ -83,7 +83,7 @@ if env["platform"] == "windows" and env["arch"] == "x86_64":
     pdfium_sdk = Path(pdfium_sdk_option or "src/thirdparty/pdfium-sdk")
     pdfium_library = pdfium_sdk / "bin/pdfium.dll"
     if (pdfium_sdk / "include/fpdfview.h").is_file() and pdfium_library.is_file():
-        pdfium_env.AppendUnique(CPPPATH=[str(pdfium_sdk / "include")], CPPDEFINES=["DOCRENDER_PDFIUM_ENABLED"])
+        pdfium_env.AppendUnique(CPPPATH=[str(pdfium_sdk / "include")], CPPDEFINES=["DOCKIT_PDFIUM_ENABLED"])
         pdfium_dll = env.Install("addons/dockit/bin", str(pdfium_library))
     elif pdfium_sdk_option:
         print(f"Missing PDFium headers or DLL in {pdfium_sdk}.")

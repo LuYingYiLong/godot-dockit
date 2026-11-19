@@ -13,7 +13,7 @@ namespace litehtml {
 	struct media_features;
 }
 
-namespace docrender {
+namespace dockit {
 	using HTMLImageSourceResolver = std::function<godot::String(std::string_view)>;
 
 	struct HTMLImageCandidate {

@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/circle.svg"
+source_file="res://addons/dockit/icons/material_icons/circle.svg"
 dest_files=["res://.godot/imported/circle.svg-d161dd503afe666401f34ee70094d05e.ctex"]
 
 [params]

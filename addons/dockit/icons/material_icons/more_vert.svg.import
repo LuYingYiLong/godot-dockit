@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/more_vert.svg"
+source_file="res://addons/dockit/icons/material_icons/more_vert.svg"
 dest_files=["res://.godot/imported/more_vert.svg-871ca37010a37d0d97ad9ac5307dfdc5.ctex"]
 
 [params]

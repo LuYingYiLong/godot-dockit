@@ -4,8 +4,8 @@
 #include "css_syntax_util.h"
 
 namespace litehtml {
-	using docrender::css::detail::is_one_of;
-	using docrender::css::detail::lowcase;
+	using dockit::css::detail::is_one_of;
+	using dockit::css::detail::lowcase;
 
 	std::optional<css_shape_box> parse_css_shape_box(const css_token& token) {
 		const auto keyword = token.ident();
@@ -117,9 +117,9 @@ namespace litehtml {
 				return false;
 			}
 			if (tokens[index].type != STRING) return false;
-			auto path = docrender::css::parse_svg_path(tokens[index].str);
+			auto path = dockit::css::parse_svg_path(tokens[index].str);
 			if (!path) return false;
-			result.svg_path = std::make_shared<const docrender::css::SVGPath>(std::move(*path));
+			result.svg_path = std::make_shared<const dockit::css::SVGPath>(std::move(*path));
 			return true;
 		}
 
@@ -141,7 +141,7 @@ namespace litehtml {
 			}
 			else if (name == "shape") {
 				result.shape = css_clip_shape::shape;
-				result.shape_path = docrender::css::parse_shape_path(token.value);
+				result.shape_path = dockit::css::parse_shape_path(token.value);
 				if (!result.shape_path) return false;
 				result.even_odd = result.shape_path->even_odd;
 				return true;
@@ -156,7 +156,7 @@ namespace litehtml {
 		if (tokens.empty() || tokens.size() > 2) return std::nullopt;
 		if (tokens.size() == 1 && tokens[0].ident() == "none") return css_clip_path_ref{};
 		css_clip_path result;
-		if (tokens.size() == 1 && docrender::css::parse_url_token(tokens.front(), result.url)) {
+		if (tokens.size() == 1 && dockit::css::parse_url_token(tokens.front(), result.url)) {
 			result.shape = css_clip_shape::reference;
 			result.base_url = base_url;
 			return std::make_shared<const css_clip_path>(std::move(result));

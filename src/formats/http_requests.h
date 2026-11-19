@@ -7,7 +7,7 @@
 #include <functional>
 #include <cstdint>
 
-namespace docrender {
+namespace dockit {
 	struct HTTPResponse {
 		godot::String url;
 		int status_code = 0;

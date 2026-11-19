@@ -5,7 +5,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		using Point = css::SVGPathPoint;
 		using Segment = css::SVGPathSegment;

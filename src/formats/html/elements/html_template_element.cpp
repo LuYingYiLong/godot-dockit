@@ -11,6 +11,6 @@ void HTMLTemplateElement::_bind_methods() {
 
 Ref<HTMLDocumentFragment> HTMLTemplateElement::get_content() const {
 	const auto element = lock_element();
-	const auto* node = dynamic_cast<const docrender::HTMLTemplateNode*>(element.get());
+	const auto* node = dynamic_cast<const dockit::HTMLTemplateNode*>(element.get());
 	return node ? node->get_content() : Ref<HTMLDocumentFragment>();
 }

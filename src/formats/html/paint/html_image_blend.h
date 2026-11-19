@@ -3,7 +3,7 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <litehtml/background.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLResources;
 
 	godot::Ref<godot::Texture2D> rasterize_cross_fade(const litehtml::background_layer& p_tile,

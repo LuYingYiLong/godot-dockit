@@ -4,7 +4,7 @@
 
 class HTMLLabel;
 
-namespace docrender {
+namespace dockit {
 	enum class HTMLAudioPart { none, play, position, mute, volume };
 
 	class HTMLAudioNode;
@@ -15,7 +15,7 @@ class HTMLAudioElement : public HTMLElement {
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
 
-	std::shared_ptr<docrender::HTMLAudioNode> get_audio_node() const;
+	std::shared_ptr<dockit::HTMLAudioNode> get_audio_node() const;
 	HTMLLabel* playback_host() const;
 
 protected:

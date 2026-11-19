@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/pause.svg"
+source_file="res://addons/dockit/icons/material_icons/pause.svg"
 dest_files=["res://.godot/imported/pause.svg-a2e202b2a16c878292cc4821a1d0ef90.ctex"]
 
 [params]

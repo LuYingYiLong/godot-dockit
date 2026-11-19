@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace docrender::css {
+namespace dockit::css {
 	struct SVGPathPoint {
 		double x = 0;
 		double y = 0;

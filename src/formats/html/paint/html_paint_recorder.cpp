@@ -38,7 +38,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		Ref<Shader> paint_shader;
 		Ref<Shader> composite_clip_shader;
@@ -2659,9 +2659,9 @@ void fragment() {
 			clip_material.unref();
 		}
 	}
-} // namespace docrender
+} // namespace dockit
 
-Ref<ShaderMaterial> docrender::make_html_paint_material(bool p_composite) {
+Ref<ShaderMaterial> dockit::make_html_paint_material(bool p_composite) {
 	auto& shader = p_composite ? composite_clip_shader : paint_shader;
 	if (shader.is_null()) {
 		shader.instantiate();
@@ -2673,7 +2673,7 @@ Ref<ShaderMaterial> docrender::make_html_paint_material(bool p_composite) {
 	return material;
 }
 
-void docrender::release_html_paint_shader() {
+void dockit::release_html_paint_shader() {
 	paint_shader.unref();
 	composite_clip_shader.unref();
 }

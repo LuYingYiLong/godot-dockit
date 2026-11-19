@@ -1641,18 +1641,18 @@ func _check_fragment_reflow() -> void:
 func _check_godot_resource_paths() -> void:
 	var image: Image = Image.create_empty(13, 17, false, Image.FORMAT_RGBA8)
 	image.fill(Color.RED)
-	_check(image.save_png("user://docrender-protocol.png") == OK, "Save a runtime image under user://")
-	var css_file: FileAccess = FileAccess.open("user://docrender-protocol.css", FileAccess.WRITE)
+	_check(image.save_png("user://dockit-protocol.png") == OK, "Save a runtime image under user://")
+	var css_file: FileAccess = FileAccess.open("user://dockit-protocol.css", FileAccess.WRITE)
 	if css_file == null:
 		_check(false, "Create a user:// stylesheet")
 		return
-	css_file.store_string('#styled { width: 61px; background-image: url("docrender-protocol.png"); }')
+	css_file.store_string('#styled { width: 61px; background-image: url("dockit-protocol.png"); }')
 	css_file.close()
 	var uid: String = ResourceUID.id_to_text(ResourceLoader.get_resource_uid("res://template-icon.png"))
 	var layout: HTMLLayout = HTMLLayout.new()
-	var source: String = """<!doctype html><link rel="stylesheet" href="user://docrender-protocol.css">
-		<img id="by_uid" src="%s"><img id="by_user_path" src="user://docrender-protocol.png">
-		<img id="outside" src="user://%%2e%%2e/docrender-protocol.png">
+	var source: String = """<!doctype html><link rel="stylesheet" href="user://dockit-protocol.css">
+		<img id="by_uid" src="%s"><img id="by_user_path" src="user://dockit-protocol.png">
+		<img id="outside" src="user://%%2e%%2e/dockit-protocol.png">
 		<img id="invalid_uid" src="uid://"><div id="styled"></div>""" % uid
 	_check(layout.parse(source) == OK and layout.layout(Vector2i(320, 200)) == OK,
 		"Resolve Godot resource URLs from HTML and CSS")
@@ -1660,17 +1660,17 @@ func _check_godot_resource_paths() -> void:
 	var local_image: HTMLImageElement = layout.get_element_by_id("by_user_path") as HTMLImageElement
 	_check(uid_image.current_src == "res://template-icon.png" and uid_image.get_intrinsic_size() == Vector2(8.0, 8.0),
 		"Resolve a resource UID to its imported texture")
-	_check(local_image.current_src == "user://docrender-protocol.png" and local_image.get_intrinsic_size() == Vector2(13.0, 17.0),
+	_check(local_image.current_src == "user://dockit-protocol.png" and local_image.get_intrinsic_size() == Vector2(13.0, 17.0),
 		"Decode an unimported runtime image from user://")
 	_check(_rect(layout, "styled").size.x == 61.0, "Apply a user:// CSS file")
 	var outside: HTMLImageElement = layout.get_element_by_id("outside") as HTMLImageElement
 	var invalid: HTMLImageElement = layout.get_element_by_id("invalid_uid") as HTMLImageElement
 	_check(outside.current_src.is_empty() and invalid.current_src.is_empty(),
 		"Reject root traversal and an incomplete UID")
-	_check(layout.parse('<img id="relative" src="docrender-protocol.png">', "user://") == OK and
+	_check(layout.parse('<img id="relative" src="dockit-protocol.png">', "user://") == OK and
 		layout.layout(Vector2i(320, 200)) == OK, "Accept user:// as a base directory")
 	var relative: HTMLImageElement = layout.get_element_by_id("relative") as HTMLImageElement
-	_check(relative.current_src == "user://docrender-protocol.png", "Resolve a relative image in user://")
+	_check(relative.current_src == "user://dockit-protocol.png", "Resolve a relative image in user://")
 
 
 func _check_imported_template() -> void:
@@ -4523,7 +4523,7 @@ func _check_outlines() -> void:
 	if is_zero_approx(accent.a):
 		accent = Color("#2563eb")
 	_check_pixel(output, _label_rect(label, "accent").position + Vector2(16.0, -1.0), accent,
-		"Lone auto uses the display's accent color or DocRender's fallback")
+		"Lone auto uses the display's accent color or Dockit's fallback")
 
 	var dash: Vector2 = _label_rect(label, "dashed").position
 	var yellow_pixels: int
@@ -6568,7 +6568,7 @@ func _check_local_font_faces(assets: Dictionary, regular: FontFile, narrow: Font
 	document.text = """<!doctype html><style>
 		@font-face { font-family: FullName; src: local("Arial Bold"), url(fonts/cour.ttf); }
 		@font-face { font-family: PostScript; src: local(Georgia-Italic); font-style: italic; }
-		@font-face { font-family: Missing; src: local("Arial Regular"), local("Uninstalled DocRender face"), url(fonts/cour.ttf); }
+		@font-face { font-family: Missing; src: local("Arial Regular"), local("Uninstalled Dockit face"), url(fonts/cour.ttf); }
 		@font-face { font-family: WrongStyle; src: local("Georgia"), url(fonts/cour.ttf); font-style: italic; }
 		@font-face { font-family: MathFace; src: local(CambriaMath), url(fonts/cour.ttf); }
 		@font-face { font-family: CambriaFace; src: local(Cambria), url(fonts/cour.ttf); }
@@ -15420,8 +15420,8 @@ func _check_dom_input() -> void:
 	copy.pressed = true
 	_check(edited.get_selection_start() == 0 and edited.get_selection_end() == 3,
 		"Keyboard selection reports logical offsets for bidirectional text")
-	DisplayServer.clipboard_set("DocRender clipboard probe")
-	if DisplayServer.clipboard_get() == "DocRender clipboard probe":
+	DisplayServer.clipboard_set("Dockit clipboard probe")
+	if DisplayServer.clipboard_get() == "Dockit clipboard probe":
 		viewport.push_input(copy)
 		_check(DisplayServer.clipboard_get() == "Aאב", "Copy uses the field's logical text order")
 		DisplayServer.clipboard_set(clipboard)

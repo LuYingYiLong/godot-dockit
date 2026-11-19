@@ -1,8 +1,8 @@
-# Godot DocRender Simplified Chinese translations.
+# Godot Dockit Simplified Chinese translations.
 # Distributed under the project license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Godot DocRender VERSION\n"
+"Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2026-11-12 14:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -920,13 +920,13 @@ msgid ""
 "]@font-face[/code] fonts as resource dependencies for export. Reimport the HTML file after "
 "changing a linked stylesheet.\n"
 "Imported documents include local image dependencies from all media query branches. In a selected-"
-"scenes export preset, add [code]addons/docrender/docrender.gdextension[/code] to the include "
-"filter so the exported project can load DocRender classes."
+"scenes export preset, add [code]addons/dockit/dockit.gdextension[/code] to the include "
+"filter so the exported project can load Dockit classes."
 msgstr ""
 "加载导入的 [code].html[/code] 或 [code].htm[/code] 文件，或创建 [HTMLDocument] 并设置 [member text]。将资源赋给 [member HTMLLabel.document] 即可自动显示。直接绘制时使用 [method create_layout]。\n"
 "原先调用 [code]HTMLDocument.new().parse(html)[/code] 的脚本可改为调用 [code]HTMLLayout.new().parse(html)[/code]。每个 [HTMLLayout] 独立持有解析后的文档、视口和绘制状态。\n"
 "HTML 导入器嵌入链接和导入的 CSS，并将所用纹理及本地 [code]@font-face[/code] 字体记录为导出依赖。更改链接的样式表后请重新导入 HTML 文件。\n"
-"导入资源包含全部媒体查询分支的本地图像依赖。选定场景导出时，请在包含过滤器中加入 [code]addons/docrender/docrender.gdextension[/code]，使导出的项目可以加载 DocRender 类。"
+"导入资源包含全部媒体查询分支的本地图像依赖。选定场景导出时，请在包含过滤器中加入 [code]addons/dockit/dockit.gdextension[/code]，使导出的项目可以加载 Dockit 类。"
 
 #. doc_classes/HTMLInputElement.xml
 msgid ""
@@ -3750,8 +3750,8 @@ msgid "An HTML article element."
 msgstr "HTML 文章元素。"
 
 #. doc_classes/HTMLArticleElement.xml
-msgid "DocRender's typed handle for [code]<article>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
-msgstr "DocRender 为 [code]<article>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
+msgid "Dockit's typed handle for [code]<article>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
+msgstr "Dockit 为 [code]<article>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
 
 #. doc_classes/HTMLBRElement.xml
 msgid "An HTML line break."
@@ -3951,8 +3951,8 @@ msgid "An HTML section element."
 msgstr "HTML 章节元素。"
 
 #. doc_classes/HTMLSectionElement.xml
-msgid "DocRender's typed handle for [code]<section>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
-msgstr "DocRender 为 [code]<section>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
+msgid "Dockit's typed handle for [code]<section>[/code]. The element uses the shared [HTMLElement] API and normal block layout."
+msgstr "Dockit 为 [code]<section>[/code] 提供的专用句柄。该元素使用 [HTMLElement] 的公共接口和普通块布局。"
 
 #. doc_classes/HTMLSelectElement.xml
 msgid "An HTML select control."
@@ -4584,8 +4584,8 @@ msgid "A link to an external document resource."
 msgstr "指向文档外部资源的链接。"
 
 #. doc_classes/HTMLLinkElement.xml
-msgid "Represents [code]<link>[/code]. DocRender loads local and absolute HTTP(S) stylesheets for [code]rel=\"stylesheet\"[/code]. Local stylesheet text and dependencies can be baked into an imported [HTMLDocument]. HTTP(S) stylesheets load asynchronously and [member sheet] becomes available after a successful response. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules."
-msgstr "代表 [code]<link>[/code] 元素。DocRender 为 [code]rel=\"stylesheet\"[/code] 加载本地样式表和绝对 HTTP(S) 地址上的样式表。导入的 [HTMLDocument] 可内嵌本地样式表文本及依赖。HTTP(S) 样式表异步加载，收到有效响应后即可获取 [member sheet]。修改 [member href] 会清除之前编辑的 CSSOM 规则。修改 [member media] 或 [member disabled] 会保留关联样式表的 ID 和规则。"
+msgid "Represents [code]<link>[/code]. Dockit loads local and absolute HTTP(S) stylesheets for [code]rel=\"stylesheet\"[/code]. Local stylesheet text and dependencies can be baked into an imported [HTMLDocument]. HTTP(S) stylesheets load asynchronously and [member sheet] becomes available after a successful response. Changing [member href] discards previously edited CSSOM rules. Changing [member media] or [member disabled] preserves the associated stylesheet ID and rules."
+msgstr "代表 [code]<link>[/code] 元素。Dockit 为 [code]rel=\"stylesheet\"[/code] 加载本地样式表和绝对 HTTP(S) 地址上的样式表。导入的 [HTMLDocument] 可内嵌本地样式表文本及依赖。HTTP(S) 样式表异步加载，收到有效响应后即可获取 [member sheet]。修改 [member href] 会清除之前编辑的 CSSOM 规则。修改 [member media] 或 [member disabled] 会保留关联样式表的 ID 和规则。"
 
 #. doc_classes/HTMLLinkElement.xml
 msgid "Resolves [member href] against the current document base URL."

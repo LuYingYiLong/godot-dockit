@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace docrender {
+namespace dockit {
 	class HTMLStylesheetNode : public litehtml::html_tag {
 	public:
 		using html_tag::html_tag;

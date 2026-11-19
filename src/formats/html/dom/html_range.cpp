@@ -9,8 +9,8 @@
 #include <vector>
 
 using namespace godot;
-using docrender::HTMLBoundary;
-using docrender::HTMLDOM;
+using dockit::HTMLBoundary;
+using dockit::HTMLDOM;
 
 namespace {
 	bool character_node(const HTMLNode& p_node) {
@@ -49,18 +49,18 @@ namespace {
 	std::vector<Piece> range_contents(const Ref<HTMLNode>& p_parent, const HTMLBoundary& p_start, const HTMLBoundary& p_end) {
 		if (character_node(*p_parent.ptr())) {
 			return {{p_parent, false, p_start.node == p_parent ? p_start.offset : 0,
-				p_end.node == p_parent ? p_end.offset : docrender::html_node_length(*p_parent.ptr()), {}}};
+				p_end.node == p_parent ? p_end.offset : dockit::html_node_length(*p_parent.ptr()), {}}};
 		}
 		std::vector<Piece> contents;
 		const auto children = p_parent->get_child_nodes();
 		for (int64_t i = 0; i < children.size(); ++i) {
 			const HTMLBoundary before{p_parent, i};
 			const HTMLBoundary after{p_parent, i + 1};
-			if (docrender::compare_html_boundaries(after, p_start) <= 0) continue;
-			if (docrender::compare_html_boundaries(before, p_end) >= 0) break;
+			if (dockit::compare_html_boundaries(after, p_start) <= 0) continue;
+			if (dockit::compare_html_boundaries(before, p_end) >= 0) break;
 			const Ref<HTMLNode> child = children[i];
-			const bool whole = docrender::compare_html_boundaries(p_start, before) <= 0 &&
-				docrender::compare_html_boundaries(after, p_end) <= 0;
+			const bool whole = dockit::compare_html_boundaries(p_start, before) <= 0 &&
+				dockit::compare_html_boundaries(after, p_end) <= 0;
 			if (whole) contents.push_back({child, true, 0, 0, {}});
 			else if (character_node(*child.ptr())) {
 				auto partial = range_contents(child, p_start, p_end);
@@ -78,13 +78,13 @@ namespace {
 	}
 }
 
-int64_t docrender::html_node_length(const HTMLNode& p_node) {
+int64_t dockit::html_node_length(const HTMLNode& p_node) {
 	if (const auto* text = Object::cast_to<HTMLTextNode>(&p_node)) return text->get_data().length();
 	if (const auto* comment = Object::cast_to<HTMLCommentNode>(&p_node)) return comment->get_data().length();
 	return p_node.get_child_nodes().size();
 }
 
-int docrender::compare_html_boundaries(const HTMLBoundary& p_left, const HTMLBoundary& p_right) {
+int dockit::compare_html_boundaries(const HTMLBoundary& p_left, const HTMLBoundary& p_right) {
 	if (p_left.node == p_right.node) return (p_left.offset > p_right.offset) - (p_left.offset < p_right.offset);
 	const auto position = p_left.node->compare_document_position(p_right.node);
 	if (position & HTMLNode::POSITION_CONTAINED_BY) {
@@ -123,7 +123,7 @@ bool HTMLRange::accepts(const HTMLBoundary& p_boundary) const {
 	const auto dom = owner.lock();
 	return dom && dom->get_lifetime() == version && p_boundary.node.is_valid() && p_boundary.node->is_valid() &&
 		&p_boundary.node->get_dom() == dom.get() && p_boundary.offset >= 0 &&
-		p_boundary.offset <= docrender::html_node_length(*p_boundary.node.ptr());
+		p_boundary.offset <= dockit::html_node_length(*p_boundary.node.ptr());
 }
 
 bool HTMLRange::is_valid() const {
@@ -151,7 +151,7 @@ Error HTMLRange::set_start(const Ref<HTMLNode>& p_node, int64_t p_offset) {
 	const HTMLBoundary proposed{p_node, p_offset};
 	if (!accepts(proposed)) return ERR_INVALID_PARAMETER;
 	const bool reset_end = !is_valid() || p_node->get_root_node() != end.node->get_root_node() ||
-		docrender::compare_html_boundaries(proposed, end) > 0;
+		dockit::compare_html_boundaries(proposed, end) > 0;
 	set_boundaries(proposed, reset_end ? proposed : end);
 	return OK;
 }
@@ -160,7 +160,7 @@ Error HTMLRange::set_end(const Ref<HTMLNode>& p_node, int64_t p_offset) {
 	const HTMLBoundary proposed{p_node, p_offset};
 	if (!accepts(proposed)) return ERR_INVALID_PARAMETER;
 	const bool reset_start = !is_valid() || p_node->get_root_node() != start.node->get_root_node() ||
-		docrender::compare_html_boundaries(proposed, start) < 0;
+		dockit::compare_html_boundaries(proposed, start) < 0;
 	set_boundaries(reset_start ? proposed : start, proposed);
 	return OK;
 }
@@ -184,7 +184,7 @@ Error HTMLRange::select_node(const Ref<HTMLNode>& p_node) {
 
 Error HTMLRange::select_node_contents(const Ref<HTMLNode>& p_node) {
 	if (!accepts({p_node, 0})) return ERR_INVALID_PARAMETER;
-	set_boundaries({p_node, 0}, {p_node, docrender::html_node_length(*p_node.ptr())});
+	set_boundaries({p_node, 0}, {p_node, dockit::html_node_length(*p_node.ptr())});
 	return OK;
 }
 

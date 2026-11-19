@@ -5,7 +5,7 @@
 #include <variant>
 #include <vector>
 
-namespace docrender::css {
+namespace dockit::css {
 	class ComputedStyle;
 	using AnimatedValue = std::variant<float, litehtml::web_color, litehtml::css_length, litehtml::css_transform_list,
 		litehtml::css_text_indent, litehtml::css_font_size_adjust>;

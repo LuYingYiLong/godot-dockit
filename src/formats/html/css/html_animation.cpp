@@ -3,9 +3,9 @@
 #include "formats/html/html_layout.h"
 
 using namespace godot;
-using docrender::css::PlaybackCommand;
-using docrender::css::PlaybackInfo;
-using docrender::css::PlaybackState;
+using dockit::css::PlaybackCommand;
+using dockit::css::PlaybackInfo;
+using dockit::css::PlaybackState;
 
 void HTMLAnimation::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLAnimation::is_valid);

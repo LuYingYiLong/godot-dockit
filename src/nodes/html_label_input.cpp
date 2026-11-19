@@ -23,11 +23,11 @@
 #include <utility>
 
 using namespace godot;
-using docrender::HTMLInputNode;
-using docrender::HTMLTextAreaNode;
+using dockit::HTMLInputNode;
+using dockit::HTMLTextAreaNode;
 
 namespace {
-	const char* edit_maxlength(const docrender::HTMLTextControlNode& p_input) {
+	const char* edit_maxlength(const dockit::HTMLTextControlNode& p_input) {
 		const auto* field = dynamic_cast<const HTMLInputNode*>(&p_input);
 		return field ? field->maxlength() : p_input.get_attr("maxlength", "");
 	}
@@ -99,7 +99,7 @@ void HTMLLabelCanvas::set_input_caret(const Ref<HTMLElement>& p_input, const Vec
 		if (old_start != input->editor.selection_start() || old_end != input->editor.selection_end()) {
 			label->dispatch_control_event(StringName("select"), p_input);
 			label->layout->get_dom().queue_selectionchange();
-			label->layout->get_dom().dispatch_event(p_input, docrender::make_dom_event(StringName("selectionchange"), true, false));
+			label->layout->get_dom().dispatch_event(p_input, dockit::make_dom_event(StringName("selectionchange"), true, false));
 		}
 		restart_caret_blink();
 		label->layout->repaint_input();
@@ -140,7 +140,7 @@ void HTMLLabelCanvas::commit_input(const Ref<HTMLElement>& p_input, bool p_defer
 
 void HTMLLabelCanvas::toggle_checkbox(const Ref<HTMLInputElement>& p_input) {
 	const auto input = p_input.is_valid() ? p_input->get_input() : nullptr;
-	if (!input || !input->is_toggle() || docrender::forms::is_disabled(*input)) return;
+	if (!input || !input->is_toggle() || dockit::forms::is_disabled(*input)) return;
 	if (input->type() == HTMLInputNode::Type::CHECKBOX) input->set_indeterminate(false);
 	if (!input->set_checked(input->type() == HTMLInputNode::Type::RADIO || !input->is_checked())) return;
 	const ObjectID id(label->get_instance_id());
@@ -157,7 +157,7 @@ bool HTMLLabelCanvas::move_radio(const Ref<HTMLInputElement>& p_input, int p_dir
 	const auto input = p_input->get_input();
 	if (!input) return false;
 	std::vector<Ref<HTMLInputElement>> available;
-	for (const auto& node : docrender::forms::radio_group(*input)) {
+	for (const auto& node : dockit::forms::radio_group(*input)) {
 		const Ref<HTMLInputElement> peer = label->layout->get_dom().make_element(node);
 		if (label->layout->is_focusable(peer)) available.push_back(peer);
 	}
@@ -203,7 +203,7 @@ bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_inp
 	const ObjectID id(label->get_instance_id());
 	if (!label->focus_element(p_input) || !ObjectDB::get_instance(id)) return true;
 	if (!label->layout->is_element_connected(p_input) || p_input->get_input() != node) return true;
-	if (node->time_kind() != docrender::input_time::Kind::none) {
+	if (node->time_kind() != dockit::input_time::Kind::none) {
 		label->open_input_picker(p_input);
 		return true;
 	}
@@ -226,7 +226,7 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	if (!input || !label->layout->is_element_connected(handle)) return false;
 	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
 	if (const Ref<HTMLInputElement> field = handle; field.is_valid() && p_key.is_pressed() && !p_key.is_echo() &&
-		!p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !docrender::forms::is_disabled(*input)) {
+		!p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !dockit::forms::is_disabled(*input)) {
 		const auto native = field->get_input();
 		const bool specialized = native->type() == HTMLInputNode::Type::FILE || native->type() == HTMLInputNode::Type::COLOR;
 		if ((specialized && (key == KEY_SPACE || key == KEY_ENTER || key == KEY_KP_ENTER)) ||
@@ -238,13 +238,13 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	}
 	if (auto* numeric = dynamic_cast<HTMLInputNode*>(input.get()); numeric && p_key.is_pressed() &&
 		!p_key.is_alt_pressed() && !p_key.is_ctrl_pressed() && !p_key.is_meta_pressed() && !input->editor.has_preedit() &&
-		!docrender::forms::is_disabled(*input)) {
+		!dockit::forms::is_disabled(*input)) {
 		const bool range = numeric->type() == HTMLInputNode::Type::RANGE;
 		const bool number = numeric->type() == HTMLInputNode::Type::NUMBER;
 		const bool vertical = key == KEY_UP || key == KEY_DOWN;
 		const bool horizontal = key == KEY_LEFT || key == KEY_RIGHT;
 		const bool endpoint = key == KEY_HOME || key == KEY_END;
-		if (numeric->time_kind() != docrender::input_time::Kind::none && input->is_editable() && !p_key.is_shift_pressed() &&
+		if (numeric->time_kind() != dockit::input_time::Kind::none && input->is_editable() && !p_key.is_shift_pressed() &&
 			(vertical || horizontal) && numeric->edit_time_segment(key == KEY_LEFT || key == KEY_DOWN ? -1 : 1, vertical)) {
 			label->accept_event();
 			if (vertical) change_input(handle, false);
@@ -290,7 +290,7 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	}
 	// One IME result can arrive as several key events. The first character can
 	// invalidate the layout through :placeholder-shown while the field still has focus.
-	if (!input->is_text_control() || !p_key.is_pressed() || docrender::forms::is_disabled(*input) ||
+	if (!input->is_text_control() || !p_key.is_pressed() || dockit::forms::is_disabled(*input) ||
 		input->get_attr("hidden")) return false;
 	restart_caret_blink();
 	label->layout->flush_input_paint();
@@ -390,7 +390,7 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 	if (old_selection_start != editor.selection_start() || old_selection_end != editor.selection_end()) {
 		label->dispatch_control_event(StringName("select"), handle);
 		label->layout->get_dom().queue_selectionchange();
-		label->layout->get_dom().dispatch_event(handle, docrender::make_dom_event(StringName("selectionchange"), true, false));
+		label->layout->get_dom().dispatch_event(handle, dockit::make_dom_event(StringName("selectionchange"), true, false));
 	}
 	label->accept_event();
 	if (changed && was_composing && !editor.has_preedit())
@@ -507,7 +507,7 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 	label->grab_focus();
 	if (!label->context_menu_enabled || !label->layout->is_element_connected(p_element) ||
 		label->layout->text_control(p_element) != input || !input->is_text_control() ||
-		docrender::forms::is_disabled(*input) || input->get_attr("hidden")) return false;
+		dockit::forms::is_disabled(*input) || input->get_attr("hidden")) return false;
 	if (focused_element != p_element) set_focused_element(p_element);
 	auto& editor = input->editor;
 	const bool has_selection = editor.selection_start() != editor.selection_end();
@@ -573,7 +573,7 @@ Rect2 HTMLLabelCanvas::input_menu_row_rect(int p_command) const {
 
 void HTMLLabelCanvas::draw_input_menu() {
 	const auto scheme = label->layout->get_element_color_scheme(input_menu_target);
-	const auto color = [scheme](litehtml::system_color p_role) { return docrender::html_system_color(p_role, scheme); };
+	const auto color = [scheme](litehtml::system_color p_role) { return dockit::html_system_color(p_role, scheme); };
 	const Rect2 bounds(Vector2(), input_menu->get_size());
 	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_face));
 	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_border), false);
@@ -587,7 +587,7 @@ void HTMLLabelCanvas::draw_input_menu() {
 		if (row.enabled && int(command) == input_menu_hover) input_menu->draw_rect(area, color(litehtml::system_color::menu_hover));
 		const auto ink = color(row.enabled ? litehtml::system_color::canvas_text : litehtml::system_color::gray_text);
 		const auto server = TextServerManager::get_singleton()->get_primary_interface();
-		const auto draw = [&](const docrender::HTMLTextLayout& p_line, real_t p_x, real_t p_width) {
+		const auto draw = [&](const dockit::HTMLTextLayout& p_line, real_t p_x, real_t p_width) {
 			if (!p_line.is_valid() || p_width <= 0) return;
 			const real_t baseline = area.get_center().y + (p_line.line_ascent() - p_line.line_descent()) / 2;
 			server->shaped_text_draw(p_line.get_rid(), input_menu->get_canvas_item(), Vector2(p_x, baseline), 0, p_width, ink);
@@ -662,7 +662,7 @@ void HTMLLabelCanvas::on_input_menu_selected(int p_command) {
 void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p_command) {
 	const auto input = label->layout->text_control(p_element);
 	if (!input || !input->is_text_control() || !label->layout->is_element_connected(p_element) ||
-		docrender::forms::is_disabled(*input) || input->get_attr("hidden")) return;
+		dockit::forms::is_disabled(*input) || input->get_attr("hidden")) return;
 
 	auto& editor = input->editor;
 	const bool editable = input->is_editable() && !editor.has_preedit();
@@ -761,7 +761,7 @@ void HTMLLabelCanvas::run_input_command(const Ref<HTMLElement>& p_element, int p
 	}
 }
 
-void HTMLLabelCanvas::set_input_caret_visible(docrender::HTMLTextEditor& p_editor, bool p_visible) {
+void HTMLLabelCanvas::set_input_caret_visible(dockit::HTMLTextEditor& p_editor, bool p_visible) {
 	if (p_editor.set_caret_visible(p_visible)) {
 		label->layout->repaint_input();
 		queue_redraw();
@@ -927,7 +927,7 @@ bool HTMLLabelCanvas::begin_textarea_scrollbar_drag(const Ref<HTMLElement>& p_el
 	drag.element = p_element;
 	drag.vertical_scrollbar = *scrollbar;
 	drag.scrollbar_grab = textarea->editor.scrollbar_grab_offset(*scrollbar, local);
-	label->layout->set_scrollbar_pressed(docrender::HTMLScrollbarDrag{node, *scrollbar ? 1 : 0, 0});
+	label->layout->set_scrollbar_pressed(dockit::HTMLScrollbarDrag{node, *scrollbar ? 1 : 0, 0});
 	move_box_drag(p_point);
 	update_cursor(p_point);
 	return true;
@@ -939,7 +939,7 @@ void HTMLLabelCanvas::move_box_drag(const Vector2& p_point) {
 	if (drag.axes == Vector2i()) {
 		const auto node = label->layout->text_control(drag.element);
 		const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-		if (!textarea || docrender::forms::is_disabled(*textarea)) {
+		if (!textarea || dockit::forms::is_disabled(*textarea)) {
 			box_drag.reset();
 			label->layout->set_scrollbar_pressed(std::nullopt);
 			return;

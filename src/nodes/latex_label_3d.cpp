@@ -1,6 +1,6 @@
 #include "nodes/latex_label_3d.h"
 
-#include "editor/docrender_source_editor.h"
+#include "editor/dockit_source_editor.h"
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/sub_viewport.hpp>
@@ -143,7 +143,7 @@ void LatexLabel3D::set_document(const Ref<LatexDocument>& p_document) {
 	}
 	document = p_document;
 	if (document.is_valid()) {
-		DocRenderSourceEditorPlugin::observe_source_document(document);
+		DockitSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", changed, CONNECT_DEFERRED);
 	}
 	queue_rebuild();

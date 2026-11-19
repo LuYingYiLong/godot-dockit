@@ -10,9 +10,9 @@
 #include <unordered_set>
 
 using namespace godot;
-using docrender::HTMLBoundary;
-using docrender::HTMLDOM;
-using docrender::HTMLMutation;
+using dockit::HTMLBoundary;
+using dockit::HTMLDOM;
+using dockit::HTMLMutation;
 
 namespace {
 	std::vector<Ref<HTMLNode>> ancestry_of(Ref<HTMLNode> p_node) {

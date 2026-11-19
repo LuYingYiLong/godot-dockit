@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/resize_window.svg"
+source_file="res://addons/dockit/icons/material_icons/resize_window.svg"
 dest_files=["res://.godot/imported/resize_window.svg-245b020d1068c513badc8c1bc4f6d24a.ctex"]
 
 [params]

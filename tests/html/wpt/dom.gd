@@ -23,7 +23,7 @@ func _initialize() -> void:
 	_test_range_contents()
 	await _test_mutation_observer_delivery()
 	if _failures == 0:
-		print("DocRender DOM WPT ports passed.")
+		print("Dockit DOM WPT ports passed.")
 	quit(int(_failures != 0))
 
 

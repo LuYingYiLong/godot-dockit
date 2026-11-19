@@ -15,9 +15,9 @@
 
 using namespace godot;
 using namespace litehtml;
-using docrender::HTMLAudioNode;
-using docrender::HTMLAudioPart;
-using docrender::HTMLControlIcon;
+using dockit::HTMLAudioNode;
+using dockit::HTMLAudioPart;
+using dockit::HTMLControlIcon;
 
 namespace {
 	String format_time(double p_time) {
@@ -93,7 +93,7 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 	const auto pos = p_item->pos();
 	content_box = Rect2(pos.x + p_x, pos.y + p_y, pos.width, pos.height);
 	if (!has_controls() || !content_box.has_area()) return;
-	auto* container = static_cast<docrender::LiteHTMLContainer*>(get_document()->container());
+	auto* container = static_cast<dockit::LiteHTMLContainer*>(get_document()->container());
 	const auto ink = css().get_color().to_srgb();
 	const Color foreground(ink.red / 255.0f, ink.green / 255.0f, ink.blue / 255.0f, ink.alpha / 255.0f);
 	const Color track_color(foreground.r, foreground.g, foreground.b, 0.26f);

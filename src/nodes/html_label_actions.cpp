@@ -30,7 +30,7 @@
 
 using namespace godot;
 
-using docrender::HTMLInputNode;
+using dockit::HTMLInputNode;
 
 namespace {
 	std::string ascii_lower(std::string_view p_value) {
@@ -236,7 +236,7 @@ void HTMLSelectionDragPreview::_draw() {
 bool HTMLLabelCanvas::dispatch_drag_event(const StringName& p_type, const Ref<HTMLElement>& p_target,
 	const Ref<HTMLDataTransfer>& p_transfer, const Vector2& p_position, const Ref<HTMLElement>& p_related_target) {
 	if (!label || label->layout.is_null() || p_target.is_null() || !p_target->is_valid()) return true;
-	Ref<HTMLEvent> base_event = docrender::make_dom_event(p_type, true,
+	Ref<HTMLEvent> base_event = dockit::make_dom_event(p_type, true,
 		p_type == StringName("dragstart") || p_type == StringName("drag") || p_type == StringName("dragenter") ||
 		p_type == StringName("dragover") || p_type == StringName("drop"));
 	Ref<HTMLDragEvent> event = base_event;
@@ -253,7 +253,7 @@ void HTMLLabelCanvas::update_drop_target(const Ref<HTMLElement>& p_target, const
 	const Vector2& p_position) const {
 	if (drop_target == p_target && drop_text == p_text) return;
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
 		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer,
@@ -264,7 +264,7 @@ void HTMLLabelCanvas::update_drop_target(const Ref<HTMLElement>& p_target, const
 	drop_text = p_text;
 	drop_accepted = false;
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
 		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragenter"), drop_target, transfer, p_position);
@@ -274,7 +274,7 @@ void HTMLLabelCanvas::update_drop_target(const Ref<HTMLElement>& p_target, const
 
 void HTMLLabelCanvas::clear_drop_target(const Vector2& p_position) const {
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
 		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer, p_position);
@@ -311,7 +311,7 @@ Variant HTMLLabelCanvas::begin_selection_drag(const Vector2& p_position, bool p_
 	const String drag_text = transfer->get_data("text/plain");
 	if (transfer->get_types().is_empty()) return {};
 	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
-	docrender::set_current_drag_transfer(transfer);
+	dockit::set_current_drag_transfer(transfer);
 	this->drag_text = drag_text;
 	drag_source = source;
 	native_drag_started = true;
@@ -360,7 +360,7 @@ Variant HTMLLabelCanvas::begin_element_drag(const Vector2& p_position, bool p_fo
 
 	drag_text = transfer->get_data("text/plain");
 	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
-	docrender::set_current_drag_transfer(transfer);
+	dockit::set_current_drag_transfer(transfer);
 	native_drag_started = true;
 	element_drag_attempt = false;
 	drag_elapsed = 0.0;
@@ -389,7 +389,7 @@ Variant HTMLLabelCanvas::_get_drag_data(const Vector2& p_at_position) {
 }
 
 bool HTMLLabelCanvas::_can_drop_data(const Vector2& p_at_position, const Variant& p_data) const {
-	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 	const bool string_payload = p_data.get_type() == Variant::STRING && !String(p_data).is_empty();
 	const bool transfer_payload = transfer.is_valid() && !transfer->get_types().is_empty() &&
 		(p_data.get_type() == Variant::DICTIONARY || string_payload);
@@ -421,7 +421,7 @@ bool HTMLLabelCanvas::_can_drop_data(const Vector2& p_at_position, const Variant
 }
 
 void HTMLLabelCanvas::_drop_data(const Vector2& p_at_position, const Variant& p_data) {
-	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 	const bool string_payload = p_data.get_type() == Variant::STRING && !String(p_data).is_empty();
 	const bool transfer_payload = transfer.is_valid() && !transfer->get_types().is_empty() &&
 		(p_data.get_type() == Variant::DICTIONARY || string_payload);
@@ -492,7 +492,7 @@ void HTMLLabelCanvas::_process(double p_delta) {
 	drag_elapsed += p_delta;
 	if (drag_elapsed < 0.35) return;
 	drag_elapsed = 0.0;
-	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 	if (transfer.is_null()) {
 		transfer.instantiate();
 		transfer->set_text(drag_text);
@@ -1014,7 +1014,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 		set_element_pseudo(pressed_button, "active", true);
 	}
 	if (selecting) {
-		const Vector2i selection = docrender::html_selection_between(selection_origin, selection_origin);
+		const Vector2i selection = dockit::html_selection_between(selection_origin, selection_origin);
 		selection_anchor = selection.x;
 		selection_caret = selection.y;
 		label->capture_node_selection();

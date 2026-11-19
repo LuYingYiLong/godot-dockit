@@ -18,7 +18,7 @@ namespace litehtml
 
 	class element : public std::enable_shared_from_this<element>
 	{
-		friend struct docrender_editor;
+		friend struct dockit_editor;
 		friend class line_box;
 		friend class html_tag;
 		friend class el_table;

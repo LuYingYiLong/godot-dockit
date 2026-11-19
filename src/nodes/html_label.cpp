@@ -1,6 +1,6 @@
 #include "html_label.h"
 
-#include "editor/docrender_source_editor.h"
+#include "editor/dockit_source_editor.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/events/html_event.h"
@@ -51,8 +51,8 @@ namespace {
 		return std::nullopt;
 	}
 
-	std::optional<docrender::HTMLScrollOptions> scroll_options(const Dictionary& p_values) {
-		using Options = docrender::HTMLScrollOptions;
+	std::optional<dockit::HTMLScrollOptions> scroll_options(const Dictionary& p_values) {
+		using Options = dockit::HTMLScrollOptions;
 		using Alignment = Options::Alignment;
 		const auto align = [](const String& p_text) -> std::optional<Alignment> {
 			if (p_text == "start") return Alignment::START;
@@ -101,7 +101,7 @@ void HTMLLabelCanvas::_draw() {
 	const Rect2 visible_rect = label->get_visible_rect();
 	if (visible_rect.has_area()) {
 		const Vector2i selection = label->get_selection_range();
-		const Color color = docrender::html_system_color(litehtml::system_color::highlight, label->page_color_scheme);
+		const Color color = dockit::html_system_color(litehtml::system_color::highlight, label->page_color_scheme);
 		label->layout->draw_with_highlights(this, Vector2(), visible_rect, selection, nullptr, color, {}, nullptr, visible_rect.position);
 		update_ime();
 	}
@@ -229,14 +229,14 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		}
 		const auto result = label->layout->scroll_overflow_from_input(position, p_event, *label,
 			callable_mp(label, &HTMLLabel::on_nested_scroll_advanced));
-		if (result == docrender::HTMLScrollInput::ignored) {
+		if (result == dockit::HTMLScrollInput::ignored) {
 			if (label->layout->top_modal().is_valid()) accept_event();
 			return;
 		}
 		cancel_click();
 		if (selecting && selection_dragged) extend_document_selection(position);
 		label->request_hover_check();
-		if (result == docrender::HTMLScrollInput::handled || label->layout->top_modal().is_valid()) accept_event();
+		if (result == dockit::HTMLScrollInput::handled || label->layout->top_modal().is_valid()) accept_event();
 		};
 	if (pan.is_valid()) {
 		outside_dialog_press.reset();
@@ -365,7 +365,7 @@ void HTMLLabelCanvas::update_dialog_pointer(const Vector2& p_point, int p_device
 }
 
 void HTMLLabelCanvas::extend_document_selection(const Vector2& p_point) {
-	const Vector2i selection = docrender::html_selection_between(selection_origin, label->layout->selection_point_at(p_point));
+	const Vector2i selection = dockit::html_selection_between(selection_origin, label->layout->selection_point_at(p_point));
 	selection_anchor = selection.x;
 	selection_caret = selection.y;
 	label->capture_node_selection();
@@ -531,7 +531,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 	}
 	if (p_what == NOTIFICATION_DRAG_END) {
 		if (native_drag_started) {
-			Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+			Ref<HTMLDataTransfer> transfer = dockit::get_current_drag_transfer();
 			if (transfer.is_null()) {
 				transfer.instantiate();
 				transfer->set_text(drag_text);
@@ -540,7 +540,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 			if (drag_source.is_valid()) {
 				dispatch_drag_event(StringName("dragend"), drag_source, transfer, get_local_mouse_position());
 			}
-			docrender::set_current_drag_transfer({});
+			dockit::set_current_drag_transfer({});
 			suppress_next_release = true;
 		}
 		native_drag_started = false;
@@ -594,7 +594,7 @@ void HTMLLabelCanvas::_notification(int p_what) {
 void HTMLLabelCanvas::cancel_press() {
 	cancel_video_press();
 	pressed_audio.unref();
-	pressed_audio_part = docrender::HTMLAudioPart::none;
+	pressed_audio_part = dockit::HTMLAudioPart::none;
 	if (label && (box_drag || scrollbar_drag)) label->layout->set_scrollbar_pressed(std::nullopt);
 	box_drag.reset();
 	scrollbar_drag.reset();
@@ -857,7 +857,7 @@ void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
 
 void HTMLLabel::_draw() {
 	if (!transparent_canvas) {
-		draw_rect(Rect2(Vector2(), get_size()), docrender::html_system_color(litehtml::system_color::canvas, page_color_scheme));
+		draw_rect(Rect2(Vector2(), get_size()), dockit::html_system_color(litehtml::system_color::canvas, page_color_scheme));
 	}
 }
 
@@ -979,7 +979,7 @@ void HTMLLabel::_notification(int p_what) {
 		window_resize_event_queued = false;
 		clear_accessibility_tree();
 		if (navigation_request_id != 0) {
-			docrender::cancel_http_request(navigation_request_id);
+			dockit::cancel_http_request(navigation_request_id);
 			navigation_request_id = 0;
 			++navigation_sequence;
 		}
@@ -1546,7 +1546,7 @@ void HTMLLabel::set_document(const Ref<HTMLDocument>& p_document) {
 	if (document == p_document) {
 		return;
 	}
-	if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+	if (navigation_request_id != 0) dockit::cancel_http_request(navigation_request_id);
 	navigation_request_id = 0;
 	++navigation_sequence;
 	if (document.is_valid()) {
@@ -1558,7 +1558,7 @@ void HTMLLabel::set_document(const Ref<HTMLDocument>& p_document) {
 	current_location = document.is_valid() ?
 		(document->get_source_path().is_empty() ? document->get_path() : document->get_source_path()) : source_path;
 	if (document.is_valid()) {
-		DocRenderSourceEditorPlugin::observe_source_document(document);
+		DockitSourceEditorPlugin::observe_source_document(document);
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	source_changed();
@@ -1572,7 +1572,7 @@ void HTMLLabel::set_text(const String& p_text) {
 	if (text != p_text) {
 		text = p_text;
 		if (document.is_null()) {
-			if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+			if (navigation_request_id != 0) dockit::cancel_http_request(navigation_request_id);
 			navigation_request_id = 0;
 			++navigation_sequence;
 			navigation_history.clear();
@@ -1606,7 +1606,7 @@ void HTMLLabel::set_source_path(const String& p_path) {
 	if (source_path != p_path) {
 		source_path = p_path;
 		if (document.is_null()) {
-			if (navigation_request_id != 0) docrender::cancel_http_request(navigation_request_id);
+			if (navigation_request_id != 0) dockit::cancel_http_request(navigation_request_id);
 			navigation_request_id = 0;
 			++navigation_sequence;
 			navigation_history.clear();
@@ -1674,7 +1674,7 @@ void HTMLLabel::set_scroll_offset(const Vector2i& p_offset) {
 	}
 	const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
 	const auto snapped = layout->snap_viewport(viewport_size, { get_scroll_offset(), p_offset, limit,{ 1, 1 },
-		docrender::HTMLSnapMethod::destination });
+		dockit::HTMLSnapMethod::destination });
 	apply_scroll_offset(Vector2i(snapped.offset.round()));
 }
 
@@ -1831,7 +1831,7 @@ bool HTMLLabel::activate_element(const Ref<HTMLElement>& p_element) {
 
 void HTMLLabel::activate_link(const String& p_uri) {
 	if (p_uri.begins_with("#")) {
-		scroll_to_anchor(docrender::decode_html_fragment(p_uri.substr(1)));
+		scroll_to_anchor(dockit::decode_html_fragment(p_uri.substr(1)));
 	}
 	emit_signal("link_pressed", p_uri);
 }
@@ -1860,19 +1860,19 @@ bool HTMLLabel::scroll_element_into_view(const Ref<HTMLElement>& p_element, cons
 	return true;
 }
 
-void HTMLLabel::apply_scroll_target(const docrender::HTMLScrollTarget& p_target, std::optional<float> p_align,
-	const docrender::HTMLScrollOptions* p_options) {
+void HTMLLabel::apply_scroll_target(const dockit::HTMLScrollTarget& p_target, std::optional<float> p_align,
+	const dockit::HTMLScrollOptions* p_options) {
 	if (p_target.viewport_fixed) return;
 	cancel_viewport_pan_snap();
 	const Vector2i current = get_scroll_offset();
 	const Rect2 region = layout->viewport_scroll_region(Rect2(current, viewport_size));
-	const Vector2 offset = Vector2(current) + docrender::html_scroll_delta(p_target.area, region, p_align, p_options);
+	const Vector2 offset = Vector2(current) + dockit::html_scroll_delta(p_target.area, region, p_align, p_options);
 	const Vector2i max_offset = (content_size - viewport_size).max(Vector2i());
 	const auto rounded = p_align ? offset : Vector2(
 		offset.x < current.x ? std::floor(offset.x) : std::ceil(offset.x),
 		offset.y < current.y ? std::floor(offset.y) : std::ceil(offset.y));
 	const auto snap = layout->snap_viewport(viewport_size, { current, rounded, max_offset,{ 1, 1 },
-		docrender::HTMLSnapMethod::destination,{ p_target.element, p_target.element } });
+		dockit::HTMLSnapMethod::destination,{ p_target.element, p_target.element } });
 	const Vector2i destination(layout->viewport_snap_axes() == Vector2i() ? snap.offset : snap.offset.round());
 	cancel_viewport_scroll();
 	if (destination == current) return;
@@ -2353,13 +2353,13 @@ void HTMLLabel::on_layout_edited() {
 	queue_refresh();
 }
 
-docrender::HTMLScrollbar HTMLLabel::viewport_scrollbar(int p_axis) const {
+dockit::HTMLScrollbar HTMLLabel::viewport_scrollbar(int p_axis) const {
 	if (!visible_viewport_bars[p_axis] || viewport_size == Vector2i()) return {};
 	const real_t thickness = viewport_scrollbar_style.thickness();
 	const Rect2 track = p_axis == 0 ?
 		Rect2(viewport_painted_gutters.x, viewport_size.y, viewport_size.x, thickness) :
 		Rect2(is_layout_rtl() ? 0 : get_size().x - thickness, 0, thickness, viewport_size.y);
-	return docrender::make_html_scrollbar(track, p_axis, viewport_size[p_axis],
+	return dockit::make_html_scrollbar(track, p_axis, viewport_size[p_axis],
 		std::max(0, content_size[p_axis] - viewport_size[p_axis]), scroll_offset[p_axis]);
 }
 
@@ -2584,7 +2584,7 @@ void HTMLLabel::apply_pending_scroll() {
 		const bool requested = std::exchange(pending_scroll_requested, false);
 		if (requested || (viewport_scroll_tween.is_null() && viewport_pan_snap_timer.is_null() && dragging_viewport_scrollbar == Vector2i())) {
 			const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
-			const auto method = requested ? docrender::HTMLSnapMethod::destination : docrender::HTMLSnapMethod::relayout;
+			const auto method = requested ? dockit::HTMLSnapMethod::destination : dockit::HTMLSnapMethod::relayout;
 			offset = Vector2i(layout->snap_viewport(viewport_size, { get_scroll_offset(), offset, limit,{ 1, 1 }, method }).offset.round());
 		}
 		apply_scroll_offset(offset);
@@ -2688,8 +2688,8 @@ void HTMLLabel::on_viewport_gui_input(const Ref<InputEvent>& p_event) {
 	const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
 	const Vector2 natural = current + Vector2(viewport_size) * steps * Vector2(viewport_input_axes) / 8.0f;
 	const auto snap = pan.is_valid() ?
-		docrender::HTMLSnapResult{ natural.clamp(Vector2(), limit),{} } :
-		layout->snap_viewport(viewport_size, { current, natural, limit, active_axes, docrender::HTMLSnapMethod::direction });
+		dockit::HTMLSnapResult{ natural.clamp(Vector2(), limit),{} } :
+		layout->snap_viewport(viewport_size, { current, natural, limit, active_axes, dockit::HTMLSnapMethod::direction });
 	apply_scroll_offset(Vector2i(snap.offset.round()));
 	const Vector2 applied = get_scroll_offset();
 	Vector2 remaining = steps;
@@ -2742,7 +2742,7 @@ bool HTMLLabel::handle_viewport_touch(const Ref<InputEvent>& p_event) {
 				const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
 				const Vector2 projected = (current + viewport_touch_velocity * 0.16f).clamp(Vector2(), limit);
 				const auto snap = layout->snap_viewport(viewport_size, { current, projected, limit, viewport_input_axes,
-					docrender::HTMLSnapMethod::destination });
+					dockit::HTMLSnapMethod::destination });
 				if (viewport_touch_velocity.length() >= 30 && snap.offset.distance_to(current) >= 1) {
 					viewport_scroll_tween = HTMLLayout::start_scroll_tween(*this,
 						callable_mp(this, &HTMLLabel::advance_viewport_scroll).bind(current, snap.offset));
@@ -2795,7 +2795,7 @@ void HTMLLabel::settle_viewport_snap(const Vector2i& p_axes) {
 	const Vector2 current = get_scroll_offset();
 	const Vector2 limit = Vector2((content_size - viewport_size).max(Vector2i()));
 	const auto snap = layout->snap_viewport(viewport_size, { current, current, limit, axes,
-		docrender::HTMLSnapMethod::destination });
+		dockit::HTMLSnapMethod::destination });
 	apply_scroll_offset(Vector2i(snap.offset.round()));
 }
 

@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #ifndef LH_MASTER_CSS_H
 #define LH_MASTER_CSS_H
@@ -359,7 +359,7 @@ audio[controls] {
 	font-family: Arial, sans-serif; font-size: 13px;
 	background-color: light-dark(#f1f3f4, #303134); color: light-dark(#202124, #e8eaed);
 }
-audio:focus-visible { outline: 2px solid -docrender-focus-ring; }
+audio:focus-visible { outline: 2px solid -dockit-focus-ring; }
 progress, meter {
 	display: inline-block;
 	appearance: auto;
@@ -446,17 +446,17 @@ button, input:is([type="button" i], [type="submit" i], [type="reset" i]) {
 }
 input:is([type="button" i], [type="submit" i], [type="reset" i]) { min-height: 21px; }
 :is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):hover {
-	background-color: -docrender-button-hover;
-	border-color: -docrender-border-hover;
+	background-color: -dockit-button-hover;
+	border-color: -dockit-border-hover;
 }
 :is(button, input[type="button" i], input[type="submit" i], input[type="reset" i]):active {
-	background-color: -docrender-button-active;
-	border-color: -docrender-border-active;
+	background-color: -dockit-button-active;
+	border-color: -dockit-border-active;
 }
 :is(button, input, select, textarea):disabled {
-	color: -docrender-disabled-text;
-	background-color: -docrender-disabled-face;
-	border-color: -docrender-disabled-border;
+	color: -dockit-disabled-text;
+	background-color: -dockit-disabled-face;
+	border-color: -dockit-disabled-border;
 	cursor: default;
 }
 input:is([type="checkbox" i], [type="radio" i]):disabled { background-color: transparent; }
@@ -481,7 +481,7 @@ textarea {
 	cursor: text;
 }
 :is(button, textarea, input, select)[hidden] { display: none; }
-:is(button, input, select, textarea, a[href], [tabindex]):focus-visible { outline: 2px solid -docrender-focus-ring; }
+:is(button, input, select, textarea, a[href], [tabindex]):focus-visible { outline: 2px solid -dockit-focus-ring; }
 input[type="hidden" i] { display: none !important; }
 
 
@@ -515,7 +515,7 @@ details > summary:first-of-type { display: list-item; list-style: disclosure-clo
 details:open > summary:first-of-type { list-style-type: disclosure-open; }
 details:not(:has(> summary))::before { display: block; content: "▸ Details"; }
 details:open:not(:has(> summary))::before { content: "▾ Details"; }
-details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid -docrender-focus-ring; }
+details > summary:first-of-type:focus-visible, details:not(:has(> summary)):focus-visible { outline: 2px solid -dockit-focus-ring; }
 
 ruby { display: inline; }
 ruby > rt { display: block; font-size: 50%; white-space: nowrap; }

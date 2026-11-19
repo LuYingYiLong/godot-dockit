@@ -7,7 +7,7 @@
 #include "css_tokenizer.h"
 #include "formats/html/css/css_selectors.h"
 
-namespace docrender::css { struct ScopeRule; }
+namespace dockit::css { struct ScopeRule; }
 
 namespace litehtml
 {
@@ -18,8 +18,8 @@ namespace litehtml
 		using vector = std::vector<css_selector::ptr>;
 
 	public:
-		std::shared_ptr<const docrender::css::Selector> m_syntax;
-		std::shared_ptr<const docrender::css::ScopeRule> m_scope;
+		std::shared_ptr<const dockit::css::Selector> m_syntax;
+		std::shared_ptr<const dockit::css::ScopeRule> m_scope;
 		int							m_order = 0;
 		size_t						m_layer_id = 0;
 		int							m_layer = css_default_layer;
@@ -30,7 +30,7 @@ namespace litehtml
 	public:
 		bool parse(const string& text, document_mode mode);
 		bool is_media_valid() const;
-		docrender::css::CascadePriority cascade_priority(int proximity) const
+		dockit::css::CascadePriority cascade_priority(int proximity) const
 		{
 			// Baseline rules and HTML hints share the established application order.
 			if (m_layer == css_default_layer) return {};
@@ -93,7 +93,7 @@ namespace litehtml
 	};
 
 
-	docrender::css::SelectorMode selector_mode(document_mode mode);
+	dockit::css::SelectorMode selector_mode(document_mode mode);
 	bool supports_css_selector(const css_token_vector& tokens, document_mode mode);
 	css_selector::vector parse_selector_list(const css_token_vector& tokens, int options, document_mode mode);
 }

@@ -4,7 +4,7 @@
 
 #include <litehtml/el_text.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLInlineTextFragment final : public litehtml::el_text {
 		std::shared_ptr<litehtml::render_item> original;
 		std::shared_ptr<const godot::String> rendered;

@@ -7,7 +7,7 @@
 #include <limits>
 
 using namespace godot;
-using docrender::HTMLDOM;
+using dockit::HTMLDOM;
 using litehtml::element;
 using litehtml::string_id;
 
@@ -55,7 +55,7 @@ namespace {
 
 	int64_t reflected_span(const HTMLElement& p_element, const char* p_name, int p_minimum, int p_maximum) {
 		const CharString value = p_element.get_attribute(p_name).utf8();
-		return docrender::read_table_span(value.get_data(), p_minimum, p_maximum);
+		return dockit::read_table_span(value.get_data(), p_minimum, p_maximum);
 	}
 
 	void write_span(HTMLElement& p_element, const char* p_name, int64_t p_value) {

@@ -9,7 +9,7 @@
 #include <cmath>
 #include <iterator>
 
-namespace docrender::css {
+namespace dockit::css {
 	using namespace litehtml;
 
 	namespace {

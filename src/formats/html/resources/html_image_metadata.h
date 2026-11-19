@@ -2,7 +2,7 @@
 
 #include <godot_cpp/variant/string.hpp>
 
-namespace docrender {
+namespace dockit {
 	struct HTMLImageMetadata {
 		double dpi = 0;
 		int orientation = 1;

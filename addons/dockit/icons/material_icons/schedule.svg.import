@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/schedule.svg"
+source_file="res://addons/dockit/icons/material_icons/schedule.svg"
 dest_files=["res://.godot/imported/schedule.svg-dfa15238e64e453fcc2315124ce0cc85.ctex"]
 
 [params]

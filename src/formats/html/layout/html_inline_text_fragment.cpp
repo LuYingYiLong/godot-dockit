@@ -16,7 +16,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	HTMLInlineTextFragment::HTMLInlineTextFragment(const std::shared_ptr<render_item>& p_original,
 		const std::shared_ptr<const String>& p_rendered, int64_t p_run_start, const HTMLTextCluster& p_cluster,
 		bool p_lexical_break_before, bool p_hyphenation_fallback) :
@@ -69,9 +69,9 @@ namespace docrender {
 
 namespace litehtml {
 	namespace {
-		void build_text_fragments(render_item& p_parent, docrender::LiteHTMLContainer& p_container,
-			const docrender::HTMLInlineWordBreaks& p_breaks) {
-			using Fragment = docrender::HTMLInlineTextFragment;
+		void build_text_fragments(render_item& p_parent, dockit::LiteHTMLContainer& p_container,
+			const dockit::HTMLInlineWordBreaks& p_breaks) {
+			using Fragment = dockit::HTMLInlineTextFragment;
 			go_inside_inline inline_children;
 			auto& children = p_parent.children();
 			for (auto child = children.begin(); child != children.end();) {
@@ -109,11 +109,11 @@ namespace litehtml {
 				const bool can_autospace = autospace != 0 && ((autospace & text_autospace_punctuation) || non_ascii);
 				const bool can_trim_punctuation = owner && owner->css().get_text_spacing_trim() != 0 && non_ascii;
 				if (!split_clusters && !has_hyphens && !can_autospace && !can_trim_punctuation) continue;
-				const auto automatic_at = [&](int64_t offset) -> const docrender::HTMLAutomaticHyphen* {
+				const auto automatic_at = [&](int64_t offset) -> const dockit::HTMLAutomaticHyphen* {
 					if (!has_hyphens) return nullptr;
 					const auto& cuts = automatic->second;
 					const auto candidate = std::lower_bound(cuts.begin(), cuts.end(), offset,
-						[](const docrender::HTMLAutomaticHyphen& entry, int64_t at) { return entry.offset < at; });
+						[](const dockit::HTMLAutomaticHyphen& entry, int64_t at) { return entry.offset < at; });
 					return candidate != cuts.end() && candidate->offset == offset ? &*candidate : nullptr;
 				};
 				if (rendered.empty() || (rendered.size() < 2 && !has_hyphens)) continue;
@@ -137,14 +137,14 @@ namespace litehtml {
 					content->length() != String::utf8(text->get_source_text().c_str()).length()) continue;
 				shaping_cuts.erase(std::remove_if(shaping_cuts.begin(), shaping_cuts.end(), [&](int64_t p_offset) {
 					const auto match = std::lower_bound(clusters.begin(), clusters.end(), p_offset,
-						[](const docrender::HTMLTextCluster& p_cluster, int64_t p_position) { return p_cluster.start < p_position; });
+						[](const dockit::HTMLTextCluster& p_cluster, int64_t p_position) { return p_cluster.start < p_position; });
 					return match == clusters.end() || match->start != p_offset;
 				}), shaping_cuts.end());
 				if (!split_clusters && !has_hyphens && shaping_cuts.empty()) continue;
 				if (clusters.size() == 1 && !has_dictionary_breaks && !automatic_at(clusters.front().end)) continue;
 				bool first = true;
 				const auto add = [&](const std::shared_ptr<const String>& p_run, int64_t p_run_start,
-					const docrender::HTMLTextCluster& cluster, bool lexical, bool fallback) {
+					const dockit::HTMLTextCluster& cluster, bool lexical, bool fallback) {
 					auto node = std::make_shared<Fragment>(original, p_run, p_run_start, cluster, lexical, fallback);
 					auto renderer = std::make_shared<render_item_inline>(std::move(node));
 					renderer->parent(p_parent.shared_from_this());
@@ -156,7 +156,7 @@ namespace litehtml {
 					else children.insert(child, std::move(renderer));
 				};
 				const auto add_run = [&](const std::shared_ptr<const String>& p_run, int64_t p_start,
-					std::vector<docrender::HTMLTextCluster> p_clusters) {
+					std::vector<dockit::HTMLTextCluster> p_clusters) {
 					size_t used = 0;
 					for (auto cluster : p_clusters) {
 						cluster.start += p_start;
@@ -197,16 +197,16 @@ namespace litehtml {
 
 	void render_item_inline_context::prepare_text_fragments(const containing_block_context& self_size) {
 		m_line_boxes.clear();
-		if (auto* container = dynamic_cast<docrender::LiteHTMLContainer*>(src_el()->get_document()->container())) {
+		if (auto* container = dynamic_cast<dockit::LiteHTMLContainer*>(src_el()->get_document()->container())) {
 			const auto width = self_size.measuring_inline_size || self_size.grid_intrinsic_width ? 0 : self_size.render_width;
-			const auto dictionary = docrender::prepare_inline_word_breaks(shared_from_this(), width);
+			const auto dictionary = dockit::prepare_inline_word_breaks(shared_from_this(), width);
 			build_text_fragments(*this, *container, dictionary);
 			prepare_autospace_replacements(shared_from_this(), width);
 		}
 	}
 
 	void render_item_inline_context::merge_text_fragments() {
-		using Fragment = docrender::HTMLInlineTextFragment;
+		using Fragment = dockit::HTMLInlineTextFragment;
 		// Justified lines can have extra gaps between individual text items.
 		if (css().get_text_align() == text_align_justify || css().get_text_align_last() == text_align_justify) return;
 		for (auto& line : m_line_boxes) {

@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace docrender { class HTMLStylesheetNode; }
+namespace dockit { class HTMLStylesheetNode; }
 class HTMLElement;
 class HTMLLayout;
 
@@ -16,7 +16,7 @@ class HTMLStyleSheet : public godot::RefCounted {
 	friend class HTMLLayout;
 
 	godot::ObjectID layout_id;
-	std::weak_ptr<docrender::HTMLStylesheetNode> owner;
+	std::weak_ptr<dockit::HTMLStylesheetNode> owner;
 	uint64_t parse_version = 0;
 	uint64_t source_version = 0;
 	int64_t id = 0;

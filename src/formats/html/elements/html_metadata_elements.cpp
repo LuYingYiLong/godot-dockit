@@ -10,7 +10,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	bool HTMLStylesheetNode::accepts_style_text() const {
 		const auto type = litehtml::lowcase(get_attr("type", ""));
 		return type.empty() || type == "text/css";
@@ -34,7 +34,7 @@ namespace docrender {
 
 	bool HTMLStylesheetNode::removeChild(const litehtml::element::ptr& p_child) {
 		if (!html_tag::removeChild(p_child)) return false;
-		if (tag() == litehtml::_style_) litehtml::docrender_editor::reset_stylesheet_source(*this);
+		if (tag() == litehtml::_style_) litehtml::dockit_editor::reset_stylesheet_source(*this);
 		return true;
 	}
 }
@@ -231,12 +231,12 @@ Ref<HTMLStyleSheet> HTMLStyleElement::get_sheet() const {
 }
 
 bool HTMLStyleElement::is_disabled() const {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLStylesheetNode>(lock_element());
 	return node && node->accepts_style_text() && node->style_disabled && is_connected();
 }
 
 void HTMLStyleElement::set_disabled(bool p_value) {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLStylesheetNode>(lock_element());
 	if (!node || !node->accepts_style_text() || node->style_disabled == p_value || !is_connected()) return;
 	node->style_disabled = p_value;
 	get_owner()->invalidate_styles();

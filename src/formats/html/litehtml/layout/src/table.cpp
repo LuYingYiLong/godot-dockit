@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "html.h"
 #include "table.h"
@@ -34,8 +34,8 @@ void litehtml::table_grid::add_cell(const std::shared_ptr<render_item>& el)
 	table_cell cell;
 	cell.el = el;
 	const int row = static_cast<int>(m_rows.size()) - 1;
-	cell.colspan = docrender::read_table_span(el->src_el()->get_attr("colspan", ""), 1, 1000);
-	const int rowspan = docrender::read_table_span(el->src_el()->get_attr("rowspan", ""), 0, 65534);
+	cell.colspan = dockit::read_table_span(el->src_el()->get_attr("colspan", ""), 1, 1000);
+	const int rowspan = dockit::read_table_span(el->src_el()->get_attr("rowspan", ""), 0, 65534);
 	cell.rowspan = rowspan == 0 ? m_group_end - row : std::min(rowspan, m_group_end - row);
 
 	int column = m_next_column;

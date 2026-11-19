@@ -8,7 +8,7 @@
 
 using namespace godot;
 
-namespace docrender::input_time {
+namespace dockit::input_time {
 namespace {
 	// Gregorian civil-date conversion using 400-year eras, with 1970-01-01 as day zero.
 	struct Civil { int year; int month; int day; };

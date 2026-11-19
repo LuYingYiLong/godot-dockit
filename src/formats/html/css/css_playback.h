@@ -9,7 +9,7 @@
 
 namespace litehtml { class element; }
 
-namespace docrender::css {
+namespace dockit::css {
 	enum class PlaybackCommand { seek, play, pause, cancel, finish, reverse };
 	enum class PlaybackState { idle, running, paused, finished };
 

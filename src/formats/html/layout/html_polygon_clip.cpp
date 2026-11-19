@@ -7,7 +7,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		bool filled(int p_winding, bool p_even_odd) {
 			return p_even_odd ? p_winding % 2 != 0 : p_winding != 0;

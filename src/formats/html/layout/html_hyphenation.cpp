@@ -19,7 +19,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		bool counts_for_hyphenation(char32_t p_character) {
 			struct Range { char32_t first; char32_t last; };

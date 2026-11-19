@@ -17,7 +17,7 @@ func _initialize() -> void:
 	_test_selector_snapshot()
 	_test_relational_selectors()
 	if _failures == 0:
-		print("DocRender DOM WPT ports passed.")
+		print("Dockit DOM WPT ports passed.")
 	quit(int(_failures != 0))
 
 

@@ -6,7 +6,7 @@
 #include <litehtml/css_parser.h>
 
 using namespace godot;
-namespace syntax = docrender::css;
+namespace syntax = dockit::css;
 
 namespace {
 	using namespace litehtml;

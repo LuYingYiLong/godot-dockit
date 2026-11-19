@@ -20,7 +20,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		enum class DictionaryScript { thai, lao, khmer, myanmar, unknown };
 

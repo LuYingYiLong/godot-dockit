@@ -8,7 +8,7 @@ namespace litehtml {
 	class render_item;
 }
 
-namespace docrender {
+namespace dockit {
 	struct HTMLAutomaticHyphen {
 		int64_t offset;
 		bool fallback;

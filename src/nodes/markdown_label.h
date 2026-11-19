@@ -138,7 +138,7 @@ private:
 	PopupMenu* menu = nullptr;
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
-	docrender::HTMLSelectionPoint selection_origin;
+	dockit::HTMLSelectionPoint selection_origin;
 	int64_t search_match_start = -1;
 	int64_t search_match_end = -1;
 	Vector2 press_position;
@@ -151,7 +151,7 @@ private:
 	int32_t layout_html_height = 0;
 	struct HTMLScrollbarGesture {
 		Ref<HTMLLayout> layout;
-		docrender::HTMLScrollbarDrag drag;
+		dockit::HTMLScrollbarDrag drag;
 		Vector2 origin;
 	};
 	std::optional<HTMLScrollbarGesture> html_scrollbar_drag;
@@ -203,7 +203,7 @@ private:
 	Rect2 get_html_visible_rect() const;
 	bool is_rect_visible(const Rect2& p_rect, const Rect2& p_visible_rect) const;
 	Ref<HTMLLayout> html_at_position(const Vector2& p_position, Vector2& r_local_position, int64_t* r_offset = nullptr) const;
-	docrender::HTMLSelectionPoint selection_point_at(const Vector2& p_position) const;
+	dockit::HTMLSelectionPoint selection_point_at(const Vector2& p_position) const;
 	void extend_document_selection(const Vector2& p_position);
 	void scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event);
 	void on_margin_gui_input(const Ref<InputEvent>& p_event);

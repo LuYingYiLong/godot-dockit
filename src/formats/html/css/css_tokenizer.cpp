@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/docrender/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
 
 #include "css_tokenizer.h"
 
@@ -9,7 +9,7 @@
 
 #include <cmath>
 
-namespace docrender::css {
+namespace dockit::css {
 
 namespace {
 // consume one utf-8 char and increment index accordingly
@@ -123,7 +123,7 @@ string css_token::get_repr(bool insert_spaces) const
 {
 	if (!is_component_value()) return repr;
 
-	using docrender::css::get_repr;
+	using dockit::css::get_repr;
 	if (type == CV_FUNCTION) return name + '(' + get_repr(value, 0, -1, insert_spaces) + ')';
 
 	char opening_bracket = char(-type - 100);
@@ -815,4 +815,4 @@ css_token_vector css_tokenizer::tokenize()
 	return tokens;
 }
 
-} // namespace docrender::css
+} // namespace dockit::css

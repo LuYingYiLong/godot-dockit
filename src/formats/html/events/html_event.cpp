@@ -321,7 +321,7 @@ PackedStringArray HTMLDataTransfer::get_types() const {
 	return result;
 }
 
-namespace docrender {
+namespace dockit {
 	namespace { Ref<HTMLDataTransfer> current_drag_transfer; }
 	void set_current_drag_transfer(const Ref<HTMLDataTransfer>& p_transfer) { current_drag_transfer = p_transfer; }
 	Ref<HTMLDataTransfer> get_current_drag_transfer() { return current_drag_transfer; }
@@ -429,7 +429,7 @@ void HTMLTouchEvent::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "meta_pressed"), "set_meta_pressed", "is_meta_pressed");
 }
 
-namespace docrender {
+namespace dockit {
 	Ref<HTMLEvent> make_dom_event(const StringName& p_type, bool p_bubbles, bool p_cancelable) {
 		static const HashMap<StringName, EventFactory> event_factories = [] {
 			HashMap<StringName, EventFactory> factories;

@@ -20,8 +20,8 @@
 #include <cmath>
 
 using namespace godot;
-using docrender::HTMLControlIcon;
-using docrender::HTMLInputNode;
+using dockit::HTMLControlIcon;
+using dockit::HTMLInputNode;
 
 namespace {
 	constexpr float panel_width = 234.0f;

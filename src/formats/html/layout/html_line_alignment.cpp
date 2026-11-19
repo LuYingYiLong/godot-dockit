@@ -423,8 +423,8 @@ namespace litehtml {
 				continue;
 			}
 			const auto info = text->get_document()->container()->get_text_justify_info(text->get_rendered_text().c_str(), font, method);
-			const bool gap = docrender::has_text_justification_gap(method, previous_character, info.first) &&
-				docrender::has_text_justification_gap(previous_method, previous_character, info.first);
+			const bool gap = dockit::has_text_justification_gap(method, previous_character, info.first) &&
+				dockit::has_text_justification_gap(previous_method, previous_character, info.first);
 			parts.push_back({ item, method, info.count, gap });
 			opportunities += info.count + int(gap);
 			previous_character = info.last;

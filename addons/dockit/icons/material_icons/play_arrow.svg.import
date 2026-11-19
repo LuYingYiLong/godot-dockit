@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/play_arrow.svg"
+source_file="res://addons/dockit/icons/material_icons/play_arrow.svg"
 dest_files=["res://.godot/imported/play_arrow.svg-652b62678e5d00b769b3165dff8539b4.ctex"]
 
 [params]

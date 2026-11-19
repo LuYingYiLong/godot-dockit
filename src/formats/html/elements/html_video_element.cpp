@@ -15,7 +15,7 @@
 
 using namespace godot;
 using namespace litehtml;
-using namespace docrender;
+using namespace dockit;
 
 namespace {
 	constexpr std::array video_parts{HTMLVideoPart::play, HTMLVideoPart::position, HTMLVideoPart::mute,

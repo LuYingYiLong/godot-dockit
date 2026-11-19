@@ -21,16 +21,16 @@ namespace litehtml {
 }
 
 struct HTMLNode::DetachedTree {
-	std::weak_ptr<docrender::HTMLDOM> owner;
+	std::weak_ptr<dockit::HTMLDOM> owner;
 	std::weak_ptr<litehtml::element> host;
 	litehtml::element::ptr root;
 	bool public_fragment = false;
 
-	DetachedTree(std::weak_ptr<docrender::HTMLDOM> p_owner, const litehtml::element::ptr& p_root);
+	DetachedTree(std::weak_ptr<dockit::HTMLDOM> p_owner, const litehtml::element::ptr& p_root);
 	~DetachedTree();
 };
 
-namespace docrender {
+namespace dockit {
 	class HTMLTemplateNode;
 	class HTMLDialogNode;
 

@@ -1,5 +1,5 @@
-name: Build DocRender
-description: Install the target SDKs and build the DocRender GDExtension with SCons.
+name: Build Dockit
+description: Install the target SDKs and build the Dockit GDExtension with SCons.
 
 inputs:
   platform:
@@ -67,7 +67,7 @@ runs:
         elif [[ "$BUILD_PLATFORM-$BUILD_ARCH" == windows-x86_64 ]]; then
           build_options+=(merman_sdk=src/thirdparty/merman-sdk pdfium_sdk=src/thirdparty/pdfium-sdk)
         fi
-        scons godot-docrender "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION" "${build_options[@]}"
+        scons godot-dockit "platform=$BUILD_PLATFORM" "arch=$BUILD_ARCH" "target=$BUILD_TARGET" "precision=$BUILD_PRECISION" "${build_options[@]}"
 
     - name: Save SCons cache
       uses: ./godot-cpp/.github/actions/godot-cache-save

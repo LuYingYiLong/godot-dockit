@@ -17,8 +17,8 @@
 #include <cmath>
 
 using namespace godot;
-using docrender::HTMLControlIcon;
-namespace calendar = docrender::input_time;
+using dockit::HTMLControlIcon;
+namespace calendar = dockit::input_time;
 
 namespace {
 	constexpr int row_count = 7;

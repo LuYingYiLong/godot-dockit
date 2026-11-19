@@ -10,7 +10,7 @@ namespace godot {
 	class TextServer;
 }
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextSpacing;
 	class HTMLTextSlice;
 

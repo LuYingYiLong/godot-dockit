@@ -10,9 +10,9 @@ namespace litehtml
 	class html_tag;
 	class style;
 
-	using docrender::css::css_line_height_t;
+	using dockit::css::css_line_height_t;
 
-	class css_properties : public docrender::css::ComputedStyle
+	class css_properties : public dockit::css::ComputedStyle
 	{
 		bool viewport_overflow_source = false;
 		overflow used_overflow(overflow value) const {

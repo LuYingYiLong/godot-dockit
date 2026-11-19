@@ -8,7 +8,7 @@
 
 #include <cmath>
 
-namespace docrender::css {
+namespace dockit::css {
 	namespace {
 		using Kind = ShapeCommand::Kind;
 		using Anchor = ShapeControlPoint::Anchor;

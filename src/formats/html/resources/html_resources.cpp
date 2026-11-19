@@ -23,7 +23,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 
 		struct ImageFragment {
@@ -500,4 +500,4 @@ namespace docrender {
 		fonts.insert(p_path, font);
 		return font;
 	}
-} // namespace docrender
+} // namespace dockit

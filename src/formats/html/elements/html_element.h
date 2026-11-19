@@ -13,7 +13,7 @@ namespace litehtml {
 	class element;
 }
 
-namespace docrender { class HTMLDOM; }
+namespace dockit { class HTMLDOM; }
 
 class HTMLLayout;
 class HTMLInputElement;
@@ -25,7 +25,7 @@ class HTMLElement : public HTMLNode {
 	GDCLASS(HTMLElement, HTMLNode)
 
 	friend class HTMLLayout;
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 	friend class HTMLImageElement;
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;

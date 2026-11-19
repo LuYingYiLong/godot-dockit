@@ -9,7 +9,7 @@
 #include <optional>
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	class HTMLSelectNode;
 	class HTMLOptionNode : public litehtml::html_tag, public HTMLNodeCopyState {
 		friend class HTMLSelectNode;

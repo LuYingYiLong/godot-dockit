@@ -4,7 +4,7 @@
 
 #include <godot_cpp/variant/vector2i.hpp>
 
-namespace docrender { class HTMLVideoNode; }
+namespace dockit { class HTMLVideoNode; }
 class HTMLLabel;
 
 class HTMLVideoElement : public HTMLElement {
@@ -13,7 +13,7 @@ class HTMLVideoElement : public HTMLElement {
 	friend class HTMLLabelCanvas;
 	friend class HTMLLayout;
 
-	std::shared_ptr<docrender::HTMLVideoNode> get_video_node() const;
+	std::shared_ptr<dockit::HTMLVideoNode> get_video_node() const;
 	HTMLLabel* playback_host() const;
 
 protected:

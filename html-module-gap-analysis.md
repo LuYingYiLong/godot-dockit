@@ -199,5 +199,5 @@ for (auto& element : query_selector_all("script")) {
 | 资源路径解析（无 script 分支） | `src/formats/html/resources/html_resource_paths.cpp` |
 | 媒体特性白名单 | `src/formats/html/css/css_media_query.cpp:546-598` |
 | 属性总表 | `src/formats/html/css/css_declarations.cpp:74-386` |
-| CSS 支持文档 | `addons/docrender/docs/html_css_support.md` |
-| API / Web 标准对照 | `addons/docrender/docs/html_api_reference.md` |
+| CSS 支持文档 | `addons/dockit/docs/html_css_support.md` |
+| API / Web 标准对照 | `addons/dockit/docs/html_api_reference.md` |

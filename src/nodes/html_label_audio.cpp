@@ -16,7 +16,7 @@
 #include <limits>
 
 using namespace godot;
-using docrender::HTMLAudioPart;
+using dockit::HTMLAudioPart;
 
 namespace {
 	PackedStringArray godot_audio_bus_names() {

@@ -2,7 +2,7 @@
 
 #include <litehtml/html_tag.h>
 
-namespace docrender {
+namespace dockit {
 	class HTMLRubyNode : public litehtml::html_tag {
 	public:
 		using litehtml::html_tag::html_tag;

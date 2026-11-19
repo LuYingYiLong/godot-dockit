@@ -3,7 +3,7 @@
 #include "html_text_control_node.h"
 #include "html_node_copy_state.h"
 
-namespace docrender {
+namespace dockit {
 	class HTMLTextAreaNode final : public HTMLTextControlNode, public HTMLNodeCopyState {
 		godot::Rect2 resize_handle;
 		godot::Vector2 border_extras;

@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/check_box_outline_blank.svg"
+source_file="res://addons/dockit/icons/material_icons/check_box_outline_blank.svg"
 dest_files=["res://.godot/imported/check_box_outline_blank.svg-f38298deeef0db00a46c058d0cb5a1b5.ctex"]
 
 [params]

@@ -10,7 +10,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 
 namespace godot {
-String HTMLVideoExportPlugin::_get_name() const { return "DocRender HTML video"; }
+String HTMLVideoExportPlugin::_get_name() const { return "Dockit HTML video"; }
 
 void HTMLVideoExportPlugin::_export_begin(const PackedStringArray&, bool, const String&, uint32_t) {
 	included_media.clear();
@@ -23,14 +23,14 @@ void HTMLVideoExportPlugin::_export_file(const String& p_path, const String& p_t
 
 	Dictionary sources = document->get_video_sources();
 	if (sources.is_empty() && document->get_text().containsn("<video")) {
-		sources = docrender::collect_html_assets(document->get_text(), document->get_base_dir(), document->get_source_path()).video_sources;
+		sources = dockit::collect_html_assets(document->get_text(), document->get_base_dir(), document->get_source_path()).video_sources;
 	}
 	const auto preset = get_export_preset();
 	const auto exclusions = preset.is_valid() ? preset->get_exclude_filter().split(",", false) : PackedStringArray();
 	const Array paths = sources.values();
 	for (int64_t i = 0; i < paths.size(); ++i) {
 		const String path = paths[i];
-		if (!path.begins_with("res://") || docrender::normalize_html_resource_path(path) != path || included_media.has(path)) continue;
+		if (!path.begins_with("res://") || dockit::normalize_html_resource_path(path) != path || included_media.has(path)) continue;
 		bool excluded = false;
 		for (const String& pattern : exclusions) {
 			const String filter = pattern.strip_edges();
@@ -44,7 +44,7 @@ void HTMLVideoExportPlugin::_export_file(const String& p_path, const String& p_t
 		if (file.is_null()) continue;
 		const auto bytes = file->get_buffer(file->get_length());
 		if (bytes.is_empty() || uint64_t(bytes.size()) != file->get_length()) continue;
-		add_file(docrender::packed_html_video_path(path), bytes, false);
+		add_file(dockit::packed_html_video_path(path), bytes, false);
 		included_media.insert(path);
 	}
 }

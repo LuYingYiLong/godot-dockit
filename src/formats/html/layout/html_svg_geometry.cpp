@@ -14,7 +14,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender::svg {
+namespace dockit::svg {
 	using Point = css::SVGPathPoint;
 	using Builder = css::SVGPathBuilder;
 	using Segment = css::SVGPathSegment;
@@ -85,13 +85,13 @@ namespace docrender::svg {
 		const auto tokens = tokenize(attribute);
 		const css_token* value = nullptr;
 		for (const auto& token : tokens) {
-			if (token.type == docrender::css::WHITESPACE) continue;
+			if (token.type == dockit::css::WHITESPACE) continue;
 			if (value) return p_default;
 			value = &token;
 		}
 		if (!value) return p_default;
 		css_length length;
-		if (value->type == docrender::css::NUMBER && std::isfinite(value->n.number)) return value->n.number;
+		if (value->type == dockit::css::NUMBER && std::isfinite(value->n.number)) return value->n.number;
 		if (!length.from_token(*value, f_length_percentage | f_math)) return p_default;
 		p_node.get_document()->cvt_units(length, p_node.css().get_font_metrics(), 0);
 		return length.calc_percent(p_basis);

@@ -8,7 +8,7 @@
 
 namespace litehtml {
 
-namespace syntax = docrender::css;
+namespace syntax = dockit::css;
 using syntax::SelectorNode;
 using syntax::SelectorNodeKind;
 
@@ -153,10 +153,10 @@ struct selector_dom final : syntax::SelectorDOM {
 		const auto* tag = dynamic_cast<const html_tag*>(&as_element(node));
 		if (!tag) return false;
 		if (name == "required" || name == "optional") {
-			return docrender::forms::supports_required(*tag) && (name == "required") == bool(tag->get_attr("required"));
+			return dockit::forms::supports_required(*tag) && (name == "required") == bool(tag->get_attr("required"));
 		}
 		if (name == "read-only" || name == "read-write") {
-			return kind(node) == SelectorNodeKind::element && (name == "read-write") == docrender::forms::is_read_write(*tag);
+			return kind(node) == SelectorNodeKind::element && (name == "read-write") == dockit::forms::is_read_write(*tag);
 		}
 		return std::any_of(tag->m_pseudo_classes.begin(), tag->m_pseudo_classes.end(),
 			[&](string_id pseudo) { return _s(pseudo) == name; });

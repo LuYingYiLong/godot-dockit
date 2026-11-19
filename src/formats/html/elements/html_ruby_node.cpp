@@ -7,7 +7,7 @@
 
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 namespace {
 	class RubySegment final : public render_item_grid {
 	protected:

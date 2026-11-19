@@ -7,7 +7,7 @@ func _enter_tree() -> void:
 
 
 func _check_video() -> void:
-	var selector: String = ProjectSettings.get_setting("docrender_test/video_selector", "#intrinsic")
+	var selector: String = ProjectSettings.get_setting("dockit_test/video_selector", "#intrinsic")
 	var scene_label: HTMLLabel
 	var deadline: int = Time.get_ticks_msec() + 12000
 	while Time.get_ticks_msec() < deadline:

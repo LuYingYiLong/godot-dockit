@@ -1,10 +1,10 @@
 # HTML API and Web standards
 
-DocRender exposes an HTML element tree and layout geometry to GDScript. This guide maps its public API to the corresponding Web concepts and describes the Godot contracts that matter when porting browser code. [WHATWG DOM](https://dom.spec.whatwg.org/) · [CSSOM View](https://www.w3.org/TR/cssom-view-1/) · [CSS support](html_css_support.md)
+Dockit exposes an HTML element tree and layout geometry to GDScript. This guide maps its public API to the corresponding Web concepts and describes the Godot contracts that matter when porting browser code. [WHATWG DOM](https://dom.spec.whatwg.org/) · [CSSOM View](https://www.w3.org/TR/cssom-view-1/) · [CSS support](html_css_support.md)
 
 ## Documents and handles
 
-| Web concept | DocRender API and semantics |
+| Web concept | Dockit API and semantics |
 | --- | --- |
 | `Document` | `HTMLLayout` owns the live tree. Parse the source with `parse()` before creating, importing, or adopting elements. `HTMLDocument` is a Godot `Resource` for source text, base path, stylesheet, and imported asset references. `HTMLDocument.create_layout()` creates an independent runtime view. |
 | `Element` and `HTMLElement` | `HTMLElement` is a `RefCounted` handle. Queries and hit tests return the existing handle for an element while it is held. A handle survives reflow and tree moves. Reparse, `clear()`, or disposal of its current layout invalidates it. Check `is_valid()` before using a retained handle. |
@@ -39,11 +39,11 @@ HTML selection drag exports `text/plain` and sanitized `text/html` through `HTML
 
 ## Tree editing and fragments
 
-| WHATWG DOM API | DocRender API and semantics |
+| WHATWG DOM API | Dockit API and semantics |
 | --- | --- |
 | `document.createElement()` | `layout.create_element(tag_name)` returns a detached element. Invalid names and unparsed layouts return `null`. Supported element types use their registered `HTMLElement` subclass. |
 | `appendChild()`, `insertBefore()` | `append_child()` and `insert_before()` move a same-layout element and preserve its subtree handles. A `null` reference appends. Tree edits return a Godot `Error`, with `OK` for success and `ERR_INVALID_PARAMETER` for invalid operations. |
-| `removeChild()`, `replaceChild()`, `Element.remove()` | `remove_child()` and `replace_child()` detach the outgoing subtree for reuse. Use `detach()` for browser-style removal that keeps handles valid. DocRender's `remove()` invalidates the removed subtree's handles when the element has a parent. Calling it on a detached root leaves that root available for insertion. |
+| `removeChild()`, `replaceChild()`, `Element.remove()` | `remove_child()` and `replace_child()` detach the outgoing subtree for reuse. Use `detach()` for browser-style removal that keeps handles valid. Dockit's `remove()` invalidates the removed subtree's handles when the element has a parent. Calling it on a detached root leaves that root available for insertion. |
 | `createDocumentFragment()` and fragment insertion | `layout.create_document_fragment()` and `label.create_document_fragment()` create a same-layout `HTMLDocumentFragment`. Add elements with `fragment.append_child()`. Insert them with `parent.append_fragment(fragment)` or `parent.insert_fragment_before(fragment, reference)`. Success moves the elements in order and empties the fragment for reuse. A rejected batch leaves both trees intact. Direct fragment children return `null` from `get_parent()` and `false` from `is_connected()`. The fragment exposes an element snapshot via `get_children()`. |
 | `HTMLTemplateElement.content` | The read-only `content` property returns the same detached fragment on every access. Its contents are outside document queries, styling, and layout. `get_inner_html()` and `set_inner_html()` operate on this fragment. Use `content.clone_node(true)` and `append_fragment()` to instantiate the template without consuming its contents. A shallow copy of a template or its fragment has empty contents. |
 | `cloneNode(deep)` and `importNode(node, deep)` | `element.clone_node(deep = false)` copies within the same layout. `target_layout.import_node(element, deep = false)` copies into a different layout or the same layout. Both return new detached handles and retain attributes, including IDs. Deep copies also include text and comments. Imported relative resources resolve from the target layout's base directory. |
@@ -51,7 +51,7 @@ HTML selection drag exports `text/plain` and sanitized `text/html` through `HTML
 
 The batch methods `append()`, `prepend()`, `before()`, `after()`, `replace_with()`, and `replace_children()` take arrays of nodes, fragments, and plain text strings. A successful edit consumes inserted fragments and keeps handles to detached nodes. `parse_fragment(html, context)` accepts HTML markup and uses the supplied element's parsing context. `import_fragment()` copies contents to another layout. `adopt_fragment()` moves an independent fragment and retains its existing handles. To move content with its template, adopt the template element.
 
-Clones and imports preserve form controls' current value, checkedness, and corresponding dirty flags. They reset text selection to offset zero. A shallow `<textarea>` copy keeps its current value with empty default text. Adoption preserves selection and ends focus and IME composition in the source view. Adopting a template also transfers its `content` fragment and the existing handles inside it. DocRender restricts template tree edits to the fragment and does not support declarative shadow roots or template patching. [DOM tree mutation and cloning](https://dom.spec.whatwg.org/#interface-node) · [DOM adoption and import](https://dom.spec.whatwg.org/#dom-document-adoptnode) · [HTML template element](https://html.spec.whatwg.org/multipage/scripting.html#the-template-element)
+Clones and imports preserve form controls' current value, checkedness, and corresponding dirty flags. They reset text selection to offset zero. A shallow `<textarea>` copy keeps its current value with empty default text. Adoption preserves selection and ends focus and IME composition in the source view. Adopting a template also transfers its `content` fragment and the existing handles inside it. Dockit restricts template tree edits to the fragment and does not support declarative shadow roots or template patching. [DOM tree mutation and cloning](https://dom.spec.whatwg.org/#interface-node) · [DOM adoption and import](https://dom.spec.whatwg.org/#dom-document-adoptnode) · [HTML template element](https://html.spec.whatwg.org/multipage/scripting.html#the-template-element)
 
 ## Selectors
 
@@ -63,7 +63,7 @@ An element query searches its descendants. `:scope` refers to the element that s
 
 ## Geometry, scrolling, and interaction
 
-| Web concept | DocRender API and semantics |
+| Web concept | Dockit API and semantics |
 | --- | --- |
 | `getClientRects()` and `getBoundingClientRect()` | `get_client_rects()` returns one `Rect2` per laid-out border-box fragment, including multiple fragments for a wrapped inline element. Bounds include CSS transforms and use document pixels before clipping and `HTMLLabel` scrolling. `get_bounding_rect()` merges those bounds or returns an empty `Rect2` when no box exists. CSSOM View reports geometry relative to the browser viewport. |
 | Element layout metrics | `get_client_size()` and `get_client_offset()` return the padding box size and the border inset. `get_offset_rect()` returns untransformed layout geometry relative to the `get_offset_parent()` padding edge. `get_scroll_size()` measures the scrollable extent. |
@@ -79,7 +79,7 @@ DOM queries reflect successful edits immediately. Geometry requires layout. Afte
 
 ## Events
 
-| Web concept | DocRender API and semantics |
+| Web concept | Dockit API and semantics |
 | --- | --- |
 | `EventTarget` | `HTMLEventTarget` is the common base of `HTMLNode` (elements, text nodes, the document node, fragments) and `HTMLWindow`. It exposes `add_event_listener(type, callable, options)`, `listen(type, callable, options)`, `remove_event_listener(type, callable, options)`, `dispatch_event(event)`, `has_event_listener(type)`, and `is_valid()`. `listen()` returns an `HTMLListenerHandle`; call `cancel()` to unregister it. `options` accepts `capture`, `once`, and `passive`. Registering the same callback, type, and `capture` flag twice is a no-op; removal requires the same `capture` flag. The listener receives the event as its only argument. |
 | `window` | `HTMLDocumentNode.get_default_view()` returns the document window. The propagation path is `window → document → element chain → target`, so a window listener runs first in the capture phase and last in the bubble phase. A window handle becomes invalid when the document is replaced and its listeners are cleared with the rest of the document. |
@@ -197,13 +197,13 @@ The [`HTMLDocumentNode`](#documents-and-handles) is the live DOM for this view. 
 
 The label scans the connected document after its first completed layout. Each matching declaration gets a separate instance in document order. The host matches `src` to a registered name and constructs the corresponding script without arguments. Document replacement detaches behaviors in reverse order while the old DOM is still available. Disabling behaviors, replacing the registry, and exiting the scene tree also call `_detach()`. A new mount scans the DOM again. Mounting runs in the game, and ordinary DOM edits do not start a new mount.
 
-`get_base_uri()` on `HTMLLayout`, `HTMLDocumentNode`, and `HTMLLabel` exposes the effective base. DocRender resolves the first connected `<base href>` in document order against the source file or the configured base directory. Supported bases are relative paths within a Godot resource scheme, `res://`, `user://`, and resolvable `uid://` paths. Invalid and blocked bases fall back to the source. Relative image, audio, video and inline CSS URLs use the effective base. External CSS and its nested imports use their own file locations. The HTML importer collects project dependencies for the active base at import time. [WHATWG document base URLs](https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-urls)
+`get_base_uri()` on `HTMLLayout`, `HTMLDocumentNode`, and `HTMLLabel` exposes the effective base. Dockit resolves the first connected `<base href>` in document order against the source file or the configured base directory. Supported bases are relative paths within a Godot resource scheme, `res://`, `user://`, and resolvable `uid://` paths. Invalid and blocked bases fall back to the source. Relative image, audio, video and inline CSS URLs use the effective base. External CSS and its nested imports use their own file locations. The HTML importer collects project dependencies for the active base at import time. [WHATWG document base URLs](https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-urls)
 
 `HTMLAnchorElement.get_resolved_href()` exposes a link resolved against the effective base. `link_pressed` passes the original `href`, and fragment-only links scroll within their existing label.
 
 ## Sections, disclosure, and gauges
 
-DocRender exposes typed `HTMLArticleElement` and `HTMLSectionElement` handles for block sectioning content. The HTML standard exposes both as `HTMLElement`. Description lists, menu lists, quotes, and line and thematic breaks expose their corresponding reflected properties.
+Dockit exposes typed `HTMLArticleElement` and `HTMLSectionElement` handles for block sectioning content. The HTML standard exposes both as `HTMLElement`. Description lists, menu lists, quotes, and line and thematic breaks expose their corresponding reflected properties.
 
 Use `HTMLDetailsElement.open` to change disclosure state. A named group opens one disclosure at a time, and a closed disclosure keeps its DOM available to selectors. The first summary can be focused and activated by the pointer or keyboard. Changing `open` through the element API fires cancelable `beforetoggle`; accepted changes coalesce into a `toggle` event and the `toggled` signal. `HTMLProgressElement` and `HTMLMeterElement` expose normalized numeric values. A progress indicator with no value attribute is indeterminate and advances with the label's animation process mode.
 
@@ -255,7 +255,7 @@ Use an audio asset imported by Godot or the optional FMOD plugin. For example, `
 
 Set `HTMLLabel.bus` to the output bus. When the FMOD extension is loaded, enable `use_fmod_bus` to select the FMOD player and its bus list. Choose the respective importer for each candidate in Godot's Import dock. A candidate has the resource type produced by its importer, either `AudioStream` or `FmodAudioStream`.
 
-The HTML importer records the audio resources as dependencies. Selected-scene exports can resolve their original `res://` paths through Godot's import remaps in the PCK. Include the DocRender extension descriptor in the preset's resource filter, along with the FMOD descriptor when that backend is selected. For audio paths assigned only at runtime, include the resources in the export preset or reference them from an exported resource. [Godot resource loading after export](https://docs.godotengine.org/en/stable/classes/class_fileaccess.html#description)
+The HTML importer records the audio resources as dependencies. Selected-scene exports can resolve their original `res://` paths through Godot's import remaps in the PCK. Include the Dockit extension descriptor in the preset's resource filter, along with the FMOD descriptor when that backend is selected. For audio paths assigned only at runtime, include the resources in the export preset or reference them from an exported resource. [Godot resource loading after export](https://docs.godotengine.org/en/stable/classes/class_fileaccess.html#description)
 
 ## Godot resource URLs
 

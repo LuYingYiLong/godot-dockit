@@ -36,7 +36,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 
 	const property_value* LiteHTMLContainer::transition_override(const element* p_element, string_id p_name) const {
 		return transition_state ? transition_state->find(p_element, p_name) : nullptr;
@@ -291,7 +291,7 @@ namespace docrender {
 		}
 		auto clip = std::make_shared<HTMLSVGClipDocument>(path.get_base_dir());
 		clip->container.set_viewport(viewport_size, media_viewport_size);
-		clip->source = docrender_editor::parse_svg_clip_source(*text, clip->container);
+		clip->source = dockit_editor::parse_svg_clip_source(*text, clip->container);
 		const auto source = clip->source;
 		svg_clip_documents.insert(path, source ? std::move(clip) : nullptr);
 		return source;
@@ -448,7 +448,7 @@ namespace docrender {
 				p_doc->add_stylesheet(node->linked_text.c_str(), node->linked_path.c_str(), p_element->get_attr("media"),
 					p_element->parent().get(), p_element, true);
 			} else {
-				litehtml::docrender_editor::reset_stylesheet_source(*p_element);
+				litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 			}
 			return;
 		}
@@ -458,7 +458,7 @@ namespace docrender {
 		if (!css.empty() || !base.empty()) {
 			if (!node->linked_path.empty() && (node->linked_request_path != path.get_data() ||
 				base != node->linked_path || css != node->linked_text)) {
-				litehtml::docrender_editor::reset_stylesheet_source(*p_element);
+				litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 			}
 			p_doc->add_stylesheet(css.c_str(), base.c_str(), p_element->get_attr("media"),
 				p_element->parent().get(), p_element);
@@ -466,7 +466,7 @@ namespace docrender {
 			node->linked_path = std::move(base);
 			node->linked_text = std::move(css);
 		} else if (!node->linked_path.empty()) {
-			litehtml::docrender_editor::reset_stylesheet_source(*p_element);
+			litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 		}
 	}
 
@@ -682,4 +682,4 @@ namespace docrender {
 		r_language = locale.get_slice("_", 0).utf8().get_data();
 		r_culture = locale.get_slice("_", 1).utf8().get_data();
 	}
-} // namespace docrender
+} // namespace dockit

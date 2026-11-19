@@ -7,7 +7,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	HTMLPlaneTransform::HTMLPlaneTransform(const Transform2D& p_affine) :
 		matrix(p_affine[0].x, p_affine[1].x, p_affine[2].x, p_affine[0].y, p_affine[1].y, p_affine[2].y, 0, 0, 1) {}
 

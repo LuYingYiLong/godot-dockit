@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/docrender/icons/material_icons/fullscreen_exit.svg"
+source_file="res://addons/dockit/icons/material_icons/fullscreen_exit.svg"
 dest_files=["res://.godot/imported/fullscreen_exit.svg-670825dbdf2cf104ff7dffb9c6184f2a.ctex"]
 
 [params]

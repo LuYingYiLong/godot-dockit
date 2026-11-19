@@ -1,6 +1,6 @@
 #pragma once
 
-namespace docrender {
+namespace dockit {
 	// Mode indices match css_blend_mode. The two inputs and output are premultiplied viewport textures.
 	inline constexpr const char* html_blend_shader = R"(
 shader_type canvas_item;

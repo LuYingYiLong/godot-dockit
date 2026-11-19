@@ -7,7 +7,7 @@
 
 #include <optional>
 
-namespace docrender {
+namespace dockit {
 	class HTMLOutputNode : public litehtml::html_tag, public HTMLNodeCopyState {
 	public:
 		using litehtml::html_tag::html_tag;

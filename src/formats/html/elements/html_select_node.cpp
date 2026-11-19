@@ -16,7 +16,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 namespace {
 	String option_text(const litehtml::element& p_option) {
 		litehtml::string text;

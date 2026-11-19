@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	class HTMLImageAltText {
 		HTMLTextLayout text;
 		float line_height;

@@ -6,7 +6,7 @@
 #include <optional>
 #include <string_view>
 
-namespace docrender::css {
+namespace dockit::css {
 
 // The DOM owner keeps nodes and borrowed strings alive during a synchronous match.
 using SelectorNode = const void*;
@@ -74,4 +74,4 @@ SelectorMatch match_scoped_selector(const SelectorDOM& dom, SelectorNode node, c
 std::optional<std::string_view> inherited_language(const SelectorDOM& dom, SelectorNode node);
 bool matches_language(const SelectorDOM& dom, SelectorNode node, const vector<string>& ranges);
 
-} // namespace docrender::css
+} // namespace dockit::css

@@ -3,7 +3,7 @@
 
 namespace litehtml {
 
-namespace syntax = docrender::css;
+namespace syntax = dockit::css;
 
 syntax::SelectorMode selector_mode(document_mode mode) {
 	return mode == quirks_mode ? syntax::SelectorMode::quirks : syntax::SelectorMode::standards;

@@ -12,7 +12,7 @@
 #include <memory>
 
 namespace litehtml { class element; }
-namespace docrender { class HTMLDOM; }
+namespace dockit { class HTMLDOM; }
 class HTMLLayout;
 class HTMLElement;
 class HTMLDocumentFragment;
@@ -26,7 +26,7 @@ class HTMLWindow;
 
 class HTMLNode : public HTMLEventTarget {
 	GDCLASS(HTMLNode, HTMLEventTarget)
-	friend class docrender::HTMLDOM;
+	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 	friend class HTMLDocumentFragment;
 	friend class ::HTMLLabel;
@@ -44,7 +44,7 @@ protected:
 
 	static void _bind_methods();
 	HTMLLayout* get_owner() const;
-	docrender::HTMLDOM& get_dom() const;
+	dockit::HTMLDOM& get_dom() const;
 	std::shared_ptr<litehtml::element> lock_element() const;
 	std::shared_ptr<litehtml::element> lock_related_node(const godot::Ref<HTMLNode>& p_node) const;
 

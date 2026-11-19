@@ -13,7 +13,7 @@
 using namespace godot;
 
 Ref<HTMLFormElement> HTMLInputElement::get_form() const { return get_form_owner(); }
-using docrender::HTMLInputNode;
+using dockit::HTMLInputNode;
 
 void HTMLInputFile::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_name"), &HTMLInputFile::get_name);
@@ -92,7 +92,7 @@ double HTMLInputElement::get_value_as_number() const {
 void HTMLInputElement::set_value_as_number(double p_value) {
 	const auto input = get_input();
 	if (!input || (input->type() != HTMLInputNode::Type::NUMBER && input->type() != HTMLInputNode::Type::RANGE &&
-		input->time_kind() == docrender::input_time::Kind::none)) return;
+		input->time_kind() == dockit::input_time::Kind::none)) return;
 	if (std::isfinite(p_value)) set_value(input->format_number(p_value));
 	else if (std::isnan(p_value)) set_value("");
 }
@@ -158,19 +158,19 @@ Error HTMLInputElement::step_down(int p_count) {
 
 Dictionary HTMLInputElement::get_value_as_date() const {
 	const auto input = get_input();
-	if (!input || input->time_kind() == docrender::input_time::Kind::local) return {};
-	return docrender::input_time::parts(input->time_kind(), input->value_as_number());
+	if (!input || input->time_kind() == dockit::input_time::Kind::local) return {};
+	return dockit::input_time::parts(input->time_kind(), input->value_as_number());
 }
 
 Error HTMLInputElement::set_value_as_date(const Dictionary& p_value) {
 	const auto input = get_input();
-	using Kind = docrender::input_time::Kind;
+	using Kind = dockit::input_time::Kind;
 	if (!input || input->time_kind() == Kind::none || input->time_kind() == Kind::local) return ERR_UNAVAILABLE;
 	if (p_value.is_empty()) {
 		set_value("");
 		return OK;
 	}
-	const auto value = docrender::input_time::from_parts(input->time_kind(), p_value);
+	const auto value = dockit::input_time::from_parts(input->time_kind(), p_value);
 	if (!value) return ERR_INVALID_PARAMETER;
 	set_value_as_number(*value);
 	return OK;
@@ -205,8 +205,8 @@ void HTMLInputElement::set_selection_range(int64_t p_start, int64_t p_end) {
 		if (!input->editor.set_selection(std::min(p_start, p_end), p_end)) return;
 		get_owner()->update_input(*input);
 		if (old_start != input->editor.selection_start() || old_end != input->editor.selection_end()) {
-			dispatch_event(docrender::make_dom_event(StringName("select"), true, false));
-			dispatch_event(docrender::make_dom_event(StringName("selectionchange"), true, false));
+			dispatch_event(dockit::make_dom_event(StringName("select"), true, false));
+			dispatch_event(dockit::make_dom_event(StringName("selectionchange"), true, false));
 			get_dom().queue_selectionchange();
 		}
 	}

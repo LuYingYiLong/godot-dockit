@@ -7,7 +7,7 @@
 
 using namespace godot;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		bool ascii_alpha(char p_char) {
 			return (p_char >= 'a' && p_char <= 'z') || (p_char >= 'A' && p_char <= 'Z');

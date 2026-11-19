@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-namespace docrender {
+namespace dockit {
 	struct HyphenationPatternData {
 		std::string_view locale;
 		const uint8_t* bytes;

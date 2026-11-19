@@ -3,7 +3,7 @@
 #include "html_dom.h"
 
 using namespace godot;
-using docrender::HTMLBoundary;
+using dockit::HTMLBoundary;
 
 void HTMLSelection::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLSelection::is_valid);
@@ -94,7 +94,7 @@ Error HTMLSelection::set_base_and_extent(const Ref<HTMLNode>& p_anchor, int64_t 
 	const HTMLBoundary anchor{p_anchor, p_anchor_offset};
 	const HTMLBoundary focus{p_focus, p_focus_offset};
 	if (!selection_range->accepts(anchor) || !selection_range->accepts(focus)) return ERR_INVALID_PARAMETER;
-	const bool reversed = docrender::compare_html_boundaries(anchor, focus) > 0;
+	const bool reversed = dockit::compare_html_boundaries(anchor, focus) > 0;
 	selection_range->set_boundaries(reversed ? focus : anchor, reversed ? anchor : focus);
 	use_range(selection_range, reversed);
 	return OK;
@@ -102,7 +102,7 @@ Error HTMLSelection::set_base_and_extent(const Ref<HTMLNode>& p_anchor, int64_t 
 
 Error HTMLSelection::select_all_children(const Ref<HTMLNode>& p_node) {
 	if (p_node.is_null() || !p_node->is_valid()) return ERR_INVALID_PARAMETER;
-	return set_base_and_extent(p_node, 0, p_node, docrender::html_node_length(*p_node.ptr()));
+	return set_base_and_extent(p_node, 0, p_node, dockit::html_node_length(*p_node.ptr()));
 }
 
 String HTMLSelection::get_text() const {

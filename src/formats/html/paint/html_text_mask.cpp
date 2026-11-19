@@ -14,7 +14,7 @@
 using namespace godot;
 using namespace litehtml;
 
-namespace docrender {
+namespace dockit {
 	namespace {
 		constexpr int MAX_MASK_SIDE = 8190;
 		constexpr int MAX_MASK_PIXELS = 4 * 1024 * 1024;

@@ -25,7 +25,7 @@
 #include <unordered_set>
 
 namespace litehtml {
-	using docrender::LiteHTMLContainer;
+	using dockit::LiteHTMLContainer;
 
 	namespace {
 		elements_list::iterator child_insert_position(elements_list& p_children, const element::ptr& p_reference) {
@@ -39,7 +39,7 @@ namespace litehtml {
 		}
 	}
 
-	document::ptr docrender_editor::parse(const godot::CharString& p_html, LiteHTMLContainer& p_container,
+	document::ptr dockit_editor::parse(const godot::CharString& p_html, LiteHTMLContainer& p_container,
 		const string& p_default_styles, const string& p_user_styles) {
 		auto doc = parse_tree(p_html, p_container);
 		if (doc) {
@@ -50,7 +50,7 @@ namespace litehtml {
 		return doc;
 	}
 
-	document::ptr docrender_editor::parse_tree(const godot::CharString& p_html, document_container& p_container) {
+	document::ptr dockit_editor::parse_tree(const godot::CharString& p_html, document_container& p_container) {
 		auto doc = std::make_shared<document>(&p_container);
 		const auto destroy = [](GumboOutput* p_output) { gumbo_destroy_output(&kGumboDefaultOptions, p_output); };
 		// Godot has already decoded the source, regardless of the HTML meta charset.
@@ -75,7 +75,7 @@ namespace litehtml {
 		return doc;
 	}
 
-	document::ptr docrender_editor::parse_svg_clip_source(const godot::String& p_svg, LiteHTMLContainer& p_container) {
+	document::ptr dockit_editor::parse_svg_clip_source(const godot::String& p_svg, LiteHTMLContainer& p_container) {
 		using namespace godot;
 		Ref<XMLParser> parser;
 		parser.instantiate();
@@ -157,7 +157,7 @@ namespace litehtml {
 		return doc;
 	}
 
-	void docrender_editor::remove_attribute(html_tag& p_element, const char* p_name) {
+	void dockit_editor::remove_attribute(html_tag& p_element, const char* p_name) {
 		const std::string_view name(p_name);
 		if (name == "class" || name == "id") {
 			p_element.set_attr(p_name, "");
@@ -165,7 +165,7 @@ namespace litehtml {
 		p_element.m_attrs.erase(p_name);
 	}
 
-	elements_list docrender_editor::parse_fragment(document& p_document, const element& p_parent, const godot::CharString& p_html) {
+	elements_list dockit_editor::parse_fragment(document& p_document, const element& p_parent, const godot::CharString& p_html) {
 		GumboOptions options = kGumboDefaultOptions;
 		options.fragment_context = gumbo_tag_enum(p_parent.get_tagName());
 		options.fragment_namespace = static_cast<GumboNamespaceEnum>(p_parent.get_namespace());
@@ -183,7 +183,7 @@ namespace litehtml {
 		return children;
 	}
 
-	void docrender_editor::replace_children(element& p_parent, elements_list p_children) {
+	void dockit_editor::replace_children(element& p_parent, elements_list p_children) {
 		for (const auto& child : p_parent.m_children) {
 			child->parent(nullptr);
 		}
@@ -194,7 +194,7 @@ namespace litehtml {
 		if (p_parent.tag() == _style_) reset_stylesheet_source(p_parent);
 	}
 
-	void docrender_editor::replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists) {
+	void dockit_editor::replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists) {
 		for (const auto& [parent, children] : r_lists) {
 			for (const auto& old : parent->m_children) old->parent(nullptr);
 		}
@@ -205,7 +205,7 @@ namespace litehtml {
 		}
 	}
 
-	docrender_editor::child_edit_result docrender_editor::place_child(const element::ptr& p_child, element& p_parent,
+	dockit_editor::child_edit_result dockit_editor::place_child(const element::ptr& p_child, element& p_parent,
 		const element::ptr& p_reference, bool p_replace_reference) {
 		auto* to = dynamic_cast<html_tag*>(&p_parent);
 		if (!to || (p_replace_reference && !p_reference)) {
@@ -245,7 +245,7 @@ namespace litehtml {
 		return child_edit_result::changed;
 	}
 
-	bool docrender_editor::insert_children(element& p_source, element& p_parent, const element::ptr& p_reference) {
+	bool dockit_editor::insert_children(element& p_source, element& p_parent, const element::ptr& p_reference) {
 		auto* to = dynamic_cast<html_tag*>(&p_parent);
 		if (!to || &p_source == to) {
 			return false;
@@ -265,7 +265,7 @@ namespace litehtml {
 		return true;
 	}
 
-	void docrender_editor::reset_tree(element& p_element) {
+	void dockit_editor::reset_tree(element& p_element) {
 		p_element.m_renders.clear();
 		p_element.m_used_styles.clear();
 		p_element.m_counter_values.clear();
@@ -287,23 +287,23 @@ namespace litehtml {
 		}
 	}
 
-	bool docrender_editor::media_changed(document& p_document) {
+	bool dockit_editor::media_changed(document& p_document) {
 		p_document.container()->get_media_features(p_document.m_media);
 		return p_document.update_media_lists(p_document.m_media);
 	}
 
-	void docrender_editor::set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size) {
+	void dockit_editor::set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size) {
 		p_document.m_viewport_unit_size = {static_cast<pixel_t>(p_size.x), static_cast<pixel_t>(p_size.y)};
 	}
 
-	void docrender_editor::compute_styles(document& p_document) {
+	void dockit_editor::compute_styles(document& p_document) {
 		p_document.m_uses_container_units = false;
 		p_document.set_quote_depth(0);
 		p_document.m_root->inherit_counters(nullptr);
 		p_document.m_root->compute_styles();
 	}
 
-	void docrender_editor::remember_content_sizes(document& p_document) {
+	void dockit_editor::remember_content_sizes(document& p_document) {
 		const auto remember = [](const auto& p_visit, render_item& p_item) -> void {
 			const auto& box = p_item.pos();
 			p_item.src_el()->css_w().remember_content_size(box.width, box.height);
@@ -312,7 +312,7 @@ namespace litehtml {
 		if (p_document.m_root_render) remember(remember, *p_document.m_root_render);
 	}
 
-	void docrender_editor::prune_unused_fonts(document& p_document) {
+	void dockit_editor::prune_unused_fonts(document& p_document) {
 		if (p_document.m_fonts.size() <= p_document.m_font_prune_threshold) return;
 
 		std::unordered_set<uint_ptr> used;
@@ -344,7 +344,7 @@ namespace litehtml {
 		p_document.m_font_prune_threshold = std::max<std::size_t>(256, p_document.m_fonts.size() + 128);
 	}
 
-	docrender_editor::ContainerUpdate docrender_editor::measure_containers(document& doc) {
+	dockit_editor::ContainerUpdate dockit_editor::measure_containers(document& doc) {
 		ContainerUpdate update;
 		const bool has_queries = doc.m_styles.has_container_queries() || doc.m_master_css.has_container_queries();
 		const bool uses_units = doc.m_uses_container_units;
@@ -387,12 +387,12 @@ namespace litehtml {
 		return update;
 	}
 
-	std::array<overflow, 2> docrender_editor::propagate_viewport_overflow(document& p_document) {
+	std::array<overflow, 2> dockit_editor::propagate_viewport_overflow(document& p_document) {
 		const auto& root = p_document.m_root;
 		if (root->css().get_display() == display_none) return {overflow_auto, overflow_auto};
 
 		element* source = root.get();
-		const docrender::css::ComputedStyle& root_style = root->css();
+		const dockit::css::ComputedStyle& root_style = root->css();
 		if (root->tag() == _html_ && !root_style.has_containment() &&
 			root_style.get_overflow_x() == overflow_visible && root_style.get_overflow_y() == overflow_visible) {
 			for (const auto& child : root->children()) {
@@ -408,13 +408,13 @@ namespace litehtml {
 			return is_scrollable_overflow(p_value) ? p_value : overflow_auto;
 		};
 		auto& css = source->m_css;
-		const docrender::css::ComputedStyle& computed = css;
+		const dockit::css::ComputedStyle& computed = css;
 		const std::array modes{viewport_mode(computed.get_overflow_x()), viewport_mode(computed.get_overflow_y())};
 		css.propagate_overflow_to_viewport();
 		return modes;
 	}
 
-	unsigned docrender_editor::selector_state_dependencies(const document& p_document) {
+	unsigned dockit_editor::selector_state_dependencies(const document& p_document) {
 		unsigned dependencies = 0;
 		for (const css* sheet : { &p_document.m_master_css, &p_document.m_styles }) {
 			for (const auto& rule : sheet->selectors()) {
@@ -425,15 +425,15 @@ namespace litehtml {
 		return dependencies;
 	}
 
-	void docrender_editor::set_hover(element& p_element, bool p_hovered) {
+	void dockit_editor::set_hover(element& p_element, bool p_hovered) {
 		p_element.set_pseudo_class(_hover_, p_hovered);
 	}
 
-	bool docrender_editor::is_command_button(const element& p_element) {
-		return docrender::forms::button_action(p_element) != docrender::forms::ButtonAction::NONE;
+	bool dockit_editor::is_command_button(const element& p_element) {
+		return dockit::forms::button_action(p_element) != dockit::forms::ButtonAction::NONE;
 	}
 
-	css_text::vector docrender_editor::stylesheets(const document& p_document) {
+	css_text::vector dockit_editor::stylesheets(const document& p_document) {
 		auto sheets = p_document.m_css;
 		for (auto& sheet : sheets) {
 			const auto found = p_document.m_cssom_overrides.find(sheet.owner);
@@ -442,7 +442,7 @@ namespace litehtml {
 		return sheets;
 	}
 
-	void docrender_editor::edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text) {
+	void dockit_editor::edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text) {
 		for (const auto& sheet : p_document.m_css) {
 			if (sheet.owner.lock() == p_owner) {
 				p_document.m_cssom_overrides[p_owner] = {sheet.text, sheet.baseurl, std::move(p_text)};
@@ -451,8 +451,8 @@ namespace litehtml {
 		}
 	}
 
-	void docrender_editor::reset_stylesheet_source(element& p_owner) {
-		auto* node = dynamic_cast<docrender::HTMLStylesheetNode*>(&p_owner);
+	void dockit_editor::reset_stylesheet_source(element& p_owner) {
+		auto* node = dynamic_cast<dockit::HTMLStylesheetNode*>(&p_owner);
 		if (!node) return;
 		if (const auto doc = node->get_document()) doc->m_cssom_overrides.erase(node->weak_from_this());
 		++node->source_version;
@@ -462,7 +462,7 @@ namespace litehtml {
 		node->linked_text.clear();
 	}
 
-	void docrender_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
+	void dockit_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_additional_styles) {
 		auto& doc = *p_document;
 		p_container.set_css_source_kind(css_source_kind::style_element);
@@ -475,7 +475,7 @@ namespace litehtml {
 		doc.apply_document_author_styles();
 	}
 
-	void docrender_editor::restyle(const document::ptr& p_document, LiteHTMLContainer& p_container,
+	void dockit_editor::restyle(const document::ptr& p_document, LiteHTMLContainer& p_container,
 		const string& p_default_styles, const string& p_user_styles, bool p_build_render_tree) {
 		p_container.reset_stylesheet_reads();
 		p_container.begin_css_diagnostics();
@@ -488,7 +488,7 @@ namespace litehtml {
 		doc.m_fixed_boxes.clear();
 		doc.m_size = {};
 		reset_tree(*root);
-		docrender::forms::synchronize(root);
+		dockit::forms::synchronize(root);
 		doc.m_css.clear();
 		doc.m_media_lists.clear();
 		doc.m_master_css = {};
@@ -504,7 +504,7 @@ namespace litehtml {
 			const std::string_view name = p_element.get_tagName();
 			const bool svg = p_svg || name == "svg";
 			if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
-				if (const auto* select = dynamic_cast<const docrender::HTMLSelectNode*>(tag); select && select->is_list_box()) {
+				if (const auto* select = dynamic_cast<const dockit::HTMLSelectNode*>(tag); select && select->is_list_box()) {
 					const auto rows = std::min<int64_t>(select->display_size(), 1000);
 					tag->m_style.add_property(_height_, "calc(" + std::to_string(rows) + "lh + " + std::to_string(rows * 2 + 2) + "px)");
 				}
@@ -567,7 +567,7 @@ namespace litehtml {
 		if (p_build_render_tree) rebuild_render_tree(doc);
 	}
 
-	void docrender_editor::rebuild_render_tree(document& doc) {
+	void dockit_editor::rebuild_render_tree(document& doc) {
 		if (doc.m_root_render) {
 			const auto clear_render_items = [](const auto& visit, element& node) -> void {
 				node.m_renders.clear();
@@ -608,12 +608,12 @@ namespace litehtml {
 		}
 	}
 
-	void docrender_editor::push_modal(document& doc, const element::ptr& p_element) {
+	void dockit_editor::push_modal(document& doc, const element::ptr& p_element) {
 		p_element->set_pseudo_class(_id("modal"), true);
 		doc.m_top_layer.emplace_back(p_element);
 	}
 
-	void docrender_editor::prune_modals(document& doc) {
+	void dockit_editor::prune_modals(document& doc) {
 		auto& layer = doc.m_top_layer;
 		layer.erase(std::remove_if(layer.begin(), layer.end(), [&](const auto& candidate) {
 			const auto element = candidate.lock();
@@ -628,7 +628,7 @@ namespace litehtml {
 		}), layer.end());
 	}
 
-	bool docrender_editor::set_attribute(element& p_element, const char* p_name, const char* p_value) {
+	bool dockit_editor::set_attribute(element& p_element, const char* p_name, const char* p_value) {
 		auto* tag = dynamic_cast<html_tag*>(&p_element);
 		if (!tag) {
 			return false;
@@ -646,7 +646,7 @@ namespace litehtml {
 		return true;
 	}
 
-	elements_list docrender_editor::create_text(const document::ptr& p_document, const char* p_text, bool p_split) {
+	elements_list dockit_editor::create_text(const document::ptr& p_document, const char* p_text, bool p_split) {
 		elements_list children;
 		if (*p_text && !p_split) {
 			children.push_back(std::make_shared<el_text>(p_text, p_document));
@@ -661,7 +661,7 @@ namespace litehtml {
 		return children;
 	}
 
-	void docrender_editor::mark_text_node(elements_list& r_parts, const char* p_text) {
+	void dockit_editor::mark_text_node(elements_list& r_parts, const char* p_text) {
 		if (r_parts.size() <= 1) return;
 		const auto group = std::make_shared<const string>(p_text);
 		int64_t offset = 0;

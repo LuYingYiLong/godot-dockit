@@ -1,6 +1,6 @@
 // Unicode 16.0.0 categories Mn, P*, and Cf for hyphenation character counts.
 // Source: https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt
-// See addons/docrender/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
 	{ 0x0021, 0x0023 },
 	{ 0x0025, 0x002A },
 	{ 0x002C, 0x002F },

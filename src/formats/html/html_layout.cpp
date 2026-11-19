@@ -63,18 +63,18 @@
 #include <unordered_set>
 
 using namespace godot;
-using docrender::HTMLInputNode;
-using docrender::HTMLTextAreaNode;
-using docrender::HTMLTextControlNode;
-using docrender::HTMLCanvasRenderer;
-using docrender::HTMLAnchor;
-using docrender::HTMLDOM;
-using docrender::HTMLGeometryIndex;
-using docrender::HTMLHighlight;
-using docrender::LiteHTMLContainer;
-using DocumentAdapter = litehtml::docrender_editor;
+using dockit::HTMLInputNode;
+using dockit::HTMLTextAreaNode;
+using dockit::HTMLTextControlNode;
+using dockit::HTMLCanvasRenderer;
+using dockit::HTMLAnchor;
+using dockit::HTMLDOM;
+using dockit::HTMLGeometryIndex;
+using dockit::HTMLHighlight;
+using dockit::LiteHTMLContainer;
+using DocumentAdapter = litehtml::dockit_editor;
 
-namespace syntax = docrender::css;
+namespace syntax = dockit::css;
 
 namespace {
 	litehtml::element::ptr find_html_ancestor(litehtml::element::ptr p_element) {
@@ -98,9 +98,9 @@ namespace {
 		return {};
 	}
 
-	using RenderFragments = std::vector<const docrender::RenderGeometry*>;
+	using RenderFragments = std::vector<const dockit::RenderGeometry*>;
 
-	const docrender::RenderGeometry* scroll_target_renderer(const RenderFragments* p_renderers, bool p_allow_fallback = false) {
+	const dockit::RenderGeometry* scroll_target_renderer(const RenderFragments* p_renderers, bool p_allow_fallback = false) {
 		if (p_renderers) {
 			for (const auto* renderer : *p_renderers) {
 				if (renderer->inverse && renderer->item->is_visible() &&
@@ -111,7 +111,7 @@ namespace {
 	}
 
 	std::optional<Rect2> scroll_target_bounds(const RenderFragments& p_renderers,
-		const docrender::HTMLPlaneTransform& p_from_document, bool p_allow_fallback) {
+		const dockit::HTMLPlaneTransform& p_from_document, bool p_allow_fallback) {
 		std::optional<Rect2> bounds;
 		const auto include = [&](const Rect2& p_rect) {
 			if (p_rect.is_finite()) bounds = bounds ? bounds->merge(p_rect) : p_rect;
@@ -186,7 +186,7 @@ struct HTMLLayout::State {
 		double duration = 0.0;
 		double iteration_duration = 0.0;
 		double delay = 0.0;
-		docrender::css::PlaybackState playback_state = docrender::css::PlaybackState::idle;
+		dockit::css::PlaybackState playback_state = dockit::css::PlaybackState::idle;
 		uint64_t iteration = 0;
 		bool started = false;
 		bool scripted = false;
@@ -240,11 +240,11 @@ struct HTMLLayout::State {
 	int64_t extra_stylesheet_id = 0;
 	Callable edit_callback;
 	Callable element_scroll_callback;
-	docrender::css::TransitionState transitions;
-	docrender::css::AnimationState animations;
+	dockit::css::TransitionState transitions;
+	dockit::css::AnimationState animations;
 	std::map<std::pair<bool, uint64_t>, ObjectID> animation_handles;
 	std::map<std::pair<bool, uint64_t>, AnimationEventTrack> animation_event_tracks;
-	docrender::css::TransitionState::Snapshot animation_underlying;
+	dockit::css::TransitionState::Snapshot animation_underlying;
 	Callable transition_callback;
 	Callable transition_frame;
 	ObjectID transition_tree;
@@ -329,7 +329,7 @@ namespace {
 				for (int j = 0; j < 4; ++j) value.matrix[i * 4 + j] = (*matrix)[i][j];
 			}
 		}
-		return docrender::css::serialize_value(_transform_, property_value(css_transform_list{value}, false));
+		return dockit::css::serialize_value(_transform_, property_value(css_transform_list{value}, false));
 	}
 
 	String read_computed(const HTMLGeometryIndex& geometry, const html_tag& element, const std::string& name, const String& pseudo) {
@@ -341,7 +341,7 @@ namespace {
 			const auto colors = element.get_selection_colors(element.css().get_color());
 			const auto& color = id == _color_ ? colors.foreground : colors.background;
 			if (!color || (id != _color_ && id != _background_color_)) return {};
-			return String::utf8(docrender::css::serialize_value(id, property_value(color->to_srgb(), false)).c_str());
+			return String::utf8(dockit::css::serialize_value(id, property_value(color->to_srgb(), false)).c_str());
 		}
 		const bool placeholder = pseudo == "::placeholder" || pseudo == ":placeholder";
 		const auto* target = placeholder ? &element : cssom_tag(element, pseudo);
@@ -354,10 +354,10 @@ namespace {
 			if (target->get_custom_property(id, tokens)) result = get_repr(tokens, 0, -1, true);
 		} else {
 			if (id == _transform_ && !placeholder) result = transform_matrix_value(geometry, *target);
-			if (result.empty()) result = docrender::css::serialize_computed(id, *style);
+			if (result.empty()) result = dockit::css::serialize_computed(id, *style);
 			if (result.empty() && !placeholder) {
 				const auto& value = target->get_cascaded_property(id);
-				if (!value.is<inherit>() && !value.is<initial_value>()) result = docrender::css::serialize_value(id, value);
+				if (!value.is<inherit>() && !value.is<initial_value>()) result = dockit::css::serialize_value(id, value);
 			}
 		}
 		return String::utf8(result.c_str());
@@ -429,7 +429,7 @@ int64_t HTMLLayout::get_stylesheet_id(const HTMLElement& p_element) {
 }
 
 Ref<HTMLStyleSheet> HTMLLayout::get_stylesheet(const HTMLElement& p_element) {
-	const auto node = std::dynamic_pointer_cast<docrender::HTMLStylesheetNode>(p_element.lock_element());
+	const auto node = std::dynamic_pointer_cast<dockit::HTMLStylesheetNode>(p_element.lock_element());
 	const int64_t id = node ? get_stylesheet_id(p_element) : 0;
 	if (id == 0) return {};
 	auto& handle = state->stylesheet_identities.find(node)->second.handle;
@@ -466,7 +466,7 @@ PackedStringArray HTMLLayout::get_css_rules(int64_t p_stylesheet) {
 	for (const auto& sheet : collect_stylesheets()) {
 		if (sheet.id != p_stylesheet) continue;
 		for (const auto& rule : litehtml::css_parser::parse_stylesheet(sheet.text, true)) {
-			result.append(String::utf8(docrender::css::serialize_rule(*rule).c_str()));
+			result.append(String::utf8(dockit::css::serialize_rule(*rule).c_str()));
 		}
 		break;
 	}
@@ -513,7 +513,7 @@ Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const Str
 		rules.erase(rules.begin() + p_index);
 	}
 	std::string updated;
-	for (const auto& rule : rules) updated += docrender::css::serialize_rule(*rule) + '\n';
+	for (const auto& rule : rules) updated += dockit::css::serialize_rule(*rule) + '\n';
 	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
 	else state->user_styles = std::move(updated);
 	invalidate_styles();
@@ -776,11 +776,11 @@ Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const St
 }
 
 Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
-	const Dictionary& p_textures, const String& p_source_path, bool p_fit_images, const String& p_default_stylesheet, const docrender::HTMLFontConfig& p_fonts,
+	const Dictionary& p_textures, const String& p_source_path, bool p_fit_images, const String& p_default_stylesheet, const dockit::HTMLFontConfig& p_fonts,
 	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
 	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams, const Dictionary& p_video_sources) {
 	clear();
-	const std::optional<String> base_dir = docrender::normalize_html_resource_path(p_base_dir);
+	const std::optional<String> base_dir = dockit::normalize_html_resource_path(p_base_dir);
 	if (!base_dir) {
 		state->error = "The base directory must use res:// or user://.";
 		return state->parse_error = ERR_INVALID_PARAMETER;
@@ -904,10 +904,10 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	state->container->begin_image_layout();
 	const auto& document = state->dom->get_document();
 	const double transition_time = animation_clock_time();
-	docrender::css::TransitionState::Snapshot before_transition;
+	dockit::css::TransitionState::Snapshot before_transition;
 	if (!state->sampling_transitions && state->viewport_size.x > 0) {
 		before_transition = state->animation_underlying.empty() ?
-			docrender::css::TransitionState::capture(document->root()) : std::move(state->animation_underlying);
+			dockit::css::TransitionState::capture(document->root()) : std::move(state->animation_underlying);
 	}
 	bool transitions_committed = state->sampling_transitions;
 	if (state->sampling_transitions) {
@@ -920,7 +920,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	DocumentAdapter::set_viewport_unit_size(*document, p_viewport_unit_size);
 	litehtml::media_features image_media;
 	document->container()->get_media_features(image_media);
-	const docrender::HTMLImageSourceResolver resolve_image = [this](std::string_view p_source) {
+	const dockit::HTMLImageSourceResolver resolve_image = [this](std::string_view p_source) {
 		return state->container->resolve_image_source(p_source);
 	};
 	std::vector<litehtml::el_image*> images;
@@ -934,7 +934,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	HTMLDOM::visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
 		if (p_element->tag() == litehtml::_img_) {
 			if (auto* image = dynamic_cast<litehtml::el_image*>(p_element.get())) {
-				image_hints_changed |= image->select_source(docrender::select_html_image(*image, resolve_image, image_media));
+				image_hints_changed |= image->select_source(dockit::select_html_image(*image, resolve_image, image_media));
 				images.push_back(image);
 			}
 		}
@@ -1012,7 +1012,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 				});
 			state->animations.commit(document, transition_time);
 			if (state->animations.has_overrides() || state->animations.active())
-				state->animation_underlying = docrender::css::TransitionState::capture(document->root());
+				state->animation_underlying = dockit::css::TransitionState::capture(document->root());
 			if (!state->transitions.has_overrides() && !state->animations.has_overrides()) break;
 			state->container->set_transition_state(&state->transitions);
 			state->container->set_animation_state(&state->animations);
@@ -1059,7 +1059,7 @@ bool HTMLLayout::update_auto_content_visibility(const Vector2i& p_viewport_size,
 		const Rect2 nearby = viewport.grow(margin);
 		const auto near_viewport = [&]() {
 			if (!geometry->inverse) return false;
-			std::vector<docrender::TransformedClip> clips;
+			std::vector<dockit::TransformedClip> clips;
 			for (auto* clip = geometry->overflow; clip; clip = clip->parent) {
 				if (clip->is_path) {
 					clips.push_back(*clip);
@@ -1076,7 +1076,7 @@ bool HTMLLayout::update_auto_content_visibility(const Vector2i& p_viewport_size,
 				p_box.size = p_box.size.max(Vector2(1, 1));
 				if (!nearby.intersects(geometry->matrix.xform(p_box), true)) return false;
 				if (clips.empty()) return true;
-				const Rect2 visible = docrender::clipped_visual_bounds(p_box, geometry->matrix, clips);
+				const Rect2 visible = dockit::clipped_visual_bounds(p_box, geometry->matrix, clips);
 				return visible.has_area() && nearby.intersects(visible, true);
 			};
 			for (const auto& fragment : geometry->fragments) {
@@ -1154,7 +1154,7 @@ int HTMLLayout::get_failed_remote_resource_count() const {
 	return state->container ? state->container->get_failed_remote_resource_count() : 0;
 }
 
-const docrender::HTMLPaintRecorder* HTMLLayout::get_paint_recorder() const {
+const dockit::HTMLPaintRecorder* HTMLLayout::get_paint_recorder() const {
 	return state->container ? &state->container->get_paint_recorder() : nullptr;
 }
 
@@ -1172,11 +1172,11 @@ void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D
 	if (!layout || layout->parse_version != p_version || !layout->state->container) return;
 	auto& state = *layout->state;
 	const auto update = state.container->receive_remote_image(p_url, p_texture);
-	if (update == docrender::HTMLResources::ImageUpdate::none) {
+	if (update == dockit::HTMLResources::ImageUpdate::none) {
 		layout->queue_resource_layout();
 		return;
 	}
-	if (update == docrender::HTMLResources::ImageUpdate::paint) {
+	if (update == dockit::HTMLResources::ImageUpdate::paint) {
 		layout->repaint_input();
 		return;
 	}
@@ -1227,10 +1227,10 @@ bool HTMLLayout::hit_test_selectable_text(const Vector2& p_position, bool* r_bla
 	return selectable;
 }
 
-docrender::HTMLSelectionPoint HTMLLayout::selection_point_at(const Vector2& p_position) const {
+dockit::HTMLSelectionPoint HTMLLayout::selection_point_at(const Vector2& p_position) const {
 	const auto modal = top_modal_node();
 	return state->has_layout() ? state->container->get_paint_recorder().selection_point_at(p_position,
-		hit_test_element(p_position, nullptr, true), modal.get()) : docrender::HTMLSelectionPoint{};
+		hit_test_element(p_position, nullptr, true), modal.get()) : dockit::HTMLSelectionPoint{};
 }
 
 String HTMLLayout::get_copyable_text(int64_t p_from, int64_t p_to) const {
@@ -1275,12 +1275,12 @@ void HTMLLayout::draw_selection_drag_image(CanvasItem* p_canvas, const Vector2i&
 	if (state->canvas_renderer.is_null()) {
 		state->canvas_renderer.instantiate();
 	}
-	static const std::vector<docrender::HTMLPaintGroup> no_groups;
-	static const std::vector<docrender::HTMLPaintRun> no_diagnostics;
+	static const std::vector<dockit::HTMLPaintGroup> no_groups;
+	static const std::vector<dockit::HTMLPaintRun> no_diagnostics;
 	const int64_t from = std::min(p_selection.x, p_selection.y);
 	const int64_t to = std::max(p_selection.x, p_selection.y);
-	const docrender::HTMLHighlight selection{ from, to, nullptr, Color(0, 0, 0, 0) };
-	const docrender::HTMLHighlight search{};
+	const dockit::HTMLHighlight selection{ from, to, nullptr, Color(0, 0, 0, 0) };
+	const dockit::HTMLHighlight search{};
 	state->canvas_renderer->submit(*p_canvas, p_position, p_clip, runs, no_groups, no_diagnostics,
 		selection, search, Vector2(), true);
 }
@@ -1346,7 +1346,7 @@ void HTMLLayout::set_dom_selection_change_callback(const Callable& p_callback) {
 	});
 }
 
-docrender::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
+dockit::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
 	if (!state->has_layout()) return {};
 	const auto& recorder = state->container->get_paint_recorder();
 	const auto& spans = recorder.get_text_index_spans();
@@ -1354,7 +1354,7 @@ docrender::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
 		[](const auto& p_span, int64_t p_index) { return p_span.to < p_index; });
 	const auto mapped = [&](const auto& p_span, int64_t p_local) {
 		const auto point = state->dom->text_boundary(p_span.source.lock(), p_local);
-		return point.node.is_valid() && point.node->is_connected() ? point : docrender::HTMLBoundary();
+		return point.node.is_valid() && point.node->is_connected() ? point : dockit::HTMLBoundary();
 	};
 	if (at != spans.end() && p_offset >= at->from) {
 		if (const auto point = mapped(*at, p_offset - at->from); point.node.is_valid()) return point;
@@ -1369,7 +1369,7 @@ docrender::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
 	return {};
 }
 
-int64_t HTMLLayout::document_text_offset(const docrender::HTMLBoundary& p_boundary, bool p_forward) const {
+int64_t HTMLLayout::document_text_offset(const dockit::HTMLBoundary& p_boundary, bool p_forward) const {
 	if (!state->has_layout() || p_boundary.node.is_null() || !p_boundary.node->is_connected()) return 0;
 	const auto& recorder = state->container->get_paint_recorder();
 	int64_t previous = 0;
@@ -1381,7 +1381,7 @@ int64_t HTMLLayout::document_text_offset(const docrender::HTMLBoundary& p_bounda
 		if (p_boundary.node == point.node) {
 			if (p_boundary.offset < point.offset) return p_forward ? span.from : previous;
 			if (p_boundary.offset <= point.offset + span.to - span.from) return span.from + p_boundary.offset - point.offset;
-		} else if (docrender::compare_html_boundaries(p_boundary, point) < 0) {
+		} else if (dockit::compare_html_boundaries(p_boundary, point) < 0) {
 			return p_forward ? span.from : previous;
 		}
 		previous = span.to;
@@ -1436,7 +1436,7 @@ String HTMLLayout::get_base_uri() const {
 
 String HTMLLayout::resolve_link_href(const String& p_href, bool p_use_fallback) const {
 	if (!state->container) return p_href;
-	return docrender::resolve_html_link_href(p_href,
+	return dockit::resolve_html_link_href(p_href,
 		p_use_fallback ? state->container->get_fallback_base() : state->container->get_document_base());
 }
 
@@ -1633,7 +1633,7 @@ void HTMLLayout::sample_css_animations(bool p_force) {
 
 void HTMLLayout::dispatch_css_animation_events() {
 	using EventKey = std::pair<bool, uint64_t>;
-	using PlaybackState = docrender::css::PlaybackState;
+	using PlaybackState = dockit::css::PlaybackState;
 	const auto dom = state->dom;
 	if (!dom) return;
 	const double now = animation_clock_time();
@@ -1811,7 +1811,7 @@ TypedArray<Rect2> HTMLLayout::get_element_rects(const litehtml::element::ptr& p_
 	return result;
 }
 
-const docrender::RenderGeometry* HTMLLayout::element_geometry(const HTMLElement& p_element) const {
+const dockit::RenderGeometry* HTMLLayout::element_geometry(const HTMLElement& p_element) const {
 	if (p_element.get_owner() != this || !state->has_layout()) return nullptr;
 	const auto element = p_element.lock_element();
 	const auto* boxes = element ? state->geometry.find_element(element.get()) : nullptr;
@@ -1991,7 +1991,7 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 	if (state->geometry.uses_visual_hit_order()) {
 		return state->container->get_paint_recorder().hit_test_element(p_position, p_text_selection);
 	}
-	const auto accepts_geometry = [&](const docrender::RenderGeometry* p_geometry) {
+	const auto accepts_geometry = [&](const dockit::RenderGeometry* p_geometry) {
 		return p_geometry && p_geometry->item->is_visible() && (p_text_selection || p_geometry->item->css().accepts_pointer_events()) &&
 			p_geometry->contains_visible_point(p_position);
 	};
@@ -2070,16 +2070,16 @@ bool HTMLLayout::forward_scroll_remainder(const Ref<InputEvent>& p_event, const 
 	return true;
 }
 
-docrender::HTMLScrollInput HTMLLayout::scroll_overflow_from_input(const Vector2& p_position, const Ref<InputEvent>& p_event,
+dockit::HTMLScrollInput HTMLLayout::scroll_overflow_from_input(const Vector2& p_position, const Ref<InputEvent>& p_event,
 	Node& p_owner, const Callable& p_changed) {
 	constexpr real_t PIXELS_PER_STEP = 36;
 	const Vector2 steps = scroll_input_steps(p_event);
 	const Vector2 delta = steps * PIXELS_PER_STEP;
 	const Ref<InputEventPanGesture> pan = p_event;
 	const Vector2 consumed = scroll_overflow(p_position, delta, pan.is_valid() ? &p_owner : nullptr, p_changed);
-	if (consumed == Vector2()) return docrender::HTMLScrollInput::ignored;
+	if (consumed == Vector2()) return dockit::HTMLScrollInput::ignored;
 	return forward_scroll_remainder(p_event, (delta - consumed) / PIXELS_PER_STEP) ?
-		docrender::HTMLScrollInput::forwarded : docrender::HTMLScrollInput::handled;
+		dockit::HTMLScrollInput::forwarded : dockit::HTMLScrollInput::handled;
 }
 
 namespace {
@@ -2110,9 +2110,9 @@ namespace {
 		return {};
 	}
 
-	std::vector<docrender::HTMLSnapArea> collect_snap_areas(const HTMLGeometryIndex& p_geometry,
-		const litehtml::render_item* p_container, const docrender::HTMLPlaneTransform& p_from_document, const Vector2& p_origin) {
-		std::vector<docrender::HTMLSnapArea> areas;
+	std::vector<dockit::HTMLSnapArea> collect_snap_areas(const HTMLGeometryIndex& p_geometry,
+		const litehtml::render_item* p_container, const dockit::HTMLPlaneTransform& p_from_document, const Vector2& p_origin) {
+		std::vector<dockit::HTMLSnapArea> areas;
 		std::unordered_set<const litehtml::element*> included;
 		for (const auto* geometry : p_geometry.get_snap_areas()) {
 			const auto& item = *geometry->item;
@@ -2124,7 +2124,7 @@ namespace {
 			const auto* renderers = p_geometry.find_element(element);
 			if (!renderers) continue;
 			if (const auto bounds = scroll_target_bounds(*renderers, p_from_document, false)) {
-				const auto area = docrender::html_scroll_margin_area(docrender::translate_rect(*bounds, p_origin), item.css());
+				const auto area = dockit::html_scroll_margin_area(dockit::translate_rect(*bounds, p_origin), item.css());
 				if (area.is_finite()) areas.push_back({area, &item.css(), element});
 			}
 		}
@@ -2141,13 +2141,13 @@ namespace {
 		return size ? Vector2(size->width - box.width, size->height - box.height).max(Vector2()) : Vector2();
 	}
 
-	void prepare_snap_relayout(docrender::HTMLSnapRequest& r_request,
+	void prepare_snap_relayout(dockit::HTMLSnapRequest& r_request,
 		const std::array<std::weak_ptr<const litehtml::element>, 2>& p_previous) {
-		if (r_request.method != docrender::HTMLSnapMethod::relayout) return;
+		if (r_request.method != dockit::HTMLSnapMethod::relayout) return;
 		for (int axis = 0; axis < 2; ++axis) r_request.preferred[axis] = p_previous[axis].lock().get();
 	}
 
-	void remember_snap_result(const docrender::HTMLSnapRequest& p_request, const docrender::HTMLSnapResult& p_result,
+	void remember_snap_result(const dockit::HTMLSnapRequest& p_request, const dockit::HTMLSnapResult& p_result,
 		std::array<std::weak_ptr<const litehtml::element>, 2>& r_memory) {
 		for (int axis = 0; axis < 2; ++axis) {
 			if (!p_request.axes[axis]) continue;
@@ -2164,7 +2164,7 @@ Vector2i HTMLLayout::viewport_snap_axes() const {
 	return {type.x, type.y};
 }
 
-docrender::HTMLSnapResult HTMLLayout::snap_viewport(const Vector2& p_viewport, docrender::HTMLSnapRequest p_request) {
+dockit::HTMLSnapResult HTMLLayout::snap_viewport(const Vector2& p_viewport, dockit::HTMLSnapRequest p_request) {
 	if (viewport_snap_axes() == Vector2i()) {
 		state->viewport_snap_memory = {};
 		return {p_request.end.clamp(Vector2(), p_request.limit), {}};
@@ -2172,14 +2172,14 @@ docrender::HTMLSnapResult HTMLLayout::snap_viewport(const Vector2& p_viewport, d
 	const auto root = state->dom->get_document()->root();
 	auto& memory = state->viewport_snap_memory.areas;
 	prepare_snap_relayout(p_request, memory);
-	const auto port = docrender::html_scroll_padding_area(Rect2(Vector2(), p_viewport), root->css());
+	const auto port = dockit::html_scroll_padding_area(Rect2(Vector2(), p_viewport), root->css());
 	const auto areas = collect_snap_areas(state->geometry, nullptr, {}, {});
-	const auto result = docrender::html_select_scroll_snap(root->css(), port, areas, p_request);
+	const auto result = dockit::html_select_scroll_snap(root->css(), port, areas, p_request);
 	remember_snap_result(p_request, result, memory);
 	return result;
 }
 
-docrender::HTMLSnapResult HTMLLayout::snap_nested(const litehtml::render_item& p_container, docrender::HTMLSnapRequest p_request) {
+dockit::HTMLSnapResult HTMLLayout::snap_nested(const litehtml::render_item& p_container, dockit::HTMLSnapRequest p_request) {
 	const auto element = p_container.src_el();
 	const auto* geometry = state->geometry.find_renderer(&p_container);
 	if (!p_container.css().get_scroll_snap_type().enabled() || !geometry || !geometry->inverse || !geometry->child_overflow) {
@@ -2193,10 +2193,10 @@ docrender::HTMLSnapResult HTMLLayout::snap_nested(const litehtml::render_item& p
 	auto& memory = state->nested_snap_memory[element.get()];
 	memory.container = element;
 	prepare_snap_relayout(p_request, memory.areas);
-	const auto port = docrender::html_scroll_padding_area(Rect2(Vector2(), scrollport.size), p_container.css());
+	const auto port = dockit::html_scroll_padding_area(Rect2(Vector2(), scrollport.size), p_container.css());
 	const auto areas = collect_snap_areas(state->geometry, &p_container, *geometry->inverse,
 		item_scroll_position(p_container) - scrollport.position);
-	const auto result = docrender::html_select_scroll_snap(p_container.css(), port, areas, p_request);
+	const auto result = dockit::html_select_scroll_snap(p_container.css(), port, areas, p_request);
 	remember_snap_result(p_request, result, memory.areas);
 	return result;
 }
@@ -2210,7 +2210,7 @@ void HTMLLayout::resnap_nested(const Vector2i& p_viewport_size) {
 		const auto animating = [&](const auto& p_motion) { return p_motion.second.element.lock() == item.src_el(); };
 		if (std::any_of(state->scroll_motions.begin(), state->scroll_motions.end(), animating)) continue;
 		const Vector2 current = item_scroll_position(item);
-		const auto result = snap_nested(item, {current, current, item_scroll_limit(item), {1, 1}, docrender::HTMLSnapMethod::relayout});
+		const auto result = snap_nested(item, {current, current, item_scroll_limit(item), {1, 1}, dockit::HTMLSnapMethod::relayout});
 		const Vector2 delta = result.offset - current;
 		if (delta == Vector2()) continue;
 		item.h_scroll(delta.x);
@@ -2276,7 +2276,7 @@ Vector2 HTMLLayout::scroll_overflow(const Vector2& p_position, const Vector2& p_
 			const Vector2 current = item_scroll_position(*item);
 			const Vector2 limit = item_scroll_limit(*item);
 			const auto snap = snap_nested(*item, {current, current + delta, limit,
-				{delta.x != 0, delta.y != 0}, docrender::HTMLSnapMethod::direction});
+				{delta.x != 0, delta.y != 0}, dockit::HTMLSnapMethod::direction});
 			stopped = snap.stopped;
 			for (int axis = 0; axis < 2; ++axis) {
 				const bool at_boundary = delta[axis] > 0 ? snap.offset[axis] >= limit[axis] : snap.offset[axis] <= 0;
@@ -2322,7 +2322,7 @@ void HTMLLayout::rebuild_document_geometry(const Vector2i& p_viewport_size, bool
 Rect2 HTMLLayout::viewport_scroll_region(const Rect2& p_viewport) const {
 	const auto& document = state->dom->get_document();
 	const auto root = document ? document->root() : nullptr;
-	return root ? docrender::html_scroll_padding_area(p_viewport, root->css()) : p_viewport;
+	return root ? dockit::html_scroll_padding_area(p_viewport, root->css()) : p_viewport;
 }
 
 bool HTMLLayout::viewport_uses_smooth_scroll() const {
@@ -2439,23 +2439,23 @@ void HTMLLayout::advance_nested_scroll(double p_fraction, uint64_t p_layout_id, 
 	}
 }
 
-std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_anchor_into_view(const String& p_id, float p_align,
+std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_anchor_into_view(const String& p_id, float p_align,
 	Node& p_owner, const Callable& p_changed) {
 	const auto* anchor = state->anchors.getptr(p_id);
 	const auto element = anchor ? anchor->element.lock() : nullptr;
 	return element ? scroll_element_into_view(*element, p_align, true, p_owner, p_changed) : std::nullopt;
 }
 
-std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const Ref<HTMLElement>& p_element,
-	std::optional<float> p_align, Node& p_owner, const Callable& p_changed, const docrender::HTMLScrollOptions* p_options) {
+std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const Ref<HTMLElement>& p_element,
+	std::optional<float> p_align, Node& p_owner, const Callable& p_changed, const dockit::HTMLScrollOptions* p_options) {
 	if (p_element.is_null() || p_element->get_owner() != this) return std::nullopt;
 	const auto element = p_element->element.lock();
 	return element ? scroll_element_into_view(*element, p_align, false, p_owner, p_changed, p_options) : std::nullopt;
 }
 
-std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const litehtml::element& p_element,
+std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(const litehtml::element& p_element,
 	std::optional<float> p_align, bool p_allow_fallback, Node& p_owner, const Callable& p_changed,
-	const docrender::HTMLScrollOptions* p_options) {
+	const dockit::HTMLScrollOptions* p_options) {
 	if (!state->has_layout() || !allows_modal_interaction(p_element)) return std::nullopt;
 	const auto* renderers = state->geometry.find_element(&p_element);
 	const auto* renderer = scroll_target_renderer(renderers, p_allow_fallback);
@@ -2483,16 +2483,16 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 		const auto bounds = scroll_target_bounds(*renderers, *scroller->inverse, p_allow_fallback);
 		if (!bounds) continue;
 		const auto& css = item->css();
-		const Rect2 target = docrender::html_scroll_margin_area(*bounds, p_element.css());
-		const Rect2 port = docrender::html_scroll_padding_area(scroller->child_overflow->shape.rect, css);
-		Vector2 delta = docrender::html_scroll_delta(target, port, p_align, p_options);
+		const Rect2 target = dockit::html_scroll_margin_area(*bounds, p_element.css());
+		const Rect2 port = dockit::html_scroll_padding_area(scroller->child_overflow->shape.rect, css);
+		Vector2 delta = dockit::html_scroll_delta(target, port, p_align, p_options);
 		cancel_nested_scroll(*item->src_el());
 		cancel_nested_snap(*item->src_el());
 		const Vector2 from(item->get_scroll_left(), item->get_scroll_top());
 		if (css.get_scroll_snap_type().enabled()) {
 			const auto preferred = closest_scroller == item ? &p_element : nullptr;
-			const docrender::HTMLSnapRequest request{from, from + delta, item_scroll_limit(*item), {1, 1},
-				docrender::HTMLSnapMethod::destination, {preferred, preferred}};
+			const dockit::HTMLSnapRequest request{from, from + delta, item_scroll_limit(*item), {1, 1},
+				dockit::HTMLSnapMethod::destination, {preferred, preferred}};
 			delta = snap_nested(*item, request).offset - from;
 		}
 		const auto dx = litehtml::is_scrollable_overflow(css.get_overflow_x()) ? item->h_scroll(delta.x) : 0;
@@ -2519,7 +2519,7 @@ std::optional<docrender::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(
 	}
 	if (moved) refresh_overflow_paint(!animated.empty());
 	if (!bounds) return std::nullopt;
-	return docrender::HTMLScrollTarget{docrender::html_scroll_margin_area(*bounds, p_element.css()), viewport_fixed, &p_element};
+	return dockit::HTMLScrollTarget{dockit::html_scroll_margin_area(*bounds, p_element.css()), viewport_fixed, &p_element};
 }
 
 void HTMLLayout::set_viewport_scroll_offset(const Vector2i& p_offset) {
@@ -2547,13 +2547,13 @@ void HTMLLayout::draw_viewport_background(CanvasItem& p_canvas, const Vector2& p
 		{}, {}, {}, p_viewport_origin);
 }
 
-docrender::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
+dockit::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
 	const auto& document = state->dom->get_document();
 	const auto root = document && state->has_layout() ? document->root() : nullptr;
 	if (!root || root->css().get_display() == litehtml::display_none) return {};
 	// Read the computed values, before viewport propagation changes the root box's used overflow.
-	const docrender::css::ComputedStyle& css = root->css();
-	return {docrender::html_scrollbar_appearance(css), state->viewport_overflow,
+	const dockit::css::ComputedStyle& css = root->css();
+	return {dockit::html_scrollbar_appearance(css), state->viewport_overflow,
 		{css.get_overflow_x(), css.get_overflow_y()}, css.get_scrollbar_gutter(), css.get_color_scheme()};
 }
 
@@ -2576,13 +2576,13 @@ bool HTMLLayout::update_preferred_color_scheme() {
 	return true;
 }
 
-docrender::HTMLTextLayout HTMLLayout::shape_element_text(const Ref<HTMLElement>& p_element, const String& p_text) const {
+dockit::HTMLTextLayout HTMLLayout::shape_element_text(const Ref<HTMLElement>& p_element, const String& p_text) const {
 	if (state->container && p_element.is_valid() && p_element->get_owner() == this) {
 		if (const auto element = p_element->lock_element()) return state->container->shape_input(element->css().get_font(), p_text);
 	}
 	return {};
 }
-std::optional<docrender::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vector2& p_position) const {
+std::optional<dockit::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vector2& p_position) const {
 	if (!state->has_layout() || !p_position.is_finite()) return {};
 	const auto bar = state->container->get_paint_recorder().scrollbar_at(p_position);
 	const auto owner = bar ? bar->element.lock() : nullptr;
@@ -2591,7 +2591,7 @@ std::optional<docrender::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vecto
 
 void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position) {
 	if (!state->container) return;
-	std::optional<docrender::HTMLScrollbarDrag> target;
+	std::optional<dockit::HTMLScrollbarDrag> target;
 	if (p_position && state->has_layout()) {
 		target = scrollbar_at(*p_position);
 		if (!target) {
@@ -2601,7 +2601,7 @@ void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position
 				if (const auto local = input_local_point(*element.ptr(), *p_position)) {
 					const auto resize = textarea->resize_axes() != Vector2i() && textarea->get_resize_handle().has_point(*local);
 					if (const auto axis = textarea->editor.scrollbar_at(*local); axis && !resize) {
-						target = docrender::HTMLScrollbarDrag{textarea, *axis ? 1 : 0, 0};
+						target = dockit::HTMLScrollbarDrag{textarea, *axis ? 1 : 0, 0};
 					}
 				}
 			}
@@ -2610,11 +2610,11 @@ void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position
 	if (state->container->get_paint_recorder().set_scrollbar_hover(target)) repaint_input();
 }
 
-void HTMLLayout::set_scrollbar_pressed(const std::optional<docrender::HTMLScrollbarDrag>& p_drag) {
+void HTMLLayout::set_scrollbar_pressed(const std::optional<dockit::HTMLScrollbarDrag>& p_drag) {
 	if (state->container && state->container->get_paint_recorder().set_scrollbar_pressed(p_drag)) repaint_input();
 }
 
-void HTMLLayout::drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, const Vector2& p_position) {
+void HTMLLayout::drag_scrollbar(const dockit::HTMLScrollbarDrag& p_drag, const Vector2& p_position) {
 	if (!state->has_layout() || !p_position.is_finite()) return;
 	set_scrollbar_pressed(p_drag);
 	const auto node = p_drag.element.lock();
@@ -2639,7 +2639,7 @@ void HTMLLayout::drag_scrollbar(const docrender::HTMLScrollbarDrag& p_drag, cons
 	}
 }
 
-void HTMLLayout::finish_scrollbar_drag(const docrender::HTMLScrollbarDrag& p_drag) {
+void HTMLLayout::finish_scrollbar_drag(const dockit::HTMLScrollbarDrag& p_drag) {
 	set_scrollbar_pressed(std::nullopt);
 	const auto node = p_drag.element.lock();
 	if (!node) return;
@@ -2655,7 +2655,7 @@ bool HTMLLayout::settle_nested_snap(const litehtml::element& p_element, const Ve
 		auto& item = *renderer->item;
 		if (!item.css().get_scroll_snap_type().enabled() || !item.scrollable_content_size()) continue;
 		const Vector2 current = item_scroll_position(item);
-		const auto snap = snap_nested(item, {current, current, item_scroll_limit(item), p_axes, docrender::HTMLSnapMethod::destination});
+		const auto snap = snap_nested(item, {current, current, item_scroll_limit(item), p_axes, dockit::HTMLSnapMethod::destination});
 		const auto dx = item.h_scroll(snap.offset.x - current.x);
 		const auto dy = item.v_scroll(snap.offset.y - current.y);
 		if (dx == 0 && dy == 0) return false;
@@ -2724,10 +2724,10 @@ Ref<HTMLElement> HTMLLayout::get_button_ancestor(const Ref<HTMLElement>& p_eleme
 		bool allow_disclosure = true;
 		for (auto element = target; element && allows_modal_interaction(*element); element = element->parent()) {
 			if (DocumentAdapter::is_command_button(*element)) return state->dom->make_element(element);
-			const auto disclosure = allow_disclosure ? docrender::details_activation_target(element) : nullptr;
+			const auto disclosure = allow_disclosure ? dockit::details_activation_target(element) : nullptr;
 			if (disclosure && (element != disclosure || element == target)) return state->dom->make_element(element);
 			if ((element->tag() == litehtml::_a_ && element->get_attr("href")) ||
-				docrender::forms::is_listed(*element)) allow_disclosure = false;
+				dockit::forms::is_listed(*element)) allow_disclosure = false;
 		}
 	}
 	return {};
@@ -2738,12 +2738,12 @@ bool HTMLLayout::is_enabled_button(const Ref<HTMLElement>& p_element) const {
 		return false;
 	}
 	const auto element = p_element->element.lock();
-	return element && (DocumentAdapter::is_command_button(*element) || docrender::details_activation_target(element)) && !docrender::forms::is_disabled(*element) &&
+	return element && (DocumentAdapter::is_command_button(*element) || dockit::details_activation_target(element)) && !dockit::forms::is_disabled(*element) &&
 		get_element_scroll_bounds(p_element).has_value();
 }
 
-std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const Ref<HTMLElement>& p_element) const {
-	std::vector<docrender::HTMLSelectMenuRow> rows;
+std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const Ref<HTMLElement>& p_element) const {
+	std::vector<dockit::HTMLSelectMenuRow> rows;
 	if (!is_focusable(p_element) || !state->container) return rows;
 	const auto input = std::dynamic_pointer_cast<HTMLInputNode>(p_element->lock_element());
 	if (!input || !input->accepts_suggestions() || !input->is_editable() || input->editor.has_preedit()) return rows;
@@ -2755,8 +2755,8 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const
 	const auto query = input->type() == HTMLInputNode::Type::COLOR ? String() : input->get_value().to_lower();
 	std::set<String> seen;
 	HTMLDOM::visit_elements(list, [&](const auto& p_node) {
-		const auto option = std::dynamic_pointer_cast<docrender::HTMLOptionNode>(p_node);
-		if (!option || docrender::forms::is_disabled(*option)) return false;
+		const auto option = std::dynamic_pointer_cast<dockit::HTMLOptionNode>(p_node);
+		if (!option || dockit::forms::is_disabled(*option)) return false;
 		const auto value = option->get_value();
 		const auto label = option->get_label();
 		if (value.is_empty() || (!query.is_empty() && value.to_lower().find(query) < 0 && label.to_lower().find(query) < 0)) return false;
@@ -2770,11 +2770,11 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const
 	return rows;
 }
 
-Ref<Texture2D> HTMLLayout::get_control_icon(docrender::HTMLControlIcon p_icon) const {
+Ref<Texture2D> HTMLLayout::get_control_icon(dockit::HTMLControlIcon p_icon) const {
 	return state->container ? state->container->get_control_icon(p_icon) : Ref<Texture2D>();
 }
 
-docrender::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_element, const String& p_text,
+dockit::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_element, const String& p_text,
 	int p_size, bool p_bold) const {
 	const auto node = is_element_connected(p_element) ? p_element->lock_element() : nullptr;
 	if (!node || !state->container) return {};
@@ -2789,10 +2789,10 @@ docrender::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>&
 	}
 	return state->container->shape_input(font, p_text);
 }
-std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
-	std::vector<docrender::HTMLSelectMenuRow> result;
+std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HTMLElement>& p_element) const {
+	std::vector<dockit::HTMLSelectMenuRow> result;
 	if (!is_focusable(p_element) || !state->container) return result;
-	const auto select = std::dynamic_pointer_cast<docrender::HTMLSelectNode>(p_element->lock_element());
+	const auto select = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(p_element->lock_element());
 	if (!select) return result;
 	const auto to_color = [](const litehtml::web_color& p_color) {
 		return Color(p_color.red / 255.0f, p_color.green / 255.0f, p_color.blue / 255.0f, p_color.alpha / 255.0f);
@@ -2816,7 +2816,7 @@ std::vector<docrender::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref
 		if (option->get_attr("hidden") || (group && group->get_attr("hidden"))) continue;
 		if (group && group != previous_group) make_row(*group, String::utf8(group->get_attr("label", "")), -1, false);
 		previous_group = group;
-		make_row(*option, option->get_label(), option_index, !docrender::forms::is_disabled(*option));
+		make_row(*option, option->get_label(), option_index, !dockit::forms::is_disabled(*option));
 	}
 	return result;
 }
@@ -2846,19 +2846,19 @@ namespace {
 	bool can_focus_node(const litehtml::element& p_node) {
 		const auto tag = p_node.tag();
 		if (p_node.get_attr("hidden")) return false;
-		if (docrender::forms::is_listed(p_node) && docrender::forms::is_disabled(p_node)) return false;
+		if (dockit::forms::is_listed(p_node) && dockit::forms::is_disabled(p_node)) return false;
 		if (tag == litehtml::_textarea_ || tag == litehtml::_select_) return true;
-		if (dynamic_cast<const docrender::HTMLDialogNode*>(&p_node)) return p_node.get_attr("open") != nullptr;
+		if (dynamic_cast<const dockit::HTMLDialogNode*>(&p_node)) return p_node.get_attr("open") != nullptr;
 		if (tag == litehtml::_input_) {
 			const auto* input = dynamic_cast<const HTMLInputNode*>(&p_node);
 			return input && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
-		const auto* video = dynamic_cast<const docrender::HTMLVideoNode*>(&p_node);
+		const auto* video = dynamic_cast<const dockit::HTMLVideoNode*>(&p_node);
 		const String editable = String::utf8(p_node.get_attr("contenteditable", "")).strip_edges().to_lower();
 		const bool editable_host = p_node.get_attr("contenteditable") &&
 			(editable.is_empty() || editable == "true" || editable == "plaintext-only");
 		return editable_host || explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
-			docrender::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
+			dockit::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
 			(tag == litehtml::_a_ && p_node.get_attr("href")) || (tag == litehtml::_audio_ && p_node.get_attr("controls")) ||
 			(video && video->has_controls());
 	}
@@ -2912,7 +2912,7 @@ bool HTMLLayout::allows_modal_interaction(const litehtml::element& p_element) co
 	if (p_element.tag() == litehtml::_id("-tag-backdrop")) return false;
 	for (auto node = p_element.shared_from_this(); node; node = node->parent()) {
 		if (node == modal) return true;
-		if (const auto* dialog = dynamic_cast<const docrender::HTMLDialogNode*>(node.get());
+		if (const auto* dialog = dynamic_cast<const dockit::HTMLDialogNode*>(node.get());
 			dialog && dialog->has_pseudo_class(litehtml::_id("modal"))) return false;
 	}
 	return false;
@@ -3006,7 +3006,7 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 				const int64_t index = explicit_tab_index(*p_element).value_or(0);
 				if (const auto* radio = dynamic_cast<const HTMLInputNode*>(p_element.get()); radio && radio->type() == HTMLInputNode::Type::RADIO) {
 					litehtml::element::ptr tab_stop;
-					for (const auto& peer : docrender::forms::radio_group(*radio)) {
+					for (const auto& peer : dockit::forms::radio_group(*radio)) {
 						if (!can_focus_node(*peer) || explicit_tab_index(*peer).value_or(0) < 0 ||
 							!is_focusable(state->dom->make_element(peer))) continue;
 						if (!tab_stop) tab_stop = peer;
@@ -3017,7 +3017,7 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 					}
 					if (tab_stop != p_element) return false;
 				}
-				if (index >= 0 && (!dynamic_cast<const docrender::HTMLDialogNode*>(p_element.get()) ||
+				if (index >= 0 && (!dynamic_cast<const dockit::HTMLDialogNode*>(p_element.get()) ||
 						explicit_tab_index(*p_element))) elements.push_back({handle, index});
 			}
 			return false;
@@ -3040,7 +3040,7 @@ std::shared_ptr<HTMLTextControlNode> HTMLLayout::text_control(const Ref<HTMLElem
 	return std::dynamic_pointer_cast<HTMLTextControlNode>(element);
 }
 
-std::optional<docrender::HTMLPlaneTransform> HTMLLayout::input_inverse(const HTMLElement& p_input) const {
+std::optional<dockit::HTMLPlaneTransform> HTMLLayout::input_inverse(const HTMLElement& p_input) const {
 	if (!state->has_layout() || p_input.get_owner() != this) return std::nullopt;
 	const auto element = p_input.element.lock();
 	if (!element || element->css().skips_contents()) return std::nullopt;
@@ -3084,7 +3084,7 @@ std::optional<HTMLLayout::ResizeTarget> HTMLLayout::resize_grip_at(const Vector2
 			box += item.get_borders();
 		}
 		return ResizeTarget{state->dom->make_element(item.src_el()), *grip->inverse,
-			Vector2(box.width, box.height), docrender::html_resize_axes(item.css())};
+			Vector2(box.width, box.height), dockit::html_resize_axes(item.css())};
 	}
 	const auto element = get_element_at(p_point);
 	const auto node = text_control(element);
@@ -3102,7 +3102,7 @@ bool HTMLLayout::resize_element(const Ref<HTMLElement>& p_element, const Vector2
 	if (!p_size.is_finite() || !is_element_connected(p_element) || !allows_modal_interaction(p_element)) return false;
 	const auto node = p_element->lock_element();
 	const auto* textarea = dynamic_cast<const HTMLTextAreaNode*>(node.get());
-	const auto enabled = textarea ? textarea->resize_axes() : docrender::html_resize_axes(node->css());
+	const auto enabled = textarea ? textarea->resize_axes() : dockit::html_resize_axes(node->css());
 	const Vector2i axes(p_axes.x && enabled.x, p_axes.y && enabled.y);
 	if (axes == Vector2i()) return false;
 
@@ -3130,9 +3130,9 @@ void HTMLLayout::repaint_input() {
 
 void HTMLLayout::update_input(HTMLTextControlNode& p_input) {
 	const bool style_changed = p_input.update_pseudos();
-	const bool validity_changed = docrender::forms::update_validity(p_input);
+	const bool validity_changed = dockit::forms::update_validity(p_input);
 	if (!state->dom->is_element_connected(p_input)) return;
-	if (style_changed || (validity_changed && (state->selector_state_dependencies & docrender::css::selector_depends_on_validity))) invalidate_styles();
+	if (style_changed || (validity_changed && (state->selector_state_dependencies & dockit::css::selector_depends_on_validity))) invalidate_styles();
 	else repaint_input();
 }
 
@@ -3187,7 +3187,7 @@ bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
 		}
 	}
 	previous = std::move(next);
-	if (!(state->selector_state_dependencies & docrender::css::selector_depends_on_hover)) {
+	if (!(state->selector_state_dependencies & dockit::css::selector_depends_on_hover)) {
 		return false;
 	}
 	mark_styles_pending();
@@ -3309,9 +3309,9 @@ PackedStringArray HTMLLayout::video_paths(const HTMLVideoElement& p_element) con
 	const auto append = [&](const char* p_src) {
 		if (!p_src) return;
 		const String value = String::utf8(p_src);
-		String path = docrender::resolve_html_video_path(value, base_dir);
+		String path = dockit::resolve_html_video_path(value, base_dir);
 		if (path.is_empty() && (base_dir == state->imported_video_base_dir || value.begins_with("uid://"))) {
-			path = docrender::resolve_html_video_path(state->video_sources.get(value, String()), base_dir);
+			path = dockit::resolve_html_video_path(state->video_sources.get(value, String()), base_dir);
 		}
 		if (!path.is_empty() && !result.has(path)) result.append(path);
 	};
@@ -3327,7 +3327,7 @@ Ref<Texture2D> HTMLLayout::video_poster(const HTMLVideoElement& p_element) {
 	return state->container && node ? state->container->video_poster(node->get_attr("poster")) : Ref<Texture2D>();
 }
 
-Ref<Texture2D> HTMLLayout::video_control_icon(docrender::HTMLControlIcon p_icon) {
+Ref<Texture2D> HTMLLayout::video_control_icon(dockit::HTMLControlIcon p_icon) {
 	return state->container ? state->container->get_paint_recorder().get_control_icon(p_icon) : Ref<Texture2D>();
 }
 
@@ -3353,7 +3353,7 @@ PackedStringArray HTMLLayout::audio_sources(const HTMLAudioElement& p_element) c
 	if (!element) return result;
 	const auto append_source = [&](const char* p_src) {
 		if (!p_src) return;
-		const String path = docrender::resolve_html_audio_path(String::utf8(p_src), state->container->get_document_base().directory);
+		const String path = dockit::resolve_html_audio_path(String::utf8(p_src), state->container->get_document_base().directory);
 		if (!path.is_empty()) result.append(path);
 	};
 	if (const char* src = element->get_attr("src")) append_source(src);
