@@ -56,7 +56,7 @@ b, strong {
 	font-weight:bolder;
 }
 
-bdi {
+bdi, [dir="auto"] {
 	unicode-bidi: isolate;
 }
 

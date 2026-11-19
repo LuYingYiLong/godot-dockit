@@ -1268,6 +1268,43 @@ namespace dockit {
 		return layout.width();
 	}
 
+	std::vector<size_t> LiteHTMLFonts::get_bidi_visual_order(const String& p_text, uint_ptr p_font,
+		bool p_right_to_left, const std::vector<std::pair<int64_t, int64_t>>& p_ranges) {
+		std::vector<size_t> order(p_ranges.size());
+		for (size_t index = 0; index < order.size(); ++index) order[index] = index;
+		if (!p_font || p_text.is_empty() || p_ranges.size() < 2) return order;
+
+		auto& font = *reinterpret_cast<FontData*>(p_font);
+		Ref<TextLine> line;
+		line.instantiate();
+		line->set_direction(p_right_to_left ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
+		font.stack->add_text(*line.ptr(), p_text, font.description.size);
+
+		const auto server = TextServerManager::get_singleton()->get_primary_interface();
+		if (server.is_null()) return order;
+		std::vector<int64_t> first_glyph(p_ranges.size(), std::numeric_limits<int64_t>::max());
+		int64_t glyph_index = 0;
+		for (const Dictionary& glyph : server->shaped_text_get_glyphs(line->get_rid())) {
+			const int64_t glyph_start = glyph["start"];
+			const int64_t glyph_end = glyph["end"];
+			if (glyph_end > glyph_start) {
+				auto range = std::lower_bound(p_ranges.begin(), p_ranges.end(), glyph_start,
+					[](const auto& p_range, int64_t p_position) { return p_range.second <= p_position; });
+				for (; range != p_ranges.end() && range->first < glyph_end; ++range) {
+					if (range->second > glyph_start) {
+						const auto index = static_cast<size_t>(range - p_ranges.begin());
+						first_glyph[index] = std::min(first_glyph[index], glyph_index);
+					}
+				}
+			}
+			++glyph_index;
+		}
+		std::stable_sort(order.begin(), order.end(), [&](size_t p_left, size_t p_right) {
+			return first_glyph[p_left] < first_glyph[p_right];
+		});
+		return order;
+	}
+
 	pixel_t LiteHTMLFonts::trimmed_punctuation_width(const char* p_text, uint_ptr p_font, punctuation_trim p_trim) {
 		return reinterpret_cast<FontData*>(p_font)->shape_punctuation(String::utf8(p_text), p_trim).width();
 	}

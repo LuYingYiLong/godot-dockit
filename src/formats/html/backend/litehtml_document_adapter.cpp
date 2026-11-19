@@ -534,7 +534,7 @@ namespace litehtml {
 				const std::string direction = lowcase(tag->get_attr("dir", ""));
 				if (is_one_of(direction, "ltr", "rtl")) {
 					tag->m_style.add_property(_id("direction"), direction);
-				} else if (tag->tag() == _bdi_) {
+				} else if (direction == "auto" || tag->tag() == _bdi_) {
 					tag->m_style.add_property(_id("direction"), compute_auto_direction(*tag));
 				}
 				if (const char* rule = tag->get_attr("clip-rule")) {

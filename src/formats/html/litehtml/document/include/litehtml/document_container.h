@@ -10,6 +10,8 @@
 #include "formats/html/css/css_values.h"
 #include <memory>
 #include <functional>
+#include <utility>
+#include <vector>
 
 namespace dockit { class HTMLImageAltText; }
 
@@ -69,6 +71,12 @@ namespace litehtml
 		virtual void draw_cross_fade(uint_ptr, const background_layer&, const css_cross_fade&, const string&, const web_color&, int) {}
 		virtual void draw_box_shadows(const html_tag&, const position&, const borders&, bool) {}
 		virtual text_justify_info get_text_justify_info(const char*, uint_ptr, text_justify) { return {}; }
+		virtual std::vector<size_t> get_bidi_visual_order(const char*, uint_ptr, bool,
+			const std::vector<std::pair<int64_t, int64_t>>& p_ranges) {
+			std::vector<size_t> order(p_ranges.size());
+			for (size_t index = 0; index < order.size(); ++index) order[index] = index;
+			return order;
+		}
 		virtual pixel_t trimmed_punctuation_width(const char* text, uint_ptr font, punctuation_trim) { return text_width(text, font); }
 		virtual void draw_styled_text(uint_ptr hdc, const char* text, uint_ptr font, web_color color,
 			const position& pos, const element&, text_justify_adjustment, punctuation_trim = punctuation_trim::none)

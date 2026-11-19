@@ -466,7 +466,7 @@ void HTMLLabelCanvas::focus_tab_endpoint(bool p_backward) {
 }
 
 bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
-	// 输入法组合期间由编辑器接管按键，不派发 DOM 键盘事件。
+	// 输入法组合期间由编辑器接管按键，不派发 DOM 键盘事件
 	const auto composing_control = label->layout->text_control(focused_element);
 	const bool composing = composing_control && composing_control->editor.has_preedit();
 	if (!composing) {
@@ -785,13 +785,6 @@ void HTMLLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(VIDEO_BACKEND_FFMPEG);
 	BIND_ENUM_CONSTANT(VIDEO_BACKEND_VLC);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_backend", PROPERTY_HINT_ENUM, "Auto,FFmpeg,VLC"),
-		"set_video_backend", "get_video_backend");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "video_bus", PROPERTY_HINT_ENUM), "set_video_bus", "get_video_bus");
-	ADD_SIGNAL(MethodInfo("video_failed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
-		PropertyInfo(Variant::INT, "error"), PropertyInfo(Variant::STRING, "message")));
-	ADD_SIGNAL(MethodInfo("video_fullscreen_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
-		PropertyInfo(Variant::BOOL, "active")));
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
@@ -800,9 +793,6 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "storage_namespace"), "set_storage_namespace", "get_storage_namespace");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "location", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_location");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "behaviors_enabled"), "set_behaviors_enabled", "are_behaviors_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "behavior_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"),
-		"set_behavior_scripts", "get_behavior_scripts");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "transparent_canvas"), "set_transparent_canvas", "is_transparent_canvas");
@@ -812,6 +802,12 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
 		"set_animation_process_mode", "get_animation_process_mode");
+
+	ADD_GROUP("Video", "");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_backend", PROPERTY_HINT_ENUM, "Auto,FFmpeg,VLC"),
+		"set_video_backend", "get_video_backend");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "video_bus", PROPERTY_HINT_ENUM), "set_video_bus", "get_video_bus");
+
 	ADD_GROUP("Audio", "");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "bus", PROPERTY_HINT_ENUM), "set_bus", "get_bus");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_fmod_bus"), "set_use_fmod_bus", "is_using_fmod_bus");
@@ -819,9 +815,20 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "set_caret_blink_enabled", "is_caret_blink_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_interval", PROPERTY_HINT_RANGE, "0.1,10,0.01,suffix:s"),
 		"set_caret_blink_interval", "get_caret_blink_interval");
+	
+	ADD_GROUP("Behavior", "");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "behaviors_enabled"), "set_behaviors_enabled", "are_behaviors_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "behavior_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"),
+		"set_behavior_scripts", "get_behavior_scripts");
+	
 	ADD_GROUP("Debug", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "css_diagnostics_enabled"), "set_css_diagnostics_enabled", "is_css_diagnostics_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "event_debug"), "set_event_debug", "is_event_debug_enabled");
+	
+	ADD_SIGNAL(MethodInfo("video_failed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
+		PropertyInfo(Variant::INT, "error"), PropertyInfo(Variant::STRING, "message")));
+	ADD_SIGNAL(MethodInfo("video_fullscreen_changed", PropertyInfo(Variant::OBJECT, "element", PROPERTY_HINT_NONE, "HTMLVideoElement"),
+		PropertyInfo(Variant::BOOL, "active")));
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("location_changed", PropertyInfo(Variant::STRING, "location")));
 	ADD_SIGNAL(MethodInfo("navigation_failed", PropertyInfo(Variant::STRING, "url"), PropertyInfo(Variant::STRING, "error")));

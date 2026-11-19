@@ -169,6 +169,7 @@ namespace litehtml
 		pixel_t m_intrinsic_indent;
 		pixel_t m_wrap_slack;
 		uint_ptr m_font;
+		bool m_right_to_left;
 		bool m_allow_overflow_wrap;
 		bool m_paragraph_start;
 		bool m_finished = false;
@@ -206,6 +207,7 @@ namespace litehtml
 			m_intrinsic_indent(intrinsic_indent),
 			m_wrap_slack(right - left - indent),
 			m_font(style.get_font()),
+			m_right_to_left(style.is_right_to_left()),
 			m_allow_overflow_wrap(allow_overflow_wrap),
 			m_paragraph_start(paragraph_start),
 			m_hyphenation_limits(style.get_hyphenation_limits()),
@@ -268,6 +270,7 @@ namespace litehtml
 			const render_item& next, pixel_t next_width);
 		pixel_t trailing_hanging_width() const;
 		void align_horizontal(bool terminal_line, pixel_t hanging_width);
+		void reorder_bidi_text();
 		bool justify(pixel_t available);
         bool				have_last_space() const;
         bool				is_break_only() const;

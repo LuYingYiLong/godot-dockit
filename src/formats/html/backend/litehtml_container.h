@@ -15,6 +15,7 @@
 #include <litehtml/document_container.h>
 
 #include <vector>
+#include <utility>
 
 namespace dockit {
 	namespace css { class AnimationState; class TransitionState; }
@@ -121,6 +122,10 @@ namespace dockit {
 			int64_t p_index
 		) const;
 		std::vector<HTMLTextCluster> get_shaped_clusters(litehtml::uint_ptr p_font, const godot::String& p_text);
+		std::vector<size_t> get_bidi_visual_order(const char* p_text, litehtml::uint_ptr p_font, bool p_right_to_left,
+			const std::vector<std::pair<int64_t, int64_t>>& p_ranges) override {
+			return fonts.get_bidi_visual_order(godot::String::utf8(p_text), p_font, p_right_to_left, p_ranges);
+		}
 		void draw_text_fragment(const godot::String& p_text, int64_t p_start, int64_t p_end, const litehtml::position& p_position,
 			const litehtml::element& p_element, litehtml::text_justify_adjustment p_justification, litehtml::punctuation_trim p_trim);
 		void draw_automatic_hyphen(const litehtml::position& p_position, const litehtml::element& p_element,

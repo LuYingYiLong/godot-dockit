@@ -2,10 +2,17 @@
 #include "line_box.h"
 #include "formats/html/layout/html_line_break.h"
 #include "formats/html/layout/html_text_autospace.h"
+#include "formats/html/css/css_font_description.h"
 #include "element.h"
 #include "render_item.h"
 #include "types.h"
+#include <litehtml/document.h>
+#include <litehtml/document_container.h>
+#include <litehtml/el_text.h>
+#include <litehtml/utf8_strings.h>
 #include <algorithm>
+#include <limits>
+#include <string>
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -733,8 +740,127 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
 
 		ret_items.emplace_front(std::unique_ptr<line_box_item>(new lbi_continue(iter->element)));
 	}
+	reorder_bidi_text();
 
 	return ret_items;
+}
+
+void litehtml::line_box::reorder_bidi_text()
+{
+	struct TextPart {
+		line_box_item* item = nullptr;
+		int64_t start = 0;
+		int64_t end = 0;
+	};
+	struct BidiScope {
+		element::ptr node;
+		css_unicode_bidi mode = css_unicode_bidi::normal;
+		bool right_to_left = false;
+	};
+
+	std::vector<TextPart> parts;
+	std::vector<std::pair<int64_t, int64_t>> ranges;
+	string bidi_text;
+	int64_t bidi_length = 0;
+	bool has_rtl = m_right_to_left;
+	bool has_bidi_scope = false;
+	const auto append_control = [&](char32_t p_codepoint) {
+		append_char(bidi_text, p_codepoint);
+		++bidi_length;
+	};
+	const auto open_scope = [&](const BidiScope& p_scope) {
+		const char32_t embedding = p_scope.right_to_left ? 0x202b : 0x202a;
+		const char32_t override = p_scope.right_to_left ? 0x202e : 0x202d;
+		const char32_t isolate = p_scope.right_to_left ? 0x2067 : 0x2066;
+		switch (p_scope.mode) {
+			case css_unicode_bidi::embed: append_control(embedding); break;
+			case css_unicode_bidi::bidi_override: append_control(override); break;
+			case css_unicode_bidi::isolate: append_control(isolate); break;
+			case css_unicode_bidi::isolate_override: append_control(isolate); append_control(override); break;
+			case css_unicode_bidi::plaintext: append_control(0x2068); break;
+			case css_unicode_bidi::normal: break;
+		}
+	};
+	const auto close_scope = [&](const BidiScope& p_scope) {
+		if (p_scope.mode == css_unicode_bidi::embed || p_scope.mode == css_unicode_bidi::bidi_override) append_control(0x202c);
+		else if (p_scope.mode == css_unicode_bidi::isolate || p_scope.mode == css_unicode_bidi::plaintext) append_control(0x2069);
+		else if (p_scope.mode == css_unicode_bidi::isolate_override) { append_control(0x202c); append_control(0x2069); }
+	};
+	const auto get_scopes = [](const element::ptr& p_source) {
+		std::vector<element::ptr> ancestors;
+		for (element::ptr node = p_source ? p_source->parent() : nullptr; node; node = node->parent())
+			ancestors.push_back(node);
+		std::reverse(ancestors.begin(), ancestors.end());
+		std::vector<BidiScope> result;
+		for (const auto& node : ancestors) {
+			const auto mode = static_cast<css_unicode_bidi>(node->css().get_unicode_bidi_mode());
+			if (mode == css_unicode_bidi::normal) continue;
+			const auto parent = node->parent();
+			const auto parent_mode = parent ? static_cast<css_unicode_bidi>(parent->css().get_unicode_bidi_mode()) : css_unicode_bidi::normal;
+			const bool explicit_scope = node->tag() == _bdi_ || node->tag() == _bdo_ || node->get_attr("dir") != nullptr;
+			if (mode != parent_mode || explicit_scope) result.push_back({ node, mode, node->css().is_right_to_left() });
+		}
+		return result;
+	};
+	std::vector<BidiScope> active_scopes;
+	for (const auto& item : m_items) {
+		if (item->get_type() != line_box_item::type_text_part || item->get_el()->skip()) continue;
+		const auto source = item->get_el()->src_el();
+		const auto* text_element = dynamic_cast<const el_text*>(source.get());
+		if (!text_element || source->is_break()) continue;
+		const string& text = text_element->get_rendered_text();
+		if (text.empty()) continue;
+
+		auto scopes = get_scopes(source);
+		has_bidi_scope |= !scopes.empty();
+		size_t common = 0;
+		while (common < active_scopes.size() && common < scopes.size() &&
+			active_scopes[common].node.get() == scopes[common].node.get()) ++common;
+		for (size_t index = active_scopes.size(); index > common; --index) close_scope(active_scopes[index - 1]);
+		for (size_t index = common; index < scopes.size(); ++index) open_scope(scopes[index]);
+		active_scopes = std::move(scopes);
+
+		const auto utf32 = utf8_to_utf32(text);
+		const char32_t* codepoints = utf32;
+		const int64_t length = static_cast<int64_t>(std::char_traits<char32_t>::length(codepoints));
+		const int64_t start = bidi_length;
+		bidi_text += text;
+		bidi_length += length;
+		parts.push_back({ item.get(), start, start + length });
+		ranges.emplace_back(start, start + length);
+		for (int64_t index = 0; index < length; ++index) {
+			const char32_t codepoint = codepoints[index];
+			has_rtl |= (codepoint >= 0x0590 && codepoint <= 0x08ff) ||
+				(codepoint >= 0xfb1d && codepoint <= 0xfdff) || (codepoint >= 0xfe70 && codepoint <= 0xfeff) ||
+				(codepoint >= 0x10800 && codepoint <= 0x10fff) || (codepoint >= 0x1e800 && codepoint <= 0x1eeff);
+			has_bidi_scope |= (codepoint >= 0x202a && codepoint <= 0x202e) ||
+				(codepoint >= 0x2066 && codepoint <= 0x2069);
+		}
+	}
+	for (size_t index = active_scopes.size(); index > 0; --index) close_scope(active_scopes[index - 1]);
+	if ((!has_rtl && !has_bidi_scope) || parts.size() < 2 || !m_font) return;
+
+	// litehtml splits words into separate text items, so resolve their visual order from the full line.
+	const auto order = parts.front().item->get_el()->src_el()->get_document()->container()->get_bidi_visual_order(
+		bidi_text.c_str(), m_font, m_right_to_left, ranges);
+	if (order.size() != parts.size()) return;
+	std::vector<bool> seen(parts.size());
+	for (const size_t index : order) {
+		if (index >= parts.size() || seen[index]) return;
+		seen[index] = true;
+	}
+	bool changed = false;
+	for (size_t index = 0; index < order.size(); ++index) changed |= order[index] != index;
+	if (!changed) return;
+
+	pixel_t cursor = std::numeric_limits<pixel_t>::max();
+	for (const auto& part : parts) cursor = std::min(cursor, part.item->pos().x - part.item->spacing_before());
+	for (const size_t index : order) {
+		if (index >= parts.size()) return;
+		auto& part = parts[index];
+		part.item->pos().x = cursor + part.item->spacing_before() + part.item->get_el()->content_offset_left();
+		cursor += part.item->occupied_width();
+	}
 }
 
 std::shared_ptr<litehtml::render_item> litehtml::line_box::get_first_text_part() const

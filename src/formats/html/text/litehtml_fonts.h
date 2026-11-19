@@ -99,6 +99,8 @@ namespace dockit {
 		void delete_font(litehtml::uint_ptr p_font);
 		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font);
 		litehtml::pixel_t measure_text(const godot::String& p_text, litehtml::uint_ptr p_font, litehtml::font_metrics& r_metrics);
+		std::vector<size_t> get_bidi_visual_order(const godot::String& p_text, litehtml::uint_ptr p_font,
+			bool p_right_to_left, const std::vector<std::pair<int64_t, int64_t>>& p_ranges);
 		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim);
 		HTMLTextLayout shape_text(litehtml::uint_ptr p_font, const godot::String& p_text);
 		HTMLTextLayout shape_text_for_outline(litehtml::uint_ptr p_font, const godot::String& p_text,

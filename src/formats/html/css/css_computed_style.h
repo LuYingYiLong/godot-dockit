@@ -386,6 +386,7 @@ namespace dockit::css {
 		bool hides_empty_cells() const { return m_hide_empty_cells; }
 		bool is_ruby_under() const { return m_ruby_position == 1; }
 		bool is_right_to_left() const { return m_bg.m_direction == static_cast<int>(css_direction::rtl); }
+		int get_unicode_bidi_mode() const { return m_unicode_bidi; }
 		const web_color& get_accent_color() const { return m_accent_color; }
 		const web_color& get_caret_color() const { return m_caret_color; }
 		double get_opacity() const { return m_opacity; }
