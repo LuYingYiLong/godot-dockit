@@ -42,6 +42,7 @@ namespace docrender {
 		godot::Callable remote_stylesheet_callback;
 		bool recording_paint = false;
 		int stylesheet_reads = 0;
+		int failed_remote_resources = 0;
 
 		const HTMLImageMetadata& get_image_metadata(const godot::String& p_path);
 		godot::String get_url_dir(const char* p_css_base) const;
@@ -65,6 +66,8 @@ namespace docrender {
 		bool receive_remote_stylesheet(const godot::String& p_url, const godot::String& p_final_url, const godot::String& p_text);
 		void set_remote_image_callback(const godot::Callable& p_callback);
 		void begin_image_layout();
+		int pending_resource_count() const;
+		int get_failed_remote_resource_count() const { return failed_remote_resources; }
 		void begin_image_paint();
 		void end_image_paint();
 		enum class ImageUpdate { none, paint, layout };

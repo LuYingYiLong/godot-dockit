@@ -1,4 +1,5 @@
 #include "html_document.h"
+#include "html_print_layout.h"
 
 using namespace godot;
 
@@ -28,6 +29,7 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_set_svg_clip_sources", "sources"), &HTMLDocument::set_svg_clip_sources);
 	ClassDB::bind_method(D_METHOD("_get_svg_clip_sources"), &HTMLDocument::get_svg_clip_sources);
 	ClassDB::bind_method(D_METHOD("create_layout"), &HTMLDocument::create_layout);
+	ClassDB::bind_method(D_METHOD("create_print_layout", "options"), &HTMLDocument::create_print_layout, DEFVAL(Dictionary()));
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
@@ -169,6 +171,13 @@ Ref<HTMLLayout> HTMLDocument::create_layout() const {
 	Ref<HTMLLayout> result;
 	result.instantiate();
 	parse_into(*result.ptr());
+	return result;
+}
+
+Ref<HTMLPrintLayout> HTMLDocument::create_print_layout(const Dictionary& p_options) const {
+	Ref<HTMLPrintLayout> result;
+	result.instantiate();
+	result->prepare(*this, p_options);
 	return result;
 }
 

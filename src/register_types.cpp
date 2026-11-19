@@ -25,6 +25,7 @@
 #include "formats/html/elements/html_table_elements.h"
 #include "formats/html/paint/html_canvas_renderer.h"
 #include "formats/html/html_document.h"
+#include "formats/html/html_print_layout.h"
 #include "formats/html/dom/html_document_fragment.h"
 #include "formats/html/dom/html_mutation_observer.h"
 #include "formats/html/events/html_event.h"
@@ -173,6 +174,7 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLLayout);
 		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
 		GDREGISTER_CLASS(HTMLDocument);
+		GDREGISTER_CLASS(HTMLPrintLayout);
 		GDREGISTER_INTERNAL_CLASS(HTMLLabelCanvas);
 		GDREGISTER_INTERNAL_CLASS(HTMLSelectionDragPreview);
 		GDREGISTER_CLASS(HTMLLabel);

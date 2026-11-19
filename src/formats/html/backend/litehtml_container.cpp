@@ -651,7 +651,7 @@ namespace docrender {
 	}
 
 	void LiteHTMLContainer::get_media_features(media_features& r_media) const {
-		r_media.type = media_type_screen;
+		r_media.type = print_media ? media_type_print : media_type_screen;
 		r_media.width = r_media.device_width = media_viewport_size.x;
 		r_media.height = r_media.device_height = media_viewport_size.y;
 		r_media.color = 8;

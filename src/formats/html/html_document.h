@@ -7,6 +7,7 @@
 class HTMLDocument : public godot::Resource {
 	GDCLASS(HTMLDocument, godot::Resource)
 	friend class HTMLLabel;
+	friend class HTMLPrintLayout;
 
 	godot::String text;
 	godot::String base_dir = "res://";
@@ -57,4 +58,5 @@ public:
 	godot::Dictionary get_svg_clip_sources() const;									// 返回 SVG 文件路径到源文本的映射副本
 	
 	godot::Ref<HTMLLayout> create_layout() const;									// 从资源当前内容创建独立的已解析布局实例
+	godot::Ref<HTMLPrintLayout> create_print_layout(const godot::Dictionary& p_options = {}) const;
 };

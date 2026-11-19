@@ -221,7 +221,11 @@ namespace docrender {
 	}
 
 	bool HTMLResources::receive_remote_stylesheet(const String& p_url, const String& p_final_url, const String& p_text) {
-		if (!pending_stylesheets.erase(p_url) || p_final_url.is_empty()) return false;
+		if (!pending_stylesheets.erase(p_url)) return false;
+		if (p_final_url.is_empty()) {
+			++failed_remote_resources;
+			return true;
+		}
 		remote_stylesheets.insert(p_url, {RemoteStylesheetStatus::ready, p_final_url, p_text});
 		return true;
 	}
@@ -377,6 +381,10 @@ namespace docrender {
 		pending_layout_images.clear();
 	}
 
+	int HTMLResources::pending_resource_count() const {
+		return pending_layout_images.size() + pending_paint_images.size() + pending_stylesheets.size();
+	}
+
 	void HTMLResources::begin_image_paint() {
 		pending_paint_images.clear();
 		recording_paint = true;
@@ -389,7 +397,11 @@ namespace docrender {
 	HTMLResources::ImageUpdate HTMLResources::receive_remote_image(const String& p_url, const Ref<Texture2D>& p_texture) {
 		const bool layout = pending_layout_images.erase(p_url);
 		const bool paint = pending_paint_images.erase(p_url);
-		if (p_texture.is_null() || (!layout && !paint)) return ImageUpdate::none;
+		if (!layout && !paint) return ImageUpdate::none;
+		if (p_texture.is_null()) {
+			++failed_remote_resources;
+			return ImageUpdate::none;
+		}
 		images.insert(p_url, p_texture);
 		return layout ? ImageUpdate::layout : paint ? ImageUpdate::paint : ImageUpdate::none;
 	}

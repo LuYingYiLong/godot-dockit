@@ -40,6 +40,7 @@ namespace docrender {
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);		// 更新文档的字体声明和命名特性并报告是否变化
 		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size); // 更新排版和媒体查询各自使用的视口尺寸
+		void set_print_media(bool p_enabled) { print_media = p_enabled; }
 		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);
 		std::shared_ptr<litehtml::document> get_svg_clip_document(std::string_view p_url, const char* p_base); // 读取并缓存独立 SVG 裁剪文档
 		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const; // 读取保留原始拼写的属性
@@ -52,6 +53,8 @@ namespace docrender {
 			return resources.receive_remote_stylesheet(p_url, p_final_url, p_text);
 		}
 		void begin_image_layout() { resources.begin_image_layout(); }
+		int pending_resource_count() const { return resources.pending_resource_count(); }
+		int get_failed_remote_resource_count() const { return resources.get_failed_remote_resource_count(); }
 		HTMLResources::ImageUpdate receive_remote_image(const godot::String& p_url, const godot::Ref<godot::Texture2D>& p_texture) {
 			return resources.receive_remote_image(p_url, p_texture);
 		}
@@ -132,6 +135,7 @@ namespace docrender {
 		HTMLDOM& dom;
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;
+		bool print_media = false;
 		const css::TransitionState* transition_state = nullptr;
 		const css::AnimationState* animation_state = nullptr;
 		litehtml::css_source_kind css_source_kind = litehtml::css_source_kind::none;

@@ -2623,6 +2623,30 @@ msgstr "要显示的 HTML 文档或片段。"
 msgid "A shareable source document for static HTML."
 msgstr "可共享的静态 HTML 源文档。"
 
+#. doc_classes/HTMLPrintLayout.xml
+msgid "A paginated print layout created from an [HTMLDocument]."
+msgstr "从 [HTMLDocument] 创建的分页打印布局。"
+
+#. doc_classes/HTMLDocument.xml
+msgid "Creates a print layout from this resource. The layout uses print media queries, applies CSS [code]@page[/code] size and margins, and exposes page geometry in CSS pixels. The default page is A4 portrait with 10 mm margins. The optional dictionary accepts [code]page_size: Vector2[/code] in CSS pixels, [code]orientation[/code] as [code]portrait[/code] or [code]landscape[/code], [code]margin[/code] as a number, [code]Vector4(left, top, right, bottom)[/code], or a dictionary of side values, and [code]page_name[/code] for named [code]@page[/code] rules. Explicit options override CSS."
+msgstr "从此资源创建打印布局。布局会应用打印媒体查询、CSS [code]@page[/code] 的尺寸和边距，并以 CSS 像素提供页面几何信息。默认纸张为 A4 纵向，边距为 10 毫米。可选字典接受以 CSS 像素表示的 [code]page_size: Vector2[/code]、值为 [code]portrait[/code] 或 [code]landscape[/code] 的 [code]orientation[/code]、数值形式的 [code]margin[/code]、[code]Vector4(left, top, right, bottom)[/code] 或按边指定值的字典，以及用于命名 [code]@page[/code] 规则的 [code]page_name[/code]。显式选项优先于 CSS。"
+
+#. doc_classes/HTMLPrintLayout.xml
+msgid "Exports the paginated layout to a PDF file. Returns [constant OK] on success. PDF export requires a build with the PDFium writer backend."
+msgstr "将分页布局导出为 PDF 文件。成功时返回 [constant OK]。PDF 导出要求构建中包含 PDFium 写入后端。"
+
+#. doc_classes/HTMLPrintLayout.xml
+msgid "Returns print layout, resource, and PDF export limitations collected so far."
+msgstr "返回目前收集到的打印布局、资源和 PDF 导出限制。"
+
+#. doc_classes/HTMLPrintLayout.xml
+msgid "Returns the printable content rectangle within a page in CSS pixels."
+msgstr "以 CSS 像素返回页面内的可打印内容矩形。"
+
+#. doc_classes/HTMLPrintLayout.xml
+msgid "The print layout waits for remote stylesheets and images before emitting [signal ready]. Page sizes and content rectangles are expressed in CSS pixels. Pagination honors [code]break-before[/code], [code]break-after[/code], and legacy [code]page-break-before[/code] and [code]page-break-after[/code] values that force a page break. It currently does not apply [code]break-inside[/code], column break values, [code]orphans[/code], or [code]widows[/code]. Page-specific content widths share one text reflow width. PDF export writes basic text, rectangular fills, circles, and images as PDF objects. Text is written with PDF standard Helvetica; glyphs it cannot encode, including CJK glyphs, are omitted. Some CSS transforms, overflow clips, and compositing effects are reported in [method get_diagnostics] and are not preserved."
+msgstr "打印布局会等待远程样式表和图像处理完成后再发出 [signal ready]。页面尺寸和内容矩形均以 CSS 像素表示。分页会遵循用于强制分页的 [code]break-before[/code]、[code]break-after[/code] 以及旧式 [code]page-break-before[/code] 和 [code]page-break-after[/code] 值。目前尚未应用 [code]break-inside[/code]、分栏断点值、[code]orphans[/code] 或 [code]widows[/code]。不同页面的内容宽度共用同一个文字重排宽度。PDF 导出会将基础文字、矩形填充、圆形和图像写为 PDF 对象。文字使用 PDF 标准 Helvetica 字体；该字体无法编码的字形（包括中日韩字形）会被省略。部分 CSS 变换、溢出裁剪和合成效果会通过 [method get_diagnostics] 报告，但不会保留。"
+
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Additional CSS for [member text]. The rules share the document stylesheets' author origin and "

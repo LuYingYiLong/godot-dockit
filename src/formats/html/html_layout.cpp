@@ -261,6 +261,7 @@ struct HTMLLayout::State {
 	bool input_paint_pending = false;
 	unsigned selector_state_dependencies = 0;
 	bool css_diagnostics_enabled = false;
+	bool print_media = false;
 	bool embedded_block = false;
 
 	bool has_layout() const {
@@ -1134,12 +1135,31 @@ void HTMLLayout::queue_resource_layout() {
 	else queue_reflow();
 }
 
+void HTMLLayout::set_print_media(bool p_enabled) {
+	if (state->print_media == p_enabled) return;
+	state->print_media = p_enabled;
+	if (state->container) state->container->set_print_media(p_enabled);
+	mark_styles_pending();
+}
+
+int HTMLLayout::pending_resource_count() const {
+	return state->container ? state->container->pending_resource_count() : 0;
+}
+
+int HTMLLayout::get_failed_remote_resource_count() const {
+	return state->container ? state->container->get_failed_remote_resource_count() : 0;
+}
+
+const docrender::HTMLPaintRecorder* HTMLLayout::get_paint_recorder() const {
+	return state->container ? &state->container->get_paint_recorder() : nullptr;
+}
+
 void HTMLLayout::remote_stylesheet_completed(const String& p_url, const String& p_final_url, const String& p_text,
 	uint64_t p_id, uint64_t p_version) {
 	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_id)));
 	if (!layout || layout->parse_version != p_version || !layout->state->container) return;
 	if (!layout->state->container->receive_remote_stylesheet(p_url, p_final_url, p_text)) return;
-	layout->mark_styles_pending();
+	if (!p_final_url.is_empty()) layout->mark_styles_pending();
 	layout->queue_resource_layout();
 }
 
@@ -1148,7 +1168,10 @@ void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D
 	if (!layout || layout->parse_version != p_version || !layout->state->container) return;
 	auto& state = *layout->state;
 	const auto update = state.container->receive_remote_image(p_url, p_texture);
-	if (update == docrender::HTMLResources::ImageUpdate::none) return;
+	if (update == docrender::HTMLResources::ImageUpdate::none) {
+		layout->queue_resource_layout();
+		return;
+	}
 	if (update == docrender::HTMLResources::ImageUpdate::paint) {
 		layout->repaint_input();
 		return;

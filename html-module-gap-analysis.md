@@ -136,7 +136,7 @@ for (auto& element : query_selector_all("script")) {
 
 | # | 缺口 | 证据 |
 | --- | --- | --- |
-| 1 | **分页 / 打印媒体整体缺失** | 无 `@page`、无 `break-before/after/inside`、无 `orphans`/`widows`、无分页布局。且后端硬编码 `media_type_screen`（`backend/litehtml_container.cpp:647`），所以 `@media print` **永久不匹配**——作者的打印样式表全部失效 |
+| 1 | **分页 / 打印媒体部分实现** | `HTMLDocument.create_print_layout()` 已启用 `@media print`，支持常见 `@page` 尺寸/方向/边距、`:first/:left/:right` 与命名页选项，并提供分页几何和 PDF 写出。分页仍以连续布局切片，支持简单选择器与内联的强制 `break-before/after: page|always` 及旧式别名；`break-inside`、widows/orphans、命名页的元素级分配、复杂级联和行内断页未实现。所有页面共用一个文本重排宽度。PDF 保留基础拉丁文字/矩形/圆形/图像对象，尚未嵌入字体，Helvetica 无法编码的字形（包括中日韩文字）会省略；材质效果、精确 overflow clip 与变换也未保留 |
 | 2 | **多列布局缺失** | `columns` / `column-count` / `column-width` / `column-rule*` / `column-span` / `column-fill` 不在属性表中（`css/css_declarations.cpp:74-386`） |
 | 3 | **竖排缺失** | 无 `writing-mode`、无 `text-orientation`；`writing-mode: vertical-rl` 被列为 `unknown_property` 的示例（`html_css_support.md:776`）；引擎显式只做水平书写（`css_declarations.cpp:570`、`css_units.cpp:46`）。古籍/竖排诗词不可行 |
 | 4 | **无障碍/输入类媒体特性缺失** | 只有 `prefers-color-scheme`；`prefers-reduced-motion`、`forced-colors`、`prefers-contrast`、`hover`、`pointer`、`any-hover` 全无（`css/css_media_query.cpp:546-598`）。Windows 高对比度（本项目主力平台）无响应 |
@@ -151,7 +151,7 @@ for (auto& element : query_selector_all("script")) {
 ## 5. 其他基础能力
 
 - **无障碍**：只有 `get_accessible_text()` 返回一整段纯文本。没有元素级 a11y 树、没有 role/state/action，屏幕阅读器无法按标题/表格/表单结构导航。
-- **HTML → PDF / 分页导出**：PDF 模块只做 PDF 的读写与表单，没有 HTML→PDF 通路；配合缺 `@page` 与分页，一个"文档渲染器"实际无法产出分页版面。可以用 `SubViewport` + `HTMLLayout.draw()` 出整页位图，但拿不到页级语义。
+- **HTML → PDF / 分页导出**：已有 `HTMLPrintLayout` 和 PDFium 导出，可获得页数、纸张尺寸与可打印区域，也能提取 PDF 中的文本。CSS 分页控制、命名页自动切换、复杂效果栅格回退和完整字形嵌入仍需完善。
 - **坐标/文档模型**：一个 label 一个文档、一个 selection，无多文档、无跨文档选区。
 - **文档错误**：`doc_classes/HTMLLayout.xml` 明显过时（说边框只有 4 种样式、transform 只有 2D、选择器只有基础类型），会让人严重低估实现；而且 `html_css_support.md` 里没有"已知不支持"章节（`writing-mode` 只能从诊断示例里反推）。
 
@@ -175,7 +175,7 @@ for (auto& element : query_selector_all("script")) {
 
 **P2 — 文档形态**
 
-9. `@media print` 真正生效 + `@page`/`break-*`/`orphans`/`widows` + 分页 API（配合已有的 PDF 写出，可做 HTML→PDF）。
+9. 已提供 `@media print`、基础 `@page`/强制断页、分页几何和 HTML→PDF 写出；后续补完整的 CSS Fragmentation、命名页自动切换、widows/orphans 与复杂效果栅格回退。
 10. 多列布局；竖排 `writing-mode`。
 11. 已提供基础 `contenteditable` 和编辑命令；后续补 IME、富文本粘贴/剪贴板 HTML 与 undo/redo。
 12. 已提供 `<canvas>` 的 GDScript 2D backing image、文本、线性渐变和 pattern；后续补径向渐变、Path2D、strokeText 和浏览器 `ImageData` 兼容性。

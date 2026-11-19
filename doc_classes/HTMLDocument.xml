@@ -16,6 +16,13 @@
 				Parses a snapshot of this resource into a new [HTMLLayout]. Call [method HTMLLayout.layout] with the target viewport size, then [method HTMLLayout.draw] to display it. See [method HTMLLayout.get_render_error] for parse or layout errors.
 			</description>
 		</method>
+		<method name="create_print_layout" qualifiers="const">
+			<return type="HTMLPrintLayout" />
+			<param index="0" name="options" type="Dictionary" default="{}" />
+			<description>
+				Creates a print layout from this resource. The layout uses print media queries, applies CSS [code]@page[/code] size and margins, and exposes page geometry in CSS pixels. The default page is A4 portrait with 10 mm margins. The optional dictionary accepts [code]page_size: Vector2[/code] in CSS pixels, [code]orientation[/code] as [code]portrait[/code] or [code]landscape[/code], [code]margin[/code] as a number, [code]Vector4(left, top, right, bottom)[/code], or a dictionary of side values, and [code]page_name[/code] for named [code]@page[/code] rules. Explicit options override CSS.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">

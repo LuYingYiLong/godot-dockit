@@ -39,6 +39,7 @@ namespace godot {
 
 namespace docrender {
 	class HTMLDOM;
+	class HTMLPaintRecorder;
 	class HTMLTextControlNode;
 	enum class HTMLControlIcon;
 	struct HTMLAnchor {
@@ -71,6 +72,7 @@ class HTMLDialogElement;
 class HTMLStyleSheet;
 class HTMLLabel;
 class HTMLLabelCanvas;
+class HTMLPrintLayout;
 
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
@@ -116,6 +118,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLTextAreaElement;
 	friend class ::HTMLLabel;
 	friend class ::HTMLLabelCanvas;
+	friend class ::HTMLPrintLayout;
 	friend class MarkdownLabelCanvas;
 	friend class HTMLRange;
 	friend class HTMLAnimation;
@@ -253,6 +256,10 @@ class HTMLLayout : public godot::RefCounted {
 	void repaint_input();
 	bool set_interaction_pseudo(const godot::Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled);
 	void mark_styles_pending();
+	void set_print_media(bool p_enabled);
+	int pending_resource_count() const;
+	int get_failed_remote_resource_count() const;
+	const docrender::HTMLPaintRecorder* get_paint_recorder() const;
 	std::string_view get_cursor_at(const godot::Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const;
 	void record_css_diagnostics();
 	bool refresh_cssom();
