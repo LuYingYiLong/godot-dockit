@@ -115,6 +115,7 @@ namespace litehtml
 			if (const auto* frames = m_styles.find_keyframes(name)) return frames;
 			return m_master_css.find_keyframes(name);
 		}
+		css_registered_properties registered_properties();
 		bool matches_container_query(const container_query& query, const element& subject, bool include_subject) const;
 		std::optional<pixel_t> resolve_container_unit(const element& subject, bool block_axis, bool include_subject);
 		uint_ptr						get_font(const font_description& descr, font_metrics* fm);

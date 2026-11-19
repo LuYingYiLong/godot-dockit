@@ -31,6 +31,7 @@ public:
 	void snapshot_defaults();
 	void clear(bool keep_variables = false);
 	void resolve(bool has_author_layers, bool inherited_rtl, const litehtml::css_inherited_variable& inherited,
+		const litehtml::css_registered_properties& registered, litehtml::document_container* container,
 		const ParseDeferred& parse_deferred);
 
 	const Value& get(Property name) const;

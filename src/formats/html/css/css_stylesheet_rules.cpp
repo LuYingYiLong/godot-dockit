@@ -86,6 +86,7 @@ std::optional<Kind> block_rule_kind(const string& name) {
 	if (name == "font-feature-values") return Kind::font_feature_values;
 	if (name == "counter-style") return Kind::counter_style;
 	if (name == "keyframes") return Kind::keyframes;
+	if (name == "property") return Kind::property;
 	return {};
 }
 

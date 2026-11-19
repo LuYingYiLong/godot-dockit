@@ -5,11 +5,13 @@
 #include "formats/html/css/css_parser.h"
 #include "formats/html/css/css_font_face.h"
 #include "formats/html/css/css_animation.h"
+#include "formats/html/css/css_variables.h"
 
 namespace docrender::css { struct StylesheetImport; }
 
 namespace litehtml
 {
+	class document;
 
 using docrender::css::raw_rule;
 using docrender::css::raw_declaration;
@@ -47,6 +49,12 @@ class css
 	};
 	std::vector<keyframes_rule> m_keyframe_rules;
 	std::map<string, std::pair<int, css_keyframes>> m_keyframes;
+	struct property_registration_rule {
+		string_id name;
+		css_registered_property registration;
+		media_query_list_list::ptr media;
+	};
+	std::vector<property_registration_rule> m_property_registration_rules;
 public:
 
 	const css_selector::vector& selectors() const
@@ -69,6 +77,7 @@ public:
 		const auto found = m_keyframes.find(name);
 		return found == m_keyframes.end() ? nullptr : &found->second.second;
 	}
+	void collect_registered_properties(document& doc, css_registered_properties& properties) const;
 	bool	has_layers() const { return cascade_layers.has_layers(); }
 	bool	has_container_queries() const { return m_has_container_queries; }
 

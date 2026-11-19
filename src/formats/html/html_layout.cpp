@@ -795,6 +795,10 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, c
 		state->container->set_document_source_path(p_source_path);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->container->set_preferred_color_scheme(system_preference());
+		const DisplayServer* display = DisplayServer::get_singleton();
+		state->container->set_accessibility_preferences(
+			display && display->accessibility_should_reduce_animation() > 0,
+			display && display->accessibility_should_increase_contrast() > 0);
 		state->master_styles = litehtml::master_css;
 		if (!p_default_stylesheet.is_empty()) {
 			state->master_styles += '\n';
@@ -2561,7 +2565,13 @@ litehtml::color_scheme HTMLLayout::get_element_color_scheme(const Ref<HTMLElemen
 }
 
 bool HTMLLayout::update_preferred_color_scheme() {
-	if (!state->container || !state->container->set_preferred_color_scheme(system_preference())) return false;
+	if (!state->container) return false;
+	const DisplayServer* display = DisplayServer::get_singleton();
+	const bool changed = state->container->set_preferred_color_scheme(system_preference()) |
+		state->container->set_accessibility_preferences(
+			display && display->accessibility_should_reduce_animation() > 0,
+			display && display->accessibility_should_increase_contrast() > 0);
+	if (!changed) return false;
 	mark_styles_pending();
 	return true;
 }

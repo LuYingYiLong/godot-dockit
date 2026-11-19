@@ -11,10 +11,127 @@
 #include "css_stylesheet_rules.h"
 #include "css_selector_matcher.h"
 #include "css_supports.h"
+#include "css_length.h"
+#include "css_web_color.h"
+
+#include <algorithm>
+#include <cctype>
+#include <string_view>
 
 namespace litehtml {
 
 namespace syntax = docrender::css;
+
+namespace {
+
+using namespace litehtml;
+
+std::optional<css_registered_syntax> parse_registered_syntax_type(std::string_view type) {
+	if (type == "<number>") return css_registered_syntax::number;
+	if (type == "<integer>") return css_registered_syntax::integer;
+	if (type == "<length>") return css_registered_syntax::length;
+	if (type == "<percentage>") return css_registered_syntax::percentage;
+	if (type == "<length-percentage>") return css_registered_syntax::length_percentage;
+	if (type == "<color>") return css_registered_syntax::color;
+	if (type == "<custom-ident>") return css_registered_syntax::custom_ident;
+	return std::nullopt;
+}
+
+bool is_computationally_independent(const css_token_vector& tokens, int depth = 0) {
+	if (depth >= 64) return false;
+	for (const auto& token : tokens) {
+		if (token.type == IDENT && lowcase(token.ident()) == "currentcolor") return false;
+		if (token.type == DIMENSION && is_one_of(lowcase(token.unit), "em", "ex", "ch", "cap", "ic", "lh",
+			"rem", "rex", "rch", "rcap", "ric", "rlh", "cqw", "cqh", "cqi", "cqb", "cqmin", "cqmax")) return false;
+		if (token.is_component_value() && !is_computationally_independent(token.value, depth + 1)) return false;
+	}
+	return true;
+}
+
+std::optional<css_registered_property> parse_registered_property(const syntax::raw_rule& rule,
+	document_container* container, string_id& name) {
+	auto prelude = rule.prelude;
+	remove_whitespace(prelude);
+	if (rule.block.type != CURLY_BLOCK || prelude.size() != 1 || prelude.front().type != IDENT ||
+		prelude.front().name.size() <= 2 || prelude.front().name.compare(0, 2, "--") != 0) return std::nullopt;
+	name = _id(prelude.front().name);
+
+	raw_declaration::vector declarations;
+	raw_rule::vector nested_rules;
+	css_parser(rule.block.value).consume_style_block_contents(declarations, nested_rules);
+	if (!nested_rules.empty()) return std::nullopt;
+
+	std::optional<string> syntax_text;
+	std::optional<bool> inherits;
+	std::optional<css_token_vector> initial_value;
+	for (const auto& declaration : declarations) {
+		auto value = declaration.value;
+		remove_whitespace(value);
+		const auto descriptor = lowcase(declaration.name);
+		if (descriptor == "syntax") {
+			if (value.size() != 1 || value.front().type != STRING) return std::nullopt;
+			syntax_text = value.front().str;
+		} else if (descriptor == "inherits") {
+			if (value.size() != 1 || value.front().type != IDENT ||
+				!is_one_of(lowcase(value.front().ident()), "true", "false")) return std::nullopt;
+			inherits = lowcase(value.front().ident()) == "true";
+		} else if (descriptor == "initial-value") {
+			initial_value = std::move(value);
+		}
+	}
+	if (!syntax_text || !inherits) return std::nullopt;
+
+	css_registered_property result;
+	result.inherits = *inherits;
+	if (*syntax_text == "*") {
+		result.universal = true;
+		if (initial_value) {
+			if (initial_value->empty() || inspect_css_variables(*initial_value) != css_variable_syntax::none ||
+				read_css_wide_keyword(*initial_value) != css_wide_keyword::none ||
+				!is_computationally_independent(*initial_value)) return std::nullopt;
+			result.initial_value = std::move(initial_value);
+		}
+		return result;
+	}
+
+	std::string_view remaining(*syntax_text);
+	while (!remaining.empty()) {
+		const size_t separator = remaining.find('|');
+		if (separator == 0 || separator + 1 == remaining.size()) return std::nullopt;
+		auto alternative = remaining.substr(0, separator);
+		const auto start = alternative.find_first_not_of(" \t\r\n\f");
+		if (start == std::string_view::npos) return std::nullopt;
+		alternative.remove_prefix(start);
+		const auto end = alternative.find_last_not_of(" \t\r\n\f");
+		alternative = alternative.substr(0, end + 1);
+		string normalized(alternative);
+		std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char character) {
+			return static_cast<char>(std::tolower(character));
+		});
+		const auto type = parse_registered_syntax_type(normalized);
+		if (!type) return std::nullopt;
+		result.syntax.push_back(*type);
+		if (separator == std::string_view::npos) break;
+		remaining.remove_prefix(separator + 1);
+	}
+	if (result.syntax.empty() || !initial_value || initial_value->empty() ||
+		inspect_css_variables(*initial_value) != css_variable_syntax::none ||
+		read_css_wide_keyword(*initial_value) != css_wide_keyword::none ||
+		!is_computationally_independent(*initial_value) ||
+		!matches_registered_syntax(*initial_value, result, container)) return std::nullopt;
+	result.initial_value = std::move(initial_value);
+	return result;
+}
+
+bool registration_media_matches(document& doc, const media_query_list_list::ptr& media) {
+	if (!media) return true;
+	media_features features{};
+	doc.container()->get_media_features(features);
+	media->apply_media_features(features);
+	return media->is_used();
+}
+
+} // namespace
 
 static bool media_matches(document& doc, const media_query_list_list::ptr& media)
 {
@@ -119,6 +236,13 @@ void css::parse_rules(const raw_rule::vector& rules, const RuleContext& context,
 					return true;
 				}
 				return false;
+			case Kind::property:
+				if (in_style_rule) return false;
+				if (string_id name; auto registration = parse_registered_property(rule.syntax, doc->container(), name)) {
+					m_property_registration_rules.push_back({name, std::move(*registration), media});
+					return true;
+				}
+				return false;
 			case Kind::keyframes:
 				if (in_style_rule || containers) return false;
 				if (auto parsed = syntax::parse_keyframe_rule(prelude, rule.syntax.block.value)) {
@@ -137,6 +261,12 @@ void css::parse_rules(const raw_rule::vector& rules, const RuleContext& context,
 		}
 		return false;
 	});
+}
+
+void css::collect_registered_properties(document& doc, css_registered_properties& properties) const {
+	for (const auto& rule : m_property_registration_rules) {
+		if (registration_media_matches(doc, rule.media)) properties.insert_or_assign(rule.name, rule.registration);
+	}
 }
 
 bool css::apply_import(const syntax::StylesheetImport& rule, const string& baseurl, document::ptr doc,

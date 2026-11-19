@@ -101,7 +101,7 @@ const Cascade::Value& Cascade::rollback(Property name, Property alias, int layer
 }
 
 void Cascade::resolve(bool has_author_layers, bool inherited_rtl, const litehtml::css_inherited_variable& inherited,
-	const ParseDeferred& parse_deferred) {
+	const css_registered_properties& registered, document_container* container, const ParseDeferred& parse_deferred) {
 	using namespace litehtml;
 	computed.clear();
 	variables.clear();
@@ -119,7 +119,7 @@ void Cascade::resolve(bool has_author_layers, bool inherited_rtl, const litehtml
 	for (const auto& [name, winner] : winners) {
 		if (_s(name).compare(0, 2, "--") != 0) continue;
 		const auto& value = restore(name, empty_id, winner);
-		if (value.is<css_token_vector>() || value.is<initial_value>()) {
+		if (value.is<css_token_vector>() || value.is<initial_value>() || value.is<inherit>()) {
 			local_variables.emplace(name, &value);
 		}
 	}
@@ -129,7 +129,7 @@ void Cascade::resolve(bool has_author_layers, bool inherited_rtl, const litehtml
 		return restore(name, empty_id, rollback(name, empty_id, value.priority.layer,
 			keyword == css_wide_keyword::revert_layer, has_author_layers));
 	};
-	css_variable_resolver resolver(inherited, std::move(local_variables), restore_custom);
+	css_variable_resolver resolver(inherited, std::move(local_variables), registered, container, restore_custom);
 	std::map<const Value::deferred_declaration*, props_map> parsed;
 	const auto evaluate = [&](const Value& value) -> const props_map& {
 		const auto& declaration = *value.deferred;

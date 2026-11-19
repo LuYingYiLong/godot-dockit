@@ -35,7 +35,9 @@ std::optional<css_token_vector> substitute_query_variables(const css_token_vecto
 	const css_custom_rollback keep = [](string_id, const property_value& value, css_wide_keyword) -> const property_value& {
 		return value;
 	};
-	return css_variable_resolver(read, {}, keep).substitute(tokens);
+	const auto doc = container.get_document();
+	const auto registered = doc ? doc->registered_properties() : css_registered_properties{};
+	return css_variable_resolver(read, {}, registered, doc ? doc->container() : nullptr, keep).substitute(tokens);
 }
 
 bool equal_custom_tokens(const css_token_vector& a, const css_token_vector& b)
@@ -120,6 +122,22 @@ trilean media_feature::check(const media_features& feat, const query_length_envi
 	if (name == "block-size") return matches(feat.height);
 	if (name == "prefers-color-scheme")
 		return matches(feat.preferred_color_scheme == color_scheme::dark ? _id("dark") : _id("light"));
+	if (name == "prefers-reduced-motion")
+		return matches(feat.prefers_reduced_motion ? _id("reduce") : _id("no-preference"));
+	if (name == "prefers-contrast")
+		return matches(feat.prefers_contrast_more ? _id("more") : _id("no-preference"));
+	if (name == "hover") return matches(feat.hover ? _id("hover") : _id("none"));
+	if (name == "any-hover") return matches(feat.any_hover ? _id("hover") : _id("none"));
+	if (name == "pointer") return matches(feat.primary_pointer ? feat.primary_pointer : _id("none"));
+	if (name == "any-pointer") {
+		if (feat.any_pointer_fine || feat.any_pointer_coarse) {
+			trilean result = False;
+			if (feat.any_pointer_fine) result = result || matches(_id("fine"));
+			if (feat.any_pointer_coarse) result = result || matches(_id("coarse"));
+			return result;
+		}
+		return matches(_id("none"));
+	}
 	switch (_id(name))
 	{
 	case _width_:
@@ -562,6 +580,12 @@ static const std::map<string, mf_info>& supported_media_features()
 	// https://drafts.csswg.org/mediaqueries/#orientation
 	{"orientation", {_discrete_, _keyword_, {_portrait_, _landscape_}}},
 	{"prefers-color-scheme", {_discrete_, _keyword_, {_id("light"), _id("dark")}}},
+	{"prefers-reduced-motion", {_discrete_, _keyword_, {_id("no-preference"), _id("reduce")}}},
+	{"prefers-contrast", {_discrete_, _keyword_, {_id("no-preference"), _id("more"), _id("less"), _id("custom")}}},
+	{"hover", {_discrete_, _keyword_, {_id("none"), _id("hover")}}},
+	{"any-hover", {_discrete_, _keyword_, {_id("none"), _id("hover")}}},
+	{"pointer", {_discrete_, _keyword_, {_id("none"), _id("coarse"), _id("fine")}}},
+	{"any-pointer", {_discrete_, _keyword_, {_id("none"), _id("coarse"), _id("fine")}}},
 
 	////////////////////////////////////////////////
 	// 5. Display Quality Media Features

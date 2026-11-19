@@ -882,6 +882,13 @@ namespace litehtml {
 		int			monochrome;		// The number of bits per pixel in a monochrome frame buffer. If the device is not a monochrome device, the output device value will be 0.
 		pixel_t		resolution;		// The resolution of the output device (in DPI)
 		color_scheme preferred_color_scheme = color_scheme::light;
+		bool prefers_reduced_motion = false;
+		bool prefers_contrast_more = false;
+		bool hover = false;
+		bool any_hover = false;
+		int primary_pointer = 0;
+		bool any_pointer_fine = false;
+		bool any_pointer_coarse = false;
 
 		media_features()
 		{

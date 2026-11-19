@@ -25,6 +25,7 @@ enum class StylesheetRuleKind {
 	font_feature_values,
 	counter_style,
 	keyframes,
+	property,
 };
 
 struct StylesheetImport {

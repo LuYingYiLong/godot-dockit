@@ -5,11 +5,11 @@
 	</brief_description>
 	<description>
 		Use [method parse] to load an HTML document or fragment and [method layout] to set its viewport size. Call [method draw] from the target [CanvasItem]'s [method CanvasItem._draw] callback. Call [method CanvasItem.queue_redraw] after changing the document, viewport size, or drawing position.
-		Supports block and inline layout, lists, tables, text, backgrounds, and local images. Borders support [code]solid[/code], [code]dashed[/code], [code]dotted[/code], and [code]double[/code], with separate styles, widths, and colors per side. [code]border-radius[/code] rounds backgrounds, borders, and images, and clips overflowing children when [code]overflow: hidden[/code] is set. Backgrounds support [code]linear-gradient()[/code], [code]radial-gradient()[/code], and [code]conic-gradient()[/code] with sRGB color interpolation.
+		Supports block and inline layout, lists, tables, Flexbox, Grid, text, backgrounds, masks, clipping paths, and local images. Borders support solid, dashed, dotted, double, groove, ridge, inset, and outset styles, with separate styles, widths, and colors per side. [code]border-radius[/code] rounds backgrounds, borders, and images, and clips overflowing children when [code]overflow: hidden[/code] is set. Backgrounds support linear, radial, and conic gradients, image sets, and color interpolation spaces.
 		Text uses the project theme's default font or Godot's fallback font. Run the renderer on the main thread.
 		[code]box-shadow[/code] supports offsets, blur, spread, and comma-separated layers. Use [code]inset[/code] for an inner shadow. Shadows follow [code]border-radius[/code] and leave layout and scroll ranges unaffected.
 		[code]text-shadow[/code] supports horizontal and vertical offsets, optional blur and color, and comma-separated layers. The first layer is drawn closest to the text. Use [code]none[/code] to clear inherited text shadows.
-		CSS [code]transform[/code] supports 2D translation, rotation, and scaling. [code]transform-origin[/code] sets their pivot in the element's border box. Drawing, element and link hit tests, and text selection follow the transformed boxes.
+		CSS [code]transform[/code] supports 2D and 3D transforms, individual [code]translate[/code], [code]rotate[/code], and [code]scale[/code] properties, perspective, and [code]transform-origin[/code]. Drawing, element and link hit tests, and text selection follow the transformed boxes.
 	</description>
 	<tutorials>
 		<link title="CSS support reference">https://github.com/LuYingYiLong/godot-docrender/blob/main/addons/docrender/docs/html_css_support.md</link>
@@ -179,7 +179,7 @@
 			<return type="HTMLElement[]" />
 			<param index="0" name="selector" type="String" />
 			<description>
-				Returns matching elements from the litehtml element tree in document order, with each element included once. Tags, classes, IDs, attributes, combinators, and comma-separated lists are supported. Queries include hidden elements and are available after parsing. Invalid or unsupported selectors report an error and return an empty array.
+				Returns matching elements from the document element tree in document order, with each element included once. Queries support tags, classes, IDs, attributes, combinators, selector lists, structural pseudo-classes, relational [code]:has()[/code], forgiving [code]:is()[/code] and [code]:where()[/code], [code]:lang()[/code], [code]:dir()[/code], and supported state selectors. Queries include hidden elements and are available after parsing. Invalid or unsupported selectors report an error and return an empty array.
 			</description>
 		</method>
 		<method name="get_document_node" qualifiers="const">
@@ -347,7 +347,7 @@
 			<param index="0" name="property_or_condition" type="String" />
 			<param index="1" name="value" type="String" default="&quot;&quot;" />
 			<description>
-				Tests a CSS property and value, or a [code]@supports[/code] condition when [param value] is empty.
+				Tests a CSS property and value, or a [code]@supports[/code] condition when [param value] is empty. Registered custom properties support a documented subset of [code]@property[/code] syntax; see the CSS support reference.
 			</description>
 		</method>
 		<method name="supports_selector" qualifiers="const">

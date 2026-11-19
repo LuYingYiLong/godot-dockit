@@ -664,6 +664,10 @@ private:
 	std::vector<std::pair<godot::Ref<HTMLDialogElement>, godot::String>> closed_dialogs;
 	godot::Ref<HTMLDialogElement> focused_modal;
 	bool dialog_escape_held = false;
+	std::vector<godot::RID> accessibility_tree_elements;
+	void update_accessibility_tree();
+	void clear_accessibility_tree();
+	void perform_accessibility_action(uint64_t p_element_id, int32_t p_action);
 	void remember_dialog_focus(const godot::Ref<HTMLDialogElement>& p_dialog, bool p_modal);
 	void on_dialog_opened();
 	void sync_dialog_focus(bool p_has_viewport);

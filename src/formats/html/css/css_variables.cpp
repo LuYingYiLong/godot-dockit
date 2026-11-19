@@ -1,9 +1,13 @@
 #include "css_variables.h"
 
 #include "css_property_value.h"
+#include "css_length.h"
+#include "css_math.h"
+#include "css_web_color.h"
 #include <litehtml/html.h>
 
 #include <algorithm>
+#include <cmath>
 
 namespace litehtml {
 	namespace {
@@ -70,8 +74,52 @@ namespace litehtml {
 		return css_wide_keyword::none;
 	}
 
+	bool matches_registered_syntax(const css_token_vector& p_tokens, const css_registered_property& p_registration,
+		document_container* p_container) {
+		if (p_registration.universal) return true;
+		if (p_tokens.size() != 1) return false;
+		const auto& token = p_tokens.front();
+		for (const auto syntax : p_registration.syntax) {
+			switch (syntax) {
+				case css_registered_syntax::number:
+					if (token.type == NUMBER || evaluate_css_scalar_math(token, css_math_scalar::number)) return true;
+					break;
+				case css_registered_syntax::integer:
+					if (token.type == NUMBER && token.n.number_type == css_number_integer) return true;
+					if (const auto value = evaluate_css_scalar_math(token, css_math_scalar::number);
+						value && std::floor(*value) == *value) return true;
+					break;
+				case css_registered_syntax::length: {
+					css_length value;
+					if (value.from_token(token, f_length | f_math) && std::isfinite(value.val())) return true;
+					break;
+				}
+				case css_registered_syntax::percentage: {
+					css_length value;
+					if (value.from_token(token, f_percentage | f_math) && std::isfinite(value.val())) return true;
+					break;
+				}
+				case css_registered_syntax::length_percentage: {
+					css_length value;
+					if (value.from_token(token, f_length_percentage | f_math) && std::isfinite(value.val())) return true;
+					break;
+				}
+				case css_registered_syntax::color: {
+					web_color value;
+					if (parse_color(token, value, p_container)) return true;
+					break;
+				}
+				case css_registered_syntax::custom_ident:
+					if (token.type == IDENT && !is_one_of(token.ident(), "initial", "inherit", "unset", "revert", "revert-layer", "default")) return true;
+					break;
+			}
+		}
+		return false;
+	}
+
 	css_variable_resolver::css_variable_resolver(const css_inherited_variable& p_inherited, css_custom_properties p_declarations,
-		const css_custom_rollback& p_rollback) : inherited(p_inherited), declarations(std::move(p_declarations)), rollback(p_rollback) {
+		const css_registered_properties& p_registered, document_container* p_container, const css_custom_rollback& p_rollback)
+		: inherited(p_inherited), declarations(std::move(p_declarations)), registered(p_registered), container(p_container), rollback(p_rollback) {
 		do {
 			dependencies_changed = false;
 			computed.clear();
@@ -80,7 +128,25 @@ namespace litehtml {
 				resolve(declaration.first, 0);
 				if (dependencies_changed) break;
 			}
+			if (!dependencies_changed) {
+				for (const auto& registration : registered) {
+					resolve(registration.first, 0);
+					if (dependencies_changed) break;
+				}
+			}
 		} while (dependencies_changed);
+		for (const auto& [name, registration] : registered) {
+			auto value = computed.find(name);
+			if (value == computed.end() || value->second) continue;
+			if (registration.inherits) {
+				css_token_vector inherited_value;
+				if (inherited(name, inherited_value)) {
+					value->second = std::move(inherited_value);
+					continue;
+				}
+			}
+			if (registration.initial_value) value->second = *registration.initial_value;
+		}
 	}
 
 	void css_variable_resolver::invalidate_cycles() {
@@ -170,20 +236,44 @@ namespace litehtml {
 		if (!inserted || p_depth >= MAX_DEPTH) return entry->second;
 		const auto declaration = declarations.find(p_name);
 		const auto* value = declaration != declarations.end() ? declaration->second : nullptr;
+		const auto registration = registered.find(p_name);
+		const auto use_initial = [&]() {
+			if (registration != registered.end() && registration->second.initial_value)
+				entry->second = *registration->second.initial_value;
+		};
+		const auto use_inherited = [&]() {
+			css_token_vector value_from_parent;
+			if (inherited(p_name, value_from_parent)) entry->second = std::move(value_from_parent);
+			else use_initial();
+		};
 		if (value && value->is<css_token_vector>()) {
 			css_token_vector output;
 			size_t budget = MAX_EXPANDED_BYTES;
-			if (!substitute(value->get<css_token_vector>(), 0, output, budget, p_depth + 1)) return entry->second;
+			if (!substitute(value->get<css_token_vector>(), 0, output, budget, p_depth + 1)) {
+				if (!dependencies_changed && registration != registered.end()) {
+					if (registration->second.inherits) use_inherited();
+					else use_initial();
+				}
+				return entry->second;
+			}
 			switch (const auto keyword = read_css_wide_keyword(output)) {
 				case css_wide_keyword::none:
-					entry->second = std::move(output);
+					if (registration == registered.end() || registration->second.universal ||
+						matches_registered_syntax(output, registration->second, container))
+						entry->second = std::move(output);
+					else if (registration->second.inherits) use_inherited();
+					else use_initial();
 					return entry->second;
 				case css_wide_keyword::initial:
+					use_initial();
 					return entry->second;
 				case css_wide_keyword::inherit:
+					use_inherited();
+					return entry->second;
 				case css_wide_keyword::unset:
-					value = nullptr;
-					break;
+					if (registration != registered.end() && !registration->second.inherits) use_initial();
+					else use_inherited();
+					return entry->second;
 				case css_wide_keyword::revert:
 				case css_wide_keyword::revert_layer:
 					value = &rollback(p_name, *value, keyword);
@@ -202,9 +292,11 @@ namespace litehtml {
 					break;
 			}
 		}
-		if (!value || value->is<inherit>() || value->is<invalid>()) {
-			css_token_vector value_from_parent;
-			if (inherited(p_name, value_from_parent)) entry->second = std::move(value_from_parent);
+		if (value && value->is<initial_value>()) use_initial();
+		else if (value && value->is<inherit>()) use_inherited();
+		else if (!value || value->is<invalid>()) {
+			if (registration == registered.end() || registration->second.inherits) use_inherited();
+			else use_initial();
 		}
 		return entry->second;
 	}
@@ -264,7 +356,7 @@ namespace litehtml {
 	css_computed_variables css_variable_resolver::take_computed() {
 		// Inherited cache entries can be looked up through the parent if another child needs them.
 		for (auto it = computed.begin(); it != computed.end();) {
-			if (!declarations.count(it->first)) it = computed.erase(it);
+			if (!declarations.count(it->first) && !registered.count(it->first)) it = computed.erase(it);
 			else ++it;
 		}
 		return std::move(computed);

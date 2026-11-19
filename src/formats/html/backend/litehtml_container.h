@@ -42,6 +42,7 @@ namespace docrender {
 		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size); // 更新排版和媒体查询各自使用的视口尺寸
 		void set_print_media(bool p_enabled) { print_media = p_enabled; }
 		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);
+		bool set_accessibility_preferences(bool p_reduce_motion, bool p_increase_contrast);
 		std::shared_ptr<litehtml::document> get_svg_clip_document(std::string_view p_url, const char* p_base); // 读取并缓存独立 SVG 裁剪文档
 		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const; // 读取保留原始拼写的属性
 		godot::String resolve_image_source(std::string_view p_source) const {
@@ -136,6 +137,8 @@ namespace docrender {
 		HTMLResources resources;
 		bool css_diagnostics_enabled = false;
 		bool print_media = false;
+		bool prefers_reduced_motion = false;
+		bool prefers_contrast_more = false;
 		const css::TransitionState* transition_state = nullptr;
 		const css::AnimationState* animation_state = nullptr;
 		litehtml::css_source_kind css_source_kind = litehtml::css_source_kind::none;

@@ -5,7 +5,12 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/events/html_event.h"
 #include "formats/html/html_behavior.h"
+#include "formats/html/elements/html_anchor_element.h"
+#include "formats/html/elements/html_details_element.h"
+#include "formats/html/elements/html_image_element.h"
+#include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/elements/html_textarea_element.h"
 #include "formats/html/css/css_values.h"
 #include "formats/http_requests.h"
 
@@ -29,6 +34,8 @@
 #include <cmath>
 #include <iterator>
 #include <string_view>
+#include <tuple>
+#include <unordered_map>
 #include <utility>
 
 using namespace godot;
@@ -867,11 +874,7 @@ bool HTMLLabel::is_transparent_canvas() const {
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
 	case NOTIFICATION_ACCESSIBILITY_UPDATE:
-		if (const RID accessible = get_accessibility_element(); accessible.is_valid()) {
-			auto* display = DisplayServer::get_singleton();
-			display->accessibility_update_set_role(accessible, DisplayServer::ROLE_STATIC_TEXT);
-			display->accessibility_update_set_value(accessible, get_accessible_text());
-		}
+		update_accessibility_tree();
 		break;
 	case NOTIFICATION_POST_ENTER_TREE:
 		behavior_host_in_tree = true;
@@ -937,6 +940,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_VISIBILITY_CHANGED:
+		queue_accessibility_update();
 		if (!is_visible_in_tree()) close_input_picker();
 		if (is_visible_in_tree()) {
 			if (color_scheme_timer && color_scheme_timer->is_inside_tree()) color_scheme_timer->start();
@@ -967,6 +971,7 @@ void HTMLLabel::_notification(int p_what) {
 		}
 		break;
 	case NOTIFICATION_EXIT_TREE: {
+		clear_accessibility_tree();
 		if (navigation_request_id != 0) {
 			docrender::cancel_http_request(navigation_request_id);
 			navigation_request_id = 0;
@@ -1021,6 +1026,512 @@ void HTMLLabel::_notification(int p_what) {
 	case NOTIFICATION_WM_MOUSE_EXIT:
 		stop_color_eyedropper();
 		break;
+	}
+}
+
+void HTMLLabel::update_accessibility_tree() {
+	auto* display = DisplayServer::get_singleton();
+	const RID accessible = get_accessibility_element();
+	if (!display || !accessible.is_valid()) return;
+	clear_accessibility_tree();
+	display->accessibility_update_set_role(accessible, DisplayServer::ROLE_CONTAINER);
+	display->accessibility_update_set_value(accessible, String());
+	if (!is_visible_in_tree() || !layout.is_valid() || source_dirty || !canvas || viewport_size.x <= 0 || viewport_size.y <= 0) return;
+
+	const Ref<HTMLElement> document_element = layout->get_document_element();
+	if (document_element.is_null()) return;
+	std::unordered_map<uint64_t, RID> elements_by_id;
+	std::vector<std::tuple<RID, String, int32_t>> pending_relations;
+	const Transform2D transform = canvas->get_global_transform_with_canvas();
+
+	const auto role_for = [](const Ref<HTMLElement>& p_element, bool& r_heading, bool& r_landmark) {
+		using Role = DisplayServer::AccessibilityRole;
+		r_heading = false;
+		r_landmark = false;
+		const String tag = p_element->get_tag_name();
+		String role = p_element->get_attribute("role").strip_edges().to_lower();
+		if (role == "none" || role == "presentation") return Role::ROLE_UNKNOWN;
+		if (role.is_empty()) {
+			if (tag == "button" || tag == "summary") return Role::ROLE_BUTTON;
+			if (tag == "a" && p_element->has_attribute("href")) return Role::ROLE_LINK;
+			if (tag == "input") {
+				const String type = p_element->get_attribute("type", "text").to_lower();
+				if (type == "hidden") return Role::ROLE_UNKNOWN;
+				if (type == "checkbox") return Role::ROLE_CHECK_BOX;
+				if (type == "radio") return Role::ROLE_RADIO_BUTTON;
+				if (type == "range") return Role::ROLE_SLIDER;
+				if (type == "number") return Role::ROLE_SPIN_BUTTON;
+				if (type == "button" || type == "submit" || type == "reset" || type == "image") return Role::ROLE_DEFAULT_BUTTON;
+				return Role::ROLE_TEXT_FIELD;
+			}
+			if (tag == "textarea" || p_element->is_content_editable()) return Role::ROLE_MULTILINE_TEXT_FIELD;
+			if (tag == "select") return Role::ROLE_LIST_BOX;
+			if (tag == "option") return Role::ROLE_LIST_BOX_OPTION;
+			if (tag == "img") return p_element->get_attribute("alt").is_empty() ? Role::ROLE_UNKNOWN : Role::ROLE_IMAGE;
+			if (tag == "progress" || tag == "meter") return Role::ROLE_PROGRESS_INDICATOR;
+			if (tag == "table") return Role::ROLE_TABLE;
+			if (tag == "tr") return Role::ROLE_ROW;
+			if (tag == "th") return p_element->get_attribute("scope").to_lower() == "row" ? Role::ROLE_ROW_HEADER : Role::ROLE_COLUMN_HEADER;
+			if (tag == "td") return Role::ROLE_CELL;
+			if (tag == "ul" || tag == "ol" || tag == "menu") return Role::ROLE_LIST;
+			if (tag == "li") return Role::ROLE_LIST_ITEM;
+			if (tag == "dialog") return Role::ROLE_DIALOG;
+			if (tag == "details" || tag == "fieldset" || tag == "optgroup") return Role::ROLE_CONTAINER;
+			if (tag == "audio") return Role::ROLE_AUDIO;
+			if (tag == "video") return Role::ROLE_VIDEO;
+			if (tag == "label") return Role::ROLE_STATIC_TEXT;
+			if (tag == "legend" || tag == "output") return Role::ROLE_STATIC_TEXT;
+			if (tag.length() == 2 && tag[0] == 'h' && tag[1] >= '1' && tag[1] <= '6') {
+				r_heading = true;
+				return Role::ROLE_STATIC_TEXT;
+			}
+			if (tag == "main" || tag == "nav" || tag == "header" || tag == "footer" || tag == "aside" ||
+				tag == "section" || tag == "form" || tag == "article" || tag == "search") {
+				r_landmark = tag == "main" || tag == "nav" || tag == "header" || tag == "footer" || tag == "aside" ||
+					tag == "section" || tag == "form" || tag == "search";
+				return Role::ROLE_CONTAINER;
+			}
+			return Role::ROLE_UNKNOWN;
+		}
+		if (role == "button") return Role::ROLE_BUTTON;
+		if (role == "link") return Role::ROLE_LINK;
+		if (role == "checkbox") return Role::ROLE_CHECK_BOX;
+		if (role == "radio") return Role::ROLE_RADIO_BUTTON;
+		if (role == "switch") return Role::ROLE_CHECK_BUTTON;
+		if (role == "slider") return Role::ROLE_SLIDER;
+		if (role == "spinbutton") return Role::ROLE_SPIN_BUTTON;
+		if (role == "progressbar") return Role::ROLE_PROGRESS_INDICATOR;
+		if (role == "textbox" || role == "searchbox") return Role::ROLE_TEXT_FIELD;
+		if (role == "list") return Role::ROLE_LIST;
+		if (role == "listitem") return Role::ROLE_LIST_ITEM;
+		if (role == "option") return Role::ROLE_LIST_BOX_OPTION;
+		if (role == "listbox" || role == "combobox") return Role::ROLE_LIST_BOX;
+		if (role == "table" || role == "grid" || role == "treegrid") return Role::ROLE_TABLE;
+		if (role == "row") return Role::ROLE_ROW;
+		if (role == "cell" || role == "gridcell") return Role::ROLE_CELL;
+		if (role == "columnheader") return Role::ROLE_COLUMN_HEADER;
+		if (role == "rowheader") return Role::ROLE_ROW_HEADER;
+		if (role == "img" || role == "image") return Role::ROLE_IMAGE;
+		if (role == "dialog" || role == "alertdialog") return Role::ROLE_DIALOG;
+		if (role == "heading") { r_heading = true; return Role::ROLE_STATIC_TEXT; }
+		if (role == "banner" || role == "navigation" || role == "main" || role == "contentinfo" ||
+			role == "complementary" || role == "region" || role == "form" || role == "search") {
+			r_landmark = true;
+			return Role::ROLE_CONTAINER;
+		}
+		if (role == "group" || role == "article" || role == "status" || role == "alert" || role == "log") return Role::ROLE_CONTAINER;
+		if (role == "separator") return Role::ROLE_SPLITTER;
+		if (role == "menuitem") return Role::ROLE_MENU_ITEM;
+		if (role == "menu") return Role::ROLE_MENU;
+		if (role == "menubar") return Role::ROLE_MENU_BAR;
+		if (role == "tab") return Role::ROLE_TAB;
+		if (role == "tablist") return Role::ROLE_TAB_BAR;
+		if (role == "tabpanel") return Role::ROLE_TAB_PANEL;
+		return Role::ROLE_UNKNOWN;
+	};
+
+	const auto is_hidden = [&](const Ref<HTMLElement>& p_element) {
+		for (Ref<HTMLElement> ancestor = p_element; ancestor.is_valid(); ancestor = ancestor->get_parent()) {
+			if (ancestor->get_hidden() || ancestor->get_inert() || ancestor->get_attribute("aria-hidden").to_lower() == "true") return true;
+			if (layout->get_computed_style_property(ancestor, "display") == "none") return true;
+		}
+		const String visibility_value = layout->get_computed_style_property(p_element, "visibility");
+		return visibility_value == "hidden" || visibility_value == "collapse";
+	};
+
+	const auto transformed_bounds = [&](const Rect2& p_rect) {
+		const Vector2 points[] = {
+			transform.xform(p_rect.position),
+			transform.xform(Vector2(p_rect.get_end().x, p_rect.position.y)),
+			transform.xform(p_rect.get_end()),
+			transform.xform(Vector2(p_rect.position.x, p_rect.get_end().y)),
+		};
+		Vector2 min = points[0];
+		Vector2 max = points[0];
+		for (int i = 1; i < 4; ++i) {
+			min = min.min(points[i]);
+			max = max.max(points[i]);
+		}
+		return Rect2(min, max - min);
+	};
+
+	const auto add_element = [&](auto&& self, const Ref<HTMLElement>& p_element, const RID& p_parent, bool p_text_covered) -> void {
+		if (p_element.is_null() || !p_element->is_valid() || is_hidden(p_element)) return;
+		bool is_heading = false;
+		bool is_landmark = false;
+		const DisplayServer::AccessibilityRole role = role_for(p_element, is_heading, is_landmark);
+		RID child_parent = p_parent;
+		bool text_covered = p_text_covered;
+		if (role != DisplayServer::ROLE_UNKNOWN) {
+			const RID child = display->accessibility_create_sub_element(p_parent, role);
+			if (child.is_valid()) {
+				accessibility_tree_elements.push_back(child);
+				elements_by_id[p_element->get_instance_id()] = child;
+				child_parent = child;
+				String name = p_element->get_attribute("aria-label").strip_edges();
+				const String labelledby = p_element->get_attribute("aria-labelledby").strip_edges();
+				if (!labelledby.is_empty()) {
+					String joined;
+					for (const String& id : labelledby.split(" ", false)) {
+						const Ref<HTMLElement> label_element = layout->get_element_by_id(id);
+						if (label_element.is_null()) continue;
+						if (!joined.is_empty()) joined += " ";
+						joined += label_element->get_text_content().strip_edges();
+						pending_relations.emplace_back(child, id, 0);
+					}
+					if (!joined.is_empty()) name = joined;
+				}
+			const String tag = p_element->get_tag_name();
+			const String type = p_element->get_attribute("type", "text").to_lower();
+			if (name.is_empty() && tag == "img") name = p_element->get_attribute("alt");
+			if (name.is_empty() && tag == "input" && (type == "button" || type == "submit" || type == "reset" || type == "image")) {
+				name = p_element->get_attribute("value");
+			}
+			if (name.is_empty() && (tag == "input" || tag == "textarea" || tag == "select" || tag == "progress" || tag == "meter")) {
+				for (const Ref<HTMLElement>& label_element : layout->query_selector_all("label")) {
+					if (label_element->get_attribute("for") == p_element->get_id() && !p_element->get_id().is_empty()) {
+						name = label_element->get_text_content().strip_edges();
+						break;
+					}
+				}
+				for (Ref<HTMLElement> ancestor = p_element->get_parent(); name.is_empty() && ancestor.is_valid(); ancestor = ancestor->get_parent()) {
+					if (ancestor->get_tag_name() == "label") name = ancestor->get_text_content().strip_edges();
+				}
+			}
+			if (name.is_empty() && tag == "optgroup") name = p_element->get_attribute("label").strip_edges();
+			if (name.is_empty() && (is_heading || tag == "button" || tag == "a" || tag == "summary" || tag == "label" ||
+				tag == "legend" || tag == "li" || tag == "option" || tag == "td" || tag == "th" ||
+				role == DisplayServer::ROLE_CELL || role == DisplayServer::ROLE_ROW_HEADER ||
+				role == DisplayServer::ROLE_COLUMN_HEADER || role == DisplayServer::ROLE_IMAGE)) {
+				name = p_element->get_text_content().strip_edges();
+			}
+			if (name.is_empty() && p_element->is_content_editable()) name = p_element->get_text_content().strip_edges();
+			if (name.is_empty()) name = p_element->get_attribute("title").strip_edges();
+			if (!name.is_empty()) display->accessibility_update_set_name(child, name);
+			if (role == DisplayServer::ROLE_STATIC_TEXT && !name.is_empty()) display->accessibility_update_set_value(child, name);
+			if (!name.is_empty() && (role == DisplayServer::ROLE_STATIC_TEXT || role == DisplayServer::ROLE_BUTTON ||
+				role == DisplayServer::ROLE_DEFAULT_BUTTON || role == DisplayServer::ROLE_LINK || role == DisplayServer::ROLE_TEXT_FIELD ||
+				role == DisplayServer::ROLE_MULTILINE_TEXT_FIELD || role == DisplayServer::ROLE_CELL || role == DisplayServer::ROLE_ROW_HEADER ||
+				role == DisplayServer::ROLE_COLUMN_HEADER || role == DisplayServer::ROLE_LIST_ITEM ||
+				role == DisplayServer::ROLE_LIST_BOX_OPTION || role == DisplayServer::ROLE_IMAGE)) {
+				text_covered = true;
+			}
+			const String description = p_element->get_attribute("aria-description", p_element->get_attribute("title")).strip_edges();
+			if (!description.is_empty() && description != name) display->accessibility_update_set_description(child, description);
+			if (is_heading) {
+				String level = p_element->get_attribute("aria-level");
+				if (level.is_empty() && tag.length() == 2 && tag[0] == 'h') level = String::num_int64(tag[1] - '0');
+				display->accessibility_update_set_role_description(child, level.is_empty() ? "heading" : "heading level " + level);
+			}
+			else if (is_landmark) {
+				String description_role = p_element->get_attribute("role").to_lower();
+				if (description_role.is_empty()) {
+					if (tag == "main") description_role = "main";
+					else if (tag == "nav") description_role = "navigation";
+					else if (tag == "header") description_role = "banner";
+					else if (tag == "footer") description_role = "content information";
+					else if (tag == "aside") description_role = "complementary";
+					else if (tag == "form") description_role = "form";
+					else if (tag == "search") description_role = "search";
+					else description_role = "region";
+				}
+				display->accessibility_update_set_role_description(child, description_role);
+			}
+			const TypedArray<Rect2> boxes = p_element->get_client_rects();
+			if (!boxes.is_empty()) {
+				Rect2 bounds = transformed_bounds(boxes[0]);
+				for (int64_t i = 1; i < boxes.size(); ++i) bounds = bounds.merge(transformed_bounds(boxes[i]));
+				display->accessibility_update_set_bounds(child, bounds);
+			}
+			const bool disabled = p_element->has_attribute("disabled") || p_element->get_attribute("aria-disabled").to_lower() == "true";
+			display->accessibility_update_set_flag(child, DisplayServer::FLAG_DISABLED, disabled);
+			display->accessibility_update_set_flag(child, DisplayServer::FLAG_REQUIRED,
+				p_element->has_attribute("required") || p_element->get_attribute("aria-required").to_lower() == "true");
+			display->accessibility_update_set_flag(child, DisplayServer::FLAG_READONLY,
+				p_element->has_attribute("readonly") || p_element->get_attribute("aria-readonly").to_lower() == "true");
+			const String expanded = p_element->get_attribute("aria-expanded").to_lower();
+			if (expanded == "true" || expanded == "false") {
+				display->accessibility_update_set_state_description(child, expanded == "true" ? "expanded" : "collapsed");
+			}
+			const String pressed = p_element->get_attribute("aria-pressed").to_lower();
+			if (pressed == "true" || pressed == "false" || pressed == "mixed") {
+				display->accessibility_update_set_state_description(child, pressed == "mixed" ? "mixed" : (pressed == "true" ? "pressed" : "not pressed"));
+			}
+			if (p_element->get_attribute("aria-checked").to_lower() == "mixed") {
+				display->accessibility_update_set_state_description(child, "mixed");
+			}
+			const String aria_checked = p_element->get_attribute("aria-checked").to_lower();
+			if (aria_checked == "true" || aria_checked == "false") {
+				if (role == DisplayServer::ROLE_CHECK_BOX || role == DisplayServer::ROLE_CHECK_BUTTON || role == DisplayServer::ROLE_RADIO_BUTTON) {
+					display->accessibility_update_set_checked(child, aria_checked == "true");
+				}
+			}
+			if (p_element->get_attribute("aria-invalid").to_lower() == "true") {
+				display->accessibility_update_set_state_description(child, "invalid");
+			}
+			display->accessibility_update_set_tooltip(child, p_element->get_attribute("title"));
+			if (!p_element->get_lang().is_empty()) display->accessibility_update_set_language(child, p_element->get_lang());
+			const String live = p_element->get_attribute("aria-live").to_lower();
+			if (live == "polite" || p_element->get_attribute("role").to_lower() == "status") display->accessibility_update_set_live(child, DisplayServer::LIVE_POLITE);
+			else if (live == "assertive" || p_element->get_attribute("role").to_lower() == "alert") {
+				display->accessibility_update_set_live(child, DisplayServer::LIVE_ASSERTIVE);
+			}
+			if (const auto* anchor = Object::cast_to<HTMLAnchorElement>(p_element.ptr()); anchor && !anchor->get_resolved_href().is_empty()) {
+				display->accessibility_update_set_url(child, anchor->get_resolved_href());
+			}
+			if (const auto* input = Object::cast_to<HTMLInputElement>(p_element.ptr())) {
+				if (input->get_type() == "checkbox" || input->get_type() == "radio") {
+					display->accessibility_update_set_checked(child,
+						p_element->get_attribute("aria-checked").is_empty() ? input->is_checked() : p_element->get_attribute("aria-checked").to_lower() == "true");
+				}
+				display->accessibility_update_set_value(child, input->get_value());
+				const Dictionary validity = input->get_validity();
+				if (!bool(validity.get("valid", true))) display->accessibility_update_set_state_description(child, "invalid");
+				if (role == DisplayServer::ROLE_SLIDER || role == DisplayServer::ROLE_SPIN_BUTTON) {
+					const double number = input->get_value_as_number();
+					if (std::isfinite(number)) display->accessibility_update_set_num_value(child, number);
+					display->accessibility_update_set_num_range(child,
+						p_element->get_attribute("min").is_empty() ? 0.0 : p_element->get_attribute("min").to_float(),
+						p_element->get_attribute("max").is_empty() ? 100.0 : p_element->get_attribute("max").to_float());
+					const String step = p_element->get_attribute("step");
+					if (!step.is_empty() && step != "any") display->accessibility_update_set_num_step(child, step.to_float());
+				}
+			}
+			if (const auto* textarea = Object::cast_to<HTMLTextAreaElement>(p_element.ptr())) {
+				display->accessibility_update_set_value(child, textarea->get_value());
+			}
+			if (const auto* select = Object::cast_to<HTMLSelectElement>(p_element.ptr())) {
+				display->accessibility_update_set_value(child, select->get_value());
+			}
+			if (const auto* option = Object::cast_to<HTMLOptionElement>(p_element.ptr())) {
+				display->accessibility_update_set_list_item_selected(child, option->is_selected());
+			}
+			if (const auto* details = Object::cast_to<HTMLDetailsElement>(p_element.ptr())) {
+				display->accessibility_update_set_state_description(child, details->is_open() ? "expanded" : "collapsed");
+				const uint64_t id = p_element->get_instance_id();
+				const auto action = callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id,
+					int32_t(details->is_open() ? DisplayServer::ACTION_COLLAPSE : DisplayServer::ACTION_EXPAND));
+				display->accessibility_update_add_action(child,
+					details->is_open() ? DisplayServer::ACTION_COLLAPSE : DisplayServer::ACTION_EXPAND, action);
+			}
+			else if (expanded == "true" || expanded == "false") {
+				const uint64_t id = p_element->get_instance_id();
+				const DisplayServer::AccessibilityAction action_type = expanded == "true" ?
+					DisplayServer::ACTION_COLLAPSE : DisplayServer::ACTION_EXPAND;
+				display->accessibility_update_add_action(child, action_type,
+					callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id, int32_t(action_type)));
+			}
+			if (role == DisplayServer::ROLE_TABLE) {
+				const TypedArray<HTMLElement> rows = p_element->query_selector_all("tr");
+				int32_t row_count = 0;
+				int32_t columns = 0;
+				for (int64_t row_index = 0; row_index < rows.size(); ++row_index) {
+					const Ref<HTMLElement> row = rows[row_index];
+					if (row->closest("table") != p_element) continue;
+					++row_count;
+					if (columns != 0) continue;
+					for (const Ref<HTMLElement>& cell : row->get_children()) {
+						if (cell->get_tag_name() == "td" || cell->get_tag_name() == "th") {
+							columns += std::max(1, int(cell->get_attribute("colspan", "1").to_int()));
+						}
+					}
+				}
+				display->accessibility_update_set_table_row_count(child, row_count);
+				display->accessibility_update_set_table_column_count(child, columns);
+			}
+			if (role == DisplayServer::ROLE_ROW) {
+				const Ref<HTMLElement> table = p_element->closest("table");
+				if (table.is_valid()) {
+					const TypedArray<HTMLElement> rows = table->query_selector_all("tr");
+					int32_t row_index = 0;
+					for (int64_t index = 0; index < rows.size(); ++index) {
+						const Ref<HTMLElement> row = rows[index];
+						if (row->closest("table") != table) continue;
+						if (row == p_element) {
+							display->accessibility_update_set_table_row_index(child, row_index);
+							break;
+						}
+						++row_index;
+					}
+				}
+			}
+			if (role == DisplayServer::ROLE_CELL || role == DisplayServer::ROLE_ROW_HEADER || role == DisplayServer::ROLE_COLUMN_HEADER) {
+				const Ref<HTMLElement> row = p_element->closest("tr");
+				const Ref<HTMLElement> table = row.is_valid() ? row->closest("table") : Ref<HTMLElement>();
+				if (row.is_valid() && table.is_valid()) {
+					int32_t row_index = 0;
+					const TypedArray<HTMLElement> rows = table->query_selector_all("tr");
+					for (int64_t index = 0; index < rows.size(); ++index) {
+						const Ref<HTMLElement> candidate = rows[index];
+						if (candidate->closest("table") != table) continue;
+						if (candidate == row) break;
+						++row_index;
+					}
+					int32_t column_index = 0;
+					for (const Ref<HTMLElement>& cell : row->get_children()) {
+						if (cell->get_tag_name() != "td" && cell->get_tag_name() != "th") continue;
+						if (cell == p_element) break;
+						column_index += std::max(1, int(cell->get_attribute("colspan", "1").to_int()));
+					}
+					display->accessibility_update_set_table_cell_position(child, row_index, column_index);
+					display->accessibility_update_set_table_cell_span(child,
+						std::max(1, int(p_element->get_attribute("rowspan", "1").to_int())),
+						std::max(1, int(p_element->get_attribute("colspan", "1").to_int())));
+				}
+			}
+			if (role == DisplayServer::ROLE_LIST) {
+				int32_t count = 0;
+				for (const Ref<HTMLElement>& item : p_element->get_children()) if (item->get_tag_name() == "li") ++count;
+				display->accessibility_update_set_list_item_count(child, count);
+			}
+			if (role == DisplayServer::ROLE_LIST_ITEM || role == DisplayServer::ROLE_LIST_BOX_OPTION) {
+				Ref<HTMLElement> list = p_element->get_parent();
+				while (list.is_valid() && list->get_tag_name() != "ul" && list->get_tag_name() != "ol" && list->get_tag_name() != "menu") {
+					list = list->get_parent();
+				}
+				if (list.is_valid()) {
+					int32_t index = 0;
+					for (const Ref<HTMLElement>& sibling : list->get_children()) {
+						if (sibling->get_tag_name() != "li") continue;
+						if (sibling == p_element) break;
+						++index;
+					}
+					display->accessibility_update_set_list_item_index(child, index);
+					int32_t level = 1;
+					for (Ref<HTMLElement> parent = list->get_parent(); parent.is_valid(); parent = parent->get_parent()) {
+						if (parent->get_tag_name() == "ul" || parent->get_tag_name() == "ol" || parent->get_tag_name() == "menu") ++level;
+					}
+					display->accessibility_update_set_list_item_level(child, level);
+				}
+				else if (role == DisplayServer::ROLE_LIST_BOX_OPTION) {
+					const Ref<HTMLElement> select = p_element->closest("select");
+					if (select.is_valid()) {
+						int32_t index = 0;
+						for (const Ref<HTMLElement>& option : select->query_selector_all("option")) {
+							if (option == p_element) break;
+							++index;
+						}
+						display->accessibility_update_set_list_item_index(child, index);
+					}
+				}
+				const String selected = p_element->get_attribute("aria-selected").to_lower();
+				if (selected == "true" || selected == "false") display->accessibility_update_set_list_item_selected(child, selected == "true");
+				const String expanded_state = p_element->get_attribute("aria-expanded").to_lower();
+				if (expanded_state == "true" || expanded_state == "false") display->accessibility_update_set_list_item_expanded(child, expanded_state == "true");
+			}
+			const String haspopup = p_element->get_attribute("aria-haspopup").to_lower();
+			if (haspopup == "menu") display->accessibility_update_set_popup_type(child, DisplayServer::POPUP_MENU);
+			else if (haspopup == "listbox") display->accessibility_update_set_popup_type(child, DisplayServer::POPUP_LIST);
+			else if (haspopup == "tree") display->accessibility_update_set_popup_type(child, DisplayServer::POPUP_TREE);
+			else if (haspopup == "dialog" || haspopup == "true") display->accessibility_update_set_popup_type(child, DisplayServer::POPUP_DIALOG);
+			display->accessibility_update_set_flag(child, DisplayServer::FLAG_BUSY,
+				p_element->get_attribute("aria-busy").to_lower() == "true");
+			const Ref<HTMLDialogElement> active_modal = layout->top_modal();
+			display->accessibility_update_set_flag(child, DisplayServer::FLAG_MODAL,
+				p_element->get_attribute("aria-modal").to_lower() == "true" ||
+				(active_modal.is_valid() && active_modal->get_instance_id() == p_element->get_instance_id()));
+			for (const String& id : p_element->get_attribute("aria-describedby").strip_edges().split(" ", false)) {
+				pending_relations.emplace_back(child, id, 1);
+			}
+			for (const String& id : p_element->get_attribute("aria-controls").strip_edges().split(" ", false)) {
+				pending_relations.emplace_back(child, id, 2);
+			}
+			const uint64_t id = p_element->get_instance_id();
+			display->accessibility_update_add_action(child, DisplayServer::ACTION_SCROLL_INTO_VIEW,
+				callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id, int32_t(DisplayServer::ACTION_SCROLL_INTO_VIEW)));
+			if (layout->is_focusable(p_element)) {
+				display->accessibility_update_add_action(child, DisplayServer::ACTION_FOCUS,
+					callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id, int32_t(DisplayServer::ACTION_FOCUS)));
+			}
+			if (role == DisplayServer::ROLE_BUTTON || role == DisplayServer::ROLE_DEFAULT_BUTTON || role == DisplayServer::ROLE_LINK ||
+				tag == "summary" || tag == "option") {
+				display->accessibility_update_add_action(child, DisplayServer::ACTION_CLICK,
+					callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id, int32_t(DisplayServer::ACTION_CLICK)));
+			}
+		}
+		}
+		for (const Ref<HTMLNode>& child : p_element->get_child_nodes()) {
+			if (auto* child_element = Object::cast_to<HTMLElement>(child.ptr())) {
+				self(self, Ref<HTMLElement>(child_element), child_parent, text_covered);
+				continue;
+			}
+			if (text_covered) continue;
+			if (auto* text_node = Object::cast_to<HTMLTextNode>(child.ptr())) {
+				const String text = text_node->get_data().strip_edges();
+				if (text.is_empty()) continue;
+				const RID text_element = display->accessibility_create_sub_element(child_parent, DisplayServer::ROLE_STATIC_TEXT);
+				if (!text_element.is_valid()) continue;
+				accessibility_tree_elements.push_back(text_element);
+				display->accessibility_update_set_name(text_element, text);
+				display->accessibility_update_set_value(text_element, text);
+				const Rect2 bounds = p_element->get_bounding_rect();
+				if (bounds.has_area()) display->accessibility_update_set_bounds(text_element, transformed_bounds(bounds));
+				for (Ref<HTMLElement> ancestor = p_element; ancestor.is_valid(); ancestor = ancestor->get_parent()) {
+					const String language = ancestor->get_lang();
+					if (!language.is_empty()) {
+						display->accessibility_update_set_language(text_element, language);
+						break;
+					}
+				}
+			}
+		}
+	};
+
+	add_element(add_element, document_element, accessible, false);
+	if (accessibility_tree_elements.empty()) display->accessibility_update_set_value(accessible, get_accessible_text());
+	for (const auto& [source, target_id, relation] : pending_relations) {
+		const Ref<HTMLElement> target = layout->get_element_by_id(target_id);
+		if (target.is_null()) continue;
+		const auto it = elements_by_id.find(target->get_instance_id());
+		if (it == elements_by_id.end()) continue;
+		if (relation == 0) display->accessibility_update_add_related_labeled_by(source, it->second);
+		else if (relation == 1) display->accessibility_update_add_related_described_by(source, it->second);
+		else display->accessibility_update_add_related_controls(source, it->second);
+	}
+}
+
+void HTMLLabel::clear_accessibility_tree() {
+	auto* display = DisplayServer::get_singleton();
+	if (display) {
+		for (auto it = accessibility_tree_elements.rbegin(); it != accessibility_tree_elements.rend(); ++it) {
+			if (display->accessibility_has_element(*it)) display->accessibility_free_element(*it);
+		}
+	}
+	accessibility_tree_elements.clear();
+}
+
+void HTMLLabel::perform_accessibility_action(uint64_t p_element_id, int32_t p_action) {
+	auto* element = Object::cast_to<HTMLElement>(ObjectDB::get_instance(ObjectID(p_element_id)));
+	if (!element || !element->is_valid()) return;
+	const Ref<HTMLElement> target = Ref<HTMLElement>(element);
+	if (p_action == DisplayServer::ACTION_FOCUS) {
+		focus_element(target);
+	}
+	else if (p_action == DisplayServer::ACTION_CLICK) {
+		if (target->has_attribute("disabled") || target->get_attribute("aria-disabled").to_lower() == "true" || !canvas) return;
+		HTMLLabelCanvas::PointerInfo pointer;
+		pointer.target = target;
+		pointer.position = target->get_bounding_rect().get_center();
+		pointer.detail = 1;
+		if (canvas->dispatch_pointer_event(StringName("click"), target, pointer, true)) activate_element(target);
+	}
+	else if (p_action == DisplayServer::ACTION_SCROLL_INTO_VIEW) {
+		scroll_to_element(target);
+	}
+	else if (p_action == DisplayServer::ACTION_BLUR && canvas && canvas->focused_element == target) {
+		canvas->set_focused_element({});
+	}
+	else if (auto* details = Object::cast_to<HTMLDetailsElement>(element)) {
+		if (p_action == DisplayServer::ACTION_EXPAND) details->set_open(true);
+		else if (p_action == DisplayServer::ACTION_COLLAPSE) details->set_open(false);
+	}
+	else if (p_action == DisplayServer::ACTION_EXPAND || p_action == DisplayServer::ACTION_COLLAPSE) {
+		if (!canvas) return;
+		HTMLLabelCanvas::PointerInfo pointer;
+		pointer.target = target;
+		pointer.position = target->get_bounding_rect().get_center();
+		pointer.detail = 1;
+		if (canvas->dispatch_pointer_event(StringName("click"), target, pointer, true)) activate_element(target);
 	}
 }
 
@@ -1612,7 +2123,7 @@ void HTMLLabel::ensure_controls() {
 	}
 
 	const auto* display = DisplayServer::get_singleton();
-	if (display && display->is_dark_mode_supported()) {
+	if (display) {
 		color_scheme_timer = memnew(Timer);
 		color_scheme_timer->set_wait_time(0.25);
 		color_scheme_timer->set_ignore_time_scale(true);

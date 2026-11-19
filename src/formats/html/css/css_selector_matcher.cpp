@@ -231,6 +231,7 @@ bool match_pseudo_class(const SelectorDOM& dom, SelectorNode node, const Attribu
 	if (name == "lang") {
 		return matches_language(dom, node, selector.language_ranges);
 	}
+	if (name == "dir") return dom.matches_direction(node, selector.value);
 	if (detail::is_one_of(name, "first-child", "first-of-type", "last-child", "last-of-type", "only-child",
 		"only-of-type", "nth-child", "nth-of-type", "nth-last-child", "nth-last-of-type")) {
 		return match_structural(dom, node, selector, context);

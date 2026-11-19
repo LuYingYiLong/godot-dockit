@@ -26,6 +26,7 @@ public:
 	virtual std::string_view id(SelectorNode node) const = 0;
 	virtual bool has_class(SelectorNode node, std::string_view name) const = 0;
 	virtual std::optional<std::string_view> attribute(SelectorNode node, const std::string& name) const = 0;
+	virtual bool matches_direction(SelectorNode node, std::string_view direction) const = 0;
 	virtual bool has_pseudo_class(SelectorNode node, std::string_view name) const = 0;
 };
 

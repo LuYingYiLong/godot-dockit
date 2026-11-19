@@ -455,6 +455,17 @@ AttributeSelector parse_function_pseudo_class(const css_token& token, SelectorMo
 		}
 		return selector;
 	}
+	else if (name == "dir") // https://www.w3.org/TR/selectors-4/#the-dir-pseudo
+	{
+		css_token_vector arguments = token.value;
+		remove_whitespace(arguments);
+		if (arguments.size() != 1 || arguments[0].type != IDENT) return {};
+		const string direction = lowcase(arguments[0].ident());
+		if (!is_one_of(direction, "ltr", "rtl")) return {};
+		AttributeSelector selector(select_pseudo_class, name);
+		selector.value = direction;
+		return selector;
+	}
 	return {};
 }
 

@@ -139,10 +139,10 @@ for (auto& element : query_selector_all("script")) {
 | 1 | **分页 / 打印媒体部分实现** | `HTMLDocument.create_print_layout()` 已启用 `@media print`，支持常见 `@page` 尺寸/方向/边距、`:first/:left/:right` 与命名页选项，并提供分页几何和 PDF 写出。分页仍以连续布局切片，支持简单选择器与内联的强制 `break-before/after: page|always` 及旧式别名；`break-inside`、widows/orphans、命名页的元素级分配、复杂级联和行内断页未实现。所有页面共用一个文本重排宽度。PDF 保留基础拉丁文字/矩形/圆形/图像对象，尚未嵌入字体，Helvetica 无法编码的字形（包括中日韩文字）会省略；材质效果、精确 overflow clip 与变换也未保留 |
 | 2 | **多列布局缺失** | `columns` / `column-count` / `column-width` / `column-rule*` / `column-span` / `column-fill` 不在属性表中（`css/css_declarations.cpp:74-386`） |
 | 3 | **竖排缺失** | 无 `writing-mode`、无 `text-orientation`；`writing-mode: vertical-rl` 被列为 `unknown_property` 的示例（`html_css_support.md:776`）；引擎显式只做水平书写（`css_declarations.cpp:570`、`css_units.cpp:46`）。古籍/竖排诗词不可行 |
-| 4 | **无障碍/输入类媒体特性缺失** | 只有 `prefers-color-scheme`；`prefers-reduced-motion`、`forced-colors`、`prefers-contrast`、`hover`、`pointer`、`any-hover` 全无（`css/css_media_query.cpp:546-598`）。Windows 高对比度（本项目主力平台）无响应 |
-| 5 | `@property` | 无类型化自定义属性，`@property` 报 unknown rule |
+| 4 | **无障碍/输入类媒体特性部分实现** | `HTMLLabel` 已投射元素级 Godot 无障碍树，包含常见 HTML/ARIA 角色、名称与描述、表单状态、列表/表格元数据及焦点/点击/滚动动作；heading/landmark 以 role description 表示。媒体查询支持 `prefers-reduced-motion`、`prefers-contrast: more`、`hover`、`pointer`、`any-hover`、`any-pointer`。`forced-colors` 仍缺失，因为跨平台 API 没有暴露该模式和系统色板；`less/custom` 对比度偏好也无法区分 |
+| 5 | `@property` 部分实现 | 可注册 `*`、`<number>`、`<integer>`、`<length>`、`<percentage>`、`<length-percentage>`、`<color>`、`<custom-ident>` 及其 `|` 组合；支持 `inherits`、`initial-value`、常见值校验和按媒体条件生效。完整语法描述符、CSSOM 注册 API 与类型化动画插值尚缺 |
 | 6 | `::first-line` / `::first-letter` | 在解析器里被注释掉（`css/css_selectors.cpp:566,587`），首字下沉/首行样式不可表达 |
-| 7 | `:dir()` / `unicode-bidi` | `:dir()` 不可解析；`unicode-bidi` 非支持属性（只在 `all` 重置里被排除）。`direction: rtl` 的逻辑属性映射是有的，但文本 bidi 重排主要靠 Godot 单个 text run |
+| 7 | `unicode-bidi` | `:dir(ltr|rtl)` 已支持继承的 `dir` 属性与常见字母表的 `dir="auto"` 方向判断。`unicode-bidi` 仍未接入文字 shaping；现有 `direction` 主要影响单个 Godot 文本 run |
 | 8 | `shape-outside` / `shape-margin` | 无属性，非矩形绕排不可用 |
 | 9 | 低频：`mask-border`、`background-clip: text`、`@namespace`、`@starting-style`、scroll-driven `animation-timeline`、`::part`/`::slotted` | 各自已标注为 pending 或直接不支持 |
 
@@ -150,10 +150,10 @@ for (auto& element : query_selector_all("script")) {
 
 ## 5. 其他基础能力
 
-- **无障碍**：只有 `get_accessible_text()` 返回一整段纯文本。没有元素级 a11y 树、没有 role/state/action，屏幕阅读器无法按标题/表格/表单结构导航。
+- **无障碍**：`HTMLLabel` 现在将标题、landmark、表单、链接、列表和表格等元素投射到 Godot accessibility tree，并提供常见状态和动作。Godot 的角色枚举不含 heading/landmark，跨平台 screen-reader 行为由 Godot 后端决定；Shadow DOM 和 slotting 尚不存在，因此组件边界与 `::part`/`::slotted` 仍未覆盖。
 - **HTML → PDF / 分页导出**：已有 `HTMLPrintLayout` 和 PDFium 导出，可获得页数、纸张尺寸与可打印区域，也能提取 PDF 中的文本。CSS 分页控制、命名页自动切换、复杂效果栅格回退和完整字形嵌入仍需完善。
 - **坐标/文档模型**：一个 label 一个文档、一个 selection，无多文档、无跨文档选区。
-- **文档错误**：`doc_classes/HTMLLayout.xml` 明显过时（说边框只有 4 种样式、transform 只有 2D、选择器只有基础类型），会让人严重低估实现；而且 `html_css_support.md` 里没有"已知不支持"章节（`writing-mode` 只能从诊断示例里反推）。
+- **文档**：`doc_classes/HTMLLayout.xml` 与 `html_css_support.md` 已更新关键 CSS 能力和已知不支持边界；完整属性矩阵仍以 CSS support reference 为准。
 
 ---
 
@@ -180,7 +180,7 @@ for (auto& element : query_selector_all("script")) {
 11. 已提供基础 `contenteditable` 和编辑命令；后续补 IME、富文本粘贴/剪贴板 HTML 与 undo/redo。
 12. 已提供 `<canvas>` 的 GDScript 2D backing image、文本、线性渐变和 pattern；后续补径向渐变、Path2D、strokeText 和浏览器 `ImageData` 兼容性。
 13. 已提供选区文本和 `draggable="true"` 元素 drag/drop（含 plain/html 与自定义 MIME），并与 Godot 字符串拖放互通；后续补文件拖入和跨 `HTMLLabel` 的完整移动语义。
-14. `prefers-reduced-motion` / `forced-colors` 与元素级无障碍树。
+14. 已提供 `prefers-reduced-motion` / `prefers-contrast: more`、输入设备能力查询及元素级无障碍树；`forced-colors` 仍受 Godot 跨平台 API 限制。
 
 ---
 

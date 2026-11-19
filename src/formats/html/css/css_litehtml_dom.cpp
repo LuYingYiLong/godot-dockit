@@ -4,6 +4,7 @@
 #include <litehtml/html_tag.h>
 
 #include <algorithm>
+#include <cctype>
 
 namespace litehtml {
 
@@ -15,6 +16,69 @@ namespace {
 
 const element& as_element(SelectorNode node) {
 	return *static_cast<const element*>(node);
+}
+
+bool is_rtl_codepoint(uint32_t p_codepoint) {
+	return (p_codepoint >= 0x05D0 && p_codepoint <= 0x05EA) ||
+		(p_codepoint >= 0x05EF && p_codepoint <= 0x05F2) ||
+		(p_codepoint >= 0x0620 && p_codepoint <= 0x064A) ||
+		(p_codepoint >= 0x066E && p_codepoint <= 0x066F) ||
+		(p_codepoint >= 0x0671 && p_codepoint <= 0x06D3) || p_codepoint == 0x06D5 ||
+		(p_codepoint >= 0x06E5 && p_codepoint <= 0x06E6) ||
+		(p_codepoint >= 0x06EE && p_codepoint <= 0x06EF) ||
+		(p_codepoint >= 0x06FA && p_codepoint <= 0x06FC) || p_codepoint == 0x06FF ||
+		(p_codepoint >= 0x0710 && p_codepoint <= 0x072F) ||
+		(p_codepoint >= 0x074D && p_codepoint <= 0x074F) ||
+		(p_codepoint >= 0x0780 && p_codepoint <= 0x07A5) ||
+		(p_codepoint >= 0x07CA && p_codepoint <= 0x07EA) ||
+		(p_codepoint >= 0x0800 && p_codepoint <= 0x0815) ||
+		(p_codepoint >= 0x0840 && p_codepoint <= 0x0858) ||
+		(p_codepoint >= 0x08A0 && p_codepoint <= 0x08C9) ||
+		(p_codepoint >= 0xFB1D && p_codepoint <= 0xFDFF) ||
+		(p_codepoint >= 0xFE70 && p_codepoint <= 0xFEFF) ||
+		(p_codepoint >= 0x10800 && p_codepoint <= 0x10FFF) ||
+		(p_codepoint >= 0x1E800 && p_codepoint <= 0x1E95F) ||
+		(p_codepoint >= 0x1EE00 && p_codepoint <= 0x1EEFF);
+}
+
+bool is_ltr_codepoint(uint32_t p_codepoint) {
+	// Skip common punctuation and numbers so dir=auto follows the first recognized strong letter.
+	return (p_codepoint >= 0x0041 && p_codepoint <= 0x005A) ||
+		(p_codepoint >= 0x0061 && p_codepoint <= 0x007A) ||
+		(p_codepoint >= 0x00C0 && p_codepoint <= 0x058F) ||
+		(p_codepoint >= 0x0900 && p_codepoint <= 0x1E7FF) ||
+		(p_codepoint >= 0x2C00 && p_codepoint <= 0xA7FF) ||
+		(p_codepoint >= 0xAC00 && p_codepoint <= 0xD7AF) ||
+		(p_codepoint >= 0xF900 && p_codepoint <= 0xFAFF);
+}
+
+std::string auto_direction(const element& p_element) {
+	string text;
+	p_element.get_text(text);
+	for (size_t index = 0; index < text.size();) {
+		const uint8_t lead = static_cast<uint8_t>(text[index]);
+		uint32_t codepoint = lead;
+		size_t length = 1;
+		if ((lead & 0xE0) == 0xC0 && index + 1 < text.size()) {
+			codepoint = lead & 0x1F;
+			length = 2;
+		}
+		else if ((lead & 0xF0) == 0xE0 && index + 2 < text.size()) {
+			codepoint = lead & 0x0F;
+			length = 3;
+		}
+		else if ((lead & 0xF8) == 0xF0 && index + 3 < text.size()) {
+			codepoint = lead & 0x07;
+			length = 4;
+		}
+		for (size_t offset = 1; offset < length; ++offset) {
+			codepoint = (codepoint << 6) | (static_cast<uint8_t>(text[index + offset]) & 0x3F);
+		}
+		if (is_rtl_codepoint(codepoint)) return "rtl";
+		if (is_ltr_codepoint(codepoint)) return "ltr";
+		index += length;
+	}
+	return "ltr";
 }
 
 } // namespace
@@ -67,6 +131,22 @@ struct selector_dom final : syntax::SelectorDOM {
 	std::optional<std::string_view> attribute(SelectorNode node, const std::string& name) const override {
 		if (const auto* value = as_element(node).get_attr(name.c_str())) return std::string_view(value);
 		return {};
+	}
+
+	bool matches_direction(SelectorNode node, std::string_view p_direction) const override {
+		for (const element* current = &as_element(node); current;) {
+			const char* attr = current->get_attr("dir");
+			std::string direction = attr ? std::string(attr) : std::string();
+			std::transform(direction.begin(), direction.end(), direction.begin(), [](unsigned char p_char) {
+				return static_cast<char>(std::tolower(p_char));
+			});
+			if (direction.empty() && current->tag() == _id("bdi")) direction = "auto";
+			if (direction == "ltr" || direction == "rtl") return direction == p_direction;
+			if (direction == "auto") return auto_direction(*current) == p_direction;
+			const auto parent = current->parent();
+			current = parent.get();
+		}
+		return p_direction == "ltr";
 	}
 
 	bool has_pseudo_class(SelectorNode node, std::string_view name) const override {

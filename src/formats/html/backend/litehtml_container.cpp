@@ -22,6 +22,7 @@
 #include "formats/html/css/css_image_value.h"
 #include "litehtml_document_adapter.h"
 
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/translation_server.hpp>
 #include <litehtml/document.h>
 #include <litehtml/el_image.h>
@@ -269,6 +270,13 @@ namespace docrender {
 
 	bool LiteHTMLContainer::set_preferred_color_scheme(color_scheme p_scheme) {
 		return std::exchange(preferred_color_scheme, p_scheme) != p_scheme;
+	}
+
+	bool LiteHTMLContainer::set_accessibility_preferences(bool p_reduce_motion, bool p_increase_contrast) {
+		const bool changed = prefers_reduced_motion != p_reduce_motion || prefers_contrast_more != p_increase_contrast;
+		prefers_reduced_motion = p_reduce_motion;
+		prefers_contrast_more = p_increase_contrast;
+		return changed;
 	}
 
 	document::ptr LiteHTMLContainer::get_svg_clip_document(std::string_view p_url, const char* p_base) {
@@ -657,6 +665,16 @@ namespace docrender {
 		r_media.color = 8;
 		r_media.resolution = CSS_DPI;
 		r_media.preferred_color_scheme = preferred_color_scheme;
+		r_media.prefers_reduced_motion = prefers_reduced_motion;
+		r_media.prefers_contrast_more = prefers_contrast_more;
+		const DisplayServer* display = DisplayServer::get_singleton();
+		const bool has_mouse = display && display->has_feature(DisplayServer::FEATURE_MOUSE);
+		const bool has_touch = display && display->has_feature(DisplayServer::FEATURE_TOUCHSCREEN);
+		r_media.hover = has_mouse;
+		r_media.any_hover = has_mouse;
+		r_media.primary_pointer = has_mouse ? _id("fine") : has_touch ? _id("coarse") : _id("none");
+		r_media.any_pointer_fine = has_mouse;
+		r_media.any_pointer_coarse = has_touch;
 	}
 
 	void LiteHTMLContainer::get_language(litehtml::string& r_language, litehtml::string& r_culture) const {

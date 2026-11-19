@@ -52,6 +52,14 @@ document::~document()
 	}
 }
 
+css_registered_properties document::registered_properties()
+{
+	css_registered_properties result;
+	m_master_css.collect_registered_properties(*this, result);
+	m_styles.collect_registered_properties(*this, result);
+	return result;
+}
+
 document::ptr document::createFromString(
 	const estring& str,
 	document_container* container,

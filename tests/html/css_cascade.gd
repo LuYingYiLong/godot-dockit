@@ -327,6 +327,7 @@ func _run() -> void:
 	_check_layout()
 	_check_inline_reflow()
 	_check_css_features()
+	_check_registered_custom_properties()
 	_check_godot_resource_paths()
 	_check_selector_semantics()
 	await _check_css_nesting()
@@ -715,6 +716,30 @@ func _check_css_features() -> void:
 		":where() parses forgiving selector lists")
 	_check("RELATIVE" in layout.get_plain_text(), "A relational selector styles a pseudo-element")
 	_check(layout.get_css_diagnostics().is_empty(), "Feature probes and rejected imports leave diagnostics empty")
+	var reduce_motion: bool = DisplayServer.accessibility_should_reduce_animation() > 0
+	var increase_contrast: bool = DisplayServer.accessibility_should_increase_contrast() > 0
+	_check(layout.matches_media("(prefers-reduced-motion: reduce)") == reduce_motion,
+		"prefers-reduced-motion reads the Godot accessibility preference")
+	_check(layout.matches_media("(prefers-reduced-motion: no-preference)") != reduce_motion,
+		"prefers-reduced-motion exposes the inverse no-preference value")
+	_check(layout.matches_media("(prefers-contrast: more)") == increase_contrast,
+		"prefers-contrast more reads Godot's increased-contrast preference")
+	_check(layout.matches_media("(prefers-contrast: no-preference)") != increase_contrast,
+		"prefers-contrast exposes no-preference when contrast is unchanged")
+	var has_mouse: bool = DisplayServer.has_feature(DisplayServer.FEATURE_MOUSE)
+	var has_touch: bool = DisplayServer.has_feature(DisplayServer.FEATURE_TOUCHSCREEN)
+	_check(layout.matches_media("(hover: hover)") == has_mouse and layout.matches_media("(hover: none)") != has_mouse,
+		"hover reflects the primary mouse capability")
+	_check(layout.matches_media("(any-hover: hover)") == has_mouse and layout.matches_media("(any-hover: none)") != has_mouse,
+		"any-hover reflects any connected mouse capability")
+	var expected_pointer: String = "fine" if has_mouse else ("coarse" if has_touch else "none")
+	_check(layout.matches_media("(pointer: %s)" % expected_pointer),
+		"pointer selects the primary available input capability")
+	_check(layout.matches_media("(any-pointer: fine)") == has_mouse and
+		layout.matches_media("(any-pointer: coarse)") == has_touch,
+		"any-pointer reports each available mouse and touch capability")
+	_check(not layout.matches_media("(forced-colors: active)"),
+		"forced-colors stays unsupported without a system color palette API")
 	_check(layout.layout(Vector2i(480, 480)) == OK, "Lay out nested media and feature queries")
 	_check(is_equal_approx(_rect(layout, "conditional").size.x, 43.0), "Nested @media and @supports")
 	_check(layout.layout(Vector2i(280, 480)) == OK, "Lay out the alternate conditional import")
@@ -739,6 +764,9 @@ func _check_selector_semantics() -> void:
 	#unknown:lang("") { width: 34px; }
 	#unknown:lang("*") { width: 99px; }
 	#custom:lang(xyzzy) { width: 35px; }
+	#rtl:dir(rtl) { width: 37px; }
+	#rtl_auto:dir(rtl) { width: 38px; }
+	#ltr_auto:dir(ltr) { width: 39px; }
 	#list > :nth-child(2n+1 of .pick) { width: 36px; }
 	#list > :nth-last-child(2 of .pick, .other) { height: 38px; }
 	#list > :nth-child(1 of .pick, :unknown-example) { width: 99px; }
@@ -764,6 +792,9 @@ func _check_selector_semantics() -> void:
 	</div>
 	<div id="feature"></div>
 	<a id="link" href="https://example.test/">link</a><a id="no_href">text</a>
+	<div id="rtl_parent" dir="rtl"><div id="rtl"></div></div>
+	<div id="rtl_auto" dir="auto">،مرحبا</div>
+	<div id="ltr_auto" dir="auto">hello שלום</div>
 	<map name="map"><area id="area" href="#scope_style"></map>
 	</body></html>"""
 	_check(layout.parse(html) == OK and layout.layout(Vector2i(220, 380)) == OK, "Lay out selector semantics")
@@ -774,6 +805,9 @@ func _check_selector_semantics() -> void:
 		"extension": 220.0,
 		"unknown": 34.0,
 		"custom": 35.0,
+		"rtl": 37.0,
+		"rtl_auto": 38.0,
+		"ltr_auto": 39.0,
 		"first": 36.0,
 		"third": 220.0,
 		"feature": 40.0,
@@ -803,6 +837,16 @@ func _check_selector_semantics() -> void:
 	_check(layout.query_selector(r"#list > :nth-child(2\6e +1)") == layout.get_element_by_id("first"), "An+B accepts escaped units")
 	_check(layout.query_selector("#list > :nth-child(+n - 1 of .pick)") == layout.get_element_by_id("first"), "An+B accepts adjacent plus")
 	_check(layout.query_selector_all(":any-link").size() == 2, "Hyperlink pseudo-class covers anchors and areas")
+	_check(layout.get_element_by_id("rtl").matches(":dir(rtl)") and layout.get_element_by_id("rtl").matches(":dir(RTL)"),
+		"Direction matching inherits dir and compares keywords case-insensitively")
+	_check(layout.get_element_by_id("rtl_auto").matches(":dir(rtl)") and layout.get_element_by_id("ltr_auto").matches(":dir(ltr)"),
+		"Direction auto uses the first strong text character")
+	_check(layout.supports_selector(":dir(ltr)") and not layout.supports_selector(":dir(auto)"),
+		"Direction selectors only accept the supported ltr and rtl arguments")
+	_check(layout.get_element_by_id("rtl_parent").set_attribute("dir", "ltr") == OK and
+		layout.get_element_by_id("rtl").matches(":dir(ltr)"), "Direction changes update inherited selector matching immediately")
+	_check(layout.get_element_by_id("rtl_auto").set_text_content("plain text") == OK and
+		layout.get_element_by_id("rtl_auto").matches(":dir(ltr)"), "dir=auto follows the first strong character after text mutation")
 	_check(layout.get_element_by_id("area").matches(":link") and not layout.get_element_by_id("no_href").matches(":link"),
 		"Link pseudo-class requires href")
 	var link: HTMLElement = layout.get_element_by_id("link")
@@ -817,6 +861,59 @@ func _check_selector_semantics() -> void:
 		"Quirks selectors fold ID and class while preserving raw attribute values")
 	_check(mixed != null and not mixed.matches('[id="mixed"], [class="case"], [data-missing=""]'),
 		"Attribute matching distinguishes original case, missing attributes and empty values")
+
+
+func _check_registered_custom_properties() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var html: String = """<!doctype html><style>
+	@property --registered-color {
+		syntax: "<color>";
+		inherits: false;
+		initial-value: #123456;
+	}
+	@property --registered-space {
+		syntax: "<length>";
+		inherits: true;
+		initial-value: 4px;
+	}
+	@property --registered-count {
+		syntax: "<integer>";
+		inherits: false;
+		initial-value: 2;
+	}
+	@property --registered-raw {
+		syntax: "*";
+		inherits: false;
+		initial-value: ready;
+	}
+	#parent {
+		--registered-color: #ff0000;
+		--registered-space: 8px;
+		--registered-count: 9;
+	}
+	#invalid {
+		--registered-color: 10px;
+		--registered-space: 12px;
+		--registered-count: 2.5;
+	}
+	</style><div id="parent"><div id="inherited"></div><div id="invalid"></div></div>"""
+	_check(layout.parse(html) == OK and layout.layout(Vector2i(320, 240)) == OK,
+		"Lay out registered custom properties")
+	var parent: HTMLElement = layout.get_element_by_id("parent")
+	var inherited: HTMLElement = layout.get_element_by_id("inherited")
+	var invalid: HTMLElement = layout.get_element_by_id("invalid")
+	_check(layout.get_computed_style_property(parent, "--registered-color") == "#ff0000",
+		"Registered color values preserve valid typed declarations")
+	_check(layout.get_computed_style_property(inherited, "--registered-space") == "8px",
+		"Registered properties inherit when the inherits descriptor is true")
+	_check(layout.get_computed_style_property(inherited, "--registered-color") == "#123456",
+		"Non-inheriting registrations use their initial value on descendants")
+	_check(layout.get_computed_style_property(invalid, "--registered-color") == "#123456" and
+		layout.get_computed_style_property(invalid, "--registered-count") == "2",
+		"Values that do not match registered syntax fall back to the initial value")
+	_check(layout.get_computed_style_property(invalid, "--registered-space") == "12px" and
+		layout.get_computed_style_property(invalid, "--registered-raw") == "ready",
+		"Typed lengths and universal registrations resolve through computed style")
 
 
 func _check_element_subclasses() -> void:
