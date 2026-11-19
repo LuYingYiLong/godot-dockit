@@ -266,7 +266,6 @@ void HTMLLabel::draw_select_menu() {
 	const auto menu_border = docrender::html_system_color(litehtml::system_color::menu_border, scheme);
 	const auto menu_face = docrender::html_system_color(litehtml::system_color::menu_face, scheme);
 	const auto menu_hover = docrender::html_system_color(litehtml::system_color::menu_hover, scheme);
-	const auto icon = layout->get_control_icon(docrender::HTMLControlIcon::radio_checked);
 	select_menu->draw_rect(Rect2(Vector2(), size), menu_face);
 	for (int i = 0; i < select_visible_rows; ++i) {
 		const int index = select_scroll + i;
@@ -275,12 +274,6 @@ void HTMLLabel::draw_select_menu() {
 		const Rect2 box(Vector2(0, y), Vector2(size.x, select_row_height));
 		if (row.background.a > 0) select_menu->draw_rect(box, row.background);
 		if (index == select_highlight) select_menu->draw_rect(box, menu_hover);
-		if (row.selected && icon.is_valid()) {
-			auto background = menu_face.blend(row.background);
-			if (index == select_highlight) background = background.blend(menu_hover);
-			const Color ink = background.srgb_to_linear().get_luminance() > 0.179f ? Color(0, 0, 0) : Color(1, 1, 1);
-			select_menu->draw_texture_rect(icon, Rect2(2, y + (select_row_height - 14) * 0.5f, 14, 14), false, ink);
-		}
 		if (row.text.is_valid() && server.is_valid()) {
 			const float inset = row.option_index >= 0 ? 18 : 6;
 			const float baseline = y + (select_row_height + row.text.line_ascent() - row.text.line_descent()) * 0.5f;

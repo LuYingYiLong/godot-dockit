@@ -238,13 +238,13 @@ func _check_radio_icons() -> void:
 	var transform: Transform2D = menu.get_global_transform_with_canvas()
 	var first: Vector2i = Vector2i(transform * Vector2(9.0, menu.size.y * 0.25))
 	var second: Vector2i = Vector2i(transform * Vector2(9.0, menu.size.y * 0.75))
-	_check(pixels.get_pixelv(first).get_luminance() < 0.3 and pixels.get_pixelv(second).get_luminance() > 0.8,
-		"menu paints the selected icon even when the option has transparent text")
+	_check(pixels.get_pixelv(first).get_luminance() > 0.6 and pixels.get_pixelv(second).get_luminance() > 0.8,
+		"select options have no radio icon even when the selected option has transparent text")
 	_color_picker_key(KEY_DOWN)
 	await RenderingServer.frame_post_draw
 	pixels = get_viewport().get_texture().get_image()
-	_check(pixels.get_pixelv(first).get_luminance() < 0.3 and pixels.get_pixelv(second).get_luminance() > 0.6,
-		"keyboard highlight does not move the selected icon")
+	_check(pixels.get_pixelv(first).get_luminance() > 0.8 and pixels.get_pixelv(second).get_luminance() > 0.6,
+		"keyboard navigation moves the highlight without drawing a radio icon")
 	_color_picker_key(KEY_ENTER)
 	_check(select.selected_index == 1, "keyboard selection commits the second option")
 	for _frame: int in range(2):
@@ -252,8 +252,8 @@ func _check_radio_icons() -> void:
 	_check(_label.activate_element(select), "reopen the select menu after layout")
 	await RenderingServer.frame_post_draw
 	pixels = get_viewport().get_texture().get_image()
-	_check(pixels.get_pixelv(first).get_luminance() > 0.8 and pixels.get_pixelv(second).get_luminance() < 0.3,
-		"reopened menu paints the icon beside the new selected option")
+	_check(pixels.get_pixelv(first).get_luminance() > 0.8 and pixels.get_pixelv(second).get_luminance() > 0.6,
+		"reopened menu highlights the new selected option without a radio icon")
 	_color_picker_key(KEY_ESCAPE)
 
 
