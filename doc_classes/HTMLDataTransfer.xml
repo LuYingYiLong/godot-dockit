@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="HTMLDataTransfer" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<brief_description>
-		The limited text payload available to clipboard events.
+		String data exposed to clipboard and drag events.
 	</brief_description>
 	<description>
-		This implementation supports only [code]text/plain[/code]. Data passed to a [code]paste[/code] event is read-only; [code]copy[/code] and [code]cut[/code] handlers may replace the copied text.
+		Clipboard events currently expose [code]text/plain[/code]. HTML selection drags also expose sanitized [code]text/html[/code]. Drag payloads can use additional MIME types. Clipboard paste data is read-only; drag data is writable during [code]dragstart[/code], read-only during enter/over/drop, and protected during drag and dragend.
 	</description>
 	<methods>
 		<method name="get_data" qualifiers="const">
 			<return type="String" />
 			<param index="0" name="type" type="String" />
 			<description>
-				Returns the payload for [code]text/plain[/code], or an empty string for an unsupported type.
+				Returns the value associated with [param type], or an empty string when the type is absent or data is protected.
 			</description>
 		</method>
 		<method name="set_data">
@@ -19,14 +19,14 @@
 			<param index="0" name="type" type="String" />
 			<param index="1" name="value" type="String" />
 			<description>
-				Sets the [code]text/plain[/code] payload unless this transfer is read-only.
+				Sets a MIME payload while the transfer is writable. The type is normalized to lowercase.
 			</description>
 		</method>
 		<method name="clear_data">
 			<return type="void" />
 			<param index="0" name="type" type="String" default="&quot;&quot;" />
 			<description>
-				Clears the text payload when the transfer is writable. An empty type clears all supported data.
+				Clears one MIME payload, or all payloads when [param type] is empty. Protected and read-only transfers cannot be changed.
 			</description>
 		</method>
 		<method name="get_types" qualifiers="const">
@@ -36,4 +36,9 @@
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="drop_effect" type="String" setter="set_drop_effect" getter="get_drop_effect" default="&quot;none&quot;">The requested drop operation: [code]none[/code], [code]copy[/code], [code]move[/code], or [code]link[/code].</member>
+		<member name="effect_allowed" type="String" setter="set_effect_allowed" getter="get_effect_allowed" default="&quot;uninitialized&quot;">The operations permitted for this drag.</member>
+		<member name="types" type="PackedStringArray" setter="" getter="get_types">A sorted snapshot of the MIME types currently present.</member>
+	</members>
 </class>

@@ -21,6 +21,7 @@
 #include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_table_elements.h"
 #include "formats/html/elements/html_image_element.h"
+#include "formats/html/elements/html_canvas_element.h"
 #include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_template_element.h"
 #include "formats/html/elements/html_template_node.h"
@@ -219,6 +220,7 @@ namespace {
 			case litehtml::_h5_:
 			case litehtml::_h6_: return instantiate_element_handle<HTMLHeadingElement>();
 			case litehtml::_img_: return instantiate_element_handle<HTMLImageElement>();
+			case litehtml::_canvas_: return instantiate_element_handle<HTMLCanvasElement>();
 			case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
 			case litehtml::_template_: return instantiate_element_handle<HTMLTemplateElement>();
 			case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
@@ -347,6 +349,7 @@ void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
 }
 
 void HTMLDOM::clear() {
+	design_mode = false;
 	++lifetime;
 	++observer_delivery_epoch;
 	observer_delivery_queued = false;

@@ -8,6 +8,8 @@
 		The default canvas follows CSS [code]color-scheme[/code]. Set an HTML background with CSS, or enable [member transparent_canvas] to composite it over the scene.
 		Source changes are applied on a deferred update and reset the scroll position. Resizing recalculates the layout and clamps the current scroll offset. Clicking a [code]#id[/code] link scrolls to the matching HTML element. Connect [signal link_pressed] to handle other links.
 		Drag to select rendered text. The focused control supports the standard select-all and copy shortcuts. CSS [code]::selection[/code] styles the selection highlight.
+		Selection drags and elements with [code]draggable="true"[/code] expose [code]text/plain[/code], serialized [code]text/html[/code], and custom MIME data through [HTMLDataTransfer]. Drop HTML into an editable region in another [HTMLLabel], or drop the plain text into Godot controls such as [LineEdit].
+		For rich-text editing, mark a region [code]contenteditable="true"[/code] or [code]contenteditable="plaintext-only"[/code]. The document node also exposes [member HTMLDocumentNode.design_mode] and [member HTMLDocumentNode.active_element]. The focused editable region supports basic text insertion, deletion, line breaks, and [method execute_edit_command] formatting commands. It does not yet provide browser-equivalent IME handling or HTML clipboard paste.
 		CSS [code]:hover[/code] matches the element under the mouse and its ancestors. Scrolling updates the hovered element even when the mouse is stationary. During text selection by dragging, hover styles stay fixed until the drag ends.
 		Elements also report DOM events. Register a listener with [method HTMLEventTarget.add_event_listener] or [method HTMLEventTarget.listen] on an element, document, or window. Events run before the built-in action they describe, so a listener can call [method HTMLEvent.prevent_default] to cancel following a link, activating a button or label, toggling a checkbox, opening a disclosure or dropdown, editing text, traversing focus with Tab, and submitting or resetting a form. Pointer moves are coalesced per frame; wheel dispatch stays synchronous. Events without listeners change nothing, and the signals below keep reporting the actions that were performed.
 		Assign a Callable to an event handler property such as [code]element.onclick[/code], or use an HTML [code]on*[/code] attribute that names a GDScript behavior method as [code]_on_click()[/code] or [code]_on_click(event)[/code]. Callable properties override the corresponding attribute handler. This does not execute JavaScript.
@@ -306,6 +308,14 @@
 			<return type="HTMLRange" />
 			<description>
 				Creates a live range with both endpoints at the start of the DOM document.
+			</description>
+		</method>
+		<method name="execute_edit_command">
+			<return type="bool" />
+			<param index="0" name="command" type="String" />
+			<param index="1" name="value" type="String" default="&quot;&quot;" />
+			<description>
+				Applies a supported formatting command to a noncollapsed selection inside the focused editable region. Commands include [code]bold[/code], [code]italic[/code], [code]underline[/code], [code]strikethrough[/code], [code]subscript[/code], [code]superscript[/code], [code]formatBlock[/code], [code]insertOrderedList[/code], [code]insertUnorderedList[/code], [code]createLink[/code], [code]foreColor[/code], and [code]backColor[/code]. Dispatches cancelable [code]beforeinput[/code] and [code]input[/code] events. Returns [code]false[/code] for unsupported commands or an invalid selection.
 			</description>
 		</method>
 		<method name="get_selection" qualifiers="const">

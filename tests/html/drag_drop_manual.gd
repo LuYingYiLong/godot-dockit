@@ -26,8 +26,8 @@ var source: GodotTextSource
 func _ready() -> void:
 	html_label = HTMLLabel.new()
 	html_label.position = Vector2(16.0, 16.0)
-	html_label.size = Vector2(300.0, 105.0)
-	html_label.text = """<p style="font-family:Arial;font-size:22px;color:#1248aa">Drag text</p><div id="dropzone" style="margin-top:12px;padding:8px;background:#dddddd">HTML drop zone</div>"""
+	html_label.size = Vector2(300.0, 145.0)
+	html_label.text = """<p style="font-family:Arial;font-size:22px;color:#1248aa">Drag text</p><div id="drag-source" draggable="true" style="margin-top:8px;padding:8px;background:#cceeff">Drag this HTML element</div><div id="dropzone" style="margin-top:8px;padding:8px;background:#dddddd">HTML drop zone</div>"""
 	add_child(html_label)
 
 	line_edit = LineEdit.new()
@@ -44,7 +44,7 @@ func _ready() -> void:
 	status = Label.new()
 	status.position = Vector2(16.0, 232.0)
 	status.size = Vector2(440.0, 24.0)
-	status.text = "Drag selected HTML text to LineEdit, then drag From Godot into the gray area"
+	status.text = "Drag selected text or the blue HTML element to LineEdit; drag From Godot into the gray area"
 	add_child(status)
 
 	await get_tree().process_frame
@@ -58,6 +58,7 @@ func _ready() -> void:
 
 
 func _on_html_drag_start(event: HTMLDragEvent) -> void:
+	event.data_transfer.set_data("application/x-docrender-demo", "custom HTML drag payload")
 	status.text = "HTML dragstart: " + event.data_transfer.get_data("text/plain")
 
 
@@ -71,4 +72,4 @@ func _on_html_drag_over(event: HTMLDragEvent) -> void:
 
 
 func _on_html_drop(event: HTMLDragEvent) -> void:
-	status.text = "HTML drop: " + event.data_transfer.get_data("text/plain")
+	status.text = "HTML drop: " + event.data_transfer.get_data("text/plain") + " / " + event.data_transfer.get_data("application/x-docrender-demo")

@@ -132,6 +132,7 @@ namespace {
 }
 
 void HTMLElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("is_content_editable"), &HTMLElement::is_content_editable);
 	ClassDB::bind_method(D_METHOD("set_pointer_capture", "pointer_id"), &HTMLElement::set_pointer_capture);
 	ClassDB::bind_method(D_METHOD("release_pointer_capture", "pointer_id"), &HTMLElement::release_pointer_capture);
 	ClassDB::bind_method(D_METHOD("has_pointer_capture", "pointer_id"), &HTMLElement::has_pointer_capture);
@@ -143,6 +144,8 @@ void HTMLElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_style_property", "name", "value", "priority"), &HTMLElement::set_style_property, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("remove_style_property", "name"), &HTMLElement::remove_style_property);
 	ClassDB::bind_method(D_METHOD("get_tag_name"), &HTMLElement::get_tag_name);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "content_editable", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT),
+		"", "is_content_editable");
 	ClassDB::bind_method(D_METHOD("has_attribute", "name"), &HTMLElement::has_attribute);
 	ClassDB::bind_method(D_METHOD("get_attribute", "name", "default_value"), &HTMLElement::get_attribute, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_text_content"), &HTMLElement::get_text_content);
@@ -244,6 +247,19 @@ std::shared_ptr<litehtml::element> HTMLElement::lock_related_element(const Ref<H
 String HTMLElement::get_tag_name() const {
 	const auto node = lock_element();
 	return node ? String::utf8(node->get_tagName()) : String();
+}
+
+bool HTMLElement::is_content_editable() const {
+	const auto node = lock_element();
+	if (!node) return false;
+	for (auto current = node; current; current = current->parent()) {
+		const char* raw = current->get_attr("contenteditable");
+		if (!raw) continue;
+		const String value = String::utf8(raw).strip_edges().to_lower();
+		if (value.is_empty() || value == "true" || value == "plaintext-only") return true;
+		if (value == "false") return false;
+	}
+	return get_dom().is_design_mode_enabled();
 }
 
 bool HTMLElement::has_attribute(const String& p_name) const {

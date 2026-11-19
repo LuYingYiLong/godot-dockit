@@ -15,6 +15,26 @@ DocRender exposes an HTML element tree and layout geometry to GDScript. This gui
 
 `HTMLLabel` owns an independent layout for display and interaction. Runtime edits apply to that layout. They leave the shared `HTMLDocument` resource and its other views unchanged. Use the HTML APIs on the main thread.
 
+## Canvas drawing
+
+`<canvas>` exposes a CPU backed RGBA image through `HTMLCanvasElement.get_context("2d")`. Its default intrinsic size is 300 by 150 pixels; HTML `width` and `height` attributes and the matching GDScript properties control the backing pixels. CSS controls the element's displayed box independently. Resizing either intrinsic dimension clears the image and resets the context state, as in the browser model. Backing storage is limited to 8192 pixels per dimension and 16 million pixels total.
+
+The current context supports solid `Color` or CSS color strings, linear gradients, repeated image patterns, line width, a Godot `Font` resource and pixel size, `fill_text()`, save/restore, 2D transforms, clearing and filling rectangles, simple polygon paths, arcs, image drawing from `Image`, `Texture2D`, or another canvas, image-data reads/writes using Godot `Image`, and PNG/JPEG/WebP data URLs. The canvas paints through the element's CSS box, clipping, and transforms. `to_data_url()` returns PNG for unsupported MIME types. It does not expose radial gradients, `Path2D`, `strokeText()`, the browser font-string parser, or browser `ImageData` object yet.
+
+```gdscript
+var canvas: HTMLCanvasElement = label.get_element_by_id("plot") as HTMLCanvasElement
+var context: HTMLCanvasRenderingContext2D = canvas.get_context("2d")
+context.fill_style = Color("#2457d6")
+context.fill_rect(8.0, 8.0, 120.0, 32.0)
+var png_data_url: String = canvas.to_data_url()
+```
+
+## Editable HTML and drag data
+
+`contenteditable="true"` and `contenteditable="plaintext-only"` make an element and its editable descendants focusable; an explicit descendant `contenteditable="false"` stops inheritance. `HTMLDocumentNode.design_mode = "on"` makes the document body editable. `HTMLLabel.execute_edit_command()` supports a limited command set (bold, italic, underline, strike-through, sub/superscript, block format, lists, links, and foreground/background color) on a noncollapsed selection. Supported keyboard edits dispatch cancelable `beforeinput` before mutation and `input` after it. Clipboard paste currently inserts plain text; HTML clipboard interchange and full IME composition for editable regions are not implemented.
+
+HTML selection drag exports `text/plain` and sanitized `text/html` through `HTMLDataTransfer`. Elements marked `draggable="true"` also start HTML drags; their default payload contains `text/plain` when available and their serialized `text/html`. A `dragstart` listener can add or replace MIME entries. Element previews are painted from the laid-out CSS rendering and clipped to the element's box. Another editable `HTMLLabel` can receive the HTML fragment after sanitization; Godot controls such as `LineEdit` receive the plain string through Godot's native drag contract. A custom drop target can accept a drag by canceling `dragover` and read the payload in `drop`. File drops and browser-equivalent cross-label move semantics are not implemented yet.
+
 `HTMLLayout.get_document_node()` returns the live tree root. Use `get_document_element()`, `get_head()`, and `get_body()` for its HTML elements. `set_title()` edits that view's title. `HTMLTextNode.data` and `HTMLCommentNode.data` edit character data while retaining the handle. A parsed text node keeps its identity when laid-out across multiple inline runs. Use `get_root_node()`, `contains()`, and `compare_document_position()` to compare positions, or `is_equal_node()` to compare contents and descendants.
 
 ## Tree editing and fragments

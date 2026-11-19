@@ -2821,7 +2821,10 @@ namespace {
 			return input && input->type() != HTMLInputNode::Type::HIDDEN;
 		}
 		const auto* video = dynamic_cast<const docrender::HTMLVideoNode*>(&p_node);
-		return explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
+		const String editable = String::utf8(p_node.get_attr("contenteditable", "")).strip_edges().to_lower();
+		const bool editable_host = p_node.get_attr("contenteditable") &&
+			(editable.is_empty() || editable == "true" || editable == "plaintext-only");
+		return editable_host || explicit_tab_index(p_node).has_value() || DocumentAdapter::is_command_button(p_node) ||
 			docrender::details_activation_target(std::const_pointer_cast<litehtml::element>(p_node.shared_from_this())) ||
 			(tag == litehtml::_a_ && p_node.get_attr("href")) || (tag == litehtml::_audio_ && p_node.get_attr("controls")) ||
 			(video && video->has_controls());
@@ -2908,8 +2911,10 @@ Ref<HTMLElement> HTMLLayout::dialog_focus_target(const Ref<HTMLDialogElement>& p
 bool HTMLLayout::is_focusable(const Ref<HTMLElement>& p_element) const {
 	if (p_element.is_null() || p_element->get_owner() != this) return false;
 	const auto element = p_element->element.lock();
-	return element && state->has_layout() && allows_modal_interaction(*element) && can_focus_node(*element) &&
-		(scroll_target_renderer(state->geometry.find_element(element.get())) || auto_content_placeholder(*element));
+	if (!element || !state->has_layout() || !allows_modal_interaction(*element)) return false;
+	const bool design_mode_body = state->dom->is_design_mode_enabled() && element->tag() == litehtml::_body_;
+	if (!can_focus_node(*element) && !p_element->is_content_editable() && !design_mode_body) return false;
+	return design_mode_body || scroll_target_renderer(state->geometry.find_element(element.get())) || auto_content_placeholder(*element);
 }
 
 bool HTMLLayout::prepare_content_focus(const Ref<HTMLElement>& p_element) {
@@ -2960,7 +2965,8 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 	r_has_focusable_elements = false;
 	if (state->has_layout() && state->dom->get_document()) {
 		HTMLDOM::visit_elements(state->dom->get_document()->root(), [&](const litehtml::element::ptr& p_element) {
-			if (!can_focus_node(*p_element)) return false;
+			const bool design_mode_body = state->dom->is_design_mode_enabled() && p_element->tag() == litehtml::_body_;
+			if (!can_focus_node(*p_element) && !design_mode_body) return false;
 			const auto handle = state->dom->make_element(p_element);
 			if (is_focusable(handle)) {
 				r_has_focusable_elements = true;

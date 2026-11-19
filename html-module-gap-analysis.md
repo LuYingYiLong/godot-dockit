@@ -103,9 +103,9 @@ for (auto& element : query_selector_all("script")) {
 
 | 缺失 | 严重度 | 说明 |
 | --- | --- | --- |
-| `<canvas>` | **高** | 整个 HTML 模块只有 `_canvas_` 这个 tag id 和 CSS 系统色 `canvas`（`css_string_id.h:40`、`css_web_color.cpp:259`），**无 `getContext`、无 2D 上下文、无 `toDataURL`**。`<canvas>` 是普通 inline 元素，只有 fallback 子节点会流式渲染。JS 不支持时，这里本该是"GDScript 直接画"的入口 |
-| `contenteditable` | **高** | 全仓库 0 命中。富文本编辑（在线文档、批注、笔记）完全不可用；只有 `<textarea>` 纯文本 |
-| `drag` / `drop`（HTML5 DnD） | 中 | 无 `draggable`、无 `dragstart/dragover/drop`，文件不能拖入 |
+| `<canvas>` | **部分已实现** | GDScript 2D context 提供 backing image、基础形状/路径/变换、线性渐变、图案、文本绘制、图像读写和数据 URL，且经 CSS 绘制树合成；径向渐变、strokeText 和 Path2D 尚缺 |
+| `contenteditable` | **基础编辑已实现** | true/plaintext-only/false 继承、designMode、焦点、基础键盘修改、beforeinput/input 和受限编辑命令已接入；IME composition、HTML clipboard paste、撤销/重做和编辑算法的完整浏览器语义仍缺 |
+| `drag` / `drop`（HTML5 DnD） | **文本路径已实现** | 选区拖出 plain/html MIME、跨 HTMLLabel 的可编辑投放和 Godot 原生字符串拖放已接通；任意 draggable 元素、文件拖入和完整 move/copy 语义尚缺 |
 | `<iframe>` | 中 | 无浏览上下文、无 `srcdoc`/`sandbox`；Gumbo 把其内容当 RAWTEXT（`parser.c:3950-3956`），DOM 侧是 raw text（`html_dom.cpp:83-87`），最终按普通 inline 文本流式渲染 |
 | `<object>` / `<embed>` / `<param>` | 中 | 惰性，无插件/嵌入对象处理；`object` 的子节点只当 fallback flow |
 | `<math>`（MathML） | 低* | Gumbo 认识该标签并打 `mathml` 命名空间，但**无 tag id、无 UA 规则、无 MathML 布局**，公式退化为普通文本。（*本项目 LaTeX 覆盖数学需求，故标低） |
@@ -177,9 +177,10 @@ for (auto& element : query_selector_all("script")) {
 
 9. `@media print` 真正生效 + `@page`/`break-*`/`orphans`/`widows` + 分页 API（配合已有的 PDF 写出，可做 HTML→PDF）。
 10. 多列布局；竖排 `writing-mode`。
-11. `contenteditable`（若目标是"文档编辑器"则提升到 P1）。
-12. `<canvas>` 的 GDScript 绘制 API（若目标包含图表/白板）。
-13. `prefers-reduced-motion` / `forced-colors` 与元素级无障碍树。
+11. 已提供基础 `contenteditable` 和编辑命令；后续补 IME、富文本粘贴/剪贴板 HTML 与 undo/redo。
+12. 已提供 `<canvas>` 的 GDScript 2D backing image、文本、线性渐变和 pattern；后续补径向渐变、Path2D、strokeText 和浏览器 `ImageData` 兼容性。
+13. 已提供选区文本和 `draggable="true"` 元素 drag/drop（含 plain/html 与自定义 MIME），并与 Godot 字符串拖放互通；后续补文件拖入和跨 `HTMLLabel` 的完整移动语义。
+14. `prefers-reduced-motion` / `forced-colors` 与元素级无障碍树。
 
 ---
 

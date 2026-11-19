@@ -54,6 +54,7 @@ public:
 	godot::String remove_style_property(const godot::String& p_name); // 删除内联 CSS 属性并返回旧值
 
 	NodeType get_node_type() const override { return ELEMENT_NODE; } // 返回元素节点类型
+	bool is_content_editable() const;
 	godot::String get_tag_name() const;												// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;							// 检查指定属性是否存在，空属性也视为存在
 	godot::String get_attribute(

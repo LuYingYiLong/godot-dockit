@@ -534,6 +534,9 @@
     <ClCompile Include="src\formats\html\elements\html_button_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\elements\html_canvas_element.cpp">
+      <Filter>Source Files\formats\html\elements</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_details_element.cpp">
       <Filter>Source Files\formats\html\elements</Filter>
     </ClCompile>
@@ -1197,6 +1200,12 @@
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_button_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_canvas_element.h">
+      <Filter>Header Files\formats\html\elements</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\elements\html_canvas_node.h">
       <Filter>Header Files\formats\html\elements</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_control_render_item.h">

@@ -64,6 +64,7 @@ namespace docrender {
 	};
 }
 
+class HTMLCanvasElement;
 class HTMLAudioElement;
 class HTMLVideoElement;
 class HTMLDialogElement;
@@ -78,6 +79,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLNode;
 	friend class HTMLWindow;
 	friend class HTMLImageElement;
+	friend class HTMLCanvasElement;
 	friend class HTMLAudioElement;
 	friend class HTMLVideoElement;
 	friend class HTMLDialogElement;

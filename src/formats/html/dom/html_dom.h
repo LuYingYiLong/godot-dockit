@@ -88,6 +88,7 @@ namespace docrender {
 		godot::HashMap<godot::StringName, std::size_t> event_counts_by_type;
 		std::size_t event_listener_count = 0;
 	bool event_debug = false;
+	bool design_mode = false;
 	godot::HashSet<int32_t> active_pointer_ids;
 	godot::HashMap<int32_t, godot::Ref<HTMLElement>> pointer_capture_targets;
 	struct PendingPointerCaptureEvent {
@@ -202,6 +203,8 @@ namespace docrender {
 		void clear();
 		uint64_t get_lifetime() const { return lifetime; }
 		HTMLLayout* get_layout() const;
+		bool is_design_mode_enabled() const { return design_mode; }
+		void set_design_mode_enabled(bool p_enabled) { design_mode = p_enabled; }
 		godot::Ref<HTMLRange> create_range();
 		godot::Ref<HTMLSelection> get_selection();
 		void range_changed(const HTMLRange& p_range);

@@ -4,6 +4,7 @@
 #include "litehtml_container.h"
 #include "formats/html/elements/html_gauge_node.h"
 #include "formats/html/elements/html_audio_node.h"
+#include "formats/html/elements/html_canvas_node.h"
 #include "formats/html/elements/html_video_node.h"
 #include "formats/html/elements/html_output_node.h"
 #include "formats/html/elements/html_ruby_node.h"
@@ -128,6 +129,12 @@ namespace docrender {
 
 	litehtml::element::ptr LiteHTMLContainer::create_element(const char* p_tag, const litehtml::string_map& p_attributes,
 		const std::shared_ptr<litehtml::document>& p_document) {
+		if (std::string_view(p_tag) == "canvas") {
+			auto canvas = std::make_shared<HTMLCanvasNode>(p_document);
+			for (const auto& [name, value] : p_attributes) canvas->set_attr(name.c_str(), value.c_str());
+			if (!p_attributes.empty()) dom.remember_source_attributes(canvas, p_attributes);
+			return canvas;
+		}
 		if (!p_attributes.empty()) {
 			// The inner call selects litehtml's normal element type. The outer call applies the attributes.
 			const auto element = p_document->create_element(p_tag, {});

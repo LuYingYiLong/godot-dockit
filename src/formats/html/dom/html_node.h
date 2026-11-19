@@ -82,6 +82,9 @@ protected:
 public:
 	NodeType get_node_type() const override { return DOCUMENT_NODE; } // 返回文档节点类型
 	godot::String get_base_uri() const; // 返回当前文档的生效基准
+	godot::String get_design_mode() const;
+	void set_design_mode(const godot::String& p_mode);
+	godot::Ref<HTMLElement> get_active_element() const;
 	godot::Ref<HTMLElement> get_document_element() const; // 返回文档的根元素
 	godot::Ref<HTMLElement> get_body() const; // 返回文档的正文元素
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const; // 返回文档中第一个匹配选择器的元素

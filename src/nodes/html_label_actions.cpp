@@ -1,6 +1,9 @@
 #include "html_label.h"
 
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/dom/html_document_fragment.h"
+#include "formats/html/dom/html_range.h"
+#include "formats/html/dom/html_selection.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/events/html_event.h"
@@ -19,7 +22,10 @@
 #include <godot_cpp/core/object_id.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
+#include <string>
+#include <string_view>
 #include <utility>
 
 using namespace godot;
@@ -27,6 +33,154 @@ using namespace godot;
 using docrender::HTMLInputNode;
 
 namespace {
+	std::string ascii_lower(std::string_view p_value) {
+		std::string result(p_value);
+		std::transform(result.begin(), result.end(), result.begin(), [](unsigned char p_byte) { return char(std::tolower(p_byte)); });
+		return result;
+	}
+
+	bool safe_editing_href(std::string_view p_value) {
+		const std::string value = ascii_lower(p_value);
+		const auto first = value.find_first_not_of(" \t\r\n");
+		if (first == std::string::npos) return true;
+		const std::string_view trimmed(value.data() + first, value.size() - first);
+		const auto begins = [&](std::string_view p_prefix) { return trimmed.size() >= p_prefix.size() && trimmed.compare(0, p_prefix.size(), p_prefix) == 0; };
+		return !begins("javascript:") && !begins("data:") && !begins("vbscript:") && !begins("file:");
+	}
+
+	Ref<HTMLElement> find_draggable_ancestor(const Ref<HTMLElement>& p_element) {
+		for (Ref<HTMLElement> current = p_element; current.is_valid(); current = current->get_parent()) {
+			if (current->get_attribute("draggable").strip_edges().to_lower() == "true") return current;
+		}
+		return {};
+	}
+
+	std::string escape_html_attribute(std::string_view p_value) {
+		std::string result;
+		for (const char ch : p_value) {
+			switch (ch) {
+				case '&': result += "&amp;"; break;
+				case '"': result += "&quot;"; break;
+				case '<': result += "&lt;"; break;
+				case '>': result += "&gt;"; break;
+				default: result += ch;
+			}
+		}
+		return result;
+	}
+
+	std::string sanitize_editing_style(std::string_view p_value) {
+		static constexpr std::string_view safe_properties[] = {"color", "background-color", "font-family", "font-size",
+			"font-weight", "font-style", "text-decoration", "text-align", "vertical-align", "white-space"};
+		const std::string source(p_value);
+		const std::string lower = ascii_lower(source);
+		if (lower.find("url(") != std::string::npos || lower.find("expression") != std::string::npos ||
+			lower.find("@import") != std::string::npos || lower.find("javascript:") != std::string::npos) return {};
+		std::string result;
+		for (size_t start = 0; start < source.size();) {
+			const size_t end = source.find(';', start);
+			const std::string_view declaration(source.data() + start,
+				(end == std::string::npos ? source.size() : end) - start);
+			const size_t colon = declaration.find(':');
+			if (colon != std::string_view::npos) {
+				const std::string name = ascii_lower(declaration.substr(0, colon));
+				const auto first = name.find_first_not_of(" \t\r\n");
+				const auto last = name.find_last_not_of(" \t\r\n");
+				const std::string property = first == std::string::npos ? std::string() : name.substr(first, last - first + 1);
+				const auto value_start = declaration.find_first_not_of(" \t\r\n", colon + 1);
+				const std::string value = value_start == std::string_view::npos ? std::string() :
+					std::string(declaration.substr(value_start));
+				if (!value.empty() && std::find(std::begin(safe_properties), std::end(safe_properties), property) != std::end(safe_properties)) {
+					if (!result.empty()) result += ' ';
+					result += property + ": " + value + ';';
+				}
+			}
+			if (end == std::string::npos) break;
+			start = end + 1;
+		}
+		return result;
+	}
+
+	String sanitize_editing_html(const String& p_html) {
+		const CharString encoded = p_html.utf8();
+		const std::string_view source(encoded.get_data(), encoded.length());
+		static constexpr std::string_view safe_tags[] = {"p", "div", "br", "h1", "h2", "h3", "h4", "h5", "h6",
+			"blockquote", "pre", "ul", "ol", "li", "a", "strong", "b", "em", "i", "u", "s", "del", "sub", "sup", "code", "span"};
+		static constexpr std::string_view blocked_content[] = {"script", "style", "iframe", "object", "embed", "form", "input", "textarea", "button"};
+		std::string output;
+		std::string suppressed_tag;
+		for (size_t index = 0; index < source.size();) {
+			if (source[index] != '<') {
+				const size_t next = source.find('<', index);
+				if (suppressed_tag.empty()) output.append(source.substr(index, (next == std::string_view::npos ? source.size() : next) - index));
+				index = next == std::string_view::npos ? source.size() : next;
+				continue;
+			}
+			bool quoted = false;
+			char quote = 0;
+			size_t end = index + 1;
+			for (; end < source.size(); ++end) {
+				const char ch = source[end];
+				if (quoted) { if (ch == quote) quoted = false; }
+				else if (ch == '\'' || ch == '"') { quoted = true; quote = ch; }
+				else if (ch == '>') break;
+			}
+			if (end >= source.size()) { if (suppressed_tag.empty()) output += "&lt;"; ++index; continue; }
+			std::string_view token = source.substr(index + 1, end - index - 1);
+			index = end + 1;
+			while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) token.remove_prefix(1);
+			bool closing = !token.empty() && token.front() == '/';
+			if (closing) token.remove_prefix(1);
+			size_t name_end = 0;
+			while (name_end < token.size() && (std::isalnum(static_cast<unsigned char>(token[name_end])) || token[name_end] == '-')) ++name_end;
+			if (name_end == 0) continue;
+			const std::string tag = ascii_lower(token.substr(0, name_end));
+			if (!suppressed_tag.empty()) { if (closing && tag == suppressed_tag) suppressed_tag.clear(); continue; }
+			if (!closing && std::find(std::begin(blocked_content), std::end(blocked_content), tag) != std::end(blocked_content)) {
+				suppressed_tag = tag;
+				continue;
+			}
+			if (std::find(std::begin(safe_tags), std::end(safe_tags), tag) == std::end(safe_tags)) continue;
+			if (closing) { if (tag != "br") output += "</" + tag + ">"; continue; }
+			output += '<' + tag;
+			token.remove_prefix(name_end);
+			while (!token.empty()) {
+				while (!token.empty() && (std::isspace(static_cast<unsigned char>(token.front())) || token.front() == '/')) token.remove_prefix(1);
+				if (token.empty()) break;
+				size_t attr_end = 0;
+				while (attr_end < token.size() && !std::isspace(static_cast<unsigned char>(token[attr_end])) && token[attr_end] != '=' && token[attr_end] != '/') ++attr_end;
+				if (attr_end == 0) { token.remove_prefix(1); continue; }
+				const std::string attr = ascii_lower(token.substr(0, attr_end));
+				token.remove_prefix(attr_end);
+				while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) token.remove_prefix(1);
+				std::string value;
+				if (!token.empty() && token.front() == '=') {
+					token.remove_prefix(1);
+					while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) token.remove_prefix(1);
+					if (!token.empty() && (token.front() == '\'' || token.front() == '"')) {
+						const char delimiter = token.front(); token.remove_prefix(1);
+						const size_t value_end = token.find(delimiter);
+						value = std::string(token.substr(0, value_end));
+						if (value_end == std::string_view::npos) token = {};
+						else token.remove_prefix(value_end + 1);
+					} else {
+					const size_t value_end = token.find_first_of(" \t\r\n/");
+					value = std::string(token.substr(0, value_end));
+					if (value_end == std::string_view::npos) token = {}; else token.remove_prefix(value_end);
+				}
+				}
+				if (attr == "title" || (tag == "a" && attr == "href" && safe_editing_href(value))) {
+					output += ' ' + attr + "=\"" + escape_html_attribute(value) + '"';
+				} else if (attr == "style") {
+					const std::string style = sanitize_editing_style(value);
+					if (!style.empty()) output += " style=\"" + escape_html_attribute(style) + '"';
+				}
+			}
+			output += tag == "br" ? "/>" : ">";
+		}
+		return String::utf8(output.c_str());
+	}
+
 	Control* make_html_drag_preview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection,
 		const TypedArray<Rect2>& p_selection_rects, const String& p_text) {
 		Rect2 bounds;
@@ -44,10 +198,24 @@ namespace {
 		preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 		return preview;
 	}
+
+	Control* make_html_element_drag_preview(const Ref<HTMLLayout>& p_layout, const Ref<HTMLElement>& p_element,
+		const String& p_text) {
+		const Rect2 bounds = p_element.is_valid() ? p_element->get_bounding_rect() : Rect2();
+		if (p_layout.is_valid() && bounds.has_area()) {
+			return memnew(HTMLSelectionDragPreview(p_layout, Vector2i(), bounds, true));
+		}
+		Label* preview = memnew(Label);
+		preview->set_text(p_text);
+		preview->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED);
+		preview->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+		return preview;
+	}
 }
 
 HTMLSelectionDragPreview::HTMLSelectionDragPreview(const Ref<HTMLLayout>& p_layout, const Vector2i& p_selection,
-	const Rect2& p_bounds) : layout(p_layout), selection(p_selection), selection_bounds(p_bounds) {
+	const Rect2& p_bounds, bool p_draw_element) : layout(p_layout), selection(p_selection), selection_bounds(p_bounds),
+	draw_element(p_draw_element) {
 	set_size(p_bounds.size);
 	set_custom_minimum_size(p_bounds.size);
 	set_mouse_filter(MOUSE_FILTER_IGNORE);
@@ -56,7 +224,12 @@ HTMLSelectionDragPreview::HTMLSelectionDragPreview(const Ref<HTMLLayout>& p_layo
 
 void HTMLSelectionDragPreview::_draw() {
 	if (layout.is_valid()) {
-		layout->draw_selection_drag_image(this, selection, -selection_bounds.position, Rect2(Vector2(), get_size()));
+		const Rect2 clip(Vector2(), get_size());
+		if (draw_element) {
+			layout->draw_with_highlights(this, -selection_bounds.position, clip, Vector2i(), nullptr, Color(0, 0, 0, 0));
+		} else {
+			layout->draw_selection_drag_image(this, selection, -selection_bounds.position, clip);
+		}
 	}
 }
 
@@ -80,32 +253,32 @@ void HTMLLabelCanvas::update_drop_target(const Ref<HTMLElement>& p_target, const
 	const Vector2& p_position) const {
 	if (drop_target == p_target && drop_text == p_text) return;
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer;
-		transfer.instantiate();
-		transfer->set_text(drop_text);
-		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
+		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer,
 			p_position, p_target);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	}
 	drop_target = p_target;
 	drop_text = p_text;
 	drop_accepted = false;
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer;
-		transfer.instantiate();
-		transfer->set_text(drop_text);
-		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
+		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragenter"), drop_target, transfer, p_position);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	}
 }
 
 void HTMLLabelCanvas::clear_drop_target(const Vector2& p_position) const {
 	if (drop_target.is_valid()) {
-		Ref<HTMLDataTransfer> transfer;
-		transfer.instantiate();
-		transfer->set_text(drop_text);
-		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+		Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+		if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(drop_text); }
+		transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 		const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(StringName("dragleave"), drop_target, transfer, p_position);
+		transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	}
 	drop_target.unref();
 	drop_text = String();
@@ -124,12 +297,21 @@ Variant HTMLLabelCanvas::begin_selection_drag(const Vector2& p_position, bool p_
 	Ref<HTMLDataTransfer> transfer;
 	transfer.instantiate();
 	transfer->set_text(selected_text);
+	transfer->set_effect_allowed("copyMove");
 	transfer->set_mode(HTMLDataTransfer::MODE_READ_WRITE);
 	const Ref<HTMLElement> source = drag_source.is_valid() ? drag_source : label->layout->get_document_element();
+	if (const Ref<HTMLSelection> selection = label->layout->get_selection(); selection.is_valid() && selection->get_range_count() > 0) {
+		if (const Ref<HTMLRange> range = selection->get_range_at(0); range.is_valid()) {
+			if (const Ref<HTMLDocumentFragment> fragment = range->clone_contents(); fragment.is_valid()) {
+				if (const auto node = fragment->lock_element()) transfer->set_data("text/html", label->layout->get_dom().serialize_children(*node));
+			}
+		}
+	}
 	if (!dispatch_drag_event(StringName("dragstart"), source, transfer, p_position)) return {};
 	const String drag_text = transfer->get_data("text/plain");
-	if (drag_text.is_empty()) return {};
+	if (transfer->get_types().is_empty()) return {};
 	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	docrender::set_current_drag_transfer(transfer);
 	this->drag_text = drag_text;
 	drag_source = source;
 	native_drag_started = true;
@@ -144,20 +326,74 @@ Variant HTMLLabelCanvas::begin_selection_drag(const Vector2& p_position, bool p_
 	pointer.buttons = 0;
 	dispatch_pointer_event(StringName("pointercancel"), source, pointer, false);
 	Control* preview = make_html_drag_preview(label->layout, label->get_selection_range(), label->get_selection_rects(), drag_text);
+	const Variant payload = drag_text.is_empty() ? Variant(Dictionary()) : Variant(drag_text);
 	if (p_force_native_drag) {
-		force_drag(drag_text, preview);
+		force_drag(payload, preview);
 	} else {
 		set_drag_preview(preview);
 	}
-	return drag_text;
+	return payload;
+}
+
+Variant HTMLLabelCanvas::begin_element_drag(const Vector2& p_position, bool p_force_native_drag) {
+	const Variant inherited_data = Control::_get_drag_data(p_position);
+	if (inherited_data.get_type() != Variant::NIL) return inherited_data;
+	if (native_drag_started) return drag_text;
+	if (!label || !drag_source.is_valid() || label->layout.is_null()) return {};
+
+	Ref<HTMLDataTransfer> transfer;
+	transfer.instantiate();
+	transfer->set_effect_allowed("copyMove");
+	transfer->set_mode(HTMLDataTransfer::MODE_READ_WRITE);
+	String text = drag_source->get_text_content().strip_edges();
+	if (text.is_empty()) text = drag_source->get_attribute("href");
+	if (text.is_empty()) text = drag_source->get_attribute("alt");
+	if (text.is_empty()) text = drag_source->get_attribute("src");
+	if (!text.is_empty()) transfer->set_data("text/plain", text);
+	const String html = drag_source->get_outer_html();
+	if (!html.is_empty()) transfer->set_data("text/html", html);
+	if (!dispatch_drag_event(StringName("dragstart"), drag_source, transfer, p_position) || transfer->get_types().is_empty()) {
+		element_drag_attempt = false;
+		drag_source.unref();
+		return {};
+	}
+
+	drag_text = transfer->get_data("text/plain");
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	docrender::set_current_drag_transfer(transfer);
+	native_drag_started = true;
+	element_drag_attempt = false;
+	drag_elapsed = 0.0;
+	set_process(true);
+	cancel_click();
+	selecting = false;
+	selection_dragged = false;
+	PointerInfo pointer;
+	pointer.position = p_position;
+	pointer.target = drag_source;
+	pointer.buttons = 0;
+	dispatch_pointer_event(StringName("pointercancel"), drag_source, pointer, false);
+	Control* preview = make_html_element_drag_preview(label->layout, drag_source, drag_text);
+	Variant payload = drag_text.is_empty() ? Variant(Dictionary()) : Variant(drag_text);
+	if (p_force_native_drag) {
+		force_drag(payload, preview);
+	} else {
+		set_drag_preview(preview);
+	}
+	return payload;
 }
 
 Variant HTMLLabelCanvas::_get_drag_data(const Vector2& p_at_position) {
+	if (element_drag_attempt) return begin_element_drag(p_at_position, false);
 	return begin_selection_drag(p_at_position, false);
 }
 
 bool HTMLLabelCanvas::_can_drop_data(const Vector2& p_at_position, const Variant& p_data) const {
-	if (!label || label->layout.is_null() || p_data.get_type() != Variant::STRING || String(p_data).is_empty()) {
+	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	const bool string_payload = p_data.get_type() == Variant::STRING && !String(p_data).is_empty();
+	const bool transfer_payload = transfer.is_valid() && !transfer->get_types().is_empty() &&
+		(p_data.get_type() == Variant::DICTIONARY || string_payload);
+	if (!label || label->layout.is_null() || (!string_payload && !transfer_payload)) {
 		clear_drop_target(p_at_position);
 		return false;
 	}
@@ -167,22 +403,29 @@ bool HTMLLabelCanvas::_can_drop_data(const Vector2& p_at_position, const Variant
 		clear_drop_target(p_at_position);
 		return false;
 	}
-	const String text = p_data;
+	if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(String(p_data)); }
+	transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
+	const String text = transfer->get_data("text/plain");
 	update_drop_target(target, text, p_at_position);
-	Ref<HTMLDataTransfer> transfer;
-	transfer.instantiate();
-	transfer->set_text(text);
-	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
+	transfer->set_drop_effect("copy");
+	transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
 	const bool dragover_prevented = !const_cast<HTMLLabelCanvas*>(this)->dispatch_drag_event(
 		StringName("dragover"), target, transfer, p_at_position);
+	const bool drop_effect_disabled = transfer->get_drop_effect() == "none";
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	const auto control = label->layout->text_control(target);
 	const bool text_input = control && control->is_text_control() && control->is_editable();
-	drop_accepted = dragover_prevented || text_input;
+	const bool accepts_text = !text.is_empty() && (text_input || target->is_content_editable());
+	drop_accepted = !drop_effect_disabled && (dragover_prevented || accepts_text);
 	return drop_accepted;
 }
 
 void HTMLLabelCanvas::_drop_data(const Vector2& p_at_position, const Variant& p_data) {
-	if (!label || label->layout.is_null() || p_data.get_type() != Variant::STRING || String(p_data).is_empty()) {
+	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	const bool string_payload = p_data.get_type() == Variant::STRING && !String(p_data).is_empty();
+	const bool transfer_payload = transfer.is_valid() && !transfer->get_types().is_empty() &&
+		(p_data.get_type() == Variant::DICTIONARY || string_payload);
+	if (!label || label->layout.is_null() || (!string_payload && !transfer_payload)) {
 		clear_drop_target(p_at_position);
 		return;
 	}
@@ -190,16 +433,14 @@ void HTMLLabelCanvas::_drop_data(const Vector2& p_at_position, const Variant& p_
 		clear_drop_target(p_at_position);
 		return;
 	}
-	const String text = p_data;
-	const Ref<HTMLElement> target = drop_target;
-	Ref<HTMLDataTransfer> transfer;
-	transfer.instantiate();
-	transfer->set_text(text);
+	if (transfer.is_null()) { transfer.instantiate(); transfer->set_text(String(p_data)); }
 	transfer->set_mode(HTMLDataTransfer::MODE_READ_ONLY);
+	const String text = transfer->get_data("text/plain");
+	const Ref<HTMLElement> target = drop_target;
 	const bool drop_not_canceled = dispatch_drag_event(StringName("drop"), target, transfer, p_at_position);
 	if (drop_not_canceled) {
 		const auto control = label->layout->text_control(target);
-		if (control && control->is_text_control() && control->is_editable() && !control->editor.has_preedit() &&
+		if (!text.is_empty() && control && control->is_text_control() && control->is_editable() && !control->editor.has_preedit() &&
 			label->layout->is_element_connected(target) && label->focus_element(target)) {
 			set_input_caret(target, p_at_position, false);
 			if (label->dispatch_input_event(StringName("beforeinput"), target, StringName("insertFromDrop"), text, false)) {
@@ -211,7 +452,35 @@ void HTMLLabelCanvas::_drop_data(const Vector2& p_at_position, const Variant& p_
 				}
 			}
 		}
+		else if (!text.is_empty() && target.is_valid() && target->is_content_editable() && label->layout->is_element_connected(target) &&
+			label->focus_element(target)) {
+			const auto hit = label->layout->selection_point_at(p_at_position);
+			label->set_selection_range(hit.offset, hit.offset);
+			Ref<HTMLSelection> selection = label->layout->get_selection();
+			Ref<HTMLRange> range = selection.is_valid() && selection->get_range_count() > 0 ? selection->get_range_at(0) : Ref<HTMLRange>();
+			if (range.is_valid() && label->dispatch_input_event(StringName("beforeinput"), target,
+				StringName("insertFromDrop"), text, false)) {
+				const String html = transfer->get_data("text/html");
+				bool inserted = false;
+				if (!html.is_empty()) {
+					const String clean_html = sanitize_editing_html(html);
+					const Ref<HTMLDocumentFragment> fragment = label->layout->get_dom().parse_fragment(clean_html, target->lock_element());
+					if (fragment.is_valid() && range->delete_contents() == OK && range->insert_node(fragment) == OK) inserted = true;
+				}
+				if (!inserted && range->delete_contents() == OK) {
+					const Ref<HTMLTextNode> text_node = label->layout->create_text_node(text);
+					inserted = text_node.is_valid() && range->insert_node(text_node) == OK;
+				}
+				if (inserted) {
+					range->collapse(false);
+					selection->collapse(range->get_end_container(), range->get_end_offset());
+					label->dispatch_input_event(StringName("input"), target, StringName("insertFromDrop"), text, false);
+					label->queue_interaction();
+				}
+			}
+		}
 	}
+	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	clear_drop_target(p_at_position);
 }
 
@@ -223,9 +492,11 @@ void HTMLLabelCanvas::_process(double p_delta) {
 	drag_elapsed += p_delta;
 	if (drag_elapsed < 0.35) return;
 	drag_elapsed = 0.0;
-	Ref<HTMLDataTransfer> transfer;
-	transfer.instantiate();
-	transfer->set_text(drag_text);
+	Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+	if (transfer.is_null()) {
+		transfer.instantiate();
+		transfer->set_text(drag_text);
+	}
 	transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
 	if (!dispatch_drag_event(StringName("drag"), drag_source, transfer, get_local_mouse_position())) {
 		if (Viewport* viewport = get_viewport()) viewport->gui_cancel_drag();
@@ -528,11 +799,12 @@ void HTMLLabelCanvas::handle_pointer_move(const PointerInfo& p_info) {
 	};
 	update_dialog_pointer(point, p_info.device);
 	if (native_drag_started) return;
-	if (selection_drag_attempt) {
+	if (selection_drag_attempt || element_drag_attempt) {
 		const Vector2 selection_press = pressed_position + visible_rect.position;
 		if ((p_info.buttons & MOUSE_BUTTON_MASK_LEFT) &&
 			point.distance_squared_to(selection_press) > DRAG_DEADZONE * DRAG_DEADZONE) {
-			begin_selection_drag(point, true);
+			if (selection_drag_attempt) begin_selection_drag(point, true);
+			else begin_element_drag(point, true);
 		}
 		queue_moves();
 		return;
@@ -608,6 +880,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	if (!native_drag_started) {
 		suppress_next_release = false;
 		selection_drag_attempt = false;
+		element_drag_attempt = false;
 		drag_source.unref();
 	}
 	const Rect2 visible_rect = label->get_visible_rect();
@@ -697,6 +970,14 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 			cancel_click();
 			accept_pointer_event(p_info);
 			return;
+		}
+	}
+	if (p_info.button == MOUSE_BUTTON_LEFT && !selection_drag_attempt) {
+		const Ref<HTMLElement> draggable = find_draggable_ancestor(element);
+		if (draggable.is_valid()) {
+			element_drag_attempt = true;
+			drag_source = draggable;
+			selecting = false;
 		}
 	}
 	if (selecting) {
@@ -803,6 +1084,10 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		drag_source.unref();
 		accept_pointer_event(p_info);
 		return;
+	}
+	if (element_drag_attempt) {
+		element_drag_attempt = false;
+		drag_source.unref();
 	}
 	Ref<HTMLElement> element;
 	const HTMLLayout::LinkHit hit = visible_rect.has_point(point)
@@ -932,7 +1217,8 @@ bool HTMLLabelCanvas::handle_key_default_action(const InputEventKey& p_key) {
 	}
 
 	if (!modal || label->layout->allows_modal_interaction(focused_element)) {
-		if (handle_video_key(p_key) || handle_audio_key(p_key) || label->handle_select_key(p_key) || handle_input_key(p_key)) return true;
+		if (handle_video_key(p_key) || handle_audio_key(p_key) || label->handle_select_key(p_key) ||
+			handle_input_key(p_key) || handle_editable_key(p_key)) return true;
 	}
 	if (label->handle_dialog_escape(p_key)) return true;
 	if (modal && !label->layout->allows_modal_interaction(focused_element)) return false;

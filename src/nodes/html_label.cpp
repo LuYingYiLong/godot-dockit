@@ -523,16 +523,22 @@ void HTMLLabelCanvas::_notification(int p_what) {
 		return;
 	}
 	if (p_what == NOTIFICATION_DRAG_END) {
-		if (native_drag_started && drag_source.is_valid()) {
-			Ref<HTMLDataTransfer> transfer;
-			transfer.instantiate();
-			transfer->set_text(drag_text);
+		if (native_drag_started) {
+			Ref<HTMLDataTransfer> transfer = docrender::get_current_drag_transfer();
+			if (transfer.is_null()) {
+				transfer.instantiate();
+				transfer->set_text(drag_text);
+			}
 			transfer->set_mode(HTMLDataTransfer::MODE_PROTECTED);
-			dispatch_drag_event(StringName("dragend"), drag_source, transfer, get_local_mouse_position());
+			if (drag_source.is_valid()) {
+				dispatch_drag_event(StringName("dragend"), drag_source, transfer, get_local_mouse_position());
+			}
+			docrender::set_current_drag_transfer({});
 			suppress_next_release = true;
 		}
 		native_drag_started = false;
 		selection_drag_attempt = false;
+		element_drag_attempt = false;
 		drag_source.unref();
 		drag_text = String();
 		drag_elapsed = 0.0;
@@ -595,6 +601,7 @@ void HTMLLabelCanvas::cancel_press() {
 	selection_dragged = false;
 	if (!native_drag_started) {
 		selection_drag_attempt = false;
+		element_drag_attempt = false;
 		drag_source.unref();
 	}
 	set_process_internal(false);
@@ -718,6 +725,7 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_elements_at", "position"), &HTMLLabel::get_elements_at);
 	ClassDB::bind_method(D_METHOD("get_focused_element"), &HTMLLabel::get_focused_element);
 	ClassDB::bind_method(D_METHOD("focus_element", "element"), &HTMLLabel::focus_element);
+	ClassDB::bind_method(D_METHOD("execute_edit_command", "command", "value"), &HTMLLabel::execute_edit_command, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("activate_element", "element"), &HTMLLabel::activate_element);
 	ClassDB::bind_method(D_METHOD("submit_form", "form", "submitter"), &HTMLLabel::submit_form, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("scroll_to_element", "element", "align"), &HTMLLabel::scroll_to_element, DEFVAL(0.0f));
@@ -1225,6 +1233,72 @@ bool HTMLLabel::focus_element(const Ref<HTMLElement>& p_element) {
 	if (!has_focus()) return false;
 	canvas->set_focused_element(p_element, true);
 	return canvas->focused_element == p_element;
+}
+
+void HTMLLabel::on_design_mode_changed() {
+	if (!canvas || layout.is_null()) return;
+	if (refresh_queued && is_inside_tree()) refresh();
+	canvas->tab_elements = layout->get_tab_elements(canvas->has_focusable_elements);
+	canvas->update_focus_mode();
+	if (canvas->focused_element.is_valid() && !layout->is_focusable(canvas->focused_element)) {
+		canvas->set_focused_element({});
+	}
+	layout->repaint_input();
+}
+
+bool HTMLLabel::execute_edit_command(const String& p_command, const String& p_value) {
+	if (source_dirty || !layout.is_valid()) return false;
+	Ref<HTMLElement> host = get_focused_element();
+	if (host.is_null() || !host->is_content_editable()) return false;
+	const Ref<HTMLSelection> selection = layout->get_selection();
+	if (selection.is_null() || selection->get_range_count() == 0) return false;
+	const Ref<HTMLRange> range = selection->get_range_at(0);
+	if (range.is_null() || range->is_collapsed()) return false;
+	const String command = p_command.to_lower();
+	String tag;
+	String input_type;
+	if (command == "bold") { tag = "strong"; input_type = "formatBold"; }
+	else if (command == "italic") { tag = "em"; input_type = "formatItalic"; }
+	else if (command == "underline") { tag = "u"; input_type = "formatUnderline"; }
+	else if (command == "strikethrough" || command == "strike") { tag = "s"; input_type = "formatStrikeThrough"; }
+	else if (command == "subscript") { tag = "sub"; input_type = "formatSubscript"; }
+	else if (command == "superscript") { tag = "sup"; input_type = "formatSuperscript"; }
+	else if (command == "formatblock") {
+		tag = p_value.strip_edges().to_lower().trim_prefix("<").trim_suffix(">");
+		if (!(tag == "p" || tag == "h1" || tag == "h2" || tag == "h3" || tag == "h4" || tag == "h5" ||
+			tag == "h6" || tag == "blockquote" || tag == "pre" || tag == "div")) return false;
+		input_type = "formatBlock";
+	}
+	else if (command == "insertorderedlist" || command == "insertunorderedlist") {
+		tag = command == "insertorderedlist" ? "ol" : "ul";
+		input_type = command == "insertorderedlist" ? "insertOrderedList" : "insertUnorderedList";
+	}
+	else if (command == "createlink") {
+		if (p_value.is_empty() || p_value.contains("\"") || p_value.contains("<") ||
+			p_value.contains(">") || p_value.begins_with("javascript:") || p_value.begins_with("data:")) return false;
+		tag = "a";
+		input_type = "createLink";
+	}
+	else if (command == "forecolor" || command == "backcolor") {
+		if (!Color::html_is_valid(p_value)) return false;
+		tag = "span";
+		input_type = command == "forecolor" ? "formatForeColor" : "formatBackColor";
+	}
+	else return false;
+	if (!dispatch_input_event(StringName("beforeinput"), host, input_type, p_value, false)) return false;
+	Ref<HTMLElement> wrapper = layout->create_element(tag);
+	if (wrapper.is_null()) return false;
+	if (command == "createlink") wrapper->set_attribute("href", p_value);
+	if (command == "forecolor") wrapper->set_attribute("style", String("color: ") + p_value + ";");
+	if (command == "backcolor") wrapper->set_attribute("style", String("background-color: ") + p_value + ";");
+	if (range->surround_contents(wrapper) != OK) return false;
+	selection->remove_all_ranges();
+	Ref<HTMLRange> selected = layout->create_range();
+	selected->select_node_contents(wrapper);
+	selection->add_range(selected);
+	dispatch_input_event(StringName("input"), host, input_type, p_value, false);
+	queue_refresh(true);
+	return true;
 }
 
 bool HTMLLabel::activate_element(const Ref<HTMLElement>& p_element) {

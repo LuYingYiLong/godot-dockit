@@ -197,6 +197,7 @@
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_audio_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_button_element.cpp" />
+    <ClCompile Include="src\formats\html\elements\html_canvas_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_details_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_dialog_element.cpp" />
     <ClCompile Include="src\formats\html\elements\html_element.cpp" />
@@ -420,6 +421,8 @@
     <ClInclude Include="src\formats\html\elements\html_audio_element.h" />
     <ClInclude Include="src\formats\html\elements\html_audio_node.h" />
     <ClInclude Include="src\formats\html\elements\html_button_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_canvas_element.h" />
+    <ClInclude Include="src\formats\html\elements\html_canvas_node.h" />
     <ClInclude Include="src\formats\html\elements\html_control_render_item.h" />
     <ClInclude Include="src\formats\html\elements\html_details_element.h" />
     <ClInclude Include="src\formats\html\elements\html_details_node.h" />

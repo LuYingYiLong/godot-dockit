@@ -20,6 +20,7 @@
 #include "formats/html/elements/html_list_elements.h"
 #include "formats/html/elements/html_form_elements.h"
 #include "formats/html/elements/html_image_element.h"
+#include "formats/html/elements/html_canvas_element.h"
 #include "formats/html/elements/html_template_element.h"
 #include "formats/html/elements/html_table_elements.h"
 #include "formats/html/paint/html_canvas_renderer.h"
@@ -131,6 +132,10 @@ void initialize_docrender_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLDivElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLHeadingElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLImageElement);
+		GDREGISTER_ABSTRACT_CLASS(HTMLCanvasElement);
+		GDREGISTER_CLASS(HTMLCanvasGradient);
+		GDREGISTER_CLASS(HTMLCanvasPattern);
+		GDREGISTER_CLASS(HTMLCanvasRenderingContext2D);
 		GDREGISTER_ABSTRACT_CLASS(HTMLInputElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLInputFile);
 		GDREGISTER_ABSTRACT_CLASS(HTMLParagraphElement);

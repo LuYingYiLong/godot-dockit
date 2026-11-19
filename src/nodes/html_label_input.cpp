@@ -3,6 +3,8 @@
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/elements/html_textarea_node.h"
 #include "formats/html/dom/html_dom.h"
+#include "formats/html/dom/html_range.h"
+#include "formats/html/dom/html_selection.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -398,6 +400,91 @@ bool HTMLLabelCanvas::handle_input_key(const InputEventKey& p_key) {
 		label->layout->repaint_input();
 		queue_redraw();
 	}
+	return true;
+}
+
+bool HTMLLabelCanvas::handle_editable_key(const InputEventKey& p_key) {
+	if (!p_key.is_pressed() || !label->layout->is_element_connected(focused_element) ||
+		!focused_element->is_content_editable()) return false;
+	const Key key = p_key.get_keycode() != KEY_NONE ? p_key.get_keycode() : p_key.get_physical_keycode();
+	const bool command = p_key.is_ctrl_pressed() || p_key.is_meta_pressed();
+	if (command && !p_key.is_alt_pressed()) {
+		if (key == KEY_B || key == KEY_I || key == KEY_U) {
+			label->accept_event();
+			label->execute_edit_command(key == KEY_B ? "bold" : key == KEY_I ? "italic" : "underline");
+			return true;
+		}
+		if (p_key.is_action("ui_text_select_all", true)) {
+			label->select_all();
+			label->accept_event();
+			return true;
+		}
+	}
+	if (p_key.is_echo() && (key == KEY_BACKSPACE || key == KEY_DELETE || key == KEY_ENTER || key == KEY_KP_ENTER)) return true;
+	String input;
+	StringName input_type;
+	if ((key == KEY_ENTER || key == KEY_KP_ENTER) && !command && !p_key.is_alt_pressed()) {
+		input_type = "insertLineBreak";
+	} else if (key == KEY_BACKSPACE || key == KEY_DELETE) {
+		input_type = key == KEY_BACKSPACE ? "deleteContentBackward" : "deleteContentForward";
+	} else if (command && key == KEY_V) {
+		input = DisplayServer::get_singleton()->clipboard_get();
+		input_type = "insertFromPaste";
+		if (input.is_empty()) { label->accept_event(); return true; }
+	} else if (!command && !p_key.is_alt_pressed()) {
+		const char32_t codepoint = p_key.get_unicode();
+		if (codepoint >= 0x20 && codepoint != 0x7f) {
+			input = String::chr(codepoint);
+			input_type = "insertText";
+		}
+	}
+	if (input_type.is_empty()) return false;
+	label->accept_event();
+	if (!label->dispatch_input_event(StringName("beforeinput"), focused_element, input_type, input, false)) return true;
+	Ref<HTMLSelection> selection = label->layout->get_selection();
+	Ref<HTMLRange> range;
+	if (selection.is_valid() && selection->get_range_count() > 0) range = selection->get_range_at(0);
+	if (range.is_null()) {
+		const Vector2i offsets = label->get_selection_range();
+		const auto anchor = label->layout->text_boundary_at(offsets.x);
+		const auto focus = label->layout->text_boundary_at(offsets.y);
+		range = label->layout->create_range();
+		if (range.is_null() || range->set_start(anchor.node, anchor.offset) != OK || range->set_end(focus.node, focus.offset) != OK) return true;
+		selection->remove_all_ranges();
+		selection->add_range(range);
+	}
+	const bool deleting = input_type == StringName("deleteContentBackward") || input_type == StringName("deleteContentForward");
+	if (deleting && range->is_collapsed()) {
+		const Vector2i offsets = label->get_selection_range();
+		const int64_t from = std::min(offsets.x, offsets.y);
+		const int64_t to = std::max(offsets.x, offsets.y);
+		const int64_t total = label->layout->get_plain_text().length();
+		if (from == to && ((input_type == StringName("deleteContentBackward") && from == 0) ||
+			(input_type == StringName("deleteContentForward") && to >= total))) return true;
+		const int64_t first = from == to && input_type == StringName("deleteContentBackward") ? from - 1 : from;
+		const int64_t last = from == to && input_type == StringName("deleteContentForward") ? to + 1 : to;
+		const auto start = label->layout->text_boundary_at(first);
+		const auto end = label->layout->text_boundary_at(last);
+		if (range->set_start(start.node, start.offset) != OK || range->set_end(end.node, end.offset) != OK) return true;
+	}
+	if (input_type == StringName("insertLineBreak")) {
+		if (range->delete_contents() != OK) return true;
+		Ref<HTMLElement> line_break = label->layout->create_element("br");
+		if (line_break.is_null() || range->insert_node(line_break) != OK) return true;
+		range->collapse(false);
+		selection->collapse(range->get_end_container(), range->get_end_offset());
+	} else if (deleting) {
+		if (range->delete_contents() != OK) return true;
+		range->collapse(true);
+		selection->collapse(range->get_start_container(), range->get_start_offset());
+	} else {
+		if (range->delete_contents() != OK) return true;
+		Ref<HTMLTextNode> text = label->layout->create_text_node(input);
+		if (text.is_null() || range->insert_node(text) != OK) return true;
+		selection->collapse(text, input.length());
+	}
+	label->dispatch_input_event(StringName("input"), focused_element, input_type, input, false);
+	label->queue_interaction();
 	return true;
 }
 

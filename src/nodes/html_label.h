@@ -191,6 +191,7 @@ class HTMLLabelCanvas : public godot::Control {
 	bool selecting = false;
 	bool selection_dragged = false;
 	bool selection_drag_attempt = false;
+	bool element_drag_attempt = false;
 	bool native_drag_started = false;
 	bool suppress_next_release = false;
 	godot::Ref<HTMLElement> drag_source;
@@ -259,6 +260,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLElement> get_form_click_target(const godot::Ref<HTMLElement>& p_element) const;
 	void move_range(const godot::Ref<HTMLInputElement>& p_input, const godot::Vector2& p_point, bool p_commit);
 	bool handle_input_key(const godot::InputEventKey& p_key);
+	bool handle_editable_key(const godot::InputEventKey& p_key);
 	bool handle_input_decoration(const godot::Ref<HTMLInputElement>& p_input, const godot::InputEventMouseButton& p_event,
 		const godot::Vector2& p_point, bool p_accepts_event = true);
 	bool open_input_menu(const godot::Ref<HTMLElement>& p_element, const godot::Vector2& p_position, bool p_pointer);
@@ -301,6 +303,7 @@ class HTMLLabelCanvas : public godot::Control {
 		const godot::Vector2& p_position) const;
 	void clear_drop_target(const godot::Vector2& p_position) const;
 	godot::Variant begin_selection_drag(const godot::Vector2& p_position, bool p_force_native_drag);
+	godot::Variant begin_element_drag(const godot::Vector2& p_position, bool p_force_native_drag);
 
 protected:
 	static void _bind_methods() {}
@@ -849,6 +852,8 @@ public:
 	) const;																	// 按命中顺序返回控件局部坐标下的元素
 	godot::Ref<HTMLElement> get_focused_element() const;						// 返回当前聚焦的 DOM 元素
 	bool focus_element(const godot::Ref<HTMLElement>& p_element);				// 将有效元素设为 DOM 焦点
+	void on_design_mode_changed();
+	bool execute_edit_command(const godot::String& p_command, const godot::String& p_value = {});
 	bool activate_element(const godot::Ref<HTMLElement>& p_element);			// 激活当前控件中可用的链接或表单控件
 	godot::Error submit_form(const godot::Ref<HTMLFormElement>& p_form,
 		const godot::Ref<HTMLElement>& p_submitter = {});						// 校验并发出有序的表单数据

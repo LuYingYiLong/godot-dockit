@@ -71,5 +71,11 @@
 		<member name="document_element" type="HTMLElement" setter="" getter="get_document_element">
 			The document's root element.
 		</member>
+		<member name="active_element" type="HTMLElement" setter="" getter="get_active_element">
+			The connected element focused in the owning [HTMLLabel], or [code]null[/code] when the label has no focused DOM element.
+		</member>
+		<member name="design_mode" type="String" setter="set_design_mode" getter="get_design_mode" default="&quot;off&quot;">
+			Set to [code]on[/code] to make the document body editable, or [code]off[/code] to disable document-wide editing. Other values are ignored.
+		</member>
 	</members>
 </class>

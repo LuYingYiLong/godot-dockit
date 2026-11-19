@@ -283,33 +283,48 @@ void HTMLDataTransfer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_data", "type", "value"), &HTMLDataTransfer::set_data);
 	ClassDB::bind_method(D_METHOD("clear_data", "type"), &HTMLDataTransfer::clear_data, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_types"), &HTMLDataTransfer::get_types);
+	ClassDB::bind_method(D_METHOD("get_effect_allowed"), &HTMLDataTransfer::get_effect_allowed);
+	ClassDB::bind_method(D_METHOD("set_effect_allowed", "value"), &HTMLDataTransfer::set_effect_allowed);
+	ClassDB::bind_method(D_METHOD("get_drop_effect"), &HTMLDataTransfer::get_drop_effect);
+	ClassDB::bind_method(D_METHOD("set_drop_effect", "value"), &HTMLDataTransfer::set_drop_effect);
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "types"), "", "get_types");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "effect_allowed"), "set_effect_allowed", "get_effect_allowed");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "drop_effect"), "set_drop_effect", "get_drop_effect");
 	BIND_ENUM_CONSTANT(MODE_READ_WRITE);
 	BIND_ENUM_CONSTANT(MODE_READ_ONLY);
 	BIND_ENUM_CONSTANT(MODE_PROTECTED);
 }
 
 String HTMLDataTransfer::get_data(const String& p_type) const {
-	return mode != MODE_PROTECTED && has_text && p_type.to_lower() == "text/plain" ? text : String();
+	if (mode == MODE_PROTECTED) return {};
+	const StringName key = p_type.strip_edges().to_lower();
+	const String* value = data.getptr(key);
+	return value ? *value : String();
 }
 
 Error HTMLDataTransfer::set_data(const String& p_type, const String& p_value) {
-	if (mode != MODE_READ_WRITE || p_type.to_lower() != "text/plain") return ERR_INVALID_PARAMETER;
-	text = p_value;
-	has_text = true;
+	if (mode != MODE_READ_WRITE || p_type.strip_edges().is_empty()) return ERR_INVALID_PARAMETER;
+	data.insert(StringName(p_type.strip_edges().to_lower()), p_value);
 	return OK;
 }
 
 void HTMLDataTransfer::clear_data(const String& p_type) {
-	if (mode != MODE_READ_WRITE || (!p_type.is_empty() && p_type.to_lower() != "text/plain")) return;
-	text = String();
-	has_text = false;
+	if (mode != MODE_READ_WRITE) return;
+	if (p_type.is_empty()) data.clear();
+	else data.erase(StringName(p_type.strip_edges().to_lower()));
 }
 
 PackedStringArray HTMLDataTransfer::get_types() const {
 	PackedStringArray result;
-	if (has_text) result.push_back("text/plain");
+	for (const KeyValue<StringName, String>& entry : data) result.push_back(String(entry.key));
+	result.sort();
 	return result;
+}
+
+namespace docrender {
+	namespace { Ref<HTMLDataTransfer> current_drag_transfer; }
+	void set_current_drag_transfer(const Ref<HTMLDataTransfer>& p_transfer) { current_drag_transfer = p_transfer; }
+	Ref<HTMLDataTransfer> get_current_drag_transfer() { return current_drag_transfer; }
 }
 
 void HTMLDragEvent::_bind_methods() {

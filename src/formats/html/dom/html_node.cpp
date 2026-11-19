@@ -6,6 +6,7 @@
 #include "formats/html/events/html_event.h"
 #include "formats/html/events/html_window.h"
 #include "formats/html/html_layout.h"
+#include "nodes/html_label.h"
 
 #include <litehtml/el_text.h>
 
@@ -23,6 +24,9 @@ namespace {
 
 void HTMLDocumentNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLDocumentNode::get_base_uri);
+	ClassDB::bind_method(D_METHOD("get_design_mode"), &HTMLDocumentNode::get_design_mode);
+	ClassDB::bind_method(D_METHOD("set_design_mode", "mode"), &HTMLDocumentNode::set_design_mode);
+	ClassDB::bind_method(D_METHOD("get_active_element"), &HTMLDocumentNode::get_active_element);
 	ClassDB::bind_method(D_METHOD("get_document_element"), &HTMLDocumentNode::get_document_element);
 	ClassDB::bind_method(D_METHOD("get_body"), &HTMLDocumentNode::get_body);
 	ClassDB::bind_method(D_METHOD("get_default_view"), &HTMLDocumentNode::get_default_view);
@@ -34,6 +38,9 @@ void HTMLDocumentNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_document_fragment"), &HTMLDocumentNode::create_document_fragment);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document_element", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
 		"", "get_document_element");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "design_mode"), "set_design_mode", "get_design_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "active_element", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
+		"", "get_active_element");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "body", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement", PROPERTY_USAGE_NONE),
 		"", "get_body");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "default_view", PROPERTY_HINT_RESOURCE_TYPE, "HTMLWindow",
@@ -43,6 +50,31 @@ void HTMLDocumentNode::_bind_methods() {
 String HTMLDocumentNode::get_base_uri() const {
 	const auto* layout = get_owner();
 	return layout ? layout->get_base_uri() : String();
+}
+
+String HTMLDocumentNode::get_design_mode() const {
+	return is_valid() && get_dom().is_design_mode_enabled() ? String("on") : String("off");
+}
+
+void HTMLDocumentNode::set_design_mode(const String& p_mode) {
+	if (!is_valid()) return;
+	const String mode = p_mode.strip_edges().to_lower();
+	const bool previous = get_dom().is_design_mode_enabled();
+	if (mode == "on") get_dom().set_design_mode_enabled(true);
+	else if (mode == "off") get_dom().set_design_mode_enabled(false);
+	if (previous == get_dom().is_design_mode_enabled()) return;
+	const auto* layout = get_owner();
+	if (!layout) return;
+	if (auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(layout->get_event_host_id())))) {
+		label->on_design_mode_changed();
+	}
+}
+
+Ref<HTMLElement> HTMLDocumentNode::get_active_element() const {
+	const auto* layout = get_owner();
+	if (!layout) return {};
+	auto* host = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(layout->get_event_host_id())));
+	return host ? host->get_focused_element() : Ref<HTMLElement>();
 }
 
 Ref<HTMLElement> HTMLDocumentNode::get_document_element() const {

@@ -4,6 +4,7 @@
 #include "formats/html/events/html_event_target.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -279,9 +280,10 @@ public:
 	};
 
 private:
-	godot::String text;
+	godot::HashMap<godot::StringName, godot::String> data;
 	Mode mode = MODE_READ_WRITE;
-	bool has_text = false;
+	godot::String effect_allowed = "uninitialized";
+	godot::String drop_effect = "none";
 protected:
 	static void _bind_methods();
 public:
@@ -289,10 +291,19 @@ public:
 	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);
 	void clear_data(const godot::String& p_type = {});
 	godot::PackedStringArray get_types() const;
-	void set_text(const godot::String& p_text) { text = p_text; has_text = true; }
+	void set_text(const godot::String& p_text) { data.insert(godot::StringName("text/plain"), p_text); }
+	void set_effect_allowed(const godot::String& p_value) { if (mode == MODE_READ_WRITE) effect_allowed = p_value; }
+	const godot::String& get_effect_allowed() const { return effect_allowed; }
+	void set_drop_effect(const godot::String& p_value) { drop_effect = p_value; }
+	const godot::String& get_drop_effect() const { return drop_effect; }
 	void set_mode(Mode p_mode) { mode = p_mode; }
 	void set_read_only(bool p_read_only) { mode = p_read_only ? MODE_READ_ONLY : MODE_READ_WRITE; }
 };
+
+namespace docrender {
+	void set_current_drag_transfer(const godot::Ref<HTMLDataTransfer>& p_transfer);
+	godot::Ref<HTMLDataTransfer> get_current_drag_transfer();
+}
 
 VARIANT_ENUM_CAST(HTMLDataTransfer::Mode);
 

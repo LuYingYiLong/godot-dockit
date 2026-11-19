@@ -552,6 +552,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="content_editable" type="bool" setter="" getter="is_content_editable">
+			Whether this element is inside an editable region. [code]contenteditable="true"[/code] and [code]contenteditable="plaintext-only"[/code] enable editing; an explicit [code]false[/code] descendant stops inherited editing. The value also reflects document [member HTMLDocumentNode.design_mode].
+		</member>
 		<member name="id" type="String" setter="set_id" getter="get_id">
 			Reflects the HTML ID.
 		</member>
