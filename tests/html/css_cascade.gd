@@ -9120,6 +9120,8 @@ func _check_controls() -> void:
 		  .tie_pixel { background: red; }
 		  #parent { color: red; background-color: color-mix(in srgb, currentColor, white); }
 		  .bevel { display: inline-block; width: 28px; height: 25px; border: 8px solid #808080; }
+		  #solid_seam { display: inline-block; width: 28px; height: 25px; border: 8px solid magenta;
+		    transform: translate(0.5px, 0.5px); }
 		  .clip_literal, .clip_variable {
 		    width: 18px; height: 10px; padding: 4px; border: 2px solid transparent;
 		    background: #b53078 border-box;
@@ -9133,6 +9135,7 @@ func _check_controls() -> void:
 		<div id="parent" style="width: 100px; height: 30px">
 		  <div id="child" style="color: blue; background-color: inherit; width: 50px; height: 30px"></div>
 		</div>
+		<div id="solid_seam"></div>
 		<div><div id="groove" class="bevel" style="border-style: groove; border-radius: 12px"></div>
 		  <div id="ridge" class="bevel" style="border-style: ridge"></div>
 		  <div id="inset" class="bevel" style="border-style: inset"></div>
@@ -9185,6 +9188,14 @@ func _check_controls() -> void:
 	var parent: Rect2 = _label_rect(label, "parent")
 	_check_pixel(image, parent.position + Vector2(15.0, 15.0), Color("#8080ff"), "Inherited mix uses the child's currentColor")
 	_check_pixel(image, parent.position + Vector2(75.0, 15.0), Color("#ff8080"), "Parent mix uses its own currentColor")
+	var solid_seam: Rect2 = _label_rect(label, "solid_seam")
+	for point: Vector2 in [
+		solid_seam.position + Vector2(2.0, 2.0),
+		Vector2(solid_seam.end.x - 2.0, solid_seam.position.y + 2.0),
+		Vector2(solid_seam.position.x + 2.0, solid_seam.end.y - 2.0),
+		solid_seam.end - Vector2(2.0, 2.0),
+	]:
+		_check_pixel(image, point, Color.MAGENTA, "A transformed solid border stays closed at all four corners")
 	var dark: Color = Color("#535353")
 	var light: Color = Color("#acacac")
 	var groove: Vector2 = _label_rect(label, "groove").position

@@ -2132,7 +2132,8 @@ void fragment() {
 		const bool double_line = std::find(styles.begin(), styles.end(), BORDER_DOUBLE) != styles.end();
 		const bool bevel_bands = std::find(styles.begin(), styles.end(), BORDER_BEVEL_BANDS) != styles.end();
 		const bool bevel = bevel_bands || std::find(styles.begin(), styles.end(), BORDER_BEVEL_SOLID) != styles.end();
-		if (outer.has_radius() || patterned || double_line || bevel) {
+		const bool solid = std::find(styles.begin(), styles.end(), BORDER_SOLID) != styles.end();
+		if (outer.has_radius() || patterned || double_line || bevel || solid) {
 			const auto inset = [&](float p_fraction) {
 				const Vector2 leading(left * p_fraction, top * p_fraction);
 				const Vector2 trailing(right * p_fraction, bottom * p_fraction);

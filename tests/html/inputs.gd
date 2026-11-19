@@ -180,6 +180,23 @@ func _check_picker() -> void:
 	_color_picker_key(KEY_RIGHT)
 	_color_picker_key(KEY_ENTER)
 	_check(not panel.visible and date.value == "2024-03-01", "date preview crosses leap day and respects max")
+	date.set_attribute("min", "2000-01-01")
+	date.set_attribute("max", "2000-01-02")
+	date.value = ""
+	for _frame: int in range(2):
+		await get_tree().process_frame
+	_check(date.show_picker() == OK and panel.visible, "a cleared date with an old range reopens its calendar")
+	_color_picker_key(KEY_LEFT)
+	_color_picker_key(KEY_ENTER)
+	_check(date.value == "2000-01-01", "an empty picker starts at the nearest allowed date instead of a disabled today")
+	date.remove_attribute("min")
+	date.remove_attribute("max")
+	date.value = ""
+	for _frame: int in range(2):
+		await get_tree().process_frame
+	_check(date.show_picker() == OK, "an unconstrained cleared date can reopen its calendar")
+	_color_picker_click(panel, Vector2(194.0, 259.0))
+	_check(date.value == Time.get_date_string_from_system(), "Today selects the current date after clearing")
 	_check(month.show_picker() == OK and panel.visible and panel.size == Vector2(232.0, 182.0),
 		"month uses the canvas month grid")
 	_color_picker_click(panel, Vector2(205.0, 23.0))

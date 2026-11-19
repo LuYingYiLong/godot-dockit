@@ -177,6 +177,14 @@ Error HTMLLabel::show_clock_picker() {
 	time_picker.initial_value = input->get_value();
 	const auto value = calendar::parse(time_picker.kind, time_picker.initial_value);
 	picker_date = value ? calendar::parts(time_picker.kind, *value) : Time::get_singleton()->get_datetime_dict_from_system();
+	if (!value && time_picker.has_calendar()) {
+		const CalendarBounds limits(time_picker.kind, *picker_input.ptr());
+		if (auto initial_date = calendar::from_parts(time_picker.kind, picker_date)) {
+			if (limits.minimum && *initial_date < *limits.minimum) initial_date = limits.minimum;
+			if (limits.maximum && *initial_date > *limits.maximum) initial_date = limits.maximum;
+			picker_date = calendar::parts(time_picker.kind, *initial_date);
+		}
+	}
 	const char* tag = litehtml::get_element_language(*input);
 	const String locale = (tag && *tag ? String::utf8(tag) : OS::get_singleton()->get_locale()).replace("_", "-").to_lower();
 	time_picker.use_meridiem = time_picker.has_clock() && uses_twelve_hours(locale);
