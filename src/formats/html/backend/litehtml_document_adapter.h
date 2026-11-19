@@ -49,6 +49,7 @@ namespace litehtml {
 			bool p_build_render_tree = true
 		);																			// 在原有元素树上重算样式并重建渲染树
 		static unsigned selector_state_dependencies(const document& p_document);	// 收集已解析样式表使用的交互状态
+		static bool has_transitions(document& p_document); // 检查样式表或元素是否声明了 CSS 过渡
 		static void set_hover(element& p_element, bool p_hovered);					// 更新元素的悬停伪类状态
 		static bool is_command_button(const element& p_element);					// 判断元素是否有按钮激活行为
 		static css_text::vector stylesheets(const document& p_document);

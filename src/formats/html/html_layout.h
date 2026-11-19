@@ -47,6 +47,8 @@ namespace dockit {
 		std::weak_ptr<const litehtml::element> element;
 	};
 	enum class HTMLScrollInput { ignored, forwarded, handled };
+	enum class HTMLHoverUpdate { unchanged, state_changed, paint_only, layout };
+	using HTMLHitTestResult = std::optional<std::shared_ptr<litehtml::element>>;
 	struct HTMLViewportStyle {
 		HTMLScrollbarAppearance scrollbar;
 		std::array<litehtml::overflow, 2> overflow{litehtml::overflow_auto, litehtml::overflow_auto};
@@ -190,7 +192,8 @@ class HTMLLayout : public godot::RefCounted {
 	std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_position, bool* r_scrollbar = nullptr,
 		bool p_text_selection = false) const;
 	godot::Ref<HTMLElement> wrap_hit_element(std::shared_ptr<litehtml::element> p_element) const;
-	bool update_hover(const std::optional<godot::Vector2>& p_position);
+	dockit::HTMLHoverUpdate update_hover(const std::optional<godot::Vector2>& p_position,
+		const dockit::HTMLHitTestResult& p_hit_test = {});
 	godot::TypedArray<HTMLElement> get_hovered_elements() const; // 返回当前悬停链，由最内层元素向外排列
 	godot::String get_activatable_link_uri(const godot::Ref<HTMLElement>& p_element) const;
 	godot::Ref<HTMLElement> get_button_ancestor(const godot::Ref<HTMLElement>& p_element) const;
@@ -246,6 +249,8 @@ class HTMLLayout : public godot::RefCounted {
 	void draw_viewport_background(godot::CanvasItem& p_canvas, const godot::Vector2& p_position,
 		const godot::Rect2& p_clip, const godot::Vector2& p_viewport_origin);
 	dockit::HTMLViewportStyle get_viewport_style() const;
+	bool can_skip_hover_base_layout(const godot::Vector2i& p_media_size) const;
+	void complete_hover_layout();
 	litehtml::color_scheme get_element_color_scheme(const godot::Ref<HTMLElement>& p_element) const;
 	dockit::HTMLTextLayout shape_element_text(const godot::Ref<HTMLElement>& p_element, const godot::String& p_text) const;
 	bool update_preferred_color_scheme();
@@ -392,7 +397,8 @@ public:
 	godot::Ref<HTMLElement> get_element_at(const godot::Vector2& p_position) const; // 返回文档坐标处考虑裁剪后的最上层元素
 	godot::TypedArray<HTMLElement> get_elements_at(const godot::Vector2& p_position) const; // 按命中顺序返回文档坐标下的元素
 	std::optional<dockit::HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_position) const; // 获取命中的滚动条和滑块抓取位置
-	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position); // 更新滚动条的可见悬停状态
+	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position,
+		const dockit::HTMLHitTestResult& p_hit_test = {}); // 更新滚动条的可见悬停状态
 	void set_scrollbar_pressed(const std::optional<dockit::HTMLScrollbarDrag>& p_drag); // 更新滚动条的可见按压状态
 	void drag_scrollbar(const dockit::HTMLScrollbarDrag& p_drag, const godot::Vector2& p_position); // 按文档坐标移动滑块
 	void finish_scrollbar_drag(const dockit::HTMLScrollbarDrag& p_drag);

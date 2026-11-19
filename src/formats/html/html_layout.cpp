@@ -177,7 +177,7 @@ namespace {
 }
 
 struct HTMLLayout::State {
-	enum class Update { NONE, LAYOUT, STYLE };
+	enum class Update { NONE, LAYOUT, STYLE, HOVER_LAYOUT };
 	struct AnimationEventTrack {
 		std::weak_ptr<litehtml::element> target;
 		String name;
@@ -259,8 +259,12 @@ struct HTMLLayout::State {
 	bool implicit_empty_document = false;
 	bool reflow_queued = false;
 	bool input_paint_pending = false;
+	bool hover_viewport_style_changed = false;
+	// Kept through scrollbar convergence so viewport-unit changes rebuild the hover-updated render tree.
+	bool hover_layout_active = false;
 	unsigned selector_state_dependencies = 0;
 	bool css_diagnostics_enabled = false;
+	bool has_css_transitions = false;
 	bool print_media = false;
 	bool embedded_block = false;
 
@@ -288,6 +292,7 @@ bool HTMLLayout::refresh_cssom() {
 	if (state->pending_update == State::Update::STYLE) {
 		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
+		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
 		state->pending_update = State::Update::LAYOUT;
 	}
 	return true;
@@ -826,6 +831,7 @@ bool HTMLLayout::initialize_document(const CharString& p_html) {
 		ObjectID(get_instance_id()), parse_version);
 	if (const auto document = state->dom->get_document()) {
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
+		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
 	}
 	return bool(state->dom->get_document());
 }
@@ -895,12 +901,15 @@ Error HTMLLayout::layout_viewport(const Vector2i& p_viewport_size, const Vector2
 	state->media_viewport_size = p_media_size;
 	state->viewport_unit_size = p_viewport_unit_size;
 	state->pending_update = Update::NONE;
+	state->hover_viewport_style_changed = false;
 	return OK;
 }
 
 Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_media_size,
 	const Vector2i& p_viewport_unit_size) {
 	using Update = State::Update;
+	const bool hover_layout_update = state->pending_update == Update::HOVER_LAYOUT;
+	const bool viewport_units_changed = state->viewport_unit_size != p_viewport_unit_size;
 	state->container->begin_image_layout();
 	const auto& document = state->dom->get_document();
 	const double transition_time = animation_clock_time();
@@ -958,11 +967,13 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 		state->pending_update = Update::STYLE;
 		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
+		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
 		state->pending_update = Update::LAYOUT;
 	}
-	else {
+	else if (!hover_layout_update || viewport_units_changed || state->sampling_transitions) {
 		// Viewport units also change when all media queries keep matching.
 		DocumentAdapter::compute_styles(*document);
+		if (state->hover_layout_active) DocumentAdapter::rebuild_render_tree(*document);
 	}
 	Vector2 overflow;
 	std::unordered_set<const litehtml::element*> revealed;
@@ -1760,6 +1771,7 @@ void HTMLLayout::invalidate_styles() {
 
 void HTMLLayout::mark_styles_pending() {
 	state->pending_update = State::Update::STYLE;
+	state->hover_viewport_style_changed = false;
 	state->anchors.clear();
 }
 
@@ -2549,12 +2561,24 @@ void HTMLLayout::draw_viewport_background(CanvasItem& p_canvas, const Vector2& p
 
 dockit::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
 	const auto& document = state->dom->get_document();
-	const auto root = document && state->has_layout() ? document->root() : nullptr;
+	const bool hover_styles_current = state->pending_update == State::Update::HOVER_LAYOUT;
+	const auto root = document && (state->has_layout() || hover_styles_current) ? document->root() : nullptr;
 	if (!root || root->css().get_display() == litehtml::display_none) return {};
 	// Read the computed values, before viewport propagation changes the root box's used overflow.
 	const dockit::css::ComputedStyle& css = root->css();
 	return {dockit::html_scrollbar_appearance(css), state->viewport_overflow,
 		{css.get_overflow_x(), css.get_overflow_y()}, css.get_scrollbar_gutter(), css.get_color_scheme()};
+}
+
+bool HTMLLayout::can_skip_hover_base_layout(const Vector2i& p_media_size) const {
+	// The hover result and viewport inputs already agree; base layout would repeat the same reflow.
+	return state->pending_update == State::Update::HOVER_LAYOUT && !state->hover_viewport_style_changed &&
+		!state->sampling_transitions && state->viewport_size == p_media_size &&
+		state->media_viewport_size == p_media_size && state->viewport_unit_size == p_media_size;
+}
+
+void HTMLLayout::complete_hover_layout() {
+	state->hover_layout_active = false;
 }
 
 litehtml::color_scheme HTMLLayout::get_element_color_scheme(const Ref<HTMLElement>& p_element) const {
@@ -2589,13 +2613,15 @@ std::optional<dockit::HTMLScrollbarDrag> HTMLLayout::scrollbar_at(const Vector2&
 	return owner && allows_modal_interaction(*owner) ? bar : std::nullopt;
 }
 
-void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position) {
+void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position,
+	const dockit::HTMLHitTestResult& p_hit_test) {
 	if (!state->container) return;
 	std::optional<dockit::HTMLScrollbarDrag> target;
 	if (p_position && state->has_layout()) {
 		target = scrollbar_at(*p_position);
 		if (!target) {
-			const auto element = get_element_at(*p_position);
+			const auto hit_element = p_hit_test ? *p_hit_test : hit_test_element(*p_position);
+			const Ref<HTMLElement> element = wrap_hit_element(hit_element);
 			const auto input = text_control(element);
 			if (const auto textarea = std::dynamic_pointer_cast<HTMLTextAreaNode>(input)) {
 				if (const auto local = input_local_point(*element.ptr(), *p_position)) {
@@ -3160,8 +3186,10 @@ TypedArray<HTMLElement> HTMLLayout::get_hovered_elements() const {
 	return result;
 }
 
-bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
-	const auto target = p_position ? find_html_ancestor(hit_test_element(*p_position)) : nullptr;
+dockit::HTMLHoverUpdate HTMLLayout::update_hover(const std::optional<Vector2>& p_position,
+	const dockit::HTMLHitTestResult& p_hit_test) {
+	const auto hit_element = p_position ? (p_hit_test ? *p_hit_test : hit_test_element(*p_position)) : nullptr;
+	const auto target = find_html_ancestor(hit_element);
 	std::vector<std::weak_ptr<litehtml::element>> next;
 	for (auto element = target; element && allows_modal_interaction(*element); element = find_html_ancestor(element->parent())) {
 		next.emplace_back(element);
@@ -3169,7 +3197,7 @@ bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
 	auto& previous = state->hovered_elements;
 	if (std::equal(previous.begin(), previous.end(), next.begin(), next.end(),
 			[](const auto& p_left, const auto& p_right) { return p_left.lock() == p_right.lock(); })) {
-		return false;
+		return dockit::HTMLHoverUpdate::unchanged;
 	}
 
 	std::unordered_set<const litehtml::element*> hovered;
@@ -3188,10 +3216,36 @@ bool HTMLLayout::update_hover(const std::optional<Vector2>& p_position) {
 	}
 	previous = std::move(next);
 	if (!(state->selector_state_dependencies & dockit::css::selector_depends_on_hover)) {
-		return false;
+		return dockit::HTMLHoverUpdate::state_changed;
 	}
-	mark_styles_pending();
-	return true;
+	const auto& document = state->dom->get_document();
+	if (!state->has_layout() || !document) {
+		mark_styles_pending();
+		return dockit::HTMLHoverUpdate::layout;
+	}
+	if (state->has_css_transitions || state->transitions.active() || state->transitions.has_overrides() ||
+		state->animations.active()) {
+		// Let reflow capture the pre-hover values before recomputing transition targets.
+		mark_styles_pending();
+		return dockit::HTMLHoverUpdate::layout;
+	}
+	litehtml::position::vector redraw_boxes;
+	bool layout_required = false;
+	bool viewport_style_required = false;
+	const bool styles_changed = document->root()->find_styles_changes(redraw_boxes, &layout_required,
+		&viewport_style_required);
+	if (!styles_changed) return dockit::HTMLHoverUpdate::state_changed;
+	layout_required |= viewport_style_required;
+	if (layout_required) {
+		DocumentAdapter::rebuild_render_tree(*document);
+		state->pending_update = State::Update::HOVER_LAYOUT;
+		state->hover_viewport_style_changed = viewport_style_required;
+		state->hover_layout_active = true;
+		state->anchors.clear();
+		return dockit::HTMLHoverUpdate::layout;
+	}
+	repaint_input();
+	return dockit::HTMLHoverUpdate::paint_only;
 }
 
 String HTMLLayout::get_render_error() const {
@@ -3209,6 +3263,7 @@ void HTMLLayout::set_css_diagnostics_enabled(bool p_enabled) {
 	state->container->set_css_diagnostics_enabled(p_enabled);
 	if (p_enabled && state->dom->get_document()) {
 		state->pending_update = State::Update::STYLE;
+		state->hover_viewport_style_changed = false;
 		if (!state->edit_callback.is_valid()) {
 			queue_reflow();
 		}
@@ -3422,6 +3477,9 @@ void HTMLLayout::clear() {
 	state->error = String();
 	state->parse_error = OK;
 	state->pending_update = State::Update::LAYOUT;
+	state->hover_viewport_style_changed = false;
+	state->hover_layout_active = false;
+	state->has_css_transitions = false;
 	state->implicit_empty_document = false;
 	state->reflow_queued = false;
 	state->embedded_block = false;

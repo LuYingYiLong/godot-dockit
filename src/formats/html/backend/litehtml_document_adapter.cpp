@@ -425,6 +425,28 @@ namespace litehtml {
 		return dependencies;
 	}
 
+	bool dockit_editor::has_transitions(document& p_document) {
+		for (const css* sheet : { &p_document.m_master_css, &p_document.m_styles }) {
+			for (const auto& rule : sheet->selectors()) {
+				if (!rule->m_style) continue;
+				std::vector<string_id> properties;
+				rule->m_style->collect_property_names(properties);
+				if (std::any_of(properties.begin(), properties.end(), [](string_id p_property) {
+					return _s(p_property).rfind("transition", 0) == 0;
+				})) return true;
+			}
+		}
+		const auto visit = [&](const auto& self, const element& p_element) -> bool {
+			if (p_element.css().get_transitions()) return true;
+			for (const auto& child : p_element.children()) {
+				if (self(self, *child)) return true;
+			}
+			return false;
+		};
+		const auto root = p_document.root();
+		return root && visit(visit, *root);
+	}
+
 	void dockit_editor::set_hover(element& p_element, bool p_hovered) {
 		p_element.set_pseudo_class(_hover_, p_hovered);
 	}

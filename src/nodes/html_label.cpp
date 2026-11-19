@@ -967,7 +967,7 @@ void HTMLLabel::_notification(int p_what) {
 			canvas->cancel_press();
 			canvas->set_focused_element({});
 			hover_passes_remaining = 0;
-			if (layout->update_hover(std::nullopt)) {
+			if (layout->update_hover(std::nullopt) == dockit::HTMLHoverUpdate::layout) {
 				queue_refresh();
 			}
 			queue_interaction();
@@ -2436,7 +2436,11 @@ void HTMLLabel::refresh() {
 		update_view({}, {}, {}, { 1, 1 }, layout_changed);
 		return;
 	}
-	if (layout->layout(media_size) != OK) {
+	bool skip_base_layout = layout->can_skip_hover_base_layout(media_size);
+	if (skip_base_layout && layout->update_preferred_color_scheme()) {
+		skip_base_layout = false;
+	}
+	if (!skip_base_layout && layout->layout(media_size) != OK) {
 		update_view({}, {}, {}, { 1, 1 }, layout_changed, layout->get_render_error());
 		return;
 	}
@@ -2491,6 +2495,7 @@ void HTMLLabel::refresh() {
 				Vector2(empty_gutter, opposite_gutter) : Vector2(opposite_gutter, empty_gutter);
 			Vector2 painted_gutters = empty_gutters;
 			if (vertical) painted_gutters[is_layout_rtl() ? 0 : 1] = bar_width;
+			layout->complete_hover_layout();
 			update_view(viewport, size, { horizontal, vertical }, input_axes, layout_changed, {}, painted_gutters);
 			return;
 		}
@@ -2872,13 +2877,16 @@ void HTMLLabel::update_interaction() {
 		}
 	}
 
-	layout->update_scrollbar_hover(point);
+	dockit::HTMLHitTestResult hit_test;
+	if (point) hit_test.emplace(layout->hit_test_element(*point));
+	layout->update_scrollbar_hover(point, hit_test);
 	if (!canvas->selection_dragged && !canvas->scrollbar_drag) {
 		const TypedArray<HTMLElement> previous_hover = layout->get_hovered_elements();
-		if (layout->update_hover(point)) {
+		const dockit::HTMLHoverUpdate hover_update = layout->update_hover(point, hit_test);
+		if (hover_update != dockit::HTMLHoverUpdate::unchanged) {
 			// 在回流之前派发 mouseenter / mouseleave，避免链已被改写
 			canvas->dispatch_hover_events(previous_hover, canvas->get_local_mouse_position());
-			if (hover_passes_remaining > 0) {
+			if (hover_update == dockit::HTMLHoverUpdate::layout && hover_passes_remaining > 0) {
 				// A hover rule can move or hide its own target. Allow one correction after sorting.
 				--hover_passes_remaining;
 				hover_reflow = true;

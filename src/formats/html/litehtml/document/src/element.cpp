@@ -12,6 +12,8 @@
 #include "render_table.h"
 #include "el_before_after.h"
 
+#include <unordered_set>
+
 namespace litehtml
 {
 
@@ -218,15 +220,72 @@ void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
 	}
 }
 
-bool element::requires_styles_update()
+namespace {
+	bool selector_is_paint_only(const css_selector& p_selector) {
+		if (!p_selector.m_style) return false;
+		// Unknown properties conservatively require layout because they may affect geometry or hit testing.
+		static const std::unordered_set<string_id> paint_only_properties{
+			_color_,
+			_id("accent-color"),
+			_id("background-color"),
+			_id("border-bottom-color"),
+			_id("border-left-color"),
+			_id("border-right-color"),
+			_id("border-top-color"),
+			_id("box-shadow"),
+			_id("caret-color"),
+			_id("cursor"),
+			_id("opacity"),
+			_id("outline-color"),
+			_id("text-decoration-color"),
+			_id("text-shadow"),
+		};
+		std::vector<string_id> properties;
+		p_selector.m_style->collect_property_names(properties);
+		return std::all_of(properties.begin(), properties.end(), [](string_id p_property) {
+			return paint_only_properties.find(p_property) != paint_only_properties.end();
+		});
+	}
+
+	bool selector_changes_viewport_style(const css_selector& p_selector) {
+		if (!p_selector.m_style) return true;
+		static const std::unordered_set<string_id> viewport_style_properties{
+			_color_,
+			_id("color-scheme"),
+			_id("direction"),
+			_id("overflow"),
+			_id("overflow-x"),
+			_id("overflow-y"),
+			_id("scrollbar-color"),
+			_id("scrollbar-gutter"),
+			_id("scrollbar-width"),
+		};
+		std::vector<string_id> properties;
+		p_selector.m_style->collect_property_names(properties);
+		return std::any_of(properties.begin(), properties.end(), [](string_id p_property) {
+			return viewport_style_properties.find(p_property) != viewport_style_properties.end();
+		});
+	}
+}
+
+bool element::requires_styles_update(bool* r_layout_required, bool* r_viewport_style_required)
 {
 	for (const auto& used_style : m_used_styles)
 	{
 		if(used_style->m_selector->is_media_valid())
 		{
-			int res = select(*(used_style->m_selector), true);
-			if( (res == select_no_match && used_style->m_used) || (res == select_match && !used_style->m_used) )
-			{
+			const int result = select(*(used_style->m_selector), true);
+			const bool matches = result != select_no_match;
+			if (matches != used_style->m_used) {
+				const bool paint_only = selector_is_paint_only(*used_style->m_selector);
+				if (r_layout_required && !paint_only) {
+					*r_layout_required = true;
+				}
+				if (r_viewport_style_required && (is_root() || tag() == _body_) &&
+					(!paint_only ||
+						selector_changes_viewport_style(*used_style->m_selector))) {
+					*r_viewport_style_required = true;
+				}
 				return true;
 			}
 		}
@@ -239,7 +298,8 @@ void element::add_render(const std::shared_ptr<render_item>& ri)
 	m_renders.push_back(ri);
 }
 
-bool element::find_styles_changes( position::vector& redraw_boxes)
+bool element::find_styles_changes(position::vector& redraw_boxes, bool* r_layout_required,
+	bool* r_viewport_style_required)
 {
 	if(css().get_display() == display_inline_text)
 	{
@@ -248,7 +308,7 @@ bool element::find_styles_changes( position::vector& redraw_boxes)
 
 	bool ret = false;
 
-	if(requires_styles_update())
+	if (requires_styles_update(r_layout_required, r_viewport_style_required))
 	{
 		auto fetch_boxes = [&](const std::shared_ptr<element>& el)
 			{
@@ -278,7 +338,7 @@ bool element::find_styles_changes( position::vector& redraw_boxes)
 	}
 	for (auto& el : m_children)
 	{
-		if(el->find_styles_changes(redraw_boxes))
+		if (el->find_styles_changes(redraw_boxes, r_layout_required, r_viewport_style_required))
 		{
 			ret = true;
 		}
