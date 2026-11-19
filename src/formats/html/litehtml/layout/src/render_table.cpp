@@ -622,8 +622,12 @@ void litehtml::render_item_table::paint_shared_borders(uint_ptr hdc, const posit
             {
                 borders decoration;
                 decoration.top = edge.stroke;
-                container->draw_borders(hdc, decoration, {x(edge.begin), y(line) - edge.stroke.width / 2,
-                    x(edge.end) - x(edge.begin), edge.stroke.width}, false);
+                const pixel_t cap = edge.stroke.width / 2;
+                const pixel_t begin = x(edge.begin);
+                const pixel_t end = x(edge.end);
+                // Collapsed strokes meet on their centerlines. Extend the caps to their junctions to seal corner pixels.
+                container->draw_borders(hdc, decoration, {begin - cap, y(line) - cap,
+                    end - begin + cap * 2, edge.stroke.width}, false);
             }
         }
         for (const auto& [line, edges] : m_vertical_edges)
@@ -632,8 +636,11 @@ void litehtml::render_item_table::paint_shared_borders(uint_ptr hdc, const posit
             {
                 borders decoration;
                 decoration.left = edge.stroke;
-                container->draw_borders(hdc, decoration, {x(line) - edge.stroke.width / 2, y(edge.begin),
-                    edge.stroke.width, y(edge.end) - y(edge.begin)}, false);
+                const pixel_t cap = edge.stroke.width / 2;
+                const pixel_t begin = y(edge.begin);
+                const pixel_t end = y(edge.end);
+                container->draw_borders(hdc, decoration, {x(line) - cap, begin - cap,
+                    edge.stroke.width, end - begin + cap * 2}, false);
             }
         }
     }

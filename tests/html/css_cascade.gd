@@ -15667,6 +15667,8 @@ func _check_table_css() -> void:
 		#right { border-left: 4px double red }
 		#no_edge { border-right: hidden }
 		#ignored { border-left: 8px solid red }
+		#corners { width: 140px; table-layout: fixed; border-collapse: collapse; border: 4px solid red }
+		#corners td { height: 20px; padding: 0; border: 4px solid red }
 		#tracks { width: 140px; table-layout: fixed; border-spacing: 0 }
 		#tracks td { height: 12px }
 	</style>
@@ -15680,6 +15682,7 @@ func _check_table_css() -> void:
 	<table id="shared"><tr><td id="left"></td><td id="right"></td></tr>
 		<tr><td id="no_edge"></td><td id="ignored"></td></tr>
 	</table>
+	<table id="corners"><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table>
 	<table id="tracks"><col id="first_track" style="width: 40px"><col id="second_track" style="width: 100px">
 		<tr><td id="gone"><a href="#kept">Hidden</a></td><td id="kept">Keep</td></tr>
 		<tr id="row_to_fold" style="height: 25px"><td id="spanning" rowspan="2" colspan="2" style="visibility: visible">Spanning</td></tr><tr></tr>
@@ -15712,6 +15715,14 @@ func _check_table_css() -> void:
 		"Markdown HTML blocks use the same collapsed border resolver")
 	var left: Rect2 = _label_rect(label, "left")
 	_check_pixel(image, Vector2(left.end.x - 2.0, left.get_center().y), Color.BLUE, "Wider collapsed borders win once across the shared line")
+	var corners: Rect2 = _label_rect(label, "corners")
+	for point: Vector2 in [
+		corners.position + Vector2(1.0, 1.0),
+		Vector2(corners.end.x - 1.0, corners.position.y + 1.0),
+		Vector2(corners.position.x + 1.0, corners.end.y - 1.0),
+		corners.end - Vector2(1.0, 1.0),
+	]:
+		_check_pixel(image, point, Color.RED, "Collapsed table borders meet without gaps at all four corners")
 	var ignored: Rect2 = _label_rect(label, "ignored")
 	_check_pixel(image, Vector2(ignored.position.x + 1.0, ignored.get_center().y), Color.WHITE, "A hidden shared edge defeats a wider visible border")
 	var gone: HTMLElement = label.get_element_by_id("gone")
