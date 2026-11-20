@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://horc72o6tpy0"
+path="res://.godot/imported/span.html-772f499e1acd76301af947af9d99f968.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/span.html"
+dest_files=["res://.godot/imported/span.html-772f499e1acd76301af947af9d99f968.res"]
+
+[params]
+

@@ -1136,6 +1136,14 @@ msgstr "要显示的 LaTeX 资源，例如包含数学表达式且已导入的 [
 msgid "The Markdown text to render. Setting this property resets the selection and search state."
 msgstr "要渲染的 Markdown 文本。设置此属性会重置选区和搜索状态。"
 
+#. doc_classes/MarkdownLabel.xml
+msgid "Returns the vertical content offset in pixels that corresponds to a source line. Use this to synchronize a Markdown preview with an editor."
+msgstr "返回与源码行对应的内容纵向像素偏移，可用于同步 Markdown 预览与编辑器。"
+
+#. doc_classes/MarkdownLabel.xml
+msgid "Returns the source line that corresponds to a vertical content offset in pixels. Use this to synchronize a Markdown preview with an editor."
+msgstr "返回与内容纵向像素偏移对应的源码行，可用于同步 Markdown 预览与编辑器。"
+
 #. doc_classes/MermaidLabel.xml
 msgid ""
 "The Mermaid diagram source to display when [member document] is unset, for example "

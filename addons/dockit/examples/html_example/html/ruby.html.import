@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://bgnf4ut6tevb8"
+path="res://.godot/imported/ruby.html-e861ed420b5b842a2676831752d027e5.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/ruby.html"
+dest_files=["res://.godot/imported/ruby.html-e861ed420b5b842a2676831752d027e5.res"]
+
+[params]
+

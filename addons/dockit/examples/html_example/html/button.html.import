@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://bujxcftgg6tj7"
+path="res://.godot/imported/button.html-b3fbdfaa40ea2844c07db4ae513dc2ae.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/button.html"
+dest_files=["res://.godot/imported/button.html-b3fbdfaa40ea2844c07db4ae513dc2ae.res"]
+
+[params]
+

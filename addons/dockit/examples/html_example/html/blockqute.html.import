@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://bqy5qoj56cj8x"
+path="res://.godot/imported/blockqute.html-adb7d9d83b566a73b2cb60ed47795f97.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/blockqute.html"
+dest_files=["res://.godot/imported/blockqute.html-adb7d9d83b566a73b2cb60ed47795f97.res"]
+
+[params]
+

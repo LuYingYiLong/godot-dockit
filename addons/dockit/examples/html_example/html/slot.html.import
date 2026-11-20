@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://w6mqb2sui3ju"
+path="res://.godot/imported/slot.html-4ed98dad8ca8def1eede29ede97582e4.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/slot.html"
+dest_files=["res://.godot/imported/slot.html-4ed98dad8ca8def1eede29ede97582e4.res"]
+
+[params]
+

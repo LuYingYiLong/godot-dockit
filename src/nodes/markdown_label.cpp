@@ -4216,6 +4216,8 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_anchors"), &MarkdownLabel::get_anchors);
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "anchor", "align"), &MarkdownLabel::scroll_to_anchor, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("scroll_to_search_result", "align"), &MarkdownLabel::scroll_to_search_result, DEFVAL(0.0f));
+	ClassDB::bind_method(D_METHOD("get_scroll_offset_for_source_line", "line", "line_count"), &MarkdownLabel::get_scroll_offset_for_source_line);
+	ClassDB::bind_method(D_METHOD("get_source_line_at_scroll_offset", "offset", "line_count"), &MarkdownLabel::get_source_line_at_scroll_offset);
 
 	ClassDB::bind_method(D_METHOD("load_markdown_file", "path"), &MarkdownLabel::load_markdown_file);
 	ClassDB::bind_method(D_METHOD("refresh"), &MarkdownLabel::refresh);

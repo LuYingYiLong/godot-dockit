@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://ddjwklryg5lj1"]
+
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://c2j3foaudn1ej" path="res://addons/dockit/examples/markdown_example/markdown_example.gd" id="2_script"]
+[ext_resource type="Theme" uid="uid://b3kuthod8q46o" path="res://addons/dockit/examples/markdown_theme.tres" id="3_markdown_theme"]
+
+[node name="MarkdownExample" type="Control" unique_id=1830400677]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1364694650]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Background"
+
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer" unique_id=1586791970]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/MarginContainer" unique_id=1499202057]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer/MarginContainer/VBoxContainer" unique_id=1003486597]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(512)
+split_offset = 512
+
+[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/MarginContainer/VBoxContainer/HSplitContainer" unique_id=118515003]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+size_flags_vertical = 3
+gutters_draw_line_numbers = true
+
+[node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/MarginContainer/VBoxContainer/HSplitContainer" unique_id=568674058]
+parse_latex = true
+parse_html = true
+parse_mermaid = true
+context_menu_enabled = true
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("3_markdown_theme")
+
+[node name="PreviewTimer" type="Timer" parent="." unique_id=1638532765]
+unique_name_in_owner = true
+wait_time = 0.25
+one_shot = true
+
+[connection signal="text_changed" from="PanelContainer/MarginContainer/VBoxContainer/HSplitContainer/CodeEdit" to="." method="_on_code_edit_text_changed"]
+[connection signal="timeout" from="PreviewTimer" to="." method="_on_preview_timer_timeout"]

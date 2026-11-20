@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://cj3nwx60rw5ol"
+path="res://.godot/imported/dfn.html-e921e171fdb2d4068ae128aa7c382725.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/dfn.html"
+dest_files=["res://.godot/imported/dfn.html-e921e171fdb2d4068ae128aa7c382725.res"]
+
+[params]
+

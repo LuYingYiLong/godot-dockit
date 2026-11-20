@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://dxkjmatud4uqv"
+path="res://.godot/imported/legend.html-cce265267207b9325c9af80c87b9bf79.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/legend.html"
+dest_files=["res://.godot/imported/legend.html-cce265267207b9325c9af80c87b9bf79.res"]
+
+[params]
+

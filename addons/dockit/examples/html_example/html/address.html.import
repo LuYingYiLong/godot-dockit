@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://cygydbfy858au"
+path="res://.godot/imported/address.html-48c171ec48caa4d3c346013974b0f8b5.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/address.html"
+dest_files=["res://.godot/imported/address.html-48c171ec48caa4d3c346013974b0f8b5.res"]
+
+[params]
+

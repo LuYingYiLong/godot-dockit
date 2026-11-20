@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://c5le0mx4r6xrw"
+path="res://.godot/imported/audio.html-d692a11dcd10586a9c54869f2b360b31.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/audio.html"
+dest_files=["res://.godot/imported/audio.html-d692a11dcd10586a9c54869f2b360b31.res"]
+
+[params]
+

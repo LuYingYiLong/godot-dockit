@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://bivugpnnbw2db"
+path="res://.godot/imported/table.html-0a3ed1ba04c8086f5d9e30a4b54b7c48.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/table.html"
+dest_files=["res://.godot/imported/table.html-0a3ed1ba04c8086f5d9e30a4b54b7c48.res"]
+
+[params]
+

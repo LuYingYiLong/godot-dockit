@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://b3m24s658rys8"
+path="res://.godot/imported/textarea.html-c5be4ccafebf569ad3c2cee4961f6d4c.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/textarea.html"
+dest_files=["res://.godot/imported/textarea.html-c5be4ccafebf569ad3c2cee4961f6d4c.res"]
+
+[params]
+

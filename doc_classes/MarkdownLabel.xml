@@ -134,6 +134,22 @@
 				Returns the number of rendered top-level Markdown blocks, or [code]0[/code] if the canvas has not been created yet.
 			</description>
 		</method>
+		<method name="get_scroll_offset_for_source_line">
+			<return type="float" />
+			<param index="0" name="line" type="float" />
+			<param index="1" name="line_count" type="int" />
+			<description>
+				Returns the vertical content offset in pixels that corresponds to a source line. Use this to synchronize a Markdown preview with an editor.
+			</description>
+		</method>
+		<method name="get_source_line_at_scroll_offset">
+			<return type="float" />
+			<param index="0" name="offset" type="float" />
+			<param index="1" name="line_count" type="int" />
+			<description>
+				Returns the source line that corresponds to a vertical content offset in pixels. Use this to synchronize a Markdown preview with an editor.
+			</description>
+		</method>
 		<method name="get_selected_text" qualifiers="const">
 			<return type="String" />
 			<description>

@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://d3cn4exb2k36r"
+path="res://.godot/imported/bdi.html-cb11952389fa55de467814d9e0f86e9f.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/html_example/html/bdi.html"
+dest_files=["res://.godot/imported/bdi.html-cb11952389fa55de467814d9e0f86e9f.res"]
+
+[params]
+
