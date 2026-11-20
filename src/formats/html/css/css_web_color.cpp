@@ -284,9 +284,9 @@ namespace {
 		{"-dockit-scrollbar-track", 0xf1f1f1ff, 0x2c2c2cff},
 		{"-dockit-scrollbar-thumb", 0x00000072, 0xffffff80},
 		{"-dockit-scrollbar-pressed", 0x00000080, 0xffffff99},
-		{"-dockit-menu-face", 0xf5f7fcff, 0x333333ff},
-		{"-dockit-menu-border", 0x63738aff, 0x8c8c8cff},
-		{"-dockit-menu-hover", 0x4a82e352, 0x85b1ff52},
+		{"-dockit-menu-face", 0xffffffff, 0x303134ff},
+		{"-dockit-menu-border", 0xdadce0ff, 0x5f6368ff},
+		{"-dockit-menu-hover", 0xe8f0feff, 0x3c4043ff},
 		{"-dockit-list-selected", 0x3369c2ff, 0x3564acff},
 		{"-dockit-list-hover", 0xc2d4f5ff, 0x4d5564ff},
 	};

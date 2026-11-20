@@ -1180,6 +1180,15 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	else if (form_clicked && !click_prevented) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) target->activate_element(form_target);
 	}
+	if (clicked && !click_prevented && target_input.is_valid()) {
+		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
+			const auto input = target_input->get_input();
+			if (input && input->accepts_suggestions() && input->get_attr("list") &&
+				target->layout->is_interaction_target_available(target_input, true)) {
+				target->open_suggestion_menu(target_input);
+			}
+		}
+	}
 	if (element_clicked && label->layout->is_interaction_target_available(element, true) && element->adoption_version == click_version) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);

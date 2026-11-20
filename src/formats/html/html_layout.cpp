@@ -3211,13 +3211,14 @@ std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const Re
 		const auto option = std::dynamic_pointer_cast<dockit::HTMLOptionNode>(p_node);
 		if (!option || dockit::forms::is_disabled(*option)) return false;
 		const auto value = option->get_value();
-		const auto label = option->get_label();
+		const char* label_attribute = option->get_attr("label");
+		const auto label = label_attribute && *label_attribute ? String::utf8(label_attribute) : option->get_label();
 		if (value.is_empty() || (!query.is_empty() && value.to_lower().find(query) < 0 && label.to_lower().find(query) < 0)) return false;
 		if (!input->is_suggestion_valid(value) || !seen.insert(value).second) return false;
-		const auto text = label.is_empty() || label == value ? value : value + String("  ") + label;
+		const auto text = label.is_empty() ? value : label;
 		const auto color = input->css().get_color().to_srgb();
 		rows.push_back({state->container->shape_input(input->css().get_font(), text),
-			Color::from_rgba8(color.red, color.green, color.blue, color.alpha), {}, -1, true, value});
+			Color::from_rgba8(color.red, color.green, color.blue, color.alpha), Color(0, 0, 0, 0), -1, true, value});
 		return false;
 	});
 	return rows;

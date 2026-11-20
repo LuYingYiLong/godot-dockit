@@ -585,6 +585,7 @@ namespace dockit {
 	void HTMLInputNode::paint_contents(LiteHTMLContainer& p_container, const Rect2& p_box) {
 		const auto kind = type();
 		decoration_box = {};
+		suggestion_decoration_box = {};
 		if (kind == Type::HIDDEN || !p_box.has_area()) return;
 		const auto color = css().get_color();
 		const auto baseline = [&](const Rect2& p_rect, const HTMLTextLayout& p_line) {
@@ -707,6 +708,27 @@ namespace dockit {
 			return;
 		}
 		Rect2 edit_box = p_box;
+		const bool rtl = css().is_right_to_left();
+		const char* list = get_attr("list");
+		const bool list_indicator = chrome && enabled && !get_attr("readonly") && list && *list &&
+			(kind == Type::TEXT || kind == Type::SEARCH || kind == Type::EMAIL || kind == Type::URL || kind == Type::TEL);
+		float left_inset = 0;
+		float right_inset = 0;
+		if (list_indicator) {
+			const float width = std::min<float>(18, p_box.size.x);
+			suggestion_decoration_box = Rect2(rtl ? p_box.position.x : p_box.get_end().x - width,
+				p_box.position.y, width, p_box.size.y);
+			if (rtl) left_inset += width;
+			else right_inset += width;
+			if (has_pseudo_class(litehtml::_hover_) || focused) {
+				if (has_pseudo_class(litehtml::_hover_)) {
+					p_container.draw_input_chrome(p_box, suggestion_decoration_box,
+						html_system_color(litehtml::system_color::button_hover, css().get_color_scheme()), 2);
+				}
+				p_container.draw_input_icon(HTMLControlIcon::down, p_box,
+					Rect2(suggestion_decoration_box.get_center() - Vector2(8, 8), Vector2(16, 16)), ink);
+			}
+		}
 		const auto time = time_kind();
 		String placeholder = String::utf8(get_attr("placeholder", ""));
 		if (time != input_time::Kind::none) {
@@ -715,11 +737,11 @@ namespace dockit {
 		}
 		if (chrome && enabled && !get_attr("readonly") && (kind == Type::NUMBER || time != input_time::Kind::none ||
 			(kind == Type::SEARCH && !editor.get_value().is_empty()))) {
-			const float width = std::min<float>(18, p_box.size.x);
-			const bool rtl = css().is_right_to_left();
-			decoration_box = Rect2(rtl ? p_box.position.x : p_box.get_end().x - width, p_box.position.y, width, p_box.size.y);
-			edit_box.size.x -= width;
-			if (rtl) edit_box.position.x += width;
+			const float width = std::min<float>(18, p_box.size.x - left_inset - right_inset);
+			const float x = rtl ? p_box.position.x + left_inset : p_box.get_end().x - right_inset - width;
+			decoration_box = Rect2(x, p_box.position.y, width, p_box.size.y);
+			if (rtl) left_inset += width;
+			else right_inset += width;
 			const auto draw_icon = [&](HTMLControlIcon p_icon, Vector2 p_center, float p_size) {
 				const Vector2 size(p_size, p_size);
 				p_container.draw_input_icon(p_icon, p_box, Rect2(p_center - size * 0.5, size), ink);
@@ -734,11 +756,14 @@ namespace dockit {
 					decoration_box.get_center(), 14);
 			}
 		}
+		edit_box.position.x += left_inset;
+		edit_box.size.x -= left_inset + right_inset;
 		if (edit_box.has_area()) editor.paint_single(p_container, edit_box, *this, placeholder,
 			focused && !preview_time, is_password(), preview_time ? &*preview_time : nullptr);
 	}
 
 	int HTMLInputNode::decoration_at(const Vector2& p_point) const {
+		if (suggestion_decoration_box.has_point(p_point)) return 2;
 		if (!decoration_box.has_point(p_point)) return 0;
 		return type() == Type::NUMBER && p_point.y >= decoration_box.get_center().y ? -1 : 1;
 	}

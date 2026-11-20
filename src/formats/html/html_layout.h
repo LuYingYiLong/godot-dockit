@@ -59,7 +59,7 @@ namespace dockit {
 	struct HTMLSelectMenuRow {
 		HTMLTextLayout text;
 		godot::Color color;
-		godot::Color background;
+		godot::Color background = godot::Color(0, 0, 0, 0);
 		int64_t option_index;
 		bool enabled;
 		godot::String value;

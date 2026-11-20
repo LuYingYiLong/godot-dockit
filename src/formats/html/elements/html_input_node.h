@@ -14,6 +14,7 @@ namespace dockit {
 		bool dirty_checked = false;
 		godot::Rect2 range_box;
 		godot::Rect2 decoration_box;
+		godot::Rect2 suggestion_decoration_box;
 		godot::Rect2 image_box;
 		std::optional<godot::Color> preview_color;
 		std::optional<godot::String> preview_time;

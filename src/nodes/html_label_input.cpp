@@ -381,6 +381,11 @@ bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_inp
 	const ObjectID id(label->get_instance_id());
 	if (!label->focus_element(p_input) || !ObjectDB::get_instance(id)) return true;
 	if (!label->layout->is_element_connected(p_input) || p_input->get_input() != node) return true;
+	if (part == 2) {
+		if (label->open_select == p_input) label->close_select_menu();
+		else label->open_suggestion_menu(p_input);
+		return true;
+	}
 	if (node->time_kind() != dockit::input_time::Kind::none) {
 		label->open_input_picker(p_input);
 		return true;
