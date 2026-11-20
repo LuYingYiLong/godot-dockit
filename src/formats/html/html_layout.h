@@ -274,6 +274,14 @@ class HTMLLayout : public godot::RefCounted {
 	bool refresh_cssom();
 	struct CSSOMSheet;
 	std::vector<CSSOMSheet> collect_stylesheets();
+	bool is_stylesheet_handle_current(const HTMLStyleSheet& p_sheet) const;
+	uint64_t css_rule_revision(int64_t p_stylesheet) const;
+	godot::String get_css_rule_text(int64_t p_stylesheet, const godot::PackedInt32Array& p_path);
+	godot::PackedStringArray get_css_rule_children(int64_t p_stylesheet, const godot::PackedInt32Array& p_path);
+	godot::Error set_css_rule_text(int64_t p_stylesheet, const godot::PackedInt32Array& p_path,
+		const godot::String& p_text);
+	godot::Error edit_css_rule_nested(int64_t p_stylesheet, const godot::PackedInt32Array& p_parent_path,
+		int64_t p_index, const godot::String* p_text);
 	godot::Error edit_css_rule(int64_t p_stylesheet, int64_t p_index, const godot::String* p_rule);
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics_for(const litehtml::element& p_element) const;
 	godot::String get_css_diagnostic_tooltip(const godot::Vector2& p_position) const;
@@ -290,6 +298,9 @@ public:
 	godot::String get_computed_style_property(const godot::Ref<HTMLElement>& p_element, const godot::String& p_name,
 		const godot::String& p_pseudo = "");									// 返回指定属性的计算值
 	godot::TypedArray<godot::Dictionary> get_stylesheets();						// 返回作者样式表及其布局内标识
+	godot::TypedArray<HTMLStyleSheet> get_stylesheet_objects(bool p_include_default = true);
+	godot::TypedArray<godot::Dictionary> get_matched_css_declarations(
+		const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = "");
 	godot::PackedStringArray get_css_rules(int64_t p_stylesheet);				// 返回样式表顶层规则的快照
 	godot::Error insert_rule(int64_t p_stylesheet, const godot::String& p_rule, int64_t p_index = 0); // 插入一条顶层 CSS 规则
 	godot::Error delete_rule(int64_t p_stylesheet, int64_t p_index);			// 删除指定的顶层 CSS 规则

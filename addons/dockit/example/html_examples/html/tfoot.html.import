@@ -1,0 +1,15 @@
+[remap]
+
+importer="dockit.html_document"
+importer_version=12
+type="HTMLDocument"
+uid="uid://byflwaeactmcp"
+path="res://.godot/imported/tfoot.html-301f7fb44dd834bc3e704da5f6f5b612.res"
+
+[deps]
+
+source_file="res://addons/dockit/example/html_examples/html/tfoot.html"
+dest_files=["res://.godot/imported/tfoot.html-301f7fb44dd834bc3e704da5f6f5b612.res"]
+
+[params]
+

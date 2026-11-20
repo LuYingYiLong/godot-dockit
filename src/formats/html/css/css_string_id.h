@@ -7,6 +7,7 @@
 #define LH_STRING_ID_H
 
 #include <string>
+#include <vector>
 
 namespace litehtml
 {
@@ -389,6 +390,7 @@ extern const string_id star_id; // _id("*")
 
 string_id			   _id(const std::string& str);
 const std::string&	   _s(string_id id);
+const std::vector<string_id>& css_property_names();
 
 } // namespace litehtml
 

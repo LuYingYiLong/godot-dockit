@@ -11,6 +11,7 @@
 #include "formats/html/elements/html_input_element.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/elements/html_textarea_element.h"
+#include "formats/html/css/html_style_sheet.h"
 #include "formats/html/css/css_values.h"
 #include "formats/html/html_ui_translations.h"
 #include "formats/http_requests.h"
@@ -778,6 +779,9 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_computed_style", "element", "pseudo"), &HTMLLabel::get_computed_style, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_computed_style_property", "element", "name", "pseudo"), &HTMLLabel::get_computed_style_property, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_stylesheets"), &HTMLLabel::get_stylesheets);
+	ClassDB::bind_method(D_METHOD("get_stylesheet_objects", "include_default"), &HTMLLabel::get_stylesheet_objects, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("get_matched_css_declarations", "element", "pseudo"), &HTMLLabel::get_matched_css_declarations,
+		DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_css_rules", "stylesheet"), &HTMLLabel::get_css_rules);
 	ClassDB::bind_method(D_METHOD("insert_rule", "stylesheet", "rule", "index"), &HTMLLabel::insert_rule, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("delete_rule", "stylesheet", "index"), &HTMLLabel::delete_rule);
@@ -2037,6 +2041,16 @@ String HTMLLabel::get_computed_style_property(const Ref<HTMLElement>& p_element,
 TypedArray<Dictionary> HTMLLabel::get_stylesheets() {
 	parse_pending_source();
 	return layout->get_stylesheets();
+}
+
+TypedArray<HTMLStyleSheet> HTMLLabel::get_stylesheet_objects(bool p_include_default) {
+	parse_pending_source();
+	return layout->get_stylesheet_objects(p_include_default);
+}
+
+TypedArray<Dictionary> HTMLLabel::get_matched_css_declarations(const Ref<HTMLElement>& p_element, const String& p_pseudo) {
+	parse_pending_source();
+	return layout->get_matched_css_declarations(p_element, p_pseudo);
 }
 
 PackedStringArray HTMLLabel::get_css_rules(int64_t p_stylesheet) {

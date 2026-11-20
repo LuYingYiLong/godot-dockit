@@ -144,9 +144,11 @@ static bool media_matches(document& doc, const media_query_list_list::ptr& media
 
 
 void css::parse_css_stylesheet(const string& input, const string& baseurl, document::ptr doc,
-	media_query_list_list::ptr media, size_t layer_id, const element* implicit_scope_root) {
+	media_query_list_list::ptr media, size_t layer_id, const element* implicit_scope_root,
+	dockit::css::CSSCascadeOrigin origin, const void* stylesheet_owner) {
 	parse_rules(css_parser::parse_stylesheet(input, true),
-		{baseurl, doc, std::move(media), layer_id, {}, {}, implicit_scope_root ? implicit_scope_root : doc->root().get()},
+		{baseurl, doc, std::move(media), layer_id, {}, {}, implicit_scope_root ? implicit_scope_root : doc->root().get(),
+			origin, stylesheet_owner},
 		true);
 }
 
@@ -159,7 +161,8 @@ void css::parse_block(const css_token_vector& tokens, RuleContext context) {
 }
 
 void css::parse_rules(const raw_rule::vector& rules, const RuleContext& context, bool top_level) {
-	const auto& [baseurl, doc, media, layer_id, nesting, scope, implicit_scope_root, in_style_rule, depth, containers] = context;
+	const auto& [baseurl, doc, media, layer_id, nesting, scope, implicit_scope_root, source_origin,
+		stylesheet_owner, source_selector, in_style_rule, depth, containers] = context;
 	if (doc && media) doc->add_media_list(media);
 
 	using Kind = syntax::StylesheetRuleKind;
@@ -173,7 +176,7 @@ void css::parse_rules(const raw_rule::vector& rules, const RuleContext& context,
 				apply_declarations(rule.syntax.declarations, context);
 				return true;
 			case Kind::import:
-				return apply_import(*rule.import, baseurl, doc, media, layer_id);
+				return apply_import(*rule.import, baseurl, doc, media, layer_id, source_origin, stylesheet_owner);
 			case Kind::layer_block:
 				if (media_matches(*doc, media)) {
 					auto child = context;
@@ -270,7 +273,8 @@ void css::collect_registered_properties(document& doc, css_registered_properties
 }
 
 bool css::apply_import(const syntax::StylesheetImport& rule, const string& baseurl, document::ptr doc,
-	media_query_list_list::ptr media, size_t layer_id) {
+	media_query_list_list::ptr media, size_t layer_id, dockit::css::CSSCascadeOrigin origin,
+	const void* stylesheet_owner) {
 	if (rule.supports) {
 		const auto supported = evaluate_css_supports(*rule.supports, doc->mode(), true);
 		if (!supported) return false;
@@ -293,7 +297,7 @@ bool css::apply_import(const syntax::StylesheetImport& rule, const string& baseu
 	string css_text;
 	string css_baseurl = baseurl;
 	doc->container()->import_css(css_text, rule.url, css_baseurl);
-	parse_css_stylesheet(css_text, css_baseurl, doc, new_media, layer_id);
+	parse_css_stylesheet(css_text, css_baseurl, doc, new_media, layer_id, nullptr, origin, stylesheet_owner);
 	return true;
 }
 
@@ -308,6 +312,13 @@ bool css::parse_style_rule(const raw_rule& rule, const RuleContext& context) {
 	}
 	auto child = context;
 	child.in_style_rule = true;
+	child.source_selector = get_repr(rule.prelude);
+	const auto first = child.source_selector.find_first_not_of(" \t\r\n\f");
+	if (first == string::npos) child.source_selector.clear();
+	else {
+		const auto last = child.source_selector.find_last_not_of(" \t\r\n\f");
+		child.source_selector = child.source_selector.substr(first, last - first + 1);
+	}
 	child.nesting = std::make_shared<syntax::NestingSelectorList>(std::move(selectors));
 	parse_block(rule.block.value, std::move(child));
 	return true;
@@ -361,6 +372,8 @@ void css::apply_declarations(const raw_declaration::vector& properties, const Ru
 		selector->m_media_query = context.media;
 		selector->m_container_query = context.container_queries;
 		selector->m_layer_id = context.layer_id;
+		selector->m_source = std::make_shared<dockit::css::CSSCascadeSource>(dockit::css::CSSCascadeSource{
+			context.source_origin, context.source_selector, context.baseurl, context.stylesheet_owner});
 		add_selector(selector);
 	}
 }

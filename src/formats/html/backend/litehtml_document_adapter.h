@@ -1,6 +1,8 @@
 #pragma once
 
 #include <godot_cpp/variant/char_string.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
 #include <litehtml/document.h>
@@ -14,6 +16,7 @@ namespace dockit {
 
 namespace litehtml {
 	struct box_shadow;
+	class html_tag;
 	// 分阶段的 litehtml 头文件让这个适配器可以访问原生的文档和元素状态
 	struct dockit_editor {
 		struct ContainerUpdate {
@@ -53,6 +56,8 @@ namespace litehtml {
 		static void set_hover(element& p_element, bool p_hovered);					// 更新元素的悬停伪类状态
 		static bool is_command_button(const element& p_element);					// 判断元素是否有按钮激活行为
 		static css_text::vector stylesheets(const document& p_document);
+		static godot::TypedArray<godot::Dictionary> cascade_trace(const html_tag& p_element,
+			const godot::String& p_pseudo);
 		static void edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text);
 		static void reset_stylesheet_source(element& p_owner);
 

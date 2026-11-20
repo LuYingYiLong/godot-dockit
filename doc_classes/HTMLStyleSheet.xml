@@ -4,9 +4,21 @@
 		A handle to an element's stylesheet in an HTML layout.
 	</brief_description>
 	<description>
-		Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet] to get the stylesheet. It shares its rules with the layout's numeric CSSOM API. Changing the media condition or disabled state keeps the handle valid. Replacing the source, removing the owner from the document, or clearing or replacing the layout invalidates the handle.
+		Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet], or call [method HTMLLabel.get_stylesheet_objects], to get a stylesheet handle. It shares edits with the layout's numeric CSSOM API. [method get_rules] returns structured [CSSRule] handles with nested rules and declarations. CSSOM edits affect the current layout only; they do not write back to the HTML or CSS resource. Changing the media condition or disabled state keeps the handle valid. Replacing the source, removing the owner from the document, or clearing or replacing the layout invalidates an owned stylesheet handle. The default user-agent sheet is read-only.
 	</description>
 	<methods>
+		<method name="get_origin" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns [code]author[/code], [code]author_extra[/code], or [code]user_agent[/code].
+			</description>
+		</method>
+		<method name="get_rules" qualifiers="const">
+			<return type="CSSRule[]" />
+			<description>
+				Returns structured handles to the stylesheet's top-level rules. Rule handles become invalid after a CSSOM edit to this sheet; the stylesheet handle remains valid.
+			</description>
+		</method>
 		<method name="delete_rule">
 			<return type="int" enum="Error" />
 			<param index="0" name="index" type="int" />
@@ -34,6 +46,12 @@
 				Returns whether the handle still refers to the associated stylesheet.
 			</description>
 		</method>
+		<method name="is_read_only" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] for the default user-agent stylesheet. Read-only sheets reject insert and delete operations with [constant ERR_UNAUTHORIZED].
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="disabled" type="bool" setter="" getter="is_disabled">
@@ -50,6 +68,15 @@
 		</member>
 		<member name="owner_node" type="HTMLElement" setter="" getter="get_owner_node">
 			The element that owns the associated stylesheet. A stale handle returns [code]null[/code].
+		</member>
+		<member name="origin" type="String" setter="" getter="get_origin">
+			The stylesheet cascade origin: [code]author[/code], [code]author_extra[/code], or [code]user_agent[/code].
+		</member>
+		<member name="read_only" type="bool" setter="" getter="is_read_only">
+			Whether this is the read-only default user-agent stylesheet.
+		</member>
+		<member name="rules" type="CSSRule[]" setter="" getter="get_rules">
+			Structured handles to top-level CSS rules.
 		</member>
 	</members>
 </class>

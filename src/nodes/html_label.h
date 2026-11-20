@@ -52,6 +52,7 @@ class HTMLLabelElement;
 class HTMLSelectElement;
 class HTMLDataTransfer;
 class HTMLDragEvent;
+class HTMLStyleSheet;
 
 namespace godot { class CanvasLayer; class Window; }
 namespace dockit { enum class HTMLVideoPart; }
@@ -938,6 +939,9 @@ public:
 		const godot::String& p_pseudo = ""
 	);																			// 返回指定属性的计算值
 	godot::TypedArray<godot::Dictionary> get_stylesheets();						// 返回当前布局的作者样式表
+	godot::TypedArray<HTMLStyleSheet> get_stylesheet_objects(bool p_include_default = true);
+	godot::TypedArray<godot::Dictionary> get_matched_css_declarations(
+		const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = "");
 	godot::PackedStringArray get_css_rules(int64_t p_stylesheet);				// 返回指定样式表的顶层规则
 	godot::Error insert_rule(
 		int64_t p_stylesheet,

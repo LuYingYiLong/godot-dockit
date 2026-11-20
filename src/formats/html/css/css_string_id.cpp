@@ -6,6 +6,8 @@
 #include <litehtml/html.h>
 #include "css_string_id.h"
 #include <cassert>
+#include <algorithm>
+#include <string_view>
 
 #ifndef LITEHTML_NO_THREADS
 	#include <mutex>
@@ -54,6 +56,37 @@ const string& _s(string_id id)
 {
 	lock_guard;
 	return array[id];
+}
+
+const std::vector<string_id>& css_property_names()
+{
+	static const auto names = [] {
+		std::vector<string_id> result;
+		std::string_view source(initial_string_ids);
+		bool reading = false;
+		size_t start = 0;
+		while (start < source.size()) {
+			const size_t end = source.find(',', start);
+			std::string name(source.substr(start, end == std::string_view::npos ? end : end - start));
+			const size_t first = name.find_first_not_of(" \t\r\n");
+			const size_t last = name.find_last_not_of(" \t\r\n");
+			if (first != std::string::npos) {
+				name = name.substr(first, last - first + 1);
+				if (name == "_background_") reading = true;
+				if (name == "_deg_") break;
+				if (reading && name.size() > 2 && name.front() == '_' && name.back() == '_' &&
+					name.compare(0, 2, "__") != 0) {
+					name = name.substr(1, name.size() - 2);
+					std::replace(name.begin(), name.end(), '_', '-');
+					result.push_back(_id(name));
+				}
+			}
+			if (end == std::string_view::npos) break;
+			start = end + 1;
+		}
+		return result;
+	}();
+	return names;
 }
 
 } // namespace litehtml

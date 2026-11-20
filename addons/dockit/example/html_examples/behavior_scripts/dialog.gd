@@ -15,8 +15,6 @@ func _attach(_label: HTMLLabel) -> void:
 	select_element = document.query_selector("select")
 	confirm_button = document.query_selector("#confirmBtn")
 
-	fav_dialog.hidden = true
-	
 	update_button.add_event_listener(&"click", _on_update_button_clicked)
 	select_element.add_event_listener(&"change", _on_select_element_changed)
 	fav_dialog.add_event_listener(&"close", _on_fav_dialog_closed)

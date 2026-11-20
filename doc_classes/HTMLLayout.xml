@@ -318,6 +318,21 @@
 				Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], [code]media[/code], and [code]disabled[/code]. The additional stylesheet is last. IDs apply to the current layout generation.
 			</description>
 		</method>
+		<method name="get_stylesheet_objects">
+			<return type="HTMLStyleSheet[]" />
+			<param index="0" name="include_default" type="bool" default="true" />
+			<description>
+				Returns stylesheet handles in document order, followed by the additional author stylesheet. When [param include_default] is [code]true[/code], the read-only user-agent stylesheet is appended last.
+			</description>
+		</method>
+		<method name="get_matched_css_declarations">
+			<return type="Dictionary[]" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="pseudo" type="String" default="&quot;&quot;" />
+			<description>
+				Returns currently matched stylesheet and inline declarations for a connected element, including their cascade metadata and whether each declaration wins. A pseudo-element may be supplied in [param pseudo].
+			</description>
+		</method>
 		<method name="get_css_rules">
 			<return type="PackedStringArray" />
 			<param index="0" name="stylesheet" type="int" />

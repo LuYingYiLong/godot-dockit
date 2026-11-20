@@ -25,6 +25,7 @@ namespace litehtml
 		int							m_layer = css_default_layer;
 		media_query_list_list::ptr	m_media_query;
 		shared_ptr<const container_query> m_container_query;
+		std::shared_ptr<const dockit::css::CSSCascadeSource> m_source;
 		style::ptr					m_style;
 
 	public:
@@ -33,8 +34,12 @@ namespace litehtml
 		dockit::css::CascadePriority cascade_priority(int proximity) const
 		{
 			// Baseline rules and HTML hints share the established application order.
-			if (m_layer == css_default_layer) return {};
-			return {m_layer, m_syntax->m_specificity, m_order, proximity};
+			if (m_layer == css_default_layer) {
+				dockit::css::CascadePriority priority;
+				priority.source = m_source;
+				return priority;
+			}
+			return {m_layer, m_syntax->m_specificity, m_order, proximity, 0, m_source};
 		}
 	};
 

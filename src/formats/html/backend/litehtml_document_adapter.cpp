@@ -6,6 +6,7 @@
 #include "formats/html/css/css_selector_matcher.h"
 #include "formats/html/css/css_shadows.h"
 #include "formats/html/css/css_default_stylesheet.h"
+#include "formats/html/css/html_cssom.h"
 #include "formats/html/css/css_litehtml_dom.h"
 #include "litehtml_container.h"
 
@@ -452,6 +453,92 @@ namespace litehtml {
 		p_element.set_pseudo_class(_hover_, p_hovered);
 	}
 
+	godot::TypedArray<godot::Dictionary> dockit_editor::cascade_trace(const html_tag& p_element, const godot::String& p_pseudo) {
+		godot::TypedArray<godot::Dictionary> result;
+		const godot::String requested_pseudo = p_pseudo.trim_prefix("::").trim_prefix(":").to_lower();
+		const auto find_pseudo = [&](const auto& self, const dockit::css::Selector* p_selector) -> std::string {
+			if (!p_selector) return {};
+			for (const auto& attribute : p_selector->m_right.m_attrs) {
+				if (attribute.type == dockit::css::select_pseudo_element) return attribute.name;
+			}
+			return self(self, p_selector->m_left.get());
+		};
+		const auto source_origin_name = [](dockit::css::CSSCascadeOrigin p_origin) {
+			switch (p_origin) {
+				case dockit::css::CSSCascadeOrigin::user_agent: return godot::String("user_agent");
+				case dockit::css::CSSCascadeOrigin::author_extra: return godot::String("author_extra");
+				case dockit::css::CSSCascadeOrigin::author: return godot::String("author");
+			}
+			return godot::String("author");
+		};
+		const auto source_value = [](string_id p_name, const property_value& p_value) {
+			if (p_value.deferred) return godot::String::utf8(get_repr(p_value.deferred->tokens, 0, -1, true).c_str());
+			if (p_value.is<css_token_vector>()) return godot::String::utf8(get_repr(p_value.get<css_token_vector>(), 0, -1, true).c_str());
+			if (p_value.is<initial_value>()) return godot::String("initial");
+			if (p_value.is<inherit>()) return godot::String("inherit");
+			if (p_value.is<revert_value>()) return godot::String("revert");
+			if (p_value.is<revert_layer_value>()) return godot::String("revert-layer");
+			return godot::String::utf8(dockit::css::serialize_value(p_name, p_value).c_str());
+		};
+		for (const auto& used : p_element.m_used_styles) {
+			if (!used || !used->m_used || !used->m_selector || !used->m_selector->m_style || !used->m_selector->m_source) continue;
+			const auto& selector = *used->m_selector;
+			const std::string pseudo = selector.m_syntax ? find_pseudo(find_pseudo, selector.m_syntax.get()) : std::string();
+			if (godot::String::utf8(pseudo.c_str()) != requested_pseudo) continue;
+			std::vector<string_id> names;
+			selector.m_style->collect_property_names(names);
+			std::sort(names.begin(), names.end());
+			names.erase(std::unique(names.begin(), names.end()), names.end());
+			for (const string_id name : names) {
+				const std::string property = _s(name);
+				if (property.empty() || property.compare(0, 2, "__") == 0) continue;
+				const auto& declaration = selector.m_style->get_property(name);
+				if (declaration.is<invalid>()) continue;
+				const auto& current = p_element.get_cascaded_property(name);
+				const auto& source = *selector.m_source;
+				godot::Dictionary entry;
+				entry["property"] = godot::String::utf8(property.c_str());
+				entry["value"] = source_value(name, declaration);
+				entry["important"] = declaration.m_important;
+				entry["origin"] = source_origin_name(source.origin);
+				entry["selector"] = godot::String::utf8(source.selector.c_str());
+				godot::PackedInt32Array specificity;
+				specificity.push_back(selector.m_syntax->m_specificity.a);
+				specificity.push_back(selector.m_syntax->m_specificity.b);
+				specificity.push_back(selector.m_syntax->m_specificity.c);
+				specificity.push_back(selector.m_syntax->m_specificity.d);
+				entry["specificity"] = specificity;
+				entry["layer"] = selector.m_layer;
+				entry["source_order"] = selector.m_order;
+				entry["source_path"] = godot::String::utf8(source.path.c_str());
+				entry["stylesheet_owner"] = static_cast<int64_t>(reinterpret_cast<uintptr_t>(source.stylesheet_owner));
+				entry["winning"] = current.priority.source == selector.m_source;
+				result.append(entry);
+			}
+		}
+		if (requested_pseudo.is_empty()) {
+			if (const char* inline_style = p_element.get_attr("style")) {
+				const auto declarations = dockit::css::inline_declarations(godot::String::utf8(inline_style));
+				for (const auto& declaration : declarations) {
+					godot::Dictionary entry;
+					entry["property"] = godot::String::utf8(declaration.name.c_str());
+					entry["value"] = godot::String::utf8(get_repr(declaration.value, 0, -1, true).c_str());
+					entry["important"] = declaration.important;
+					entry["origin"] = "inline";
+					entry["selector"] = "element.style";
+					entry["specificity"] = godot::PackedInt32Array();
+					entry["layer"] = dockit::css::css_inline_layer;
+					entry["source_order"] = std::numeric_limits<int>::max();
+					entry["source_path"] = godot::String();
+					entry["stylesheet_owner"] = int64_t(0);
+					entry["winning"] = p_element.get_cascaded_property(_id(declaration.name)).priority.layer == dockit::css::css_inline_layer;
+					result.append(entry);
+				}
+			}
+		}
+		return result;
+	}
+
 	bool dockit_editor::is_command_button(const element& p_element) {
 		return dockit::forms::button_action(p_element) != dockit::forms::ButtonAction::NONE;
 	}
@@ -492,7 +579,8 @@ namespace litehtml {
 		doc.append_document_stylesheets();
 		if (!p_additional_styles.empty()) {
 			p_container.set_css_source_kind(css_source_kind::stylesheet);
-			doc.m_styles.parse_css_stylesheet(p_additional_styles, "", p_document);
+			doc.m_styles.parse_css_stylesheet(p_additional_styles, "", p_document, nullptr, 0, nullptr,
+				dockit::css::CSSCascadeOrigin::author_extra);
 		}
 		p_container.set_css_source_kind(css_source_kind::none);
 		doc.apply_document_author_styles();

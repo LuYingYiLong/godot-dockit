@@ -63,7 +63,9 @@ public:
 	}
 
 	void	parse_css_stylesheet(const string& input, const string& baseurl, shared_ptr<document> doc,
-		media_query_list_list::ptr media = nullptr, size_t layer_id = 0, const element* implicit_scope_root = nullptr);
+		media_query_list_list::ptr media = nullptr, size_t layer_id = 0, const element* implicit_scope_root = nullptr,
+		dockit::css::CSSCascadeOrigin origin = dockit::css::CSSCascadeOrigin::user_agent,
+		const void* stylesheet_owner = nullptr);
 
 	void	sort_selectors(bool author = true);
 	const css_counter_style* find_counter_style(const string& name) const
@@ -91,6 +93,9 @@ private:
 		std::shared_ptr<const dockit::css::NestingSelectorList> nesting;
 		std::shared_ptr<const dockit::css::ScopeRule> scope;
 		const element* implicit_scope_root;
+		dockit::css::CSSCascadeOrigin source_origin = dockit::css::CSSCascadeOrigin::author;
+		const void* stylesheet_owner = nullptr;
+		string source_selector;
 		bool in_style_rule = false;
 		int depth = 0;
 		shared_ptr<const container_query> container_queries;
@@ -100,7 +105,9 @@ private:
 	bool	parse_style_rule(const raw_rule& rule, const RuleContext& context);
 	bool	parse_scope_rule(const raw_rule& rule, const RuleContext& context);
 	void	apply_declarations(const raw_declaration::vector& declarations, const RuleContext& context);
-	bool	apply_import(const dockit::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc, media_query_list_list::ptr media, size_t layer_id);
+	bool	apply_import(const dockit::css::StylesheetImport& rule, const string& baseurl, shared_ptr<document> doc,
+		media_query_list_list::ptr media, size_t layer_id, dockit::css::CSSCascadeOrigin origin,
+		const void* stylesheet_owner);
 	void	add_selector(const css_selector::ptr& selector);
 };
 

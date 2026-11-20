@@ -1,6 +1,8 @@
 [gd_scene format=3 uid="uid://bndblmu46frjc"]
 
-[ext_resource type="HTMLDocument" uid="uid://bdgtl2f2sr47w" path="res://addons/dockit/example/html_examples/html/script.html" id="1_ufrbv"]
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/example/html_examples/theme.tres" id="1_08que"]
+[ext_resource type="HTMLDocument" uid="uid://w6mqb2sui3ju" path="res://addons/dockit/example/html_examples/html/slot.html" id="1_ufrbv"]
+[ext_resource type="Script" uid="uid://cmb0kwi44kfar" path="res://addons/dockit/example/html_examples/html_example.gd" id="2_uwya0"]
 
 [node name="HtmlExample" type="Control" unique_id=211205059]
 layout_mode = 3
@@ -9,6 +11,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_08que")
+script = ExtResource("2_uwya0")
 
 [node name="BG" type="ColorRect" parent="." unique_id=1350896095]
 layout_mode = 1
@@ -17,6 +21,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+color = Color(0.047058824, 0.047058824, 0.047058824, 1)
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=96865259]
 layout_mode = 1
@@ -31,9 +36,19 @@ layout_mode = 2
 split_offsets = PackedInt32Array(256)
 split_offset = 256
 
-[node name="Tree" type="Tree" parent="PanelContainer/HSplitContainer" unique_id=1875335820]
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HSplitContainer" unique_id=1554575030]
+layout_mode = 2
+
+[node name="SearchLineEdit" type="LineEdit" parent="PanelContainer/HSplitContainer/VBoxContainer" unique_id=262516315]
 unique_name_in_owner = true
 layout_mode = 2
+caret_blink = true
+
+[node name="Tree" type="Tree" parent="PanelContainer/HSplitContainer/VBoxContainer" unique_id=1875335820]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
 
 [node name="PanelContainer" type="PanelContainer" parent="PanelContainer/HSplitContainer" unique_id=152396636]
 layout_mode = 2
@@ -42,11 +57,21 @@ size_flags_horizontal = 3
 [node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HSplitContainer/PanelContainer" unique_id=579849693]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer" unique_id=1481249293]
+[node name="HeaderContainer" type="HBoxContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer" unique_id=551062352]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HeaderContainer" unique_id=1481249293]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"HeaderLarge"
+theme_type_variation = &"LargeLabel"
 text = "Title"
+
+[node name="ResetButton" type="Button" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HeaderContainer" unique_id=1472819447]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 4
+text = "Reset"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer" unique_id=939030071]
 layout_mode = 2
@@ -59,6 +84,7 @@ size_flags_horizontal = 3
 current_tab = 0
 tab_0/title = "HTML"
 tab_1/title = "CSS"
+tab_2/title = "GDScript"
 
 [node name="HtmlSourcePanelContainer" type="PanelContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer" unique_id=1840443268]
 layout_mode = 2
@@ -72,6 +98,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+gutters_draw_line_numbers = true
 
 [node name="CssSourcePanelContainer2" type="PanelContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer" unique_id=807606269]
 visible = false
@@ -87,6 +114,21 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="GdscriptSourcePanelContainer3" type="PanelContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer" unique_id=1092411987]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+metadata/_tab_name = "GDScript"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/GdscriptSourcePanelContainer3" unique_id=2069514300]
+layout_mode = 2
+
+[node name="GdscriptCodeEdit" type="CodeEdit" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/GdscriptSourcePanelContainer3/HBoxContainer" unique_id=932415143]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+delimiter_strings = Array[String](["\" \"", "' '"])
+
 [node name="PreviewHTMLLabel" type="HTMLLabel" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer" unique_id=79034104]
 storage_namespace = "/root/@EditorNode@19518/@Panel@14/@VBoxContainer@15/DockVSplitMain/DockHSplitMain/@VBoxContainer@37/DockVSplitCenter/@VSplitContainer@101/@VBoxContainer@102/@EditorMainScreen@160/MainScreen/@CanvasItemEditor@10138/@VSplitContainer@9897/@HSplitContainer@9899/@HSplitContainer@9901/@Control@9902/@SubViewportContainer@9903/@SubViewport@9904/HtmlExample/PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/TabContainer/HtmlSourcePanelContainer/HSplitContainer/HBoxContainer/HTMLLabel"
 document = ExtResource("1_ufrbv")
@@ -95,3 +137,11 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 1
+
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/VBoxContainer/SearchLineEdit" to="." method="_on_search_line_edit_text_changed"]
+[connection signal="item_selected" from="PanelContainer/HSplitContainer/VBoxContainer/Tree" to="." method="_on_tree_item_selected"]
+[connection signal="pressed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HeaderContainer/ResetButton" to="." method="_on_reset_button_pressed"]
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/HtmlSourcePanelContainer/HBoxContainer/HtmlCodeEdit" to="." method="_on_code_edit_text_changed"]
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/CssSourcePanelContainer2/HBoxContainer/CssCodeEdit" to="." method="_on_code_edit_text_changed"]
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/GdscriptSourcePanelContainer3/HBoxContainer/GdscriptCodeEdit" to="." method="_on_code_edit_text_changed"]
+[connection signal="timeout" from="SnakeTimer" to="." method="_on_snake_timer_timeout"]

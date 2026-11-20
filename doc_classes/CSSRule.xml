@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSSRule" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		A structured handle to a CSS rule in an HTML layout.
+	</brief_description>
+	<description>
+		Obtain rules from [method HTMLStyleSheet.get_rules] or [method CSSRule.get_css_rules]. Use [member selector_text] and [member style] for style rules, and [member css_rules] for nested rules. A rule handle becomes invalid when any CSSOM edit changes its stylesheet. CSS edits only affect the current layout and are not saved to source files.
+	</description>
+	<methods>
+		<method name="delete_rule">
+			<return type="int" enum="Error" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Deletes the nested rule at [param index]. Returns [constant ERR_INVALID_PARAMETER] for an invalid handle or index, and [constant ERR_UNAUTHORIZED] when editing the default stylesheet.
+			</description>
+		</method>
+		<method name="get_css_rules" qualifiers="const">
+			<return type="CSSRule[]" />
+			<description>
+				Returns structured handles to nested rules in this rule's block. The returned array is empty when there are no child rules.
+			</description>
+		</method>
+		<method name="get_css_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the serialized rule text, or an empty string for an invalid handle.
+			</description>
+		</method>
+		<method name="get_index" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns this rule's index within its parent rule list, or [code]-1[/code] for an invalid handle.
+			</description>
+		</method>
+		<method name="get_name" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the at-rule name without the leading [code]@[/code], or an empty string for qualified rules.
+			</description>
+		</method>
+		<method name="get_path" qualifiers="const">
+			<return type="PackedInt32Array" />
+			<description>
+				Returns the sequence of zero-based rule indices from the stylesheet root to this rule.
+			</description>
+		</method>
+		<method name="get_selector_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the selector text for a qualified style rule, or an empty string for other rule types.
+			</description>
+		</method>
+		<method name="get_style" qualifiers="const">
+			<return type="CSSStyleDeclaration" />
+			<description>
+				Returns the declaration block for a qualified style rule or an at-rule with declarations, or [code]null[/code] for other rule types.
+			</description>
+		</method>
+		<method name="get_type" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns [code]style[/code], [code]at[/code], or [code]declaration-list[/code].
+			</description>
+		</method>
+		<method name="insert_rule">
+			<return type="int" enum="Error" />
+			<param index="0" name="rule" type="String" />
+			<param index="1" name="index" type="int" default="0" />
+			<description>
+				Inserts a nested rule at the given zero-based index. The parent block must accept nested rules. Editing invalidates existing rule and declaration handles for the stylesheet.
+			</description>
+		</method>
+		<method name="is_valid" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether this rule handle still points to the current stylesheet revision.
+			</description>
+		</method>
+		<method name="set_css_text">
+			<return type="void" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Replaces this rule with parsed [param text]. The edit is ignored for invalid handles and the read-only default stylesheet.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="css_rules" type="CSSRule[]" setter="" getter="get_css_rules">
+			Nested rules inside this rule's block.
+		</member>
+		<member name="css_text" type="String" setter="set_css_text" getter="get_css_text">
+			Serialized rule text.
+		</member>
+		<member name="index" type="int" setter="" getter="get_index">
+			Zero-based index within the parent rule list.
+		</member>
+		<member name="name" type="String" setter="" getter="get_name">
+			At-rule name without [code]@[/code].
+		</member>
+		<member name="selector_text" type="String" setter="" getter="get_selector_text">
+			Selector text for a qualified style rule.
+		</member>
+		<member name="style" type="CSSStyleDeclaration" setter="" getter="get_style">
+			Declaration block for a qualified style rule or a supported descriptor at-rule such as [code]@font-face[/code], [code]@page[/code], and [code]@property[/code].
+		</member>
+		<member name="type" type="String" setter="" getter="get_type">
+			Rule type: [code]style[/code], [code]at[/code], or [code]declaration-list[/code].
+		</member>
+		<member name="valid" type="bool" setter="" getter="is_valid">
+			Whether the handle still refers to the current stylesheet revision.
+		</member>
+	</members>
+</class>

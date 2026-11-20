@@ -299,6 +299,9 @@ struct HTMLLayout::State {
 		Ref<HTMLStyleSheet> handle;
 	};
 	std::map<std::weak_ptr<litehtml::element>, StylesheetIdentity, std::owner_less<>> stylesheet_identities;
+	std::map<int64_t, uint64_t> css_rule_revisions;
+	Ref<HTMLStyleSheet> extra_stylesheet_handle;
+	Ref<HTMLStyleSheet> default_stylesheet_handle;
 	int64_t extra_stylesheet_id = 0;
 	Callable edit_callback;
 	Callable element_scroll_callback;
@@ -326,6 +329,8 @@ struct HTMLLayout::State {
 	bool hover_layout_active = false;
 	unsigned selector_state_dependencies = 0;
 	bool css_diagnostics_enabled = false;
+	bool css_property_names_dirty = true;
+	std::vector<std::string> css_property_names;
 	bool has_css_transitions = false;
 	bool print_media = false;
 	bool embedded_block = false;
@@ -362,6 +367,22 @@ bool HTMLLayout::refresh_cssom() {
 
 namespace {
 	using namespace litehtml;
+
+	void collect_css_property_names(const raw_rule::vector& p_rules, std::vector<std::string>& r_names) {
+		for (const auto& rule : p_rules) {
+			for (const auto& declaration : rule->declarations) {
+				if (!declaration.name.empty()) r_names.push_back(declaration.name);
+			}
+			if (rule->block.type != dockit::css::CURLY_BLOCK) continue;
+			dockit::css::raw_declaration::vector declarations;
+			raw_rule::vector children;
+			css_parser(rule->block.value).consume_style_block_contents(declarations, children);
+			for (const auto& declaration : declarations) {
+				if (!declaration.name.empty()) r_names.push_back(declaration.name);
+			}
+			collect_css_property_names(children, r_names);
+		}
+	}
 
 	const html_tag* cssom_tag(const element& element, const String& pseudo) {
 		if (pseudo.is_empty()) return dynamic_cast<const html_tag*>(&element);
@@ -462,6 +483,25 @@ Dictionary HTMLLayout::get_computed_style(const Ref<HTMLElement>& p_element, con
 		const auto& spelling = litehtml::_s(name);
 		if (spelling.compare(0, 2, "__") != 0) read(spelling);
 	}
+	if (state->css_property_names_dirty) {
+		state->css_property_names.clear();
+		for (const auto property : litehtml::css_property_names()) {
+			const std::string& name = litehtml::_s(property);
+			if (name.compare(0, 2, "__") != 0) state->css_property_names.push_back(name);
+		}
+		collect_css_property_names(litehtml::css_parser::parse_stylesheet(state->master_styles, true), state->css_property_names);
+		collect_css_property_names(litehtml::css_parser::parse_stylesheet(state->user_styles, true), state->css_property_names);
+		if (const auto document = state->dom->get_document()) {
+			for (const auto& sheet : DocumentAdapter::stylesheets(*document)) {
+				collect_css_property_names(litehtml::css_parser::parse_stylesheet(sheet.text, true), state->css_property_names);
+			}
+		}
+		std::sort(state->css_property_names.begin(), state->css_property_names.end());
+		state->css_property_names.erase(std::unique(state->css_property_names.begin(), state->css_property_names.end()),
+			state->css_property_names.end());
+		state->css_property_names_dirty = false;
+	}
+	for (const auto& name : state->css_property_names) read(name);
 	return result;
 }
 
@@ -478,9 +518,11 @@ std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
 		if (!owner) continue;
 		auto [entry, added] = state->stylesheet_identities.try_emplace(owner);
 		if (added) entry->second.id = next_id++;
+		state->css_rule_revisions.try_emplace(entry->second.id, 0);
 		result.push_back({entry->second.id, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled});
 	}
 	if (state->extra_stylesheet_id == 0) state->extra_stylesheet_id = next_id++;
+	state->css_rule_revisions.try_emplace(state->extra_stylesheet_id, 0);
 	result.push_back({state->extra_stylesheet_id, {}, state->user_styles, {}, {}});
 	return result;
 }
@@ -528,8 +570,270 @@ TypedArray<Dictionary> HTMLLayout::get_stylesheets() {
 	return result;
 }
 
+TypedArray<HTMLStyleSheet> HTMLLayout::get_stylesheet_objects(bool p_include_default) {
+	TypedArray<HTMLStyleSheet> result;
+	for (const auto& sheet : collect_stylesheets()) {
+		if (sheet.owner) {
+			const auto element = wrap_hit_element(sheet.owner);
+			if (element.is_valid()) result.append(get_stylesheet(*element.ptr()));
+			continue;
+		}
+		auto& handle = state->extra_stylesheet_handle;
+		if (!handle.is_valid() || !is_stylesheet_handle_current(*handle.ptr())) {
+			handle.instantiate();
+			handle->layout_id = ObjectID(get_instance_id());
+			handle->parse_version = parse_version;
+			handle->id = sheet.id;
+			handle->source_kind = HTMLStyleSheet::EXTRA_SOURCE;
+		}
+		result.append(handle);
+	}
+	if (p_include_default && state->dom) {
+		auto& handle = state->default_stylesheet_handle;
+		if (!handle.is_valid() || !is_stylesheet_handle_current(*handle.ptr())) {
+			handle.instantiate();
+			handle->layout_id = ObjectID(get_instance_id());
+			handle->parse_version = parse_version;
+			handle->id = -1;
+			handle->source_kind = HTMLStyleSheet::DEFAULT_SOURCE;
+		}
+		result.append(handle);
+	}
+	return result;
+}
+
+TypedArray<Dictionary> HTMLLayout::get_matched_css_declarations(const Ref<HTMLElement>& p_element, const String& p_pseudo) {
+	TypedArray<Dictionary> result;
+	if (!is_element_connected(p_element) || !refresh_cssom()) return result;
+	const auto node = std::dynamic_pointer_cast<litehtml::html_tag>(p_element->lock_element());
+	if (!node) return result;
+	const auto* target = cssom_tag(*node, p_pseudo);
+	if (!target) return result;
+	auto traced = DocumentAdapter::cascade_trace(*target, p_pseudo);
+	const auto sheets = collect_stylesheets();
+	for (int64_t index = 0; index < traced.size(); ++index) {
+		Dictionary entry = traced[index];
+		const String origin = entry.get("origin", String());
+		const int64_t owner_id = entry.get("stylesheet_owner", int64_t(0));
+		int64_t stylesheet_id = 0;
+		if (origin == "user_agent") {
+			stylesheet_id = -1;
+		} else if (origin == "author_extra") {
+			stylesheet_id = state->extra_stylesheet_id;
+		} else if (owner_id != 0) {
+			for (const auto& sheet : sheets) {
+				if (sheet.owner && reinterpret_cast<int64_t>(sheet.owner.get()) == owner_id) {
+					stylesheet_id = sheet.id;
+					break;
+				}
+			}
+		}
+		entry["stylesheet_id"] = stylesheet_id;
+		entry.erase("stylesheet_owner");
+		result.append(entry);
+	}
+	return result;
+}
+
+bool HTMLLayout::is_stylesheet_handle_current(const HTMLStyleSheet& p_sheet) const {
+	if (p_sheet.layout_id != ObjectID(get_instance_id()) || p_sheet.parse_version != parse_version) return false;
+	if (p_sheet.source_kind == HTMLStyleSheet::DEFAULT_SOURCE) return p_sheet.id == -1 && state->dom;
+	if (p_sheet.source_kind == HTMLStyleSheet::EXTRA_SOURCE) return state->extra_stylesheet_id == p_sheet.id && state->dom;
+	const auto node = p_sheet.owner.lock();
+	return node && node->source_version == p_sheet.source_version && state->dom &&
+		state->dom->is_element_connected(*node);
+}
+
+uint64_t HTMLLayout::css_rule_revision(int64_t p_stylesheet) const {
+	const auto found = state->css_rule_revisions.find(p_stylesheet);
+	return found == state->css_rule_revisions.end() ? 0 : found->second;
+}
+
+String HTMLLayout::get_css_rule_text(int64_t p_stylesheet, const PackedInt32Array& p_path) {
+	std::string source;
+	if (p_stylesheet == -1) {
+		if (!refresh_cssom()) return {};
+		source = state->master_styles;
+	} else {
+		const auto sheets = collect_stylesheets();
+		const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
+		if (sheet == sheets.end()) return {};
+		source = sheet->text;
+	}
+	auto rules = litehtml::css_parser::parse_stylesheet(source, true);
+	for (int64_t depth = 0; depth < p_path.size(); ++depth) {
+		const int32_t index = p_path[depth];
+		if (index < 0 || static_cast<size_t>(index) >= rules.size()) return {};
+		const auto rule = rules[static_cast<size_t>(index)];
+		if (depth + 1 == p_path.size()) return String::utf8(dockit::css::serialize_rule(*rule).c_str());
+		if (rule->block.type != dockit::css::CURLY_BLOCK) return {};
+		dockit::css::raw_declaration::vector declarations;
+		litehtml::raw_rule::vector children;
+		litehtml::css_parser(rule->block.value).consume_style_block_contents(declarations, children);
+		rules = std::move(children);
+	}
+	return {};
+}
+
+PackedStringArray HTMLLayout::get_css_rule_children(int64_t p_stylesheet, const PackedInt32Array& p_path) {
+	PackedStringArray result;
+	std::string source;
+	if (p_stylesheet == -1) {
+		if (!refresh_cssom()) return result;
+		source = state->master_styles;
+	} else {
+		const auto sheets = collect_stylesheets();
+		const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
+		if (sheet == sheets.end()) return result;
+		source = sheet->text;
+	}
+	auto rules = litehtml::css_parser::parse_stylesheet(source, true);
+	for (const int32_t index : p_path) {
+		if (index < 0 || static_cast<size_t>(index) >= rules.size()) return result;
+		const auto parent = rules[static_cast<size_t>(index)];
+		if (parent->block.type != dockit::css::CURLY_BLOCK) return result;
+		dockit::css::raw_declaration::vector declarations;
+		litehtml::raw_rule::vector children;
+		litehtml::css_parser(parent->block.value).consume_style_block_contents(declarations, children);
+		rules = std::move(children);
+	}
+	for (const auto& rule : rules) result.append(String::utf8(dockit::css::serialize_rule(*rule).c_str()));
+	return result;
+}
+
+namespace {
+	using RawRule = litehtml::raw_rule;
+	using RawRules = litehtml::raw_rule::vector;
+	using Declarations = dockit::css::raw_declaration::vector;
+
+	bool valid_cssom_rule(const RawRule::ptr& p_rule, litehtml::document_mode p_mode, bool p_top_level) {
+		if (!p_rule) return false;
+		bool accepted = false;
+		const RawRules rules{p_rule};
+		dockit::css::visit_stylesheet_rules(rules, p_top_level, [&](const dockit::css::StylesheetRule& rule) {
+			bool valid = true;
+			if (rule.kind == dockit::css::StylesheetRuleKind::style) {
+				valid = !dockit::css::parse_selector_list(rule.syntax.prelude, dockit::css::strict_mode,
+					litehtml::selector_mode(p_mode)).empty();
+			} else if (rule.kind == dockit::css::StylesheetRuleKind::supports) {
+				valid = litehtml::evaluate_css_supports(rule.syntax.prelude, p_mode).has_value();
+			} else if (rule.kind == dockit::css::StylesheetRuleKind::keyframes) {
+				valid = dockit::css::parse_keyframe_rule(rule.syntax.prelude, rule.syntax.block.value).has_value();
+			}
+			if (&rule.syntax == p_rule.get()) accepted = valid;
+			return valid;
+		});
+		return accepted;
+	}
+
+	void rebuild_rule_block(RawRule& p_rule, const Declarations& p_declarations, const RawRules& p_children) {
+		std::string contents = dockit::css::serialize_declarations(p_declarations);
+		if (!contents.empty() && !p_children.empty()) contents += '\n';
+		for (const auto& child : p_children) contents += dockit::css::serialize_rule(*child) + '\n';
+		p_rule.block = dockit::css::css_token(dockit::css::CURLY_BLOCK);
+		p_rule.block.value = dockit::css::normalize(contents);
+	}
+
+	bool edit_nested_rules(RawRules& p_rules, const PackedInt32Array& p_path, int64_t p_index,
+		const String* p_text, int64_t p_depth) {
+		if (p_depth == p_path.size()) {
+			if (p_index < 0 || p_index > static_cast<int64_t>(p_rules.size()) ||
+				(!p_text && p_index == static_cast<int64_t>(p_rules.size()))) return false;
+			if (p_text) {
+				auto parsed = dockit::css::parse_cssom_rule(*p_text);
+				if (!parsed) return false;
+				p_rules.insert(p_rules.begin() + p_index, std::move(parsed));
+			} else {
+				p_rules.erase(p_rules.begin() + p_index);
+			}
+			return true;
+		}
+		const int32_t index = p_path[p_depth];
+		if (index < 0 || static_cast<size_t>(index) >= p_rules.size()) return false;
+		auto& parent = *p_rules[static_cast<size_t>(index)];
+		if (parent.block.type != dockit::css::CURLY_BLOCK) return false;
+		Declarations declarations;
+		RawRules children;
+		litehtml::css_parser(parent.block.value).consume_style_block_contents(declarations, children);
+		if (!edit_nested_rules(children, p_path, p_index, p_text, p_depth + 1)) return false;
+		rebuild_rule_block(parent, declarations, children);
+		return true;
+	}
+
+	bool replace_nested_rule(RawRules& p_rules, const PackedInt32Array& p_path, const RawRule::ptr& p_replacement,
+		int64_t p_depth = 0) {
+		if (p_path.is_empty()) return false;
+		const int32_t index = p_path[p_depth];
+		if (index < 0 || static_cast<size_t>(index) >= p_rules.size()) return false;
+		if (p_depth + 1 == p_path.size()) {
+			p_rules[static_cast<size_t>(index)] = p_replacement;
+			return true;
+		}
+		auto& parent = *p_rules[static_cast<size_t>(index)];
+		if (parent.block.type != dockit::css::CURLY_BLOCK) return false;
+		Declarations declarations;
+		RawRules children;
+		litehtml::css_parser(parent.block.value).consume_style_block_contents(declarations, children);
+		if (!replace_nested_rule(children, p_path, p_replacement, p_depth + 1)) return false;
+		rebuild_rule_block(parent, declarations, children);
+		return true;
+	}
+
+	std::string serialize_rules(const RawRules& p_rules) {
+		std::string output;
+		for (const auto& rule : p_rules) output += dockit::css::serialize_rule(*rule) + '\n';
+		return output;
+	}
+}
+
+Error HTMLLayout::set_css_rule_text(int64_t p_stylesheet, const PackedInt32Array& p_path, const String& p_text) {
+	if (p_stylesheet == -1) return ERR_UNAUTHORIZED;
+	if (p_path.is_empty()) return ERR_INVALID_PARAMETER;
+	const auto replacement = dockit::css::parse_cssom_rule(p_text);
+	const auto document = state->dom ? state->dom->get_document() : litehtml::document::ptr();
+	if (!replacement || !document || !valid_cssom_rule(replacement, document->mode(), p_path.size() == 1)) return ERR_PARSE_ERROR;
+	auto sheets = collect_stylesheets();
+	const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
+	if (sheet == sheets.end()) return ERR_INVALID_PARAMETER;
+	auto rules = litehtml::css_parser::parse_stylesheet(sheet->text, true);
+	if (!replace_nested_rule(rules, p_path, replacement)) return ERR_INVALID_PARAMETER;
+	const std::string updated = serialize_rules(rules);
+	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
+	else state->user_styles = updated;
+	++state->css_rule_revisions[p_stylesheet];
+	invalidate_styles();
+	return OK;
+}
+
+Error HTMLLayout::edit_css_rule_nested(int64_t p_stylesheet, const PackedInt32Array& p_parent_path,
+	int64_t p_index, const String* p_text) {
+	if (p_stylesheet == -1) return ERR_UNAUTHORIZED;
+	const auto document = state->dom ? state->dom->get_document() : litehtml::document::ptr();
+	if (p_text) {
+		const auto parsed = dockit::css::parse_cssom_rule(*p_text);
+		if (!document || !valid_cssom_rule(parsed, document->mode(), p_parent_path.is_empty())) return ERR_PARSE_ERROR;
+	}
+	auto sheets = collect_stylesheets();
+	const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
+	if (sheet == sheets.end()) return ERR_INVALID_PARAMETER;
+	auto rules = litehtml::css_parser::parse_stylesheet(sheet->text, true);
+	if (!edit_nested_rules(rules, p_parent_path, p_index, p_text, 0)) return p_text ? ERR_PARSE_ERROR : ERR_INVALID_PARAMETER;
+	const std::string updated = serialize_rules(rules);
+	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
+	else state->user_styles = updated;
+	++state->css_rule_revisions[p_stylesheet];
+	invalidate_styles();
+	return OK;
+}
+
 PackedStringArray HTMLLayout::get_css_rules(int64_t p_stylesheet) {
 	PackedStringArray result;
+	if (p_stylesheet == -1) {
+		if (!refresh_cssom()) return result;
+		for (const auto& rule : litehtml::css_parser::parse_stylesheet(state->master_styles, true))
+			result.append(String::utf8(dockit::css::serialize_rule(*rule).c_str()));
+		return result;
+	}
 	for (const auto& sheet : collect_stylesheets()) {
 		if (sheet.id != p_stylesheet) continue;
 		for (const auto& rule : litehtml::css_parser::parse_stylesheet(sheet.text, true)) {
@@ -583,6 +887,7 @@ Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const Str
 	for (const auto& rule : rules) updated += dockit::css::serialize_rule(*rule) + '\n';
 	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
 	else state->user_styles = std::move(updated);
+	++state->css_rule_revisions[p_stylesheet];
 	invalidate_styles();
 	return OK;
 }
@@ -771,6 +1076,9 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_computed_style_property", "element", "name", "pseudo"),
 		&HTMLLayout::get_computed_style_property, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_stylesheets"), &HTMLLayout::get_stylesheets);
+	ClassDB::bind_method(D_METHOD("get_stylesheet_objects", "include_default"), &HTMLLayout::get_stylesheet_objects, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("get_matched_css_declarations", "element", "pseudo"), &HTMLLayout::get_matched_css_declarations,
+		DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_css_rules", "stylesheet"), &HTMLLayout::get_css_rules);
 	ClassDB::bind_method(D_METHOD("insert_rule", "stylesheet", "rule", "index"), &HTMLLayout::insert_rule, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("delete_rule", "stylesheet", "index"), &HTMLLayout::delete_rule);
@@ -1821,6 +2129,7 @@ void HTMLLayout::invalidate_styles() {
 		state->container->refresh_document_base(document->root());
 	}
 	state->dom->sync_open_dialogs();
+	state->css_property_names_dirty = true;
 	mark_styles_pending();
 	state->implicit_empty_document = false;
 	if (state->edit_callback.is_valid()) {
@@ -3577,6 +3886,9 @@ void HTMLLayout::clear() {
 	state->imported_video_base_dir = String();
 	++parse_version;
 	state->stylesheet_identities.clear();
+	state->css_rule_revisions.clear();
+	state->extra_stylesheet_handle.unref();
+	state->default_stylesheet_handle.unref();
 	state->extra_stylesheet_id = 0;
 	state->animation_handles.clear();
 	state->animation_event_tracks.clear();
@@ -3613,6 +3925,8 @@ void HTMLLayout::clear() {
 	state->hover_viewport_style_changed = false;
 	state->hover_layout_active = false;
 	state->has_css_transitions = false;
+	state->css_property_names.clear();
+	state->css_property_names_dirty = true;
 	state->implicit_empty_document = false;
 	state->reflow_queued = false;
 	state->embedded_block = false;

@@ -691,8 +691,9 @@ void document::append_document_stylesheets()
 			media = make_shared<media_query_list_list>();
 			media->add(parse_media_query_list(sheet.media, doc));
 		}
+		const auto owner = sheet.owner.lock();
 		m_styles.parse_css_stylesheet(edit == m_cssom_overrides.end() ? sheet.text : edit->second.replacement,
-			sheet.baseurl, doc, media, 0, sheet.scope_root);
+			sheet.baseurl, doc, media, 0, sheet.scope_root, dockit::css::CSSCascadeOrigin::author, owner.get());
 	}
 }
 

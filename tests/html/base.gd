@@ -61,6 +61,7 @@ func _ready() -> void:
 	await _check_link_stylesheet(from_pck)
 	_check_inline_stylesheet()
 	_check_shared_stylesheets()
+	_check_css_inspector()
 	_check(jump.href == "#tail" and jump.get_resolved_href() == "res://assets/v1/virtual.html#tail", "script can read the resolved link")
 	var clicked_uris: Array[String]
 	label.link_pressed.connect(func(uri: String) -> void: clicked_uris.append(uri), CONNECT_ONE_SHOT)
@@ -259,6 +260,65 @@ func _check_shared_stylesheets() -> void:
 	_check(first_sheet.get_instance_id() == original_instance_id, "the layout keeps the current sheet identity between reads")
 	first = null
 	_check(not first_sheet.is_valid() and second_sheet.is_valid(), "holding a sheet does not retain its layout")
+
+
+func _check_css_inspector() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	var source: String = "@layer base { .item { color: red; } } @media (min-width: 1px) { #item { color: blue; width: 22px; } }"
+	_check(layout.parse("<div id='item' class='item' style='height: 5px'></div>", "res://", source) == OK
+		and layout.layout(Vector2i(180, 100)) == OK, "CSS inspector fixture parses and lays out")
+	var item: HTMLElement = layout.get_element_by_id("item")
+	var sheets: Array[HTMLStyleSheet] = layout.get_stylesheet_objects()
+	var author_sheet: HTMLStyleSheet = sheets[0] if not sheets.is_empty() else null
+	var default_sheet: HTMLStyleSheet = sheets[sheets.size() - 1] if not sheets.is_empty() else null
+	_check(sheets.size() >= 2 and author_sheet.origin == "author_extra" and default_sheet.origin == "user_agent"
+		and author_sheet.media.is_empty() and author_sheet.href.is_empty() and author_sheet.owner_node == null
+		and default_sheet.read_only and default_sheet.media.is_empty() and not default_sheet.get_rules().is_empty(),
+		"structured stylesheet listing separates author and read-only UA sheets")
+	_check(layout.get_stylesheets().size() == sheets.size() - 1,
+		"legacy stylesheet snapshots keep their original author-only shape")
+	var rules: Array[CSSRule] = author_sheet.get_rules()
+	_check(rules.size() == 2 and rules[0].type == "at" and rules[0].name == "layer"
+		and rules[1].name == "media", "CSSOM exposes top-level at-rules as structured handles")
+	var media_rule: CSSRule = rules[1]
+	var nested_rules: Array[CSSRule] = media_rule.get_css_rules()
+	_check(nested_rules.size() == 1 and nested_rules[0].selector_text == "#item"
+		and nested_rules[0].style.get_property_value("width") == "22px",
+		"nested media rules expose selectors and declarations")
+	_check(default_sheet.insert_rule("div { color: pink; }") == ERR_UNAUTHORIZED,
+		"the default UA stylesheet rejects CSSOM edits")
+	var trace: Array[Dictionary] = layout.get_matched_css_declarations(item)
+	var found_specific_winner: bool
+	var found_inline_winner: bool
+	for declaration: Dictionary in trace:
+		if declaration.get("property", "") == "color" and declaration.get("selector", "") == "#item":
+			found_specific_winner = declaration.get("winning", false) and declaration.get("stylesheet_id", 0) == author_sheet.id
+		if declaration.get("property", "") == "height" and declaration.get("origin", "") == "inline":
+			found_inline_winner = declaration.get("winning", false)
+	var computed: Dictionary = layout.get_computed_style(item)
+	_check(found_specific_winner and found_inline_winner and computed.has("color") and computed.has("width")
+		and computed.has("height"), "cascade trace reports source winners and computed style includes document properties")
+	_check(media_rule.insert_rule("#item { height: 11px; }", nested_rules.size()) == OK and not media_rule.is_valid()
+		and author_sheet.is_valid(), "nested CSSOM edits invalidate rule handles while preserving the sheet handle")
+	layout.layout(Vector2i(180, 100))
+	rules = author_sheet.get_rules()
+	nested_rules = rules[1].get_css_rules()
+	_check(nested_rules.size() == 2, "nested rule insertion is visible in the refreshed CSSOM")
+	var declaration_rule: CSSRule = rules[0].get_css_rules()[0]
+	var declaration: CSSStyleDeclaration = declaration_rule.style
+	declaration.set_property("color", "green", "important")
+	_check(not declaration_rule.is_valid() and not declaration.is_valid()
+		and author_sheet.get_css_rules()[0].contains("green") and author_sheet.get_css_rules()[0].contains("!important"),
+		"declaration edits preserve priority and retire stale rule/declaration handles")
+	rules = author_sheet.get_rules()
+	media_rule = rules[1]
+	_check(media_rule.delete_rule(1) == OK and not media_rule.is_valid(),
+		"nested CSSOM deletion updates the parent block and retires its rule handle")
+	rules = author_sheet.get_rules()
+	var style_rule: CSSRule = rules[0].get_css_rules()[0]
+	style_rule.css_text = ".item { color: purple; }"
+	_check(not style_rule.is_valid() and author_sheet.get_css_rules()[0].contains("purple"),
+		"replacing a nested rule updates the stylesheet while preserving the sheet handle")
 
 
 func _check_pixel(id: String, expected: Color) -> void:

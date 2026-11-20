@@ -333,7 +333,7 @@
 			<param index="0" name="element" type="HTMLElement" />
 			<param index="1" name="pseudo" type="String" default="&quot;&quot;" />
 			<description>
-				Returns a snapshot of serialized computed CSS properties. Lengths that depend on a layout box can retain percentages. See [method HTMLElement.get_bounding_rect] for geometry.
+				Returns a snapshot of serialized computed CSS properties supported by the layout, including properties with initial values found in the active stylesheet set. Lengths that depend on a layout box can retain percentages. See [method HTMLElement.get_bounding_rect] for geometry.
 			</description>
 		</method>
 		<method name="get_computed_style_property">
@@ -349,6 +349,21 @@
 			<return type="Dictionary[]" />
 			<description>
 				Returns the author stylesheets in source order. Each dictionary includes [code]id[/code], [code]owner[/code], [code]source[/code], [code]path[/code], [code]media[/code], and [code]disabled[/code]. The additional stylesheet is last. IDs apply to the current layout generation.
+			</description>
+		</method>
+		<method name="get_stylesheet_objects">
+			<return type="HTMLStyleSheet[]" />
+			<param index="0" name="include_default" type="bool" default="true" />
+			<description>
+				Returns stylesheet handles in document order, followed by the additional author stylesheet. When [param include_default] is [code]true[/code], the read-only user-agent stylesheet is appended last. [method get_stylesheets] remains available for the legacy dictionary snapshot.
+			</description>
+		</method>
+		<method name="get_matched_css_declarations">
+			<return type="Dictionary[]" />
+			<param index="0" name="element" type="HTMLElement" />
+			<param index="1" name="pseudo" type="String" default="&quot;&quot;" />
+			<description>
+				Returns currently matched stylesheet and inline declarations for a connected element. Each entry includes [code]property[/code], [code]value[/code], [code]important[/code], [code]origin[/code], [code]selector[/code], [code]specificity[/code], [code]layer[/code], [code]source_order[/code], [code]source_path[/code], [code]stylesheet_id[/code], and [code]winning[/code]. Pass a supported pseudo-element such as [code]::before[/code] in [param pseudo] to inspect its matched declarations.
 			</description>
 		</method>
 		<method name="get_css_rules">

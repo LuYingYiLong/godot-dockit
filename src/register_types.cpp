@@ -34,6 +34,7 @@
 #include "formats/html/events/html_event_target.h"
 #include "formats/html/events/html_window.h"
 #include "formats/html/css/html_animation.h"
+#include "formats/html/css/html_css_rule.h"
 #include "formats/html/css/html_style_sheet.h"
 #include "formats/html/html_behavior.h"
 #include "formats/remote_images.h"
@@ -112,6 +113,8 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(HTMLTouchPoint);
 		GDREGISTER_CLASS(HTMLTouchEvent);
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
+		GDREGISTER_CLASS(CSSRule);
+		GDREGISTER_CLASS(CSSStyleDeclaration);
 		GDREGISTER_ABSTRACT_CLASS(HTMLStyleSheet);
 		GDREGISTER_CLASS(HTMLBehaviorStorage);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);

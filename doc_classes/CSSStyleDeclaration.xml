@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSSStyleDeclaration" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		An editable declaration block for a CSS style rule.
+	</brief_description>
+	<description>
+		Obtain a declaration block from [member CSSRule.style]. Values are serialized CSS tokens. Mutations update the current layout and invalidate existing CSS rule and declaration handles for that stylesheet; they do not change the source HTML or CSS resource.
+	</description>
+	<methods>
+		<method name="get_css_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the serialized declarations, or an empty string for a stale handle.
+			</description>
+		</method>
+		<method name="get_length" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of unique property names in this declaration block.
+			</description>
+		</method>
+		<method name="get_property_priority" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns [code]important[/code] when the named declaration has [code]!important[/code], or an empty string otherwise.
+			</description>
+		</method>
+		<method name="get_property_value" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Returns the last declared value for [param name], or an empty string when it is absent or this handle is stale.
+			</description>
+		</method>
+		<method name="is_valid" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether the owning rule and stylesheet revision are still valid.
+			</description>
+		</method>
+		<method name="item" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the property name at [param index], or an empty string for an invalid index.
+			</description>
+		</method>
+		<method name="remove_property">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Removes all declarations named [param name] and returns the previous value. A successful edit invalidates this declaration handle.
+			</description>
+		</method>
+		<method name="set_css_text">
+			<return type="void" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Replaces the declaration block with declarations parsed from [param text]. A successful edit invalidates this handle.
+			</description>
+		</method>
+		<method name="set_property">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="value" type="String" />
+			<param index="2" name="priority" type="String" default="&quot;&quot;" />
+			<description>
+				Sets a CSS property. Pass [code]important[/code] as [param priority] to add [code]!important[/code]. Unsupported priority strings are ignored. A successful edit invalidates this handle.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="css_text" type="String" setter="set_css_text" getter="get_css_text">
+			Serialized declarations in this block.
+		</member>
+		<member name="length" type="int" setter="" getter="get_length">
+			Number of declarations in this block.
+		</member>
+		<member name="valid" type="bool" setter="" getter="is_valid">
+			Whether the declaration block handle is current.
+		</member>
+	</members>
+</class>
