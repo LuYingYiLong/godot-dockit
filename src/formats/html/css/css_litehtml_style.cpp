@@ -109,7 +109,7 @@ const css_token_vector* style::get_custom_property(string_id name, bool& local) 
 void style::resolve_cascade(const html_tag& element, bool use_element_variables)
 {
 	const auto doc = element.get_document();
-	const auto parent = element.parent();
+	const auto parent = element.inheritance_parent();
 	const auto* parent_tag = use_element_variables ? &element : dynamic_cast<const html_tag*>(parent.get());
 	const auto registered = doc->registered_properties();
 	cascade.resolve(doc->has_author_layers(), parent_tag && parent_tag->css().is_right_to_left(),

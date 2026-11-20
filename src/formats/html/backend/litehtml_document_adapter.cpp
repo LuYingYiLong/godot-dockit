@@ -589,6 +589,27 @@ namespace litehtml {
 			for (const auto& entry : doc.m_fonts) doc.container()->delete_font(entry.second.font);
 			doc.m_fonts.clear();
 		}
+		const auto prepare_shadow = [&](const auto& self, element& node) -> void {
+			if (node.shadow_tree) {
+				auto& root = *node.shadow_tree;
+				reset_tree(root);
+				root.apply_stylesheet(doc.m_master_css);
+				root.parse_attributes();
+				css local;
+				string text = "slot { display: contents; }";
+				const auto collect = [&](const auto& visit, const element& child) -> void {
+					if (child.tag() == _style_) { string source; child.get_text(source); text += source; }
+					for (const auto& next : child.children()) visit(visit, *next);
+				};
+				collect(collect, root);
+				local.parse_css_stylesheet(text, "", p_document);
+				local.sort_selectors(false);
+				root.apply_stylesheet(local);
+				self(self, root);
+			}
+			for (const auto& child : node.children()) self(self, *child);
+		};
+		prepare_shadow(prepare_shadow, *root);
 		compute_styles(doc);
 		if (p_build_render_tree) rebuild_render_tree(doc);
 	}
@@ -597,6 +618,7 @@ namespace litehtml {
 		if (doc.m_root_render) {
 			const auto clear_render_items = [](const auto& visit, element& node) -> void {
 				node.m_renders.clear();
+				if (node.shadow_tree) visit(visit, *node.shadow_tree);
 				for (const auto& child : node.children()) visit(visit, *child);
 			};
 			clear_render_items(clear_render_items, *doc.m_root);

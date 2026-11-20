@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		Events are created by the engine for real input and layout activity, and by scripts for synthetic dispatch. Scripts assign [member type], [member bubbles], and [member cancelable] before calling [method HTMLEventTarget.dispatch_event]. [member target], [member current_target], [member event_phase], and [member default_prevented] are read-only and controlled by the dispatcher.
-		The propagation path runs from the window through the document node and the element chain to the target. [method composed_path] returns that path during dispatch and an empty array after dispatch ends. The [member composed] flag is exposed for event metadata; this implementation has no shadow roots, so it does not alter the propagation path. Listeners registered with [code]passive[/code] cannot cancel the default action.
+		The propagation path runs from the window through the document node and the element chain to the target. [method composed_path] returns that path during dispatch and an empty array after dispatch ends. The [member composed] flag controls whether events originating in a shadow tree cross its boundary. Targets are retargeted to the host for listeners outside that tree. Listeners registered with [code]passive[/code] cannot cancel the default action.
 		[method prevent_default] cancels the built-in action that follows the event, such as following a link, activating a button, toggling a checkbox, or inserting typed text. [method HTMLNode.dispatch_event] returns [code]false[/code] when the default action was cancelled.
 		When a listener cancels an event, the [HTMLLabel] signal that reports the same action is not emitted. Events without listeners behave exactly like the documented signal-only API.
 	</description>
@@ -55,7 +55,7 @@
 			If [code]true[/code], [method prevent_default] can cancel the built-in action. Assignment is ignored while the event is being dispatched.
 		</member>
 		<member name="composed" type="bool" setter="set_composed" getter="get_composed">
-			Whether the event is marked as composed. There are no shadow roots in this implementation, so this flag does not change propagation.
+			Whether an event originating in a shadow tree can propagate across its boundary.
 		</member>
 		<member name="default_prevented" type="bool" setter="" getter="is_default_prevented">
 			Whether a listener cancelled the built-in action.

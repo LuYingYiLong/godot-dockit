@@ -30,6 +30,19 @@ namespace litehtml
 			std::function<void(element&, unsigned)> notify;
 		};
 		std::shared_ptr<DOMMutationState> dom_mutation;
+		std::shared_ptr<element> shadow_tree;
+		std::weak_ptr<element> shadow_host;
+		std::weak_ptr<element> assigned_slot;
+		std::vector<std::weak_ptr<element>> assigned_nodes;
+		std::list<std::shared_ptr<element>> assigned_render_nodes;
+		std::vector<std::weak_ptr<element>> manual_nodes;
+		bool is_shadow_slot = false;
+		const std::list<std::shared_ptr<element>>& composed_children() const;
+		std::shared_ptr<element> inheritance_parent() const {
+			if (auto slot = assigned_slot.lock()) return slot;
+			if (auto host = shadow_host.lock()) return host;
+			return parent();
+		}
 		uint64_t mutation_revision() const { return dom_mutation ? dom_mutation->revision : 1; }
 		void note_dom_change(unsigned flags) {
 			if (!dom_mutation) return; // Initial parsing and cloning establish a fresh baseline.

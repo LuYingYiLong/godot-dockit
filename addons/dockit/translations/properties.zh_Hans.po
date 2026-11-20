@@ -289,3 +289,6 @@ msgstr "行为"
 #. src/nodes/html_label.cpp
 msgid "Video"
 msgstr "视频"
+
+msgid "Component Scripts"
+msgstr "组件脚本"

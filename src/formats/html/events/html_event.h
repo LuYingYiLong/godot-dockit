@@ -34,6 +34,7 @@ public:
 private:
 	godot::StringName type;
 	godot::Ref<HTMLEventTarget> target;
+	godot::Ref<HTMLEventTarget> original_target;
 	godot::Ref<HTMLEventTarget> current_target;
 	std::vector<godot::Ref<HTMLEventTarget>> path;
 	int phase = PHASE_NONE;

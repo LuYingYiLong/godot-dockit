@@ -136,7 +136,7 @@ namespace {
 void litehtml::css_properties::compute(const html_tag* element, const document::ptr& doc, const props_map* keyframe)
 {
 	viewport_overflow_source = false;
-	const auto parent = element->parent();
+	const auto parent = element->inheritance_parent();
 	auto box_parent = parent;
 	while (box_parent && box_parent->css().get_display() == display_contents)
 		box_parent = box_parent->parent();

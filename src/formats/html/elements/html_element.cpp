@@ -1,4 +1,5 @@
 #include "html_element.h"
+#include "formats/html/dom/html_shadow_root.h"
 
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/dom/html_document_fragment.h"
@@ -132,6 +133,9 @@ namespace {
 }
 
 void HTMLElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("attach_shadow", "mode", "slot_assignment", "delegates_focus"), &HTMLElement::attach_shadow, DEFVAL("open"), DEFVAL("named"), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("get_shadow_root"), &HTMLElement::get_shadow_root);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shadow_root", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE, "HTMLShadowRoot"), "", "get_shadow_root");
 	ClassDB::bind_method(D_METHOD("is_content_editable"), &HTMLElement::is_content_editable);
 	ClassDB::bind_method(D_METHOD("set_pointer_capture", "pointer_id"), &HTMLElement::set_pointer_capture);
 	ClassDB::bind_method(D_METHOD("release_pointer_capture", "pointer_id"), &HTMLElement::release_pointer_capture);
@@ -852,4 +856,13 @@ Error HTMLElement::scroll_to(const Vector2& p_offset) {
 
 Error HTMLElement::scroll_by(const Vector2& p_delta) {
 	return set_scroll_offset(get_scroll_offset() + p_delta);
+}
+
+Ref<HTMLShadowRoot> HTMLElement::attach_shadow(const String& p_mode, const String& p_assignment, bool p_focus) {
+	const auto node = lock_element();
+	return node ? get_dom().attach_shadow(node, p_mode, p_assignment, p_focus) : Ref<HTMLShadowRoot>();
+}
+Ref<HTMLShadowRoot> HTMLElement::get_shadow_root() const {
+	const auto node = lock_element();
+	return node ? get_dom().get_shadow_root(node) : Ref<HTMLShadowRoot>();
 }

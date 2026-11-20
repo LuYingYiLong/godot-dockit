@@ -1,3 +1,4 @@
+#include "html_shadow_root.h"
 #include "html_node.h"
 
 #include "html_document_fragment.h"
@@ -141,6 +142,8 @@ void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_child_nodes"), &HTMLNode::get_child_nodes);
 	ClassDB::bind_method(D_METHOD("get_first_child"), &HTMLNode::get_first_child);
 	ClassDB::bind_method(D_METHOD("get_next_sibling"), &HTMLNode::get_next_sibling);
+	ClassDB::bind_method(D_METHOD("get_assigned_slot"), &HTMLNode::get_assigned_slot);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_slot", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE, "HTMLElement"), "", "get_assigned_slot");
 	ClassDB::bind_method(D_METHOD("get_root_node"), &HTMLNode::get_root_node);
 	ClassDB::bind_method(D_METHOD("contains", "node"), &HTMLNode::contains);
 	ClassDB::bind_method(D_METHOD("compare_document_position", "node"), &HTMLNode::compare_document_position);
@@ -196,7 +199,7 @@ Ref<HTMLNode> HTMLNode::get_parent_node() const {
 	if (const auto node = lock_element()) {
 		auto& dom = get_dom();
 		if (const auto parent = node->parent()) return dom.make_node(parent);
-		if (dom.is_element_connected(*node)) return dom.get_document_node();
+		if (node->shadow_host.expired() && dom.is_element_connected(*node)) return dom.get_document_node();
 	}
 	return {};
 }
@@ -381,4 +384,13 @@ String HTMLCommentNode::get_data() const {
 Error HTMLCommentNode::set_data(const String& p_data) {
 	const auto node = lock_element();
 	return node ? get_dom().set_character_data(node, p_data) : ERR_INVALID_PARAMETER;
+}
+
+Ref<HTMLElement> HTMLNode::get_assigned_slot() const {
+	const auto node = lock_element();
+	const auto slot = node ? node->assigned_slot.lock() : nullptr;
+	if (!slot) return {};
+	const auto root = get_dom().make_node(slot)->get_root_node();
+	const Ref<HTMLShadowRoot> shadow = root;
+	return shadow.is_valid() && shadow->get_mode() == "closed" ? Ref<HTMLElement>() : get_dom().make_element(slot);
 }

@@ -42,6 +42,7 @@ namespace dockit {
 }
 
 class HTMLLabel;
+class HTMLComponent;
 class HTMLBehavior;
 class HTMLBehaviorStorage;
 class HTMLButtonElement;
@@ -607,6 +608,14 @@ private:
 	std::vector<godot::Dictionary> behavior_diagnostics;
 	bool behavior_source_error_reported = false;
 	std::vector<godot::Ref<HTMLBehavior>> attached_behaviors;
+	godot::TypedDictionary<godot::StringName, godot::GDScript> component_scripts;
+	std::vector<godot::Ref<HTMLBehavior>> attached_components;
+	godot::TypedArray<godot::Dictionary> component_diagnostics;
+	bool component_sync_queued = false;
+	uint64_t component_version = 0;
+	void queue_component_sync();
+	static void synchronize_components(uint64_t p_id, uint64_t p_version);
+	void detach_components();
 	godot::Ref<HTMLBehaviorStorage> session_storage;
 	godot::String storage_namespace;
 	struct NavigationEntry {
@@ -847,6 +856,10 @@ public:
 	bool are_behaviors_enabled() const;											// 返回是否允许挂载文档行为
 	void reload_behaviors();
 	godot::TypedArray<godot::Dictionary> get_behavior_diagnostics() const;
+	void set_component_scripts(const godot::TypedDictionary<godot::StringName, godot::GDScript>& p_scripts);
+	godot::TypedDictionary<godot::StringName, godot::GDScript> get_component_scripts() const;
+	godot::TypedArray<godot::Dictionary> get_component_diagnostics() const;
+	void reload_components();
 	void set_behavior_scripts(
 		const godot::TypedDictionary<godot::StringName,
 		godot::GDScript>& p_scripts

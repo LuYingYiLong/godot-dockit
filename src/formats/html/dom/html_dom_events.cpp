@@ -1,3 +1,4 @@
+#include "html_shadow_root.h"
 #include "html_dom.h"
 
 #include "formats/html/events/html_event.h"
@@ -413,7 +414,15 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 	std::vector<Ref<HTMLEventTarget>> targets;
 	const Ref<HTMLNode> node = p_target;
 	if (node.is_valid()) {
-		for (Ref<HTMLNode> current = node; current.is_valid(); current = current->get_parent_node()) {
+		for (Ref<HTMLNode> current = node; current.is_valid(); current = [&]() -> Ref<HTMLNode> {
+			const auto native = current->lock_element();
+			if (native) if (const auto assigned = native->assigned_slot.lock()) return make_node(assigned);
+			if (const Ref<HTMLShadowRoot> shadow = current; shadow.is_valid()) {
+				if (!p_event->get_composed() && node->get_root_node() == current) return {};
+				return shadow->get_host();
+			}
+			return current->get_parent_node();
+		}()) {
 			EventPathEntry entry;
 			entry.slot = current->get_node_type() == HTMLNode::DOCUMENT_NODE ?
 				EventTargetSlot::DOCUMENT : EventTargetSlot::ELEMENT;

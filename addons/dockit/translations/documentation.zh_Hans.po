@@ -6125,31 +6125,8 @@ msgstr ""
 "[code]0.0[/code] 到 [code]1.0[/code]。"
 
 #. doc_classes/HTMLEvent.xml
-msgid ""
-"Events are created by the engine for real input and layout activity, and by scripts for synthetic"
-" dispatch. Scripts assign [member type], [member bubbles], and [member cancelable] before calling"
-" [method HTMLEventTarget.dispatch_event]. [member target], [member current_target], [member "
-"event_phase], and [member default_prevented] are read-only and controlled by the dispatcher.\n"
-"The propagation path runs from the window through the document node and the element chain to the "
-"target. [method composed_path] returns that path during dispatch and an empty array after "
-"dispatch ends. The [member composed] flag is exposed for event metadata; this implementation has "
-"no shadow roots, so it does not alter the propagation path. Listeners registered with "
-"[code]passive[/code] cannot cancel the default action.\n"
-"[method prevent_default] cancels the built-in action that follows the event, such as following a "
-"link, activating a button, toggling a checkbox, or inserting typed text. [method "
-"HTMLNode.dispatch_event] returns [code]false[/code] when the default action was cancelled.\n"
-"When a listener cancels an event, the [HTMLLabel] signal that reports the same action is not "
-"emitted. Events without listeners behave exactly like the documented signal-only API."
-msgstr ""
-"事件由引擎在真实输入和布局活动期间创建，也可由脚本创建后合成派发。脚本在调用 [method HTMLEventTarget.dispatch_event] 前设置 [member "
-"type]、[member bubbles] 和 [member cancelable]。[member target]、[member current_target]、[member "
-"event_phase] 与 [member default_prevented] 由派发器控制，只读。\n"
-"传播路径从 window 经过文档节点和元素链到达目标。[method composed_path] 返回当前派发的路径；派发完成后返回空数组。[member composed] "
-"表示事件是否可组合传播。本实现没有 shadow root，因此此标志不会改变传播。\n"
-"使用 [code]passive[/code] 注册的监听器不能取消默认动作。[method prevent_default] "
-"会取消后续内置动作，例如跟随链接、激活按钮、切换复选框或插入文本。默认动作被取消时，[method HTMLNode.dispatch_event] 返回 [code]false[/code]。"
-"\n"
-"监听器取消事件后，[HTMLLabel] 中报告同一动作的信号不会发出。没有监听器时，事件不会改变仅使用信号时的行为。"
+msgid "Events are created by the engine for real input and layout activity, and by scripts for synthetic dispatch. Scripts assign [member type], [member bubbles], and [member cancelable] before calling [method HTMLEventTarget.dispatch_event]. [member target], [member current_target], [member event_phase], and [member default_prevented] are read-only and controlled by the dispatcher.\nThe propagation path runs from the window through the document node and the element chain to the target. [method composed_path] returns that path during dispatch and an empty array after dispatch ends. The [member composed] flag controls whether events originating in a shadow tree cross its boundary. Targets are retargeted to the host for listeners outside that tree. Listeners registered with [code]passive[/code] cannot cancel the default action.\n[method prevent_default] cancels the built-in action that follows the event, such as following a link, activating a button, toggling a checkbox, or inserting typed text. [method HTMLNode.dispatch_event] returns [code]false[/code] when the default action was cancelled.\nWhen a listener cancels an event, the [HTMLLabel] signal that reports the same action is not emitted. Events without listeners behave exactly like the documented signal-only API."
+msgstr "事件由引擎在真实输入和布局活动期间创建，也可由脚本创建后合成派发。脚本在调用 [method HTMLEventTarget.dispatch_event] 前设置 [member type]、[member bubbles] 和 [member cancelable]。[member target]、[member current_target]、[member event_phase] 与 [member default_prevented] 由派发器控制，只读。\n传播路径从 window 经过文档节点和元素链到达目标。[method composed_path] 返回当前派发的路径；派发完成后返回空数组。[member composed] 控制来自影子树的事件是否跨越边界传播。影子树外监听器看到的目标会重定向为宿主。\n使用 [code]passive[/code] 注册的监听器不能取消默认动作。[method prevent_default] 会取消后续内置动作，例如跟随链接、激活按钮、切换复选框或插入文本。默认动作被取消时，[method HTMLNode.dispatch_event] 返回 [code]false[/code]。\n监听器取消事件后，[HTMLLabel] 中报告同一动作的信号不会发出。没有监听器时，事件不会改变仅使用信号时的行为。"
 
 #. doc_classes/HTMLMediaEvent.xml
 msgid ""
@@ -6812,10 +6789,8 @@ msgid "Whether the edit belongs to an active IME composition."
 msgstr "此次编辑是否属于正在进行的输入法组合。"
 
 #. doc_classes/HTMLEvent.xml
-msgid ""
-"Whether the event is marked as composed. There are no shadow roots in this implementation, so "
-"this flag does not change propagation."
-msgstr "此事件是否标记为 composed。当前实现没有 shadow roots，因此此标志不会改变事件传播。"
+msgid "Whether an event originating in a shadow tree can propagate across its boundary."
+msgstr "来自影子树的事件是否能够跨越其边界传播"
 
 #. doc_classes/HTMLElement.xml
 msgid ""
@@ -6873,3 +6848,78 @@ msgstr "返回 [member mutation_revision]。"
 #. doc_classes/HTMLNode.xml
 msgid "The local modification revision of this logical node, starting at [code]1[/code]. Invalid handles return [code]0[/code]. Actual changes to attributes, character data, direct children, tree placement, and live form values advance this revision. Descendant edits, focus, hover, selections, scrolling, layout, and media playback progress do not. Repeated writes of the same value do not advance it. Detached nodes keep counting; text replacement and adoption preserve the logical revision, while clones start independently. Compare snapshots of the same node; revision differences are not an operation count or an ordering between nodes. This property is read-only and is not serialized."
 msgstr "此逻辑节点的局部修改版本，从 [code]1[/code] 开始；失效句柄返回 [code]0[/code]。属性、字符数据、直接子节点、树中位置及表单实时值的实际变化会递增版本。后代编辑、焦点、悬停、选区、滚动、布局及媒体播放进度不影响版本。重复写入相同值不递增。分离节点继续计数；文本替换和跨文档迁移保留逻辑版本，克隆节点独立计数。只比较同一节点的版本快照；版本差值不表示操作次数，也不能用于节点之间的排序。此属性只读且不序列化。"
+
+msgid "A GDScript component instance associated with one HTML element."
+msgstr "HTML 元素对应的 GDScript 组件实例"
+
+msgid "A placeholder for a shadow host's content."
+msgstr "影子宿主内容的插槽占位元素"
+
+msgid "A separate DOM tree attached to a host element."
+msgstr "附加到宿主元素的独立 DOM 树"
+
+msgid "Called before releasing this component on reload or document teardown. Release event listeners here."
+msgstr "组件重载或文档销毁前调用。在此移除事件监听器"
+
+msgid "Called once after host and document have been assigned. Initialize the shadow tree and event listeners here."
+msgstr "host 与 document 赋值后调用一次。在此初始化影子树和事件监听器"
+
+msgid "Called when the host is connected, including reconnection."
+msgstr "宿主连接到文档时调用，也包括重新连接"
+
+msgid "Called when the host is removed from the document."
+msgstr "宿主从文档中移除时调用"
+
+msgid "Created with [method HTMLElement.attach_shadow] or a declarative template. Its children are excluded from document queries. Slot assignment changes rendering without moving the host's child nodes."
+msgstr "通过 [method HTMLElement.attach_shadow] 或声明式模板创建。文档查询不会进入其子树。插槽分配改变显示位置，不移动宿主的子节点"
+
+msgid "Creates a shadow tree without moving the host's light DOM children. Returns null for an invalid host, duplicate root, or unsupported mode. Focus delegation is recorded but not yet applied."
+msgstr "创建影子树并保留宿主的轻 DOM 子节点。宿主无效、已有影子根或模式不受支持时返回 null。焦点委托标志目前仅保存，尚未生效"
+
+msgid "Either named or manual."
+msgstr "取值为 named 或 manual"
+
+msgid "Either open or closed. Closed roots are hidden by the host's shadow_root getter."
+msgstr "取值为 open 或 closed。宿主的 shadow_root getter 不暴露闭合根"
+
+msgid "Maps custom HTML tag names to HTMLComponent scripts. Valid document declarations take precedence. Enable behaviors_enabled to run components."
+msgstr "将自定义 HTML 标签名映射到 HTMLComponent 脚本。有效的文档声明优先。启用 behaviors_enabled 后运行组件"
+
+msgid "Named assignment matches the host's direct children to the first slot with the same name. Unassigned slots render their fallback children. The slotchange DOM event reports changes in assignment."
+msgstr "具名分配将宿主的直接子节点匹配到第一个同名插槽。未分配节点的插槽显示备用子节点。slotchange DOM 事件报告分配变化"
+
+msgid "Register a GDScript subclass through HTMLLabel.component_scripts or a script element with type=\"text/gdscript\" and a component attribute. Document declarations override the label registry. Component construction takes no required arguments. Enable HTMLLabel.behaviors_enabled to run components. Timers, requests, and frame callbacks use the inherited behavior runtime."
+msgstr "通过 HTMLLabel.component_scripts 或带 type=\"text/gdscript\" 和 component 属性的 script 元素注册 GDScript 子类。文档声明优先于宿主注册表。构造函数不能有必填参数。启用 HTMLLabel.behaviors_enabled 后运行组件。定时器、请求和逐帧回调复用行为运行时"
+
+msgid "Returns assigned nodes, optionally flattening nested slots and fallback content."
+msgstr "返回分配的节点，可选择展开嵌套插槽和备用内容"
+
+msgid "Returns component registration failures with tag, src, and reason fields."
+msgstr "返回组件注册失败诊断，包含 tag、src 和 reason 字段"
+
+msgid "Returns the element subset of assigned_nodes."
+msgstr "返回 assigned_nodes 结果中的元素节点"
+
+msgid "Sets manual assignments in a shadow root configured for manual assignment. Does not move the nodes."
+msgstr "在手动分配模式的影子根中设置节点分配，不移动节点"
+
+msgid "The element associated with this component."
+msgstr "此组件对应的元素"
+
+msgid "The host of this shadow tree."
+msgstr "此影子树的宿主"
+
+msgid "The host's shadow root, including a closed root."
+msgstr "宿主的影子根，包括闭合根"
+
+msgid "The requested focus delegation flag."
+msgstr "请求的焦点委托标志"
+
+msgid "The slot assigned to this node, or null if no slot is assigned or its shadow root is closed."
+msgstr "分配给此节点的插槽。没有插槽或影子根闭合时返回 null"
+
+msgid "The slot name. An empty name denotes the default slot."
+msgstr "插槽名称。空名称表示默认插槽"
+
+msgid "Unmounts component instances and schedules registration and mounting again."
+msgstr "卸载组件实例并安排重新注册和挂载"

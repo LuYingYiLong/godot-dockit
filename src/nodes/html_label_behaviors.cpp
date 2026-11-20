@@ -1,3 +1,6 @@
+#include "formats/html/html_component.h"
+#include "formats/html/dom/html_dom.h"
+#include <unordered_set>
 #include "html_label.h"
 
 #include "formats/html/elements/html_metadata_elements.h"
@@ -19,9 +22,9 @@
 using namespace godot;
 
 namespace {
-	String behavior_script_error(const Ref<GDScript>& p_script) {
+	String behavior_script_error(const Ref<GDScript>& p_script, const StringName& p_base = HTMLBehavior::get_class_static()) {
 		if (p_script.is_null()) return "resource_not_found";
-		if (p_script->get_instance_base_type() != HTMLBehavior::get_class_static()) return "invalid_base_type";
+		if (p_script->get_instance_base_type() != p_base) return "invalid_base_type";
 		if (p_script->is_abstract()) return "abstract_script";
 		if (!p_script->can_instantiate()) return "cannot_instantiate";
 
@@ -120,7 +123,23 @@ bool HTMLLabel::invoke_inline_event_handler(const Ref<HTMLElement>& p_element, c
 	bool with_event = false;
 	if (!parse_inline_handler(p_element->get_attribute(attribute), method, with_event)) return false;
 	const int argument_count = with_event ? 1 : 0;
-	for (const Ref<HTMLBehavior>& behavior : attached_behaviors) {
+	std::vector<Ref<HTMLBehavior>> candidates;
+	for (Ref<HTMLNode> node = p_element; node.is_valid();) {
+		bool found = false;
+		for (const auto& entry : attached_components) {
+			const Ref<HTMLComponent> component = entry;
+			if (component.is_valid() && component->get_host() == node) {
+				candidates.push_back(component);
+				found = true;
+				break;
+			}
+		}
+		if (found) break;
+		if (const Ref<HTMLShadowRoot> root = node; root.is_valid()) node = root->get_host();
+		else node = node->get_parent_node();
+	}
+	for (const auto& entry : attached_behaviors) if (Ref<HTMLComponent>(entry).is_null()) candidates.push_back(entry);
+	for (const Ref<HTMLBehavior>& behavior : candidates) {
 		if (behavior.is_null() || !has_compatible_method(*behavior.ptr(), method, argument_count)) continue;
 		Array arguments;
 		if (with_event) arguments.push_back(p_event);
@@ -179,6 +198,8 @@ void HTMLLabel::add_behavior_diagnostic(const String& p_src, const String& p_pat
 
 void HTMLLabel::apply_behavior_reset() {
 	const ObjectID id(get_instance_id());
+	detach_components();
+	component_sync_queued = false;
 	auto instances = std::exchange(attached_behaviors, {});
 	dispatching_behavior = true;
 	for (auto it = instances.rbegin(); it != instances.rend(); ++it) {
@@ -217,6 +238,7 @@ void HTMLLabel::queue_behavior_mount() {
 		return;
 	}
 	if (!can_mount_behaviors()) return;
+	queue_component_sync();
 	behavior_mount_scheduled = true;
 	callable_mp_static(&HTMLLabel::mount_behaviors).bind(get_instance_id(), behavior_version).call_deferred();
 }
@@ -251,7 +273,7 @@ void HTMLLabel::mount_behaviors(uint64_t p_id, uint64_t p_version) {
 	ResourceLoader* loader = ResourceLoader::get_singleton();
 	for (const Ref<HTMLElement>& element : label->layout->query_selector_all("script")) {
 		const Ref<HTMLScriptElement> declaration = element;
-		if (declaration.is_null()) continue;
+		if (declaration.is_null() || declaration->has_attribute("component")) continue;
 		const String type = declaration->get_type().strip_edges().get_slice(";", 0).strip_edges();
 		if (type.nocasecmp_to("text/gdscript") != 0) continue;
 		const String src = declaration->get_src().strip_edges();
@@ -348,4 +370,108 @@ String HTMLLabel::get_storage_namespace() const {
 	if (!source_path.is_empty()) return source_path;
 	if (is_inside_tree()) return String(get_path());
 	return String("instance://") + String::num_uint64(get_instance_id());
+}
+
+void HTMLLabel::set_component_scripts(const TypedDictionary<StringName, GDScript>& p_scripts) {
+	if (component_scripts == p_scripts) return;
+	component_scripts = p_scripts.duplicate();
+	reload_components();
+}
+TypedDictionary<StringName, GDScript> HTMLLabel::get_component_scripts() const { return component_scripts.duplicate(); }
+TypedArray<Dictionary> HTMLLabel::get_component_diagnostics() const { return component_diagnostics.duplicate(true); }
+void HTMLLabel::reload_components() {
+	detach_components();
+	queue_component_sync();
+}
+void HTMLLabel::detach_components() {
+	++component_version;
+	const ObjectID id(get_instance_id());
+	auto instances = std::exchange(attached_components, {});
+	for (auto it = instances.rbegin(); it != instances.rend(); ++it) {
+		const Ref<HTMLComponent> component = *it;
+		if (component.is_null()) continue;
+		if (component->connected) GDVIRTUAL_CALL_PTR(component.ptr(), _disconnected);
+		if (!ObjectDB::get_instance(id)) return;
+		GDVIRTUAL_CALL_PTR(component.ptr(), _unmount);
+		if (!ObjectDB::get_instance(id)) return;
+		component->cancel_async_work();
+		component->document.unref();
+		component->label_id = ObjectID();
+		component->host.unref();
+	}
+	attached_behaviors.erase(std::remove_if(attached_behaviors.begin(), attached_behaviors.end(), [](const auto& behavior) {
+		return Ref<HTMLComponent>(behavior).is_valid();
+	}), attached_behaviors.end());
+}
+void HTMLLabel::queue_component_sync() {
+	if (component_sync_queued || !behaviors_enabled || !behavior_host_in_tree || !parsed || source_dirty ||
+		Engine::get_singleton()->is_editor_hint()) return;
+	component_sync_queued = true;
+	callable_mp_static(&HTMLLabel::synchronize_components).bind(uint64_t(get_instance_id()), behavior_version).call_deferred();
+}
+void HTMLLabel::synchronize_components(uint64_t p_id, uint64_t p_version) {
+	auto* label = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(ObjectID(p_id)));
+	if (!label || label->behavior_version != p_version) return;
+	label->component_sync_queued = false;
+	if (!label->behaviors_enabled || !label->behavior_host_in_tree || !label->parsed || label->source_dirty) return;
+	const uint64_t component_version = label->component_version;
+	label->component_diagnostics.clear();
+	const auto diagnose = [&](const String& tag, const String& src, const String& reason) {
+		Dictionary entry; entry["tag"] = tag; entry["src"] = src; entry["reason"] = reason;
+		label->component_diagnostics.push_back(entry);
+	};
+	TypedDictionary<StringName, GDScript> registry = label->component_scripts.duplicate();
+	std::unordered_set<std::string> declared;
+	for (const Ref<HTMLElement>& element : label->query_selector_all("script[component]")) {
+		const Ref<HTMLScriptElement> declaration = element;
+		if (declaration.is_null() || declaration->get_type().nocasecmp_to("text/gdscript") != 0) continue;
+		const String tag = declaration->get_attribute("component").strip_edges();
+		const String src = declaration->get_src();
+		if (declared.count(tag.utf8().get_data())) { diagnose(tag, src, "duplicate_declaration"); continue; }
+		const String path = resolve_behavior_path(label, src);
+		if (path.is_empty() || dockit::is_http_url(src) || src.begins_with("//") || path.get_extension() != "gd") { diagnose(tag, src, "invalid_local_script_path"); continue; }
+		String error;
+		Ref<GDScript> script = load_behavior_script(ResourceLoader::get_singleton(), path, false, error);
+		if (!behavior_script_error(script, HTMLComponent::get_class_static()).is_empty()) { diagnose(tag, src, "invalid_component_script"); continue; }
+		registry[StringName(tag)] = script;
+		declared.insert(tag.utf8().get_data());
+	}
+	const auto instances = label->attached_components;
+	for (const auto& entry : instances) {
+		const Ref<HTMLComponent> component = entry;
+		const bool connected = component->host.is_valid() && component->host->is_connected();
+		if (connected == component->connected) continue;
+		component->connected = connected;
+		if (connected) GDVIRTUAL_CALL_PTR(component.ptr(), _connected);
+		else GDVIRTUAL_CALL_PTR(component.ptr(), _disconnected);
+		if (!ObjectDB::get_instance(ObjectID(p_id)) || label->behavior_version != p_version || label->component_version != component_version) return;
+	}
+	for (const StringName& name : registry.keys()) {
+		const String tag = name;
+		const CharString normalized = dockit::HTMLDOM::normalize_tag_name(tag);
+		if (!tag.contains("-") || normalized.length() == 0 || tag != String::utf8(normalized.get_data())) { diagnose(tag, {}, "invalid_custom_tag"); continue; }
+		const Ref<GDScript> script = registry[name];
+		if (!behavior_script_error(script, HTMLComponent::get_class_static()).is_empty()) { diagnose(tag, {}, "invalid_component_script"); continue; }
+		for (const Ref<HTMLElement>& host : label->layout->get_dom().component_candidates(tag)) {
+			bool exists = false;
+			for (const auto& entry : label->attached_components) if (Ref<HTMLComponent>(entry)->host == host) { exists = true; break; }
+			if (exists) continue;
+			const Ref<HTMLComponent> component = script->call("new");
+			if (!ObjectDB::get_instance(ObjectID(p_id)) || label->behavior_version != p_version || label->component_version != component_version) return;
+			if (component.is_null()) { diagnose(tag, {}, "instance_creation_failed"); continue; }
+			component->host = host;
+			component->document = label->get_document_node();
+			component->label_id = ObjectID(p_id);
+			component->session_storage = label->session_storage;
+			component->local_storage.instantiate();
+			component->local_storage->configure_persistent(String("user://dockit/html_storage/") + label->get_storage_namespace().sha256_text() + ".cfg");
+			label->attached_components.push_back(component);
+			label->attached_behaviors.push_back(component);
+			GDVIRTUAL_CALL_PTR(component.ptr(), _mount);
+			if (!ObjectDB::get_instance(ObjectID(p_id)) || label->behavior_version != p_version) return;
+			component->connected = host->is_connected();
+			if (component->connected) GDVIRTUAL_CALL_PTR(component.ptr(), _connected);
+			if (!ObjectDB::get_instance(ObjectID(p_id)) || label->behavior_version != p_version || label->component_version != component_version) return;
+		}
+	}
 }

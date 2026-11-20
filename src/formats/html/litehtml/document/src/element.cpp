@@ -137,6 +137,12 @@ void element::dump(dumper& cout)
 	cout.end_node();
 }
 
+const std::list<std::shared_ptr<element>>& element::composed_children() const {
+	if (shadow_tree) return shadow_tree->children();
+	if (is_shadow_slot && !assigned_render_nodes.empty()) return assigned_render_nodes;
+	return m_children;
+}
+
 std::shared_ptr<render_item> element::create_render_item(const std::shared_ptr<render_item>& parent_ri)
 {
 	if (css().get_content_image() && css().get_display() != display_none) {
@@ -193,7 +199,7 @@ std::shared_ptr<render_item> element::create_render_item(const std::shared_ptr<r
 
 		ret->parent(parent_ri);
 		if (css().skips_contents()) return ret;
-		for(const auto& el : m_children)
+		for(const auto& el : composed_children())
 		{
 			el->append_render_items(ret);
 		}
@@ -209,7 +215,7 @@ void element::append_render_items(const std::shared_ptr<render_item>& parent_ri)
 	{
 		const bool folded = tag() == _details_ && !get_attr("open");
 		const auto summary = folded ? dockit::details_summary(*this) : ptr();
-		for (const auto& child : m_children)
+		for (const auto& child : composed_children())
 		{
 			if (!folded || child == summary || is_generated_tag(child->tag())) child->append_render_items(parent_ri);
 		}

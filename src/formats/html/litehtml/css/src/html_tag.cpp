@@ -311,7 +311,7 @@ bool html_tag::get_custom_property(string_id name, css_token_vector& result) con
 			return true;
 		}
 		if (local) return false;
-		tag = dynamic_cast<const html_tag*>(tag->parent().get());
+		tag = dynamic_cast<const html_tag*>(tag->inheritance_parent().get());
 	}
 	return false;
 }
@@ -982,7 +982,8 @@ void litehtml::html_tag::compute_child_styles()
 	const auto quote_scope = css().has_style_containment() ? get_document() : nullptr;
 	const size_t outer_quote_depth = quote_scope ? quote_scope->quote_depth() : 0;
 	const element* preceding = nullptr;
-	for (const auto& child : m_children)
+	if (shadow_tree) { shadow_tree->compute_styles(); return; }
+	for (const auto& child : composed_children())
 	{
 		child->inherit_counters(preceding);
 		child->compute_styles();

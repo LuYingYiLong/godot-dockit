@@ -5,6 +5,7 @@
 #include "formats/html/events/html_window.h"
 #include "html_mutation_observer.h"
 #include "html_selection.h"
+#include "html_shadow_root.h"
 
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
@@ -16,6 +17,8 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+
+class HTMLShadowRoot;
 
 namespace litehtml {
 	class document;
@@ -39,6 +42,11 @@ namespace dockit {
 		friend struct HTMLNode::DetachedTree;
 		friend class ::HTMLRange;
 
+		std::vector<godot::Ref<HTMLShadowRoot>> shadow_roots;
+		bool assigning_slots = false;
+		std::vector<godot::Ref<HTMLNode>> pending_slot_changes;
+		bool slot_delivery_queued = false;
+		static void deliver_slot_changes(uint64_t p_owner, uint64_t p_version);
 		std::shared_ptr<litehtml::document> document;
 		godot::ObjectID owner_id;
 		uint64_t generation = 0;
@@ -192,6 +200,15 @@ namespace dockit {
 		void set_source_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value);
 		void forget_source_attributes(const litehtml::element& p_element);
 
+	public:
+		godot::Ref<HTMLShadowRoot> attach_shadow(const litehtml::element::ptr& p_host, const godot::String& p_mode,
+			const godot::String& p_assignment, bool p_delegates_focus);
+		godot::Ref<HTMLShadowRoot> get_shadow_root(const litehtml::element::ptr& p_host, bool p_open_only = true) const;
+		void synchronize_slots();
+		void initialize_shadow_roots();
+		godot::TypedArray<HTMLElement> component_candidates(const godot::String& p_tag) const;
+		godot::TypedArray<HTMLNode> slot_nodes(const litehtml::element::ptr& p_slot, bool p_flatten) const;
+		godot::Error assign_slot(const litehtml::element::ptr& p_slot, const godot::Array& p_nodes);
 	public:
 		struct Change {
 			std::weak_ptr<litehtml::element> target;

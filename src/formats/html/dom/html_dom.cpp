@@ -1,4 +1,5 @@
 #include "html_dom.h"
+#include "html_shadow_root.h"
 #include "html_document_fragment.h"
 
 #include "formats/html/css/css_litehtml_dom.h"
@@ -272,6 +273,7 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 			dockit::forms::synchronize(tree->root);
 		}
 	}
+	initialize_shadow_roots();
 }
 
 void HTMLDOM::track_dialog(const std::shared_ptr<HTMLDialogNode>& p_dialog) {
@@ -353,6 +355,9 @@ void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
 }
 
 void HTMLDOM::clear() {
+	shadow_roots.clear();
+	pending_slot_changes.clear();
+	slot_delivery_queued = false;
 	design_mode = false;
 	pending_changes.clear();
 	pending_change_indices.clear();
@@ -431,7 +436,15 @@ void HTMLDOM::retain_detached_subtree(const litehtml::element::ptr& p_root) {
 }
 
 bool HTMLDOM::is_element_connected(const litehtml::element& p_element) const {
-	return document && document->root().get() == tree_root(p_element);
+	const litehtml::element* root = tree_root(p_element);
+	std::unordered_set<const litehtml::element*> visited;
+	while (root && visited.insert(root).second) {
+		if (document && document->root().get() == root) return true;
+		const auto host = root->shadow_host.lock();
+		if (!host) break;
+		root = tree_root(*host);
+	}
+	return false;
 }
 
 Ref<HTMLNode> HTMLDOM::find_node_handle(const litehtml::element& p_element) const {
@@ -451,7 +464,9 @@ Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) 
 	if (const auto existing = find_node_handle(*p_element); existing.is_valid()) {
 		return existing;
 	}
-	Ref<HTMLElement> handle = create_element_handle(*p_element);
+	Ref<HTMLElement> handle;
+	if (std::string(p_element->get_tagName()) == "slot") { Ref<HTMLSlotElement> slot; slot.instantiate(); handle = slot; }
+	else handle = create_element_handle(*p_element);
 	bind_handle(*handle.ptr(), p_element);
 	return handle;
 }
@@ -588,6 +603,7 @@ litehtml::element::ptr HTMLDOM::create_template_node(const litehtml::document::p
 }
 
 Ref<HTMLDocumentFragment> HTMLDOM::copy_fragment(const litehtml::element& p_root, bool p_deep) {
+	if (!p_root.shadow_host.expired()) return {};
 	const auto fragment = create_document_fragment();
 	if (p_deep && !clone_children(*this, p_root, *fragment->detached_tree->root)) {
 		return {};
@@ -607,7 +623,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::parse_fragment(const String& p_html, const li
 }
 
 Ref<HTMLDocumentFragment> HTMLDOM::import_fragment(const HTMLDocumentFragment& p_source) {
-	if (const auto node = p_source.lock_element()) {
+	if (const auto node = p_source.lock_element(); node && node->shadow_host.expired()) {
 		const auto copy = create_document_fragment();
 		if (clone_children(p_source.get_dom(), *node, *copy->detached_tree->root)) {
 			dockit::forms::synchronize(copy->detached_tree->root);
@@ -829,6 +845,7 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 		if (!native || &node->get_dom() != this || node->get_node_type() == HTMLNode::DOCUMENT_NODE ||
 			is_host_including_ancestor(*native, parent)) return ERR_INVALID_PARAMETER;
 		if (node->get_node_type() == HTMLNode::DOCUMENT_FRAGMENT_NODE) {
+			if (!native->shadow_host.expired()) return ERR_INVALID_PARAMETER;
 			for (auto it = native->children().begin(); it != native->children().end();) {
 				auto parts = node_parts(*it);
 				std::advance(it, parts.size());
@@ -1492,7 +1509,7 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 	const litehtml::element::ptr& p_reference) {
 	ChangeScope changes(*this);
 	const auto& tree = p_fragment.detached_tree;
-	if (!tree || !tree->root || tree->owner.lock().get() != this || !can_contain_elements(*p_parent) ||
+	if (!tree || !tree->root || !tree->root->shadow_host.expired() || tree->owner.lock().get() != this || !can_contain_elements(*p_parent) ||
 		(p_reference && p_reference->parent() != p_parent)) {
 		return ERR_INVALID_PARAMETER;
 	}

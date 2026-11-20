@@ -1,3 +1,4 @@
+#include "formats/html/dom/html_shadow_root.h"
 #include "html_event.h"
 
 #include <godot_cpp/core/error_macros.hpp>
@@ -70,6 +71,7 @@ bool HTMLEvent::begin_dispatch(const Ref<HTMLEventTarget>& p_target,
 	const std::vector<Ref<HTMLEventTarget>>& p_path) {
 	if (dispatching) return false;
 	target = p_target;
+	original_target = p_target;
 	current_target = p_target;
 	path = p_path;
 	phase = PHASE_NONE;
@@ -83,6 +85,15 @@ bool HTMLEvent::begin_dispatch(const Ref<HTMLEventTarget>& p_target,
 
 void HTMLEvent::set_dispatch_phase(const Ref<HTMLEventTarget>& p_node, int p_phase) {
 	current_target = p_node;
+	target = original_target;
+	Ref<HTMLNode> adjusted = original_target;
+	const Ref<HTMLNode> current = p_node;
+	while (adjusted.is_valid()) {
+		const Ref<HTMLShadowRoot> root = adjusted->get_root_node();
+		if (root.is_null() || (current.is_valid() && root->contains(current))) break;
+		adjusted = root->get_host();
+		target = adjusted;
+	}
 	phase = p_phase;
 	immediate_stopped = false;
 }
@@ -97,9 +108,17 @@ void HTMLEvent::end_dispatch() {
 
 TypedArray<HTMLEventTarget> HTMLEvent::composed_path() const {
 	TypedArray<HTMLEventTarget> result;
-	result.resize(int64_t(path.size()));
-	for (std::size_t index = 0; index < path.size(); ++index) {
-		result[int64_t(index)] = path[index];
+	const Ref<HTMLNode> current = current_target;
+	for (const auto& entry : path) {
+		Ref<HTMLNode> node = entry;
+		bool hidden = false;
+		while (node.is_valid()) {
+			const Ref<HTMLShadowRoot> root = node->get_root_node();
+			if (root.is_null()) break;
+			if (root->get_mode() == "closed" && (current.is_null() || !root->contains(current))) { hidden = true; break; }
+			node = root->get_host();
+		}
+		if (!hidden) result.append(entry);
 	}
 	return result;
 }

@@ -21,6 +21,8 @@ class HTMLFormElement;
 class HTMLDocumentFragment;
 class HTMLAnimation;
 
+class HTMLShadowRoot;
+
 class HTMLElement : public HTMLNode {
 	GDCLASS(HTMLElement, HTMLNode)
 
@@ -40,6 +42,9 @@ protected:
 	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
+	godot::Ref<HTMLShadowRoot> attach_shadow(const godot::String& p_mode = "open", const godot::String& p_assignment = "named", bool p_delegates_focus = false);
+	godot::Ref<HTMLShadowRoot> get_shadow_root() const;
+
 	godot::Error set_pointer_capture(int64_t p_pointer_id);
 	godot::Error release_pointer_capture(int64_t p_pointer_id);
 	bool has_pointer_capture(int64_t p_pointer_id) const;

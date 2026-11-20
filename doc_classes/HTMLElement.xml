@@ -9,6 +9,8 @@
 		Editing methods return [constant OK] on success and [constant ERR_INVALID_PARAMETER] for an invalid handle or invalid arguments.
 	</description>
 	<methods>
+		<method name="attach_shadow"><return type="HTMLShadowRoot"/><param index="0" name="mode" type="String" default="&quot;open&quot;"/><param index="1" name="slot_assignment" type="String" default="&quot;named&quot;"/><param index="2" name="delegates_focus" type="bool" default="false"/><description>Creates a shadow tree without moving the host's light DOM children. Returns null for an invalid host, duplicate root, or unsupported mode. Focus delegation is recorded but not yet applied.</description></method>
+
 		<method name="add_class">
 			<return type="int" enum="Error" />
 			<param index="0" name="class_name" type="String" />

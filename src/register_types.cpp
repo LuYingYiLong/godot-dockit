@@ -1,3 +1,5 @@
+#include "formats/html/html_component.h"
+#include "formats/html/dom/html_shadow_root.h"
 #include "register_types.h"
 
 #include "editor/dockit_source_editor.h"
@@ -165,6 +167,8 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLTextAreaElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLDocumentFragment);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTemplateElement);
+		GDREGISTER_CLASS(HTMLShadowRoot);
+		GDREGISTER_ABSTRACT_CLASS(HTMLSlotElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableCaptionElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableColElement);
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableCellElement);
@@ -174,6 +178,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(dockit::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
 		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
+		GDREGISTER_VIRTUAL_CLASS(HTMLComponent);
 		GDREGISTER_CLASS(HTMLDocument);
 		GDREGISTER_CLASS(HTMLPrintLayout);
 		GDREGISTER_INTERNAL_CLASS(HTMLLabelCanvas);

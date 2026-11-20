@@ -31,6 +31,7 @@ class HTMLNode : public HTMLEventTarget {
 	friend class HTMLDocumentFragment;
 	friend class ::HTMLLabel;
 	friend class ::HTMLLabelCanvas;
+	friend class HTMLComponent;
 	friend class HTMLRange;
 	friend class HTMLMutationObserver;
 
@@ -64,6 +65,7 @@ public:
 	godot::TypedArray<HTMLNode> get_child_nodes() const; // 返回按树顺序排列的直接子节点快照
 	godot::Ref<HTMLNode> get_first_child() const; // 返回第一个直接子节点
 	godot::Ref<HTMLNode> get_next_sibling() const; // 返回下一个同父节点
+	godot::Ref<HTMLElement> get_assigned_slot() const;
 	godot::Ref<HTMLNode> get_root_node() const; // 返回当前树的根节点
 	bool contains(const godot::Ref<HTMLNode>& p_node) const; // 检查是否包含该节点或其自身
 	int32_t compare_document_position(const godot::Ref<HTMLNode>& p_node) const; // 返回节点间的位置标志

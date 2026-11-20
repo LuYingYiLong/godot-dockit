@@ -23,6 +23,9 @@
 		Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new value from script or resetting the form clears the field's edit history.
 	</description>
 	<methods>
+		<method name="reload_components"><return type="void"/><description>Unmounts component instances and schedules registration and mounting again.</description></method>
+		<method name="get_component_diagnostics" qualifiers="const"><return type="Dictionary[]"/><description>Returns component registration failures with tag, src, and reason fields.</description></method>
+
 		<method name="get_base_uri" qualifiers="const">
 			<return type="String" />
 			<description>
@@ -425,6 +428,8 @@
 		</method>
 	</methods>
 	<members>
+		<member name="component_scripts" type="Dictionary[StringName, GDScript]" setter="set_component_scripts" getter="get_component_scripts">Maps custom HTML tag names to HTMLComponent scripts. Valid document declarations take precedence. Enable behaviors_enabled to run components.</member>
+
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">
 			Chooses when CSS animations and transitions advance. Idle uses the idle frame delta, Physics uses the physics frame delta, and Manual uses calls to [method advance_animation]. Switching modes preserves the current progress and any remaining delay.
 		</member>

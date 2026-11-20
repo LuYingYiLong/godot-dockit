@@ -710,6 +710,11 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_document", "document"), &HTMLLabel::set_document);
 	ClassDB::bind_method(D_METHOD("set_behaviors_enabled", "enabled"), &HTMLLabel::set_behaviors_enabled);
 	ClassDB::bind_method(D_METHOD("are_behaviors_enabled"), &HTMLLabel::are_behaviors_enabled);
+	ClassDB::bind_method(D_METHOD("set_component_scripts", "scripts"), &HTMLLabel::set_component_scripts);
+	ClassDB::bind_method(D_METHOD("get_component_scripts"), &HTMLLabel::get_component_scripts);
+	ClassDB::bind_method(D_METHOD("get_component_diagnostics"), &HTMLLabel::get_component_diagnostics);
+	ClassDB::bind_method(D_METHOD("reload_components"), &HTMLLabel::reload_components);
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "component_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"), "set_component_scripts", "get_component_scripts");
 	ClassDB::bind_method(D_METHOD("set_behavior_scripts", "scripts"), &HTMLLabel::set_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("get_behavior_scripts"), &HTMLLabel::get_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("reload_behaviors"), &HTMLLabel::reload_behaviors);
@@ -2385,6 +2390,7 @@ void HTMLLabel::on_node_selection_changed() {
 }
 
 void HTMLLabel::on_dom_mutated() {
+	queue_component_sync();
 	if (!canvas) return;
 	canvas->reconcile_interactions_after_edit(false);
 	const auto selection = get_selection();
