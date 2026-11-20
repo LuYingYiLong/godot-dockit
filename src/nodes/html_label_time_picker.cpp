@@ -72,12 +72,9 @@ namespace {
 	const char* month_names[] = { "January", "February", "March", "April", "May", "June", "July", "August",
 		"September", "October", "November", "December" };
 	const char* weekdays[] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-	const StringName month_context("time_picker.month");
-	const StringName weekday_context("time_picker.weekday");
-	const StringName time_picker_context("time_picker");
 
 	String localized_month(int p_index) {
-		return dockit::html_ui_translate(String::utf8(month_names[p_index]), month_context);
+		return dockit::html_ui_translate(String::utf8(month_names[p_index]), "time_picker.month");
 	}
 
 	std::optional<double> first_of_month(Vector2i p_month) {
@@ -362,14 +359,14 @@ void HTMLLabel::draw_clock_picker() {
 		const bool week = state.kind == calendar::Kind::week;
 		const int week_offset = week ? week_number_width : 0;
 		if (week) {
-			text(dockit::html_ui_translate("Week", time_picker_context), Rect2(calendar_inset, 39, week_number_width, day_height), ink, 12);
+			text(dockit::html_ui_translate("Week", "time_picker"), Rect2(calendar_inset, 39, week_number_width, day_height), ink, 12);
 			const real_t x = calendar_inset + week_offset;
 			panel.draw_line(Vector2(x, 39), Vector2(x, calendar_top + calendar_rows * day_height), border, 1);
 		}
 		for (int i = 0; i < days_per_row; ++i) {
 			const int index = (i + (state.sunday_first ? 6 : 0)) % days_per_row;
 			const Rect2 header(calendar_inset + week_offset + i * day_size, 39, day_size, day_height);
-			text(dockit::html_ui_translate(String::utf8(weekdays[index]), weekday_context), header, ink, 12);
+			text(dockit::html_ui_translate(String::utf8(weekdays[index]), "time_picker.weekday"), header, ink, 12);
 		}
 		if (week) {
 			for (int row = 0; row < calendar_rows; ++row) {
@@ -409,12 +406,12 @@ void HTMLLabel::draw_clock_picker() {
 	const auto clear_rect = clear_button(state.calendar_height());
 	if (can_clear) {
 		if (state.calendar_hover == clear_id) panel.draw_rect(clear_rect, hover);
-		text(dockit::html_ui_translate("Clear", time_picker_context), clear_rect, action, 12);
+		text(dockit::html_ui_translate("Clear", "time_picker"), clear_rect, action, 12);
 	}
 	if (can_select_today && state.calendar_hover == today_id) panel.draw_rect(today_rect, hover);
 	const String today_message = state.kind == calendar::Kind::month ? "This month" :
 		state.kind == calendar::Kind::week ? "This week" : "Today";
-	const String today_label = dockit::html_ui_translate(today_message, time_picker_context);
+	const String today_label = dockit::html_ui_translate(today_message, "time_picker");
 	text(today_label, today_rect, can_select_today ? action : Color(ink, 0.3f), 12);
 }
 
