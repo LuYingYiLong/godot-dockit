@@ -9,6 +9,7 @@
 #include "formats/html/backend/litehtml_container.h"
 #include "formats/html/css/css_color.h"
 #include "formats/html/css/css_parser.h"
+#include "formats/html/html_ui_translations.h"
 #include "formats/html/markup/html_number.h"
 
 #include <godot_cpp/classes/reg_ex.hpp>
@@ -501,10 +502,16 @@ namespace dockit {
 		paint_contents(*static_cast<LiteHTMLContainer*>(container), Rect2(pos.x + p_x, pos.y + p_y, pos.width, pos.height));
 	}
 
-	const char* HTMLInputNode::button_text() const {
+	String HTMLInputNode::button_text() const {
 		const auto kind = type();
-		if (kind == Type::IMAGE) return get_attr("alt", "Submit");
-		return get_attr("value", kind == Type::RESET ? "Reset" : kind == Type::SUBMIT ? "Submit" : "");
+		if (kind == Type::IMAGE) {
+			if (const char* alt = get_attr("alt")) return String::utf8(alt);
+			return html_ui_translate("Submit", "input.default_action");
+		}
+		if (const char* value = get_attr("value")) return String::utf8(value);
+		if (kind == Type::RESET) return html_ui_translate("Reset", "input.default_action");
+		if (kind == Type::SUBMIT) return html_ui_translate("Submit", "input.default_action");
+		return String();
 	}
 
 	void HTMLInputNode::parse_attributes() {
@@ -532,7 +539,10 @@ namespace dockit {
 			container->get_image_size(src, nullptr, r_size, css().get_image_orientation());
 			if (r_size.width > 0 && r_size.height > 0) return;
 		}
-		if (css().get_font()) r_size = {container->text_width(button_text(), css().get_font()), css().line_height().computed_value};
+		if (css().get_font()) {
+			const CharString text = button_text().utf8();
+			r_size = {container->text_width(text.get_data(), css().get_font()), css().line_height().computed_value};
+		}
 	}
 
 	std::shared_ptr<litehtml::render_item> HTMLInputNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
@@ -551,7 +561,10 @@ namespace dockit {
 		}
 		if (display == litehtml::display_inline_block || display == litehtml::display_block) {
 			litehtml::size natural(169, css().line_height().computed_value);
-			if (is_button() && css().get_font()) natural.width = get_document()->container()->text_width(button_text(), css().get_font());
+			if (is_button() && css().get_font()) {
+				const CharString text = button_text().utf8();
+				natural.width = get_document()->container()->text_width(text.get_data(), css().get_font());
+			}
 			else if (type() == Type::FILE) natural.width = 19 * css().get_font_size();
 			else if (is_toggle()) natural = {11, 11};
 			else if (type() == Type::RANGE) natural = {129, 16};
@@ -572,7 +585,7 @@ namespace dockit {
 				css().get_font_metrics(), p_line.ascent);
 		};
 		if (is_button()) {
-			const auto line = p_container.shape_input(css().get_font(), String::utf8(button_text()));
+			const auto line = p_container.shape_input(css().get_font(), button_text());
 			if (line.is_valid()) p_container.draw_input(p_box, line,
 				Vector2(p_box.position.x + std::max<real_t>(0, (p_box.size.x - line.width()) / 2),
 					baseline(p_box, line)), color, {}, {}, {});
@@ -656,13 +669,14 @@ namespace dockit {
 			return;
 		}
 		if (kind == Type::FILE) {
-			const String button = files.size() > 1 || get_attr("multiple") ? "Choose Files" : "Choose File";
+			const String button = html_ui_translate(files.size() > 1 || get_attr("multiple") ? "Choose Files" : "Choose File",
+				"file_input.button");
 			String names;
 			for (const Ref<HTMLInputFile>& file : files) {
 				if (!names.is_empty()) names += ", ";
 				names += file->get_name();
 			}
-			if (names.is_empty()) names = "No file chosen";
+			if (names.is_empty()) names = html_ui_translate("No file chosen", "file_input.status");
 			const auto draw_label = [&](const String& p_text, const Rect2& p_rect) {
 				const auto line = p_container.shape_input(css().get_font(), p_text);
 				if (line.is_valid()) p_container.draw_input(p_rect, line,

@@ -2,6 +2,7 @@
 
 #include "formats/html/css/css_litehtml_dom.h"
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/html_ui_translations.h"
 #include "formats/html/paint/html_paint_recorder.h"
 
 #include <godot_cpp/classes/input_event_key.hpp>
@@ -11,6 +12,7 @@
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/classes/translation_server.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 #include <algorithm>
@@ -70,6 +72,13 @@ namespace {
 	const char* month_names[] = { "January", "February", "March", "April", "May", "June", "July", "August",
 		"September", "October", "November", "December" };
 	const char* weekdays[] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+	const StringName month_context("time_picker.month");
+	const StringName weekday_context("time_picker.weekday");
+	const StringName time_picker_context("time_picker");
+
+	String localized_month(int p_index) {
+		return dockit::html_ui_translate(String::utf8(month_names[p_index]), month_context);
+	}
 
 	std::optional<double> first_of_month(Vector2i p_month) {
 		return calendar::parse(calendar::Kind::date, vformat("%04d-%02d-01", p_month.x, p_month.y));
@@ -185,8 +194,9 @@ Error HTMLLabel::show_clock_picker() {
 			picker_date = calendar::parts(time_picker.kind, *initial_date);
 		}
 	}
-	const char* tag = litehtml::get_element_language(*input);
-	const String locale = (tag && *tag ? String::utf8(tag) : OS::get_singleton()->get_locale()).replace("_", "-").to_lower();
+	String locale = TranslationServer::get_singleton()->get_locale();
+	if (locale.is_empty()) locale = OS::get_singleton()->get_locale();
+	locale = locale.replace("_", "-").to_lower();
 	time_picker.use_meridiem = time_picker.has_clock() && uses_twelve_hours(locale);
 	time_picker.sunday_first = time_picker.kind != calendar::Kind::week &&
 		(locale == "en" || locale.begins_with("en-us") || locale.begins_with("en-ca") || locale.begins_with("ja"));
@@ -308,7 +318,7 @@ void HTMLLabel::draw_clock_picker() {
 			const bool on = index == column.selected;
 			const bool over = state.hovered_cell == Vector2i(col, row);
 			const int value = column.values[index];
-			const auto label = column.unit == Unit::meridiem ? String(value ? "PM" : "AM") :
+			const auto label = column.unit == Unit::meridiem ? dockit::html_ui_translate(value ? "PM" : "AM", "time_picker.meridiem") :
 				vformat(column.unit == Unit::millisecond ? "%03d" : "%02d",
 					column.unit == Unit::hour && state.use_meridiem && value == 0 ? 12 : value);
 			text(label, rect, cell(rect, on, over, on && state.active_column == col), 14, on);
@@ -323,8 +333,15 @@ void HTMLLabel::draw_clock_picker() {
 	icon(HTMLControlIcon::left, previous);
 	icon(HTMLControlIcon::right, next);
 	const Vector2i month = state.calendar_month;
-	const String caption = state.year_view ? String::num_int64(month.x) :
-		vformat("%s %d", String(month_names[month.y - 1]), month.x);
+	String caption;
+	if (state.year_view) {
+		caption = String::num_int64(month.x);
+	} else {
+		Dictionary values;
+		values["month"] = localized_month(month.y - 1);
+		values["year"] = month.x;
+		caption = dockit::html_ui_translate("{month} {year}", "time_picker.month_year").format(values);
+	}
 	text(caption, calendar_title, ink, 12, true, true);
 	if (state.kind != calendar::Kind::month) icon(HTMLControlIcon::down, Rect2(145, 11, 23, 24));
 	const CalendarBounds limits(state.kind, *picker_input.ptr());
@@ -338,21 +355,21 @@ void HTMLLabel::draw_clock_picker() {
 			const bool on = enabled && int(picker_date["year"]) == month.x && int(picker_date["month"]) == i + 1;
 			auto color = cell(rect, on, enabled && state.calendar_hover == i, on && state.active_column < 0);
 			if (!enabled) color.a *= 0.3f;
-			text(String(month_names[i]).substr(0, 3), rect, color, 12, on);
+			text(localized_month(i).substr(0, 3), rect, color, 12, on);
 		}
 	}
 	else if (const auto start = month_start(month, state.sunday_first)) {
 		const bool week = state.kind == calendar::Kind::week;
 		const int week_offset = week ? week_number_width : 0;
 		if (week) {
-			text("Week", Rect2(calendar_inset, 39, week_number_width, day_height), ink, 12);
+			text(dockit::html_ui_translate("Week", time_picker_context), Rect2(calendar_inset, 39, week_number_width, day_height), ink, 12);
 			const real_t x = calendar_inset + week_offset;
 			panel.draw_line(Vector2(x, 39), Vector2(x, calendar_top + calendar_rows * day_height), border, 1);
 		}
 		for (int i = 0; i < days_per_row; ++i) {
 			const int index = (i + (state.sunday_first ? 6 : 0)) % days_per_row;
 			const Rect2 header(calendar_inset + week_offset + i * day_size, 39, day_size, day_height);
-			text(weekdays[index], header, ink, 12);
+			text(dockit::html_ui_translate(String::utf8(weekdays[index]), weekday_context), header, ink, 12);
 		}
 		if (week) {
 			for (int row = 0; row < calendar_rows; ++row) {
@@ -392,11 +409,12 @@ void HTMLLabel::draw_clock_picker() {
 	const auto clear_rect = clear_button(state.calendar_height());
 	if (can_clear) {
 		if (state.calendar_hover == clear_id) panel.draw_rect(clear_rect, hover);
-		text("Clear", clear_rect, action, 12);
+		text(dockit::html_ui_translate("Clear", time_picker_context), clear_rect, action, 12);
 	}
 	if (can_select_today && state.calendar_hover == today_id) panel.draw_rect(today_rect, hover);
-	const char* today_label = state.kind == calendar::Kind::month ? "This month" :
+	const String today_message = state.kind == calendar::Kind::month ? "This month" :
 		state.kind == calendar::Kind::week ? "This week" : "Today";
+	const String today_label = dockit::html_ui_translate(today_message, time_picker_context);
 	text(today_label, today_rect, can_select_today ? action : Color(ink, 0.3f), 12);
 }
 

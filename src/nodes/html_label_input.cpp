@@ -5,6 +5,7 @@
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/dom/html_range.h"
 #include "formats/html/dom/html_selection.h"
+#include "formats/html/html_ui_translations.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -537,7 +538,8 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
 		const auto& item = INPUT_MENU_ITEMS[command];
 		auto& row = input_menu_rows[command];
-		row.caption = label->layout->shape_element_text(p_element, tr(item.label));
+		row.caption = label->layout->shape_element_text(p_element,
+			dockit::html_ui_translate(String::utf8(item.label), "input_context_menu"));
 		const Key accelerator = input_menu_accelerator(item.action);
 		row.shortcut = label->layout->shape_element_text(p_element, accelerator == KEY_NONE ?
 			String() : OS::get_singleton()->get_keycode_string(accelerator));

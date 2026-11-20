@@ -1,6 +1,7 @@
 #include "html_label.h"
 
 #include "formats/html/elements/html_input_node.h"
+#include "formats/html/html_ui_translations.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_dialog.hpp>
@@ -23,22 +24,25 @@ namespace {
 				!type.contains("*") && !type.contains("?")) {
 				filters.append("*" + type + " ; " + type);
 			} else if (type == "image/*") {
-				filters.append("*.png,*.jpg,*.jpeg,*.webp,*.gif,*.bmp,*.svg,*.avif,*.heic ; Images ; image/*");
+				filters.append("*.png,*.jpg,*.jpeg,*.webp,*.gif,*.bmp,*.svg,*.avif,*.heic ; " +
+					dockit::html_ui_translate("Images", "file_filter.category") + " ; image/*");
 			} else if (type == "audio/*") {
-				filters.append("*.mp3,*.wav,*.ogg,*.flac,*.aac,*.m4a,*.opus ; Audio ; audio/*");
+				filters.append("*.mp3,*.wav,*.ogg,*.flac,*.aac,*.m4a,*.opus ; " +
+					dockit::html_ui_translate("Audio", "file_filter.category") + " ; audio/*");
 			} else if (type == "video/*") {
-				filters.append("*.mp4,*.webm,*.ogv,*.mov,*.mkv,*.avi ; Video ; video/*");
+				filters.append("*.mp4,*.webm,*.ogv,*.mov,*.mkv,*.avi ; " +
+					dockit::html_ui_translate("Video", "file_filter.category") + " ; video/*");
 			} else if (type.contains("/")) {
 				if (type == "text/plain") {
-					filters.append("*.txt,*.text ; Plain text ; text/plain");
+					filters.append("*.txt,*.text ; " + dockit::html_ui_translate("Plain text", "file_filter.category") + " ; text/plain");
 					continue;
 				}
 				if (type == "image/jpeg") {
-					filters.append("*.jpg,*.jpeg,*.jpe ; JPEG ; image/jpeg");
+					filters.append("*.jpg,*.jpeg,*.jpe ; " + dockit::html_ui_translate("JPEG", "file_filter.category") + " ; image/jpeg");
 					continue;
 				}
 				if (type == "audio/mpeg") {
-					filters.append("*.mp3,*.mp2 ; MPEG audio ; audio/mpeg");
+					filters.append("*.mp3,*.mp2 ; " + dockit::html_ui_translate("MPEG audio", "file_filter.category") + " ; audio/mpeg");
 					continue;
 				}
 				const auto slash = type.find("/");
@@ -160,13 +164,14 @@ Error HTMLLabel::open_file_picker(uint64_t p_sequence) {
 	const auto filters = file_filters(String::utf8(input->get_attr("accept", "")));
 	if (!get_window()->is_embedded() && display->has_feature(DisplayServer::FEATURE_NATIVE_DIALOG_FILE)) {
 		const auto mode = multiple ? DisplayServer::FILE_DIALOG_MODE_OPEN_FILES : DisplayServer::FILE_DIALOG_MODE_OPEN_FILE;
-		const auto result = display->file_dialog_show("Choose File", "", "", false, mode, filters,
+		const auto title = dockit::html_ui_translate("Choose File", "file_dialog.title");
+		const auto result = display->file_dialog_show(title, "", "", false, mode, filters,
 			callable_mp(this, &HTMLLabel::native_files_selected).bind(p_sequence), get_window()->get_window_id());
 		if (result == OK) return OK;
 	}
 	file_dialog = memnew(FileDialog);
 	file_dialog->set_name("_HTMLFilePicker");
-	file_dialog->set_title("Choose File");
+	file_dialog->set_title(dockit::html_ui_translate("Choose File", "file_dialog.title"));
 	file_dialog->set_access(FileDialog::ACCESS_FILESYSTEM);
 	file_dialog->set_file_mode(multiple ? FileDialog::FILE_MODE_OPEN_FILES : FileDialog::FILE_MODE_OPEN_FILE);
 	file_dialog->set_filters(filters);

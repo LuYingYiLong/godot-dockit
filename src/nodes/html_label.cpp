@@ -12,6 +12,7 @@
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/elements/html_textarea_element.h"
 #include "formats/html/css/css_values.h"
+#include "formats/html/html_ui_translations.h"
 #include "formats/http_requests.h"
 
 #include "formats/html/markup/html_markup.h"
@@ -880,6 +881,12 @@ bool HTMLLabel::is_transparent_canvas() const {
 
 void HTMLLabel::_notification(int p_what) {
 	switch (p_what) {
+	case NOTIFICATION_TRANSLATION_CHANGED:
+		queue_refresh();
+		queue_accessibility_update();
+		if (canvas) canvas->close_input_menu();
+		if (time_picker_canvas) time_picker_canvas->queue_redraw();
+		break;
 	case NOTIFICATION_ACCESSIBILITY_UPDATE:
 		update_accessibility_tree();
 		break;
@@ -1199,7 +1206,16 @@ void HTMLLabel::update_accessibility_tree() {
 			const String type = p_element->get_attribute("type", "text").to_lower();
 			if (name.is_empty() && tag == "img") name = p_element->get_attribute("alt");
 			if (name.is_empty() && tag == "input" && (type == "button" || type == "submit" || type == "reset" || type == "image")) {
-				name = p_element->get_attribute("value");
+				if (type == "image") {
+					name = p_element->has_attribute("alt") ? p_element->get_attribute("alt") :
+						dockit::html_ui_translate("Submit", "input.default_action");
+				} else if (p_element->has_attribute("value")) {
+					name = p_element->get_attribute("value");
+				} else if (type == "submit") {
+					name = dockit::html_ui_translate("Submit", "input.default_action");
+				} else if (type == "reset") {
+					name = dockit::html_ui_translate("Reset", "input.default_action");
+				}
 			}
 			if (name.is_empty() && (tag == "input" || tag == "textarea" || tag == "select" || tag == "progress" || tag == "meter")) {
 				for (const Ref<HTMLElement>& label_element : layout->query_selector_all("label")) {
@@ -1235,7 +1251,15 @@ void HTMLLabel::update_accessibility_tree() {
 			if (is_heading) {
 				String level = p_element->get_attribute("aria-level");
 				if (level.is_empty() && tag.length() == 2 && tag[0] == 'h') level = String::num_int64(tag[1] - '0');
-				display->accessibility_update_set_role_description(child, level.is_empty() ? "heading" : "heading level " + level);
+				if (level.is_empty()) {
+					display->accessibility_update_set_role_description(child,
+						dockit::html_ui_translate("heading", "accessibility.role"));
+				} else {
+					Dictionary values;
+					values["level"] = level;
+					display->accessibility_update_set_role_description(child,
+						dockit::html_ui_translate("heading level {level}", "accessibility.role").format(values));
+				}
 			}
 			else if (is_landmark) {
 				String description_role = p_element->get_attribute("role").to_lower();
@@ -1249,7 +1273,8 @@ void HTMLLabel::update_accessibility_tree() {
 					else if (tag == "search") description_role = "search";
 					else description_role = "region";
 				}
-				display->accessibility_update_set_role_description(child, description_role);
+				display->accessibility_update_set_role_description(child,
+					dockit::html_ui_translate(description_role, "accessibility.role"));
 			}
 			const TypedArray<Rect2> boxes = p_element->get_client_rects();
 			if (!boxes.is_empty()) {
@@ -1265,14 +1290,17 @@ void HTMLLabel::update_accessibility_tree() {
 				p_element->has_attribute("readonly") || p_element->get_attribute("aria-readonly").to_lower() == "true");
 			const String expanded = p_element->get_attribute("aria-expanded").to_lower();
 			if (expanded == "true" || expanded == "false") {
-				display->accessibility_update_set_state_description(child, expanded == "true" ? "expanded" : "collapsed");
+				display->accessibility_update_set_state_description(child,
+					dockit::html_ui_translate(expanded == "true" ? "expanded" : "collapsed", "accessibility.state"));
 			}
 			const String pressed = p_element->get_attribute("aria-pressed").to_lower();
 			if (pressed == "true" || pressed == "false" || pressed == "mixed") {
-				display->accessibility_update_set_state_description(child, pressed == "mixed" ? "mixed" : (pressed == "true" ? "pressed" : "not pressed"));
+				display->accessibility_update_set_state_description(child, dockit::html_ui_translate(
+					pressed == "mixed" ? "mixed" : (pressed == "true" ? "pressed" : "not pressed"), "accessibility.state"));
 			}
 			if (p_element->get_attribute("aria-checked").to_lower() == "mixed") {
-				display->accessibility_update_set_state_description(child, "mixed");
+				display->accessibility_update_set_state_description(child,
+					dockit::html_ui_translate("mixed", "accessibility.state"));
 			}
 			const String aria_checked = p_element->get_attribute("aria-checked").to_lower();
 			if (aria_checked == "true" || aria_checked == "false") {
@@ -1281,7 +1309,8 @@ void HTMLLabel::update_accessibility_tree() {
 				}
 			}
 			if (p_element->get_attribute("aria-invalid").to_lower() == "true") {
-				display->accessibility_update_set_state_description(child, "invalid");
+				display->accessibility_update_set_state_description(child,
+					dockit::html_ui_translate("invalid", "accessibility.state"));
 			}
 			display->accessibility_update_set_tooltip(child, p_element->get_attribute("title"));
 			if (!p_element->get_lang().is_empty()) display->accessibility_update_set_language(child, p_element->get_lang());
@@ -1300,7 +1329,8 @@ void HTMLLabel::update_accessibility_tree() {
 				}
 				display->accessibility_update_set_value(child, input->get_value());
 				const Dictionary validity = input->get_validity();
-				if (!bool(validity.get("valid", true))) display->accessibility_update_set_state_description(child, "invalid");
+				if (!bool(validity.get("valid", true))) display->accessibility_update_set_state_description(child,
+					dockit::html_ui_translate("invalid", "accessibility.state"));
 				if (role == DisplayServer::ROLE_SLIDER || role == DisplayServer::ROLE_SPIN_BUTTON) {
 					const double number = input->get_value_as_number();
 					if (std::isfinite(number)) display->accessibility_update_set_num_value(child, number);
@@ -1321,7 +1351,8 @@ void HTMLLabel::update_accessibility_tree() {
 				display->accessibility_update_set_list_item_selected(child, option->is_selected());
 			}
 			if (const auto* details = Object::cast_to<HTMLDetailsElement>(p_element.ptr())) {
-				display->accessibility_update_set_state_description(child, details->is_open() ? "expanded" : "collapsed");
+				display->accessibility_update_set_state_description(child,
+					dockit::html_ui_translate(details->is_open() ? "expanded" : "collapsed", "accessibility.state"));
 				const uint64_t id = p_element->get_instance_id();
 				const auto action = callable_mp(this, &HTMLLabel::perform_accessibility_action).bind(id,
 					int32_t(details->is_open() ? DisplayServer::ACTION_COLLAPSE : DisplayServer::ACTION_EXPAND));

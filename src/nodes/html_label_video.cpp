@@ -1,6 +1,7 @@
 #include "html_label.h"
 
 #include "formats/html/elements/html_video_node.h"
+#include "formats/html/html_ui_translations.h"
 #include "formats/html/resources/html_resource_paths.h"
 
 #include <godot_cpp/classes/audio_server.hpp>
@@ -409,8 +410,8 @@ bool HTMLLabel::has_active_video() const {
 }
 
 void HTMLLabel::notify_video_failure(const Ref<HTMLVideoElement>& p_element, Error p_error) {
-	const String message = p_error == ERR_FILE_NOT_FOUND ? "No supported local video source was found." :
-		"The selected video backends could not open any source.";
+	const String message = dockit::html_ui_translate(p_error == ERR_FILE_NOT_FOUND ?
+		"No supported local video source was found." : "The selected video backends could not open any source.", "media.error");
 	const ObjectID id(get_instance_id());
 	dispatch_media_error_event(p_element, message, p_error);
 	if (ObjectDB::get_instance(id)) callable_mp_static(&HTMLLabel::emit_video_failure).call_deferred(id, p_element, p_error, message);

@@ -21,7 +21,7 @@ namespace dockit {
 		bool indeterminate = false;
 		godot::TypedArray<HTMLInputFile> files;
 
-		const char* button_text() const;
+		godot::String button_text() const;
 		void paint_contents(LiteHTMLContainer& p_container, const godot::Rect2& p_box);
 
 	public:

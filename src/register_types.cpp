@@ -38,6 +38,7 @@
 #include "formats/http_requests.h"
 #include "formats/html/resources/html_remote_stylesheets.h"
 #include "formats/html/elements/html_audio_element.h"
+#include "formats/html/html_ui_translations.h"
 #include "formats/html/dom/html_selection.h"
 #include "formats/latex/latex_document.h"
 #include "formats/latex/latex_document_loader.h"
@@ -186,6 +187,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 
 		tex_loader.instantiate();
 		ResourceLoader::get_singleton()->add_resource_format_loader(tex_loader, true);
+		dockit::initialize_html_ui_translations();
 	}
 
 	else if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR && Engine::get_singleton()->is_editor_hint()) {
@@ -219,6 +221,7 @@ void uninitialize_dockit_module(ModuleInitializationLevel p_level) {
 		editor_plugins_registered = false;
 	}
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		dockit::shutdown_html_ui_translations();
 		ResourceLoader::get_singleton()->remove_resource_format_loader(tex_loader);
 		dockit::shutdown_http_requests();
 		dockit::shutdown_remote_images();

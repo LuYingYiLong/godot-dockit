@@ -1,5 +1,6 @@
 #include "html_label.h"
 #include "formats/html/elements/html_audio_node.h"
+#include "formats/html/html_ui_translations.h"
 
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/audio_stream.hpp>
@@ -206,7 +207,8 @@ Error HTMLLabel::prepare_audio(AudioPlayback& p_audio) {
 		}
 		return OK;
 	}
-	dispatch_media_error_event(p_audio.element, "No supported audio source could be opened.", ERR_FILE_NOT_FOUND);
+	dispatch_media_error_event(p_audio.element,
+		dockit::html_ui_translate("No supported audio source could be opened.", "media.error"), ERR_FILE_NOT_FOUND);
 	return ERR_FILE_NOT_FOUND;
 }
 
