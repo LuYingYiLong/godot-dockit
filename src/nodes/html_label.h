@@ -147,6 +147,7 @@ class HTMLLabelCanvas : public godot::Control {
 	bool resize_queued = false;
 	bool dragged_resize = false;
 	bool applying_box_resize = false;
+	bool reconciling_interactions = false;
 	godot::Ref<HTMLAudioElement> pressed_audio;
 	dockit::HTMLAudioPart pressed_audio_part = dockit::HTMLAudioPart::none;
 	godot::Ref<HTMLVideoElement> pressed_video;
@@ -214,6 +215,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Vector2 diagnostic_location;
 
 	void cancel_press();
+	void reconcile_interactions_after_edit(bool p_after_layout);
 	int click_detail_for(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position) const;
 	void record_click(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position, int p_detail);
 	void reset_click_sequence();

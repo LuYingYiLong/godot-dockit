@@ -203,6 +203,69 @@ void HTMLLabelCanvas::move_range(const Ref<HTMLInputElement>& p_input, const Vec
 	}
 }
 
+void HTMLLabelCanvas::reconcile_interactions_after_edit(bool p_after_layout) {
+	if (!label || label->layout.is_null() || reconciling_interactions) return;
+	// Keep gestures across unrelated DOM edits while their original targets remain usable.
+	reconciling_interactions = true;
+	const auto is_connected = [this](const Ref<HTMLElement>& p_element) {
+		return p_element.is_null() || label->layout->is_element_connected(p_element);
+	};
+	const auto can_continue = [this, p_after_layout, &is_connected](const Ref<HTMLElement>& p_element) {
+		return is_connected(p_element) && (!p_after_layout || label->layout->is_focusable(p_element));
+	};
+	bool cancel = false;
+	if (dragging_range.is_valid()) {
+		const auto input = dragging_range->get_input();
+		cancel = !can_continue(Ref<HTMLElement>(dragging_range)) || !input ||
+			input->type() != HTMLInputNode::Type::RANGE;
+	}
+	if (!cancel && dragging_input.is_valid()) {
+		const auto input = label->layout->text_control(dragging_input);
+		cancel = !can_continue(dragging_input) || !input || !input->is_text_control();
+	}
+	if (!cancel && pressed_checkbox.is_valid()) {
+		const auto input = pressed_checkbox->get_input();
+		cancel = !can_continue(Ref<HTMLElement>(pressed_checkbox)) || !input || !input->is_toggle();
+	}
+	if (!cancel && pressed_input_decoration.is_valid()) {
+		cancel = !can_continue(Ref<HTMLElement>(pressed_input_decoration));
+	}
+	if (!cancel && p_after_layout && pressed_button.is_valid()) {
+		cancel = !label->layout->is_enabled_button(pressed_button);
+	}
+	if (!cancel && p_after_layout && pressed_audio.is_valid()) {
+		cancel = !is_connected(Ref<HTMLElement>(pressed_audio)) || !pressed_audio->get_bounding_rect().has_area();
+	}
+	if (!cancel && p_after_layout && pressed_video.is_valid()) {
+		cancel = !is_connected(Ref<HTMLElement>(pressed_video)) || !pressed_video->get_bounding_rect().has_area();
+	}
+	if (!cancel && box_drag) {
+		cancel = !is_connected(box_drag->element) ||
+			(p_after_layout && !label->layout->get_element_scroll_bounds(box_drag->element));
+	}
+	if (!cancel && mouse_buttons != 0 && pressed_element.is_valid()) {
+		cancel = !is_connected(pressed_element) ||
+			(p_after_layout && !pressed_element->get_bounding_rect().has_area());
+	}
+	if (!cancel && mouse_buttons != 0 && pressed_form_target.is_valid()) {
+		cancel = !is_connected(pressed_form_target);
+	}
+	if (!cancel && (selection_drag_attempt || element_drag_attempt) && !native_drag_started && drag_source.is_valid()) {
+		cancel = !is_connected(drag_source) ||
+			(p_after_layout && !drag_source->get_bounding_rect().has_area());
+	}
+	std::vector<TouchKey> canceled_touches;
+	for (const auto& [key, touch] : active_touch_pointers) {
+		if (!is_connected(touch.target) ||
+			(p_after_layout && touch.target.is_valid() && !touch.target->get_bounding_rect().has_area())) {
+			canceled_touches.push_back(key);
+		}
+	}
+	if (cancel) cancel_press();
+	for (const TouchKey& key : canceled_touches) cancel_touch_pointer(key.first, key.second);
+	reconciling_interactions = false;
+}
+
 bool HTMLLabelCanvas::handle_input_decoration(const Ref<HTMLInputElement>& p_input, const InputEventMouseButton& p_event,
 	const Vector2& p_point, bool p_accepts_event) {
 	const auto node = p_input.is_valid() ? p_input->get_input() : nullptr;

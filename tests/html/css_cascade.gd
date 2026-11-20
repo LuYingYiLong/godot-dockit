@@ -12764,6 +12764,7 @@ func _check_user_select() -> void:
 	var label: HTMLLabel = HTMLLabel.new()
 	label.size = Vector2(viewport.size)
 	label.css_diagnostics_enabled = true
+	label.drag_and_drop_selection_enabled = false
 	var selection_color: Color = Color("#d200d2")
 	label.text = """<!doctype html><style>
 		html { background: white; } body { margin: 8px; font: 16px/24px monospace; }

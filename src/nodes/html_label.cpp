@@ -2372,13 +2372,18 @@ void HTMLLabel::on_layout_edited() {
 	layout_updated = true;
 	if (canvas) {
 		canvas->close_input_menu();
-		// Writing the size during a resize schedules reflow while the handle is held.
-		if (!canvas->applying_box_resize) {
-			canvas->cancel_press();
-		}
+		canvas->reconcile_interactions_after_edit(false);
 		const auto selection = get_selection();
 		if (selection.is_valid() && selection->get_range_count() > 0) use_node_selection = true;
 		else clear_selection();
+		canvas->selecting = false;
+		canvas->selection_dragged = false;
+		canvas->selection_origin = {};
+		if (canvas->selection_drag_attempt) {
+			canvas->selection_drag_attempt = false;
+			if (!canvas->element_drag_attempt && !canvas->native_drag_started) canvas->drag_source.unref();
+		}
+		if (!canvas->dragging_input.is_valid()) canvas->set_process_internal(false);
 		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
 			canvas->set_focused_element({});
 		}
@@ -2451,7 +2456,7 @@ void HTMLLabel::refresh() {
 		return;
 	}
 	if (!resource_update && !hover_reflow && !interaction_styles_dirty) {
-		canvas->cancel_click();
+		canvas->reconcile_interactions_after_edit(false);
 	}
 	if (!pending_scroll_offset) {
 		pending_scroll_offset = get_scroll_offset();
@@ -2563,6 +2568,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 		canvas->tab_elements = layout->get_tab_elements(canvas->has_focusable_elements);
 		if (layout->top_modal_node() || canvas->has_focusable_elements) canvas->update_focus_mode();
 		sync_dialog_focus(true);
+		canvas->reconcile_interactions_after_edit(true);
 		if (canvas->focused_element.is_valid() && !layout->is_focusable(canvas->focused_element)) {
 			canvas->set_focused_element({});
 		}
