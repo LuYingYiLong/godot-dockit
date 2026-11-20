@@ -153,6 +153,8 @@ litehtml::rendered_width litehtml::render_item::render(pixel_t x, pixel_t y,
 
 	m_pos.clear();
 	m_pos.move_to(x, y);
+	m_relative_offset_x = 0;
+	m_relative_offset_y = 0;
 
 	pixel_t content_left = content_offset_left();
 	pixel_t content_top = content_offset_top();
@@ -238,22 +240,28 @@ void litehtml::render_item::apply_relative_shift(const containing_block_context 
     if (src_el()->css().get_position() == element_position_relative)
     {
         css_offsets offsets = src_el()->css().get_offsets();
+        pixel_t relative_x = 0;
+        pixel_t relative_y = 0;
         if (!offsets.left.is_predefined())
         {
-            m_pos.x += offsets.left.calc_percent(containing_block_size.width);
+            relative_x = offsets.left.calc_percent(containing_block_size.width);
         }
         else if (!offsets.right.is_predefined())
         {
-            m_pos.x -= offsets.right.calc_percent(containing_block_size.width);
+            relative_x = -offsets.right.calc_percent(containing_block_size.width);
         }
         if (!offsets.top.is_predefined())
         {
-            m_pos.y += offsets.top.calc_percent(containing_block_size.height);
+            relative_y = offsets.top.calc_percent(containing_block_size.height);
         }
         else if (!offsets.bottom.is_predefined())
         {
-            m_pos.y -= offsets.bottom.calc_percent(containing_block_size.height);
+            relative_y = -offsets.bottom.calc_percent(containing_block_size.height);
         }
+        m_pos.x += relative_x - m_relative_offset_x;
+        m_pos.y += relative_y - m_relative_offset_y;
+        m_relative_offset_x = relative_x;
+        m_relative_offset_y = relative_y;
     }
 }
 

@@ -429,7 +429,7 @@ input:is([type="date" i], [type="datetime-local" i], [type="month" i], [type="we
 }
 input[type="datetime-local" i] { width: 16em; }
 input[type="time" i] { width: 8em; }
-input[type="file" i] { width: 19em; height: 1lh; padding-block: 3px; cursor: default; user-select: none; }
+input[type="file" i] { width: 19em; height: calc(1lh + 9px); padding: 0; cursor: default; user-select: none; }
 input[type="image" i] { cursor: pointer; user-select: none; }
 input[type="color" i] {
 	box-sizing: border-box;

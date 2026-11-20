@@ -727,6 +727,8 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
 			if(!inlines.empty())
 			{
 				inlines.back().box.width = lbi->right() - inlines.back().box.x;
+				inlines.back().box.x += inlines.back().element->relative_offset_x();
+				inlines.back().box.y += inlines.back().element->relative_offset_y();
 				inlines.back().element->add_inline_box(inlines.back().box);
 				inlines.pop_back();
 			}
@@ -736,6 +738,8 @@ std::list< std::unique_ptr<litehtml::line_box_item> > litehtml::line_box::finish
 	for(auto iter = inlines.rbegin(); iter != inlines.rend(); ++iter)
 	{
 		iter->box.width =  m_items.back()->right() - iter->box.x;
+		iter->box.x += iter->element->relative_offset_x();
+		iter->box.y += iter->element->relative_offset_y();
 		iter->element->add_inline_box(iter->box);
 
 		ret_items.emplace_front(std::unique_ptr<line_box_item>(new lbi_continue(iter->element)));

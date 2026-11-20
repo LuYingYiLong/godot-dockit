@@ -670,10 +670,18 @@ namespace dockit {
 					color, {}, {}, {});
 			};
 			const auto label = p_container.shape_input(css().get_font(), button);
-			const float width = std::min<float>(p_box.size.x, label.width() + 12);
-			if (chrome) p_container.draw_input_chrome(p_box, Rect2(p_box.position, Vector2(width, p_box.size.y)),
-				html_system_color(litehtml::system_color::button_face, css().get_color_scheme()), 3);
-			draw_label(button, Rect2(p_box.position + Vector2(5, 0), Vector2(width - 7, p_box.size.y)));
+			const float width = std::min<float>(p_box.size.x, label.width() + 16);
+			const Rect2 button_box(p_box.position, Vector2(width, p_box.size.y));
+			if (chrome) {
+				const auto scheme = css().get_color_scheme();
+				const Color face = html_system_color(litehtml::system_color::button_face, scheme);
+				const Color border = html_system_color(enabled ? litehtml::system_color::button_border :
+					litehtml::system_color::disabled_border, scheme);
+				p_container.draw_input_chrome(p_box, button_box, border, 2);
+				const Rect2 inner = button_box.grow(-2);
+				if (inner.has_area()) p_container.draw_input_chrome(p_box, inner, face);
+			}
+			draw_label(button, Rect2(p_box.position + Vector2(8, 0), Vector2(width - 16, p_box.size.y)));
 			draw_label(names, Rect2(p_box.position + Vector2(width + 6, 0), Vector2(p_box.size.x - width - 6, p_box.size.y)));
 			return;
 		}

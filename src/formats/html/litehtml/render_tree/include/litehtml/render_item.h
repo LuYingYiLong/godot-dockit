@@ -38,6 +38,8 @@ namespace litehtml
         margins						                m_padding;
         margins						                m_borders;
         position					                m_pos;
+        pixel_t m_relative_offset_x = 0;
+        pixel_t m_relative_offset_y = 0;
         bool                                        m_skip;
         bool m_empty_table_cell = false;
         bool m_collapsed_table_track = false;
@@ -603,6 +605,8 @@ namespace litehtml
 		virtual void set_inline_boxes( position::vector& /*boxes*/ ) {};
 		virtual void add_inline_box( const position& /*box*/ ) {};
 		virtual void clear_inline_boxes() {};
+        pixel_t relative_offset_x() const { return m_relative_offset_x; }
+        pixel_t relative_offset_y() const { return m_relative_offset_y; }
         void draw_stacking_context( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, bool with_positioned );
         virtual void draw_children( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex );
         virtual pixel_t get_draw_vertical_offset() { return 0; }
