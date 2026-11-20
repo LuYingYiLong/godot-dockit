@@ -51,6 +51,8 @@ litehtml::rendered_width litehtml::render_item_image::_render(pixel_t x, pixel_t
 	sz = use_contained_size(sz);
 
 	if (replacement || contain_width || has_preferred_aspect_ratio() || is_grid_item() ||
+		(containing_block_size.size_mode & (containing_block_context::size_mode_exact_width |
+			containing_block_context::size_mode_exact_height)) ||
 		(containing_block_size.size_mode & containing_block_context::size_mode_intrinsic_inline_probe) ||
 		containing_block_size.intrinsic_inline.preferred || containing_block_size.intrinsic_inline.minimum ||
 		containing_block_size.intrinsic_inline.maximum || css().get_width().intrinsic_size() != css_intrinsic_size::none)

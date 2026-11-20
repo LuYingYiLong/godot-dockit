@@ -364,6 +364,7 @@ element::ptr element::_add_before_after(int type, const style& /*style*/)
 
 bool element::is_block_formatting_context() const
 {
+	if (tag() == _fieldset_) return true;
 	if(m_css.get_display() == display_block)
 	{
 		auto par = parent();

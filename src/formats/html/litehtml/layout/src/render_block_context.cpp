@@ -2,12 +2,25 @@
 #include "document.h"
 #include "types.h"
 
+#include <algorithm>
+
 litehtml::rendered_width litehtml::render_item_block_context::_render_content(pixel_t /*x*/, pixel_t /*y*/,
 																			  bool second_pass,
 																			  const containing_block_context& self_size,
 																			  formatting_context*			  fmt_ctx)
 {
 	std::shared_ptr<render_item> last_margin_el;
+	std::shared_ptr<render_item> fieldset_legend;
+	if (src_el()->tag() == _fieldset_) {
+		for (const auto& child : m_children) {
+			const auto position = child->src_el()->css().get_position();
+			if (child->src_el()->tag() == _legend_ && child->src_el()->css().get_float() == float_none &&
+				position != element_position_absolute && position != element_position_fixed) {
+				fieldset_legend = child;
+				break;
+			}
+		}
+	}
 
 	rendered_width ret_width;
 	pixel_t		   child_top   = 0;
@@ -30,6 +43,7 @@ litehtml::rendered_width litehtml::render_item_block_context::_render_content(pi
 			ret_width.merge(rw);
 		} else if(el->src_el()->css().get_display() != display_none)
 		{
+			const bool is_fieldset_legend = el == fieldset_legend;
 			if(el->src_el()->css().get_position() == element_position_absolute ||
 			   el->src_el()->css().get_position() == element_position_fixed)
 			{
@@ -72,7 +86,20 @@ litehtml::rendered_width litehtml::render_item_block_context::_render_content(pi
 					}
 				}
 
-				auto rw = el->render(child_x, child_top, self_size.new_width(child_width), fmt_ctx);
+				rendered_width rw;
+				const auto& legend_width = el->src_el()->css().get_width();
+				const bool auto_legend_width = is_fieldset_legend && legend_width.is_predefined() &&
+					legend_width.intrinsic_size() == css_intrinsic_size::none;
+				if (auto_legend_width) {
+					const pixel_t available_legend_width = child_width + m_borders.left + m_borders.right;
+					rw = el->render(child_x, child_top,
+						self_size.new_width(available_legend_width,
+							self_size.size_mode | containing_block_context::size_mode_content), nullptr);
+					const pixel_t fit_width = std::clamp(rw.natural_width, pixel_t(0), available_legend_width);
+					rw = el->render(child_x, child_top, self_size.new_width(fit_width), fmt_ctx);
+				} else {
+					rw = el->render(child_x, child_top, self_size.new_width(child_width), fmt_ctx);
+				}
 				// Render table with "width: auto" into returned width
 				if(el->css().get_display() == display_table && rw.natural_width < child_width &&
 				   el->css().get_width().is_predefined())
@@ -111,14 +138,28 @@ litehtml::rendered_width litehtml::render_item_block_context::_render_content(pi
 					rw.natural_width = self_size.render_width - new_pos.width + rw.natural_width;
 				}
 
-				pixel_t auto_margin = el->calc_auto_margins(child_width);
+				if (is_fieldset_legend) {
+					// Center the legend border box over the fieldset's block-start border.
+					const pixel_t legend_border_height = el->height() - el->margin_top() - el->margin_bottom();
+					const pixel_t target_border_top = -m_padding.top - m_borders.top * 0.5f - legend_border_height * 0.5f;
+					const pixel_t current_border_top = child_top + el->margin_top();
+					el->pos().y += target_border_top - current_border_top;
+				}
+
+				const pixel_t auto_margin_width = child_width +
+					(is_fieldset_legend ? m_borders.left + m_borders.right : 0);
+				pixel_t auto_margin = el->calc_auto_margins(auto_margin_width);
 				if(auto_margin != 0)
 				{
 					el->pos().x += auto_margin;
 				}
+				// The legend is positioned from the border edge; normal children use the padded content edge.
+				if (is_fieldset_legend) el->pos().x -= m_borders.left;
 				ret_width.merge(rw);
 				m_margins.top	= top_margin;
 				child_top	   += el->height();
+				// The top border allocation already accounts for its overlap with the legend margin box.
+				if (is_fieldset_legend) child_top -= std::min(m_borders.top, std::max<pixel_t>(0, el->height()));
 				last_margin		= el->get_margins().bottom;
 				last_margin_el	= el;
 				is_first		= false;

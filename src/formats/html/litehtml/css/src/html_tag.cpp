@@ -638,6 +638,17 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 
 	if (ri->empty_table_cell()) return;
 	const bool has_border_image = !m_css.get_border_image().source.value.is_empty();
+	std::shared_ptr<render_item> fieldset_legend;
+	if (tag() == _fieldset_) {
+		for (const auto& child : ri->children()) {
+			const auto position = child->src_el()->css().get_position();
+			if (child->src_el()->tag() == _legend_ && child->src_el()->css().get_float() == float_none &&
+				position != element_position_absolute && position != element_position_fixed) {
+				fieldset_legend = child;
+				break;
+			}
+		}
+	}
 	const auto paint_borders = [&](borders decoration, const position& box, bool root, const position* image_box, bool first, bool last) {
 		if (ri->shares_table_borders()) return;
 		const bool collapsed = m_css.get_border_collapse() == border_collapse_collapse &&
@@ -659,6 +670,54 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 				side->style = border_style_groove;
 		}
 		get_document()->container()->draw_borders(hdc, decoration, box, root);
+	};
+	const auto paint_fieldset_borders = [&](const borders& decoration, const position& box,
+		const position& content_origin, bool root) {
+		if (!fieldset_legend || has_border_image || decoration.top.width <= 0) {
+			paint_borders(decoration, box, root, nullptr, true, true);
+			return;
+		}
+
+		position legend_box = fieldset_legend->pos();
+		legend_box.x += content_origin.x;
+		legend_box.y += content_origin.y;
+		legend_box += fieldset_legend->get_paddings();
+		legend_box += fieldset_legend->get_borders();
+		position legend_margin_box = legend_box;
+		legend_margin_box += fieldset_legend->get_margins();
+		if (legend_margin_box.bottom() <= box.y || legend_margin_box.top() >= box.y + decoration.top.width) {
+			paint_borders(decoration, box, root, nullptr, true, true);
+			return;
+		}
+
+		const pixel_t gap_start = std::clamp(legend_margin_box.left(), box.x, box.right());
+		const pixel_t gap_end = std::clamp(legend_margin_box.right(), box.x, box.right());
+		if (gap_end <= gap_start) {
+			paint_borders(decoration, box, root, nullptr, true, true);
+			return;
+		}
+
+		borders sides = decoration;
+		sides.top.width = 0;
+		sides.top.style = border_style_none;
+		paint_borders(sides, box, root, nullptr, true, true);
+
+		const auto paint_top_segment = [&](pixel_t p_left, pixel_t p_right, bool p_left_corner, bool p_right_corner) {
+			if (p_right <= p_left) return;
+			borders top;
+			top.top = decoration.top;
+			top.radius = decoration.radius;
+			if (!p_left_corner) top.radius.top_left_x = top.radius.top_left_y = 0;
+			if (!p_right_corner) top.radius.top_right_x = top.radius.top_right_y = 0;
+			top.radius.bottom_right_x = top.radius.bottom_right_y = 0;
+			top.radius.bottom_left_x = top.radius.bottom_left_y = 0;
+			position segment = box;
+			segment.x = p_left;
+			segment.width = p_right - p_left;
+			paint_borders(top, segment, root, nullptr, true, true);
+		};
+		paint_top_segment(box.x, gap_start, true, false);
+		paint_top_segment(gap_end, box.right(), false, true);
 	};
 	const auto paint_shadows = [&](position box, borders decoration, bool inset) {
 		box.round();
@@ -709,7 +768,7 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 			{
 				border_box.round();
 				bdr.radius = m_css.get_borders().radius.calc_percents(border_box.width, border_box.height);
-				paint_borders(bdr, border_box, is_root(), nullptr, true, true);
+				paint_fieldset_borders(bdr, border_box, pos, is_root());
 			}
 		}
 	} else

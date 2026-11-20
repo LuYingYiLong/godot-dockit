@@ -345,6 +345,7 @@ fieldset {
 	display: block;
 	margin-inline: 2px;
 	border: 2px groove #f0f0f0;
+	min-inline-size: min-content;
 	padding-block: 0.35em 0.625em;
 	padding-inline: 0.75em;
 }
