@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<style>
+    input {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .styled {
+        border: 0;
+        line-height: 2.5;
+        padding: 0 20px;
+        font-size: 1rem;
+        text-align: center;
+        color: white;
+        text-shadow: 1px 1px 1px black;
+        border-radius: 10px;
+        background-color: tomato;
+        background-image: linear-gradient(to top left,
+                rgb(0 0 0 / 20%),
+                rgb(0 0 0 / 20%) 30%,
+                transparent);
+        box-shadow:
+            inset 2px 2px 3px rgb(255 255 255 / 60%),
+            inset -2px -2px 3px rgb(0 0 0 / 60%);
+    }
+
+    .styled:hover {
+        background-color: red;
+    }
+
+    .styled:active {
+        box-shadow:
+            inset -2px -2px 3px rgb(255 255 255 / 60%),
+            inset 2px 2px 3px rgb(0 0 0 / 60%);
+    }
+
+    h3 {
+        margin: 0.25rem 0 0.25rem 0
+    }
+</style>
+
+<html>
+<div>
+    <div>
+        <h3>Text Input</h3>
+        <label for="name">Name (4 to 8 characters):</label>
+        <input type="text" id="name" name="name" required minlength="4" maxlength="8" size="10" />
+    </div>
+
+    <div>
+        <h3>Checkbox Input</h3>
+        <fieldset>
+            <legend>Choose your monster's features:</legend>
+
+            <div>
+                <input type="checkbox" id="scales" name="scales" checked />
+                <label for="scales">Scales</label>
+            </div>
+
+            <div>
+                <input type="checkbox" id="horns" name="horns" />
+                <label for="horns">Horns</label>
+            </div>
+        </fieldset>
+    </div>
+
+    <div>
+        <h3>Color Input</h3>
+        <div>
+            <input type="color" id="foreground" name="foreground" value="#e66465" />
+            <label for="foreground">Foreground color</label>
+        </div>
+        <div>
+            <input type="color" id="background" name="background" value="oklab(50% 0.1 0.1 / 0.5)"
+                colorspace="display-p3" alpha />
+            <label for="background">Background color</label>
+        </div>
+    </div>
+
+    <div>
+        <h3>Date Input</h3>
+        <label for="start">Start date:</label>
+        <input type="date" id="start" name="trip-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+    </div>
+
+    <div>
+        <h3>Datetime-local Input</h3>
+        <label for="meeting-time">Choose a time for your appointment:</label>
+        <input type="datetime-local" id="meeting-time" name="meeting-time" value="2018-06-12T19:30"
+            min="2018-06-07T00:00" max="2018-06-14T00:00" />
+    </div>
+
+    <div>
+        <h3>Email Input</h3>
+        <label for="email">Enter your example.com email:</label>
+        <input type="email" id="email" pattern=".+@example\.com" size="30" required />
+    </div>
+
+    <div>
+        <h3>File Input</h3>
+        <label for="avatar">Choose a profile picture:</label>
+        <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg" />
+    </div>
+
+    <input class="styled" type="button" value="Add to favorites" />
+</div>
+
+</html>
