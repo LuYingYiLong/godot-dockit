@@ -1,13 +1,16 @@
 #include "html_document.h"
 #include "html_print_layout.h"
+#include "formats/html/resources/html_resource_paths.h"
 
 using namespace godot;
 
 void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &HTMLDocument::set_text);
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLDocument::get_text);
-	ClassDB::bind_method(D_METHOD("set_base_dir", "base_dir"), &HTMLDocument::set_base_dir);
-	ClassDB::bind_method(D_METHOD("get_base_dir"), &HTMLDocument::get_base_dir);
+	ClassDB::bind_method(D_METHOD("set_access", "access"), &HTMLDocument::set_access);
+	ClassDB::bind_method(D_METHOD("get_access"), &HTMLDocument::get_access);
+	ClassDB::bind_method(D_METHOD("set_root_subfolder", "root_subfolder"), &HTMLDocument::set_root_subfolder);
+	ClassDB::bind_method(D_METHOD("get_root_subfolder"), &HTMLDocument::get_root_subfolder);
 	ClassDB::bind_method(D_METHOD("_set_source_path", "path"), &HTMLDocument::set_source_path);
 	ClassDB::bind_method(D_METHOD("_get_source_path"), &HTMLDocument::get_source_path);
 	ClassDB::bind_method(D_METHOD("set_stylesheet", "stylesheet"), &HTMLDocument::set_stylesheet);
@@ -31,8 +34,13 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_layout"), &HTMLDocument::create_layout);
 	ClassDB::bind_method(D_METHOD("create_print_layout", "options"), &HTMLDocument::create_print_layout, DEFVAL(Dictionary()));
 
+	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
+	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
+	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "_source_path", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_source_path", "_get_source_path");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "stylesheet", PROPERTY_HINT_MULTILINE_TEXT), "set_stylesheet", "get_stylesheet");
@@ -64,15 +72,29 @@ String HTMLDocument::get_text() const {
 	return text;
 }
 
-void HTMLDocument::set_base_dir(const String& p_dir) {
-	if (base_dir != p_dir) {
-		base_dir = p_dir;
+void HTMLDocument::set_access(int32_t p_access) {
+	if (p_access < ACCESS_RESOURCES || p_access > ACCESS_FILE_SYSTEM || access == p_access) return;
+	access = p_access;
+	emit_changed();
+}
+
+int32_t HTMLDocument::get_access() const {
+	return access;
+}
+
+void HTMLDocument::set_root_subfolder(const String& p_root_subfolder) {
+	if (root_subfolder != p_root_subfolder) {
+		root_subfolder = p_root_subfolder;
 		emit_changed();
 	}
 }
 
-String HTMLDocument::get_base_dir() const {
-	return base_dir;
+String HTMLDocument::get_root_subfolder() const {
+	return root_subfolder;
+}
+
+String HTMLDocument::get_resource_base_dir() const {
+	return dockit::resolve_html_resource_base_dir(access, root_subfolder, source_path);
 }
 
 void HTMLDocument::set_source_path(const String& p_path) {
@@ -182,6 +204,6 @@ Ref<HTMLPrintLayout> HTMLDocument::create_print_layout(const Dictionary& p_optio
 }
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
-	p_layout.parse_source(text, base_dir, stylesheet, textures, source_path, false, p_default_stylesheet, {}, local_stylesheets,
+	p_layout.parse_source(text, get_resource_base_dir(), stylesheet, textures, source_path, false, p_default_stylesheet, {}, local_stylesheets,
 		local_fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams, video_sources);
 }

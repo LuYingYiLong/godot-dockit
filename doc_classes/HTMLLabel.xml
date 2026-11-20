@@ -56,6 +56,13 @@
 				Returns the current navigation URL, or the effective document base URL when no navigation has occurred.
 			</description>
 		</method>
+		<method name="load_html_file">
+			<return type="int" enum="Error" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Loads an HTML file from a [code]res://[/code], [code]user://[/code], UID, or absolute file-system path. Relative resources resolve from the file's directory. Returns [constant OK] on success or a file access error if the path cannot be opened.
+			</description>
+		</method>
 		<method name="get_storage_namespace" qualifiers="const">
 			<return type="String" />
 			<description>
@@ -448,8 +455,11 @@
 		<member name="animation_process_mode" type="int" setter="set_animation_process_mode" getter="get_animation_process_mode" enum="HTMLLabel.AnimationProcessMode" default="0">
 			Chooses when CSS animations and transitions advance. Idle uses the idle frame delta, Physics uses the physics frame delta, and Manual uses calls to [method advance_animation]. Switching modes preserves the current progress and any remaining delay.
 		</member>
-		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
-			The base directory in [code]res://[/code] or [code]user://[/code] for relative asset paths in [member text]. See [method HTMLLayout.parse] for the supported paths and image formats.
+		<member name="access" type="int" setter="set_access" getter="get_access" enum="HTMLLabel.Access" default="0">
+			Selects Resources, User Data, or File System as the default source for relative resource paths. A loaded source file's directory takes precedence.
+		</member>
+		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
+			The default resource directory for inline HTML and a root path the host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document. A host should use a non-native [FileDialog] when it needs the root to constrain browsing.
 		</member>
 		<member name="behavior_scripts" type="Dictionary" setter="set_behavior_scripts" getter="get_behavior_scripts" default="{}">
 			A [code]Dictionary[StringName, GDScript][/code] of optional [HTMLBehavior] aliases. A script element first selects an exact [code]src[/code] alias; otherwise [code]src[/code] is resolved as a local script path. Reading this property returns a copy. Assign a new dictionary to update the registry and remount behaviors.
@@ -470,7 +480,7 @@
 			Outlines visible elements with CSS declaration diagnostics. Hover over an outlined element to read its diagnostics in an HTML tooltip. Disabling this clears the outlines and results.
 		</member>
 		<member name="document" type="HTMLDocument" setter="set_document" getter="get_document">
-			The HTML resource to display. Its source and styles take priority over the local properties. Set this to [code]null[/code] to use [member text], [member base_dir], and [member stylesheet].
+			The HTML resource to display. Its source and styles take priority over the local properties. Set this to [code]null[/code] to use [member text], [member access], [member root_subfolder], and [member stylesheet].
 		</member>
 		<member name="event_debug" type="bool" setter="set_event_debug" getter="is_event_debug_enabled" default="false">
 			Prints a summary of each DOM event dispatched by this label, including its target, propagation path size, registered listener count, and default-canceled state.
@@ -628,6 +638,15 @@
 		</constant>
 		<constant name="VIDEO_BACKEND_VLC" value="2" enum="VideoBackend">
 			Uses the optional godot-vlc add-on.
+		</constant>
+		<constant name="ACCESS_RESOURCES" value="0" enum="Access">
+			Resolve default relative resources from [code]res://[/code].
+		</constant>
+		<constant name="ACCESS_USER_DATA" value="1" enum="Access">
+			Resolve default relative resources from [code]user://[/code].
+		</constant>
+		<constant name="ACCESS_FILE_SYSTEM" value="2" enum="Access">
+			Resolve default relative resources from an absolute file-system root.
 		</constant>
 	</constants>
 </class>

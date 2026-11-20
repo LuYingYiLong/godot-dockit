@@ -6,6 +6,7 @@
 #include "editor/dockit_source_editor.h"
 
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/resource_uid.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -84,6 +85,29 @@ Error HTMLLabel::navigate(const String& p_url, bool p_replace) {
 	return OK;
 }
 
+Error HTMLLabel::load_html_file(const String& p_path) {
+	String path = ResourceUID::ensure_path(p_path);
+	if (path.is_empty()) return ERR_INVALID_PARAMETER;
+	const Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+	if (file.is_null()) return FileAccess::get_open_error();
+	const String html = file->get_as_text();
+	file->close();
+
+	if (navigation_request_id != 0) dockit::cancel_http_request(navigation_request_id);
+	navigation_request_id = 0;
+	++navigation_sequence;
+	if (document.is_valid()) set_document({});
+	text = html;
+	source_path = path;
+	current_location = path;
+	navigation_history.clear();
+	navigation_position = -1;
+	pending_navigation_anchor = String();
+	source_changed();
+	emit_signal("location_changed", current_location);
+	return OK;
+}
+
 void HTMLLabel::on_navigation_response(uint64_t p_sequence, const String& p_url, bool p_replace,
 	int p_status_code, const PackedByteArray& p_body, const String& p_error) {
 	if (p_sequence != navigation_sequence) return;
@@ -105,7 +129,7 @@ void HTMLLabel::on_navigation_response(uint64_t p_sequence, const String& p_url,
 
 void HTMLLabel::apply_navigation_source(const String& p_url, const String& p_text, bool p_replace) {
 	if (navigation_history.empty()) {
-		navigation_history.push_back({ current_location, text, document, base_dir, source_path });
+		navigation_history.push_back({ current_location, text, document, source_path });
 		navigation_position = 0;
 	}
 
@@ -117,9 +141,7 @@ void HTMLLabel::apply_navigation_source(const String& p_url, const String& p_tex
 		if (suffix_query >= 0) source = source.left(suffix_query);
 	}
 
-	NavigationEntry entry{ p_url, p_text, {}, base_dir, source };
-	if (!dockit::is_http_url(source)) entry.base_dir = source.get_base_dir();
-	else if (entry.base_dir.is_empty()) entry.base_dir = "res://";
+	NavigationEntry entry{ p_url, p_text, {}, source };
 
 	if (p_replace && navigation_position >= 0) {
 		navigation_history[navigation_position] = entry;
@@ -135,7 +157,6 @@ void HTMLLabel::apply_navigation_source(const String& p_url, const String& p_tex
 	}
 	document.unref();
 	text = p_text;
-	base_dir = entry.base_dir;
 	source_path = entry.source_path;
 	current_location = p_url;
 	const int64_t fragment = current_location.find("#");
@@ -162,7 +183,6 @@ void HTMLLabel::navigate_to_history(int64_t p_position) {
 		document->connect("changed", callable_mp(this, &HTMLLabel::document_changed).bind(document->get_instance_id()));
 	}
 	text = entry.text;
-	base_dir = entry.base_dir;
 	source_path = entry.source_path;
 	current_location = entry.location;
 	const int64_t fragment = current_location.find("#");

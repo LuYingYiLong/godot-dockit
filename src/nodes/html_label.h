@@ -362,6 +362,12 @@ public:
 		ANIMATION_PROCESS_MANUAL,
 	};
 
+	enum Access {
+		ACCESS_RESOURCES,
+		ACCESS_USER_DATA,
+		ACCESS_FILE_SYSTEM,
+	};
+
 private:
 	friend class ::HTMLLabelCanvas;
 	friend class HTMLAudioElement;
@@ -566,7 +572,8 @@ private:
 	uint64_t picker_reset = 0;
 	godot::String picker_type;
 	godot::String text;
-	godot::String base_dir = "res://";
+	int32_t access = ACCESS_RESOURCES;
+	godot::String root_subfolder;
 	godot::String source_path;
 	godot::String stylesheet;
 	godot::Vector2i viewport_size;
@@ -623,7 +630,6 @@ private:
 		godot::String location;
 		godot::String text;
 		godot::Ref<HTMLDocument> document;
-		godot::String base_dir;
 		godot::String source_path;
 	};
 	std::vector<NavigationEntry> navigation_history;
@@ -868,7 +874,11 @@ public:
 	godot::TypedDictionary<godot::StringName, godot::GDScript> get_behavior_scripts() const; // 返回行为脚本登记表快照
 	void set_text(const godot::String& p_text);									// 设置控件的内联 HTML 文本
 	godot::String get_text() const;												// 返回控件的内联 HTML 文本
-	void set_base_dir(const godot::String& p_base_dir);							// 设置内联 HTML 的相对资源路径基准目录
+	void set_access(int32_t p_access);
+	int32_t get_access() const;
+	void set_root_subfolder(const godot::String& p_root_subfolder);
+	godot::String get_root_subfolder() const;
+	godot::String get_resource_base_dir() const;
 	godot::String get_base_uri() const;											// 返回当前 DOM 的生效基准
 	void set_storage_namespace(const godot::String& p_namespace);
 	godot::String get_storage_namespace() const;
@@ -878,7 +888,7 @@ public:
 	bool go(int64_t p_delta);
 	godot::String get_location() const;
 	void set_source_path(const godot::String& p_path);							// 设置编辑器实时预览对应的源文件
-	godot::String get_base_dir() const;											// 返回内联 HTML 的资源基准目录
+	godot::Error load_html_file(const godot::String& p_path);
 	void set_stylesheet(const godot::String& p_stylesheet);						// 设置应用于内联 HTML 的附加 CSS
 	godot::String get_stylesheet() const;										// 返回内联 HTML 的附加 CSS
 	godot::Vector2i get_content_size() const;									// 返回排版后的内容尺寸
@@ -984,4 +994,5 @@ public:
 };
 
 VARIANT_ENUM_CAST(::HTMLLabel::AnimationProcessMode);
+VARIANT_ENUM_CAST(::HTMLLabel::Access);
 VARIANT_ENUM_CAST(::HTMLLabel::VideoBackend);

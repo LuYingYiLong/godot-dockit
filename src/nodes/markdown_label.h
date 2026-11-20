@@ -285,12 +285,19 @@ public:
 		MENU_MAX
 	};
 
+	enum Access {
+		ACCESS_RESOURCES,
+		ACCESS_USER_DATA,
+		ACCESS_FILE_SYSTEM,
+	};
+
 private:
 	friend class MarkdownLabelCanvas;
 
 	String raw_text;
-	String image_base_dir;
-	String html_file_base_dir;
+	int32_t access = ACCESS_RESOURCES;
+	String root_subfolder;
+	String source_path;
 	ScrollContainer* scroll_container = nullptr;
 	MarginContainer* margin_container = nullptr;
 	MarkdownLabelCanvas* canvas = nullptr;
@@ -321,8 +328,8 @@ private:
 	void ensure_controls();
 	void apply_theme_settings();
 	void apply_scroll_settings();
-	void set_markdown_source(const String& p_text, const String& p_html_base_dir);
-	String get_html_base_dir() const;
+	void set_markdown_source(const String& p_text, const String& p_source_path);
+	String get_resource_base_dir() const;
 	void update_scroll_following();
 	void scroll_to_following();
 	void on_scroll_value_changed(double p_value);
@@ -336,7 +343,10 @@ public:
 
 	void set_markdown_text(const String& p_text);
 	String get_markdown_text() const;
-	void set_image_base_dir(const String& p_dir);
+	void set_access(int32_t p_access);
+	int32_t get_access() const;
+	void set_root_subfolder(const String& p_root_subfolder);
+	String get_root_subfolder() const;
 	void set_parse_latex(bool p_enabled);
 	void set_parse_html(bool p_enabled);
 	bool is_parsing_html() const;
@@ -438,3 +448,4 @@ public:
 };
 
 VARIANT_ENUM_CAST(MarkdownLabel::MenuItems);
+VARIANT_ENUM_CAST(MarkdownLabel::Access);

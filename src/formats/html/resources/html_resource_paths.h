@@ -3,15 +3,25 @@
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <cstdint>
 #include <optional>
 
 namespace godot { class Texture2D; }
 
 namespace dockit {
+	enum HTMLResourceAccess : int32_t {
+		HTML_RESOURCE_ACCESS_RESOURCES,
+		HTML_RESOURCE_ACCESS_USER_DATA,
+		HTML_RESOURCE_ACCESS_FILE_SYSTEM,
+	};
+
 	struct HTMLResourceBase {
 		godot::String uri;
 		godot::String directory;
 	};
+	godot::String resolve_html_resource_base_dir(
+		int32_t p_access, const godot::String& p_root_subfolder, const godot::String& p_source_path = {}
+	);
 	HTMLResourceBase make_html_resource_base(const godot::String& p_directory, const godot::String& p_source_path = {});
 	HTMLResourceBase resolve_html_document_base(const HTMLResourceBase& p_fallback, const char* p_href);
 	godot::String resolve_html_link_href(const godot::String& p_href, const HTMLResourceBase& p_base);
@@ -22,7 +32,7 @@ namespace dockit {
 	godot::String packed_html_video_path(const godot::String& p_path);
 	std::optional<godot::String> normalize_html_resource_path(
 		const godot::String& p_path
-	);																				// 规范化 res:// 或 user:// 路径并拒绝越界路径
+	);																				// 规范化项目路径、用户数据路径或绝对文件系统路径
 	godot::String resolve_html_image_path(
 		const godot::String& p_src,
 		const godot::String& p_base_dir

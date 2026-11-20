@@ -413,7 +413,8 @@ namespace dockit {
 			if (texture.is_valid()) return texture;
 		}
 		const auto extension = p_path.get_extension().to_lower();
-		if (!p_path.begins_with("user://") || !litehtml::is_one_of(extension, "png", "jpg", "jpeg", "webp", "svg") ||
+		if ((!p_path.begins_with("user://") && !p_path.is_absolute_path()) ||
+			!litehtml::is_one_of(extension, "png", "jpg", "jpeg", "webp", "svg") ||
 			!FileAccess::file_exists(p_path)) return {};
 		const auto image = Image::load_from_file(p_path);
 		return image.is_valid() && !image->is_empty() ? ImageTexture::create_from_image(image) : Ref<ImageTexture>();
@@ -483,7 +484,7 @@ namespace dockit {
 			font = loader->load(p_path, "FontFile");
 		}
 		const auto extension = p_path.get_extension().to_lower();
-		if (font.is_null() && p_path.begins_with("user://") &&
+		if (font.is_null() && (p_path.begins_with("user://") || p_path.is_absolute_path()) &&
 			litehtml::is_one_of(extension, "ttf", "otf", "ttc", "otc", "woff", "woff2") && FileAccess::file_exists(p_path)) {
 			font.instantiate();
 			if (font->load_dynamic_font(p_path) != OK) font.unref();

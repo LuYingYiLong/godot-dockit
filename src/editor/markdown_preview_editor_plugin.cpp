@@ -19,7 +19,9 @@ namespace godot {
 
 	void MarkdownPreviewEditorPlugin::update_preview(CodeEdit* p_source, Control* p_preview, const String& p_path) {
 		MarkdownLabel* label = Object::cast_to<MarkdownLabel>(p_preview);
-		label->set_image_base_dir(p_path.get_base_dir());
+		label->set_access(p_path.begins_with("res://") ? MarkdownLabel::ACCESS_RESOURCES :
+			p_path.begins_with("user://") ? MarkdownLabel::ACCESS_USER_DATA : MarkdownLabel::ACCESS_FILE_SYSTEM);
+		label->set_root_subfolder(p_path.get_base_dir());
 		const String text = p_source->get_text();
 		if (text != label->get_markdown_text()) {
 			label->set_markdown_text(text);

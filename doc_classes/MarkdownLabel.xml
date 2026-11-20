@@ -245,7 +245,7 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="path" type="String" />
 			<description>
-				Loads Markdown text from the file at [param path] and sets it as the document content. Returns [constant OK] on success, or an error code such as [constant ERR_FILE_CANT_OPEN] if the file could not be opened. Emits [signal text_changed] on success.
+				Loads Markdown text from a [code]res://[/code], [code]user://[/code], UID, or absolute file-system path. Relative images and embedded HTML resources resolve from the file's directory. Returns [constant OK] on success, or an error code such as [constant ERR_FILE_CANT_OPEN] if the file could not be opened. Emits [signal text_changed] on success.
 			</description>
 		</method>
 		<method name="menu_option">
@@ -433,6 +433,9 @@
 		<member name="autowrap_trim_flags" type="int" setter="set_autowrap_trim_flags" getter="get_autowrap_trim_flags" enum="TextServer.LineBreakFlag" is_bitfield="true" default="192">
 			Autowrap space trimming flags. See [constant TextServer.BREAK_TRIM_START_EDGE_SPACES] and [constant TextServer.BREAK_TRIM_END_EDGE_SPACES].
 		</member>
+		<member name="access" type="int" setter="set_access" getter="get_access" enum="MarkdownLabel.Access" default="0">
+			Selects Resources, User Data, or File System as the default source for relative resource paths. A loaded Markdown file's directory takes precedence.
+		</member>
 		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
 			The content margin in pixels. Controls the padding between the MarkdownLabel edges and the rendered content.
 		</member>
@@ -462,6 +465,9 @@
 		</member>
 		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true">
 			If [code]true[/code], clicking an http/https link opens it in the system default browser.
+		</member>
+		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
+			The default resource directory for inline Markdown and a root path a host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document.
 		</member>
 		<member name="parse_gfm" type="bool" setter="set_parse_gfm" getter="is_parsing_gfm" default="true">
 			Enables the supported GitHub Flavored Markdown extensions for tables, task lists, strikethrough, and [code]&lt;www.example.com&gt;[/code] autolinks. Changing this property reparses the current text. Math parsing is controlled by [member parse_latex].
@@ -538,6 +544,15 @@
 		</constant>
 		<constant name="MENU_MAX" value="2" enum="MenuItems">
 			Represents the total number of menu items. Used for bounds checking.
+		</constant>
+		<constant name="ACCESS_RESOURCES" value="0" enum="Access">
+			Use the Godot project resource namespace for default relative resources.
+		</constant>
+		<constant name="ACCESS_USER_DATA" value="1" enum="Access">
+			Use the Godot user data namespace for default relative resources.
+		</constant>
+		<constant name="ACCESS_FILE_SYSTEM" value="2" enum="Access">
+			Use an absolute file-system root for default relative resources.
 		</constant>
 	</constants>
 </class>

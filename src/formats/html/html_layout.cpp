@@ -1085,7 +1085,7 @@ void HTMLLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("supports_css", "property_or_condition", "value"), &HTMLLayout::supports_css, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("supports_selector", "selector"), &HTMLLayout::supports_selector);
 	ClassDB::bind_method(D_METHOD("matches_media", "query"), &HTMLLayout::matches_media);
-	ClassDB::bind_method(D_METHOD("parse", "html", "base_dir", "stylesheet"), &HTMLLayout::parse,
+	ClassDB::bind_method(D_METHOD("parse", "html", "root_subfolder", "stylesheet"), &HTMLLayout::parse,
 		DEFVAL(String("res://")), DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("layout", "viewport_size"), &HTMLLayout::layout);
 	ClassDB::bind_method(D_METHOD("get_content_size"), &HTMLLayout::get_content_size);
@@ -1146,18 +1146,18 @@ HTMLLayout::~HTMLLayout() {
 	clear();
 }
 
-Error HTMLLayout::parse(const String& p_html, const String& p_base_dir, const String& p_stylesheet) {
-	return parse_source(p_html, p_base_dir, p_stylesheet, Dictionary());
+Error HTMLLayout::parse(const String& p_html, const String& p_root_subfolder, const String& p_stylesheet) {
+	return parse_source(p_html, p_root_subfolder, p_stylesheet, Dictionary());
 }
 
-Error HTMLLayout::parse_source(const String& p_html, const String& p_base_dir, const String& p_stylesheet,
+Error HTMLLayout::parse_source(const String& p_html, const String& p_root_subfolder, const String& p_stylesheet,
 	const Dictionary& p_textures, const String& p_source_path, bool p_fit_images, const String& p_default_stylesheet, const dockit::HTMLFontConfig& p_fonts,
 	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
 	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams, const Dictionary& p_video_sources) {
 	clear();
-	const std::optional<String> base_dir = dockit::normalize_html_resource_path(p_base_dir);
+	const std::optional<String> base_dir = dockit::normalize_html_resource_path(p_root_subfolder);
 	if (!base_dir) {
-		state->error = "The base directory must use res:// or user://.";
+		state->error = "The resource root must use res://, user://, or an absolute file-system path.";
 		return state->parse_error = ERR_INVALID_PARAMETER;
 	}
 	state->audio_streams = p_audio_streams;
@@ -3868,7 +3868,7 @@ Ref<Resource> HTMLLayout::audio_resource(const String& p_path, bool p_fmod) cons
 	auto* loader = ResourceLoader::get_singleton();
 	const StringName type = p_fmod ? "FmodAudioStream" : "AudioStream";
 	if (loader->exists(p_path, type)) return loader->load(p_path, type);
-	if (!p_path.begins_with("user://") || !FileAccess::file_exists(p_path)) return {};
+	if ((!p_path.begins_with("user://") && !p_path.is_absolute_path()) || !FileAccess::file_exists(p_path)) return {};
 	const auto format = p_path.get_extension().to_lower();
 	if (format != "wav" && format != "ogg" && format != "mp3") return {};
 	if (p_fmod) {

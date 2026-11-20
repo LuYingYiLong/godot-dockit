@@ -6931,3 +6931,27 @@ msgstr "插槽名称。空名称表示默认插槽"
 
 msgid "Unmounts component instances and schedules registration and mounting again."
 msgstr "卸载组件实例并安排重新注册和挂载"
+
+msgid "Selects Resources, User Data, or File System as the default source for relative resource paths. A loaded source file's directory takes precedence."
+msgstr "选择 Resources、User Data 或 File System 作为相对资源路径的默认来源。加载的源文件所在目录优先。"
+
+msgid "The default resource directory for inline HTML and a root path the host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document. A host should use a non-native [FileDialog] when it needs the root to constrain browsing."
+msgstr "内联 HTML 的默认资源目录，也可由宿主传给 [FileDialog] 作为根路径。它不会限制已加载文档引用的资源。宿主需要限制浏览范围时应使用非原生 [FileDialog]。"
+
+msgid "The default resource directory for inline documents and the root path a host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document."
+msgstr "内联文档的默认资源目录，也可由宿主传给 [FileDialog] 作为根路径。它不会限制已加载文档引用的资源。"
+
+msgid "The default resource directory for inline Markdown and a root path a host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document."
+msgstr "内联 Markdown 的默认资源目录，也可由宿主传给 [FileDialog] 作为根路径。它不会限制已加载文档引用的资源。"
+
+msgid "Loads an HTML file from a [code]res://[/code], [code]user://[/code], UID, or absolute file-system path. Relative resources resolve from the file's directory. Returns [constant OK] on success or a file access error if the path cannot be opened."
+msgstr "从 [code]res://[/code]、[code]user://[/code]、UID 或文件系统绝对路径加载 HTML 文件。相对资源以该文件所在目录解析。成功时返回 [constant OK]；无法打开路径时返回文件访问错误。"
+
+msgid "Loads Markdown text from a [code]res://[/code], [code]user://[/code], UID, or absolute file-system path. Relative images and embedded HTML resources resolve from the file's directory. Returns [constant OK] on success, or an error code such as [constant ERR_FILE_CANT_OPEN] if the file could not be opened. Emits [signal text_changed] on success."
+msgstr "从 [code]res://[/code]、[code]user://[/code]、UID 或文件系统绝对路径加载 Markdown 文本。相对图片和内嵌 HTML 资源以该文件所在目录解析。成功时返回 [constant OK]；无法打开文件时返回 [constant ERR_FILE_CANT_OPEN] 等错误码。成功后发出 [signal text_changed]。"
+
+msgid "The HTML resource to display. Its source and styles take priority over the local properties. Set this to [code]null[/code] to use [member text], [member access], [member root_subfolder], and [member stylesheet]."
+msgstr "要显示的 HTML 资源。资源的源内容和样式优先于本地属性。设为 [code]null[/code] 时使用 [member text]、[member access]、[member root_subfolder] 和 [member stylesheet]。"
+
+msgid "Replaces the document and resets its layout. An empty string creates an empty document. Styles come from inline attributes, [code]<style>[/code] elements, [code]<link rel=\"stylesheet\">[/code], and the optional stylesheet text. Use [code]@import[/code] to include UTF-8 [code].css[/code] files under the Godot resource, user data, or file system root. Relative URLs in a CSS file are resolved from that file's directory. Relative URLs in HTML and stylesheet text are resolved from [param root_subfolder], which accepts [code]res://[/code], [code]user://[/code], or an absolute file-system path. Explicit [code]res://[/code], [code]user://[/code], registered [code]uid://[/code], and HTTP URLs are also supported. Missing or unsupported assets are skipped. Returns [constant OK] on success, [constant ERR_INVALID_PARAMETER] for an unsupported resource root, or [constant ERR_PARSE_ERROR] if the document cannot be parsed.\nThe additional [param stylesheet] contributes author rules after the document's stylesheets. The author cascade compares [code]!important[/code], inline style precedence, cascade layer, selector specificity, and source order, in that order. A rule in the additional stylesheet wins by source order when all earlier criteria are equal. In a document without author layers, [code]revert[/code] and [code]revert-layer[/code] restore the pre-author defaults and HTML presentational hints.\nInvalid literal declarations are ignored. Custom properties and longhand declarations are cascaded before [code]var()[/code] substitution. If substitution makes the winning value invalid, that longhand uses [code]unset[/code]. A shorthand with [code]var()[/code] is resolved once per element and only updates the longhands it wins. CSS-wide keywords produced by substitution are evaluated as usual. On a custom property, the keyword is applied before substituting values that reference that property."
+msgstr "替换文档并重置布局。空字符串会创建空文档。样式来自内联属性、[code]<style>[/code] 元素、[code]<link rel=\"stylesheet\">[/code] 和可选的附加样式表。通过 [code]@import[/code] 加载 Godot 资源、用户数据或文件系统根目录下的 UTF-8 [code].css[/code] 文件。CSS 文件中的相对 URL 从该文件所在目录解析。HTML 和样式表文本中的相对 URL 从 [param root_subfolder] 解析；该参数支持 [code]res://[/code]、[code]user://[/code] 或文件系统绝对路径。也支持显式的 [code]res://[/code]、[code]user://[/code]、已注册的 [code]uid://[/code] 和 HTTP URL。缺失或不支持的资源会被跳过。成功时返回 [constant OK]；资源根目录无效时返回 [constant ERR_INVALID_PARAMETER]；文档无法解析时返回 [constant ERR_PARSE_ERROR]。\n附加的 [param stylesheet] 在文档样式表之后提供作者规则。作者层叠依次比较 [code]!important[/code]、内联样式优先级、层叠层、选择器权重和源码顺序。前几项相同时，附加样式表中的规则凭源码顺序胜出。文档没有作者层叠层时，[code]revert[/code] 和 [code]revert-layer[/code] 恢复应用作者样式前的默认值及 HTML 表现属性。\n忽略无效的字面声明。先确定自定义属性和各长属性的层叠结果，再替换 [code]var()[/code]。若替换使获胜值无效，该长属性按 [code]unset[/code] 计算。含 [code]var()[/code] 的简写在每个元素上只求值一次，仅更新它仍然获胜的长属性。替换得出的 CSS 全局关键字按正常规则求值。自定义属性会先应用该关键字，再将结果代入引用它的属性值。"

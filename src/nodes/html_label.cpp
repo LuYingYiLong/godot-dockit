@@ -14,6 +14,7 @@
 #include "formats/html/css/html_style_sheet.h"
 #include "formats/html/css/css_values.h"
 #include "formats/html/html_ui_translations.h"
+#include "formats/html/resources/html_resource_paths.h"
 #include "formats/http_requests.h"
 
 #include "formats/html/markup/html_markup.h"
@@ -723,8 +724,11 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_document"), &HTMLLabel::get_document);
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &HTMLLabel::set_text);
 	ClassDB::bind_method(D_METHOD("get_text"), &HTMLLabel::get_text);
-	ClassDB::bind_method(D_METHOD("set_base_dir", "base_dir"), &HTMLLabel::set_base_dir);
-	ClassDB::bind_method(D_METHOD("get_base_dir"), &HTMLLabel::get_base_dir);
+	ClassDB::bind_method(D_METHOD("set_access", "access"), &HTMLLabel::set_access);
+	ClassDB::bind_method(D_METHOD("get_access"), &HTMLLabel::get_access);
+	ClassDB::bind_method(D_METHOD("set_root_subfolder", "root_subfolder"), &HTMLLabel::set_root_subfolder);
+	ClassDB::bind_method(D_METHOD("get_root_subfolder"), &HTMLLabel::get_root_subfolder);
+	ClassDB::bind_method(D_METHOD("load_html_file", "path"), &HTMLLabel::load_html_file);
 	ClassDB::bind_method(D_METHOD("get_base_uri"), &HTMLLabel::get_base_uri);
 	ClassDB::bind_method(D_METHOD("set_storage_namespace", "namespace"), &HTMLLabel::set_storage_namespace);
 	ClassDB::bind_method(D_METHOD("get_storage_namespace"), &HTMLLabel::get_storage_namespace);
@@ -817,8 +821,12 @@ void HTMLLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
+	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
+	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
+	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
 
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "base_dir", PROPERTY_HINT_DIR), "set_base_dir", "get_base_dir");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "storage_namespace"), "set_storage_namespace", "get_storage_namespace");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "location", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_location");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocument"), "set_document", "get_document");
@@ -1655,17 +1663,28 @@ String HTMLLabel::get_text() const {
 	return text;
 }
 
-void HTMLLabel::set_base_dir(const String& p_base_dir) {
-	if (base_dir != p_base_dir) {
-		base_dir = p_base_dir;
-		if (document.is_null()) {
-			source_changed();
-		}
-	}
+void HTMLLabel::set_access(int32_t p_access) {
+	if (p_access < ACCESS_RESOURCES || p_access > ACCESS_FILE_SYSTEM || access == p_access) return;
+	access = p_access;
+	if (document.is_null()) source_changed();
 }
 
-String HTMLLabel::get_base_dir() const {
-	return base_dir;
+int32_t HTMLLabel::get_access() const {
+	return access;
+}
+
+void HTMLLabel::set_root_subfolder(const String& p_root_subfolder) {
+	if (root_subfolder == p_root_subfolder) return;
+	root_subfolder = p_root_subfolder;
+	if (document.is_null()) source_changed();
+}
+
+String HTMLLabel::get_root_subfolder() const {
+	return root_subfolder;
+}
+
+String HTMLLabel::get_resource_base_dir() const {
+	return dockit::resolve_html_resource_base_dir(access, root_subfolder, source_path);
 }
 
 String HTMLLabel::get_base_uri() const { return layout->get_base_uri(); }
@@ -2331,7 +2350,7 @@ void HTMLLabel::parse_pending_source() {
 		parsed = layout->get_render_error().is_empty();
 	}
 	else {
-		parsed = layout->parse_source(text, base_dir, stylesheet, Dictionary(), source_path, false, DOCUMENT_DEFAULTS) == OK;
+		parsed = layout->parse_source(text, get_resource_base_dir(), stylesheet, Dictionary(), source_path, false, DOCUMENT_DEFAULTS) == OK;
 	}
 	layout->get_dom().set_event_debug(event_debug);
 	sync_videos();

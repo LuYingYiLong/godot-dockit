@@ -321,11 +321,11 @@ public:
 	~HTMLLayout() override;
 
 	godot::Error parse(const godot::String& p_html,
-		const godot::String& p_base_dir = "res://",
+		const godot::String& p_root_subfolder = "res://",
 		const godot::String& p_stylesheet = ""
 	);																			// 解析 HTML 和附加样式，替换当前布局的文档
 	godot::Error parse_source(const godot::String& p_html,
-		const godot::String& p_base_dir,
+		const godot::String& p_root_subfolder,
 		const godot::String& p_stylesheet,
 		const godot::Dictionary& p_textures,
 		const godot::String& p_source_path = {},

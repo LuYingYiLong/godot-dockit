@@ -6,11 +6,21 @@
 
 class HTMLDocument : public godot::Resource {
 	GDCLASS(HTMLDocument, godot::Resource)
+
+public:
+	enum Access {
+		ACCESS_RESOURCES,
+		ACCESS_USER_DATA,
+		ACCESS_FILE_SYSTEM,
+	};
+
+private:
 	friend class HTMLLabel;
 	friend class HTMLPrintLayout;
 
 	godot::String text;
-	godot::String base_dir = "res://";
+	int32_t access = ACCESS_RESOURCES;
+	godot::String root_subfolder;
 	godot::String source_path;
 	godot::String stylesheet;
 	godot::Dictionary textures;
@@ -31,8 +41,12 @@ public:
 	void set_text(const godot::String& p_text);										// 设置资源保存的 HTML 源文本
 	godot::String get_text() const;													// 返回资源保存的 HTML 源文本
 	
-	void set_base_dir(const godot::String& p_dir);									// 设置文档的相对资源路径基准目录
-	godot::String get_base_dir() const;												// 返回文档的资源基准目录
+	void set_access(int32_t p_access);
+	int32_t get_access() const;
+	void set_root_subfolder(const godot::String& p_root_subfolder);
+	godot::String get_root_subfolder() const;
+	godot::String get_resource_base_dir() const;
+
 	void set_source_path(const godot::String& p_path); // 保存导入的原始 HTML 文件路径
 	godot::String get_source_path() const; // 返回导入的原始 HTML 文件路径
 	
@@ -60,3 +74,5 @@ public:
 	godot::Ref<HTMLLayout> create_layout() const;									// 从资源当前内容创建独立的已解析布局实例
 	godot::Ref<HTMLPrintLayout> create_print_layout(const godot::Dictionary& p_options = {}) const;
 };
+
+VARIANT_ENUM_CAST(HTMLDocument::Access);

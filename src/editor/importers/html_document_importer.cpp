@@ -48,7 +48,8 @@ namespace godot {
 		Ref<HTMLDocument> document;
 		document.instantiate();
 		document->set_text(text);
-		document->set_base_dir(base_dir);
+		document->set_access(HTMLDocument::ACCESS_RESOURCES);
+		document->set_root_subfolder(base_dir);
 		document->set_source_path(p_source_file);
 		const auto assets = dockit::collect_html_assets(text, base_dir, p_source_file);
 		document->set_textures(assets.textures);

@@ -23,7 +23,7 @@ void HTMLVideoExportPlugin::_export_file(const String& p_path, const String& p_t
 
 	Dictionary sources = document->get_video_sources();
 	if (sources.is_empty() && document->get_text().containsn("<video")) {
-		sources = dockit::collect_html_assets(document->get_text(), document->get_base_dir(), document->get_source_path()).video_sources;
+		sources = dockit::collect_html_assets(document->get_text(), document->get_resource_base_dir(), document->get_source_path()).video_sources;
 	}
 	const auto preset = get_export_preset();
 	const auto exclusions = preset.is_valid() ? preset->get_exclude_filter().split(",", false) : PackedStringArray();

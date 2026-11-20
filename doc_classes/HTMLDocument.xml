@@ -25,8 +25,11 @@
 		</method>
 	</methods>
 	<members>
-		<member name="base_dir" type="String" setter="set_base_dir" getter="get_base_dir" default="&quot;res://&quot;">
-			The base directory in [code]res://[/code] or [code]user://[/code] used for relative asset paths. Imported resources use the source file's directory.
+		<member name="access" type="int" setter="set_access" getter="get_access" enum="HTMLDocument.Access" default="0">
+			Selects Resources, User Data, or File System as the default source for relative resource paths. A loaded source file's directory takes precedence.
+		</member>
+		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
+			The default resource directory for inline documents and the root path a host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document.
 		</member>
 		<member name="stylesheet" type="String" setter="set_stylesheet" getter="get_stylesheet" default="&quot;&quot;">
 			Additional CSS for this document. The rules share the document stylesheets' author origin and follow them in source order. See [method HTMLLayout.parse].
@@ -35,4 +38,15 @@
 			The source HTML document or fragment.
 		</member>
 	</members>
+	<constants>
+		<constant name="ACCESS_RESOURCES" value="0" enum="Access">
+			Use the Godot project resource namespace for default relative resources.
+		</constant>
+		<constant name="ACCESS_USER_DATA" value="1" enum="Access">
+			Use the Godot user data namespace for default relative resources.
+		</constant>
+		<constant name="ACCESS_FILE_SYSTEM" value="2" enum="Access">
+			Use an absolute file-system root for default relative resources.
+		</constant>
+	</constants>
 </class>

@@ -40,12 +40,13 @@ namespace {
 
 	String resolve_behavior_path(HTMLLabel* p_label, const String& p_src) {
 		if (p_src.begins_with("res://") || p_src.begins_with("user://") || p_src.begins_with("uid://")) {
-			const dockit::HTMLResourceBase local_base{ p_label->get_base_dir(), p_label->get_base_dir() };
+			const String resource_base_dir = p_label->get_resource_base_dir();
+			const dockit::HTMLResourceBase local_base{ resource_base_dir, resource_base_dir };
 			return dockit::resolve_html_link_href(p_src, local_base);
 		}
 		const String base_uri = p_label->get_base_uri();
 		if (dockit::is_http_url(base_uri)) return {};
-		const String fallback = p_label->get_base_dir();
+		const String fallback = p_label->get_resource_base_dir();
 		const String directory = base_uri.is_empty() ? fallback :
 			(base_uri.ends_with("/") ? base_uri : base_uri.get_base_dir());
 		const dockit::HTMLResourceBase base{ base_uri.is_empty() ? directory : base_uri, directory };

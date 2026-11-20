@@ -15,7 +15,7 @@ namespace dockit {
 	namespace {
 		String resolve_local_path(const String& p_src, const String& p_base_dir) {
 			const String source = decode_html_fragment(p_src.strip_edges()).replace("\\", "/");
-			if (source.is_empty() || source.begins_with("/")) {
+			if (source.is_empty()) {
 				return {};
 			}
 			if (source.begins_with("uid://")) {
@@ -24,8 +24,13 @@ namespace dockit {
 				if (id == ResourceUID::INVALID_ID || uids->id_to_text(id) != source || !uids->has_id(id)) return {};
 				return normalize_html_resource_path(uids->get_id_path(id)).value_or(String());
 			}
-			const String absolute = source.begins_with("res://") || source.begins_with("user://") ? source : p_base_dir.path_join(source);
-			return normalize_html_resource_path(absolute).value_or(String());
+			if (source.begins_with("res://") || source.begins_with("user://")) {
+				return normalize_html_resource_path(source).value_or(String());
+			}
+			if (source.is_absolute_path() || source.begins_with("/")) {
+				return p_base_dir.is_absolute_path() ? normalize_html_resource_path(source).value_or(String()) : String();
+			}
+			return normalize_html_resource_path(p_base_dir.path_join(source)).value_or(String());
 		}
 
 		String directory_uri(const String& p_path) {
@@ -57,12 +62,52 @@ namespace dockit {
 			const bool directory = decoded.ends_with("/") || last == "." || last == "..";
 			return (directory ? directory_uri(path) : path) + (suffix < 0 ? String() : p_href.substr(suffix));
 		}
+
+		String normalize_access_root(int32_t p_access, const String& p_root_subfolder) {
+			const String subfolder = p_root_subfolder.strip_edges().replace("\\", "/");
+			if (p_access == HTML_RESOURCE_ACCESS_RESOURCES) {
+				if (subfolder.is_empty()) return "res://";
+				if (!subfolder.begins_with("res://") && (subfolder.is_absolute_path() || subfolder.begins_with("/"))) return {};
+				const String path = subfolder.begins_with("res://") ? subfolder : String("res://").path_join(subfolder);
+				const auto normalized = normalize_html_resource_path(path);
+				return normalized ? directory_uri(*normalized) : String();
+			}
+			if (p_access == HTML_RESOURCE_ACCESS_USER_DATA) {
+				if (subfolder.is_empty()) return "user://";
+				if (!subfolder.begins_with("user://") && (subfolder.is_absolute_path() || subfolder.begins_with("/"))) return {};
+				const String path = subfolder.begins_with("user://") ? subfolder : String("user://").path_join(subfolder);
+				const auto normalized = normalize_html_resource_path(path);
+				return normalized ? directory_uri(*normalized) : String();
+			}
+			if (p_access == HTML_RESOURCE_ACCESS_FILE_SYSTEM && !subfolder.is_empty() && subfolder.is_absolute_path()) {
+				if (subfolder.begins_with("res://") || subfolder.begins_with("user://")) return {};
+				const auto normalized = normalize_html_resource_path(subfolder);
+				return normalized ? directory_uri(*normalized) : String();
+			}
+			return {};
+		}
+	}
+
+	String resolve_html_resource_base_dir(int32_t p_access, const String& p_root_subfolder, const String& p_source_path) {
+		String fallback = normalize_access_root(p_access, p_root_subfolder);
+		if (p_source_path.is_empty() || is_http_url(p_source_path)) return fallback;
+
+		String source_path = p_source_path;
+		if (source_path.begins_with("uid://")) {
+			auto* uids = ResourceUID::get_singleton();
+			const int64_t id = uids->text_to_id(source_path);
+			if (id == ResourceUID::INVALID_ID || !uids->has_id(id)) return fallback;
+			source_path = uids->get_id_path(id);
+		}
+		const auto normalized_source = normalize_html_resource_path(source_path);
+		return normalized_source ? directory_uri(normalized_source->get_base_dir()) : fallback;
 	}
 
 	HTMLResourceBase make_html_resource_base(const String& p_directory, const String& p_source_path) {
 		const String directory = normalize_html_resource_path(p_directory).value_or(String());
 		const auto source = normalize_html_resource_path(p_source_path);
-		return { source && source->get_base_dir() == directory ? *source : directory_uri(directory), directory };
+		return source ? HTMLResourceBase{ *source, directory_uri(source->get_base_dir()) } :
+			HTMLResourceBase{ directory_uri(directory), directory_uri(directory) };
 	}
 
 	HTMLResourceBase resolve_html_document_base(const HTMLResourceBase& p_fallback, const char* p_href) {
@@ -91,9 +136,17 @@ namespace dockit {
 	}
 
 	std::optional<String> normalize_html_resource_path(const String& p_path) {
-		const int64_t prefix = p_path.begins_with("res://") ? 6 : p_path.begins_with("user://") ? 7 : 0;
+		const String normalized_path = p_path.replace("\\", "/");
+		const int64_t prefix = normalized_path.begins_with("res://") ? 6 : normalized_path.begins_with("user://") ? 7 : 0;
+		if (prefix == 0 && normalized_path.is_absolute_path()) {
+			if (normalized_path.contains("?") || normalized_path.contains("#")) return std::nullopt;
+			for (int64_t i = 0; i < normalized_path.length(); ++i) {
+				if (normalized_path[i] < 32) return std::nullopt;
+			}
+			return normalized_path.simplify_path();
+		}
 		if (prefix == 0) return std::nullopt;
-		const String relative = p_path.substr(prefix).replace("\\", "/");
+		const String relative = normalized_path.substr(prefix);
 		if (relative.begins_with("/") || relative.contains(":") || relative.contains("?") || relative.contains("#")) {
 			return std::nullopt;
 		}
@@ -119,7 +172,7 @@ namespace dockit {
 				components.append(component);
 			}
 		}
-		return p_path.substr(0, prefix) + String("/").join(components);
+		return normalized_path.substr(0, prefix) + String("/").join(components);
 	}
 
 	String resolve_html_audio_path(const String& p_src, const String& p_base_dir) {

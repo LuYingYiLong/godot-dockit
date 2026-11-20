@@ -677,7 +677,7 @@ namespace {
 			}
 		}
 
-		if (p_uri.begins_with("user://")) {
+		if (p_uri.begins_with("user://") || p_uri.is_absolute_path()) {
 			MarkdownImageCacheEntry entry;
 			entry.texture = dockit::load_html_image_file(p_uri);
 			entry.status = entry.texture.is_valid() ? MARKDOWN_IMAGE_READY : MARKDOWN_IMAGE_FAILED;
@@ -1219,22 +1219,24 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 }
 
 String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) const {
+	const String resource_base = label != nullptr ? label->get_resource_base_dir() : String("res://");
 	if (p_html) {
 		if (dockit::is_remote_image_url(p_uri)) return p_uri;
-		const String path = dockit::resolve_html_image_path(p_uri, label ? label->get_html_base_dir() : String("res://"));
+		const String path = dockit::resolve_html_image_path(p_uri, resource_base);
 		if (path.is_empty()) return {};
 		const bool available = ResourceLoader::get_singleton()->exists(path, "Texture2D") ||
-			(path.begins_with("user://") && FileAccess::file_exists(path));
+			((path.begins_with("user://") || path.is_absolute_path()) && FileAccess::file_exists(path));
 		return available ? path : String();
 	}
-	if (p_uri.begins_with("user://") || (label && label->image_base_dir.begins_with("user://") &&
-		!p_uri.is_absolute_path() && !p_uri.contains(":"))) {
-		return dockit::resolve_html_image_path(p_uri, label ? label->image_base_dir : String("user://"));
+	if (p_uri.begins_with("uid://")) return p_uri;
+	if (p_uri.is_absolute_path() || p_uri.begins_with("res://") || p_uri.begins_with("user://")) {
+		return dockit::normalize_html_resource_path(p_uri).value_or(String());
 	}
-	if (label == nullptr || label->image_base_dir.is_empty() || p_uri.is_absolute_path() || p_uri.contains(":")) {
+	if (p_uri.contains(":")) {
 		return p_uri;
 	}
-	return label->image_base_dir.path_join(p_uri).simplify_path();
+	if (resource_base.is_empty()) return {};
+	return dockit::normalize_html_resource_path(resource_base.path_join(p_uri)).value_or(String());
 }
 
 int32_t MarkdownLabelCanvas::get_layout_height() const {
@@ -1905,7 +1907,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	footnote_definition_offsets.clear();
 
 	build_theme_cache();
-	const String html_base_dir = label ? label->get_html_base_dir() : String("res://");
+	const String html_base_dir = label ? label->get_resource_base_dir() : String("res://");
 	const String html_defaults = options.parse_html
 		? "html { color: #" + theme_cache.color.text.to_html(true) + "; font-size: " +
 			String::num_int64(theme_cache.font_size.text) + "px; } a:link { color: #" + theme_cache.color.link.to_html(true) +
@@ -4140,6 +4142,10 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_markdown_text", "text"), &MarkdownLabel::set_markdown_text);
 	ClassDB::bind_method(D_METHOD("get_markdown_text"), &MarkdownLabel::get_markdown_text);
+	ClassDB::bind_method(D_METHOD("set_access", "access"), &MarkdownLabel::set_access);
+	ClassDB::bind_method(D_METHOD("get_access"), &MarkdownLabel::get_access);
+	ClassDB::bind_method(D_METHOD("set_root_subfolder", "root_subfolder"), &MarkdownLabel::set_root_subfolder);
+	ClassDB::bind_method(D_METHOD("get_root_subfolder"), &MarkdownLabel::get_root_subfolder);
 	ClassDB::bind_method(D_METHOD("set_parse_latex", "enabled"), &MarkdownLabel::set_parse_latex);
 	ClassDB::bind_method(D_METHOD("set_parse_html", "enabled"), &MarkdownLabel::set_parse_html);
 	ClassDB::bind_method(D_METHOD("is_parsing_html"), &MarkdownLabel::is_parsing_html);
@@ -4239,6 +4245,8 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("menu_option", "option"), &MarkdownLabel::menu_option);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_markdown_text", "get_markdown_text");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_latex"), "set_parse_latex", "is_parsing_latex");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_html"), "set_parse_html", "is_parsing_html");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_gfm"), "set_parse_gfm", "is_parsing_gfm");
@@ -4270,6 +4278,9 @@ void MarkdownLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(MENU_COPY);
 	BIND_ENUM_CONSTANT(MENU_SELECT_ALL);
 	BIND_ENUM_CONSTANT(MENU_MAX);
+	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
+	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
+	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
 }
 
 void MarkdownLabel::ensure_controls() {
@@ -4415,8 +4426,8 @@ void MarkdownLabel::set_markdown_text(const String& p_text) {
 	set_markdown_source(p_text, String());
 }
 
-void MarkdownLabel::set_markdown_source(const String& p_text, const String& p_html_base_dir) {
-	html_file_base_dir = p_html_base_dir;
+void MarkdownLabel::set_markdown_source(const String& p_text, const String& p_source_path) {
+	source_path = p_source_path;
 	update_scroll_following();
 	raw_text = p_text;
 	if (canvas != nullptr) {
@@ -4426,11 +4437,8 @@ void MarkdownLabel::set_markdown_source(const String& p_text, const String& p_ht
 	emit_signal("text_changed");
 }
 
-String MarkdownLabel::get_html_base_dir() const {
-	if (!html_file_base_dir.is_empty()) {
-		return html_file_base_dir;
-	}
-	return image_base_dir.begins_with("res://") ? image_base_dir : String("res://");
+String MarkdownLabel::get_resource_base_dir() const {
+	return dockit::resolve_html_resource_base_dir(access, root_subfolder, source_path);
 }
 
 void MarkdownLabel::set_parse_html(bool p_enabled) {
@@ -4498,16 +4506,33 @@ bool MarkdownLabel::is_parsing_mermaid() const {
 	return parse_mermaid;
 }
 
-void MarkdownLabel::set_image_base_dir(const String& p_dir) {
-	if (image_base_dir == p_dir) {
-		return;
-	}
-	image_base_dir = p_dir;
+
+void MarkdownLabel::set_access(int32_t p_access) {
+	if (p_access < ACCESS_RESOURCES || p_access > ACCESS_FILE_SYSTEM || access == p_access) return;
+	access = p_access;
 	if (canvas != nullptr) {
 		canvas->layout_prefix_reuse_requested = false;
 		canvas->mark_layout_dirty();
 	}
 	notify_canvas_layout_changed();
+}
+
+int32_t MarkdownLabel::get_access() const {
+	return access;
+}
+
+void MarkdownLabel::set_root_subfolder(const String& p_root_subfolder) {
+	if (root_subfolder == p_root_subfolder) return;
+	root_subfolder = p_root_subfolder;
+	if (canvas != nullptr) {
+		canvas->layout_prefix_reuse_requested = false;
+		canvas->mark_layout_dirty();
+	}
+	notify_canvas_layout_changed();
+}
+
+String MarkdownLabel::get_root_subfolder() const {
+	return root_subfolder;
 }
 
 void MarkdownLabel::append_text(const String& p_delta) {
@@ -4913,7 +4938,7 @@ Error MarkdownLabel::load_markdown_file(const String& p_path) {
 	const String content = file->get_as_text();
 	file->close();
 
-	set_markdown_source(content, path.begins_with("res://") ? path.get_base_dir() : String());
+	set_markdown_source(content, path);
 	return OK;
 }
 
