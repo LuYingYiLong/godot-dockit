@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt8xmjaln568p"
-path="res://.godot/imported/latex_label.svg-422a13f1baa49daacf8780e84e7a168f.ctex"
+path="res://.godot/imported/latex_label.svg-8e5e50ab624ab2bc68ad302b39daee8b.ctex"
 metadata={
 "has_editor_variant": true,
 "vram_texture": false
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://addons/markdown_label/icons/latex_label.svg"
-dest_files=["res://.godot/imported/latex_label.svg-422a13f1baa49daacf8780e84e7a168f.ctex"]
+source_file="res://addons/dockit/icons/latex_label.svg"
+dest_files=["res://.godot/imported/latex_label.svg-8e5e50ab624ab2bc68ad302b39daee8b.ctex"]
 
 [params]
 

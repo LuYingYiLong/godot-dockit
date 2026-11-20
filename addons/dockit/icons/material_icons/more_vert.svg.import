@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dj4nc13flu62x"
-path="res://.godot/imported/more_vert.svg-871ca37010a37d0d97ad9ac5307dfdc5.ctex"
+path="res://.godot/imported/more_vert.svg-c2c7238e067f6bcf96cb3b8de4add506.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/more_vert.svg"
-dest_files=["res://.godot/imported/more_vert.svg-871ca37010a37d0d97ad9ac5307dfdc5.ctex"]
+dest_files=["res://.godot/imported/more_vert.svg-c2c7238e067f6bcf96cb3b8de4add506.ctex"]
 
 [params]
 

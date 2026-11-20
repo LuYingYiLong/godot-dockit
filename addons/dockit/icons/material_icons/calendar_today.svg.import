@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3wpe2i3kikuc"
-path="res://.godot/imported/calendar_today.svg-9f9e7f133b39f6000a3f33628defe93d.ctex"
+path="res://.godot/imported/calendar_today.svg-b32419298585abb4b548c8b87be753a2.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/calendar_today.svg"
-dest_files=["res://.godot/imported/calendar_today.svg-9f9e7f133b39f6000a3f33628defe93d.ctex"]
+dest_files=["res://.godot/imported/calendar_today.svg-b32419298585abb4b548c8b87be753a2.ctex"]
 
 [params]
 

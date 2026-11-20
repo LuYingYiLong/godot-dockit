@@ -1685,7 +1685,8 @@ void fragment() {
 			control_icons::arrow_drop_down, control_icons::arrow_drop_up, control_icons::arrow_left, control_icons::arrow_right,
 			control_icons::radio_button_checked, control_icons::calendar_today, control_icons::schedule,
 			control_icons::colorize, control_icons::unfold_more, control_icons::radio_button_unchecked,
-			control_icons::check_box, control_icons::check_box_outline_blank, control_icons::indeterminate_check_box};
+			control_icons::check_box, control_icons::check_box_outline_blank, control_icons::indeterminate_check_box,
+			control_icons::close_small};
 		static_assert(svg.size() == static_cast<size_t>(HTMLControlIcon::count));
 		const auto index = static_cast<size_t>(p_icon);
 		auto& texture = control_icon_textures[index];

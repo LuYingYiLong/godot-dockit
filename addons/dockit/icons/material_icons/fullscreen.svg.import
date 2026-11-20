@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dwkt8sirkk577"
-path="res://.godot/imported/fullscreen.svg-a6f8e5a5445f1e649a304566090fb554.ctex"
+path="res://.godot/imported/fullscreen.svg-acc06e88cb6a6a7f573706cfffe6fc9f.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/fullscreen.svg"
-dest_files=["res://.godot/imported/fullscreen.svg-a6f8e5a5445f1e649a304566090fb554.ctex"]
+dest_files=["res://.godot/imported/fullscreen.svg-acc06e88cb6a6a7f573706cfffe6fc9f.ctex"]
 
 [params]
 

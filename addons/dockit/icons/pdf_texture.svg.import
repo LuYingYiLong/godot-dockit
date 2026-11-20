@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7dxkbt0d5il5"
-path="res://.godot/imported/pdf_texture.svg-52f7406c28539c045d8b275408673434.ctex"
+path="res://.godot/imported/pdf_texture.svg-4de9d38fe86608805dc588cb765d465a.ctex"
 metadata={
 "has_editor_variant": true,
 "vram_texture": false
@@ -12,7 +12,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/pdf_texture.svg"
-dest_files=["res://.godot/imported/pdf_texture.svg-52f7406c28539c045d8b275408673434.ctex"]
+dest_files=["res://.godot/imported/pdf_texture.svg-4de9d38fe86608805dc588cb765d465a.ctex"]
 
 [params]
 

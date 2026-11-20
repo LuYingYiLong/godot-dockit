@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cpyjx1o0gkm0r"
-path="res://.godot/imported/colorize.svg-1d6f2416f27bbb786f93eb38ffc400bc.ctex"
+path="res://.godot/imported/colorize.svg-437007f9c92c9d4b655839afe1146451.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/colorize.svg"
-dest_files=["res://.godot/imported/colorize.svg-1d6f2416f27bbb786f93eb38ffc400bc.ctex"]
+dest_files=["res://.godot/imported/colorize.svg-437007f9c92c9d4b655839afe1146451.ctex"]
 
 [params]
 

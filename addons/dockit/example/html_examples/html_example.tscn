@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bndblmu46frjc"]
 
-[ext_resource type="HTMLDocument" uid="uid://co67k5yyfk7cs" path="res://addons/dockit/example/html_examples/html/input.html" id="1_ufrbv"]
+[ext_resource type="HTMLDocument" uid="uid://bdgtl2f2sr47w" path="res://addons/dockit/example/html_examples/html/script.html" id="1_ufrbv"]
 
 [node name="HtmlExample" type="Control" unique_id=211205059]
 layout_mode = 3
@@ -94,4 +94,4 @@ behaviors_enabled = true
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-focus_mode = 2
+focus_mode = 1

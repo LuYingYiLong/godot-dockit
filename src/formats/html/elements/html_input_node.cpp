@@ -721,10 +721,7 @@ namespace dockit {
 				draw_icon(HTMLControlIcon::up, decoration_box.get_center() - Vector2(0, decoration_box.size.y / 4), 12);
 				draw_icon(HTMLControlIcon::down, decoration_box.get_center() + Vector2(0, decoration_box.size.y / 4), 12);
 			} else if (kind == Type::SEARCH) {
-				const auto mark = p_container.shape_input(css().get_font(), String::chr(0x00d7));
-				if (mark.is_valid()) p_container.draw_input(decoration_box, mark,
-					decoration_box.get_center() + Vector2(-mark.width() / 2, (mark.line_ascent() - mark.line_descent()) / 2),
-					color, {}, {}, {});
+				draw_icon(HTMLControlIcon::close_small, decoration_box.get_center(), 14);
 			} else {
 				draw_icon(time == input_time::Kind::time ? HTMLControlIcon::clock : HTMLControlIcon::calendar,
 					decoration_box.get_center(), 14);

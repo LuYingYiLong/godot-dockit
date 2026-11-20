@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqpbxtagsbts5"
-path="res://.godot/imported/circle.svg-d161dd503afe666401f34ee70094d05e.ctex"
+path="res://.godot/imported/circle.svg-f07e5dba8396b1af16a795571075d174.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/circle.svg"
-dest_files=["res://.godot/imported/circle.svg-d161dd503afe666401f34ee70094d05e.ctex"]
+dest_files=["res://.godot/imported/circle.svg-f07e5dba8396b1af16a795571075d174.ctex"]
 
 [params]
 

@@ -106,7 +106,8 @@ def build_litehtml(env, html_sources, enable_cpp_exceptions):
                   for name in ("play_arrow", "pause", "volume_up", "volume_off", "resize_window", "fullscreen",
                                "fullscreen_exit", "arrow_drop_down", "arrow_drop_up", "arrow_left", "arrow_right",
                                "radio_button_checked", "calendar_today", "schedule", "colorize", "unfold_more",
-                               "radio_button_unchecked", "check_box", "check_box_outline_blank", "indeterminate_check_box")]
+                               "radio_button_unchecked", "check_box", "check_box_outline_blank", "indeterminate_check_box",
+                               "close_small")]
     icon_header = html_env.Command(f"{staged_dir}/html_control_icons.gen.h", icon_files,
                                    html_env.Action(embed_html_control_icons, "Embedding HTML control icons"))
     html_env.Depends([obj for obj in html_objects if obj.name.startswith("html_paint_recorder.")], icon_header)

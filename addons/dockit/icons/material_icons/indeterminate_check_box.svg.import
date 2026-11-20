@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4nv3f1jywk4j"
-path="res://.godot/imported/indeterminate_check_box.svg-d5ec41b0159fb9f3552d4a8ed846fbdf.ctex"
+path="res://.godot/imported/indeterminate_check_box.svg-77734015a25b3115a170e04c0991e062.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://addons/dockit/icons/material_icons/indeterminate_check_box.svg"
-dest_files=["res://.godot/imported/indeterminate_check_box.svg-d5ec41b0159fb9f3552d4a8ed846fbdf.ctex"]
+dest_files=["res://.godot/imported/indeterminate_check_box.svg-77734015a25b3115a170e04c0991e062.ctex"]
 
 [params]
 
