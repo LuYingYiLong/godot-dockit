@@ -91,7 +91,9 @@
        upstream, staged and generated headers the sources include by bare name ("types.h",
        "internal.h", "gumbo.h", "latex.h", "tinyxml2.h"). -->
   <PropertyGroup>
-    <DockitIncludeRoots>$(ProjectDir)src;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include\gumbo;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\visualc\include;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2;$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include</DockitIncludeRoots>
+    <DockitIncludeRoots>$(ProjectDir)src;$(ProjectDir)src\gen\html\include;$(ProjectDir)src\gen\html\include\litehtml;$(ProjectDir)src\thirdparty\litehtml\src;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\include\gumbo;$(ProjectDir)src\thirdparty\litehtml\src\gumbo\visualc\include;$(ProjectDir)src\thirdparty\microtex\src;$(ProjectDir)src\thirdparty\tinyxml2</DockitIncludeRoots>
+    <!-- Keep upstream Godot-cpp headers external so VS reports diagnostics from Dockit sources, not the dependency. -->
+    <DockitExternalIncludeRoots>$(ProjectDir)godot-cpp\gdextension;$(ProjectDir)godot-cpp\include;$(ProjectDir)godot-cpp\gen\include</DockitExternalIncludeRoots>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64' And Exists('$(ProjectDir)src\thirdparty\merman-sdk\include\merman.h') And Exists('$(ProjectDir)src\thirdparty\merman-sdk\lib\merman_ffi.lib')">
     <DockitIncludeRoots>$(ProjectDir)src\thirdparty\merman-sdk\include;$(DockitIncludeRoots)</DockitIncludeRoots>
@@ -103,6 +105,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <IncludePath>$(DockitIncludeRoots);$(IncludePath)</IncludePath>
+    <ExternalIncludePath>$(DockitExternalIncludeRoots);$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <!-- These ClCompile settings are what Visual Studio's IntelliSense parses with. /permissive- is
        deliberately NOT passed: it is a cl.exe switch and the IntelliSense front end does not emulate
@@ -116,6 +119,9 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/std:c++17 /utf-8 /permissive- %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(DockitIncludeRoots);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
+      <TreatExternalTemplatesAsInternal>false</TreatExternalTemplatesAsInternal>
       <PreprocessorDefinitions>NOMINMAX;TYPED_METHOD_BIND;WINDOWS_ENABLED;GDEXTENSION;$(DockitSdkDefines);$(DockitConfigDefines);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

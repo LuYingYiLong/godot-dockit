@@ -14,12 +14,16 @@
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/system_font.hpp>
+#include <godot_cpp/classes/text_line.hpp>
 #include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/classes/sub_viewport_container.hpp>
+#include <godot_cpp/classes/theme_db.hpp>
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/window.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <utility>
 
@@ -28,10 +32,26 @@ using dockit::HTMLInputNode;
 using dockit::HTMLTextAreaNode;
 
 namespace {
+	constexpr real_t INPUT_MENU_OUTER_PADDING = 8.0f;
+	constexpr real_t INPUT_MENU_ITEM_PADDING_X = 12.0f;
+	constexpr real_t INPUT_MENU_GROUP_GAP = 17.0f;
+	constexpr real_t INPUT_MENU_MIN_ROW_HEIGHT = 16.0f;
+	constexpr real_t INPUT_MENU_MIN_WIDTH = 220.0f;
+	constexpr int INPUT_MENU_SEPARATOR_COUNT = 2;
+
 	const char* edit_maxlength(const dockit::HTMLTextControlNode& p_input) {
 		const auto* field = dynamic_cast<const HTMLInputNode*>(&p_input);
 		return field ? field->maxlength() : p_input.get_attr("maxlength", "");
 	}
+
+	dockit::HTMLTextLayout shape_input_menu_text(const String& p_text, const Ref<Font>& p_font, int p_font_size) {
+		if (p_text.is_empty() || p_font.is_null()) return {};
+		Ref<TextLine> line;
+		line.instantiate();
+		if (!line->add_string(p_text, p_font, p_font_size)) return {};
+		return dockit::HTMLTextLayout(line, line->get_line_ascent());
+	}
+
 	enum InputCommand {
 		INPUT_UNDO,
 		INPUT_REDO,
@@ -518,10 +538,24 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 		input_menu = memnew(Control);
 		input_menu->set_name("_HTMLInputMenu");
 		input_menu->set_z_index(2);
-		input_menu->set_clip_contents(true);
+		input_menu->set_clip_contents(false);
 		input_menu->connect("draw", callable_mp(this, &HTMLLabelCanvas::draw_input_menu));
 		input_menu->connect("gui_input", callable_mp(this, &HTMLLabelCanvas::input_menu_event));
 		label->add_child(input_menu, false, INTERNAL_MODE_BACK);
+	}
+	if (input_menu_font.is_null()) {
+		const real_t base_scale = label->get_theme_default_base_scale();
+		input_menu_font_size = std::max(1, static_cast<int>(std::round(13.0f * (base_scale > 0.0f ? base_scale : 1.0f))));
+		if (OS::get_singleton()->get_name() == "Windows") {
+			Ref<SystemFont> system_font;
+			system_font.instantiate();
+			PackedStringArray names;
+			names.append("Segoe UI");
+			system_font->set_font_names(names);
+			system_font->set_allow_system_fallback(true);
+			if (system_font->get_face_count() > 0) input_menu_font = system_font;
+		}
+		if (input_menu_font.is_null()) input_menu_font = ThemeDB::get_singleton()->get_fallback_font();
 	}
 	const bool editable = input->is_editable();
 	const auto* field = dynamic_cast<const HTMLInputNode*>(input.get());
@@ -534,25 +568,50 @@ bool HTMLLabelCanvas::open_input_menu(const Ref<HTMLElement>& p_element, const V
 		!editable || DisplayServer::get_singleton()->clipboard_get().is_empty(),
 		editor.get_value().is_empty() || input->user_selection_mode() == litehtml::css_user_select::none,
 	};
-	real_t width = 156;
+	real_t width = INPUT_MENU_MIN_WIDTH;
 	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
 		const auto& item = INPUT_MENU_ITEMS[command];
 		auto& row = input_menu_rows[command];
-		row.caption = label->layout->shape_element_text(p_element,
-			dockit::html_ui_translate(String::utf8(item.label), "input_context_menu"));
+		row.caption = shape_input_menu_text(dockit::html_ui_translate(String::utf8(item.label), "input_context_menu"),
+			input_menu_font, input_menu_font_size);
 		const Key accelerator = input_menu_accelerator(item.action);
-		row.shortcut = label->layout->shape_element_text(p_element, accelerator == KEY_NONE ?
-			String() : OS::get_singleton()->get_keycode_string(accelerator));
+		row.shortcut = shape_input_menu_text(accelerator == KEY_NONE ? String() :
+			OS::get_singleton()->get_keycode_string(accelerator), input_menu_font, input_menu_font_size);
 		row.enabled = !disabled[command];
-		width = std::max(width, real_t(row.caption.width() + row.shortcut.width() + 40));
+		const real_t shortcut_width = row.shortcut.is_valid() ? row.shortcut.width() : 0.0f;
+		width = std::max(width, real_t(row.caption.width() + shortcut_width + 64));
 	}
 
 	input_menu_hover = input_menu_press = -1;
 	input_menu_target = p_element;
 	close_ime();
 	const auto space = label->get_global_transform_with_canvas().affine_inverse().xform(label->get_viewport_rect()).size;
-	input_menu_row_height = std::clamp((space.y - 14) / input_menu_rows.size(), real_t(8), real_t(22));
-	input_menu->set_size(Vector2(std::min(width, space.x), input_menu_row_height * input_menu_rows.size() + 14));
+	const bool dark = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
+	const Color panel_color = dark ? Color::html("#292a2d") : Color::html("#ffffff");
+	const Color border_color = dark ? Color::html("#5f6368") : Color::html("#dadce0");
+	input_menu_panel_style.instantiate();
+	input_menu_panel_style->set_bg_color(panel_color);
+	input_menu_panel_style->set_border_width_all(1);
+	input_menu_panel_style->set_border_color(border_color);
+	input_menu_panel_style->set_corner_radius_all(8);
+	input_menu_panel_style->set_shadow_color(Color(0.0f, 0.0f, 0.0f, dark ? 0.34f : 0.16f));
+	input_menu_panel_style->set_shadow_size(8);
+	input_menu_panel_style->set_shadow_offset(Vector2(0.0f, 2.0f));
+	input_menu_panel_style->set_anti_aliased(true);
+	input_menu_panel_style->set_aa_size(1.0f);
+	input_menu_hover_style.instantiate();
+	input_menu_hover_style->set_bg_color(dark ? Color::html("#3c4043") : Color::html("#f1f3f4"));
+	input_menu_hover_style->set_corner_radius_all(4);
+	input_menu_hover_style->set_anti_aliased(true);
+	input_menu_hover_style->set_aa_size(1.0f);
+	const real_t line_height = input_menu_font.is_valid() ? input_menu_font->get_height(input_menu_font_size) : 14.0f;
+	const real_t preferred_row_height = std::max(real_t(26), line_height + 12.0f);
+	const real_t available_row_height = std::max(INPUT_MENU_MIN_ROW_HEIGHT,
+		(space.y - INPUT_MENU_OUTER_PADDING * 2 - INPUT_MENU_GROUP_GAP * INPUT_MENU_SEPARATOR_COUNT) / input_menu_rows.size());
+	input_menu_row_height = std::min(preferred_row_height, available_row_height);
+	const real_t menu_height = INPUT_MENU_OUTER_PADDING * 2 + input_menu_row_height * input_menu_rows.size() +
+		INPUT_MENU_GROUP_GAP * INPUT_MENU_SEPARATOR_COUNT;
+	input_menu->set_size(Vector2(std::min(width, space.x), menu_height));
 	const Vector2 anchor = label->get_global_transform_with_canvas().affine_inverse().xform(
 		get_global_transform_with_canvas().xform(p_position.clamp(visible.position, visible.get_end())));
 	label->place_overlay(*input_menu, anchor);
@@ -569,34 +628,41 @@ void HTMLLabelCanvas::close_input_menu() {
 }
 
 Rect2 HTMLLabelCanvas::input_menu_row_rect(int p_command) const {
-	const int separator_space = 4 * (int(p_command >= INPUT_CUT) + int(p_command >= INPUT_SELECT_ALL));
-	return Rect2(3, 3 + separator_space + p_command * input_menu_row_height, input_menu->get_size().x - 6, input_menu_row_height);
+	const int separator_count = int(p_command >= INPUT_CUT) + int(p_command >= INPUT_SELECT_ALL);
+	const real_t separator_space = INPUT_MENU_GROUP_GAP * separator_count;
+	return Rect2(INPUT_MENU_OUTER_PADDING,
+		INPUT_MENU_OUTER_PADDING + separator_space + p_command * input_menu_row_height,
+		input_menu->get_size().x - INPUT_MENU_OUTER_PADDING * 2, input_menu_row_height);
 }
 
 void HTMLLabelCanvas::draw_input_menu() {
-	const auto scheme = label->layout->get_element_color_scheme(input_menu_target);
-	const auto color = [scheme](litehtml::system_color p_role) { return dockit::html_system_color(p_role, scheme); };
 	const Rect2 bounds(Vector2(), input_menu->get_size());
-	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_face));
-	input_menu->draw_rect(bounds, color(litehtml::system_color::menu_border), false);
+	const bool dark = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
+	const Color text_color = dark ? Color::html("#e8eaed") : Color::html("#202124");
+	const Color secondary_color = dark ? Color::html("#9aa0a6") : Color::html("#5f6368");
+	const Color disabled_color = dark ? Color::html("#80868b") : Color::html("#9aa0a6");
+	const Color separator_color = dark ? Color::html("#5f6368") : Color::html("#dadce0");
+	input_menu->draw_style_box(input_menu_panel_style, bounds);
+	const auto server = TextServerManager::get_singleton()->get_primary_interface();
 	for (size_t command = 0; command < input_menu_rows.size(); ++command) {
 		const auto& row = input_menu_rows[command];
 		const Rect2 area = input_menu_row_rect(static_cast<int>(command));
 		if (command == INPUT_CUT || command == INPUT_SELECT_ALL) {
-			input_menu->draw_line(area.position - Vector2(0, 2), Vector2(area.get_end().x, area.position.y - 2),
-				color(litehtml::system_color::menu_border));
+			const real_t separator_y = area.position.y - INPUT_MENU_GROUP_GAP * 0.5f;
+			input_menu->draw_line(Vector2(INPUT_MENU_ITEM_PADDING_X, separator_y),
+				Vector2(bounds.size.x - INPUT_MENU_ITEM_PADDING_X, separator_y), separator_color);
 		}
-		if (row.enabled && int(command) == input_menu_hover) input_menu->draw_rect(area, color(litehtml::system_color::menu_hover));
-		const auto ink = color(row.enabled ? litehtml::system_color::canvas_text : litehtml::system_color::gray_text);
-		const auto server = TextServerManager::get_singleton()->get_primary_interface();
-		const auto draw = [&](const dockit::HTMLTextLayout& p_line, real_t p_x, real_t p_width) {
-			if (!p_line.is_valid() || p_width <= 0) return;
+		if (row.enabled && int(command) == input_menu_hover) input_menu->draw_style_box(input_menu_hover_style, area.grow(-2));
+		const auto draw = [&](const dockit::HTMLTextLayout& p_line, real_t p_x, real_t p_width, const Color& p_color) {
+			if (server.is_null() || !p_line.is_valid() || p_width <= 0) return;
 			const real_t baseline = area.get_center().y + (p_line.line_ascent() - p_line.line_descent()) / 2;
-			server->shaped_text_draw(p_line.get_rid(), input_menu->get_canvas_item(), Vector2(p_x, baseline), 0, p_width, ink);
+			server->shaped_text_draw(p_line.get_rid(), input_menu->get_canvas_item(), Vector2(p_x, baseline), 0, p_width, p_color);
 		};
-		const real_t shortcut_x = area.get_end().x - 8 - row.shortcut.width();
-		draw(row.caption, area.position.x + 8, shortcut_x - area.position.x - 14);
-		draw(row.shortcut, shortcut_x, row.shortcut.width() + 1);
+		const real_t shortcut_width = row.shortcut.is_valid() ? row.shortcut.width() : 0.0f;
+		const real_t shortcut_x = area.get_end().x - INPUT_MENU_ITEM_PADDING_X - shortcut_width;
+		draw(row.caption, area.position.x + INPUT_MENU_ITEM_PADDING_X,
+			shortcut_x - area.position.x - INPUT_MENU_ITEM_PADDING_X, row.enabled ? text_color : disabled_color);
+		draw(row.shortcut, shortcut_x, shortcut_width + 1, row.enabled ? secondary_color : disabled_color);
 	}
 }
 

@@ -148,15 +148,17 @@ void HTMLLabelCanvas::show_diagnostic_tooltip() {
 }
 
 void HTMLLabelCanvas::refresh_diagnostic_tooltip(const std::optional<Vector2>& p_point) {
-	const String content = p_point && !selecting && input_menu_target.is_null() && _has_point(*p_point)
-		? label->layout->get_css_diagnostic_tooltip(*p_point) : String();
+	const bool point_supplied = p_point.has_value();
+	const Vector2 point = p_point.value_or(Vector2());
+	const bool has_diagnostic_point = point_supplied && !selecting && input_menu_target.is_null() && _has_point(point);
+	const String content = has_diagnostic_point ? label->layout->get_css_diagnostic_tooltip(point) : String();
 	if (content == diagnostic_panel_text) return;
 	diagnostic_panel_text = content;
 	if (diagnostic_panel) diagnostic_panel->hide();
 	if (diagnostic_timer) diagnostic_timer->stop();
-	if (content.is_empty()) return;
+	if (content.is_empty() || !point_supplied) return;
 	diagnostic_location = label->get_global_transform_with_canvas().affine_inverse().xform(
-		get_global_transform_with_canvas().xform(*p_point));
+		get_global_transform_with_canvas().xform(point));
 	if (!diagnostic_timer) {
 		diagnostic_timer = memnew(Timer);
 		diagnostic_timer->set_one_shot(true);
@@ -485,7 +487,7 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		if (!label->layout->prepare_content_focus(p_element)) return;
 		close_input_menu();
 		label->close_select_menu();
-		const auto previous = focused_element;
+		const Ref<HTMLElement> previous = focused_element;
 		stop_caret_blink();
 		close_ime();
 		commit_input(previous, true);
@@ -1250,7 +1252,9 @@ void HTMLLabel::update_accessibility_tree() {
 			if (!description.is_empty() && description != name) display->accessibility_update_set_description(child, description);
 			if (is_heading) {
 				String level = p_element->get_attribute("aria-level");
-				if (level.is_empty() && tag.length() == 2 && tag[0] == 'h') level = String::num_int64(tag[1] - '0');
+				if (level.is_empty() && tag.length() == 2 && tag[0] == 'h' && tag[1] >= '1' && tag[1] <= '6') {
+					level = String::num_int64(tag.substr(1).to_int());
+				}
 				if (level.is_empty()) {
 					display->accessibility_update_set_role_description(child,
 						dockit::html_ui_translate("heading", "accessibility.role"));
@@ -2333,7 +2337,7 @@ void HTMLLabel::update_internal_processing() {
 
 void HTMLLabel::update_behavior_processing() {
 	const ObjectID id(get_instance_id());
-	const auto behaviors = attached_behaviors;
+	const std::vector<Ref<HTMLBehavior>> behaviors = attached_behaviors;
 	const double delta = get_process_delta_time();
 	for (const Ref<HTMLBehavior>& behavior : behaviors) {
 		if (behavior.is_null() || behavior->get_label() != this) continue;

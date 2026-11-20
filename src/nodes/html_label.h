@@ -10,9 +10,11 @@
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/gd_script.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/typed_dictionary.hpp>
@@ -175,9 +177,13 @@ class HTMLLabelCanvas : public godot::Control {
 	};
 	godot::Control* input_menu = nullptr;
 	std::array<InputMenuRow, 6> input_menu_rows;
+	godot::Ref<godot::Font> input_menu_font;
+	godot::Ref<godot::StyleBoxFlat> input_menu_panel_style;
+	godot::Ref<godot::StyleBoxFlat> input_menu_hover_style;
+	int32_t input_menu_font_size = 13;
 	int input_menu_hover = -1;
 	int input_menu_press = -1;
-	godot::real_t input_menu_row_height = 22;
+	godot::real_t input_menu_row_height = 28;
 	godot::Ref<HTMLElement> input_menu_target;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
