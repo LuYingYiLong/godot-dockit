@@ -157,13 +157,7 @@ func _refresh_preview() -> void:
 
 	var preview_document: HTMLDocument = HTMLDocument.new()
 	preview_document.text = preview_html_source
-	if selected_html_path.begins_with("user://"):
-		preview_document.access = HTMLDocument.ACCESS_USER_DATA
-	elif selected_html_path.is_absolute_path():
-		preview_document.access = HTMLDocument.ACCESS_FILE_SYSTEM
-	else:
-		preview_document.access = HTMLDocument.ACCESS_RESOURCES
-	preview_document.root_subfolder = selected_html_path.get_base_dir()
+	preview_document.root_subfolder = selected_html_path.get_base_dir() + "/"
 	preview_document.stylesheet = css_code_edit.text
 	preview_html_label.document = preview_document
 	if not previous_script_path.is_empty() and previous_script_path != preview_script_path:
