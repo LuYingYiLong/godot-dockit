@@ -6,6 +6,7 @@ var _failures: int
 
 
 func _initialize() -> void:
+	_test_mutation_revisions()
 	_test_fragment_insertion()
 	_test_fragment_queries()
 	_test_clone()
@@ -686,3 +687,81 @@ func _test_relational_selectors() -> void:
 	_check(root.query_selector_all(".parent:has(~ #h)") == [b, f], "match following siblings in :has()")
 	_check(k.closest(".ancestor:has(.descendant)") == h, "closest returns the nearest matching ancestor")
 	_check(h.matches(":has(.target ~ .sibling .descendant)"), "matches resolves a relative selector chain")
+
+
+func _test_mutation_revisions() -> void:
+	var layout: HTMLLayout = HTMLLayout.new()
+	_check(layout.parse('<main id="host"><span id="text">Old words</span><input id="field" value="old"><input id="a" type="radio" name="g" checked><input id="b" type="radio" name="g"><select id="select"><option id="one">One</option><option id="two">Two</option></select></main>') == OK,
+		"parse the revision fixture without observers")
+	var host: HTMLElement = layout.get_element_by_id("host")
+	var text: HTMLElement = layout.get_element_by_id("text")
+	var data: HTMLTextNode = text.get_first_child() as HTMLTextNode
+	var field: HTMLInputElement = layout.get_element_by_id("field") as HTMLInputElement
+	var root_revision: int = host.mutation_revision
+	var revision: int = text.mutation_revision
+	_check(revision == 1 and text.get_mutation_revision() == revision, "fresh nodes have a readable initial revision")
+	text.set_attribute("title", "changed")
+	_check(text.mutation_revision > revision and host.mutation_revision == root_revision,
+		"attribute writes only change the target revision")
+	revision = text.mutation_revision
+	text.set_attribute("title", "changed")
+	_check(text.mutation_revision == revision, "repeated attribute writes keep their revision")
+	var parent_revision: int = text.mutation_revision
+	revision = data.mutation_revision
+	data.set_data("New words")
+	_check(data.mutation_revision > revision and text.mutation_revision == parent_revision,
+		"logical text revisions survive native text replacement")
+	revision = data.mutation_revision
+	data.set_data("New words")
+	_check(data.mutation_revision == revision, "unchanged text does not increment revisions")
+	revision = field.mutation_revision
+	field.value = "edited"
+	_check(field.mutation_revision > revision, "live input values increment revisions without observers")
+	revision = field.mutation_revision
+	field.value = "edited"
+	field.set_selection_range(0, 2)
+	_check(field.mutation_revision == revision, "selection and repeated live values do not increment revisions")
+	var first: HTMLInputElement = layout.get_element_by_id("a") as HTMLInputElement
+	var second: HTMLInputElement = layout.get_element_by_id("b") as HTMLInputElement
+	var first_revision: int = first.mutation_revision
+	revision = second.mutation_revision
+	second.checked = true
+	_check(first.mutation_revision > first_revision and second.mutation_revision > revision,
+		"radio synchronization versions every changed control")
+	var one: HTMLOptionElement = layout.get_element_by_id("one") as HTMLOptionElement
+	var two: HTMLOptionElement = layout.get_element_by_id("two") as HTMLOptionElement
+	first_revision = one.mutation_revision
+	revision = two.mutation_revision
+	two.selected = true
+	_check(one.mutation_revision > first_revision and two.mutation_revision > revision,
+		"select synchronization versions both effective option states")
+	var fragment: HTMLDocumentFragment = layout.create_document_fragment()
+	var fragment_revision: int = fragment.mutation_revision
+	revision = text.mutation_revision
+	fragment.append_child(text)
+	_check(fragment.mutation_revision > fragment_revision and text.mutation_revision > revision and not text.is_connected(),
+		"moving nodes versions the fragment and moved root")
+	revision = text.mutation_revision
+	text.set_attribute("title", "detached")
+	_check(text.mutation_revision > revision, "detached nodes still count mutations")
+	var clone: HTMLElement = text.clone_node(true)
+	_check(clone != text and clone.mutation_revision == 1, "clones begin with independent revision state")
+	var destination: HTMLLayout = HTMLLayout.new()
+	destination.parse("<main></main>")
+	revision = text.mutation_revision
+	_check(destination.adopt_node(text) == text and text.mutation_revision > revision,
+		"adoption preserves and advances the logical revision")
+	revision = text.mutation_revision
+	text.set_attribute("title", "adopted")
+	_check(text.mutation_revision > revision, "adopted nodes continue counting in the new owner")
+	var orphan: HTMLElement = layout.create_element("span")
+	var orphan_id: int = orphan.get_instance_id()
+	orphan.set_attribute("title", "retained")
+	fragment.append_child(orphan)
+	revision = orphan.mutation_revision
+	orphan = null
+	orphan = fragment.query_selector("span[title=retained]")
+	_check(orphan != null and orphan.mutation_revision == revision, "revision state survives wrapper replacement")
+	_check(orphan.get_instance_id() != orphan_id, "the wrapper lifecycle fixture actually replaced its handle")
+	layout.parse("<p>Reparsed</p>")
+	_check(field.mutation_revision == 0, "invalid handles return revision zero")

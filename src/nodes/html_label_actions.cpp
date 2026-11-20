@@ -705,14 +705,21 @@ void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
 	touch.compatibility_suppressed = !touch.primary;
 	auto [active, inserted] = active_touch_pointers.emplace(key, touch);
 	if (!inserted) return;
-	PointerInfo info = make_touch_pointer_info(active->second, touch.start, true, false);
-	const bool pointer_allowed = dispatch_pointer_event(StringName("pointerdown"), active->second.target, info, true);
-	const bool touch_allowed = dispatch_touch_event(StringName("touchstart"), active->second);
+	remember_interaction_targets();
+	PointerInfo info = make_touch_pointer_info(touch, touch.start, true, false);
+	const bool pointer_allowed = dispatch_pointer_event(StringName("pointerdown"), touch.target, info, true);
+	active = active_touch_pointers.find(key);
+	if (active == active_touch_pointers.end()) return;
+	const TouchPointer after_pointer = active->second;
+	const bool touch_allowed = dispatch_touch_event(StringName("touchstart"), after_pointer);
+	active = active_touch_pointers.find(key);
+	if (active == active_touch_pointers.end()) return;
 	if (!pointer_allowed || !touch_allowed) active->second.compatibility_suppressed = true;
 	if (active->second.compatibility_suppressed) return;
 	Ref<InputEventMouseButton> mouse = make_touch_mouse_event(info);
 	info.source_event = mouse;
-	info.mouse_down_prevented = !dispatch_pointer_event(StringName("mousedown"), active->second.target, info, true);
+	info.mouse_down_prevented = !dispatch_pointer_event(StringName("mousedown"), touch.target, info, true);
+	if (active_touch_pointers.find(key) == active_touch_pointers.end()) return;
 	handle_pointer_press(info);
 }
 
@@ -726,15 +733,16 @@ void HTMLLabelCanvas::handle_touch_drag(const InputEventScreenDrag& p_drag) {
 	info.detail = 0;
 	if (!touch.dragged && (touch.last - touch.start).length_squared() > DRAG_DEADZONE * DRAG_DEADZONE) {
 		touch.dragged = true;
-		cancel_press();
+		if (touch.primary) cancel_press();
 	}
 	if (label->viewport_touch_dragged) {
 		cancel_touch_pointer(key.first, key.second);
 		return;
 	}
-	if (!touch.dragged && !touch.compatibility_suppressed) handle_pointer_move(info);
-	else queue_pointer_move_event(StringName("pointermove"), touch.target, info);
-	queue_touch_move_event(StringName("touchmove"), touch);
+	const TouchPointer snapshot = touch;
+	if (!snapshot.dragged && !snapshot.compatibility_suppressed) handle_pointer_move(info);
+	else queue_pointer_move_event(StringName("pointermove"), snapshot.target, info);
+	if (active_touch_pointers.find(key) != active_touch_pointers.end()) queue_touch_move_event(StringName("touchmove"), snapshot);
 }
 
 void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch) {
@@ -749,7 +757,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 		PointerInfo canceled = make_touch_pointer_info(touch, p_touch.get_position(), false, true);
 		dispatch_pointer_event(StringName("pointercancel"), touch.target, canceled, false);
 		dispatch_touch_event(StringName("touchcancel"), touch);
-		cancel_press();
+		if (touch.primary) cancel_press();
 		return;
 	}
 	touch.last = p_touch.get_position();
@@ -760,7 +768,7 @@ void HTMLLabelCanvas::handle_touch_release(const InputEventScreenTouch& p_touch)
 	const Ref<HTMLElement> release_target = label->layout->get_element_at(touch.last);
 	if (!touch.primary || touch.compatibility_suppressed || touch.dragged || release_target != touch.target) {
 		reset_click_sequence();
-		cancel_press();
+		if (touch.primary) cancel_press();
 		return;
 	}
 	Ref<InputEventMouseButton> mouse = make_touch_mouse_event(info);
@@ -779,7 +787,7 @@ void HTMLLabelCanvas::cancel_touch_pointer(int p_device, int p_index) {
 	PointerInfo info = make_touch_pointer_info(touch, touch.last, false, true);
 	dispatch_pointer_event(StringName("pointercancel"), touch.target, info, false);
 	dispatch_touch_event(StringName("touchcancel"), touch);
-	cancel_press();
+	if (touch.primary) cancel_press();
 }
 
 void HTMLLabelCanvas::cancel_all_touch_pointers() {
@@ -938,6 +946,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 		cancel_press();
 		if (label->focus_element(target_input)) {
 			dragging_range = target_input;
+			remember_interaction_targets();
 			accept_pointer_event(p_info);
 			move_range(target_input, point, false);
 		}
@@ -983,9 +992,11 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	}
 	if (selecting) {
 		selection_origin = label->layout->selection_point_at(point);
+		capture_selection_origin();
 		selecting = !selection_origin.excluded;
 	}
 	selection_dragged = false;
+	remember_interaction_targets();
 	const Ref<HTMLElement> target_focus = label->layout->get_focus_ancestor(element);
 	if (target_focus.is_valid()) label->grab_focus();
 	set_focused_element(target_focus);
@@ -998,6 +1009,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 		if (target_focus == element) {
 			if (control->is_text_control()) {
 				dragging_input = element;
+				remember_interaction_targets();
 				set_input_caret(element, point, p_info.shift);
 				if (control->editor.is_multiline()) set_process_internal(true);
 			}
@@ -1151,7 +1163,8 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	const bool click_prevented = clicked && !dispatch_pointer_event(StringName("click"), event_target,
 		p_info, true);
 	if (aux_clicked) dispatch_pointer_event(StringName("auxclick"), event_target, p_info, true);
-	if (link_clicked && !click_prevented) {
+	if (link_clicked && !click_prevented && label->layout->is_interaction_target_available(element, true) &&
+		element->adoption_version == click_version) {
 		label->activate_link(hit.uri);
 	}
 	if (button_clicked && !click_prevented) {
@@ -1167,7 +1180,7 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 	else if (form_clicked && !click_prevented) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) target->activate_element(form_target);
 	}
-	if (element_clicked && element->is_valid() && element->adoption_version == click_version) {
+	if (element_clicked && label->layout->is_interaction_target_available(element, true) && element->adoption_version == click_version) {
 		if (auto* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id))) {
 			target->emit_signal("element_clicked", element);
 		}

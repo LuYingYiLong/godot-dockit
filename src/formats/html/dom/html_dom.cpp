@@ -264,6 +264,7 @@ void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_
 	document = std::move(p_document);
 	owner_id = p_owner_id;
 	generation = p_generation;
+	if (document) track_mutations(document->root());
 	sync_open_dialogs();
 	for (const auto& entry : detached_trees) {
 		if (const auto tree = entry.value.lock()) {
@@ -310,6 +311,7 @@ std::shared_ptr<dockit::HTMLDialogNode> HTMLDOM::last_open_dialog() const {
 
 void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved,
 	bool p_prefer_moved, bool p_notify) {
+	ChangeScope changes(*this);
 	if (!p_tree) return;
 	auto root = p_tree;
 	while (const auto parent = root->parent()) root = parent;
@@ -345,12 +347,16 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 }
 
 void HTMLDOM::form_state_changed(const litehtml::element::ptr& p_node) {
+	ChangeScope changes(*this);
 	dockit::forms::synchronize(p_node);
-	if (is_element_connected(*p_node)) on_change();
+	if (is_element_connected(*p_node)) notify_changed();
 }
 
 void HTMLDOM::clear() {
 	design_mode = false;
+	pending_changes.clear();
+	pending_change_indices.clear();
+	changed_styles = false;
 	++lifetime;
 	++observer_delivery_epoch;
 	observer_delivery_queued = false;
@@ -405,6 +411,7 @@ std::shared_ptr<HTMLNode::DetachedTree> HTMLDOM::get_detached_tree(const litehtm
 }
 
 std::shared_ptr<HTMLNode::DetachedTree> HTMLDOM::register_detached_tree(const litehtml::element::ptr& p_root) {
+	track_mutations(p_root);
 	auto tree = std::make_shared<HTMLNode::DetachedTree>(weak_from_this(), p_root);
 	detached_trees.insert(p_root.get(), tree);
 	return tree;
@@ -450,6 +457,7 @@ Ref<HTMLElement> HTMLDOM::make_element(const litehtml::element::ptr& p_element) 
 }
 
 void HTMLDOM::bind_handle(HTMLNode& handle, const litehtml::element::ptr& p_node) const {
+	if (!p_node->dom_mutation) track_mutations(p_node);
 	handle.layout_id = owner_id;
 	handle.parse_version = generation;
 	handle.element = p_node;
@@ -610,6 +618,7 @@ Ref<HTMLDocumentFragment> HTMLDOM::import_fragment(const HTMLDocumentFragment& p
 }
 
 bool HTMLDOM::adopt_fragment(HTMLDocumentFragment& r_source) {
+	ChangeScope changes(*this);
 	const auto root = r_source.lock_element();
 	if (!root || !r_source.detached_tree->host.expired()) return false;
 	auto& source = r_source.get_dom();
@@ -619,6 +628,9 @@ bool HTMLDOM::adopt_fragment(HTMLDocumentFragment& r_source) {
 	if (!clone_children(source, *root, *copy->detached_tree->root, &adoption)) return false;
 	source.node_handles.erase(root.get());
 	transfer_adoption(source, *root, adoption);
+	copy->detached_tree->root->dom_mutation = root->dom_mutation;
+	track_mutations(copy->detached_tree->root);
+	copy->detached_tree->root->note_dom_change(litehtml::element::DOM_TREE);
 	++r_source.adoption_version;
 	bind_handle(r_source, copy->detached_tree->root);
 	transfer_observers(source);
@@ -683,6 +695,7 @@ bool HTMLDOM::can_insert_range_node(const litehtml::element::ptr& p_parent, cons
 }
 
 Ref<HTMLNode> HTMLDOM::split_range_text(const HTMLBoundary& p_boundary) {
+	ChangeScope changes(*this);
 	const auto text = p_boundary.node->lock_element();
 	const auto parent = p_boundary.node->get_parent_node();
 	if (!text || parent.is_null()) return {};
@@ -717,12 +730,13 @@ Ref<HTMLNode> HTMLDOM::split_range_text(const HTMLBoundary& p_boundary) {
 		selection_moved |= selection.is_valid() && selection->range == item.range;
 	}
 	if (selection_moved) selection_changed();
-	if (parent->is_connected()) on_change();
+	if (parent->is_connected()) notify_changed();
 	return suffix;
 }
 
 Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, const String& p_data,
 	int64_t p_offset, int64_t p_count, bool p_notify) {
+	ChangeScope changes(*this);
 	const String previous = character_data(*p_node);
 	if (p_offset < 0 || p_offset > previous.length() || p_count < 0) return ERR_INVALID_PARAMETER;
 	const int64_t count = std::min(p_count, previous.length() - p_offset);
@@ -743,10 +757,13 @@ Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, cons
 		if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
 	}
 	const auto first = parts.front();
+	first->dom_mutation = p_node->dom_mutation;
+	track_mutations(first);
 	auto children = parent->children();
 	const auto original = node_parts(p_node);
 	const auto begin = std::find(children.begin(), children.end(), original.front());
 	if (begin == children.end()) return ERR_INVALID_PARAMETER;
+	first->note_dom_change(litehtml::element::DOM_TEXT);
 	children.splice(begin, parts);
 	children.erase(begin, std::next(begin, original.size()));
 	const auto handle = observers.empty() ? find_node_handle(*p_node) : make_node(p_node);
@@ -773,11 +790,12 @@ Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, cons
 	}
 	if (selection_moved) selection_changed();
 	sync_dom_children(parent);
-	if (p_notify && is_element_connected(*parent)) on_change();
+	if (p_notify && is_element_connected(*parent)) notify_changed();
 	return OK;
 }
 
 Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edit, const Array& p_items, bool p_notify) {
+	ChangeScope changes(*this);
 	const bool sibling = p_edit == TreeEdit::BEFORE || p_edit == TreeEdit::AFTER || p_edit == TreeEdit::REPLACE;
 	const auto parent = sibling ? p_target->parent() : p_target;
 	if (!parent) return sibling ? OK : ERR_INVALID_PARAMETER;
@@ -935,11 +953,12 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 	for (const auto& change : tracked) finish_children(change, preferred);
 	for (const auto& [owner, previous] : parents) sync_dom_children(owner);
 	normalize_details(parent, preferred);
-	if (p_notify && connected) on_change();
+	if (p_notify && connected) notify_changed();
 	return OK;
 }
 
 Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
+	ChangeScope changes(*this);
 	bool changed = false;
 	bool selection_moved = false;
 	const auto merge = [&](const auto& p_visit, const litehtml::element::ptr& p_parent) -> void {
@@ -1000,7 +1019,7 @@ Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 	};
 	merge(merge, p_root);
 	if (selection_moved) selection_changed();
-	if (changed && is_element_connected(*p_root)) on_change();
+	if (changed && is_element_connected(*p_root)) notify_changed();
 	return OK;
 }
 
@@ -1019,6 +1038,7 @@ Ref<HTMLElement> HTMLDOM::copy_node(const HTMLDOM& p_source_dom, const litehtml:
 }
 
 bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_source) {
+	ChangeScope changes(*this);
 	const auto source_tree = p_source_dom.get_detached_tree(*p_source);
 	const auto parent = p_source->parent();
 	if (!parent && !source_tree) {
@@ -1043,12 +1063,17 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 	dockit::forms::synchronize(copy, copy);
 	dockit::forms::synchronize(parent);
 	if (source_connected) {
-		p_source_dom.on_change();
+		p_source_dom.notify_changed();
 	}
 	return true;
 }
 
 void HTMLDOM::transfer_adoption(HTMLDOM& p_source, const litehtml::element& p_root, const Adoption& p_adoption) {
+	for (const auto& [source, target] : p_adoption.nodes) {
+		target->dom_mutation = source->dom_mutation;
+		track_node_mutations(target);
+		target->note_dom_change(litehtml::element::DOM_TREE);
+	}
 	for (const auto& entry : p_adoption.handles) {
 		p_source.node_handles.erase(entry.source);
 		++entry.handle->adoption_version;
@@ -1058,6 +1083,10 @@ void HTMLDOM::transfer_adoption(HTMLDOM& p_source, const litehtml::element& p_ro
 	for (const auto& entry : p_adoption.handles) transfer_listeners(p_source, *entry.source, entry.target);
 	p_source.forget_subtree(p_root);
 	for (const auto& entry : p_adoption.fragments) {
+		const auto root = entry.target->content->detached_tree->root;
+		if (const auto source = entry.source->element.lock()) root->dom_mutation = source->dom_mutation;
+		track_node_mutations(root);
+		root->note_dom_change(litehtml::element::DOM_TREE);
 		bind_handle(*entry.source.ptr(), entry.target->content->detached_tree->root);
 		++entry.source->adoption_version;
 		entry.target->content = entry.source;
@@ -1070,6 +1099,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 	if (!is_element(p_source)) {
 		const auto copy = clone_character_data(p_source, document);
 		if (copy && r_adoption) {
+			r_adoption->nodes.emplace_back(p_source.shared_from_this(), copy);
 			if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) r_adoption->handles.push_back({&p_source, copy, handle});
 		}
 		return copy;
@@ -1095,6 +1125,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 		return {};
 	}
 	if (r_adoption) {
+		r_adoption->nodes.emplace_back(p_source.shared_from_this(), copy);
 		copy->css_w().copy_remembered_content_size(p_source.css());
 		if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) {
 			r_adoption->handles.push_back({ &p_source, copy, handle });
@@ -1309,6 +1340,7 @@ const char* HTMLDOM::get_element_attribute(const litehtml::element& p_element, c
 }
 
 Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const char* p_name, const char* p_value) {
+	ChangeScope changes(*this);
 	const auto* source = get_source_attributes(*p_element);
 	const char* previous = nullptr;
 	if (source) {
@@ -1359,7 +1391,7 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 		}
 	}
 	if (is_element_connected(*p_element)) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }
@@ -1414,6 +1446,7 @@ String HTMLDOM::serialize(const litehtml::element& p_element, bool p_outer) cons
 }
 
 Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const String& p_content, bool p_parse_html) {
+	ChangeScope changes(*this);
 	const auto* node = dynamic_cast<const HTMLTemplateNode*>(p_element.get());
 	if (is_void_element(*p_element) || (node && !p_parse_html)) {
 		return p_content.is_empty() ? OK : ERR_INVALID_PARAMETER;
@@ -1444,18 +1477,20 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 	dockit::forms::synchronize(target, target);
 	normalize_details(target, {target});
 	if (!node && is_element_connected(*p_element)) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }
 
 Error HTMLDOM::insert_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
 	const litehtml::element::ptr& p_reference) {
+	ChangeScope changes(*this);
 	return place_child(p_parent, p_child, p_reference, false);
 }
 
 Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTMLDocumentFragment& p_fragment,
 	const litehtml::element::ptr& p_reference) {
+	ChangeScope changes(*this);
 	const auto& tree = p_fragment.detached_tree;
 	if (!tree || !tree->root || tree->owner.lock().get() != this || !can_contain_elements(*p_parent) ||
 		(p_reference && p_reference->parent() != p_parent)) {
@@ -1490,18 +1525,20 @@ Error HTMLDOM::insert_fragment(const litehtml::element::ptr& p_parent, const HTM
 	normalize_details(p_parent, moved);
 	dockit::forms::synchronize(p_parent, p_parent);
 	if (!target_tree) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }
 
 Error HTMLDOM::replace_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_new_child,
 	const litehtml::element::ptr& p_old_child) {
+	ChangeScope changes(*this);
 	return place_child(p_parent, p_new_child, p_old_child, true);
 }
 
 Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child,
 	const litehtml::element::ptr& p_reference, bool p_replace_reference, bool p_notify, bool* r_changed) {
+	ChangeScope changes(*this);
 	if (!can_contain_elements(*p_parent) || (p_replace_reference && !p_reference) ||
 		(p_reference && p_reference->parent() != p_parent)) {
 		return ERR_INVALID_PARAMETER;
@@ -1538,13 +1575,14 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 	normalize_details(p_parent, {p_child});
 	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) dockit::forms::synchronize(old_parent);
 	if (p_notify && (!source_tree || !target_tree)) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }
 
 Error HTMLDOM::set_table_child(const litehtml::element::ptr& p_table, const litehtml::element::ptr& p_new_child,
 	const litehtml::element::ptr& p_old_child, const litehtml::element::ptr& p_reference) {
+	ChangeScope changes(*this);
 	if ((p_old_child && p_old_child->parent() != p_table) || (p_reference && p_reference->parent() != p_table)) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -1561,11 +1599,12 @@ Error HTMLDOM::set_table_child(const litehtml::element::ptr& p_table, const lite
 		if (error != OK) return error;
 		changed = true;
 	}
-	if (connected && changed) on_change();
+	if (connected && changed) notify_changed();
 	return OK;
 }
 
 Error HTMLDOM::remove_child(const litehtml::element::ptr& p_parent, const litehtml::element::ptr& p_child) {
+	ChangeScope changes(*this);
 	return p_child->parent() == p_parent ? detach_element(p_child) : ERR_INVALID_PARAMETER;
 }
 
@@ -1574,6 +1613,7 @@ Error HTMLDOM::detach_element(const litehtml::element::ptr& p_element) {
 }
 
 Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_notify) {
+	ChangeScope changes(*this);
 	const auto parent = p_element->parent();
 	const auto old_tree = get_detached_tree(*p_element);
 	if (!parent) {
@@ -1589,12 +1629,13 @@ Error HTMLDOM::detach_child(const litehtml::element::ptr& p_element, bool p_noti
 	dockit::forms::synchronize(parent);
 	dockit::forms::synchronize(p_element);
 	if (!old_tree && p_notify) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }
 
 Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
+	ChangeScope changes(*this);
 	const auto parent = p_element->parent();
 	const auto old_tree = get_detached_tree(*p_element);
 	if (!parent) {
@@ -1609,7 +1650,7 @@ Error HTMLDOM::remove_element(const litehtml::element::ptr& p_element) {
 	finish_children(children_change);
 	dockit::forms::synchronize(parent);
 	if (!old_tree) {
-		on_change();
+		notify_changed();
 	}
 	return OK;
 }

@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 namespace litehtml {
 	class document;
@@ -148,6 +149,7 @@ namespace dockit {
 			godot::Ref<HTMLNode> handle;
 		};
 		struct Adoption {
+			std::vector<std::pair<litehtml::element::const_ptr, litehtml::element::ptr>> nodes;
 			struct Fragment {
 				godot::Ref<HTMLDocumentFragment> source;
 				HTMLTemplateNode* target;
@@ -191,6 +193,32 @@ namespace dockit {
 		void forget_source_attributes(const litehtml::element& p_element);
 
 	public:
+		struct Change {
+			std::weak_ptr<litehtml::element> target;
+			uint64_t revision;
+			unsigned flags;
+		};
+		using Changes = std::vector<Change>;
+		class ChangeScope {
+			HTMLDOM& dom;
+		public:
+			explicit ChangeScope(HTMLDOM& p_dom) : dom(p_dom) { ++dom.change_depth; }
+			~ChangeScope() { if (--dom.change_depth == 0) dom.flush_changes(); }
+		};
+	private:
+		Changes pending_changes;
+		std::unordered_map<const litehtml::element*, size_t> pending_change_indices;
+		std::function<void(const Changes&)> on_mutation;
+		int change_depth = 0;
+		bool flushing_changes = false;
+		bool changed_styles = false;
+		void track_mutations(const litehtml::element::ptr& p_node) const;
+		void track_node_mutations(const litehtml::element::ptr& p_node) const;
+		void queue_change(litehtml::element& p_node, unsigned p_flags);
+		void notify_changed();
+	public:
+		void set_mutation_callback(std::function<void(const Changes&)> p_callback) { on_mutation = std::move(p_callback); }
+		void flush_changes();
 		enum class TreeEdit { APPEND, PREPEND, BEFORE, AFTER, REPLACE, REPLACE_CHILDREN };
 		enum class Lookup { TAG, CLASS, NAME };
 		explicit HTMLDOM(std::function<void()> p_on_change);

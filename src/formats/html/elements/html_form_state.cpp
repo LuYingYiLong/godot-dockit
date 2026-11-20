@@ -314,7 +314,8 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 			p_node->set_pseudo_class(_id("disabled"), disabled);
 			p_node->set_pseudo_class(_id("enabled"), !disabled);
 		}
-		if (const auto* select = dynamic_cast<const HTMLSelectNode*>(p_node.get())) {
+		if (auto* select = dynamic_cast<HTMLSelectNode*>(p_node.get())) {
+			select->sync_mutation_revision();
 			const auto options = select->get_options();
 			const auto selected = select->selected_index(options);
 			for (size_t i = 0; i < options.size(); ++i) options[i]->set_pseudo_class(_id("checked"),

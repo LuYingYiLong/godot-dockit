@@ -24,6 +24,18 @@ namespace litehtml
 		friend class el_table;
 		friend class document;
 	public:
+		enum DOMChange : unsigned { DOM_ATTRIBUTE = 1, DOM_TEXT = 2, DOM_CHILDREN = 4, DOM_STATE = 8, DOM_TREE = 16 };
+		struct DOMMutationState {
+			uint64_t revision = 1;
+			std::function<void(element&, unsigned)> notify;
+		};
+		std::shared_ptr<DOMMutationState> dom_mutation;
+		uint64_t mutation_revision() const { return dom_mutation ? dom_mutation->revision : 1; }
+		void note_dom_change(unsigned flags) {
+			if (!dom_mutation) return; // Initial parsing and cloning establish a fresh baseline.
+			++dom_mutation->revision;
+			if (dom_mutation->notify) dom_mutation->notify(*this, flags);
+		}
 		typedef std::shared_ptr<element>		ptr;
 		typedef std::shared_ptr<const element>	const_ptr;
 		typedef std::weak_ptr<element>			weak_ptr;

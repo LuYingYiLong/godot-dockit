@@ -15,6 +15,7 @@ func _ready() -> void:
 	await _check_double_click_events()
 	await _check_wheel_events()
 	await _check_touch_events()
+	await _check_dom_interactions()
 	await _check_keyboard()
 	await _check_form()
 	await _check_passive_and_recursion()
@@ -986,3 +987,181 @@ func _check(condition: bool, description: String) -> void:
 	if not condition:
 		failures += 1
 		push_error(description)
+
+
+func _mutation_button(point: Vector2, pressed: bool) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = point
+	event.global_position = point
+	get_viewport().push_input(event, true)
+
+
+func _mutation_motion(from: Vector2, to: Vector2) -> void:
+	var event: InputEventMouseMotion = InputEventMouseMotion.new()
+	event.position = to
+	event.global_position = to
+	event.relative = to - from
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(event, true)
+
+
+func _check_dom_interactions() -> void:
+	label.text = """<style>body { margin: 8px; } input { width: 240px; }</style>
+	<input id="range" type="range" min="0" max="100" value="0"><output id="out">Initial</output>
+	<input id="focus" value="text"><select id="select"><option id="one">One</option><option id="two">Two</option></select>"""
+	label.size = Vector2(420.0, 240.0)
+	await _settle()
+	var slider: HTMLInputElement = label.get_element_by_id("range") as HTMLInputElement
+	var output: HTMLElement = label.get_element_by_id("out")
+	var on_input: Callable = func(_event: HTMLEvent) -> void:
+		output.set_text_content(slider.value)
+	slider.add_event_listener(&"input", on_input)
+	var box: Rect2 = slider.get_bounding_rect()
+	var start: Vector2 = box.position + Vector2(8.0, box.size.y * 0.5)
+	var middle: Vector2 = box.position + Vector2(box.size.x * 0.4, box.size.y * 0.5)
+	var end: Vector2 = box.position + Vector2(box.size.x * 0.8, box.size.y * 0.5)
+	_mutation_button(start, true)
+	_mutation_motion(start, middle)
+	await _settle()
+	var middle_value: float = slider.value_as_number
+	_mutation_motion(middle, end)
+	await _settle()
+	_check(slider.value_as_number > middle_value and output.get_text_content() == slider.value,
+		"range dragging survives synchronous output edits and layout refreshes")
+	slider.set_attribute("max", "200")
+	await _settle()
+	_mutation_motion(end, box.position + Vector2(box.size.x * 0.95, box.size.y * 0.5))
+	_check(slider.value_as_number > 100.0, "range dragging uses updated bounds without restarting")
+	slider.set_attribute("disabled", "")
+	var disabled_value: String = slider.value
+	_mutation_motion(end, middle)
+	_check(slider.value == disabled_value, "disabling a range ends its built-in drag immediately")
+	_mutation_button(middle, false)
+	slider.remove_attribute("disabled")
+	await _settle()
+	var field: HTMLInputElement = label.get_element_by_id("focus") as HTMLInputElement
+	label.focus_element(field)
+	var revision: int = field.mutation_revision
+	output.set_text_content("Unrelated")
+	await _settle()
+	_check(label.get_focused_element() == field and field.mutation_revision == revision,
+		"unrelated edits preserve focus without modifying the focused node revision")
+	var on_beforeinput: Callable = func(_event: HTMLEvent) -> void:
+		field.set_attribute("readonly", "")
+	field.add_event_listener(&"beforeinput", on_beforeinput)
+	var key: InputEventKey = InputEventKey.new()
+	key.keycode = KEY_X
+	key.unicode = 120
+	key.pressed = true
+	get_viewport().push_input(key, true)
+	key.pressed = false
+	get_viewport().push_input(key, true)
+	_check(field.value == "text", "beforeinput revalidates editability after synchronous DOM callbacks")
+	field.remove_event_listener(&"beforeinput", on_beforeinput)
+	await _settle()
+	var select: HTMLElement = label.get_element_by_id("select")
+	_check(label.activate_element(select), "activate the select menu after unrelated mutations")
+	await _settle()
+	var menu: Control = label.get_node_or_null("_HTMLSelectMenu") as Control
+	_check(menu != null and menu.visible, "the mutation fixture opens a select menu")
+	output.set_text_content("Menu stays")
+	await _settle()
+	_check(menu != null and menu.visible, "unrelated edits keep an open select menu")
+	label.get_element_by_id("two").set_text_content("Updated option")
+	await _settle()
+	_check(menu != null and menu.visible, "option edits refresh the open menu")
+	select.set_attribute("disabled", "")
+	_check(menu != null and not menu.visible, "disabling the owner closes its menu")
+
+	label.text = '<style>body { margin: 8px; font: 16px/24px monospace; }</style><span id="lead">HEAD </span><span id="tail">TAIL WORDS</span><p id="other">Other</p>'
+	label.drag_and_drop_selection_enabled = false
+	await _settle()
+	var lead: HTMLElement = label.get_element_by_id("lead")
+	var tail: HTMLElement = label.get_element_by_id("tail")
+	start = lead.get_bounding_rect().position + Vector2(1.0, 8.0)
+	end = tail.get_bounding_rect().end - Vector2(1.0, 8.0)
+	_mutation_button(start, true)
+	_mutation_motion(start, tail.get_bounding_rect().get_center())
+	label.get_element_by_id("other").set_text_content("Unrelated replacement")
+	var text: HTMLTextNode = lead.get_first_child() as HTMLTextNode
+	text.set_data("PREFIX HEAD ")
+	await _settle()
+	end = tail.get_bounding_rect().end - Vector2(1.0, 8.0)
+	_mutation_motion(start, end)
+	_mutation_button(end, false)
+	_check("TAIL WORDS" in label.get_selected_text(), "document drag selection continues after text replacement and reflow")
+	label.drag_and_drop_selection_enabled = true
+
+	label.text = '<input id="checkbox" type="checkbox"><output id="out"></output>'
+	await _settle()
+	var checkbox: HTMLInputElement = label.get_element_by_id("checkbox") as HTMLInputElement
+	var disable_on_down: Callable = func(_event: HTMLEvent) -> void:
+		checkbox.set_attribute("disabled", "")
+	checkbox.add_event_listener(&"mousedown", disable_on_down)
+	_click("checkbox")
+	_check(not checkbox.checked, "mousedown cannot activate a control disabled by its callback")
+
+	label.text = '<input id="first"><input id="second"><input id="third">'
+	await _settle()
+	var first: HTMLElement = label.get_element_by_id("first")
+	var second: HTMLElement = label.get_element_by_id("second")
+	var third: HTMLElement = label.get_element_by_id("third")
+	label.focus_element(first)
+	var redirected: Callable = func(_event: HTMLEvent) -> void:
+		label.focus_element(third)
+	first.add_event_listener(&"blur", redirected)
+	label.focus_element(second)
+	_check(label.get_focused_element() == third, "a nested focus transition wins over the interrupted transition")
+	first.remove_event_listener(&"blur", redirected)
+
+	label.text = '<button id="touch">Touch</button><button id="other_touch">Other touch</button>'
+	await _settle()
+	var touch_target: HTMLElement = label.get_element_by_id("touch")
+	var other_touch: HTMLElement = label.get_element_by_id("other_touch")
+	var cancelled: Array[StringName] = []
+	var remove_on_down: Callable = func(_event: HTMLEvent) -> void:
+		touch_target.detach()
+	var observe_touch: Callable = func(event: HTMLEvent) -> void:
+		cancelled.append(event.type)
+	touch_target.add_event_listener(&"pointerdown", remove_on_down)
+	touch_target.add_event_listener(&"pointercancel", observe_touch)
+	touch_target.add_event_listener(&"pointerup", observe_touch)
+	var touch_event: InputEventScreenTouch = InputEventScreenTouch.new()
+	touch_event.index = 0
+	touch_event.position = touch_target.get_bounding_rect().get_center()
+	touch_event.pressed = true
+	get_viewport().push_input(touch_event, true)
+	touch_event.pressed = false
+	get_viewport().push_input(touch_event, true)
+	_check(cancelled == [&"pointercancel",], "removal during touch pointerdown cancels once and does not later send pointerup")
+	await _settle()
+	var remaining: Array[StringName] = []
+	var observe_other: Callable = func(event: HTMLEvent) -> void:
+		remaining.append(event.type)
+	other_touch.add_event_listener(&"pointerup", observe_other)
+	other_touch.add_event_listener(&"pointercancel", observe_other)
+	touch_event = InputEventScreenTouch.new()
+	touch_event.index = 1
+	touch_event.position = other_touch.get_bounding_rect().get_center()
+	touch_event.pressed = true
+	get_viewport().push_input(touch_event, true)
+	label.get_document_node().get_body().append_child(touch_target)
+	await _settle()
+	touch_target.remove_event_listener(&"pointerdown", remove_on_down)
+	var secondary: InputEventScreenTouch = InputEventScreenTouch.new()
+	secondary.index = 2
+	secondary.position = touch_target.get_bounding_rect().get_center()
+	secondary.pressed = true
+	get_viewport().push_input(secondary, true)
+	var secondary_motion: InputEventScreenDrag = InputEventScreenDrag.new()
+	secondary_motion.index = 2
+	secondary_motion.position = secondary.position + Vector2(12.0, 0.0)
+	secondary_motion.relative = Vector2(12.0, 0.0)
+	get_viewport().push_input(secondary_motion, true)
+	touch_target.detach()
+	touch_event.pressed = false
+	get_viewport().push_input(touch_event, true)
+	_check(remaining == [&"pointerup",] and cancelled.count(&"pointercancel") == 2,
+		"removing a secondary pointer cancels only that pointer and preserves the primary stream")

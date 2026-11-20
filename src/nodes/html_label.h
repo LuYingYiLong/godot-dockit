@@ -148,6 +148,16 @@ class HTMLLabelCanvas : public godot::Control {
 	bool dragged_resize = false;
 	bool applying_box_resize = false;
 	bool reconciling_interactions = false;
+	bool reconcile_again = false;
+	struct InteractionTarget {
+		godot::Ref<HTMLElement> element;
+		godot::ObjectID owner;
+		uint64_t generation;
+		uint64_t adoption;
+		int64_t revision;
+		godot::String input_type;
+	};
+	std::map<uint64_t, InteractionTarget> interaction_targets;
 	godot::Ref<HTMLAudioElement> pressed_audio;
 	dockit::HTMLAudioPart pressed_audio_part = dockit::HTMLAudioPart::none;
 	godot::Ref<HTMLVideoElement> pressed_video;
@@ -188,6 +198,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLElement> input_menu_target;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
+	uint64_t focus_transition = 0;
 	uint64_t focused_reset_version = 0;
 	std::vector<godot::Ref<HTMLElement>> tab_elements;
 	godot::Key activation_key = godot::KEY_NONE;
@@ -196,6 +207,7 @@ class HTMLLabelCanvas : public godot::Control {
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
 	dockit::HTMLSelectionPoint selection_origin;
+	std::array<godot::Ref<HTMLRange>, 3> selection_origin_ranges;
 	bool selecting = false;
 	bool selection_dragged = false;
 	bool selection_drag_attempt = false;
@@ -216,6 +228,9 @@ class HTMLLabelCanvas : public godot::Control {
 
 	void cancel_press();
 	void reconcile_interactions_after_edit(bool p_after_layout);
+	void remember_interaction_targets();
+	void capture_selection_origin();
+	void restore_selection_origin();
 	int click_detail_for(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position) const;
 	void record_click(const godot::Ref<HTMLElement>& p_target, const godot::Vector2& p_position, int p_detail);
 	void reset_click_sequence();
@@ -696,6 +711,7 @@ private:
 	void document_changed(uint64_t p_document_id);
 	void parse_pending_source();
 	void on_layout_edited();
+	void on_dom_mutated();
 	void refresh();
 	void draw_viewport_gutters();
 	void draw_viewport_scrollbars();
@@ -785,6 +801,7 @@ private:
 	bool open_select_menu(const godot::Ref<HTMLSelectElement>& p_element);
 	void close_select_menu();
 	void update_select_menu();
+	void refresh_select_menu();
 	void draw_select_menu();
 	void select_menu_input(const godot::Ref<godot::InputEvent>& p_event);
 	bool handle_select_key(const godot::InputEventKey& p_key);

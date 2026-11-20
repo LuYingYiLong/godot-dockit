@@ -36,6 +36,13 @@ namespace dockit {
 		int scroll_row = 0;
 		int active_row = -1;
 		int anchor_row = -1;
+		struct SelectionSnapshot {
+			std::weak_ptr<HTMLOptionNode> option;
+			bool selected;
+		};
+		std::vector<SelectionSnapshot> selection_snapshot;
+		godot::String selected_value_snapshot;
+		bool has_selection_snapshot = false;
 
 	public:
 		using litehtml::html_tag::html_tag;
@@ -57,6 +64,7 @@ namespace dockit {
 		void set_selected_index(const Options& p_options, int64_t p_index);
 		bool is_missing() const;
 		void reset();
+		void sync_mutation_revision();
 		bool copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const override;
 		std::shared_ptr<litehtml::render_item> create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) override;
 		void draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,

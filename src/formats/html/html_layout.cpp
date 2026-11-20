@@ -2961,6 +2961,7 @@ std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HT
 		if (group && group != previous_group) make_row(*group, String::utf8(group->get_attr("label", "")), -1, false);
 		previous_group = group;
 		make_row(*option, option->get_label(), option_index, !dockit::forms::is_disabled(*option));
+		result.back().option = state->dom->make_element(option);
 	}
 	return result;
 }
@@ -3273,11 +3274,25 @@ void HTMLLayout::repaint_input() {
 }
 
 void HTMLLayout::update_input(HTMLTextControlNode& p_input) {
+	state->dom->flush_changes();
 	const bool style_changed = p_input.update_pseudos();
 	const bool validity_changed = dockit::forms::update_validity(p_input);
 	if (!state->dom->is_element_connected(p_input)) return;
 	if (style_changed || (validity_changed && (state->selector_state_dependencies & dockit::css::selector_depends_on_validity))) invalidate_styles();
 	else repaint_input();
+}
+
+bool HTMLLayout::is_interaction_target_available(const Ref<HTMLElement>& p_element, bool p_after_layout) const {
+	if (p_element.is_null() || p_element->get_owner() != this) return false;
+	const auto node = p_element->lock_element();
+	if (!node || !state->dom->is_element_connected(*node) || dockit::forms::is_disabled(*node)) return false;
+	for (auto ancestor = node; ancestor; ancestor = ancestor->parent()) {
+		if (ancestor->get_attr("hidden") || ancestor->get_attr("inert")) return false;
+	}
+	if (!p_after_layout) return true;
+	return allows_modal_interaction(*node) && node->css().get_visibility() == litehtml::visibility_visible &&
+		(p_element->get_bounding_rect().has_area() ||
+			(node->tag() == litehtml::_area_ && !get_activatable_link_uri(p_element).is_empty()));
 }
 
 bool HTMLLayout::set_interaction_pseudo(const Ref<HTMLElement>& p_element, const char* p_name, bool p_enabled) {

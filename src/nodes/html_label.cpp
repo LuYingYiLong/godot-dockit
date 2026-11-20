@@ -280,6 +280,8 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		else mouse_buttons &= ~button_mask;
 		pointer.buttons = mouse_buttons;
 		const Ref<HTMLElement> event_target = label->layout->get_element_at(point);
+		const uint64_t event_adoption = event_target.is_valid() ? event_target->adoption_version : 0;
+		pointer.target = event_target;
 		if (button_index == MOUSE_BUTTON_LEFT)
 			pointer.detail = click_detail_for(event_target, point - visible_rect.position);
 		if (previous_buttons == 0 && mouse_buttons != 0) {
@@ -300,6 +302,12 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (button->is_pressed()) pointer.mouse_down_prevented =
 			!dispatch_pointer_event(StringName("mousedown"), event_target, pointer, true);
 		else dispatch_pointer_event(StringName("mouseup"), event_target, pointer, false);
+		if (button->is_pressed() && event_target.is_valid() &&
+			(event_target->adoption_version != event_adoption || !label->layout->is_interaction_target_available(event_target, false))) {
+			cancel_press();
+			accept_event();
+			return;
+		}
 		if (button->get_button_index() == MOUSE_BUTTON_LEFT) {
 			if (pointer.pressed) handle_pointer_press(pointer);
 			else handle_pointer_release(pointer);
@@ -485,12 +493,15 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_keyboard, bool p_reveal) {
 	if (focused_element != p_element) {
 		if (!label->layout->prepare_content_focus(p_element)) return;
+		const uint64_t transition = ++focus_transition;
+		const uint64_t adoption = p_element.is_valid() ? p_element->adoption_version : 0;
 		close_input_menu();
 		label->close_select_menu();
 		const Ref<HTMLElement> previous = focused_element;
 		stop_caret_blink();
 		close_ime();
 		commit_input(previous, true);
+		if (focus_transition != transition) return;
 		dragging_input.unref();
 		cancel_key_press();
 		set_element_pseudo(previous, "focus", false);
@@ -498,12 +509,17 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		// blur/focusout 先于焦点转移派发：派发期间 get_focused_element() 为空。
 		focused_element = Ref<HTMLElement>();
 		dispatch_blur_events(previous, p_element);
+		if (focus_transition != transition) return;
+		if (p_element.is_valid() && (p_element->adoption_version != adoption ||
+			!label->layout->is_interaction_target_available(p_element, false))) return;
 		focused_element = p_element;
+		remember_interaction_targets();
 		const auto input = label->layout->text_control(focused_element);
 		focused_reset_version = input ? input->editor.get_reset_version() : 0;
 		set_element_pseudo(focused_element, "focus", true);
 		// focus/focusin 在焦点已经落位之后派发。
 		dispatch_focus_events(previous, p_element);
+		if (focus_transition != transition || focused_element != p_element) return;
 		restart_caret_blink();
 		label->layout->repaint_input();
 		update_ime();
@@ -609,6 +625,7 @@ void HTMLLabelCanvas::cancel_press() {
 	cancel_key_press();
 	selecting = false;
 	selection_dragged = false;
+	selection_origin_ranges = {};
 	if (!native_drag_started) {
 		selection_drag_attempt = false;
 		element_drag_attempt = false;
@@ -2300,6 +2317,9 @@ void HTMLLabel::parse_pending_source() {
 	layout->get_dom().set_event_debug(event_debug);
 	sync_videos();
 	layout->set_edit_callback(callable_mp(this, &HTMLLabel::on_layout_edited));
+	layout->get_dom().set_mutation_callback([id = ObjectID(get_instance_id())](const dockit::HTMLDOM::Changes&) {
+		if (auto* host = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(id))) host->on_dom_mutated();
+	});
 	queue_audio_sync();
 	layout->set_dom_selection_change_callback(callable_mp(this, &HTMLLabel::on_node_selection_changed));
 	layout->set_element_scroll_callback(callable_mp(this, &HTMLLabel::on_nested_scroll_advanced));
@@ -2364,38 +2384,23 @@ void HTMLLabel::on_node_selection_changed() {
 	if (canvas) canvas->queue_redraw();
 }
 
+void HTMLLabel::on_dom_mutated() {
+	if (!canvas) return;
+	canvas->reconcile_interactions_after_edit(false);
+	const auto selection = get_selection();
+	if (selection.is_valid() && selection->get_range_count() > 0) use_node_selection = true;
+	canvas->queue_redraw();
+}
+
 void HTMLLabel::on_layout_edited() {
-	if (picker_input.is_valid() && !input_picker_valid()) close_input_picker();
 	queue_audio_sync();
 	queue_video_sync();
-	close_select_menu();
 	layout_updated = true;
+	on_dom_mutated();
 	if (canvas) {
-		canvas->close_input_menu();
-		canvas->reconcile_interactions_after_edit(false);
-		const auto selection = get_selection();
-		if (selection.is_valid() && selection->get_range_count() > 0) use_node_selection = true;
-		else clear_selection();
-		canvas->selecting = false;
-		canvas->selection_dragged = false;
-		canvas->selection_origin = {};
-		if (canvas->selection_drag_attempt) {
-			canvas->selection_drag_attempt = false;
-			if (!canvas->element_drag_attempt && !canvas->native_drag_started) canvas->drag_source.unref();
-		}
-		if (!canvas->dragging_input.is_valid()) canvas->set_process_internal(false);
-		if (canvas->focused_element.is_valid() && !layout->is_element_connected(canvas->focused_element)) {
-			canvas->set_focused_element({});
-		}
-		else if (const auto input = layout->text_control(canvas->focused_element);
-			input && input->editor.get_reset_version() != canvas->focused_reset_version) {
-			canvas->focused_reset_version = input->editor.get_reset_version();
-			canvas->close_ime();
-			canvas->update_ime();
-		}
 		auto& tabs = canvas->tab_elements;
 		tabs.erase(std::remove_if(tabs.begin(), tabs.end(),
-			[this](const auto& p_element) { return !layout->is_element_connected(p_element); }), tabs.end());
+			[this](const auto& element) { return !layout->is_element_connected(element); }), tabs.end());
 	}
 	queue_refresh();
 }
@@ -2569,6 +2574,7 @@ void HTMLLabel::update_view(const Vector2i& p_viewport, const Vector2i& p_conten
 		if (layout->top_modal_node() || canvas->has_focusable_elements) canvas->update_focus_mode();
 		sync_dialog_focus(true);
 		canvas->reconcile_interactions_after_edit(true);
+		if (open_select.is_valid()) refresh_select_menu();
 		if (canvas->focused_element.is_valid() && !layout->is_focusable(canvas->focused_element)) {
 			canvas->set_focused_element({});
 		}

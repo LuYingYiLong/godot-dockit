@@ -132,6 +132,8 @@ Ref<HTMLWindow> HTMLDocumentNode::get_default_view() const {
 }
 
 void HTMLNode::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_mutation_revision"), &HTMLNode::get_mutation_revision);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "mutation_revision", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_mutation_revision");
 	ClassDB::bind_method(D_METHOD("get_node_type"), &HTMLNode::get_node_type);
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLNode::is_valid);
 	ClassDB::bind_method(D_METHOD("is_connected"), &HTMLNode::is_connected);
@@ -181,6 +183,12 @@ bool HTMLNode::is_valid() const {
 bool HTMLNode::is_connected() const {
 	const auto node = lock_element();
 	return node && get_dom().is_element_connected(*node);
+}
+
+int64_t HTMLNode::get_mutation_revision() const {
+	const auto node = lock_element();
+	if (!node) return 0;
+	return get_node_type() == DOCUMENT_NODE ? document_revision : node->mutation_revision();
 }
 
 Ref<HTMLNode> HTMLNode::get_parent_node() const {

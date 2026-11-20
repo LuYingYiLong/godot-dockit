@@ -214,6 +214,7 @@ TypedArray<Rect2> HTMLRange::get_client_rects() const {
 Ref<HTMLDocumentFragment> HTMLRange::process_contents(Contents p_action) {
 	if (!is_valid()) return {};
 	const auto dom = owner.lock();
+	HTMLDOM::ChangeScope changes(*dom);
 	const auto result = dom->create_document_fragment();
 	if (is_collapsed()) return result;
 	const auto parent = common_container(start, end);
@@ -272,6 +273,7 @@ Error HTMLRange::delete_contents() { return process_contents(Contents::DELETE).i
 Error HTMLRange::insert_node(const Ref<HTMLNode>& p_node) {
 	if (!is_valid() || !accepts({p_node, 0}) || p_node == start.node || start.node->get_node_type() == HTMLNode::COMMENT_NODE) return ERR_INVALID_PARAMETER;
 	const auto dom = owner.lock();
+	HTMLDOM::ChangeScope changes(*dom);
 	const HTMLBoundary original = start;
 	const bool collapsed = is_collapsed();
 	const bool split = original.node->get_node_type() == HTMLNode::TEXT_NODE;
@@ -312,6 +314,7 @@ Error HTMLRange::surround_contents(const Ref<HTMLElement>& p_element) {
 			(item.whole && item.node->contains(p_element))) return ERR_INVALID_PARAMETER;
 	}
 	const auto dom = owner.lock();
+	HTMLDOM::ChangeScope changes(*dom);
 	const auto insertion = character_node(*start.node.ptr()) ? start.node->get_parent_node() : start.node;
 	if (start.node->get_node_type() == HTMLNode::COMMENT_NODE || insertion.is_null() ||
 		insertion->get_node_type() == HTMLNode::DOCUMENT_NODE ||

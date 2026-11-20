@@ -2,6 +2,7 @@
 
 #include "formats/html/dom/html_dom.h"
 #include "formats/html/elements/html_form_elements.h"
+#include "formats/html/elements/html_input_node.h"
 #include "formats/html/events/html_event.h"
 #include "formats/html/events/html_window.h"
 #include "formats/html/html_layout.h"
@@ -309,6 +310,13 @@ bool HTMLLabel::dispatch_control_event(const StringName& p_type, const Ref<HTMLE
 bool HTMLLabel::dispatch_input_event(const StringName& p_type, const Ref<HTMLElement>& p_element,
 	const StringName& p_input_type, const String& p_data, bool p_is_composing) {
 	if (layout.is_null() || p_element.is_null() || !p_element->is_valid()) return false;
+	const ObjectID host_id(get_instance_id());
+	const auto original_layout = layout;
+	const uint64_t adoption = p_element->adoption_version;
+	const auto control = layout->text_control(p_element);
+	const auto* input = dynamic_cast<const dockit::HTMLInputNode*>(control.get());
+	const String input_type = input ? input->type_name() : String();
+	const uint64_t reset = control ? control->editor.get_reset_version() : 0;
 	Ref<HTMLInputEvent> event;
 	event.instantiate();
 	event->set_type(p_type);
@@ -320,7 +328,16 @@ bool HTMLLabel::dispatch_input_event(const StringName& p_type, const Ref<HTMLEle
 	event->set_is_composing(p_is_composing);
 	event->mark_trusted();
 	layout->get_dom().dispatch_event(p_element, event);
-	return !event->is_default_prevented();
+	if (event->is_default_prevented()) return false;
+	if (p_type != StringName("beforeinput")) return true;
+	auto* host = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(host_id));
+	if (!host || host->layout != original_layout || p_element->adoption_version != adoption ||
+		!original_layout->is_interaction_target_available(p_element, false)) return false;
+	const auto current = original_layout->text_control(p_element);
+	if (current != control) return false;
+	if (current && (!current->is_editable() || current->editor.get_reset_version() != reset)) return false;
+	if (input && input->type_name() != input_type) return false;
+	return current || p_element->is_content_editable();
 }
 
 void HTMLLabel::dispatch_composition_event(const StringName& p_type, const Ref<HTMLElement>& p_element, const String& p_data) {

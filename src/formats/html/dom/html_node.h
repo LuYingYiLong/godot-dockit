@@ -39,6 +39,7 @@ protected:
 	godot::ObjectID layout_id;
 	uint64_t parse_version = 0;
 	uint64_t adoption_version = 0;
+	uint64_t document_revision = 1;
 	std::weak_ptr<litehtml::element> element;
 	std::shared_ptr<DetachedTree> detached_tree;
 
@@ -58,6 +59,7 @@ public:
 	virtual NodeType get_node_type() const = 0; // 返回节点类型
 	bool is_valid() const override; // 检查句柄是否仍属于当前布局
 	bool is_connected() const; // 检查节点是否连接到文档
+	int64_t get_mutation_revision() const; // 返回逻辑节点的修改版本，失效句柄返回 0
 	godot::Ref<HTMLNode> get_parent_node() const; // 返回父节点，包括文档节点和片段
 	godot::TypedArray<HTMLNode> get_child_nodes() const; // 返回按树顺序排列的直接子节点快照
 	godot::Ref<HTMLNode> get_first_child() const; // 返回第一个直接子节点

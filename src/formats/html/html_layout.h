@@ -64,6 +64,7 @@ namespace dockit {
 		bool enabled;
 		godot::String value;
 		bool selected = false;
+		godot::Ref<HTMLElement> option;
 	};
 }
 
@@ -178,6 +179,7 @@ class HTMLLayout : public godot::RefCounted {
 	void queue_reflow();
 	static void reflow_after_edit(uint64_t p_id, uint64_t p_version);
 	void set_edit_callback(const godot::Callable& p_callback);
+	bool is_interaction_target_available(const godot::Ref<HTMLElement>& p_element, bool p_after_layout) const;
 	void set_transition_callback(const godot::Callable& p_callback);
 	void update_transition_subscription();
 	void disconnect_transition_frames();

@@ -281,3 +281,11 @@ msgstr "位置"
 #. src/nodes/html_label.cpp
 msgid "Storage Namespace"
 msgstr "存储命名空间"
+
+#. src/nodes/html_label.cpp
+msgid "Behavior"
+msgstr "行为"
+
+#. src/nodes/html_label.cpp
+msgid "Video"
+msgstr "视频"

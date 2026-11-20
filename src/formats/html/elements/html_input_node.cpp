@@ -430,6 +430,7 @@ namespace dockit {
 		dirty_checked = true;
 		bool changed = checked != p_checked;
 		checked = p_checked;
+		if (changed) note_dom_change(DOM_STATE);
 		if (p_checked && type() == Type::RADIO) {
 			for (const auto& peer : forms::radio_group(*this)) {
 				auto* input = static_cast<HTMLInputNode*>(peer.get());
@@ -443,26 +444,32 @@ namespace dockit {
 	}
 
 	void HTMLInputNode::clear_group_checked() {
+		if (checked) note_dom_change(DOM_STATE);
 		checked = false;
 		update_pseudos();
 	}
 
 	void HTMLInputNode::reset() {
+		const bool old_checked = checked;
+		const bool had_files = !files.is_empty();
 		editor.reset_value(sanitize_value(String::utf8(get_attr("value", ""))));
 		dirty_checked = false;
 		checked = get_attr("checked") != nullptr;
 		files.clear();
+		if (old_checked != checked || had_files) note_dom_change(DOM_STATE);
 	}
 
 	bool HTMLInputNode::set_indeterminate(bool p_value) {
 		if (indeterminate == p_value) return false;
 		indeterminate = p_value;
+		note_dom_change(DOM_STATE);
 		return true;
 	}
 
 	bool HTMLInputNode::set_files(const TypedArray<HTMLInputFile>& p_files) {
 		if (files == p_files) return false;
 		files = p_files.duplicate();
+		note_dom_change(DOM_STATE);
 		return true;
 	}
 

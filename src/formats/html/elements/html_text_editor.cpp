@@ -103,8 +103,11 @@ namespace dockit {
 
 	void HTMLTextEditor::use_default(const String& p_value) {
 		if (dirty_value) return;
-		value = normalize(p_value);
+		const String clean = normalize(p_value);
+		const bool changed = value != clean;
+		value = clean;
 		set_selection(anchor, caret);
+		if (changed && value_changed) value_changed();
 	}
 
 	bool HTMLTextEditor::set_value(const String& p_value) {
@@ -117,6 +120,7 @@ namespace dockit {
 		set_selection(value.length(), value.length());
 		user_changed = false;
 		last_edit_was_user = false;
+		if (value_changed) value_changed();
 		return true;
 	}
 
@@ -133,16 +137,19 @@ namespace dockit {
 	}
 
 	void HTMLTextEditor::reset_value(const String& p_value) {
+		const String clean = normalize(p_value);
+		const bool changed = clean != value;
 		++reset_version;
 		clear_history();
 		dirty_value = false;
 		user_changed = false;
 		last_edit_was_user = false;
-		value = normalize(p_value);
+		value = clean;
 		set_preedit({}, {});
 		set_selection(0, 0);
 		horizontal_scroll = 0;
 		scroll = {};
+		if (changed && value_changed) value_changed();
 	}
 
 	int64_t HTMLTextEditor::selection_start() const { return std::min(anchor, caret); }
@@ -296,6 +303,7 @@ namespace dockit {
 		auto& edit = history.back();
 		edit.after = selection();
 		edit.replacements.push_back({from, removed, text});
+		if (value_changed) value_changed();
 		return true;
 	}
 
@@ -325,6 +333,7 @@ namespace dockit {
 			value = value.substr(0, step->offset) + step->removed + value.substr(step->offset + step->inserted.length());
 		}
 		restore_selection(edit.before);
+		if (value_changed) value_changed();
 		return true;
 	}
 
@@ -336,6 +345,7 @@ namespace dockit {
 			value = value.substr(0, step.offset) + step.inserted + value.substr(step.offset + step.removed.length());
 		}
 		restore_selection(edit.after);
+		if (value_changed) value_changed();
 		return true;
 	}
 

@@ -19,7 +19,7 @@ def run_event_checks(command, workspace):
     unexpected_errors = [line for line in result.stderr.splitlines()
                          if line.startswith("ERROR:") and line != expected_error]
     if result.returncode or "HTML event checks passed" not in result.stdout or unexpected_errors:
-        raise SystemExit(f"Event test command failed: {command}")
+        raise SystemExit(f"Event test command failed (exit {result.returncode}): {command}")
 
 
 def create_project(project, repo):
@@ -67,7 +67,7 @@ filesystem/on_save/safe_save_on_backup_then_rename = false
 """)
         create_project(project, repo)
         run([godot, "--headless", "--path", str(project), "--import"], workspace)
-        run_event_checks([godot, "--headless", "--path", str(project), "--quit-after", "360"], workspace)
+        run_event_checks([godot, "--headless", "--path", str(project), "--quit-after", "900"], workspace)
 
 
 if __name__ == "__main__":

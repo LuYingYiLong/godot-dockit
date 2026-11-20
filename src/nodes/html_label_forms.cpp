@@ -258,6 +258,25 @@ void HTMLLabel::update_select_menu() {
 	select_menu->queue_redraw();
 }
 
+void HTMLLabel::refresh_select_menu() {
+	if (open_select.is_null()) return;
+	const auto highlighted = select_highlight >= 0 && select_highlight < static_cast<int>(select_rows.size()) ?
+		select_rows[select_highlight].option : Ref<HTMLElement>();
+	const auto select = std::dynamic_pointer_cast<dockit::HTMLSelectNode>(open_select->lock_element());
+	if (select && select->is_list_box()) { close_select_menu(); return; }
+	auto rows = select ? layout->select_menu_rows(open_select) : layout->suggestion_menu_rows(open_select);
+	if (rows.empty()) { close_select_menu(); return; }
+	select_rows = std::move(rows);
+	select_pressed = -1;
+	select_highlight = -1;
+	for (int i = 0; i < static_cast<int>(select_rows.size()); ++i) {
+		if (!select_rows[i].enabled) continue;
+		if (highlighted.is_valid() && select_rows[i].option == highlighted) { select_highlight = i; break; }
+		if (select_highlight < 0 || select_rows[i].selected) select_highlight = i;
+	}
+	update_select_menu();
+}
+
 void HTMLLabel::draw_select_menu() {
 	if (open_select.is_null()) return;
 	const auto size = select_menu->get_size();

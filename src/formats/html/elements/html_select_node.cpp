@@ -12,6 +12,7 @@
 #include <cmath>
 #include <string_view>
 #include <unordered_set>
+#include <unordered_map>
 #include <utility>
 
 using namespace godot;
@@ -68,7 +69,12 @@ bool HTMLOptionNode::is_selected() const {
 }
 
 void HTMLOptionNode::assign_selected(bool p_selected, bool p_dirty) {
+	const bool changed = is_selected() != p_selected;
 	selected = p_selected;
+	if (changed) {
+		note_dom_change(DOM_STATE);
+		if (auto* owner = select()) owner->note_dom_change(DOM_STATE);
+	}
 	dirty |= p_dirty;
 }
 
@@ -127,6 +133,32 @@ HTMLSelectNode::Options HTMLSelectNode::get_list_options() const {
 	return options;
 }
 
+void HTMLSelectNode::sync_mutation_revision() {
+	const auto options = get_options();
+	const auto index = selected_index(options);
+	std::vector<SelectionSnapshot> next;
+	std::unordered_map<const HTMLOptionNode*, bool> previous;
+	for (const auto& item : selection_snapshot) {
+		if (const auto option = item.option.lock()) previous.emplace(option.get(), item.selected);
+	}
+	String value;
+	bool changed = false;
+	for (size_t i = 0; i < options.size(); ++i) {
+		const bool selected = is_multiple() ? is_option_selected(*options[i]) : static_cast<int64_t>(i) == index;
+		next.push_back({options[i], selected});
+		if (static_cast<int64_t>(i) == index) value = options[i]->get_value();
+		const auto found = previous.find(options[i].get());
+		if (has_selection_snapshot && found != previous.end() && found->second != selected) {
+			options[i]->note_dom_change(DOM_STATE);
+			changed = true;
+		}
+	}
+	if (has_selection_snapshot && (changed || selected_value_snapshot != value)) note_dom_change(DOM_STATE);
+	selection_snapshot = std::move(next);
+	selected_value_snapshot = value;
+	has_selection_snapshot = true;
+}
+
 void HTMLSelectNode::use_single_selection() {
 	const auto options = get_options();
 	const auto index = selected_index(options);
@@ -172,11 +204,20 @@ int64_t HTMLSelectNode::selected_index(const Options& p_options) const {
 }
 
 void HTMLSelectNode::set_selected_index(const Options& p_options, int64_t p_index) {
+	std::vector<bool> before;
+	for (const auto& option : p_options) before.push_back(option->is_selected());
 	allow_empty = p_index < 0 || p_index >= static_cast<int64_t>(p_options.size());
+	bool changed = false;
 	for (size_t i = 0; i < p_options.size(); ++i) {
-		const bool select = p_index == static_cast<int64_t>(i);
-		p_options[i]->assign_selected(select, select);
+		const bool selected = p_index == static_cast<int64_t>(i);
+		p_options[i]->selected = selected;
+		p_options[i]->dirty |= selected;
+		if (before[i] != selected) {
+			p_options[i]->note_dom_change(DOM_STATE);
+			changed = true;
+		}
 	}
+	if (changed) note_dom_change(DOM_STATE);
 }
 
 bool HTMLSelectNode::is_missing() const {
@@ -186,6 +227,9 @@ bool HTMLSelectNode::is_missing() const {
 }
 
 void HTMLSelectNode::reset() {
+	const auto options = get_options();
+	std::vector<bool> before;
+	for (const auto& option : options) before.push_back(option->is_selected());
 	allow_empty = false;
 	active_row = anchor_row = -1;
 	scroll_row = 0;
@@ -193,6 +237,14 @@ void HTMLSelectNode::reset() {
 		option->selected.reset();
 		option->dirty = false;
 	}
+	bool changed = false;
+	for (size_t i = 0; i < options.size(); ++i) {
+		if (before[i] != options[i]->is_selected()) {
+			options[i]->note_dom_change(DOM_STATE);
+			changed = true;
+		}
+	}
+	if (changed) note_dom_change(DOM_STATE);
 }
 
 bool HTMLSelectNode::copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const {

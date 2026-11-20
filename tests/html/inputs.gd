@@ -466,6 +466,9 @@ func _ink_rows(pixels: Image, bounds: Rect2) -> Vector2i:
 
 
 func _check_clock_picker() -> void:
+	# The native picker follows the UI locale, so each clock format needs an explicit fixture locale.
+	var original_locale: String = TranslationServer.get_locale()
+	TranslationServer.set_locale("en_GB")
 	var clock: HTMLInputElement = _field("clock")
 	_check(clock.show_picker() == OK, "time input opens its self-drawn list")
 	var panel: Control = _label.get_node_or_null(^"_HTMLTimePicker") as Control
@@ -473,6 +476,7 @@ func _check_clock_picker() -> void:
 		"the two-column clock uses Chromium's width and height")
 	_check(_label.get_node_or_null(^"_HTMLInputPicker") == null, "time input uses no popup window")
 	if panel == null:
+		TranslationServer.set_locale(original_locale)
 		return
 	await RenderingServer.frame_post_draw
 	var pixels: Image = get_viewport().get_texture().get_image()
@@ -498,8 +502,10 @@ func _check_clock_picker() -> void:
 	_color_picker_click(panel, Vector2(10.0, 16.0))
 	_color_picker_key(KEY_ENTER)
 	_check(clock.value == "09:35", "wheel and click select an hour without changing the minute column")
+	TranslationServer.set_locale("en_US")
 	_check(_field("clock12").show_picker() == OK and panel.size.x == 172.0, "12-hour time exposes an AM/PM column")
 	_color_picker_key(KEY_ESCAPE)
+	TranslationServer.set_locale("en_GB")
 	_check(_field("time").show_picker() == OK and panel.size.x == 228.0, "seconds and milliseconds get independent columns")
 	_color_picker_key(KEY_ESCAPE)
 	var local: HTMLInputElement = _field("datetime-local")
@@ -508,6 +514,7 @@ func _check_clock_picker() -> void:
 	_color_picker_key(KEY_RIGHT)
 	_color_picker_key(KEY_ENTER)
 	_check(local.value == "2024-04-01T03:12", "the combined picker can change the calendar date while preserving time")
+	TranslationServer.set_locale(original_locale)
 
 
 func _color_picker_click(panel: Control, point: Vector2) -> void:

@@ -6865,3 +6865,11 @@ msgid ""
 "[code]beforetoggle[/code] is cancelable and describes the proposed state. [code]toggle[/code] "
 "reports the accepted state after the update."
 msgstr "[code]beforetoggle[/code] 可取消，并说明准备切换到的状态。[code]toggle[/code] 则报告更改后的状态。"
+
+#. doc_classes/HTMLNode.xml
+msgid "Returns [member mutation_revision]."
+msgstr "返回 [member mutation_revision]。"
+
+#. doc_classes/HTMLNode.xml
+msgid "The local modification revision of this logical node, starting at [code]1[/code]. Invalid handles return [code]0[/code]. Actual changes to attributes, character data, direct children, tree placement, and live form values advance this revision. Descendant edits, focus, hover, selections, scrolling, layout, and media playback progress do not. Repeated writes of the same value do not advance it. Detached nodes keep counting; text replacement and adoption preserve the logical revision, while clones start independently. Compare snapshots of the same node; revision differences are not an operation count or an ordering between nodes. This property is read-only and is not serialized."
+msgstr "此逻辑节点的局部修改版本，从 [code]1[/code] 开始；失效句柄返回 [code]0[/code]。属性、字符数据、直接子节点、树中位置及表单实时值的实际变化会递增版本。后代编辑、焦点、悬停、选区、滚动、布局及媒体播放进度不影响版本。重复写入相同值不递增。分离节点继续计数；文本替换和跨文档迁移保留逻辑版本，克隆节点独立计数。只比较同一节点的版本快照；版本差值不表示操作次数，也不能用于节点之间的排序。此属性只读且不序列化。"

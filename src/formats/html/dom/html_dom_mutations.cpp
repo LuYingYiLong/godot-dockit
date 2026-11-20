@@ -8,11 +8,58 @@
 
 #include <algorithm>
 #include <unordered_set>
+#include <utility>
 
 using namespace godot;
 using dockit::HTMLBoundary;
 using dockit::HTMLDOM;
 using dockit::HTMLMutation;
+
+void HTMLDOM::track_mutations(const litehtml::element::ptr& p_node) const {
+	if (!p_node || litehtml::is_generated_tag(p_node->tag())) return;
+	track_node_mutations(p_node);
+	for (const auto& child : p_node->children()) track_mutations(child);
+}
+
+void HTMLDOM::track_node_mutations(const litehtml::element::ptr& p_node) const {
+	if (!p_node || litehtml::is_generated_tag(p_node->tag())) return;
+	if (!p_node->dom_mutation) p_node->dom_mutation = std::make_shared<litehtml::element::DOMMutationState>();
+	p_node->dom_mutation->notify = [owner = const_cast<HTMLDOM*>(this)->weak_from_this()](litehtml::element& node, unsigned flags) {
+		if (const auto dom = owner.lock()) dom->queue_change(node, flags);
+	};
+}
+
+void HTMLDOM::queue_change(litehtml::element& p_node, unsigned p_flags) {
+	if (const auto found = pending_change_indices.find(&p_node); found != pending_change_indices.end()) {
+		auto& change = pending_changes[found->second];
+		change.flags = change.target.lock().get() == &p_node ? change.flags | p_flags : p_flags;
+		change.target = p_node.shared_from_this();
+		change.revision = p_node.mutation_revision();
+		return;
+	}
+	pending_change_indices.emplace(&p_node, pending_changes.size());
+	pending_changes.push_back({p_node.shared_from_this(), p_node.mutation_revision(), p_flags});
+}
+
+void HTMLDOM::notify_changed() {
+	changed_styles = true;
+	if (change_depth == 0) flush_changes();
+}
+
+void HTMLDOM::flush_changes() {
+	if (change_depth || flushing_changes) return;
+	const auto keep_alive = shared_from_this();
+	flushing_changes = true;
+	while (!pending_changes.empty() || changed_styles) {
+		Changes batch;
+		batch.swap(pending_changes);
+		pending_change_indices.clear();
+		const bool styles = std::exchange(changed_styles, false);
+		if (on_mutation && !batch.empty()) on_mutation(batch);
+		if (styles && on_change) on_change();
+	}
+	flushing_changes = false;
+}
 
 namespace {
 	std::vector<Ref<HTMLNode>> ancestry_of(Ref<HTMLNode> p_node) {
@@ -59,7 +106,7 @@ void HTMLDOM::range_changed(const HTMLRange& p_range) {
 
 HTMLDOM::ChildChange HTMLDOM::capture_children(const litehtml::element::ptr& p_parent) {
 	ChildChange change;
-	if (!p_parent || (ranges.empty() && observers.empty())) return change;
+	if (!p_parent) return change;
 	change.target = make_node(p_parent);
 	if (change.target.is_null()) return change;
 	change.ancestry = ancestry_of(change.target);
@@ -123,6 +170,17 @@ void HTMLDOM::finish_children(const ChildChange& p_change, const std::vector<lit
 		}
 	}
 	if (removed_indices.empty() && added_indices.empty()) return;
+	if (const auto target = p_change.target->lock_element()) target->note_dom_change(litehtml::element::DOM_CHILDREN);
+	std::unordered_set<HTMLNode*> relocated;
+	for (const Ref<HTMLNode>& node : record.removed) {
+		if (const auto native = node->lock_element()) native->note_dom_change(litehtml::element::DOM_TREE);
+		relocated.insert(node.ptr());
+	}
+	for (const Ref<HTMLNode>& node : record.added) {
+		if (!relocated.count(node.ptr())) {
+			if (const auto native = node->lock_element()) native->note_dom_change(litehtml::element::DOM_TREE);
+		}
+	}
 	const int64_t first = std::min(removed_indices.empty() ? before.size() : removed_indices.front(),
 		added_indices.empty() ? after.size() : added_indices.front());
 	if (first > 0) record.previous = before[first - 1];
@@ -154,6 +212,7 @@ void HTMLDOM::finish_children(const ChildChange& p_change, const std::vector<lit
 }
 
 void HTMLDOM::publish_attribute(const litehtml::element::ptr& p_element, const char* p_name, const Variant& p_old) {
+	p_element->note_dom_change(litehtml::element::DOM_ATTRIBUTE);
 	if (observers.empty()) return;
 	HTMLMutation record{HTMLMutation::ATTRIBUTES, make_node(p_element)};
 	record.attribute = String::utf8(p_name);

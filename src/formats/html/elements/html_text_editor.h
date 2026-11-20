@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/vector2i.hpp>
 
 #include <optional>
+#include <functional>
 #include <vector>
 
 namespace litehtml { class html_tag; }
@@ -108,6 +109,7 @@ namespace dockit {
 		godot::Rect2 scrollbar_thumb(const godot::Rect2& p_track, bool p_vertical) const;
 
 	public:
+		std::function<void()> value_changed;
 		explicit HTMLTextEditor(bool p_multiline) : multiline(p_multiline) {}
 		bool is_multiline() const { return multiline; }
 		const godot::String& get_value() const { return value; }
