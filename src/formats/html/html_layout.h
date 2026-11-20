@@ -146,6 +146,8 @@ class HTMLLayout : public godot::RefCounted {
 	dockit::HTMLDOM& get_dom() const;
 	bool has_current_layout() const;
 	const dockit::RenderGeometry* element_geometry(const HTMLElement& p_element) const;
+	std::shared_ptr<litehtml::element> image_map_area_at(const std::shared_ptr<litehtml::element>& p_image,
+		const godot::Vector2& p_position) const;
 	std::shared_ptr<litehtml::render_item> offset_parent_of(const litehtml::render_item& p_item) const;
 	godot::Vector2 element_client_size(const HTMLElement& p_element) const;
 	godot::Vector2 element_client_offset(const HTMLElement& p_element) const;

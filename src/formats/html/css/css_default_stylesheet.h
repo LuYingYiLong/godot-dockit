@@ -36,6 +36,10 @@ script, template {
 	display: none
 }
 
+map, area {
+	display: none
+}
+
 svg defs, svg clippath, svg mask {
 	display: none
 }

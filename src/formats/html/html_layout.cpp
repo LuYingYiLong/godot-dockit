@@ -33,6 +33,7 @@
 #include "formats/html/css/css_syntax_util.h"
 #include "formats/html/css/html_cssom.h"
 #include "formats/html/css/html_style_sheet.h"
+#include "formats/html/markup/html_markup.h"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
@@ -85,17 +86,78 @@ namespace {
 	}
 
 	const char* get_link_href(const litehtml::element& p_element) {
-		const char* href = p_element.tag() == litehtml::_a_ ? p_element.get_attr("href") : nullptr;
+		const char* href = (p_element.tag() == litehtml::_a_ || p_element.tag() == litehtml::_area_) ?
+			p_element.get_attr("href") : nullptr;
 		return href && *href ? href : nullptr;
 	}
 
 	litehtml::element::ptr find_link_element(litehtml::element::ptr p_element) {
 		for (auto element = std::move(p_element); element; element = element->parent()) {
-			if (element->tag() == litehtml::_a_) {
+			if (element->tag() == litehtml::_a_ || element->tag() == litehtml::_area_) {
 				return get_link_href(*element) ? element : nullptr;
 			}
 		}
 		return {};
+	}
+
+	std::vector<real_t> image_map_coordinates(const litehtml::element& p_area, const String& p_shape,
+		const Vector2& p_intrinsic_size) {
+		const String source = String::utf8(p_area.get_attr("coords", ""));
+		if (source.is_empty()) return {};
+		const PackedStringArray parts = source.split(",", false);
+		std::vector<real_t> coordinates;
+		coordinates.reserve(parts.size());
+		for (int32_t i = 0; i < parts.size(); ++i) {
+			String token = parts[i].strip_edges();
+			const bool percent = token.ends_with("%");
+			if (percent) token = token.substr(0, token.length() - 1).strip_edges();
+			if (!token.is_valid_float()) return {};
+			const real_t value = token.to_float();
+			if (!std::isfinite(value)) return {};
+			real_t basis = i % 2 == 0 ? p_intrinsic_size.x : p_intrinsic_size.y;
+			if (p_shape == "circle" && i == 2) basis = p_intrinsic_size.length() / std::sqrt(2.0f);
+			coordinates.push_back(percent ? value * basis / 100.0f : value);
+		}
+		return coordinates;
+	}
+
+	bool image_map_polygon_contains(const Vector2& p_point, const std::vector<real_t>& p_coordinates) {
+		const std::size_t count = p_coordinates.size() / 2;
+		if (count < 3 || p_coordinates.size() % 2 != 0) return false;
+		bool inside = false;
+		for (std::size_t i = 0, j = count - 1; i < count; j = i++) {
+			const Vector2 a(p_coordinates[j * 2], p_coordinates[j * 2 + 1]);
+			const Vector2 b(p_coordinates[i * 2], p_coordinates[i * 2 + 1]);
+			const Vector2 edge = b - a;
+			const Vector2 offset = p_point - a;
+			const real_t cross = edge.x * offset.y - edge.y * offset.x;
+			const real_t dot = edge.dot(offset);
+			if (std::abs(cross) <= 1e-5f && dot >= -1e-5f && dot <= edge.length_squared() + 1e-5f) return true;
+			if ((a.y > p_point.y) != (b.y > p_point.y) &&
+				p_point.x < (b.x - a.x) * (p_point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+		}
+		return inside;
+	}
+
+	bool image_map_area_contains(const litehtml::element& p_area, const Vector2& p_point, const Vector2& p_intrinsic_size) {
+		const String shape = String::utf8(p_area.get_attr("shape", "rect")).strip_edges().to_lower();
+		if (shape == "default") return true;
+		const bool circle = shape == "circle" || shape == "circ";
+		const bool polygon = shape == "poly" || shape == "polygon";
+		const String normalized_shape = circle ? "circle" : polygon ? "poly" : "rect";
+		const std::vector<real_t> coordinates = image_map_coordinates(p_area, normalized_shape, p_intrinsic_size);
+		if (circle) {
+			if (coordinates.size() < 3 || coordinates[2] < 0) return false;
+			const Vector2 delta = p_point - Vector2(coordinates[0], coordinates[1]);
+			return delta.length_squared() <= coordinates[2] * coordinates[2];
+		}
+		if (polygon) return image_map_polygon_contains(p_point, coordinates);
+		if (coordinates.size() < 4) return false;
+		const real_t left = std::min(coordinates[0], coordinates[2]);
+		const real_t right = std::max(coordinates[0], coordinates[2]);
+		const real_t top = std::min(coordinates[1], coordinates[3]);
+		const real_t bottom = std::max(coordinates[1], coordinates[3]);
+		return p_point.x >= left && p_point.x <= right && p_point.y >= top && p_point.y <= bottom;
 	}
 
 	using RenderFragments = std::vector<const dockit::RenderGeometry*>;
@@ -1823,6 +1885,56 @@ TypedArray<Rect2> HTMLLayout::get_element_rects(const litehtml::element::ptr& p_
 	return result;
 }
 
+litehtml::element::ptr HTMLLayout::image_map_area_at(const litehtml::element::ptr& p_image, const Vector2& p_position) const {
+	if (!state->has_layout() || !p_image || p_image->tag() != litehtml::_img_) return {};
+	const String usemap = String::utf8(p_image->get_attr("usemap", "")).strip_edges();
+	if (usemap.length() < 2 || usemap[0] != '#') return {};
+	const String map_name = dockit::decode_html_fragment(usemap.substr(1));
+	if (map_name.is_empty()) return {};
+	const auto document = state->dom->get_document();
+	auto* image = dynamic_cast<litehtml::el_image*>(p_image.get());
+	const auto* renderers = state->geometry.find_element(p_image.get());
+	if (!document || !image || !renderers) return {};
+
+	const dockit::RenderGeometry* renderer = nullptr;
+	for (const auto* candidate : *renderers) {
+		if (candidate->item->is_visible() && candidate->inverse && candidate->contains_visible_point(p_position)) {
+			renderer = candidate;
+			break;
+		}
+	}
+	if (!renderer) return {};
+
+	litehtml::size natural_size{};
+	image->get_content_size(natural_size, 0);
+	const Vector2 intrinsic_size(natural_size.width, natural_size.height);
+	const Rect2 content_box = dockit::to_rect(renderer->item->get_placement());
+	if (!content_box.has_area()) return {};
+	const Vector2 content_position = renderer->inverse->xform(p_position) - content_box.position;
+	if (!content_box.has_point(renderer->inverse->xform(p_position))) return {};
+	const Vector2 coordinate_size = intrinsic_size.x > 0 && intrinsic_size.y > 0 ? intrinsic_size : content_box.size;
+	const Vector2 image_point = content_position * coordinate_size / content_box.size;
+
+	litehtml::element::ptr map;
+	HTMLDOM::visit_elements(document->root(), [&](const litehtml::element::ptr& p_element) {
+		if (p_element->tag() != litehtml::_map_) return false;
+		const String name = String::utf8(p_element->get_attr("name", ""));
+		const String id = String::utf8(p_element->get_attr("id", ""));
+		if (name != map_name && id != map_name) return false;
+		map = p_element;
+		return true;
+	});
+	if (!map) return {};
+
+	litehtml::element::ptr area;
+	HTMLDOM::visit_elements(map, [&](const litehtml::element::ptr& p_element) {
+		if (p_element->tag() != litehtml::_area_ || !image_map_area_contains(*p_element, image_point, coordinate_size)) return false;
+		area = p_element;
+		return true;
+	});
+	return area;
+}
+
 const dockit::RenderGeometry* HTMLLayout::element_geometry(const HTMLElement& p_element) const {
 	if (p_element.get_owner() != this || !state->has_layout()) return nullptr;
 	const auto element = p_element.lock_element();
@@ -1987,6 +2099,12 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 	if (!root) {
 		return {};
 	}
+	const auto resolve_image_map_target = [&](litehtml::element::ptr p_target) {
+		if (p_target && p_target->tag() == litehtml::_img_) {
+			if (const auto area = image_map_area_at(p_target, p_position); area && allows_modal_interaction(*area)) return area;
+		}
+		return p_target;
+	};
 	if (const auto bar = scrollbar_at(p_position)) {
 		if (r_scrollbar) *r_scrollbar = true;
 		return bar->element.lock();
@@ -1998,10 +2116,10 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 			target = p_node;
 			return true;
 		});
-		return target;
+		return resolve_image_map_target(target);
 	}
 	if (state->geometry.uses_visual_hit_order()) {
-		return state->container->get_paint_recorder().hit_test_element(p_position, p_text_selection);
+		return resolve_image_map_target(state->container->get_paint_recorder().hit_test_element(p_position, p_text_selection));
 	}
 	const auto accepts_geometry = [&](const dockit::RenderGeometry* p_geometry) {
 		return p_geometry && p_geometry->item->is_visible() && (p_text_selection || p_geometry->item->css().accepts_pointer_events()) &&
@@ -2030,7 +2148,7 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 			return {};
 		}
 		if (std::any_of(renderers->begin(), renderers->end(), accepts_geometry)) {
-			return element;
+			return resolve_image_map_target(element);
 		}
 
 		// Exclude boxes rejected by the geometry index and retry in the same order.
@@ -2730,7 +2848,7 @@ String HTMLLayout::get_activatable_link_uri(const Ref<HTMLElement>& p_element) c
 	if (p_element.is_null() || p_element->get_owner() != this) return {};
 	const auto link = p_element->lock_element();
 	const char* href = link ? get_link_href(*link) : nullptr;
-	return href && get_element_scroll_bounds(p_element) ? String::utf8(href) : String();
+	return href && (link->tag() == litehtml::_area_ || get_element_scroll_bounds(p_element)) ? String::utf8(href) : String();
 }
 
 std::string_view HTMLLayout::get_cursor_at(const Vector2& p_position, bool& r_over_link, bool* r_over_selectable_text) const {
