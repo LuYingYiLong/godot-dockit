@@ -570,6 +570,7 @@ namespace litehtml {
 		node->linked_request_path.clear();
 		node->linked_path.clear();
 		node->linked_text.clear();
+		node->linked_resource.unref();
 	}
 
 	void dockit_editor::apply_author_styles(const document::ptr& p_document, LiteHTMLContainer& p_container,

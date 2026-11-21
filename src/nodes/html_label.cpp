@@ -327,7 +327,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 	if (button->get_button_index() == MOUSE_BUTTON_RIGHT && button->is_pressed() && visible_rect.has_point(point) &&
 		!dispatch_pointer_event(StringName("contextmenu"), label->layout->get_element_at(point), *button.ptr(), point, true)) {
-		// 监听器接管了右键菜单。
+		// 监听器接管了右键菜单
 		accept_event();
 		return;
 	}

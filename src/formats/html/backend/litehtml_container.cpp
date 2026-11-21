@@ -116,10 +116,10 @@ namespace dockit {
 	};
 
 	LiteHTMLContainer::LiteHTMLContainer(HTMLDOM& p_dom, const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
-		const HTMLFontConfig& p_fonts, const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts,
+		const HTMLFontConfig& p_fonts, const Dictionary& p_stylesheet_resources, const Dictionary& p_local_fonts,
 		const Dictionary& p_image_dpi, const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources,
 		bool p_svg_clip_only) :
-		dom(p_dom), resources(p_base_dir, p_textures, p_local_stylesheets, p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources),
+		dom(p_dom), resources(p_base_dir, p_textures, p_stylesheet_resources, p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources),
 		fit_images(p_fit_images), svg_clip_only(p_svg_clip_only), fonts(p_fonts, resources) {
 	}
 
@@ -441,10 +441,21 @@ namespace dockit {
 		if (*type && String::utf8(type).get_slice(";", 0).strip_edges().nocasecmp_to("text/css") != 0) {
 			return;
 		}
-		const auto path = resources.resolve_stylesheet_source(String::utf8(href)).utf8();
+		const String resolved_path = resources.resolve_stylesheet_source(String::utf8(href));
+		const auto path = resolved_path.utf8();
 		if (p_element->get_attr("disabled")) {
 			if (node->linked_path.empty()) return;
 			if (node->linked_request_path == path.get_data()) {
+				litehtml::string css;
+				litehtml::string base;
+				import_css(css, href, base);
+				if (base != node->linked_path || css != node->linked_text) {
+					litehtml::dockit_editor::reset_stylesheet_source(*p_element);
+					node->linked_request_path = path.get_data();
+					node->linked_path = std::move(base);
+					node->linked_text = std::move(css);
+					node->linked_resource = resources.get_stylesheet_resource(resolved_path);
+				}
 				p_doc->add_stylesheet(node->linked_text.c_str(), node->linked_path.c_str(), p_element->get_attr("media"),
 					p_element->parent().get(), p_element, true);
 			} else {
@@ -465,6 +476,7 @@ namespace dockit {
 			node->linked_request_path = path.get_data();
 			node->linked_path = std::move(base);
 			node->linked_text = std::move(css);
+			node->linked_resource = resources.get_stylesheet_resource(resolved_path);
 		} else if (!node->linked_path.empty()) {
 			litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 		}

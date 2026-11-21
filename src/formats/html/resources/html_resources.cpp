@@ -4,6 +4,7 @@
 
 #include "formats/html/markup/html_markup.h"
 #include "html_resource_paths.h"
+#include "formats/html/css/css_style_sheet.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image.hpp>
@@ -170,12 +171,18 @@ namespace dockit {
 		return read_html_source_text(p_path);
 	}
 
-	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_local_stylesheets,
+	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_stylesheet_resources,
 		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations,
 		const Dictionary& p_svg_clip_sources) :
 		fallback_base(make_html_resource_base(p_base_dir)), document_base(fallback_base),
-		textures(p_textures), local_stylesheets(p_local_stylesheets), local_fonts(p_local_fonts),
+		textures(p_textures), stylesheet_resources(p_stylesheet_resources), local_fonts(p_local_fonts),
 		image_dpi(p_image_dpi), image_orientations(p_image_orientations), svg_clip_sources(p_svg_clip_sources) {
+	}
+
+	HTMLResources::~HTMLResources() {
+		for (const auto& [resource, callback] : stylesheet_connections) {
+			if (resource.is_valid() && resource->is_connected("changed", callback)) resource->disconnect("changed", callback);
+		}
 	}
 
 	void HTMLResources::set_source_path(const String& p_path) {
@@ -216,8 +223,41 @@ namespace dockit {
 		return resolve_html_stylesheet_path(p_url, get_url_dir(css_base.utf8().get_data()));
 	}
 
+	String HTMLResources::resolve_baked_stylesheet_path(const String& p_path, const String& p_url) const {
+		if (stylesheet_resources.has(p_path) || p_url.begins_with("res://") || p_url.begins_with("user://") ||
+			p_url.begins_with("uid://") || p_url.is_absolute_path()) return p_path;
+		const String suffix = String("/") + p_url.replace("\\", "/");
+		String match;
+		for (const Variant& key : stylesheet_resources.keys()) {
+			const String candidate = key;
+			if (!candidate.ends_with(suffix)) continue;
+			if (!match.is_empty()) return p_path;
+			match = candidate;
+		}
+		return match.is_empty() ? p_path : match;
+	}
+
 	void HTMLResources::set_remote_stylesheet_callback(const Callable& p_callback) {
 		remote_stylesheet_callback = p_callback;
+	}
+
+	void HTMLResources::set_stylesheet_changed_callback(const Callable& p_callback) {
+		stylesheet_changed_callback = p_callback;
+	}
+
+	Ref<CSSStyleSheet> HTMLResources::get_stylesheet_resource(const String& p_path) {
+		Ref<CSSStyleSheet> stylesheet = stylesheet_resources.get(p_path, Variant());
+		if (stylesheet.is_null() && p_path.begins_with("res://")) {
+			ResourceLoader* loader = ResourceLoader::get_singleton();
+			const Ref<Resource> loaded = loader->load(p_path, CSSStyleSheet::get_class_static());
+			stylesheet = loaded;
+		}
+		if (stylesheet.is_valid() && stylesheet_changed_callback.is_valid() &&
+			!stylesheet->is_connected("changed", stylesheet_changed_callback)) {
+			stylesheet->connect("changed", stylesheet_changed_callback);
+			stylesheet_connections.emplace_back(stylesheet, stylesheet_changed_callback);
+		}
+		return stylesheet;
 	}
 
 	bool HTMLResources::receive_remote_stylesheet(const String& p_url, const String& p_final_url, const String& p_text) {
@@ -250,7 +290,8 @@ namespace dockit {
 
 	void HTMLResources::import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base) {
 		r_text.clear();
-		const String path = resolve_stylesheet_source(String::utf8(p_url.c_str()), r_css_base);
+		const String url = String::utf8(p_url.c_str());
+		const String path = resolve_baked_stylesheet_path(resolve_stylesheet_source(url, r_css_base), url);
 		const auto parents = String::utf8(r_css_base.c_str()).split("\n", false);
 		// litehtml carries this base string into nested imports and declarations.
 		if (path.is_empty() || parents.has(path) || parents.size() >= 16 || stylesheet_reads >= 128) {
@@ -268,8 +309,9 @@ namespace dockit {
 			source = sheet.url;
 			file = sheet.text;
 		} else {
-			const Variant stored = local_stylesheets.get(path, Variant());
-			file = stored.get_type() == Variant::STRING ? std::optional<String>(stored) : read_html_stylesheet(path);
+			const Ref<CSSStyleSheet> stylesheet = get_stylesheet_resource(path);
+			if (stylesheet.is_valid()) file = stylesheet->get_css_text();
+			else file = read_html_stylesheet(path);
 		}
 		if (!file) {
 			return;

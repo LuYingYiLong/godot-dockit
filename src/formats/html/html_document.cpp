@@ -21,8 +21,8 @@ void HTMLDocument::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_get_video_sources"), &HTMLDocument::get_video_sources);
 	ClassDB::bind_method(D_METHOD("_set_audio_streams", "streams"), &HTMLDocument::set_audio_streams);
 	ClassDB::bind_method(D_METHOD("_get_audio_streams"), &HTMLDocument::get_audio_streams);
-	ClassDB::bind_method(D_METHOD("_set_local_stylesheets", "stylesheets"), &HTMLDocument::set_local_stylesheets);
-	ClassDB::bind_method(D_METHOD("_get_local_stylesheets"), &HTMLDocument::get_local_stylesheets);
+	ClassDB::bind_method(D_METHOD("_set_stylesheet_resources", "stylesheets"), &HTMLDocument::set_stylesheet_resources);
+	ClassDB::bind_method(D_METHOD("_get_stylesheet_resources"), &HTMLDocument::get_stylesheet_resources);
 	ClassDB::bind_method(D_METHOD("_set_local_fonts", "fonts"), &HTMLDocument::set_local_fonts);
 	ClassDB::bind_method(D_METHOD("_get_local_fonts"), &HTMLDocument::get_local_fonts);
 	ClassDB::bind_method(D_METHOD("_set_image_dpi", "dpi"), &HTMLDocument::set_image_dpi);
@@ -49,8 +49,8 @@ void HTMLDocument::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_audio_streams", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_audio_streams", "_get_audio_streams");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "_set_textures", "_get_textures");
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_local_stylesheets", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
-		"_set_local_stylesheets", "_get_local_stylesheets");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_stylesheet_resources", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
+		"_set_stylesheet_resources", "_get_stylesheet_resources");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_local_fonts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
 		"_set_local_fonts", "_get_local_fonts");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_image_dpi", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE),
@@ -144,13 +144,13 @@ Dictionary HTMLDocument::get_textures() const {
 	return textures.duplicate();
 }
 
-void HTMLDocument::set_local_stylesheets(const Dictionary& p_stylesheets) {
-	local_stylesheets = p_stylesheets.duplicate();
+void HTMLDocument::set_stylesheet_resources(const Dictionary& p_stylesheets) {
+	stylesheet_resources = p_stylesheets.duplicate();
 	emit_changed();
 }
 
-Dictionary HTMLDocument::get_local_stylesheets() const {
-	return local_stylesheets.duplicate();
+Dictionary HTMLDocument::get_stylesheet_resources() const {
+	return stylesheet_resources.duplicate();
 }
 
 void HTMLDocument::set_local_fonts(const Dictionary& p_fonts) {
@@ -204,6 +204,6 @@ Ref<HTMLPrintLayout> HTMLDocument::create_print_layout(const Dictionary& p_optio
 }
 
 void HTMLDocument::parse_into(HTMLLayout& p_layout, const String& p_default_stylesheet) const {
-	p_layout.parse_source(text, get_resource_base_dir(), stylesheet, textures, source_path, false, p_default_stylesheet, {}, local_stylesheets,
+	p_layout.parse_source(text, get_resource_base_dir(), stylesheet, textures, source_path, false, p_default_stylesheet, {}, stylesheet_resources,
 		local_fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams, video_sources);
 }

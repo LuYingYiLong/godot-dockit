@@ -37,6 +37,12 @@ namespace godot {
 		return FORMAT_VERSION;
 	}
 
+	PackedStringArray HTMLDocumentImporter::_get_build_dependencies(const String& p_path) const {
+		String source;
+		if (dockit::read_document_text(p_path, source) != OK) return {};
+		return dockit::collect_html_stylesheet_paths(source, p_path.get_base_dir(), p_path);
+	}
+
 	Error HTMLDocumentImporter::_import(const String& p_source_file, const String& p_save_path, const Dictionary&,
 		const TypedArray<String>&, const TypedArray<String>&) const {
 		String text;
@@ -55,7 +61,7 @@ namespace godot {
 		document->set_textures(assets.textures);
 		document->set_audio_streams(assets.audio_streams);
 		document->set_video_sources(assets.video_sources);
-		document->set_local_stylesheets(assets.stylesheets);
+		document->set_stylesheet_resources(assets.stylesheet_resources);
 		document->set_local_fonts(assets.fonts);
 		document->set_image_dpi(assets.image_dpi);
 		document->set_image_orientations(assets.image_orientations);

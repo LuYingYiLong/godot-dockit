@@ -1,6 +1,9 @@
 #pragma once
 
+#include "formats/html/css/css_style_sheet.h"
+
 #include <litehtml/html_tag.h>
+#include <godot_cpp/classes/ref.hpp>
 
 #include <cstdint>
 
@@ -13,6 +16,7 @@ namespace dockit {
 		litehtml::string linked_request_path;
 		litehtml::string linked_path;
 		litehtml::string linked_text;
+		godot::Ref<CSSStyleSheet> linked_resource;
 
 		bool accepts_style_text() const;
 		void parse_attributes() override;

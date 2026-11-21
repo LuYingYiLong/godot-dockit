@@ -173,6 +173,7 @@ class HTMLLayout : public godot::RefCounted {
 	void queue_resource_layout();
 	static void remote_stylesheet_completed(const godot::String& p_url, const godot::String& p_final_url,
 		const godot::String& p_text, uint64_t p_id, uint64_t p_version);
+	void stylesheet_resource_changed();
 	static void remote_image_completed(const godot::String& p_url, const godot::Ref<godot::Texture2D>& p_texture,
 		uint64_t p_id, uint64_t p_version);
 	void invalidate_styles();
@@ -332,7 +333,7 @@ public:
 		bool p_fit_images = false,
 		const godot::String& p_default_stylesheet = {},
 		const dockit::HTMLFontConfig& p_fonts = {},
-		const godot::Dictionary& p_local_stylesheets = {},
+		const godot::Dictionary& p_stylesheet_resources = {},
 		const godot::Dictionary& p_local_fonts = {},
 		const godot::Dictionary& p_image_dpi = {},
 		const godot::Dictionary& p_image_orientations = {},

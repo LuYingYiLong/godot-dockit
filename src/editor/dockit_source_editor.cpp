@@ -1,6 +1,7 @@
 #include "dockit_source_editor.h"
 
 #include "formats/html/html_document.h"
+#include "formats/html/css/css_style_sheet.h"
 #include "formats/latex/latex_document.h"
 #include "formats/mermaid/mermaid_document.h"
 
@@ -30,6 +31,7 @@
 namespace godot {
 	namespace {
 		Ref<HTMLDocumentImporter> startup_html_importer;
+		Ref<CSSStyleSheetImporter> startup_css_stylesheet_importer;
 		Ref<LatexDocumentImporter> startup_latex_importer;
 		Ref<MermaidDocumentImporter> startup_mermaid_importer;
 		Ref<PDFTextureImporter> startup_pdf_importer;
@@ -120,13 +122,15 @@ namespace godot {
 			for (int32_t index = 0; index < p_directory->get_file_count(); ++index) {
 				const String path = p_directory->get_file_path(index);
 				const StringName document_type = get_document_type(path);
-				if (document_type.is_empty()) {
+				const bool css_source = path.get_extension().nocasecmp_to("css") == 0;
+				if (document_type.is_empty() && !css_source) {
 					continue;
 				}
+				const StringName expected_type = css_source ? CSSStyleSheet::get_class_static() : document_type;
 				const String sidecar = path + String(".import");
 				if (!FileAccess::file_exists(sidecar)) {
 					const StringName type = p_directory->get_file_type(index);
-					if (type.is_empty() || type == document_type || type == StringName("TextFile") || type == StringName("OtherFile")) {
+					if (type.is_empty() || type == expected_type || type == StringName("TextFile") || type == StringName("OtherFile")) {
 						r_paths.append(path);
 					}
 					continue;
@@ -140,7 +144,8 @@ namespace godot {
 				const int64_t version = config->get_value("remap", "importer_version", 0);
 				const bool outdated_html = importer == "dockit.html_document" &&
 					version < HTMLDocumentImporter::FORMAT_VERSION;
-				if (importer == "dockit.source" || outdated_html) {
+				const bool outdated_css = css_source && (importer != "dockit.css_stylesheet" || version < CSSStyleSheetImporter::FORMAT_VERSION);
+				if (importer == "dockit.source" || outdated_html || outdated_css) {
 					r_paths.append(path);
 				}
 			}
@@ -180,6 +185,7 @@ namespace godot {
 		DockitSourceEditorPlugin* registrar = memnew(DockitSourceEditorPlugin);
 		registrar->install_importers();
 		startup_html_importer = registrar->html_importer;
+		startup_css_stylesheet_importer = registrar->css_stylesheet_importer;
 		startup_latex_importer = registrar->latex_importer;
 		startup_mermaid_importer = registrar->mermaid_importer;
 		startup_pdf_importer = registrar->pdf_importer;
@@ -187,6 +193,9 @@ namespace godot {
 	}
 
 	void DockitSourceEditorPlugin::install_importers() {
+		css_stylesheet_importer.instantiate();
+		css_stylesheet_importer->set_translation_domain("godot.editor");
+		add_import_plugin(css_stylesheet_importer);
 		html_importer.instantiate();
 		html_importer->set_translation_domain("godot.editor");
 		add_import_plugin(html_importer);
@@ -210,6 +219,8 @@ namespace godot {
 		if (startup_latex_importer.is_valid()) {
 			html_importer = startup_html_importer;
 			startup_html_importer.unref();
+			css_stylesheet_importer = startup_css_stylesheet_importer;
+			startup_css_stylesheet_importer.unref();
 			latex_importer = startup_latex_importer;
 			mermaid_importer = startup_mermaid_importer;
 			pdf_importer = startup_pdf_importer;
@@ -272,6 +283,8 @@ namespace godot {
 		}
 		remove_import_plugin(html_importer);
 		html_importer.unref();
+		remove_import_plugin(css_stylesheet_importer);
+		css_stylesheet_importer.unref();
 		if (pdf_importer.is_valid()) {
 			remove_import_plugin(pdf_importer);
 			pdf_importer.unref();

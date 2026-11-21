@@ -28,6 +28,7 @@
 #include "formats/html/css/css_animation_state.h"
 #include "formats/html/css/css_declarations.h"
 #include "formats/html/css/css_media_query.h"
+#include "formats/html/css/css_style_sheet.h"
 #include "formats/html/css/css_stylesheet_rules.h"
 #include "formats/html/css/css_supports.h"
 #include "formats/html/css/css_syntax_util.h"
@@ -784,6 +785,13 @@ namespace {
 		for (const auto& rule : p_rules) output += dockit::css::serialize_rule(*rule) + '\n';
 		return output;
 	}
+
+	bool update_linked_stylesheet_resource(const std::shared_ptr<litehtml::element>& p_owner, const std::string& p_text) {
+		const auto node = std::dynamic_pointer_cast<dockit::HTMLStylesheetNode>(p_owner);
+		if (!node || node->linked_resource.is_null()) return false;
+		node->linked_resource->set_css_text(String::utf8(p_text.c_str()));
+		return true;
+	}
 }
 
 Error HTMLLayout::set_css_rule_text(int64_t p_stylesheet, const PackedInt32Array& p_path, const String& p_text) {
@@ -798,8 +806,13 @@ Error HTMLLayout::set_css_rule_text(int64_t p_stylesheet, const PackedInt32Array
 	auto rules = litehtml::css_parser::parse_stylesheet(sheet->text, true);
 	if (!replace_nested_rule(rules, p_path, replacement)) return ERR_INVALID_PARAMETER;
 	const std::string updated = serialize_rules(rules);
-	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
-	else state->user_styles = updated;
+	if (sheet->owner) {
+		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
+			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
+		}
+	} else {
+		state->user_styles = updated;
+	}
 	++state->css_rule_revisions[p_stylesheet];
 	invalidate_styles();
 	return OK;
@@ -819,8 +832,13 @@ Error HTMLLayout::edit_css_rule_nested(int64_t p_stylesheet, const PackedInt32Ar
 	auto rules = litehtml::css_parser::parse_stylesheet(sheet->text, true);
 	if (!edit_nested_rules(rules, p_parent_path, p_index, p_text, 0)) return p_text ? ERR_PARSE_ERROR : ERR_INVALID_PARAMETER;
 	const std::string updated = serialize_rules(rules);
-	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
-	else state->user_styles = updated;
+	if (sheet->owner) {
+		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
+			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
+		}
+	} else {
+		state->user_styles = updated;
+	}
 	++state->css_rule_revisions[p_stylesheet];
 	invalidate_styles();
 	return OK;
@@ -885,8 +903,13 @@ Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const Str
 	}
 	std::string updated;
 	for (const auto& rule : rules) updated += dockit::css::serialize_rule(*rule) + '\n';
-	if (sheet->owner) DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
-	else state->user_styles = std::move(updated);
+	if (sheet->owner) {
+		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
+			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
+		}
+	} else {
+		state->user_styles = std::move(updated);
+	}
 	++state->css_rule_revisions[p_stylesheet];
 	invalidate_styles();
 	return OK;
@@ -1152,7 +1175,7 @@ Error HTMLLayout::parse(const String& p_html, const String& p_root_subfolder, co
 
 Error HTMLLayout::parse_source(const String& p_html, const String& p_root_subfolder, const String& p_stylesheet,
 	const Dictionary& p_textures, const String& p_source_path, bool p_fit_images, const String& p_default_stylesheet, const dockit::HTMLFontConfig& p_fonts,
-	const Dictionary& p_local_stylesheets, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
+	const Dictionary& p_stylesheet_resources, const Dictionary& p_local_fonts, const Dictionary& p_image_dpi,
 	const Dictionary& p_image_orientations, const Dictionary& p_svg_clip_sources, const Dictionary& p_audio_streams, const Dictionary& p_video_sources) {
 	clear();
 	const std::optional<String> base_dir = dockit::normalize_html_resource_path(p_root_subfolder);
@@ -1163,10 +1186,11 @@ Error HTMLLayout::parse_source(const String& p_html, const String& p_root_subfol
 	state->audio_streams = p_audio_streams;
 	state->video_sources = p_video_sources;
 	try {
-		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_local_stylesheets,
+		state->container = std::make_unique<LiteHTMLContainer>(*state->dom, *base_dir, p_textures, p_fit_images, p_fonts, p_stylesheet_resources,
 			p_local_fonts, p_image_dpi, p_image_orientations, p_svg_clip_sources);
 		state->container->set_remote_image_callback(callable_mp_static(&HTMLLayout::remote_image_completed).bind(get_instance_id(), parse_version));
 		state->container->set_remote_stylesheet_callback(callable_mp_static(&HTMLLayout::remote_stylesheet_completed).bind(get_instance_id(), parse_version));
+		state->container->set_stylesheet_changed_callback(callable_mp(this, &HTMLLayout::stylesheet_resource_changed));
 		state->container->set_document_source_path(p_source_path);
 		state->container->set_css_diagnostics_enabled(state->css_diagnostics_enabled);
 		state->container->set_preferred_color_scheme(system_preference());
@@ -1546,6 +1570,11 @@ void HTMLLayout::remote_stylesheet_completed(const String& p_url, const String& 
 	if (!layout->state->container->receive_remote_stylesheet(p_url, p_final_url, p_text)) return;
 	if (!p_final_url.is_empty()) layout->mark_styles_pending();
 	layout->queue_resource_layout();
+}
+
+void HTMLLayout::stylesheet_resource_changed() {
+	if (!state->container) return;
+	invalidate_styles();
 }
 
 void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_id, uint64_t p_version) {

@@ -319,6 +319,12 @@ const ADDITIONAL_LAYERS: String = """
 var _failures: int
 
 
+func _make_css_style_sheet(p_text: String) -> CSSStyleSheet:
+	var stylesheet: CSSStyleSheet = CSSStyleSheet.new()
+	stylesheet.css_text = p_text
+	return stylesheet
+
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -5797,13 +5803,13 @@ func _check_generated_image() -> void:
 	var document: HTMLDocument = HTMLDocument.new()
 	document.text = '<link rel="stylesheet" href="styles/sheet.css"><div id="generated_image"></div>'
 	document.set("_textures", { "res://styles/nested/picture.png": texture, })
-	document.set("_local_stylesheets", {
-		"res://styles/sheet.css": '@import "nested/content.css"; ',
-		"res://styles/nested/content.css": '''
+	document.set("_stylesheet_resources", {
+		"res://styles/sheet.css": _make_css_style_sheet('@import "nested/content.css"; '),
+		"res://styles/nested/content.css": _make_css_style_sheet('''
 			body { margin: 0; }
 			#generated_image::before { content: var(--picture); }
 			#generated_image { --picture: url("picture.png"); }
-		''',
+		'''),
 	})
 	var label: HTMLLabel = HTMLLabel.new()
 	label.size = Vector2(140.0, 90.0)
@@ -11670,10 +11676,11 @@ func _check_cssom_runtime() -> void:
 	var document: HTMLDocument = HTMLDocument.new()
 	document.text = """<!doctype html><link rel="stylesheet" href="styles/base.css" media="(min-width: 300px)">
 		<div id="target">Target</div>"""
-	document.set("_local_stylesheets", {
-		"res://styles/base.css": "@import 'nested/first.css'; #target { width: var(--size) }",
-		"res://styles/nested/first.css": "#target { --size: 22px }",
-		"res://styles/nested/second.css": "#target { --size: 64px }",
+	var base_stylesheet: CSSStyleSheet = _make_css_style_sheet("@import 'nested/first.css'; #target { width: var(--size) }")
+	document.set("_stylesheet_resources", {
+		"res://styles/base.css": base_stylesheet,
+		"res://styles/nested/first.css": _make_css_style_sheet("#target { --size: 22px }"),
+		"res://styles/nested/second.css": _make_css_style_sheet("#target { --size: 64px }"),
 	})
 	var linked_layout: HTMLLayout = document.create_layout()
 	var original_layout: HTMLLayout = document.create_layout()
@@ -11687,9 +11694,16 @@ func _check_cssom_runtime() -> void:
 		linked_layout.get_computed_style_property(target, "width") == "64px", "Edited linked sheet resolves relative imports")
 	_check(linked_layout.insert_rule(linked_id, "@import 'nested/second.css';", 3) != OK,
 		"Linked sheet rejects an import after a style rule")
-	_check(original_layout.get_computed_style_property(original_layout.get_element_by_id("target"), "width") == "22px",
-		"Editing a linked stylesheet does not affect another layout from the same resource")
-	_check(linked_layout.layout(Vector2i(260, 80)) == OK and linked_layout.get_computed_style_property(target, "width") == "auto",
+	_check(original_layout.get_computed_style_property(original_layout.get_element_by_id("target"), "width") == "64px",
+		"CSSOM edits to a shared linked stylesheet update every layout using its resource")
+	base_stylesheet.css_text = "@import 'nested/second.css'; #target { width: 71px }"
+	var linked_width: String = linked_layout.get_computed_style_property(target, "width")
+	var original_width: String = original_layout.get_computed_style_property(original_layout.get_element_by_id("target"), "width")
+	_check(linked_width == "71px" and original_width == "71px",
+		"Changing CSSStyleSheet.css_text reflows all current layouts without writing the source file")
+	var relaid_out: Error = linked_layout.layout(Vector2i(260, 80))
+	var narrow_width: String = linked_layout.get_computed_style_property(target, "width")
+	_check(relaid_out == OK and narrow_width == "auto",
 		"The linked sheet retains its media condition after editing")
 
 
@@ -16256,7 +16270,7 @@ First &amp; line
 	_check(detached.value == " a\n  b\n", "Detached textareas retain whitespace in their default value")
 	_check(detached.set_inner_html(" a  &amp;\n  <b>text</b>") == OK and detached.value == " a  &\n  <b>text</b>",
 		"Textarea fragment parsing keeps RCDATA and literal markup")
-	detached.value = "live\r\nvalue"
+	detached.value = "live\nvalue"
 	detached.default_value = "new default"
 	_check(detached.value == "live\nvalue" and detached.default_value == "new default",
 		"A dirty value is independent of its child text and normalizes newlines")

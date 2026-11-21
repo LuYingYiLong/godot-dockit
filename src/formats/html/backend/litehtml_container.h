@@ -30,7 +30,7 @@ namespace dockit {
 			const godot::Dictionary& p_textures,
 			bool p_fit_images,
 			const HTMLFontConfig& p_fonts,
-			const godot::Dictionary& p_local_stylesheets,
+			const godot::Dictionary& p_stylesheet_resources,
 			const godot::Dictionary& p_local_fonts,
 			const godot::Dictionary& p_image_dpi,
 			const godot::Dictionary& p_image_orientations,
@@ -51,6 +51,8 @@ namespace dockit {
 		}
 		void set_remote_image_callback(const godot::Callable& p_callback) { resources.set_remote_image_callback(p_callback); }
 		void set_remote_stylesheet_callback(const godot::Callable& p_callback) { resources.set_remote_stylesheet_callback(p_callback); }
+		void set_stylesheet_changed_callback(const godot::Callable& p_callback) { resources.set_stylesheet_changed_callback(p_callback); }
+		godot::Ref<CSSStyleSheet> get_stylesheet_resource(const godot::String& p_path) { return resources.get_stylesheet_resource(p_path); }
 		bool receive_remote_stylesheet(const godot::String& p_url, const godot::String& p_final_url, const godot::String& p_text) {
 			return resources.receive_remote_stylesheet(p_url, p_final_url, p_text);
 		}

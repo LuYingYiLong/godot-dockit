@@ -36,7 +36,7 @@ class HTMLPrintLayout : public godot::RefCounted {
 	godot::PackedStringArray diagnostics;
 	godot::String source_html;
 	godot::String source_stylesheet;
-	godot::Dictionary local_stylesheets;
+	godot::Dictionary stylesheet_resources;
 	std::vector<double> forced_page_breaks;
 	int64_t layout_width = 0;
 	bool ready = false;

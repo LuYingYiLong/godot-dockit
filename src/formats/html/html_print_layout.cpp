@@ -3,6 +3,7 @@
 #include "html_document.h"
 #include "html_layout.h"
 #include "formats/html/backend/litehtml_container.h"
+#include "formats/html/css/css_style_sheet.h"
 #include "formats/html/paint/html_paint_recorder.h"
 #include "formats/pdf/writer/pdf_writer.h"
 
@@ -239,7 +240,7 @@ namespace {
 		}
 	}
 
-	void collect_page_break_positions(const String& p_html, const String& p_stylesheet, const Dictionary& p_local_stylesheets,
+	void collect_page_break_positions(const String& p_html, const String& p_stylesheet, const Dictionary& p_stylesheet_resources,
 		HTMLLayout& p_layout, std::vector<double>& r_breaks) {
 		r_breaks.clear();
 		const TypedArray<HTMLElement> all = p_layout.query_selector_all("*");
@@ -259,8 +260,9 @@ namespace {
 		std::vector<String> sheets;
 		collect_embedded_css(p_html, sheets);
 		if (!p_stylesheet.is_empty()) sheets.push_back(p_stylesheet);
-		for (const Variant& sheet : p_local_stylesheets.values()) {
-			if (sheet.get_type() == Variant::STRING) sheets.push_back(sheet);
+		for (const Variant& value : p_stylesheet_resources.values()) {
+			const Ref<CSSStyleSheet> sheet = value;
+			if (sheet.is_valid()) sheets.push_back(sheet->get_css_text());
 		}
 		for (const String& sheet : sheets) collect_break_rule_block(sheet, p_layout, r_breaks);
 		std::sort(r_breaks.begin(), r_breaks.end());
@@ -349,8 +351,9 @@ void HTMLPrintLayout::prepare(const HTMLDocument& p_document, const Dictionary& 
 	std::vector<PageStyle> named_styles;
 	parse_page_rules(p_document.text, page_style, first_style, left_style, right_style, named_styles);
 	parse_page_rules(p_document.stylesheet, page_style, first_style, left_style, right_style, named_styles);
-	for (const Variant& sheet : p_document.local_stylesheets.values()) {
-		if (sheet.get_type() == Variant::STRING) parse_page_rules(sheet, page_style, first_style, left_style, right_style, named_styles);
+	for (const Variant& value : p_document.stylesheet_resources.values()) {
+		const Ref<CSSStyleSheet> sheet = value;
+		if (sheet.is_valid()) parse_page_rules(sheet->get_css_text(), page_style, first_style, left_style, right_style, named_styles);
 	}
 	if (!first_style.has_size) first_style.size = page_style.size;
 	if (!first_style.has_margin_side[0]) first_style.margins.x = page_style.margins.x;
@@ -443,8 +446,8 @@ void HTMLPrintLayout::prepare(const HTMLDocument& p_document, const Dictionary& 
 	}
 	source_html = p_document.text;
 	source_stylesheet = p_document.stylesheet;
-	local_stylesheets = p_document.local_stylesheets.duplicate();
-	collect_page_break_positions(source_html, source_stylesheet, local_stylesheets, *layout.ptr(), forced_page_breaks);
+	stylesheet_resources = p_document.stylesheet_resources.duplicate();
+	collect_page_break_positions(source_html, source_stylesheet, stylesheet_resources, *layout.ptr(), forced_page_breaks);
 	rebuild_pages();
 	if (layout->pending_resource_count() == 0) {
 		ready = true;
@@ -495,7 +498,7 @@ void HTMLPrintLayout::on_resources_changed() {
 		queue_ready_signal();
 		return;
 	}
-	collect_page_break_positions(source_html, source_stylesheet, local_stylesheets, *layout.ptr(), forced_page_breaks);
+	collect_page_break_positions(source_html, source_stylesheet, stylesheet_resources, *layout.ptr(), forced_page_breaks);
 	rebuild_pages();
 	if (layout->get_failed_remote_resource_count() > 0) {
 		add_diagnostic_once("One or more remote print resources failed to load; the PDF uses the available fallback content.");

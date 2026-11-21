@@ -5,6 +5,7 @@
 #include "editor/dockit_source_editor.h"
 #include "editor/html_preview_editor_plugin.h"
 #include "editor/importers/html_document_importer.h"
+#include "editor/importers/css_style_sheet_importer.h"
 #include "editor/importers/latex_document_importer.h"
 #include "editor/importers/mermaid_document_importer.h"
 #include "editor/importers/pdf_texture_importer.h"
@@ -36,6 +37,7 @@
 #include "formats/html/css/html_animation.h"
 #include "formats/html/css/html_css_rule.h"
 #include "formats/html/css/html_style_sheet.h"
+#include "formats/html/css/css_style_sheet.h"
 #include "formats/html/html_behavior.h"
 #include "formats/remote_images.h"
 #include "formats/http_requests.h"
@@ -115,6 +117,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLAnimation);
 		GDREGISTER_CLASS(CSSRule);
 		GDREGISTER_CLASS(CSSStyleDeclaration);
+		GDREGISTER_CLASS(CSSStyleSheet);
 		GDREGISTER_ABSTRACT_CLASS(HTMLStyleSheet);
 		GDREGISTER_CLASS(HTMLBehaviorStorage);
 		GDREGISTER_ABSTRACT_CLASS(HTMLElement);
@@ -208,6 +211,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		EditorPlugins::add_by_type<MermaidPreviewEditorPlugin>();
 		GDREGISTER_INTERNAL_CLASS(LatexDocumentImporter);
 		GDREGISTER_INTERNAL_CLASS(HTMLDocumentImporter);
+		GDREGISTER_INTERNAL_CLASS(CSSStyleSheetImporter);
 		GDREGISTER_INTERNAL_CLASS(HTMLVideoExportPlugin);
 		GDREGISTER_INTERNAL_CLASS(MermaidDocumentImporter);
 		if (PDFTextureImporter::is_supported()) {

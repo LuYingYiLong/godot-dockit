@@ -1,9 +1,11 @@
 #include "html_asset_collector.h"
 #include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 #include "formats/html/css/css_stylesheet_rules.h"
 #include "formats/html/css/css_value_helpers.h"
+#include "formats/html/css/css_style_sheet.h"
 #include "html_image_sources.h"
 #include "html_resource_paths.h"
 #include "html_resources.h"
@@ -114,7 +116,7 @@ namespace dockit {
 			HashSet<String> images;
 			HashSet<String> fonts;
 			HashSet<String> svg_clips;
-			Dictionary stylesheets;
+			Dictionary stylesheet_texts;
 
 			void add_stylesheet(const String& p_url, const String& p_dir) {
 				const String path = resolve_html_stylesheet_path(p_url, p_dir);
@@ -123,7 +125,7 @@ namespace dockit {
 				}
 				checked_stylesheets.insert(path);
 				if (const auto text = read_html_stylesheet(path)) {
-					stylesheets[path] = *text;
+					stylesheet_texts[path] = *text;
 					add_css(text->utf8().get_data(), path.get_base_dir());
 				}
 			}
@@ -148,6 +150,12 @@ namespace dockit {
 					}
 					add_stylesheet(String::utf8(url.c_str()), p_dir);
 				}
+			}
+
+			PackedStringArray stylesheet_paths() const {
+				PackedStringArray paths;
+				for (const String& path : checked_stylesheets) paths.append(path);
+				return paths;
 			}
 		};
 	}
@@ -265,6 +273,59 @@ namespace dockit {
 				audio_streams[path] = resource;
 			}
 		}
-		return { textures, assets.stylesheets, fonts, image_dpi, image_orientations, svg_clip_sources, audio_streams, video_sources };
+		Dictionary stylesheet_resources;
+		for (const Variant& value : assets.stylesheet_texts.keys()) {
+			const String path = value;
+			const Ref<CSSStyleSheet> stylesheet = loader->load(path, CSSStyleSheet::get_class_static());
+			if (stylesheet.is_valid()) stylesheet_resources[path] = stylesheet;
+		}
+		return { textures, stylesheet_resources, assets.stylesheet_paths(), fonts, image_dpi, image_orientations,
+			svg_clip_sources, audio_streams, video_sources };
+	}
+
+	PackedStringArray collect_html_stylesheet_paths(const String& p_html, const String& p_base_dir, const String& p_source_path) {
+		if (p_html.is_empty()) return {};
+		const CharString bytes = p_html.utf8();
+		const GumboTree tree(gumbo_parse_with_options(&kGumboDefaultOptions, bytes.get_data(), bytes.length()));
+		if (!tree || !tree->root) return {};
+		const String base_dir = resolve_html_document_base(make_html_resource_base(p_base_dir, p_source_path),
+			first_base_href(tree->root)).directory;
+		AssetCollector assets;
+		std::vector<const GumboNode*> nodes{ tree->root };
+		while (!nodes.empty()) {
+			const GumboNode* node = nodes.back();
+			nodes.pop_back();
+			if (node->type != GUMBO_NODE_ELEMENT && node->type != GUMBO_NODE_TEMPLATE) continue;
+			const GumboElement& element = node->v.element;
+			if (element.tag == GUMBO_TAG_LINK) {
+				const GumboAttribute* rel = gumbo_get_attribute(&element.attributes, "rel");
+				const GumboAttribute* href = gumbo_get_attribute(&element.attributes, "href");
+				if (href && is_html_stylesheet_link(rel ? rel->value : nullptr)) {
+					assets.add_stylesheet(String::utf8(href->value), base_dir);
+				}
+			}
+			for (size_t index = 0; index < element.children.length; ++index) nodes.push_back(child(element, index));
+		}
+		return assets.stylesheet_paths();
+	}
+
+	PackedStringArray collect_css_stylesheet_imports(const String& p_css, const String& p_source_path) {
+		PackedStringArray result;
+		HashSet<String> seen;
+		const String base_dir = p_source_path.get_base_dir();
+		const std::string source = p_css.utf8().get_data();
+		for (const auto& rule : litehtml::css_parser::parse_stylesheet(source, true)) {
+			if (rule->type != litehtml::raw_rule::at || String::utf8(rule->name.c_str()).nocasecmp_to("import") != 0) continue;
+			int index = 0;
+			litehtml::skip_whitespace(rule->prelude, index);
+			if (index >= static_cast<int>(rule->prelude.size())) continue;
+			std::string url;
+			if (!css::parse_import_url(rule->prelude[index], url)) continue;
+			const String path = resolve_html_stylesheet_path(String::utf8(url.c_str()), base_dir);
+			if (!path.begins_with("res://") || !FileAccess::file_exists(path) || seen.has(path)) continue;
+			seen.insert(path);
+			result.append(path);
+		}
+		return result;
 	}
 }

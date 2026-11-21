@@ -3,11 +3,13 @@
 #include "html_image_metadata.h"
 #include "html_resource_paths.h"
 #include "html_remote_stylesheets.h"
+#include "formats/html/css/css_style_sheet.h"
 
 #include <litehtml/types.h>
 
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/font_file.hpp>
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/variant/callable.hpp>
@@ -16,6 +18,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace dockit {
 	bool is_html_stylesheet_link(const char* p_rel);								// 判断 rel 是否声明默认应用的样式表
@@ -26,7 +30,7 @@ namespace dockit {
 		HTMLResourceBase fallback_base;
 		HTMLResourceBase document_base;
 		godot::Dictionary textures;
-		godot::Dictionary local_stylesheets;
+		godot::Dictionary stylesheet_resources;
 		godot::Dictionary local_fonts;
 		godot::Dictionary image_dpi;
 		godot::Dictionary image_orientations;
@@ -40,20 +44,24 @@ namespace dockit {
 		godot::HashMap<godot::String, RemoteStylesheet> remote_stylesheets;
 		godot::HashSet<godot::String> pending_stylesheets;
 		godot::Callable remote_stylesheet_callback;
+		godot::Callable stylesheet_changed_callback;
+		std::vector<std::pair<godot::Ref<CSSStyleSheet>, godot::Callable>> stylesheet_connections;
 		bool recording_paint = false;
 		int stylesheet_reads = 0;
 		int failed_remote_resources = 0;
 
 		const HTMLImageMetadata& get_image_metadata(const godot::String& p_path);
 		godot::String get_url_dir(const char* p_css_base) const;
+		godot::String resolve_baked_stylesheet_path(const godot::String& p_path, const godot::String& p_url) const;
 		godot::String resolve_remote_resource(const godot::String& p_url, std::string_view p_css_base) const;
 		godot::Ref<godot::Texture2D> load_texture_file(const godot::String& p_path);
 		godot::Ref<godot::FontFile> load_font_file(const godot::String& p_path);
 
 	public:
 		HTMLResources(const godot::String& p_base_dir, const godot::Dictionary& p_textures,
-			const godot::Dictionary& p_local_stylesheets, const godot::Dictionary& p_local_fonts, const godot::Dictionary& p_image_dpi,
+			const godot::Dictionary& p_stylesheet_resources, const godot::Dictionary& p_local_fonts, const godot::Dictionary& p_image_dpi,
 			const godot::Dictionary& p_image_orientations, const godot::Dictionary& p_svg_clip_sources);
+		~HTMLResources();
 
 		static std::string_view stylesheet_path(std::string_view p_css_base);
 		void set_source_path(const godot::String& p_path);
@@ -63,6 +71,8 @@ namespace dockit {
 		void reset_stylesheet_reads();
 		godot::String resolve_stylesheet_source(const godot::String& p_url, std::string_view p_css_base = {}) const;
 		void set_remote_stylesheet_callback(const godot::Callable& p_callback);
+		void set_stylesheet_changed_callback(const godot::Callable& p_callback);
+		godot::Ref<CSSStyleSheet> get_stylesheet_resource(const godot::String& p_path);
 		bool receive_remote_stylesheet(const godot::String& p_url, const godot::String& p_final_url, const godot::String& p_text);
 		void set_remote_image_callback(const godot::Callable& p_callback);
 		void begin_image_layout();

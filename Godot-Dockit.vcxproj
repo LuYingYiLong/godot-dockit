@@ -131,6 +131,7 @@
     <ClCompile Include="src\editor\html_preview_editor_plugin.cpp" />
     <ClCompile Include="src\editor\html_video_export_plugin.cpp" />
     <ClCompile Include="src\editor\importers\html_document_importer.cpp" />
+    <ClCompile Include="src\editor\importers\css_style_sheet_importer.cpp" />
     <ClCompile Include="src\editor\importers\latex_document_importer.cpp" />
     <ClCompile Include="src\editor\importers\mermaid_document_importer.cpp" />
     <ClCompile Include="src\editor\importers\pdf_texture_importer.cpp" />
@@ -143,6 +144,7 @@
     <ClCompile Include="src\formats\html\css\css_animated_property.cpp" />
     <ClCompile Include="src\formats\html\css\css_animation.cpp" />
     <ClCompile Include="src\formats\html\css\css_animation_state.cpp" />
+    <ClCompile Include="src\formats\html\css\css_style_sheet.cpp" />
     <ClCompile Include="src\formats\html\css\css_border_image.cpp" />
     <ClCompile Include="src\formats\html\css\css_borders.cpp" />
     <ClCompile Include="src\formats\html\css\css_cascade.cpp" />
@@ -355,6 +357,7 @@
     <ClInclude Include="src\editor\html_preview_editor_plugin.h" />
     <ClInclude Include="src\editor\html_video_export_plugin.h" />
     <ClInclude Include="src\editor\importers\html_document_importer.h" />
+    <ClInclude Include="src\editor\importers\css_style_sheet_importer.h" />
     <ClInclude Include="src\editor\importers\latex_document_importer.h" />
     <ClInclude Include="src\editor\importers\mermaid_document_importer.h" />
     <ClInclude Include="src\editor\importers\pdf_texture_importer.h" />
@@ -367,6 +370,7 @@
     <ClInclude Include="src\formats\html\css\css_animated_property.h" />
     <ClInclude Include="src\formats\html\css\css_animation.h" />
     <ClInclude Include="src\formats\html\css\css_animation_state.h" />
+    <ClInclude Include="src\formats\html\css\css_style_sheet.h" />
     <ClInclude Include="src\formats\html\css\css_background.h" />
     <ClInclude Include="src\formats\html\css\css_blend_mode.h" />
     <ClInclude Include="src\formats\html\css\css_border_image.h" />

@@ -318,6 +318,9 @@
     <ClCompile Include="src\editor\importers\html_document_importer.cpp">
       <Filter>Source Files\editor\importers</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\importers\css_style_sheet_importer.cpp">
+      <Filter>Source Files\editor\importers</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\importers\latex_document_importer.cpp">
       <Filter>Source Files\editor\importers</Filter>
     </ClCompile>
@@ -352,6 +355,9 @@
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_animation_state.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\css\css_style_sheet.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\css\css_border_image.cpp">
@@ -986,6 +992,9 @@
     <ClInclude Include="src\editor\importers\html_document_importer.h">
       <Filter>Header Files\editor\importers</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\importers\css_style_sheet_importer.h">
+      <Filter>Header Files\editor\importers</Filter>
+    </ClInclude>
     <ClInclude Include="src\editor\importers\latex_document_importer.h">
       <Filter>Header Files\editor\importers</Filter>
     </ClInclude>
@@ -1020,6 +1029,9 @@
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_animation_state.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\css\css_style_sheet.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\css\css_background.h">
