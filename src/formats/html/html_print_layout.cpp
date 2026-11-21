@@ -5,14 +5,20 @@
 #include "formats/html/backend/litehtml_container.h"
 #include "formats/html/css/css_style_sheet.h"
 #include "formats/html/paint/html_paint_recorder.h"
+#include "formats/html/text/html_system_fonts.h"
 #include "formats/pdf/writer/pdf_writer.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/font_file.hpp>
+#include <godot_cpp/classes/text_server.hpp>
+#include <godot_cpp/classes/text_server_manager.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 
 #include <algorithm>
 #include <array>
@@ -29,6 +35,59 @@ namespace {
 	constexpr double DEFAULT_A4_WIDTH = 793.7007874015748;
 	constexpr double DEFAULT_A4_HEIGHT = 1122.5196850393702;
 	constexpr int64_t MAX_PRINT_PAGES = 10000;
+	constexpr int32_t PDF_FONT_GLYPH_PROBE_SIZE = 16;
+
+	bool is_pdf_shaping_control(char32_t p_character) {
+		return p_character == 0x200c || p_character == 0x200d ||
+			(p_character >= 0x202a && p_character <= 0x202e) ||
+			(p_character >= 0x2066 && p_character <= 0x2069) ||
+			(p_character >= 0xfe00 && p_character <= 0xfe0f) ||
+			(p_character >= 0xe0100 && p_character <= 0xe01ef);
+	}
+
+	bool needs_embedded_pdf_font(const String& p_text) {
+		for (int64_t index = 0; index < p_text.length(); ++index) {
+			if (p_text[index] > 0xff && !is_pdf_shaping_control(p_text[index])) return true;
+		}
+		return false;
+	}
+
+	bool pdf_font_covers_text(const Ref<TextServer>& p_server, const RID& p_font, const String& p_text) {
+		for (int64_t index = 0; index < p_text.length(); ++index) {
+			const char32_t character = p_text[index];
+			if (character <= 0x20 || is_pdf_shaping_control(character)) continue;
+			if (p_server->font_get_glyph_index(p_font, PDF_FONT_GLYPH_PROBE_SIZE, character, 0) == 0) return false;
+		}
+		return true;
+	}
+
+	Ref<FontFile> find_embeddable_pdf_font(const dockit::HTMLTextLayout& p_layout, const String& p_text,
+		HashMap<String, Ref<FontFile>>& r_font_cache, HashSet<String>& r_unavailable_fonts, String& r_font_name) {
+		if (!p_layout.is_valid()) return {};
+		const Ref<TextServer> server = TextServerManager::get_singleton()->get_primary_interface();
+		if (server.is_null()) return {};
+		HashSet<String> visited;
+		for (const Dictionary& glyph : server->shaped_text_get_glyphs(p_layout.get_rid())) {
+			const RID font_rid = glyph.get("font_rid", RID());
+			if (!font_rid.is_valid() || !pdf_font_covers_text(server, font_rid, p_text)) continue;
+			const String font_name = server->font_get_name(font_rid).strip_edges();
+			if (font_name.is_empty() || visited.has(font_name) || r_unavailable_fonts.has(font_name)) continue;
+			visited.insert(font_name);
+			Ref<FontFile> font;
+			if (const auto* cached = r_font_cache.getptr(font_name)) {
+				font = *cached;
+			} else {
+				font = dockit::load_system_font_face(font_name);
+				if (font.is_valid() && !font->get_data().is_empty()) r_font_cache.insert(font_name, font);
+				else r_unavailable_fonts.insert(font_name);
+			}
+			if (font.is_valid()) {
+				r_font_name = font_name;
+				return font;
+			}
+		}
+		return {};
+	}
 
 	struct PageStyle {
 		Vector2 size{DEFAULT_A4_WIDTH, DEFAULT_A4_HEIGHT};
@@ -574,6 +633,9 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 		return {};
 	}
 	int64_t standard_font = 0;
+	HashMap<String, Ref<FontFile>> embedded_font_files;
+	HashSet<String> unavailable_font_names;
+	HashMap<String, int64_t> embedded_pdf_fonts;
 	const std::vector<dockit::HTMLPaintRun>& runs = recorder->get_paint_runs();
 	const String plain_text = layout->get_plain_text();
 	for (size_t page_index = 0; page_index < pages.size(); ++page_index) {
@@ -614,11 +676,31 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 					if (baseline_y < page.source_y || baseline_y >= page.source_end) continue;
 					const String value = plain_text.substr(text->offset, text_length);
 					if (value.is_empty()) continue;
-					if (!standard_font) standard_font = writer->load_standard_font("Helvetica");
+					int64_t text_font = 0;
+					if (needs_embedded_pdf_font(value)) {
+						String font_name;
+						const Ref<FontFile> font = find_embeddable_pdf_font(text->layout, value,
+							embedded_font_files, unavailable_font_names, font_name);
+						if (font.is_valid()) {
+							if (const auto* cached = embedded_pdf_fonts.getptr(font_name)) {
+								text_font = *cached;
+							} else {
+								text_font = writer->load_font(font->get_data(), PDFWriter::FONT_TRUETYPE, true);
+								if (text_font) embedded_pdf_fonts.insert(font_name, text_font);
+							}
+						}
+						if (!text_font) {
+							add_diagnostic_once("Some Unicode text was omitted because no embeddable system font with matching glyphs was found.");
+							continue;
+						}
+					} else {
+						if (!standard_font) standard_font = writer->load_standard_font("Helvetica");
+						text_font = standard_font;
+					}
 					const float font_size_px = std::max(1.0f, text->layout.line_ascent() + text->layout.line_descent());
-					const int64_t object = standard_font ? writer->create_text(standard_font, float(font_size_px * CSS_PX_TO_PT), value) : 0;
+					const int64_t object = text_font ? writer->create_text(text_font, float(font_size_px * CSS_PX_TO_PT), value) : 0;
 					if (!object) {
-						add_diagnostic_once("Some text could not be encoded by the PDF standard font and was omitted.");
+						add_diagnostic_once("Some text could not be encoded by an available PDF font and was omitted.");
 						continue;
 					}
 					const Vector2 transformed = run.matrix.xform(text->position + Vector2(0, text->layout.line_ascent()));
@@ -678,7 +760,9 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 		}
 	}
 	if (standard_font) writer->close_font(standard_font);
-	PackedByteArray result = writer->save_to_buffer();
+	for (const KeyValue<String, int64_t>& font : embedded_pdf_fonts) writer->close_font(font.value);
+	const int64_t save_flags = embedded_pdf_fonts.is_empty() ? 0 : PDFWriter::SAVE_SUBSET_NEW_FONTS;
+	PackedByteArray result = writer->save_to_buffer(save_flags);
 	if (result.is_empty()) pending_error = writer->get_last_error();
 	return result;
 }

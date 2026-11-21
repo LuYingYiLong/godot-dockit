@@ -97,13 +97,8 @@ func _run() -> void:
 	if not first_page_text.contains("PRINT_ONLY_TEXT"):
 		_fail("Print media query content is missing from the PDF text")
 		return
-	var has_font_encoding_diagnostic: bool = false
-	for diagnostic: String in print_layout.get_diagnostics():
-		if diagnostic.contains("could not be encoded"):
-			has_font_encoding_diagnostic = true
-			break
-	if not has_font_encoding_diagnostic:
-		_fail("Unsupported PDF text glyphs were not reported")
+	if not first_page_text.contains("中文打印文本"):
+		_fail("CJK text was not preserved in the exported PDF")
 		return
 	for page_index: int in range(reader.get_page_count()):
 		if reader.get_page_text(page_index).contains("SCREEN_ONLY_TEXT"):
