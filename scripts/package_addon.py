@@ -9,7 +9,6 @@ from shutil import copy2, copytree, ignore_patterns
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDON = ROOT / "addons/dockit"
-SDK_DIR = ROOT / "src/thirdparty"
 MERMAN_NOTICES = (
     "LICENSE-APACHE",
     "LICENSE-MIT",
@@ -52,27 +51,27 @@ def stage_build(destination, platform, arch, target):
     binary = library_file(library)
     copy_file(ADDON / binary, destination / binary)
 
-    # Stage shared files once so merging matrix artifacts cannot overwrite them.
+    # The PDFium runtime is shared by the Windows x64 debug and release builds.
     if (platform, arch, target) == ("windows", "x86_64", "template_release"):
         copy_file(ADDON / "bin/pdfium.dll", destination / "bin/pdfium.dll")
-        copy_file(ROOT / "godot-cpp/LICENSE.md", destination / "godot-cpp-LICENSE.md")
-
-        pdfium = SDK_DIR / "pdfium-sdk"
-        copy_file(pdfium / "LICENSE", destination / "PDFium-LICENSES/LICENSE")
-        copytree(pdfium / "licenses", destination / "PDFium-LICENSES/licenses")
-        merman = SDK_DIR / "merman-sdk"
-        for name in MERMAN_NOTICES:
-            copy_file(merman / name, destination / "Merman-LICENSES" / name)
-        copytree(merman / "THIRD_PARTY_LICENSES", destination / "Merman-LICENSES/THIRD_PARTY_LICENSES")
 
 
 def assemble(destination):
     libraries = read_libraries()
     for library in libraries.values():
         require_file(destination / library_file(library))
+
+    copytree(
+        ADDON,
+        destination,
+        dirs_exist_ok=True,
+        ignore=ignore_patterns("bin", "*.import", ".godot"),
+    )
+    copy_file(ROOT / "LICENSE.txt", destination / "LICENSE.txt")
+    copy_file(ROOT / "godot-cpp/LICENSE.md", destination / "godot-cpp-LICENSE.md")
+
     for path in (
         "bin/pdfium.dll",
-        "godot-cpp-LICENSE.md",
         "PDFium-LICENSES/LICENSE",
         "PDFium-LICENSES/licenses/pdfium.txt",
         *(f"Merman-LICENSES/{name}" for name in MERMAN_NOTICES),
@@ -80,14 +79,6 @@ def assemble(destination):
         require_file(destination / path)
     if not any(path.is_file() for path in (destination / "Merman-LICENSES/THIRD_PARTY_LICENSES").rglob("*")):
         raise SystemExit("Missing Merman component licenses")
-
-    copytree(
-        ADDON,
-        destination,
-        dirs_exist_ok=True,
-        ignore=ignore_patterns("bin", "PDFium-LICENSES", "Merman-LICENSES", "*.import", ".godot"),
-    )
-    copy_file(ROOT / "LICENSE.txt", destination / "LICENSE.txt")
     print(f"Verified all {len(libraries)} GDExtension libraries in {destination}")
 
 
