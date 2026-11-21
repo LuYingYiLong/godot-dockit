@@ -342,6 +342,12 @@
     <ClCompile Include="src\nodes\markdown_label.cpp" />
     <ClCompile Include="src\nodes\mermaid_label.cpp" />
     <ClCompile Include="src\register_types.cpp" />
+    <ClCompile Include="src\formats\html\css\html_css_rule.cpp" />
+    <ClCompile Include="src\formats\html\dom\html_shadow_root.cpp" />
+    <ClCompile Include="src\formats\html\html_component.cpp" />
+    <ClCompile Include="src\formats\html\html_print_layout.cpp" />
+    <ClCompile Include="src\formats\html\html_ui_translations.cpp" />
+    <ClCompile Include="src\nodes\html_label_navigation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\editor\dockit_editor_translations.h" />
@@ -646,6 +652,12 @@
     <ClInclude Include="src\formats\html\layout\unicode_text_autospace.inc" />
     <ClInclude Include="src\formats\html\text\unicode_case_folding.inc" />
     <ClInclude Include="src\formats\html\text\unicode_emphasis_skip.inc" />
+    <ClInclude Include="src\formats\html\css\html_css_rule.h" />
+    <ClInclude Include="src\formats\html\dom\html_shadow_root.h" />
+    <ClInclude Include="src\formats\html\html_component.h" />
+    <ClInclude Include="src\formats\html\html_print_layout.h" />
+    <ClInclude Include="src\formats\html\html_ui_translations.h" />
+    <ClInclude Include="src\nodes\html_selection_drag_preview.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

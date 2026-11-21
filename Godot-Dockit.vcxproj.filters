@@ -495,6 +495,9 @@
     <ClCompile Include="src\formats\html\css\html_animation.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\css\html_css_rule.cpp">
+      <Filter>Source Files\formats\html\css</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\css\html_cssom.cpp">
       <Filter>Source Files\formats\html\css</Filter>
     </ClCompile>
@@ -523,6 +526,9 @@
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\dom\html_selection.cpp">
+      <Filter>Source Files\formats\html\dom</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\dom\html_shadow_root.cpp">
       <Filter>Source Files\formats\html\dom</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\elements\html_anchor_element.cpp">
@@ -624,10 +630,19 @@
     <ClCompile Include="src\formats\html\html_behavior.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\html\html_component.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\html\html_document.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\html_layout.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_print_layout.cpp">
+      <Filter>Source Files\formats\html</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\html\html_ui_translations.cpp">
       <Filter>Source Files\formats\html</Filter>
     </ClCompile>
     <ClCompile Include="src\formats\html\layout\grid\litehtml_grid_placement.cpp">
@@ -927,6 +942,9 @@
     <ClCompile Include="src\nodes\html_label_input.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\html_label_navigation.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\nodes\html_label_pickers.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
@@ -1166,6 +1184,9 @@
     <ClInclude Include="src\formats\html\css\html_animation.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\css\html_css_rule.h">
+      <Filter>Header Files\formats\html\css</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\css\html_cssom.h">
       <Filter>Header Files\formats\html\css</Filter>
     </ClInclude>
@@ -1188,6 +1209,9 @@
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\dom\html_selection.h">
+      <Filter>Header Files\formats\html\dom</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\dom\html_shadow_root.h">
       <Filter>Header Files\formats\html\dom</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\elements\html_anchor_element.h">
@@ -1319,10 +1343,19 @@
     <ClInclude Include="src\formats\html\html_behavior.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\html_component.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\html_document.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\html_layout.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_print_layout.h">
+      <Filter>Header Files\formats\html</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\html\html_ui_translations.h">
       <Filter>Header Files\formats\html</Filter>
     </ClInclude>
     <ClInclude Include="src\formats\html\layout\grid\litehtml_grid_placement.h">
@@ -1842,6 +1875,9 @@
       <Filter>Header Files\gen\html\include\litehtml</Filter>
     </ClInclude>
     <ClInclude Include="src\nodes\html_label.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\nodes\html_selection_drag_preview.h">
       <Filter>Header Files\nodes</Filter>
     </ClInclude>
     <ClInclude Include="src\nodes\latex_label.h">
