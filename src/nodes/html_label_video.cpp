@@ -159,6 +159,8 @@ Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
 		const int64_t index = r_playback.next_candidate++;
 		const String source = r_playback.paths[index / PLAYERS.size()];
 		const auto backend = PLAYERS[index % PLAYERS.size()];
+		// Temporarily skip VLC metadata prewarming to isolate its async-stop crash.
+		if (!p_play && backend == HTMLLabel::VIDEO_BACKEND_VLC) continue;
 		if ((video_backend != VIDEO_BACKEND_AUTO && video_backend != backend) || !backend_available(backend)) continue;
 		const String path = local_video_file(source);
 		if (path.is_empty()) continue;
