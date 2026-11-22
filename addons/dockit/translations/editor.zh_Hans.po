@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 14:31+0800\n"
+"POT-Creation-Date: 2026-11-23 01:09+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
@@ -14,6 +14,16 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#. src/editor/importers/css_style_sheet_importer.cpp:23
+msgctxt "Godot Dockit"
+msgid "CSS Style Sheet"
+msgstr ""
+
+#. src/editor/importers/html_document_importer.cpp:13
+msgctxt "Godot Dockit"
+msgid "HTML Document"
+msgstr "HTML 文档"
 
 #. src/editor/importers/latex_document_importer.cpp:12
 msgctxt "Godot Dockit"
@@ -50,7 +60,9 @@ msgctxt "Godot Dockit"
 msgid "View Source"
 msgstr "查看源文件"
 
-#. src/editor/importers/html_document_importer.cpp:13
+#. src/editor/importers/rst_document_importer.cpp:178
+#, fuzzy
+#| msgid "LaTeX Document"
 msgctxt "Godot Dockit"
-msgid "HTML Document"
-msgstr "HTML 文档"
+msgid "reStructuredText Document"
+msgstr "LaTeX 文档"

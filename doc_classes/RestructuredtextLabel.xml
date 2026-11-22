@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		[RestructuredtextLabel] renders imported [RSTDocument] resources or raw reStructuredText text. It supports headings and anchors, paragraphs, lists, code blocks, tables, admonitions, images, toctrees, document links, downloads, text selection, search, and external HTTP links.
-		Configure [code]dockit/rst/document_roots[/code] in Project Settings to generate the small reference index used by cross-document [code]:ref:[/code] links and toctree navigation. Relative images and downloads resolve from the source [code].rst[/code] file and do not require a scan root.
+		Configure [code]dockit/rst/document_roots[/code] in Project Settings to generate the small reference index used by cross-document [code]:ref:[/code] links and toctree navigation. Relative resources resolve from the source [code].rst[/code] file when one is assigned; otherwise [member access] and [member root_subfolder] define their base directory.
 		Internal document links emit [signal link_pressed]. Connect to that signal to load another document and scroll to any fragment in the destination.
 	</description>
 	<tutorials>
@@ -40,6 +40,24 @@
 			<return type="RSTDocument" />
 			<description>
 				Returns the current document resource, or [code]null[/code] when rendering raw text.
+			</description>
+		</method>
+		<method name="get_access" qualifiers="const">
+			<return type="int" enum="RestructuredtextLabel.Access" />
+			<description>
+				Returns the default source used to resolve relative resource paths.
+			</description>
+		</method>
+		<method name="get_resource_base_dir" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the base directory used to resolve relative images, documents, and downloads. The current document source directory takes precedence over [member root_subfolder].
+			</description>
+		</method>
+		<method name="get_root_subfolder" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the root folder used when resolving relative paths without a source document.
 			</description>
 		</method>
 		<method name="get_menu">
@@ -77,7 +95,7 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="path" type="String" />
 			<description>
-				Loads an imported [code].rst[/code] resource or reads a source file and displays it. Returns an [enum Error] code.
+				Loads an imported [code].rst[/code] resource or reads a source file and displays it. Relative paths use [member access] and [member root_subfolder], unless the current document supplies a source directory. Returns an [enum Error] code.
 			</description>
 		</method>
 		<method name="is_context_menu_enabled" qualifiers="const">
@@ -86,10 +104,28 @@
 				Returns [code]true[/code] if the right-click context menu is enabled. The default value is [code]false[/code].
 			</description>
 		</method>
+		<method name="is_fit_content_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the control reports its rendered content height as its minimum height.
+			</description>
+		</method>
 		<method name="is_menu_visible" qualifiers="const">
 			<return type="bool" />
 			<description>
 				Returns [code]true[/code] if the context menu is currently visible.
+			</description>
+		</method>
+		<method name="is_scroll_active" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the internal vertical scroll bar is active.
+			</description>
+		</method>
+		<method name="is_shortcut_keys_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the configured Copy and Select All keyboard shortcuts are enabled.
 			</description>
 		</method>
 		<method name="menu_option">
@@ -158,6 +194,67 @@
 				Sets whether the right-click context menu is enabled.
 			</description>
 		</method>
+		<method name="set_access">
+			<return type="void" />
+			<param index="0" name="access" type="int" enum="RestructuredtextLabel.Access" />
+			<description>
+				Sets the default source for relative resource paths: project resources, user data, or the file system.
+			</description>
+		</method>
+		<method name="set_root_subfolder">
+			<return type="void" />
+			<param index="0" name="root_subfolder" type="String" />
+			<description>
+				Sets the root folder used to resolve relative paths when no source document directory is available.
+			</description>
+		</method>
+		<method name="set_fit_content">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether the control reports its rendered content height as its minimum height.
+			</description>
+		</method>
+		<method name="set_scroll_active">
+			<return type="void" />
+			<param index="0" name="active" type="bool" />
+			<description>
+				Sets whether the internal vertical scroll bar is active.
+			</description>
+		</method>
+		<method name="set_shortcut_keys_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether the configured Copy and Select All keyboard shortcuts are enabled.
+			</description>
+		</method>
+		<method name="set_autowrap_mode">
+			<return type="void" />
+			<param index="0" name="autowrap_mode" type="int" enum="TextServer.AutowrapMode" />
+			<description>
+				Sets how rendered text wraps inside the control bounds.
+			</description>
+		</method>
+		<method name="get_autowrap_mode" qualifiers="const">
+			<return type="int" enum="TextServer.AutowrapMode" />
+			<description>
+				Returns how rendered text wraps inside the control bounds.
+			</description>
+		</method>
+		<method name="set_autowrap_trim_flags">
+			<return type="void" />
+			<param index="0" name="autowrap_trim_flags" type="int" enum="TextServer.LineBreakFlag" is_bitfield="true" />
+			<description>
+				Sets the line break space-trimming flags. Only trim flags are stored.
+			</description>
+		</method>
+		<method name="get_autowrap_trim_flags" qualifiers="const">
+			<return type="int" enum="TextServer.LineBreakFlag" is_bitfield="true" />
+			<description>
+				Returns the line break space-trimming flags.
+			</description>
+		</method>
 		<method name="set_rst_text">
 			<return type="void" />
 			<param index="0" name="text" type="String" />
@@ -200,6 +297,15 @@
 		</signal>
 	</signals>
 	<members>
+		<member name="access" type="int" setter="set_access" getter="get_access" enum="RestructuredtextLabel.Access" default="0">
+			Selects project Resources, User Data, or File System as the default source for relative resource paths. A loaded document's directory takes precedence.
+		</member>
+		<member name="autowrap_mode" type="int" setter="set_autowrap_mode" getter="get_autowrap_mode" enum="TextServer.AutowrapMode" default="3">
+			Controls how rendered text wraps inside the control bounds.
+		</member>
+		<member name="autowrap_trim_flags" type="int" setter="set_autowrap_trim_flags" getter="get_autowrap_trim_flags" enum="TextServer.LineBreakFlag" is_bitfield="true" default="192">
+			Controls whether spaces at wrapped line edges are trimmed.
+		</member>
 		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
 			The margin around the document content.
 		</member>
@@ -214,13 +320,34 @@
 		<member name="extra_font_size" type="int" setter="set_extra_font_size" getter="get_extra_font_size" default="0">
 			An additional font size applied to rendered text.
 		</member>
+		<member name="fit_content" type="bool" setter="set_fit_content" getter="is_fit_content_enabled" default="false">
+			If [code]true[/code], the control reports the rendered content height as its minimum height.
+		</member>
 		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true" />
+		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
+			The root folder used to resolve relative paths when no source document directory is available. For [constant ACCESS_FILE_SYSTEM], set an absolute file-system path.
+		</member>
 		<member name="rst_text" type="String" setter="set_rst_text" getter="get_rst_text">
 			Raw reStructuredText displayed when no [RSTDocument] is assigned.
 		</member>
+		<member name="scroll_active" type="bool" setter="set_scroll_active" getter="is_scroll_active" default="true">
+			If [code]false[/code], disables internal vertical scrolling.
+		</member>
 		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true" />
+		<member name="shortcut_keys_enabled" type="bool" setter="set_shortcut_keys_enabled" getter="is_shortcut_keys_enabled" default="true">
+			If [code]true[/code], enables the configured Copy and Select All keyboard shortcuts.
+		</member>
 	</members>
 	<constants>
+		<constant name="ACCESS_RESOURCES" value="0" enum="Access">
+			Resolve relative paths from project resources.
+		</constant>
+		<constant name="ACCESS_USER_DATA" value="1" enum="Access">
+			Resolve relative paths from the project user data directory.
+		</constant>
+		<constant name="ACCESS_FILE_SYSTEM" value="2" enum="Access">
+			Resolve relative paths from an absolute file-system root.
+		</constant>
 		<constant name="MENU_COPY" value="0" enum="MenuItems">
 			Context menu item ID for the Copy action.
 		</constant>

@@ -2,6 +2,7 @@
 
 #include "formats/rst/rst_document_parser.h"
 #include "formats/rst/rst_reference_index.h"
+#include "formats/html/resources/html_resource_paths.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -124,13 +125,38 @@ namespace {
 		return String("\"") + p_value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
 	}
 
-	static bool is_direct_resource_path(const String& p_path) {
-		return p_path.begins_with("uid://") || p_path.begins_with("res://");
+	static BitField<TextServer::LineBreakFlag> get_autowrap_trim_mask() {
+		return TextServer::BREAK_TRIM_INDENT | TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES;
 	}
 
-	static bool can_load_texture(const String& p_path) {
-		ResourceLoader* loader = ResourceLoader::get_singleton();
-		return loader != nullptr && loader->exists(p_path, "Texture2D");
+	static BitField<TextServer::LineBreakFlag> get_autowrap_break_flags(const RestructuredtextLabel* p_owner) {
+		const TextServer::AutowrapMode mode = p_owner == nullptr ? TextServer::AUTOWRAP_WORD_SMART : p_owner->get_autowrap_mode();
+		BitField<TextServer::LineBreakFlag> flags = TextServer::BREAK_MANDATORY;
+
+		switch (mode) {
+			case TextServer::AUTOWRAP_WORD_SMART:
+				flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE | TextServer::BREAK_MANDATORY;
+				break;
+			case TextServer::AUTOWRAP_WORD:
+				flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_MANDATORY;
+				break;
+			case TextServer::AUTOWRAP_ARBITRARY:
+				flags = TextServer::BREAK_GRAPHEME_BOUND | TextServer::BREAK_MANDATORY;
+				break;
+			case TextServer::AUTOWRAP_OFF:
+				break;
+		}
+
+		const BitField<TextServer::LineBreakFlag> trim_flags = p_owner == nullptr
+				? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
+				: p_owner->get_autowrap_trim_flags();
+		return flags | trim_flags;
+	}
+
+	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const RestructuredtextLabel* p_owner) {
+		if (p_paragraph.is_valid()) {
+			p_paragraph->set_break_flags(get_autowrap_break_flags(p_owner));
+		}
 	}
 
 	static float parse_scale_percent(const String& p_value, float p_fallback = 100.0f) {
@@ -773,7 +799,8 @@ namespace {
 			return String();
 		}
 		const String image_path = p_owner == nullptr ? p_block.argument : p_owner->resolve_document_path(p_block.argument);
-		if (!is_direct_resource_path(image_path) || !can_load_texture(image_path)) {
+		const Ref<Texture2D> texture = dockit::load_html_image_file(image_path);
+		if (texture.is_null()) {
 			String placeholder = String("[i]Image: ") + escape_bbcode(p_block.argument) + "[/i]";
 			if (!p_block.text.is_empty()) {
 				placeholder += "\n";
@@ -793,8 +820,6 @@ namespace {
 			image_tag += p_block.image_height;
 		}
 		if (p_block.image_width.is_empty() && p_block.image_height.is_empty() && !p_block.image_scale.is_empty()) {
-			ResourceLoader* loader = ResourceLoader::get_singleton();
-			Ref<Texture2D> texture = loader == nullptr ? Ref<Texture2D>() : loader->load(image_path, "Texture2D");
 			if (texture.is_valid()) {
 				const float scale = parse_scale_percent(p_block.image_scale) / 100.0f;
 				image_tag += " width=";
@@ -1018,13 +1043,13 @@ void RSTDocumentCanvas::_update_context_menu() {
 
 	const int32_t copy_index = menu->get_item_index(RestructuredtextLabel::MENU_COPY);
 	if (copy_index >= 0) {
-		menu->set_item_accelerator(copy_index, _get_menu_action_accelerator("ui_copy"));
+		menu->set_item_accelerator(copy_index, document_view != nullptr && document_view->is_shortcut_keys_enabled() ? _get_menu_action_accelerator("ui_copy") : KEY_NONE);
 		menu->set_item_disabled(copy_index, document_view == nullptr || !document_view->is_selection_enabled());
 	}
 
 	const int32_t select_all_index = menu->get_item_index(RestructuredtextLabel::MENU_SELECT_ALL);
 	if (select_all_index >= 0) {
-		menu->set_item_accelerator(select_all_index, _get_menu_action_accelerator("ui_text_select_all"));
+		menu->set_item_accelerator(select_all_index, document_view != nullptr && document_view->is_shortcut_keys_enabled() ? _get_menu_action_accelerator("ui_text_select_all") : KEY_NONE);
 		menu->set_item_disabled(select_all_index, document_view == nullptr || !document_view->is_selection_enabled());
 	}
 }
@@ -1557,6 +1582,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 			}
 
 			item.header_paragraph.instantiate();
+			configure_paragraph_autowrap(item.header_paragraph, document_view);
 			const float header_left = get_stylebox_margin_or(item.header_stylebox, SIDE_LEFT, internal_body_margin_left);
 			const float header_top = get_stylebox_margin_or(item.header_stylebox, SIDE_TOP, internal_header_margin);
 			const float header_right = get_stylebox_margin_or(item.header_stylebox, SIDE_RIGHT, internal_body_margin);
@@ -1576,6 +1602,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 			Vector2 body_size = Vector2();
 			if (!item.text.is_empty()) {
 				item.paragraph.instantiate();
+				configure_paragraph_autowrap(item.paragraph, document_view);
 				item.paragraph->set_width(std::max<float>(1.0f, width - body_left - body_right));
 				item.paragraph->set_line_spacing(line_separation);
 				add_spans_to_paragraph(item.paragraph, item.spans, document_view, body_font, inline_mono_font, font_size, inline_code_size);
@@ -1697,6 +1724,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 					plain_text += cell.text;
 					cell.global_end = plain_text.length();
 					cell.paragraph.instantiate();
+					configure_paragraph_autowrap(cell.paragraph, document_view);
 					const float cell_left = get_stylebox_margin_or(cell.stylebox, SIDE_LEFT, 6.0f);
 					const float cell_top = get_stylebox_margin_or(cell.stylebox, SIDE_TOP, 6.0f);
 					const float cell_right = get_stylebox_margin_or(cell.stylebox, SIDE_RIGHT, 6.0f);
@@ -1744,12 +1772,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 		} break;
 		case RST_BLOCK_IMAGE: {
 			const String image_path = document_view == nullptr ? block.argument : document_view->resolve_document_path(block.argument);
-			Ref<Resource> resource;
-			ResourceLoader* loader = ResourceLoader::get_singleton();
-			if (loader != nullptr && is_direct_resource_path(image_path)) {
-				resource = loader->load(image_path, "Texture2D");
-			}
-			item.texture = resource;
+			item.texture = dockit::load_html_image_file(image_path);
 			if (item.texture.is_valid()) {
 				const Vector2 texture_size = item.texture->get_size();
 				float image_width = parse_dimension(block.image_width, width, texture_size.x);
@@ -1840,6 +1863,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 		item.spans = item_spans;
 
 		item.paragraph.instantiate();
+		configure_paragraph_autowrap(item.paragraph, document_view);
 		item.paragraph->set_width(std::max<float>(1.0f, width - left_padding - right_padding));
 		item.paragraph->set_line_spacing(line_separation);
 		add_spans_to_paragraph(item.paragraph, item.spans, document_view, font, inline_mono_font, font_size, inline_code_size);
@@ -2464,29 +2488,30 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 
 	const Ref<InputEventKey> key = p_event;
-	if (key.is_valid() && key->is_pressed() && !key->is_echo() && key->is_action("ui_menu", true)) {
-		if (document_view != nullptr && document_view->is_context_menu_enabled()) {
-			get_menu();
-			_update_context_menu();
-			menu->set_position(get_screen_position());
-			menu->reset_size();
-			menu->popup();
-			menu->grab_focus();
-		}
-		accept_event();
-		return;
-	}
-
-	if (key.is_valid() && key->is_pressed() && !key->is_echo() && key->is_command_or_control_pressed()) {
-		if (key->get_keycode() == KEY_A) {
+	if (key.is_valid() && key->is_pressed() && !key->is_echo()) {
+		if (document_view != nullptr && document_view->is_shortcut_keys_enabled() && key->is_action("ui_text_select_all", true)) {
 			select_all();
 			accept_event();
 			return;
 		}
-		if (key->get_keycode() == KEY_C && has_selection()) {
-			DisplayServer* display_server = DisplayServer::get_singleton();
-			if (display_server != nullptr) {
-				display_server->clipboard_set(get_selected_text());
+		if (document_view != nullptr && document_view->is_shortcut_keys_enabled() && key->is_action("ui_copy", true)) {
+			if (has_selection()) {
+				DisplayServer* display_server = DisplayServer::get_singleton();
+				if (display_server != nullptr) {
+					display_server->clipboard_set(get_selected_text());
+				}
+			}
+			accept_event();
+			return;
+		}
+		if (key->is_action("ui_menu", true)) {
+			if (document_view != nullptr && document_view->is_context_menu_enabled()) {
+				get_menu();
+				_update_context_menu();
+				menu->set_position(get_screen_position());
+				menu->reset_size();
+				menu->popup();
+				menu->grab_focus();
 			}
 			accept_event();
 			return;
@@ -2521,6 +2546,11 @@ Variant RSTDocumentCanvas::_get_drag_data(const Vector2& p_at_position) {
 void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_document", "document"), &RestructuredtextLabel::set_document);
 	ClassDB::bind_method(D_METHOD("get_document"), &RestructuredtextLabel::get_document);
+	ClassDB::bind_method(D_METHOD("set_access", "access"), &RestructuredtextLabel::set_access);
+	ClassDB::bind_method(D_METHOD("get_access"), &RestructuredtextLabel::get_access);
+	ClassDB::bind_method(D_METHOD("set_root_subfolder", "root_subfolder"), &RestructuredtextLabel::set_root_subfolder);
+	ClassDB::bind_method(D_METHOD("get_root_subfolder"), &RestructuredtextLabel::get_root_subfolder);
+	ClassDB::bind_method(D_METHOD("get_resource_base_dir"), &RestructuredtextLabel::get_resource_base_dir);
 	ClassDB::bind_method(D_METHOD("set_rst_text", "text"), &RestructuredtextLabel::set_rst_text);
 	ClassDB::bind_method(D_METHOD("get_rst_text"), &RestructuredtextLabel::get_rst_text);
 	ClassDB::bind_method(D_METHOD("set_content_margin", "margin"), &RestructuredtextLabel::set_content_margin);
@@ -2537,6 +2567,16 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_drag_and_drop_selection_enabled"), &RestructuredtextLabel::is_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &RestructuredtextLabel::set_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &RestructuredtextLabel::is_context_menu_enabled);
+	ClassDB::bind_method(D_METHOD("set_shortcut_keys_enabled", "enabled"), &RestructuredtextLabel::set_shortcut_keys_enabled);
+	ClassDB::bind_method(D_METHOD("is_shortcut_keys_enabled"), &RestructuredtextLabel::is_shortcut_keys_enabled);
+	ClassDB::bind_method(D_METHOD("set_fit_content", "enabled"), &RestructuredtextLabel::set_fit_content);
+	ClassDB::bind_method(D_METHOD("is_fit_content_enabled"), &RestructuredtextLabel::is_fit_content_enabled);
+	ClassDB::bind_method(D_METHOD("set_scroll_active", "active"), &RestructuredtextLabel::set_scroll_active);
+	ClassDB::bind_method(D_METHOD("is_scroll_active"), &RestructuredtextLabel::is_scroll_active);
+	ClassDB::bind_method(D_METHOD("set_autowrap_mode", "autowrap_mode"), &RestructuredtextLabel::set_autowrap_mode);
+	ClassDB::bind_method(D_METHOD("get_autowrap_mode"), &RestructuredtextLabel::get_autowrap_mode);
+	ClassDB::bind_method(D_METHOD("set_autowrap_trim_flags", "autowrap_trim_flags"), &RestructuredtextLabel::set_autowrap_trim_flags);
+	ClassDB::bind_method(D_METHOD("get_autowrap_trim_flags"), &RestructuredtextLabel::get_autowrap_trim_flags);
 	ClassDB::bind_method(D_METHOD("load_rst_file", "path"), &RestructuredtextLabel::load_rst_file);
 	ClassDB::bind_method(D_METHOD("render_text", "text"), &RestructuredtextLabel::render_text);
 	ClassDB::bind_method(D_METHOD("refresh"), &RestructuredtextLabel::refresh);
@@ -2563,19 +2603,29 @@ void RestructuredtextLabel::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "RSTDocument"), "set_document", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "rst_text", PROPERTY_HINT_MULTILINE_TEXT), "set_rst_text", "get_rst_text");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "content_margin", PROPERTY_HINT_RANGE, "0,128,1,or_greater"), "set_content_margin", "get_content_margin");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16,1"), "set_extra_font_size", "get_extra_font_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open_external_links"), "set_open_external_links", "get_open_external_links");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "autowrap_mode", PROPERTY_HINT_ENUM, "Off,Arbitrary,Word,Word (Smart)"), "set_autowrap_mode", "get_autowrap_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "autowrap_trim_flags", PROPERTY_HINT_FLAGS, "Trim Spaces After Break:64,Trim Spaces Before Break:128"), "set_autowrap_trim_flags", "get_autowrap_trim_flags");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "fit_content"), "set_fit_content", "is_fit_content_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "scroll_active"), "set_scroll_active", "is_scroll_active");
 
 	ADD_GROUP("Text Selection", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled", PROPERTY_HINT_GROUP_ENABLE), "set_selection_enabled", "is_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_on_focus_loss_enabled"), "set_deselect_on_focus_loss_enabled", "is_deselect_on_focus_loss_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"), "set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shortcut_keys_enabled"), "set_shortcut_keys_enabled", "is_shortcut_keys_enabled");
 
 	BIND_ENUM_CONSTANT(MENU_COPY);
 	BIND_ENUM_CONSTANT(MENU_SELECT_ALL);
 	BIND_ENUM_CONSTANT(MENU_MAX);
+	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
+	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
+	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
 
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("render_warning", PropertyInfo(Variant::STRING, "message"), PropertyInfo(Variant::INT, "line")));
@@ -2591,6 +2641,10 @@ void RestructuredtextLabel::_notification(int p_what) {
 		refresh();
 	}
 
+	if (p_what == NOTIFICATION_RESIZED && document_canvas != nullptr && !fit_content) {
+		document_canvas->mark_layout_dirty();
+	}
+
 	if (p_what == NOTIFICATION_THEME_CHANGED) {
 		apply_theme_settings();
 		if (document_canvas != nullptr) {
@@ -2603,6 +2657,18 @@ void RestructuredtextLabel::_notification(int p_what) {
 			document_canvas->clear_selection();
 		}
 	}
+}
+
+Vector2 RestructuredtextLabel::_get_minimum_size() const {
+	if (!fit_content) {
+		return Vector2();
+	}
+
+	Control* self = const_cast<RestructuredtextLabel*>(this);
+	const int32_t top = get_theme_constant_or(self, "RestructuredtextLabel", "margin_top", content_margin);
+	const int32_t bottom = get_theme_constant_or(self, "RestructuredtextLabel", "margin_bottom", content_margin);
+	const float text_height = document_canvas == nullptr ? 1.0f : document_canvas->get_content_height();
+	return Vector2(0.0f, text_height + top + bottom);
 }
 
 void RestructuredtextLabel::ensure_controls() {
@@ -2633,6 +2699,7 @@ void RestructuredtextLabel::ensure_controls() {
 	margin_container->add_child(document_canvas, false, Node::INTERNAL_MODE_BACK);
 
 	apply_theme_settings();
+	apply_scroll_settings();
 }
 
 void RestructuredtextLabel::apply_theme_settings() {
@@ -2653,6 +2720,58 @@ void RestructuredtextLabel::apply_theme_settings() {
 	if (document_canvas != nullptr) {
 		document_canvas->queue_redraw();
 	}
+	if (fit_content) {
+		update_minimum_size();
+	}
+}
+
+void RestructuredtextLabel::apply_scroll_settings() {
+	if (scroll_container == nullptr) {
+		return;
+	}
+
+	scroll_container->set_vertical_scroll_mode(scroll_active ? ScrollContainer::SCROLL_MODE_AUTO : ScrollContainer::SCROLL_MODE_DISABLED);
+}
+
+void RestructuredtextLabel::set_access(int32_t p_access) {
+	if (p_access < ACCESS_RESOURCES || p_access > ACCESS_FILE_SYSTEM || access == p_access) {
+		return;
+	}
+
+	access = p_access;
+	if (document_canvas != nullptr) {
+		document_canvas->mark_layout_dirty();
+		if (fit_content) {
+			update_minimum_size();
+		}
+	}
+}
+
+int32_t RestructuredtextLabel::get_access() const {
+	return access;
+}
+
+void RestructuredtextLabel::set_root_subfolder(const String& p_root_subfolder) {
+	if (root_subfolder == p_root_subfolder) {
+		return;
+	}
+
+	root_subfolder = p_root_subfolder;
+	if (document_canvas != nullptr) {
+		document_canvas->mark_layout_dirty();
+		if (fit_content) {
+			update_minimum_size();
+		}
+	}
+}
+
+String RestructuredtextLabel::get_root_subfolder() const {
+	return root_subfolder;
+}
+
+String RestructuredtextLabel::get_resource_base_dir() const {
+	const String source_path = document.is_valid() ? document->get_source_path() : String();
+	return dockit::resolve_html_resource_base_dir(access, root_subfolder, source_path);
 }
 
 void RestructuredtextLabel::set_document(const Ref<RSTDocument>& p_document) {
@@ -2715,9 +2834,26 @@ bool RestructuredtextLabel::get_open_external_links() const {
 }
 
 Error RestructuredtextLabel::load_rst_file(const String& p_path) {
+	String path = p_path.strip_edges().replace("\\", "/");
+	if (path.is_empty()) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (path.begins_with("uid://")) {
+		path = ResourceUID::uid_to_path(path);
+	}
+	else if (path.is_absolute_path() || path.begins_with("res://") || path.begins_with("user://")) {
+		path = localize_project_path(path);
+	}
+	else {
+		path = resolve_document_path(path);
+	}
+	if (path.is_empty()) {
+		return ERR_CANT_OPEN;
+	}
+
 	ResourceLoader* loader = ResourceLoader::get_singleton();
-	if (loader != nullptr) {
-		const Ref<Resource> resource = loader->load(p_path, "RSTDocument");
+	if (loader != nullptr && path.begins_with("res://")) {
+		const Ref<Resource> resource = loader->load(path, "RSTDocument");
 		Ref<RSTDocument> loaded_document = resource;
 		if (loaded_document.is_valid()) {
 			set_document(loaded_document);
@@ -2728,7 +2864,7 @@ Error RestructuredtextLabel::load_rst_file(const String& p_path) {
 		 * doesn't specify "RSTDocument" as the resource type, which
 		 * can happen in exported builds where the importer plugin
 		 * is not registered. */
-		const Ref<Resource> untyped_resource = loader->load(p_path);
+		const Ref<Resource> untyped_resource = loader->load(path);
 		Ref<RSTDocument> untyped_document = untyped_resource;
 		if (untyped_document.is_valid()) {
 			set_document(untyped_document);
@@ -2736,21 +2872,21 @@ Error RestructuredtextLabel::load_rst_file(const String& p_path) {
 		}
 	}
 
-	if (!FileAccess::file_exists(p_path)) {
-		ERR_PRINT("Cannot open RST file: " + p_path);
+	if (!FileAccess::file_exists(path)) {
+		ERR_PRINT("Cannot open RST file: " + path);
 		return ERR_CANT_OPEN;
 	}
 
-	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
 	if (file.is_null()) {
-		ERR_PRINT("Cannot open RST file: " + p_path);
+		ERR_PRINT("Cannot open RST file: " + path);
 		return ERR_CANT_OPEN;
 	}
 
 	Ref<RSTDocument> raw_document;
 	raw_document.instantiate();
 	raw_document->set_text(file->get_as_text());
-	raw_document->set_source_path(p_path);
+	raw_document->set_source_path(path);
 	if (loader != nullptr && loader->exists(RSTReferenceIndex::get_generated_path(), "RSTReferenceIndex")) {
 		raw_document->set_reference_index(loader->load(RSTReferenceIndex::get_generated_path(), "RSTReferenceIndex"));
 	}
@@ -2771,6 +2907,9 @@ void RestructuredtextLabel::refresh() {
 	if (document_canvas != nullptr) {
 		document_canvas->set_rst_text(rst_text);
 		rendered_block_count = document_canvas->get_rendered_block_count();
+	}
+	if (fit_content) {
+		update_minimum_size();
 	}
 }
 
@@ -2824,17 +2963,8 @@ float RestructuredtextLabel::get_content_height() const {
 }
 
 String RestructuredtextLabel::resolve_document_path(const String& p_path) const {
-	String normalized_path = localize_project_path(p_path);
-	if (normalized_path.begins_with("uid://")) {
-		normalized_path = ResourceUID::uid_to_path(normalized_path);
-	}
-	if (document.is_valid()) {
-		normalized_path = localize_project_path(document->resolve_path(normalized_path));
-	}
-	if (!normalized_path.begins_with("res://")) {
-		return String();
-	}
-	return normalized_path;
+	const dockit::HTMLResourceBase resource_base = dockit::make_html_resource_base(get_resource_base_dir());
+	return dockit::resolve_html_link_href(p_path, resource_base);
 }
 
 String RestructuredtextLabel::resolve_link_uri(const String& p_role, const String& p_target) const {
@@ -2864,10 +2994,10 @@ String RestructuredtextLabel::resolve_link_uri(const String& p_role, const Strin
 		if (path.get_extension().is_empty()) {
 			path += ".rst";
 		}
-		if (document.is_valid() && document->get_reference_index().is_valid()) {
+		if (path.begins_with("res://") && document.is_valid() && document->get_reference_index().is_valid()) {
 			path = document->get_reference_index()->resolve_document(path);
 		}
-		else {
+		else if (path.begins_with("res://")) {
 			const String uid = ResourceUID::path_to_uid(path);
 			if (uid.begins_with("uid://")) {
 				path = uid;
@@ -3052,4 +3182,72 @@ void RestructuredtextLabel::set_context_menu_enabled(bool p_enabled) {
 
 bool RestructuredtextLabel::is_context_menu_enabled() const {
 	return context_menu_enabled;
+}
+
+void RestructuredtextLabel::set_shortcut_keys_enabled(bool p_enabled) {
+	shortcut_keys_enabled = p_enabled;
+}
+
+bool RestructuredtextLabel::is_shortcut_keys_enabled() const {
+	return shortcut_keys_enabled;
+}
+
+void RestructuredtextLabel::set_fit_content(bool p_enabled) {
+	if (fit_content == p_enabled) {
+		return;
+	}
+
+	fit_content = p_enabled;
+	update_minimum_size();
+}
+
+bool RestructuredtextLabel::is_fit_content_enabled() const {
+	return fit_content;
+}
+
+void RestructuredtextLabel::set_scroll_active(bool p_active) {
+	if (scroll_active == p_active) {
+		return;
+	}
+
+	scroll_active = p_active;
+	apply_scroll_settings();
+	queue_redraw();
+}
+
+bool RestructuredtextLabel::is_scroll_active() const {
+	return scroll_active;
+}
+
+void RestructuredtextLabel::set_autowrap_mode(TextServer::AutowrapMode p_mode) {
+	if (autowrap_mode == p_mode) {
+		return;
+	}
+
+	autowrap_mode = p_mode;
+	if (document_canvas != nullptr) {
+		document_canvas->mark_layout_dirty();
+	}
+	update_minimum_size();
+}
+
+TextServer::AutowrapMode RestructuredtextLabel::get_autowrap_mode() const {
+	return autowrap_mode;
+}
+
+void RestructuredtextLabel::set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags) {
+	const BitField<TextServer::LineBreakFlag> trimmed_flags = p_flags & get_autowrap_trim_mask();
+	if (autowrap_flags_trim == trimmed_flags) {
+		return;
+	}
+
+	autowrap_flags_trim = trimmed_flags;
+	if (document_canvas != nullptr) {
+		document_canvas->mark_layout_dirty();
+	}
+	update_minimum_size();
+}
+
+BitField<TextServer::LineBreakFlag> RestructuredtextLabel::get_autowrap_trim_flags() const {
+	return autowrap_flags_trim;
 }

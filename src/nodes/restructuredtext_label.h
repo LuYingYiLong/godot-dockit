@@ -11,6 +11,7 @@
 #include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/style_box.hpp>
 #include <godot_cpp/classes/text_paragraph.hpp>
+#include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -132,7 +133,6 @@ private:
 	float layout_width = 0.0f;
 	Dictionary anchor_offsets;
 
-	void mark_layout_dirty();
 	void rebuild_layout();
 	void draw_selection_for_item(const RSTCanvasItem& p_item);
 	void draw_selection_for_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_global_start, int64_t p_global_end);
@@ -158,6 +158,7 @@ protected:
 	void _notification(int p_what);
 
 public:
+	void mark_layout_dirty();
 	void _gui_input(const Ref<InputEvent>& p_event) override;
 	Variant _get_drag_data(const Vector2& p_at_position) override;
 	Vector2 _get_minimum_size() const override;
@@ -192,10 +193,17 @@ public:
 		MENU_SELECT_ALL,
 		MENU_MAX,
 	};
+	enum Access {
+		ACCESS_RESOURCES,
+		ACCESS_USER_DATA,
+		ACCESS_FILE_SYSTEM,
+	};
 
 private:
 	String rst_text;
 	Ref<RSTDocument> document;
+	int32_t access = ACCESS_RESOURCES;
+	String root_subfolder;
 	ScrollContainer* scroll_container = nullptr;
 	MarginContainer* margin_container = nullptr;
 	RSTDocumentCanvas* document_canvas = nullptr;
@@ -206,16 +214,28 @@ private:
 	bool deselect_on_focus_loss_enabled = true;
 	bool drag_and_drop_selection_enabled = true;
 	bool context_menu_enabled = false;
+	bool shortcut_keys_enabled = true;
+	bool fit_content = false;
+	bool scroll_active = true;
+	TextServer::AutowrapMode autowrap_mode = TextServer::AUTOWRAP_WORD_SMART;
+	BitField<TextServer::LineBreakFlag> autowrap_flags_trim = TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES;
 	int32_t rendered_block_count = 0;
 
 	void ensure_controls();
 	void apply_theme_settings();
+	void apply_scroll_settings();
 
 protected:
 	static void _bind_methods();
 	void _notification(int p_what);
 
 public:
+	Vector2 _get_minimum_size() const override;
+	void set_access(int32_t p_access);
+	int32_t get_access() const;
+	void set_root_subfolder(const String& p_root_subfolder);
+	String get_root_subfolder() const;
+	String get_resource_base_dir() const;
 	void set_document(const Ref<RSTDocument>& p_document);
 	Ref<RSTDocument> get_document() const;
 	void set_rst_text(const String& p_text);
@@ -234,6 +254,16 @@ public:
 	bool is_drag_and_drop_selection_enabled() const;
 	void set_context_menu_enabled(bool p_enabled);
 	bool is_context_menu_enabled() const;
+	void set_shortcut_keys_enabled(bool p_enabled);
+	bool is_shortcut_keys_enabled() const;
+	void set_fit_content(bool p_enabled);
+	bool is_fit_content_enabled() const;
+	void set_scroll_active(bool p_active);
+	bool is_scroll_active() const;
+	void set_autowrap_mode(TextServer::AutowrapMode p_mode);
+	TextServer::AutowrapMode get_autowrap_mode() const;
+	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);
+	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;
 
 	Error load_rst_file(const String& p_path);
 	void render_text(const String& p_text);
@@ -261,3 +291,4 @@ public:
 };
 
 VARIANT_ENUM_CAST(RestructuredtextLabel::MenuItems);
+VARIANT_ENUM_CAST(RestructuredtextLabel::Access);
