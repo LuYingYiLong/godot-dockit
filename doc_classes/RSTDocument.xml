@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RSTDocument" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		An imported reStructuredText document.
+	</brief_description>
+	<description>
+		The editor imports UTF-8 [code].rst[/code] files as [RSTDocument] resources. The resource stores the source text and its original project path so relative images and downloads continue to resolve in exported projects. Relative document links and [code]:ref:[/code] targets are indexed from configured document roots.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_source_path" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the original [code].rst[/code] source path.
+			</description>
+		</method>
+		<method name="get_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the imported source text.
+			</description>
+		</method>
+		<method name="resolve_path" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Resolves a resource path relative to this document's source directory. [code]uid://[/code] paths are resolved through [ResourceUID].
+			</description>
+		</method>
+		<method name="set_source_path">
+			<return type="void" />
+			<param index="0" name="source_path" type="String" />
+			<description>
+				Sets the original [code].rst[/code] source path.
+			</description>
+		</method>
+		<method name="set_text">
+			<return type="void" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Sets the document's source text.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="source_path" type="String" setter="set_source_path" getter="get_source_path" />
+		<member name="text" type="String" setter="set_text" getter="get_text">
+			The source text.
+		</member>
+	</members>
+</class>

@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://bq26l11o4hy0v"]
+
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_c4ltq"]
+
+[node name="RestructuredtextExample" type="Control" unique_id=1477857625]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_c4ltq")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=327485415]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Background"
+
+[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer" unique_id=941482724]
+layout_mode = 2
+split_offsets = PackedInt32Array(512)
+split_offset = 512
+
+[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/HSplitContainer" unique_id=423240394]
+layout_mode = 2

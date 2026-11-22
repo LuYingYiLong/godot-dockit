@@ -374,5 +374,4 @@ AGENTS.md
 .vscode/
 !addons/markdown_label/bin
 
-!addons/rst_viewer/bin
 CLAUDE.md

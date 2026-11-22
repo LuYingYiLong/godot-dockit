@@ -10,6 +10,12 @@ Add a `MarkdownLabel` to a scene and set its `text` property. It supports select
 
 Enable `parse_html` to render HTML blocks and supported inline tags in Markdown.
 
+### reStructuredText documents
+
+Import `.rst` files as `RSTDocument` resources and display them with `RestructuredtextLabel`. The label supports relative images and downloads, `toctree` and `:doc:` links, in-document anchors, and cross-document `:ref:` links. Set `dockit/rst/document_roots` in Project Settings to the folders or `.rst` files that contain your documentation; Dockit generates a compact reference index from the labels and documents those files actually reference. The generated index keeps resource UIDs with `res://` paths as a fallback for exported projects.
+
+Connect the `link_pressed` signal on a `RestructuredtextLabel` node to load another document when a user activates an internal document link. Relative images and downloads resolve from the `.rst` source file and do not need to be added to the index roots.
+
 ### <img src="addons/dockit/icons/html_label.svg" width=18 /> Interactive HTML
 
 Assign an imported `HTMLDocument` to an `HTMLLabel` to render standalone `.html` or `.htm` files with CSS. Query and update DOM elements, listen for HTML events, and attach GDScript behavior scripts for interactive documents.

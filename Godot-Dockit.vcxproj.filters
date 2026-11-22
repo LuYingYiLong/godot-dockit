@@ -127,6 +127,9 @@
     <Filter Include="Source Files\formats\markdown">
       <UniqueIdentifier>{68C6E3BE-BDF2-C53D-D3FF-40566BFB92C2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\formats\rst">
+      <UniqueIdentifier>{6A2D7BE2-B65E-4965-83D2-2B7D4831E6C1}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\formats\mermaid">
       <UniqueIdentifier>{5B1C5B3C-DBC3-9B16-C779-641A18DEAC1A}</UniqueIdentifier>
     </Filter>
@@ -271,6 +274,9 @@
     <Filter Include="Header Files\formats\markdown">
       <UniqueIdentifier>{59D3D01C-84FE-C167-D34C-0EC646013D2F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\formats\rst">
+      <UniqueIdentifier>{F4B8C63A-2D2D-4C49-9E99-4E47BE956B88}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Header Files\formats\mermaid">
       <UniqueIdentifier>{E0AF8906-EE62-7870-2E92-4BA1CB3E5AD8}</UniqueIdentifier>
     </Filter>
@@ -335,6 +341,12 @@
     </ClCompile>
     <ClCompile Include="src\editor\mermaid_preview_editor_plugin.cpp">
       <Filter>Source Files\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\rst_index_editor_plugin.cpp">
+      <Filter>Source Files\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\importers\rst_document_importer.cpp">
+      <Filter>Source Files\editor\importers</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\script_editor_preview_plugin.cpp">
       <Filter>Source Files\editor</Filter>
@@ -873,6 +885,15 @@
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp">
       <Filter>Source Files\formats\markdown</Filter>
     </ClCompile>
+    <ClCompile Include="src\formats\rst\rst_document.cpp">
+      <Filter>Source Files\formats\rst</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\rst\rst_document_parser.cpp">
+      <Filter>Source Files\formats\rst</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formats\rst\rst_reference_index.cpp">
+      <Filter>Source Files\formats\rst</Filter>
+    </ClCompile>
     <ClCompile Include="src\formats\mermaid\mermaid_document.cpp">
       <Filter>Source Files\formats\mermaid</Filter>
     </ClCompile>
@@ -972,6 +993,9 @@
     <ClCompile Include="src\nodes\mermaid_label.cpp">
       <Filter>Source Files\nodes</Filter>
     </ClCompile>
+    <ClCompile Include="src\nodes\restructuredtext_label.cpp">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
     <ClCompile Include="src\register_types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1009,6 +1033,12 @@
     </ClInclude>
     <ClInclude Include="src\editor\mermaid_preview_editor_plugin.h">
       <Filter>Header Files\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\rst_index_editor_plugin.h">
+      <Filter>Header Files\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\importers\rst_document_importer.h">
+      <Filter>Header Files\editor\importers</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\script_editor_preview_plugin.h">
       <Filter>Header Files\editor</Filter>
@@ -1652,6 +1682,15 @@
     <ClInclude Include="src\formats\markdown\markdown_parser.h">
       <Filter>Header Files\formats\markdown</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\rst\rst_document.h">
+      <Filter>Header Files\formats\rst</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\rst\rst_document_parser.h">
+      <Filter>Header Files\formats\rst</Filter>
+    </ClInclude>
+    <ClInclude Include="src\formats\rst\rst_reference_index.h">
+      <Filter>Header Files\formats\rst</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\mermaid\mermaid_document.h">
       <Filter>Header Files\formats\mermaid</Filter>
     </ClInclude>
@@ -1902,6 +1941,9 @@
       <Filter>Header Files\nodes</Filter>
     </ClInclude>
     <ClInclude Include="src\nodes\mermaid_label.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\nodes\restructuredtext_label.h">
       <Filter>Header Files\nodes</Filter>
     </ClInclude>
     <ClInclude Include="src\register_types.h">

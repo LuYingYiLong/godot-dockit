@@ -137,6 +137,8 @@
     <ClCompile Include="src\editor\importers\pdf_texture_importer.cpp" />
     <ClCompile Include="src\editor\markdown_preview_editor_plugin.cpp" />
     <ClCompile Include="src\editor\mermaid_preview_editor_plugin.cpp" />
+    <ClCompile Include="src\editor\rst_index_editor_plugin.cpp" />
+    <ClCompile Include="src\editor\importers\rst_document_importer.cpp" />
     <ClCompile Include="src\editor\script_editor_preview_plugin.cpp" />
     <ClCompile Include="src\formats\dockit_source.cpp" />
     <ClCompile Include="src\formats\html\backend\litehtml_container.cpp" />
@@ -311,6 +313,9 @@
     <ClCompile Include="src\formats\markdown\markdown_document.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_html.cpp" />
     <ClCompile Include="src\formats\markdown\markdown_parser.cpp" />
+    <ClCompile Include="src\formats\rst\rst_document.cpp" />
+    <ClCompile Include="src\formats\rst\rst_document_parser.cpp" />
+    <ClCompile Include="src\formats\rst\rst_reference_index.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_document.cpp" />
     <ClCompile Include="src\formats\mermaid\mermaid_render.cpp" />
     <ClCompile Include="src\formats\pdf\pdf_texture.cpp" />
@@ -343,6 +348,7 @@
     <ClCompile Include="src\nodes\latex_label_3d.cpp" />
     <ClCompile Include="src\nodes\markdown_label.cpp" />
     <ClCompile Include="src\nodes\mermaid_label.cpp" />
+    <ClCompile Include="src\nodes\restructuredtext_label.cpp" />
     <ClCompile Include="src\register_types.cpp" />
     <ClCompile Include="src\formats\html\css\html_css_rule.cpp" />
     <ClCompile Include="src\formats\html\dom\html_shadow_root.cpp" />
@@ -363,6 +369,8 @@
     <ClInclude Include="src\editor\importers\pdf_texture_importer.h" />
     <ClInclude Include="src\editor\markdown_preview_editor_plugin.h" />
     <ClInclude Include="src\editor\mermaid_preview_editor_plugin.h" />
+    <ClInclude Include="src\editor\rst_index_editor_plugin.h" />
+    <ClInclude Include="src\editor\importers\rst_document_importer.h" />
     <ClInclude Include="src\editor\script_editor_preview_plugin.h" />
     <ClInclude Include="src\formats\dockit_source.h" />
     <ClInclude Include="src\formats\html\backend\litehtml_container.h" />
@@ -565,6 +573,9 @@
     <ClInclude Include="src\formats\markdown\markdown_document.h" />
     <ClInclude Include="src\formats\markdown\markdown_html.h" />
     <ClInclude Include="src\formats\markdown\markdown_parser.h" />
+    <ClInclude Include="src\formats\rst\rst_document.h" />
+    <ClInclude Include="src\formats\rst\rst_document_parser.h" />
+    <ClInclude Include="src\formats\rst\rst_reference_index.h" />
     <ClInclude Include="src\formats\mermaid\mermaid_document.h" />
     <ClInclude Include="src\formats\mermaid\mermaid_render.h" />
     <ClInclude Include="src\formats\pdf\pdf_texture.h" />
@@ -648,6 +659,7 @@
     <ClInclude Include="src\nodes\latex_label_3d.h" />
     <ClInclude Include="src\nodes\markdown_label.h" />
     <ClInclude Include="src\nodes\mermaid_label.h" />
+    <ClInclude Include="src\nodes\restructuredtext_label.h" />
     <ClInclude Include="src\register_types.h" />
     <ClInclude Include="src\formats\html\layout\unicode_hyphenation_compose.inc" />
     <ClInclude Include="src\formats\html\layout\unicode_hyphenation_skip.inc" />

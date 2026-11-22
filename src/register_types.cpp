@@ -11,6 +11,8 @@
 #include "editor/importers/pdf_texture_importer.h"
 #include "editor/markdown_preview_editor_plugin.h"
 #include "editor/mermaid_preview_editor_plugin.h"
+#include "editor/rst_index_editor_plugin.h"
+#include "editor/importers/rst_document_importer.h"
 #include "editor/script_editor_preview_plugin.h"
 #include "formats/html/elements/html_anchor_element.h"
 #include "formats/html/elements/html_button_element.h"
@@ -60,6 +62,10 @@
 #include "nodes/mermaid_label.h"
 #include "formats/mermaid/mermaid_render.h"
 #include "formats/latex/tex_render.h"
+#include "formats/rst/rst_document.h"
+#include "formats/rst/rst_reference_index.h"
+#include "formats/rst/rst_document_parser.h"
+#include "nodes/restructuredtext_label.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/classes/editor_plugin_registration.hpp>
@@ -77,6 +83,10 @@ namespace {
 void initialize_dockit_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_INTERNAL_CLASS(MarkdownLabelCanvas);
+		GDREGISTER_CLASS(RSTReferenceIndex);
+		GDREGISTER_CLASS(RSTDocument);
+		GDREGISTER_INTERNAL_CLASS(RSTDocumentCanvas);
+		GDREGISTER_CLASS(RestructuredtextLabel);
 		GDREGISTER_CLASS(LatexDocument);
 		GDREGISTER_CLASS(MermaidDocument);
 		GDREGISTER_CLASS(PDFReader);
@@ -206,14 +216,17 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(HTMLPreviewEditorPlugin);
 		GDREGISTER_INTERNAL_CLASS(MarkdownPreviewEditorPlugin);
 		GDREGISTER_INTERNAL_CLASS(MermaidPreviewEditorPlugin);
+		GDREGISTER_INTERNAL_CLASS(RSTIndexEditorPlugin);
 		EditorPlugins::add_by_type<HTMLPreviewEditorPlugin>();
 		EditorPlugins::add_by_type<MarkdownPreviewEditorPlugin>();
 		EditorPlugins::add_by_type<MermaidPreviewEditorPlugin>();
+		EditorPlugins::add_by_type<RSTIndexEditorPlugin>();
 		GDREGISTER_INTERNAL_CLASS(LatexDocumentImporter);
 		GDREGISTER_INTERNAL_CLASS(HTMLDocumentImporter);
 		GDREGISTER_INTERNAL_CLASS(CSSStyleSheetImporter);
 		GDREGISTER_INTERNAL_CLASS(HTMLVideoExportPlugin);
 		GDREGISTER_INTERNAL_CLASS(MermaidDocumentImporter);
+		GDREGISTER_INTERNAL_CLASS(RSTDocumentImporter);
 		if (PDFTextureImporter::is_supported()) {
 			GDREGISTER_INTERNAL_CLASS(PDFTextureImporter);
 		}
@@ -228,6 +241,7 @@ void uninitialize_dockit_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR && editor_plugins_registered) {
 		EditorPlugins::remove_by_type<DockitSourceEditorPlugin>();
 		EditorPlugins::remove_by_type<MermaidPreviewEditorPlugin>();
+		EditorPlugins::remove_by_type<RSTIndexEditorPlugin>();
 		EditorPlugins::remove_by_type<MarkdownPreviewEditorPlugin>();
 		EditorPlugins::remove_by_type<HTMLPreviewEditorPlugin>();
 		editor_plugins_registered = false;

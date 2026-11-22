@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RSTReferenceIndex" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A generated index for navigation between reStructuredText documents.
+	</brief_description>
+	<description>
+		Dockit generates this resource in the editor from the roots configured in [code]dockit/rst/document_roots[/code]. It stores only document targets and labels referenced by the scanned RST files, with a resource path alongside any available UID as a fallback. Projects normally do not need to create or edit it manually.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_document_targets" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns indexed document paths mapped to target dictionaries containing [code]path[/code], [code]uid[/code], and [code]anchor[/code].
+			</description>
+		</method>
+		<method name="get_reference_targets" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns indexed references keyed by the source document path and normalized label.
+			</description>
+		</method>
+		<method name="get_source_fingerprint" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the source fingerprint used to skip unnecessary index writes.
+			</description>
+		</method>
+		<method name="resolve_document">
+			<return type="String" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Resolves an indexed document path or UID. Returns the normalized input path when it is not indexed.
+			</description>
+		</method>
+		<method name="resolve_reference">
+			<return type="String" />
+			<param index="0" name="source_path" type="String" />
+			<param index="1" name="label" type="String" />
+			<description>
+				Resolves [param label] as a [code]:ref:[/code] target used by [param source_path], or returns an empty string when there is no unique match.
+			</description>
+		</method>
+		<method name="set_document_targets">
+			<return type="void" />
+			<param index="0" name="targets" type="Dictionary" />
+			<description>
+				Replaces the indexed document targets.
+			</description>
+		</method>
+		<method name="set_reference_targets">
+			<return type="void" />
+			<param index="0" name="targets" type="Dictionary" />
+			<description>
+				Replaces the indexed reference targets.
+			</description>
+		</method>
+		<method name="set_source_fingerprint">
+			<return type="void" />
+			<param index="0" name="fingerprint" type="String" />
+			<description>
+				Sets the generated source fingerprint.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="document_targets" type="Dictionary" setter="set_document_targets" getter="get_document_targets" />
+		<member name="reference_targets" type="Dictionary" setter="set_reference_targets" getter="get_reference_targets" />
+		<member name="source_fingerprint" type="String" setter="set_source_fingerprint" getter="get_source_fingerprint" />
+	</members>
+</class>

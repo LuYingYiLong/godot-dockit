@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RestructuredtextLabel" inherits="Control" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A scrollable control for displaying reStructuredText documents.
+	</brief_description>
+	<description>
+		[RestructuredtextLabel] renders imported [RSTDocument] resources or raw reStructuredText text. It supports headings and anchors, paragraphs, lists, code blocks, tables, admonitions, images, toctrees, document links, downloads, text selection, search, and external HTTP links.
+		Configure [code]dockit/rst/document_roots[/code] in Project Settings to generate the small reference index used by cross-document [code]:ref:[/code] links and toctree navigation. Relative images and downloads resolve from the source [code].rst[/code] file and do not require a scan root.
+		Internal document links emit [signal link_pressed]. Connect to that signal to load another document and scroll to any fragment in the destination.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="activate_link_uri">
+			<return type="void" />
+			<param index="0" name="uri" type="String" />
+			<description>
+				Emits [signal link_pressed] for [param uri], scrolls to a matching anchor when it points into the current document, and opens HTTP or HTTPS links when [member open_external_links] is enabled.
+			</description>
+		</method>
+		<method name="clear_document">
+			<return type="void" />
+			<description>
+				Clears the current document and its rendered content.
+			</description>
+		</method>
+		<method name="get_anchors" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the anchors available in the rendered document.
+			</description>
+		</method>
+		<method name="get_content_height" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the rendered content height in pixels.
+			</description>
+		</method>
+		<method name="get_document" qualifiers="const">
+			<return type="RSTDocument" />
+			<description>
+				Returns the current document resource, or [code]null[/code] when rendering raw text.
+			</description>
+		</method>
+		<method name="get_rendered_block_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of rendered top-level blocks.
+			</description>
+		</method>
+		<method name="get_selected_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the selected document text.
+			</description>
+		</method>
+		<method name="get_rst_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the raw reStructuredText text currently displayed.
+			</description>
+		</method>
+		<method name="has_anchor" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="anchor" type="String" />
+			<description>
+				Returns whether the rendered document contains [param anchor].
+			</description>
+		</method>
+		<method name="load_rst_file">
+			<return type="int" enum="Error" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Loads an imported [code].rst[/code] resource or reads a source file and displays it. Returns an [enum Error] code.
+			</description>
+		</method>
+		<method name="refresh">
+			<return type="void" />
+			<description>
+				Rebuilds the layout for the current document text.
+			</description>
+		</method>
+		<method name="render_text">
+			<return type="void" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Displays raw reStructuredText from [param text]. Relative resources require a source document to be set through [method set_document].
+			</description>
+		</method>
+		<method name="resolve_link_uri">
+			<return type="String" />
+			<param index="0" name="role" type="String" />
+			<param index="1" name="target" type="String" />
+			<description>
+				Resolves a [code]:doc:[/code], [code]:ref:[/code], or [code]:download:[/code] target to a resource URI.
+			</description>
+		</method>
+		<method name="scroll_to_anchor">
+			<return type="bool" />
+			<param index="0" name="anchor" type="String" />
+			<param index="1" name="align" type="float" default="0.0" />
+			<description>
+				Scrolls to [param anchor], placing it at [param align] of the viewport. Returns [code]false[/code] when the anchor is not present.
+			</description>
+		</method>
+		<method name="search">
+			<return type="Vector2i" />
+			<param index="0" name="text" type="String" />
+			<param index="1" name="flags" type="int" />
+			<param index="2" name="from_line" type="int" />
+			<param index="3" name="from_column" type="int" />
+			<description>
+				Searches the rendered document and returns the first matching line and column, or [code](-1, -1)[/code] when there is no match.
+			</description>
+		</method>
+		<method name="select_all">
+			<return type="void" />
+			<description>
+				Selects all rendered document text.
+			</description>
+		</method>
+		<method name="set_document">
+			<return type="void" />
+			<param index="0" name="document" type="RSTDocument" />
+			<description>
+				Sets the document resource to display.
+			</description>
+		</method>
+		<method name="set_rst_text">
+			<return type="void" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Sets raw reStructuredText text to display and clears the current document resource.
+			</description>
+		</method>
+		<method name="get_h_scroll_bar" qualifiers="const">
+			<return type="HScrollBar" />
+			<description>
+				Returns the internal horizontal scroll bar.
+			</description>
+		</method>
+		<method name="get_v_scroll_bar" qualifiers="const">
+			<return type="VScrollBar" />
+			<description>
+				Returns the internal vertical scroll bar.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="extra_font_size_changed">
+			<param index="0" name="font_size" type="int" />
+			<description>
+				Emitted when [member extra_font_size] changes.
+			</description>
+		</signal>
+		<signal name="link_pressed">
+			<param index="0" name="uri" type="String" />
+			<description>
+				Emitted when a rendered link is activated.
+			</description>
+		</signal>
+		<signal name="render_warning">
+			<param index="0" name="message" type="String" />
+			<param index="1" name="line" type="int" />
+			<description>
+				Emitted when the renderer encounters an unsupported directive or resource.
+			</description>
+		</signal>
+	</signals>
+	<members>
+		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
+			The margin around the document content.
+		</member>
+		<member name="document" type="RSTDocument" setter="set_document" getter="get_document" />
+		<member name="deselect_on_focus_loss_enabled" type="bool" setter="set_deselect_on_focus_loss_enabled" getter="is_deselect_on_focus_loss_enabled" default="true" />
+		<member name="drag_and_drop_selection_enabled" type="bool" setter="set_drag_and_drop_selection_enabled" getter="is_drag_and_drop_selection_enabled" default="true" />
+		<member name="extra_font_size" type="int" setter="set_extra_font_size" getter="get_extra_font_size" default="0">
+			An additional font size applied to rendered text.
+		</member>
+		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true" />
+		<member name="rst_text" type="String" setter="set_rst_text" getter="get_rst_text">
+			Raw reStructuredText displayed when no [RSTDocument] is assigned.
+		</member>
+		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true" />
+	</members>
+</class>

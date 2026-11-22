@@ -54,10 +54,10 @@ $$
 
 ~~~mermaid
 flowchart LR
-    A["Edit Markdown"] --> B{"Choose a block"}
-    B --> C["LaTeX formula"]
-    B --> D["Mermaid diagram"]
-    C --> E["Live preview"]
+	A["Edit Markdown"] --> B{"Choose a block"}
+	B --> C["LaTeX formula"]
+	B --> D["Mermaid diagram"]
+	C --> E["Live preview"]
     D --> E
 ~~~
 
@@ -65,7 +65,7 @@ flowchart LR
 
 ~~~gdscript
 func greet(name: String) -> void:
-    print("Hello, ", name)
+	print("Hello, ", name)
 ~~~
 
 ## HTML in Markdown
@@ -74,7 +74,7 @@ func greet(name: String) -> void:
   <summary>HTML block inside the preview</summary>
   <div style="padding: 10px; border: 1px solid #696969; border-radius: 6px; background-color: #292929;">
     <strong>Embedded HTML</strong><br />
-    <span style="color: #8be9a8;">This content is rendered by the HTML layout.</span>
+	<span style="color: #8be9a8;">This content is rendered by the HTML layout.</span>
   </div>
 </details>
 
