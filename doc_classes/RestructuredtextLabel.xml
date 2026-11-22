@@ -42,6 +42,12 @@
 				Returns the current document resource, or [code]null[/code] when rendering raw text.
 			</description>
 		</method>
+		<method name="get_menu">
+			<return type="PopupMenu" />
+			<description>
+				Returns the internal [PopupMenu] used for the context menu. The menu is created on first access.
+			</description>
+		</method>
 		<method name="get_rendered_block_count" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -72,6 +78,25 @@
 			<param index="0" name="path" type="String" />
 			<description>
 				Loads an imported [code].rst[/code] resource or reads a source file and displays it. Returns an [enum Error] code.
+			</description>
+		</method>
+		<method name="is_context_menu_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the right-click context menu is enabled. The default value is [code]false[/code].
+			</description>
+		</method>
+		<method name="is_menu_visible" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the context menu is currently visible.
+			</description>
+		</method>
+		<method name="menu_option">
+			<return type="void" />
+			<param index="0" name="option" type="int" />
+			<description>
+				Handles a menu option by its identifier. Use the constants from [enum MenuItems].
 			</description>
 		</method>
 		<method name="refresh">
@@ -126,6 +151,13 @@
 				Sets the document resource to display.
 			</description>
 		</method>
+		<method name="set_context_menu_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether the right-click context menu is enabled.
+			</description>
+		</method>
 		<method name="set_rst_text">
 			<return type="void" />
 			<param index="0" name="text" type="String" />
@@ -171,9 +203,14 @@
 		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
 			The margin around the document content.
 		</member>
+		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="false">
+			If [code]true[/code], a context menu with Copy and Select All options appears on right-click.
+		</member>
 		<member name="document" type="RSTDocument" setter="set_document" getter="get_document" />
 		<member name="deselect_on_focus_loss_enabled" type="bool" setter="set_deselect_on_focus_loss_enabled" getter="is_deselect_on_focus_loss_enabled" default="true" />
-		<member name="drag_and_drop_selection_enabled" type="bool" setter="set_drag_and_drop_selection_enabled" getter="is_drag_and_drop_selection_enabled" default="true" />
+		<member name="drag_and_drop_selection_enabled" type="bool" setter="set_drag_and_drop_selection_enabled" getter="is_drag_and_drop_selection_enabled" default="true">
+			Allows dragging selected text to Godot controls that accept text drag-and-drop data.
+		</member>
 		<member name="extra_font_size" type="int" setter="set_extra_font_size" getter="get_extra_font_size" default="0">
 			An additional font size applied to rendered text.
 		</member>
@@ -183,4 +220,15 @@
 		</member>
 		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true" />
 	</members>
+	<constants>
+		<constant name="MENU_COPY" value="0" enum="MenuItems">
+			Context menu item ID for the Copy action.
+		</constant>
+		<constant name="MENU_SELECT_ALL" value="1" enum="MenuItems">
+			Context menu item ID for the Select All action.
+		</constant>
+		<constant name="MENU_MAX" value="2" enum="MenuItems">
+			Represents the total number of menu items. Used for bounds checking.
+		</constant>
+	</constants>
 </class>

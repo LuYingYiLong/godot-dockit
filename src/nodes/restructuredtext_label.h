@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
+#include <godot_cpp/classes/popup_menu.hpp>
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/style_box.hpp>
@@ -119,6 +120,8 @@ private:
 	bool layout_dirty = true;
 	bool dragging_selection = false;
 	bool selection_dragged = false;
+	bool selection_drag_attempt = false;
+	PopupMenu* menu = nullptr;
 	int64_t selection_anchor = 0;
 	int64_t selection_caret = 0;
 	int64_t search_match_start = -1;
@@ -139,12 +142,16 @@ private:
 	void draw_stylebox_or_rect(const Ref<StyleBox>& p_stylebox, const Rect2& p_rect, const Color& p_fallback_color);
 	void draw_span_decorations(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<RSTInlineSpan>& p_spans, int64_t p_global_start, bool p_draw_code_backgrounds, bool p_draw_link_underlines);
 	void draw_paragraph_text(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<RSTInlineSpan>& p_spans, int64_t p_global_start, const Color& p_default_color);
+	void _generate_context_menu();
+	void _update_context_menu();
+	Key _get_menu_action_accelerator(const String& p_action);
 	int64_t hit_test_document(const Vector2& p_position) const;
 	String link_uri_at_position(const Vector2& p_position) const;
 	String link_uri_at_character(int64_t p_character) const;
 	int64_t line_column_to_offset(int32_t p_line, int32_t p_column) const;
 	Vector2i offset_to_line_column(int64_t p_offset) const;
 	bool has_selection() const;
+	bool is_position_inside_selection(const Vector2& p_position);
 
 protected:
 	static void _bind_methods();
@@ -152,6 +159,7 @@ protected:
 
 public:
 	void _gui_input(const Ref<InputEvent>& p_event) override;
+	Variant _get_drag_data(const Vector2& p_at_position) override;
 	Vector2 _get_minimum_size() const override;
 	void set_document_view(RestructuredtextLabel* p_document_view);
 	void set_rst_text(const String& p_text);
@@ -170,10 +178,20 @@ public:
 	PackedStringArray get_anchors() const;
 	float get_anchor_offset(const String& p_anchor) const;
 	float get_search_result_y() const;
+	PopupMenu* get_menu();
+	bool is_menu_visible() const;
+	void menu_option(int p_option);
 };
 
 class RestructuredtextLabel : public Control {
 	GDCLASS(RestructuredtextLabel, Control);
+
+public:
+	enum MenuItems {
+		MENU_COPY,
+		MENU_SELECT_ALL,
+		MENU_MAX,
+	};
 
 private:
 	String rst_text;
@@ -187,6 +205,7 @@ private:
 	bool selection_enabled = true;
 	bool deselect_on_focus_loss_enabled = true;
 	bool drag_and_drop_selection_enabled = true;
+	bool context_menu_enabled = false;
 	int32_t rendered_block_count = 0;
 
 	void ensure_controls();
@@ -213,6 +232,8 @@ public:
 	bool is_deselect_on_focus_loss_enabled() const;
 	void set_drag_and_drop_selection_enabled(bool p_enabled);
 	bool is_drag_and_drop_selection_enabled() const;
+	void set_context_menu_enabled(bool p_enabled);
+	bool is_context_menu_enabled() const;
 
 	Error load_rst_file(const String& p_path);
 	void render_text(const String& p_text);
@@ -234,4 +255,9 @@ public:
 	PackedStringArray get_anchors() const;
 	bool scroll_to_anchor(const String& p_anchor, float p_align = 0.0f);
 	bool scroll_to_search_result(float p_align = 0.0f);
+	PopupMenu* get_menu();
+	bool is_menu_visible() const;
+	void menu_option(int p_option);
 };
+
+VARIANT_ENUM_CAST(RestructuredtextLabel::MenuItems);

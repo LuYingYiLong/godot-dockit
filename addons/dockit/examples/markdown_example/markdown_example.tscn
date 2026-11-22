@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_theme"]
 [ext_resource type="Script" uid="uid://c2j3foaudn1ej" path="res://addons/dockit/examples/markdown_example/markdown_example.gd" id="2_script"]
-[ext_resource type="Theme" uid="uid://b3kuthod8q46o" path="res://addons/dockit/examples/markdown_theme.tres" id="3_markdown_theme"]
+[ext_resource type="Theme" uid="uid://b3kuthod8q46o" path="res://addons/dockit/examples/markdown_example/markdown_theme.tres" id="3_markdown_theme"]
 
 [node name="MarkdownExample" type="Control" unique_id=1830400677]
 layout_mode = 3

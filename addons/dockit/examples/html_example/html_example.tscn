@@ -136,7 +136,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 1
 
-[node name="SnakeTimer" type="Timer" parent="." unique_id=1455188109]
+[node name="PreviewTimer" type="Timer" parent="." unique_id=1455188109]
 unique_name_in_owner = true
 wait_time = 0.25
 one_shot = true
@@ -147,4 +147,4 @@ one_shot = true
 [connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/HtmlSourcePanelContainer/HBoxContainer/HtmlCodeEdit" to="." method="_on_code_edit_text_changed"]
 [connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/CssSourcePanelContainer2/HBoxContainer/CssCodeEdit" to="." method="_on_code_edit_text_changed"]
 [connection signal="text_changed" from="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HBoxContainer/TabContainer/GdscriptSourcePanelContainer3/HBoxContainer/GdscriptCodeEdit" to="." method="_on_code_edit_text_changed"]
-[connection signal="timeout" from="SnakeTimer" to="." method="_on_snake_timer_timeout"]
+[connection signal="timeout" from="PreviewTimer" to="." method="_on_preview_timer_timeout"]

@@ -125,6 +125,61 @@ content_margin_right = 8.0
 content_margin_bottom = 8.0
 draw_center = false
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g4o62"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.28118706, 0.2811868, 0.28118694, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xqp8j"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.101960786, 0.101960786, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.047058824, 0.047058824, 0.047058824, 1)
+border_blend = true
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_lbrml"]
+content_margin_left = 4.0
+content_margin_top = 0.0
+content_margin_right = 4.0
+content_margin_bottom = 0.0
+color = Color(0.24780053, 0.24780053, 0.24780053, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nv72s"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.101960786, 0.101960786, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.047058824, 0.047058824, 0.047058824, 1)
+border_blend = true
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wvhbo"]
 content_margin_left = 8.0
 content_margin_top = 8.0
@@ -239,12 +294,15 @@ Button/styles/normal = SubResource("StyleBoxFlat_np46m")
 Button/styles/pressed = SubResource("StyleBoxFlat_pf3tg")
 HBoxContainer/constants/separation = 8
 HSplitContainer/constants/separation = 8
-LargeLabel/base_type = &"Label"
 LargeLabel/font_sizes/font_size = 32
 LargeLabel/fonts/font = SubResource("FontVariation_2q7up")
 LineEdit/styles/focus = SubResource("StyleBoxFlat_37pde")
 LineEdit/styles/normal = SubResource("StyleBoxFlat_fvvjf")
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_jel17")
+PopupMenu/styles/hover = SubResource("StyleBoxFlat_g4o62")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_xqp8j")
+PopupMenu/styles/separator = SubResource("StyleBoxLine_lbrml")
+PopupPanel/styles/panel = SubResource("StyleBoxFlat_nv72s")
 Sidebar/base_type = &"PanelContainer"
 Sidebar/styles/panel = SubResource("StyleBoxFlat_wvhbo")
 TabContainer/constants/side_margin = 0

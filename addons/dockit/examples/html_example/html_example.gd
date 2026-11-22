@@ -10,7 +10,7 @@ extends Control
 @onready var css_code_edit: CodeEdit = %CssCodeEdit
 @onready var gdscript_code_edit: CodeEdit = %GdscriptCodeEdit
 @onready var preview_html_label: HTMLLabel = %PreviewHTMLLabel
-@onready var snake_timer: Timer = %SnakeTimer
+@onready var preview_timer: Timer = %PreviewTimer
 
 var html_file_list: PackedStringArray
 var tree_item_cache: Array[TreeItem]
@@ -88,10 +88,10 @@ func _on_search_line_edit_text_changed(_new_text: String) -> void:
 func _on_code_edit_text_changed() -> void:
 	if is_loading_source or selected_html_path.is_empty():
 		return
-	snake_timer.start()
+	preview_timer.start()
 
 
-func _on_snake_timer_timeout() -> void:
+func _on_preview_timer_timeout() -> void:
 	_refresh_preview()
 
 
@@ -99,7 +99,7 @@ func _on_reset_button_pressed() -> void:
 	if selected_html_path.is_empty():
 		return
 
-	snake_timer.stop()
+	preview_timer.stop()
 	is_loading_source = true
 	html_code_edit.text = original_html_source
 	css_code_edit.text = original_css_source
@@ -109,7 +109,7 @@ func _on_reset_button_pressed() -> void:
 
 
 func _load_example(p_html_path: String, p_title: String) -> void:
-	snake_timer.stop()
+	preview_timer.stop()
 	selected_html_path = p_html_path
 	title_label.text = p_title
 	var source_html: String = _read_file(p_html_path)

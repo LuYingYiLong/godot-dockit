@@ -8,6 +8,8 @@
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/input_map.hpp>
+#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -929,6 +931,7 @@ void RSTDocumentCanvas::set_rst_text(const String& p_text) {
 	search_match_end = -1;
 	dragging_selection = false;
 	selection_dragged = false;
+	selection_drag_attempt = false;
 	set_process_internal(false);
 	mark_layout_dirty();
 }
@@ -945,6 +948,7 @@ void RSTDocumentCanvas::clear_document() {
 	search_match_end = -1;
 	dragging_selection = false;
 	selection_dragged = false;
+	selection_drag_attempt = false;
 	set_process_internal(false);
 	content_height = 1.0f;
 	layout_dirty = false;
@@ -961,6 +965,18 @@ void RSTDocumentCanvas::mark_layout_dirty() {
 
 bool RSTDocumentCanvas::has_selection() const {
 	return selection_anchor != selection_caret;
+}
+
+bool RSTDocumentCanvas::is_position_inside_selection(const Vector2& p_position) {
+	if (!has_selection()) {
+		return false;
+	}
+
+	rebuild_layout();
+	const int64_t character = hit_test_document(p_position);
+	const int64_t from = std::min<int64_t>(selection_anchor, selection_caret);
+	const int64_t to = std::max<int64_t>(selection_anchor, selection_caret);
+	return character >= from && character <= to;
 }
 
 void RSTDocumentCanvas::select_all() {
@@ -985,6 +1001,83 @@ String RSTDocumentCanvas::get_link_uri_at_point(const Vector2& p_position) {
 void RSTDocumentCanvas::clear_selection() {
 	selection_anchor = selection_caret;
 	queue_redraw();
+}
+
+void RSTDocumentCanvas::_generate_context_menu() {
+	menu = memnew(PopupMenu);
+	add_child(menu, false, Node::INTERNAL_MODE_FRONT);
+	menu->connect("id_pressed", callable_mp(this, &RSTDocumentCanvas::menu_option));
+	menu->add_item("Copy", RestructuredtextLabel::MENU_COPY);
+	menu->add_item("Select All", RestructuredtextLabel::MENU_SELECT_ALL);
+}
+
+void RSTDocumentCanvas::_update_context_menu() {
+	if (menu == nullptr) {
+		_generate_context_menu();
+	}
+
+	const int32_t copy_index = menu->get_item_index(RestructuredtextLabel::MENU_COPY);
+	if (copy_index >= 0) {
+		menu->set_item_accelerator(copy_index, _get_menu_action_accelerator("ui_copy"));
+		menu->set_item_disabled(copy_index, document_view == nullptr || !document_view->is_selection_enabled());
+	}
+
+	const int32_t select_all_index = menu->get_item_index(RestructuredtextLabel::MENU_SELECT_ALL);
+	if (select_all_index >= 0) {
+		menu->set_item_accelerator(select_all_index, _get_menu_action_accelerator("ui_text_select_all"));
+		menu->set_item_disabled(select_all_index, document_view == nullptr || !document_view->is_selection_enabled());
+	}
+}
+
+Key RSTDocumentCanvas::_get_menu_action_accelerator(const String& p_action) {
+	InputMap* input_map = InputMap::get_singleton();
+	if (input_map == nullptr) {
+		return KEY_NONE;
+	}
+
+	const TypedArray<Ref<InputEvent>> events = input_map->action_get_events(p_action);
+	if (events.is_empty()) {
+		return KEY_NONE;
+	}
+
+	const Ref<InputEventKey> key_event = events[0];
+	if (key_event.is_null()) {
+		return KEY_NONE;
+	}
+
+	if (key_event->get_physical_keycode() != KEY_NONE) {
+		return key_event->get_physical_keycode_with_modifiers();
+	}
+	return key_event->get_keycode_with_modifiers();
+}
+
+PopupMenu* RSTDocumentCanvas::get_menu() {
+	if (menu == nullptr) {
+		_generate_context_menu();
+	}
+	return menu;
+}
+
+bool RSTDocumentCanvas::is_menu_visible() const {
+	return menu != nullptr && menu->is_visible();
+}
+
+void RSTDocumentCanvas::menu_option(int p_option) {
+	switch (p_option) {
+		case RestructuredtextLabel::MENU_COPY: {
+			String text = get_selected_text();
+			if (text.is_empty()) {
+				text = plain_text;
+			}
+			DisplayServer* display_server = DisplayServer::get_singleton();
+			if (display_server != nullptr && !text.is_empty()) {
+				display_server->clipboard_set(text);
+			}
+		} break;
+		case RestructuredtextLabel::MENU_SELECT_ALL: {
+			select_all();
+		} break;
+	}
 }
 
 Vector2i RSTDocumentCanvas::search(const String& p_text, int32_t p_flags, int32_t p_from_line, int32_t p_from_column) {
@@ -2025,6 +2118,11 @@ void RSTDocumentCanvas::_notification(int p_what) {
 		if (document_view != nullptr && document_view->is_deselect_on_focus_loss_enabled()) {
 			clear_selection();
 		}
+		selection_drag_attempt = false;
+	}
+
+	if (p_what == NOTIFICATION_DRAG_END) {
+		selection_drag_attempt = false;
 	}
 
 		if (p_what == NOTIFICATION_INTERNAL_PROCESS) {
@@ -2269,14 +2367,33 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		return;
 	}
 
+	if (mouse_button.is_valid() && mouse_button->get_button_index() == MOUSE_BUTTON_RIGHT && mouse_button->is_pressed() && document_view != nullptr && document_view->is_context_menu_enabled()) {
+		get_menu();
+		_update_context_menu();
+		menu->set_position(get_screen_transform().xform(mouse_button->get_position()));
+		menu->reset_size();
+		menu->popup();
+		menu->grab_focus();
+		accept_event();
+		return;
+	}
+
 	if (mouse_button.is_valid() && mouse_button->get_button_index() == MOUSE_BUTTON_LEFT) {
 		if (mouse_button->is_pressed()) {
 			rebuild_layout();
 			grab_focus();
 			const bool can_select = document_view == nullptr || document_view->is_selection_enabled();
-			dragging_selection = can_select;
+			selection_drag_attempt = false;
+			dragging_selection = false;
 			selection_dragged = false;
 			press_position = mouse_button->get_position();
+			if (can_select && document_view != nullptr && document_view->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
+				selection_drag_attempt = true;
+				accept_event();
+				return;
+			}
+
+			dragging_selection = can_select;
 			if (can_select) {
 				selection_anchor = hit_test_document(mouse_button->get_position());
 				selection_caret = selection_anchor;
@@ -2285,6 +2402,15 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			queue_redraw();
 		}
 		else {
+			if (selection_drag_attempt) {
+				selection_drag_attempt = false;
+				if (is_position_inside_selection(mouse_button->get_position())) {
+					clear_selection();
+				}
+				accept_event();
+				return;
+			}
+
 			if (!selection_dragged) {
 				const String uri = link_uri_at_position(mouse_button->get_position());
 				if (!uri.is_empty() && document_view != nullptr) {
@@ -2307,6 +2433,10 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 
 	const Ref<InputEventMouseMotion> mouse_motion = p_event;
+	if (mouse_motion.is_valid() && selection_drag_attempt) {
+		return;
+	}
+
 	if (mouse_motion.is_valid() && dragging_selection) {
 		const Vector2 delta = mouse_motion->get_position() - press_position;
 		if (std::abs(delta.x) > 3.0f || std::abs(delta.y) > 3.0f) {
@@ -2334,6 +2464,19 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 
 	const Ref<InputEventKey> key = p_event;
+	if (key.is_valid() && key->is_pressed() && !key->is_echo() && key->is_action("ui_menu", true)) {
+		if (document_view != nullptr && document_view->is_context_menu_enabled()) {
+			get_menu();
+			_update_context_menu();
+			menu->set_position(get_screen_position());
+			menu->reset_size();
+			menu->popup();
+			menu->grab_focus();
+		}
+		accept_event();
+		return;
+	}
+
 	if (key.is_valid() && key->is_pressed() && !key->is_echo() && key->is_command_or_control_pressed()) {
 		if (key->get_keycode() == KEY_A) {
 			select_all();
@@ -2349,6 +2492,30 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			return;
 		}
 	}
+}
+
+Variant RSTDocumentCanvas::_get_drag_data(const Vector2& p_at_position) {
+	Variant drag_data = Control::_get_drag_data(p_at_position);
+	if (drag_data.get_type() != Variant::NIL) {
+		return drag_data;
+	}
+
+	if (document_view == nullptr || !document_view->is_drag_and_drop_selection_enabled() || !selection_drag_attempt) {
+		return Variant();
+	}
+
+	rebuild_layout();
+	const String selected_text = get_selected_text();
+	if (selected_text.is_empty()) {
+		return Variant();
+	}
+
+	Label* preview = memnew(Label);
+	preview->set_text(selected_text);
+	preview->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+	preview->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED);
+	set_drag_preview(preview);
+	return selected_text;
 }
 
 void RestructuredtextLabel::_bind_methods() {
@@ -2368,6 +2535,8 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_deselect_on_focus_loss_enabled"), &RestructuredtextLabel::is_deselect_on_focus_loss_enabled);
 	ClassDB::bind_method(D_METHOD("set_drag_and_drop_selection_enabled", "enabled"), &RestructuredtextLabel::set_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_drag_and_drop_selection_enabled"), &RestructuredtextLabel::is_drag_and_drop_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &RestructuredtextLabel::set_context_menu_enabled);
+	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &RestructuredtextLabel::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("load_rst_file", "path"), &RestructuredtextLabel::load_rst_file);
 	ClassDB::bind_method(D_METHOD("render_text", "text"), &RestructuredtextLabel::render_text);
 	ClassDB::bind_method(D_METHOD("refresh"), &RestructuredtextLabel::refresh);
@@ -2388,6 +2557,9 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_anchors"), &RestructuredtextLabel::get_anchors);
 	ClassDB::bind_method(D_METHOD("scroll_to_anchor", "anchor", "align"), &RestructuredtextLabel::scroll_to_anchor, DEFVAL(0.0f));
 	ClassDB::bind_method(D_METHOD("scroll_to_search_result", "align"), &RestructuredtextLabel::scroll_to_search_result, DEFVAL(0.0f));
+	ClassDB::bind_method(D_METHOD("get_menu"), &RestructuredtextLabel::get_menu);
+	ClassDB::bind_method(D_METHOD("is_menu_visible"), &RestructuredtextLabel::is_menu_visible);
+	ClassDB::bind_method(D_METHOD("menu_option", "option"), &RestructuredtextLabel::menu_option);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "RSTDocument"), "set_document", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "rst_text", PROPERTY_HINT_MULTILINE_TEXT), "set_rst_text", "get_rst_text");
@@ -2399,6 +2571,11 @@ void RestructuredtextLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled", PROPERTY_HINT_GROUP_ENABLE), "set_selection_enabled", "is_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_on_focus_loss_enabled"), "set_deselect_on_focus_loss_enabled", "is_deselect_on_focus_loss_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"), "set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
+
+	BIND_ENUM_CONSTANT(MENU_COPY);
+	BIND_ENUM_CONSTANT(MENU_SELECT_ALL);
+	BIND_ENUM_CONSTANT(MENU_MAX);
 
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("render_warning", PropertyInfo(Variant::STRING, "message"), PropertyInfo(Variant::INT, "line")));
@@ -2712,6 +2889,21 @@ VScrollBar* RestructuredtextLabel::get_v_scroll_bar() const {
 	return scroll_container->get_v_scroll_bar();
 }
 
+PopupMenu* RestructuredtextLabel::get_menu() {
+	ensure_controls();
+	return document_canvas->get_menu();
+}
+
+bool RestructuredtextLabel::is_menu_visible() const {
+	return document_canvas != nullptr && document_canvas->is_menu_visible();
+}
+
+void RestructuredtextLabel::menu_option(int p_option) {
+	if (document_canvas != nullptr) {
+		document_canvas->menu_option(p_option);
+	}
+}
+
 static bool is_external_link_uri(const String& p_uri) {
 	const String lower_uri = p_uri.to_lower();
 	return lower_uri.begins_with("http://") || lower_uri.begins_with("https://");
@@ -2852,4 +3044,12 @@ void RestructuredtextLabel::set_drag_and_drop_selection_enabled(bool p_enabled) 
 
 bool RestructuredtextLabel::is_drag_and_drop_selection_enabled() const {
 	return drag_and_drop_selection_enabled;
+}
+
+void RestructuredtextLabel::set_context_menu_enabled(bool p_enabled) {
+	context_menu_enabled = p_enabled;
+}
+
+bool RestructuredtextLabel::is_context_menu_enabled() const {
+	return context_menu_enabled;
 }
