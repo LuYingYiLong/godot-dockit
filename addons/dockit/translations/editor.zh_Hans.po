@@ -61,8 +61,7 @@ msgid "View Source"
 msgstr "查看源文件"
 
 #. src/editor/importers/rst_document_importer.cpp:178
-#, fuzzy
 #| msgid "LaTeX Document"
 msgctxt "Godot Dockit"
 msgid "reStructuredText Document"
-msgstr "LaTeX 文档"
+msgstr "reStructuredText 文档"

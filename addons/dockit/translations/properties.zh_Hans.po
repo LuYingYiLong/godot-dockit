@@ -19,7 +19,7 @@ msgstr ""
 #. src/nodes/markdown_label.cpp
 #. src/nodes/restructuredtext_label.cpp
 msgid "Access"
-msgstr ""
+msgstr "资源访问模式"
 
 #. src/nodes/latex_label_3d.cpp
 msgid "Alpha Cut"
@@ -238,13 +238,12 @@ msgstr "渲染"
 #. src/nodes/markdown_label.cpp
 #. src/nodes/restructuredtext_label.cpp
 msgid "Root Subfolder"
-msgstr ""
+msgstr "根目录子文件夹"
 
 #. src/nodes/restructuredtext_label.cpp
-#, fuzzy
 #| msgid "Text"
 msgid "Rst Text"
-msgstr "文本"
+msgstr "RST 文本"
 
 #. src/nodes/markdown_label.cpp
 #. src/nodes/restructuredtext_label.cpp
@@ -296,7 +295,7 @@ msgstr "文本"
 
 #. src/nodes/restructuredtext_label.cpp
 msgid "Text Selection"
-msgstr ""
+msgstr "文本选择"
 
 #. src/nodes/latex_label_3d.cpp
 msgid "Texture Filter"
