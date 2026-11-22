@@ -18,7 +18,7 @@ msgstr ""
 #. src/editor/importers/css_style_sheet_importer.cpp:23
 msgctxt "Godot Dockit"
 msgid "CSS Style Sheet"
-msgstr ""
+msgstr "CSS 样式表"
 
 #. src/editor/importers/html_document_importer.cpp:13
 msgctxt "Godot Dockit"

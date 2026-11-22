@@ -271,10 +271,9 @@ msgid "A sorted snapshot of the MIME types currently present."
 msgstr "当前 MIME 类型的排序快照。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "A handle to an element in a parsed HTML layout."
 msgid "A structured handle to a CSS rule in an HTML layout."
-msgstr "指向已解析 HTML 布局中某个元素的句柄。"
+msgstr "HTML 布局中 CSS 规则的结构化句柄。"
 
 #. doc_classes/HTMLStyleElement.xml
 msgid "A stylesheet written directly in the document."
@@ -564,7 +563,7 @@ msgstr "音频或视频播放生命周期事件。"
 
 #. doc_classes/CSSStyleDeclaration.xml
 msgid "An editable declaration block for a CSS style rule."
-msgstr ""
+msgstr "可编辑的 CSS 样式规则声明块。"
 
 #. doc_classes/HTMLNode.xml
 msgid "An element node."
@@ -658,7 +657,7 @@ msgstr ""
 
 #. doc_classes/CSSRule.xml
 msgid "At-rule name without [code]@[/code]."
-msgstr ""
+msgstr "不包含 [code]@[/code] 的 at 规则名称。"
 
 #. doc_classes/HTMLSelection.xml
 msgid "Attaches a live range from the same document when the selection is empty."
@@ -2146,7 +2145,7 @@ msgstr "使用 PDFium 创建和编辑 PDF 文档。"
 msgid ""
 "Declaration block for a qualified style rule or a supported descriptor at-rule such as [code"
 "]@font-face[/code], [code]@page[/code], and [code]@property[/code]."
-msgstr ""
+msgstr "限定样式规则或受支持的描述符 at 规则（例如 [code]@font-face[/code]、[code]@page[/code] 和 [code]@property[/code]）的声明块。"
 
 #. doc_classes/MermaidRender.xml
 msgid ""
@@ -2171,13 +2170,12 @@ msgid "Deferred streaming layout flush interval in milliseconds. Clamped to [cod
 msgstr "延迟流式排版的刷新间隔，单位为毫秒。取值限制在 [code][1, 1000][/code]。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "" "Deletes the top-level rule at the given zero-based [param index]. Returns [constant "
 #| "ERR_INVALID_PARAMETER] for a stale handle or invalid index."
 msgid ""
 "Deletes the nested rule at [param index]. Returns [constant ERR_INVALID_PARAMETER] for an invalid"
 " handle or index, and [constant ERR_UNAUTHORIZED] when editing the default stylesheet."
-msgstr "删除给定零基 [param index] 处的顶层规则。句柄或索引无效时返回 [constant ERR_INVALID_PARAMETER]。"
+msgstr "删除位于 [param index] 的嵌套规则。句柄或索引无效时返回 [constant ERR_INVALID_PARAMETER]；尝试编辑默认样式表时返回 [constant ERR_UNAUTHORIZED]。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid ""
@@ -3200,7 +3198,7 @@ msgstr "在给定索引插入数据单元格。[code]-1[/code] 表示追加。�
 msgid ""
 "Inserts a nested rule at the given zero-based index. The parent block must accept nested rules. "
 "Editing invalidates existing rule and declaration handles for the stylesheet."
-msgstr ""
+msgstr "在给定的从零开始的索引处插入嵌套规则。父级代码块必须支持嵌套规则。编辑后，该样式表现有的规则句柄和声明句柄都会失效。"
 
 #. doc_classes/HTMLTableSectionElement.xml
 msgid ""
@@ -3514,17 +3512,16 @@ msgstr "具名分配将宿主的直接子节点匹配到第一个同名插槽。
 
 #. doc_classes/CSSRule.xml
 msgid "Nested rules inside this rule's block."
-msgstr ""
+msgstr "此规则代码块中的嵌套规则。"
 
 #. doc_classes/TeXRender.xml
 msgid "Nested script math style."
 msgstr "嵌套上下标样式。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns the number of pages in this layout."
 msgid "Number of declarations in this block."
-msgstr "返回此布局的页数。"
+msgstr "此代码块中的声明数量。"
 
 #. doc_classes/LatexLabel3D.xml
 msgid "Number of draw flags."
@@ -3548,7 +3545,7 @@ msgid ""
 "Obtain a declaration block from [member CSSRule.style]. Values are serialized CSS tokens. "
 "Mutations update the current layout and invalidate existing CSS rule and declaration handles for "
 "that stylesheet; they do not change the source HTML or CSS resource."
-msgstr ""
+msgstr "通过 [member CSSRule.style] 获取声明块。值以序列化的 CSS 令牌表示。修改会更新当前布局，并使该样式表现有的 CSS 规则句柄和声明句柄失效；不会更改源 HTML 或 CSS 资源。"
 
 #. doc_classes/HTMLElement.xml
 msgid ""
@@ -3581,7 +3578,7 @@ msgid ""
 "[member selector_text] and [member style] for style rules, and [member css_rules] for nested "
 "rules. A rule handle becomes invalid when any CSSOM edit changes its stylesheet. CSS edits only "
 "affect the current layout and are not saved to source files."
-msgstr ""
+msgstr "通过 [method HTMLStyleSheet.get_rules] 或 [method CSSRule.get_css_rules] 获取规则。样式规则使用 [member selector_text] 和 [member style]，嵌套规则使用 [member css_rules]。CSSOM 编辑更改样式表后，该规则句柄会失效。CSS 编辑只影响当前布局，不会写回源文件。"
 
 #. doc_classes/LatexLabel3D.xml
 msgid ""
@@ -3775,7 +3772,6 @@ msgid "Raw reStructuredText displayed when no [RSTDocument] is assigned."
 msgstr "未指定 [RSTDocument] 时显示的原始 reStructuredText 文本。"
 
 #. doc_classes/HTMLStyleSheet.xml
-#, fuzzy
 #| msgid "" "Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet] to get the
 #| stylesheet. It " "shares its rules with the layout's numeric CSSOM API. Changing the media condition
 #| or disabled " "state keeps the handle valid. Replacing the source, removing the owner from the
@@ -3788,9 +3784,7 @@ msgid ""
 "CSS resource. Changing the media condition or disabled state keeps the handle valid. Replacing "
 "the source, removing the owner from the document, or clearing or replacing the layout invalidates"
 " an owned stylesheet handle. The default user-agent sheet is read-only."
-msgstr ""
-"通过 [member HTMLLinkElement.sheet] 或 [member HTMLStyleElement.sheet] 获取样式表。它与布局的数字 ID CSSOM "
-"接口共用规则。修改媒体条件或禁用状态时，句柄继续有效。替换来源、将所属元素移出文档、清空或替换布局时，句柄失效。"
+msgstr "读取 [member HTMLLinkElement.sheet] 或 [member HTMLStyleElement.sheet]，或调用 [method HTMLLabel.get_stylesheet_objects]，即可获取样式表句柄。该句柄与布局的数字型 CSSOM API 共享编辑结果。[method get_rules] 会返回包含嵌套规则和声明的结构化 [CSSRule] 句柄。CSSOM 编辑只影响当前布局，不会写回 HTML 或 CSS 资源。更改媒体条件或禁用状态不会使句柄失效。替换源内容、从文档中移除所属节点，或清除、替换布局，都会使所拥有的样式表句柄失效。默认用户代理样式表为只读。"
 
 #. doc_classes/PDFReader.xml
 msgid "Reads and renders PDF documents through PDFium."
@@ -3978,7 +3972,7 @@ msgstr "移除通过 [method add_event_listener] 注册的监听器。[param opt
 msgid ""
 "Removes all declarations named [param name] and returns the previous value. A successful edit "
 "invalidates this declaration handle."
-msgstr ""
+msgstr "移除所有名为 [param name] 的声明，并返回之前的值。编辑成功后，此声明句柄会失效。"
 
 #. doc_classes/HTMLMutationObserver.xml
 msgid "Removes all registrations and discards pending records."
@@ -4077,7 +4071,7 @@ msgstr "使用仿射矩阵 [code](a, b, c, d, e, f)[/code] 替换当前变换。
 msgid ""
 "Replaces the declaration block with declarations parsed from [param text]. A successful edit "
 "invalidates this handle."
-msgstr ""
+msgstr "用从 [param text] 解析出的声明替换此声明块。编辑成功后，此句柄会失效。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -4146,7 +4140,7 @@ msgstr "用传入项目替换当前元素，并保留分离后的元素句柄。
 msgid ""
 "Replaces this rule with parsed [param text]. The edit is ignored for invalid handles and the "
 "read-only default stylesheet."
-msgstr ""
+msgstr "用解析后的 [param text] 替换此规则。句柄无效或样式表为只读的默认样式表时，不执行编辑。"
 
 #. doc_classes/HTMLBaseElement.xml
 msgid ""
@@ -4344,15 +4338,15 @@ msgstr "公式纹理的分辨率倍率，范围为 [code]1.0[/code] 至 [code]4.
 
 #. doc_classes/HTMLLabel.xml
 msgid "Resolve default relative resources from [code]res://[/code]."
-msgstr ""
+msgstr "从 [code]res://[/code] 解析默认相对资源路径。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Resolve default relative resources from [code]user://[/code]."
-msgstr ""
+msgstr "从 [code]user://[/code] 解析默认相对资源路径。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Resolve default relative resources from an absolute file-system root."
-msgstr ""
+msgstr "从绝对文件系统根目录解析默认相对资源路径。"
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid "Resolve relative paths from an absolute file-system root."
@@ -4555,10 +4549,9 @@ msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[
 msgstr "返回 [code]animation[/code]、[code]transition[/code] 或 [code]script[/code]。"
 
 #. doc_classes/HTMLStyleSheet.xml
-#, fuzzy
 #| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid "Returns [code]author[/code], [code]author_extra[/code], or [code]user_agent[/code]."
-msgstr "返回 [code]animation[/code]、[code]transition[/code] 或 [code]script[/code]。"
+msgstr "返回 [code]author[/code]、[code]author_extra[/code] 或 [code]user_agent[/code]。"
 
 #. doc_classes/HTMLAnimation.xml
 msgid "Returns [code]idle[/code], [code]running[/code], [code]paused[/code], or [code]finished[/code]."
@@ -4569,19 +4562,17 @@ msgid "Returns [code]important[/code] for an important inline property, or an em
 msgstr "内联属性带有优先级时返回 [code]important[/code]，其余情况返回空字符串。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns [code]important[/code] for an important inline property, or an empty string
 #| otherwise."
 msgid ""
 "Returns [code]important[/code] when the named declaration has [code]!important[/code], or an "
 "empty string otherwise."
-msgstr "内联属性带有优先级时返回 [code]important[/code]，其余情况返回空字符串。"
+msgstr "指定声明包含 [code]!important[/code] 时返回 [code]important[/code]，否则返回空字符串。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid "Returns [code]style[/code], [code]at[/code], or [code]declaration-list[/code]."
-msgstr "返回 [code]animation[/code]、[code]transition[/code] 或 [code]script[/code]。"
+msgstr "返回 [code]style[/code]、[code]at[/code] 或 [code]declaration-list[/code]。"
 
 #. doc_classes/HTMLPrintLayout.xml
 msgid "Returns [code]true[/code] after the initial layout and all remote resources have settled."
@@ -4591,7 +4582,7 @@ msgstr "首次布局完成且所有远程资源加载完毕后返回 [code]true[
 msgid ""
 "Returns [code]true[/code] for the default user-agent stylesheet. Read-only sheets reject insert "
 "and delete operations with [constant ERR_UNAUTHORIZED]."
-msgstr ""
+msgstr "当前为默认用户代理样式表时返回 [code]true[/code]。只读样式表拒绝插入和删除操作，并返回 [constant ERR_UNAUTHORIZED]。"
 
 #. doc_classes/HTMLBehaviorStorage.xml
 msgid "Returns [code]true[/code] if [param key] exists."
@@ -4857,14 +4848,13 @@ msgstr ""
 "错误。片段无效或没有匹配项时返回空数组。支持的语法见 [method HTMLLayout.query_selector_all]。"
 
 #. doc_classes/HTMLLabel.xml
-#, fuzzy
 #| msgid "" "Returns a snapshot of serialized computed CSS properties. Lengths that depend on a layout
 #| box can" " retain percentages. See [method HTMLElement.get_bounding_rect] for geometry."
 msgid ""
 "Returns a snapshot of serialized computed CSS properties supported by the layout, including "
 "properties with initial values found in the active stylesheet set. Lengths that depend on a "
 "layout box can retain percentages. See [method HTMLElement.get_bounding_rect] for geometry."
-msgstr "返回序列化后的计算样式快照。依赖布局盒的长度可以保留百分比。几何信息见 [method HTMLElement.get_bounding_rect]。"
+msgstr "返回布局支持的序列化计算后 CSS 属性快照，其中包括活动样式表集合中具有初始值的属性。依赖布局盒尺寸的长度可能仍以百分比表示。几何信息请参阅 [method HTMLElement.get_bounding_rect]。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -4987,7 +4977,7 @@ msgid ""
 "Returns currently matched stylesheet and inline declarations for a connected element, including "
 "their cascade metadata and whether each declaration wins. A pseudo-element may be supplied in "
 "[param pseudo]."
-msgstr ""
+msgstr "返回已连接元素当前匹配的样式表声明和内联声明，包括层叠元数据及每条声明是否胜出。可通过 [param pseudo] 指定伪元素。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -4997,7 +4987,7 @@ msgid ""
 "[code]source_path[/code], [code]stylesheet_id[/code], and [code]winning[/code]. Pass a supported "
 "pseudo-element such as [code]::before[/code] in [param pseudo] to inspect its matched "
 "declarations."
-msgstr ""
+msgstr "返回已连接元素当前匹配的样式表声明和内联声明。每项包含 [code]property[/code]、[code]value[/code]、[code]important[/code]、[code]origin[/code]、[code]selector[/code]、[code]specificity[/code]、[code]layer[/code]、[code]source_order[/code]、[code]source_path[/code]、[code]stylesheet_id[/code] 和 [code]winning[/code]。在 [param pseudo] 中传入 [code]::before[/code] 等受支持的伪元素，可查看其匹配声明。"
 
 #. doc_classes/HTMLElement.xml
 msgid "Returns descendants matching all of the whitespace-separated class names."
@@ -5061,27 +5051,27 @@ msgstr "返回此 [HTMLLabel] 上行为实例共享的存储。该存储在标�
 msgid ""
 "Returns structured handles to nested rules in this rule's block. The returned array is empty when"
 " there are no child rules."
-msgstr ""
+msgstr "返回此规则代码块中嵌套规则的结构化句柄。如果没有子规则，返回空数组。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid ""
 "Returns structured handles to the stylesheet's top-level rules. Rule handles become invalid after"
 " a CSSOM edit to this sheet; the stylesheet handle remains valid."
-msgstr ""
+msgstr "返回样式表顶层规则的结构化句柄。对此样式表执行 CSSOM 编辑后，规则句柄会失效，但样式表句柄仍然有效。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
 "Returns stylesheet handles in document order, followed by the additional author stylesheet. When "
 "[param include_default] is [code]true[/code], the read-only user-agent stylesheet is appended "
 "last."
-msgstr ""
+msgstr "按文档顺序返回样式表句柄，随后是额外的作者样式表。[param include_default] 为 [code]true[/code] 时，最后附加只读的用户代理样式表。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Returns stylesheet handles in document order, followed by the additional author stylesheet. When "
 "[param include_default] is [code]true[/code], the read-only user-agent stylesheet is appended "
 "last. [method get_stylesheets] remains available for the legacy dictionary snapshot."
-msgstr ""
+msgstr "按文档顺序返回样式表句柄，随后是额外的作者样式表。[param include_default] 为 [code]true[/code] 时，最后附加只读的用户代理样式表。[method get_stylesheets] 仍可用于获取旧版字典快照。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -5151,7 +5141,7 @@ msgstr "返回所属表单或 [code]null[/code]。"
 msgid ""
 "Returns the at-rule name without the leading [code]@[/code], or an empty string for qualified "
 "rules."
-msgstr ""
+msgstr "返回不带前导 [code]@[/code] 的 at 规则名称；对于限定规则，返回空字符串。"
 
 #. doc_classes/HTMLBehavior.xml
 msgid "Returns the attached host or [code]null[/code] outside the behavior's attachment lifecycle."
@@ -5314,7 +5304,7 @@ msgstr "返回当前选中的纯文本。未选中文本时返回空字符串。
 msgid ""
 "Returns the declaration block for a qualified style rule or an at-rule with declarations, or "
 "[code]null[/code] for other rule types."
-msgstr ""
+msgstr "对于限定样式规则或包含声明的 at 规则，返回其声明块；其他规则类型返回 [code]null[/code]。"
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid "Returns the default source used to resolve relative resource paths."
@@ -5644,13 +5634,12 @@ msgstr ""
 "只改变字形，返回值保留原始字符。块边界和显式换行以换行符表示。保留的制表符仍为制表符，表格单元格也以制表符分隔。自动折行不会添加换行符。排版前返回空字符串。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "" "Returns the value associated with [param type], or an empty string when the type is absent
 #| or " "data is protected."
 msgid ""
 "Returns the last declared value for [param name], or an empty string when it is absent or this "
 "handle is stale."
-msgstr "返回 [param type] 对应的数据；类型不存在或数据受保护时返回空字符串。"
+msgstr "返回 [param name] 对应的最后一条声明值；该声明不存在或句柄已失效时返回空字符串。"
 
 #. doc_classes/HTMLDocumentFragment.xml
 #. doc_classes/HTMLElement.xml
@@ -5789,10 +5778,9 @@ msgid "Returns the number of rendered top-level blocks."
 msgstr "返回已渲染的顶层内容块数量。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns the number of pages in this layout."
 msgid "Returns the number of unique property names in this declaration block."
-msgstr "返回此布局的页数。"
+msgstr "返回此声明块中不重复的属性名称数量。"
 
 #. doc_classes/HTMLSelection.xml
 msgid "Returns the offset of the selection's anchor."
@@ -5861,10 +5849,9 @@ msgid ""
 msgstr "返回当前派发的传播路径，目标位于首位、window 位于末尾。事件派发期间以外返回空数组。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns the currently selected plain text, or an empty string if nothing is selected."
 msgid "Returns the property name at [param index], or an empty string for an invalid index."
-msgstr "返回当前选中的纯文本。未选中文本时返回空字符串。"
+msgstr "返回 [param index] 处的属性名称；索引无效时返回空字符串。"
 
 #. doc_classes/HTMLMutationObserver.xml
 msgid "Returns the queued record dictionaries in order and drains the queue."
@@ -5940,26 +5927,23 @@ msgid "Returns the selection's focus node."
 msgstr "返回选区的焦点节点。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the selector text for a qualified style rule, or an empty string for other rule types."
-msgstr "返回选中的纯文本。没有选区时返回空字符串。"
+msgstr "对于限定样式规则，返回选择器文本；其他规则类型返回空字符串。"
 
 #. doc_classes/CSSRule.xml
 msgid "Returns the sequence of zero-based rule indices from the stylesheet root to this rule."
-msgstr ""
+msgstr "返回从样式表根节点到此规则的规则索引序列，索引从零开始。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the serialized declarations, or an empty string for a stale handle."
-msgstr "返回选中的纯文本。没有选区时返回空字符串。"
+msgstr "返回序列化后的声明；句柄已失效时返回空字符串。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the serialized rule text, or an empty string for an invalid handle."
-msgstr "返回选中的纯文本。没有选区时返回空字符串。"
+msgstr "返回序列化后的规则文本；句柄无效时返回空字符串。"
 
 #. doc_classes/RSTReferenceIndex.xml
 msgid "Returns the source fingerprint used to skip unnecessary index writes."
@@ -6077,10 +6061,9 @@ msgid ""
 msgstr "返回此文档的 window 事件目标。注册在其上的监听器会收到所有已连接节点的事件。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns the selection end, or [code]-1[/code] for an invalid textarea handle."
 msgid "Returns this rule's index within its parent rule list, or [code]-1[/code] for an invalid handle."
-msgstr "返回选区终点。句柄无效时返回 [code]-1[/code]。"
+msgstr "返回此规则在父规则列表中的索引；句柄无效时返回 [code]-1[/code]。"
 
 #. doc_classes/HTMLNode.xml
 msgid "Returns whether [param node] is this node or one of its descendants."
@@ -6131,10 +6114,9 @@ msgid "Returns whether the node is connected to its document tree. A detached no
 msgstr "返回节点是否连接到所属文档树。分离的节点仍可有效。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Returns whether the range's endpoints are equal."
 msgid "Returns whether the owning rule and stylesheet revision are still valid."
-msgstr "返回范围的两个端点是否相同。"
+msgstr "返回所属规则和样式表版本是否仍然有效。"
 
 #. doc_classes/HTMLAnimation.xml
 msgid "Returns whether the playback handle still belongs to its active layout and target."
@@ -6192,10 +6174,9 @@ msgid "Returns whether this reader holds an open document."
 msgstr "返回此读取器是否已打开文档。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns whether the handle still refers to the associated stylesheet."
 msgid "Returns whether this rule handle still points to the current stylesheet revision."
-msgstr "返回句柄是否仍指向关联的样式表。"
+msgstr "返回此规则句柄是否仍指向当前样式表版本。"
 
 #. doc_classes/HTMLEventTarget.xml
 msgid "Returns whether this target has at least one listener registered for [param type]."
@@ -6214,10 +6195,9 @@ msgid "Rotates the current transform in radians."
 msgstr "以弧度旋转当前变换。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "The pointer device type: [code]mouse[/code], [code]pen[/code], or [code]touch[/code]."
 msgid "Rule type: [code]style[/code], [code]at[/code], or [code]declaration-list[/code]."
-msgstr "指针设备类型：[code]mouse[/code]、[code]pen[/code] 或 [code]touch[/code]。"
+msgstr "规则类型：[code]style[/code]、[code]at[/code] 或 [code]declaration-list[/code]。"
 
 #. doc_classes/LatexLabel3D.xml
 msgid "Sampling filter for the formula texture."
@@ -6351,16 +6331,15 @@ msgstr "跳转到指定秒数并立即采样效果。"
 
 #. doc_classes/CSSRule.xml
 msgid "Selector text for a qualified style rule."
-msgstr ""
+msgstr "限定样式规则的选择器文本。"
 
 #. doc_classes/MarkdownLabel.xml
-#, fuzzy
 #| msgid "" "Selects Resources, User Data, or File System as the default source for relative resource
 #| paths. A" " loaded source file's directory takes precedence."
 msgid ""
 "Selects Resources, User Data, or File System as the default source for relative resource paths. A"
 " loaded Markdown file's directory takes precedence."
-msgstr "选择 Resources、User Data 或 File System 作为相对资源路径的默认来源。加载的源文件所在目录优先。"
+msgstr "选择 Resources、User Data 或 File System 作为相对资源路径的默认来源。已加载 Markdown 文件所在目录具有更高优先级。"
 
 #. doc_classes/HTMLDocument.xml
 #. doc_classes/HTMLLabel.xml
@@ -6405,11 +6384,11 @@ msgstr "将端点设置在父节点内该节点的前后，从而选中整个节
 
 #. doc_classes/CSSStyleDeclaration.xml
 msgid "Serialized declarations in this block."
-msgstr ""
+msgstr "此代码块中的序列化声明。"
 
 #. doc_classes/CSSRule.xml
 msgid "Serialized rule text."
-msgstr ""
+msgstr "序列化后的规则文本。"
 
 #. doc_classes/HTMLElement.xml
 msgid ""
@@ -6448,7 +6427,7 @@ msgid ""
 "Sets a CSS property. Pass [code]important[/code] as [param priority] to add "
 "[code]!important[/code]. Unsupported priority strings are ignored. A successful edit invalidates "
 "this handle."
-msgstr ""
+msgstr "设置 CSS 属性。将 [code]important[/code] 作为 [param priority] 传入可添加 [code]!important[/code]。不支持的优先级字符串会被忽略。编辑成功后，此句柄会失效。"
 
 #. doc_classes/HTMLDataTransfer.xml
 msgid "Sets a MIME payload while the transfer is writable. The type is normalized to lowercase."
@@ -6785,7 +6764,7 @@ msgstr "使用 [member stroke_style] 和 [member line_width] 描画矩形。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid "Structured handles to top-level CSS rules."
-msgstr ""
+msgstr "顶层 CSS 规则的结构化句柄。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -7799,12 +7778,11 @@ msgid "The stroke [Color], CSS color string, [HTMLCanvasGradient], or [HTMLCanva
 msgstr "描边所用的 [Color]、CSS 颜色字符串、[HTMLCanvasGradient] 或 [HTMLCanvasPattern]。"
 
 #. doc_classes/HTMLStyleSheet.xml
-#, fuzzy
 #| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid ""
 "The stylesheet cascade origin: [code]author[/code], [code]author_extra[/code], or "
 "[code]user_agent[/code]."
-msgstr "返回 [code]animation[/code]、[code]transition[/code] 或 [code]script[/code]。"
+msgstr "样式表的层叠来源：[code]author[/code]、[code]author_extra[/code] 或 [code]user_agent[/code]。"
 
 #. doc_classes/HTMLEvent.xml
 msgid "The target the event was dispatched to. It does not change during propagation."
@@ -7980,17 +7958,17 @@ msgstr ""
 #. doc_classes/HTMLDocument.xml
 #. doc_classes/MarkdownLabel.xml
 msgid "Use an absolute file-system root for default relative resources."
-msgstr ""
+msgstr "使用绝对文件系统根目录作为默认相对资源路径的基准。"
 
 #. doc_classes/HTMLDocument.xml
 #. doc_classes/MarkdownLabel.xml
 msgid "Use the Godot project resource namespace for default relative resources."
-msgstr ""
+msgstr "使用 Godot 项目资源命名空间作为默认相对资源路径的基准。"
 
 #. doc_classes/HTMLDocument.xml
 #. doc_classes/MarkdownLabel.xml
 msgid "Use the Godot user data namespace for default relative resources."
-msgstr ""
+msgstr "使用 Godot 用户数据命名空间作为默认相对资源路径的基准。"
 
 #. doc_classes/HTMLTableCaptionElement.xml
 msgid "Use the inherited element methods to edit the caption contents."
@@ -8111,10 +8089,9 @@ msgid "Whether the audio output is muted. The HTML attribute provides the initia
 msgstr "音频输出是否静音。HTML 属性提供初始值。"
 
 #. doc_classes/CSSStyleDeclaration.xml
-#, fuzzy
 #| msgid "Whether the disclosure is open."
 msgid "Whether the declaration block handle is current."
-msgstr "折叠控件是否展开。"
+msgstr "声明块句柄是否仍然有效。"
 
 #. doc_classes/HTMLDetailsElement.xml
 msgid "Whether the disclosure is open."
@@ -8135,10 +8112,9 @@ msgid "Whether the event repeats because the key is held down."
 msgstr "事件是否因按住按键而重复。"
 
 #. doc_classes/CSSRule.xml
-#, fuzzy
 #| msgid "Returns whether the handle still refers to the associated stylesheet."
 msgid "Whether the handle still refers to the current stylesheet revision."
-msgstr "返回句柄是否仍指向关联的样式表。"
+msgstr "句柄是否仍指向当前样式表版本。"
 
 #. doc_classes/HTMLSelectElement.xml
 msgid "Whether the list accepts multiple selections."
@@ -8161,7 +8137,7 @@ msgstr "此指针是否为其类型中的主指针。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid "Whether this is the read-only default user-agent stylesheet."
-msgstr ""
+msgstr "是否为只读的默认用户代理样式表。"
 
 #. doc_classes/HTMLVideoElement.xml
 msgid "Whether video audio is muted. The HTML attribute supplies the initial state."
@@ -8183,7 +8159,7 @@ msgstr "写入完整 PDF 副本并保留已有加密。"
 
 #. doc_classes/CSSRule.xml
 msgid "Zero-based index within the parent rule list."
-msgstr ""
+msgstr "在父规则列表中的索引，从零开始。"
 
 #. doc_classes/HTMLTableCellElement.xml
 msgid "Zero-based position in the parent row or [code]-1[/code] without a row parent."
