@@ -3,8 +3,7 @@
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
-
-class RSTReferenceIndex;
+#include "rst_reference_index.h"
 
 using namespace godot;
 
