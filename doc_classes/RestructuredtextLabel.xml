@@ -24,6 +24,12 @@
 				Clears the current document and its rendered content.
 			</description>
 		</method>
+		<method name="clear_selection">
+			<return type="void" />
+			<description>
+				Clears the current text selection.
+			</description>
+		</method>
 		<method name="get_anchors" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
@@ -36,10 +42,22 @@
 				Returns the rendered content height in pixels.
 			</description>
 		</method>
+		<method name="get_content_margin" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the uniform margin around the document content.
+			</description>
+		</method>
 		<method name="get_document" qualifiers="const">
 			<return type="RSTDocument" />
 			<description>
 				Returns the current document resource, or [code]null[/code] when rendering raw text.
+			</description>
+		</method>
+		<method name="get_extra_font_size" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the additional font size applied to rendered text.
 			</description>
 		</method>
 		<method name="get_access" qualifiers="const">
@@ -64,6 +82,12 @@
 			<return type="PopupMenu" />
 			<description>
 				Returns the internal [PopupMenu] used for the context menu. The menu is created on first access.
+			</description>
+		</method>
+		<method name="get_open_external_links" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if activated HTTP and HTTPS links are opened with the system's default application.
 			</description>
 		</method>
 		<method name="get_rendered_block_count" qualifiers="const">
@@ -104,6 +128,18 @@
 				Returns [code]true[/code] if the right-click context menu is enabled. The default value is [code]false[/code].
 			</description>
 		</method>
+		<method name="is_deselect_on_focus_loss_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the current selection is cleared when the control loses focus.
+			</description>
+		</method>
+		<method name="is_drag_and_drop_selection_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if selected text can be dragged to Godot controls that accept text drag-and-drop data.
+			</description>
+		</method>
 		<method name="is_fit_content_enabled" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -120,6 +156,12 @@
 			<return type="bool" />
 			<description>
 				Returns [code]true[/code] if the internal vertical scroll bar is active.
+			</description>
+		</method>
+		<method name="is_selection_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if text selection is enabled.
 			</description>
 		</method>
 		<method name="is_shortcut_keys_enabled" qualifiers="const">
@@ -139,6 +181,13 @@
 			<return type="void" />
 			<description>
 				Rebuilds the layout for the current document text.
+			</description>
+		</method>
+		<method name="resolve_document_path">
+			<return type="String" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Resolves [param path] relative to the current document's source directory, or to [member access] and [member root_subfolder] when no source directory is available.
 			</description>
 		</method>
 		<method name="render_text">
@@ -162,6 +211,13 @@
 			<param index="1" name="align" type="float" default="0.0" />
 			<description>
 				Scrolls to [param anchor], placing it at [param align] of the viewport. Returns [code]false[/code] when the anchor is not present.
+			</description>
+		</method>
+		<method name="scroll_to_search_result">
+			<return type="bool" />
+			<param index="0" name="align" type="float" default="0.0" />
+			<description>
+				Scrolls to the current search result, placing it at [param align] of the viewport. Returns [code]false[/code] when there is no current result.
 			</description>
 		</method>
 		<method name="search">
@@ -194,6 +250,13 @@
 				Sets whether the right-click context menu is enabled.
 			</description>
 		</method>
+		<method name="set_content_margin">
+			<return type="void" />
+			<param index="0" name="margin" type="int" />
+			<description>
+				Sets the uniform margin around the document content. Negative values are treated as zero.
+			</description>
+		</method>
 		<method name="set_access">
 			<return type="void" />
 			<param index="0" name="access" type="int" enum="RestructuredtextLabel.Access" />
@@ -206,6 +269,41 @@
 			<param index="0" name="root_subfolder" type="String" />
 			<description>
 				Sets the root folder used to resolve relative paths when no source document directory is available.
+			</description>
+		</method>
+		<method name="set_deselect_on_focus_loss_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether the current text selection is cleared when the control loses focus.
+			</description>
+		</method>
+		<method name="set_drag_and_drop_selection_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether selected text can be dragged to Godot controls that accept text drag-and-drop data.
+			</description>
+		</method>
+		<method name="set_extra_font_size">
+			<return type="void" />
+			<param index="0" name="extra" type="int" />
+			<description>
+				Sets the additional font size applied to rendered text. The value is clamped to the range [code]0[/code] to [code]16[/code] and emits [signal extra_font_size_changed].
+			</description>
+		</method>
+		<method name="set_open_external_links">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether activated HTTP and HTTPS links are opened with the system's default application.
+			</description>
+		</method>
+		<method name="set_selection_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				Sets whether rendered text can be selected. Disabling selection clears the current selection.
 			</description>
 		</method>
 		<method name="set_fit_content">
@@ -312,8 +410,12 @@
 		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="false">
 			If [code]true[/code], a context menu with Copy and Select All options appears on right-click.
 		</member>
-		<member name="document" type="RSTDocument" setter="set_document" getter="get_document" />
-		<member name="deselect_on_focus_loss_enabled" type="bool" setter="set_deselect_on_focus_loss_enabled" getter="is_deselect_on_focus_loss_enabled" default="true" />
+		<member name="document" type="RSTDocument" setter="set_document" getter="get_document">
+			The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths.
+		</member>
+		<member name="deselect_on_focus_loss_enabled" type="bool" setter="set_deselect_on_focus_loss_enabled" getter="is_deselect_on_focus_loss_enabled" default="true">
+			If [code]true[/code], clears the current text selection when the control loses focus.
+		</member>
 		<member name="drag_and_drop_selection_enabled" type="bool" setter="set_drag_and_drop_selection_enabled" getter="is_drag_and_drop_selection_enabled" default="true">
 			Allows dragging selected text to Godot controls that accept text drag-and-drop data.
 		</member>
@@ -323,7 +425,9 @@
 		<member name="fit_content" type="bool" setter="set_fit_content" getter="is_fit_content_enabled" default="false">
 			If [code]true[/code], the control reports the rendered content height as its minimum height.
 		</member>
-		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true" />
+		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true">
+			If [code]true[/code], activated HTTP and HTTPS links are opened with the system's default application.
+		</member>
 		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
 			The root folder used to resolve relative paths when no source document directory is available. For [constant ACCESS_FILE_SYSTEM], set an absolute file-system path.
 		</member>
@@ -333,7 +437,9 @@
 		<member name="scroll_active" type="bool" setter="set_scroll_active" getter="is_scroll_active" default="true">
 			If [code]false[/code], disables internal vertical scrolling.
 		</member>
-		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true" />
+		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true">
+			If [code]true[/code], enables selection of rendered text. Disabling selection clears the current selection.
+		</member>
 		<member name="shortcut_keys_enabled" type="bool" setter="set_shortcut_keys_enabled" getter="is_shortcut_keys_enabled" default="true">
 			If [code]true[/code], enables the configured Copy and Select All keyboard shortcuts.
 		</member>

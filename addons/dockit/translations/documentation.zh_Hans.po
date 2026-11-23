@@ -8253,3 +8253,75 @@ msgstr ""
 "[code]submit[/code] 在约束校验通过之后、收集表单条目之前执行。取消它会中止提交，因此不会发出 [signal "
 "HTMLLabel.form_submitted]。[code]reset[/code] 仅对重置按钮执行；在脚本中调用 [method HTMLFormElement.reset] "
 "不会派发它。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "If [code]true[/code], activated HTTP and HTTPS links are opened with the system's default application."
+msgstr "为 [code]true[/code] 时，激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "If [code]true[/code], clears the current text selection when the control loses focus."
+msgstr "为 [code]true[/code] 时，控件失去焦点后会清除当前文本选区。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "If [code]true[/code], enables selection of rendered text. Disabling selection clears the current selection."
+msgstr "为 [code]true[/code] 时，启用渲染文本选择；禁用选择时会清除当前选区。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Resolves [param path] relative to the current document's source directory, or to [member access] and [member root_subfolder] when no source directory is available."
+msgstr "根据当前文档的源目录解析 [param path]；没有可用的源目录时，则根据 [member access] 和 [member root_subfolder] 解析。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if activated HTTP and HTTPS links are opened with the system's default application."
+msgstr "激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开时，返回 [code]true[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if selected text can be dragged to Godot controls that accept text drag-and-drop data."
+msgstr "选中的文本可以拖放到支持文本拖放数据的 Godot 控件时，返回 [code]true[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if text selection is enabled."
+msgstr "已启用文本选择时返回 [code]true[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if the current selection is cleared when the control loses focus."
+msgstr "控件失去焦点时会清除当前选区，则返回 [code]true[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the additional font size applied to rendered text."
+msgstr "返回应用于渲染文本的额外字号。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the uniform margin around the document content."
+msgstr "返回文档内容四周的统一边距。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Scrolls to the current search result, placing it at [param align] of the viewport. Returns [code]false[/code] when there is no current result."
+msgstr "滚动到当前搜索结果，并将其放置在视口的 [param align] 位置。没有当前搜索结果时返回 [code]false[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets the additional font size applied to rendered text. The value is clamped to the range [code]0[/code] to [code]16[/code] and emits [signal extra_font_size_changed]."
+msgstr "设置应用于渲染文本的额外字号。值会限制在 [code]0[/code] 到 [code]16[/code] 范围内，并发出 [signal extra_font_size_changed]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets the uniform margin around the document content. Negative values are treated as zero."
+msgstr "设置文档内容四周的统一边距。负值按零处理。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether activated HTTP and HTTPS links are opened with the system's default application."
+msgstr "设置是否使用系统默认应用打开激活的 HTTP 和 HTTPS 链接。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether rendered text can be selected. Disabling selection clears the current selection."
+msgstr "设置是否允许选择渲染文本。禁用选择时会清除当前选区。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether selected text can be dragged to Godot controls that accept text drag-and-drop data."
+msgstr "设置是否允许将选中的文本拖放到支持文本拖放数据的 Godot 控件中。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether the current text selection is cleared when the control loses focus."
+msgstr "设置控件失去焦点时是否清除当前文本选区。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths."
+msgstr "用于显示的 [RSTDocument] 资源。该资源的源文件路径用于解析相对资源路径。"

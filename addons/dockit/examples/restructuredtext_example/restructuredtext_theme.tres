@@ -24,10 +24,35 @@ content_margin_left = 12.0
 content_margin_top = 6.0
 content_margin_right = 12.0
 content_margin_bottom = 6.0
-bg_color = Color(0.735357, 0.735357, 0.735357, 0.25100002)
+bg_color = Color(0.33715135, 0.6196782, 1, 0.25)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_efoee"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.33715135, 0.6196782, 0.34064347, 0.25)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_is82a"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 1, 1, 0.25)
+border_width_left = 4
+border_color = Color(0.33715135, 0.6196782, 0.34237343, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+expand_margin_left = 4.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d45vb"]
 content_margin_left = 12.0
@@ -37,33 +62,6 @@ content_margin_bottom = 8.0
 bg_color = Color(1, 1, 1, 0.25)
 border_width_left = 4
 border_color = Color(0.3372549, 0.61960787, 1, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-corner_detail = 5
-expand_margin_left = 4.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_AdmonitionWarningHeader"]
-content_margin_left = 12.0
-content_margin_top = 6.0
-content_margin_right = 12.0
-content_margin_bottom = 6.0
-bg_color = Color(0.95, 0.61, 0.14, 1)
-border_width_left = 4
-border_color = Color(0.95, 0.61, 0.14, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_AdmonitionWarningPanel"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.10, 0.12, 0.14, 1)
-border_width_left = 4
-border_color = Color(0.95, 0.61, 0.14, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -128,7 +126,6 @@ bg_color = Color(0, 0, 0, 0.3)
 resource_name = "reStructuredText Theme"
 RestructuredtextLabel/colors/admonition_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/admonition_header_font_color = Color(1, 1, 1, 1)
-RestructuredtextLabel/colors/admonition_warning_header_font_color = Color(0.08, 0.09, 0.11, 1)
 RestructuredtextLabel/colors/code_block_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/font_separator_color = Color(1, 1, 1, 1)
@@ -201,9 +198,9 @@ RestructuredtextLabel/fonts/normal_font = SubResource("SystemFont_Body")
 RestructuredtextLabel/fonts/table_font = SubResource("SystemFont_Body")
 RestructuredtextLabel/fonts/table_header_font = SubResource("SystemFont_Bold")
 RestructuredtextLabel/styles/admonition_header_panel = SubResource("StyleBoxFlat_nv72s")
+RestructuredtextLabel/styles/admonition_note_header_panel = SubResource("StyleBoxFlat_efoee")
+RestructuredtextLabel/styles/admonition_note_panel = SubResource("StyleBoxFlat_is82a")
 RestructuredtextLabel/styles/admonition_panel = SubResource("StyleBoxFlat_d45vb")
-RestructuredtextLabel/styles/admonition_warning_header_panel = SubResource("StyleBox_AdmonitionWarningHeader")
-RestructuredtextLabel/styles/admonition_warning_panel = SubResource("StyleBox_AdmonitionWarningPanel")
 RestructuredtextLabel/styles/code_block_panel = SubResource("StyleBoxFlat_xyu8h")
 RestructuredtextLabel/styles/inline_code_style = SubResource("StyleBoxFlat_ih27g")
 RestructuredtextLabel/styles/table_cell_panel = SubResource("StyleBox_TableCell")
