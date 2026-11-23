@@ -32,8 +32,11 @@ namespace dockit::css {
 			double duration() const;															// 获取动画持续时间
 			double end() const;																	// 获取动画结束时间
 			void sample(double now, Sample& output, bool& needs_frames) const;					// 计算动画在指定时刻的属性值
-			void resolve(const litehtml::html_tag& node, const std::shared_ptr<litehtml::document>& doc,
-				const litehtml::css_keyframes& keyframes);										// 根据节点、文档和关键帧解析 CSS 动画参数
+			void resolve(
+				const litehtml::html_tag& node,
+				const std::shared_ptr<litehtml::document>& doc,
+				const litehtml::css_keyframes& keyframes
+			);																					// 根据节点、文档和关键帧解析 CSS 动画参数
 		};
 
 		using ElementKey = std::weak_ptr<litehtml::element>;

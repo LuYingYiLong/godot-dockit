@@ -12,8 +12,19 @@
 namespace litehtml {
 
 	struct css_easing {
-		enum class kind { bezier, steps, linear } type = kind::bezier;
-		enum class step_position { start, end, none, both } position = step_position::end;
+		enum class kind {
+			bezier,
+			steps,
+			linear
+		} type = kind::bezier;
+
+		enum class step_position {
+			start,
+			end,
+			none,
+			both
+		} position = step_position::end;
+
 		std::array<double, 4> control{0.25, 0.1, 0.25, 1.0};
 		int steps = 1;
 		std::vector<std::pair<double, double>> stops;
@@ -21,7 +32,7 @@ namespace litehtml {
 		double sample(double progress, bool before = false) const;								// 根据进度和缓动函数计算过渡值
 	};
 
-// 解析 CSS 过渡
+	// 解析 CSS 过渡
 	std::optional<double> parse_css_time(const css_token& token);								// 解析CSS时间
 	std::optional<css_easing> parse_css_easing(const css_token& token);							// 解析CSS缓动函数
 

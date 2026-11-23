@@ -13,7 +13,8 @@ class CSSStyleDeclaration;
 
 class CSSRule : public godot::RefCounted {
 	GDCLASS(CSSRule, godot::RefCounted)
-		friend class HTMLStyleSheet;
+	
+	friend class HTMLStyleSheet;
 	friend class CSSStyleDeclaration;
 
 	godot::Ref<HTMLStyleSheet> stylesheet;
@@ -44,8 +45,8 @@ public:
 
 class CSSStyleDeclaration : public godot::RefCounted {
 	GDCLASS(CSSStyleDeclaration, godot::RefCounted)
-		friend class CSSRule;
-
+	
+	friend class CSSRule;
 	godot::Ref<CSSRule> rule;
 
 protected:

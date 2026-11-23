@@ -9,11 +9,16 @@
 #include <functional>
 #include <vector>
 
-namespace litehtml { class html_tag; }
+namespace litehtml {
+	class html_tag;
+}
 
 namespace dockit {
 	class LiteHTMLContainer;
-	namespace css { class ComputedStyle; }
+
+	namespace css {
+		class ComputedStyle;
+	}
 
 	class HTMLTextEditor {
 		struct Line {
@@ -162,10 +167,22 @@ namespace dockit {
 		std::optional<bool> scrollbar_at(const godot::Vector2& p_point) const;
 		void drag_scrollbar(bool p_vertical, const godot::Vector2& p_point, float p_grab_offset);
 		float scrollbar_grab_offset(bool p_vertical, const godot::Vector2& p_point) const;
-		void paint_single(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
-			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused, bool p_password = false,
-			const godot::String* p_preview = nullptr);
-		void paint_multiline(LiteHTMLContainer& p_container, const godot::Rect2& p_box,
-			const litehtml::html_tag& p_host, const godot::String& p_placeholder, bool p_focused, bool p_resize_handle);
+		void paint_single(
+			LiteHTMLContainer& p_container,
+			const godot::Rect2& p_box,
+			const litehtml::html_tag& p_host,
+			const godot::String& p_placeholder,
+			bool p_focused,
+			bool p_password = false,
+			const godot::String* p_preview = nullptr
+		);
+		void paint_multiline(
+			LiteHTMLContainer& p_container,
+			const godot::Rect2& p_box,
+			const litehtml::html_tag& p_host,
+			const godot::String& p_placeholder,
+			bool p_focused,
+			bool p_resize_handle
+		);
 	};
 }

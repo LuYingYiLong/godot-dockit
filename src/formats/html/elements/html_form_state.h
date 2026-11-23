@@ -5,7 +5,12 @@
 #include <vector>
 
 namespace dockit::forms {
-	enum class ButtonAction { NONE, BUTTON, SUBMIT, RESET };
+	enum class ButtonAction {
+		NONE,
+		BUTTON,
+		SUBMIT,
+		RESET
+	};
 
 	bool is_listed(const litehtml::element& p_node);											// 检查节点是否属于表单控件列表
 	bool is_disabled(const litehtml::element& p_node);											// 检查表单控件是否已禁用

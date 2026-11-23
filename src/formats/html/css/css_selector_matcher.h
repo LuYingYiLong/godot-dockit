@@ -7,10 +7,15 @@
 #include <string_view>
 
 namespace dockit::css {
-
 	// The DOM owner keeps nodes and borrowed strings alive during a synchronous match.
 	using SelectorNode = const void*;
-	enum class SelectorNodeKind { element, generated, text, whitespace, other };
+	enum class SelectorNodeKind {
+		element,
+		generated,
+		text,
+		whitespace,
+		other
+	};
 
 	class SelectorDOM {
 	public:
@@ -33,7 +38,11 @@ namespace dockit::css {
 		virtual bool has_pseudo_class(SelectorNode node, std::string_view name) const = 0;		// 检查节点是否具有指定伪类
 	};
 
-	enum class MatchMode { candidate, complete };
+	enum class MatchMode {
+		candidate,
+		complete
+	};
+
 	struct NestingMatchCache;
 
 	struct MatchContext {
@@ -68,13 +77,26 @@ namespace dockit::css {
 		int proximity = std::numeric_limits<int>::max();
 	};
 
-// 匹配 CSS 选择器
-	unsigned match_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,
-		const MatchContext& context = {});														// 匹配单个 CSS 选择器
-	unsigned match_selector_list(const SelectorDOM& dom, SelectorNode node, const Selector::vector& selectors,
-		const MatchContext& context = {});														// 匹配 CSS 选择器列表
-	SelectorMatch match_scoped_selector(const SelectorDOM& dom, SelectorNode node, const Selector& selector,
-		const ScopeRule& scope, MatchMode mode);												// 在指定作用域内匹配 CSS 选择器
+	// 匹配 CSS 选择器
+	unsigned match_selector(
+		const SelectorDOM& dom,
+		SelectorNode node,
+		const Selector& selector,
+		const MatchContext& context = {}
+	);																							// 匹配单个 CSS 选择器
+	unsigned match_selector_list(
+		const SelectorDOM& dom,
+		SelectorNode node,
+		const Selector::vector& selectors,
+		const MatchContext& context = {}
+	);																							// 匹配 CSS 选择器列表
+	SelectorMatch match_scoped_selector(
+		const SelectorDOM& dom,
+		SelectorNode node,
+		const Selector& selector,
+		const ScopeRule& scope,
+		MatchMode mode
+	);																							// 在指定作用域内匹配 CSS 选择器
 	std::optional<std::string_view> inherited_language(
 		const SelectorDOM& dom,
 		SelectorNode node

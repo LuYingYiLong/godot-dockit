@@ -5,8 +5,12 @@
 namespace litehtml {
 	struct grid_subgrid_layout;
 
-	size size_grid_image(const render_item& item, const containing_block_context& self, const size& intrinsic,
-		bool use_intrinsic_ratio = true);														// 按网格单元尺寸布置图像并可保留其固有宽高比
+	size size_grid_image(
+		const render_item& item,
+		const containing_block_context& self,
+		const size& intrinsic,
+		bool use_intrinsic_ratio = true
+	);																							// 按网格单元尺寸布置图像并可保留其固有宽高比
 
 	class render_item_grid : public render_item_block {
 		const grid_subgrid_layout* shared_tracks = nullptr;
@@ -22,6 +26,7 @@ namespace litehtml {
 
 	public:
 		explicit render_item_grid(const std::shared_ptr<element>& element) : render_item_block(element) {}
+
 		pixel_t get_first_baseline() override { return baseline_or_border_bottom(false); }		// 获取第一行内容的基线位置
 		pixel_t get_last_baseline() override { return baseline_or_border_bottom(true); }		// 获取最后一行内容的基线位置
 		pixel_t get_inline_baseline() override {

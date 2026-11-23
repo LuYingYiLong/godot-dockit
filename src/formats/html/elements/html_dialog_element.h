@@ -10,7 +10,11 @@ class HTMLDialogCloseRequest : public godot::RefCounted {
 	friend class ::HTMLDialogElement;
 
 public:
-	enum Reason { SCRIPT, ESCAPE, BACKDROP };
+	enum Reason {
+		SCRIPT,
+		ESCAPE,
+		BACKDROP
+	};
 
 private:
 	Reason reason = SCRIPT;

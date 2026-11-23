@@ -6,7 +6,15 @@
 #include <optional>
 
 namespace dockit::input_time {
-	enum class Kind { none, date, month, week, time, local };
+	enum class Kind {
+		none,
+		date,
+		month,
+		week,
+		time,
+		local
+	};
+
 	constexpr double day = 86400000.0;
 
 	std::optional<double> parse(Kind p_kind, const godot::String& p_value);						// 解析 HTML 日期或时间控件的字符串值

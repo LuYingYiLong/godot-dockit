@@ -5,13 +5,20 @@
 class HTMLLabel;
 
 namespace dockit {
-	enum class HTMLAudioPart { none, play, position, mute, volume };
+	enum class HTMLAudioPart {
+		none,
+		play,
+		position,
+		mute,
+		volume
+	};
 
 	class HTMLAudioNode;
 }
 
 class HTMLAudioElement : public HTMLElement {
 	GDCLASS(HTMLAudioElement, HTMLElement)
+
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
 
@@ -41,4 +48,5 @@ public:
 	bool is_paused() const;																		// 返回媒体是否暂停
 	godot::Error play();																		// 启动或继续播放
 	void pause();																				// 保留当前位置并暂停
+
 };

@@ -9,7 +9,12 @@ namespace dockit::css {
 	struct ComputeContext;
 
 	struct ShapeControlPoint {
-		enum class Anchor { origin, start, end };
+		enum class Anchor {
+			origin,
+			start,
+			end
+		};
+
 		litehtml::css_image_position position;
 		Anchor anchor = Anchor::origin;
 	};

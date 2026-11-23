@@ -11,7 +11,13 @@
 #include <optional>
 
 namespace litehtml {
-	enum class css_user_select { automatic, text, none, all };
+	enum class css_user_select {
+		automatic,
+		text,
+		none,
+		all
+	};
+
 	enum css_will_change_hint {
 		will_change_transform = 1 << 0,
 		will_change_backface = 1 << 1,
@@ -34,7 +40,16 @@ namespace litehtml {
 	};
 
 	enum class css_filter_type {
-		grayscale = 1, sepia, saturate, hue_rotate, invert, opacity, brightness, contrast, blur, drop_shadow,
+		grayscale = 1,
+		sepia,
+		saturate,
+		hue_rotate,
+		invert,
+		opacity,
+		brightness,
+		contrast,
+		blur,
+		drop_shadow,
 	};
 
 	struct css_filter {
@@ -64,18 +79,51 @@ namespace litehtml {
 		std::optional<web_color> color;
 	};
 	#define text_wrap_style_strings "auto;balance;stable;pretty;avoid-short-last-line"
-	enum text_wrap_style { text_wrap_auto, text_wrap_balance, text_wrap_stable, text_wrap_pretty, text_wrap_avoid_short_last_line };
+	enum text_wrap_style {
+		text_wrap_auto,
+		text_wrap_balance,
+		text_wrap_stable,
+		text_wrap_pretty,
+		text_wrap_avoid_short_last_line
+	};
 	#define word_break_strings "normal;keep-all;break-word;break-all;manual"
-	enum word_break { word_break_normal, word_break_keep_all, word_break_break_word, word_break_break_all, word_break_manual };
+	enum word_break {
+		word_break_normal,
+		word_break_keep_all,
+		word_break_break_word,
+		word_break_break_all,
+		word_break_manual
+	};
 	#define line_break_strings "auto;loose;normal;strict;anywhere"
-	enum line_break { line_break_auto, line_break_loose, line_break_normal, line_break_strict, line_break_anywhere };
+	enum line_break {
+		line_break_auto,
+		line_break_loose,
+		line_break_normal,
+		line_break_strict,
+		line_break_anywhere
+	};
 	#define overflow_wrap_strings "normal;break-word;anywhere"
-	enum overflow_wrap { overflow_wrap_normal, overflow_wrap_break_word, overflow_wrap_anywhere };
+	enum overflow_wrap {
+		overflow_wrap_normal,
+		overflow_wrap_break_word,
+		overflow_wrap_anywhere
+	};
 	#define hyphens_strings "manual;none;auto"
-	enum hyphens { hyphens_manual, hyphens_none, hyphens_auto };
+	enum hyphens {
+		hyphens_manual,
+		hyphens_none,
+		hyphens_auto
+	};
 	#define hyphenate_limit_last_strings "none;always;column;page;spread"
-	enum hyphenate_limit_last { hyphenate_last_none, hyphenate_last_always, hyphenate_last_column, hyphenate_last_page, hyphenate_last_spread };
+	enum hyphenate_limit_last {
+		hyphenate_last_none,
+		hyphenate_last_always,
+		hyphenate_last_column,
+		hyphenate_last_page,
+		hyphenate_last_spread
+	};
 	inline constexpr char default_hyphenate_character[] = "\xe2\x80\x90";
+
 	struct css_hyphenation_chars {
 		int word = 5;
 		int before = 2;
@@ -85,6 +133,7 @@ namespace litehtml {
 			return prefix >= before && suffix >= after && prefix + suffix >= word;
 		}																						// 检查前后文本是否满足断行许可条件
 	};
+
 	struct css_hyphenation_limits {
 		css_length zone;
 		int lines = -1;
@@ -115,12 +164,33 @@ namespace litehtml {
 		font_style kind = font_style_normal;
 		float angle = 0.0f;
 	};
-	enum css_font_kerning { font_kerning_auto, font_kerning_normal, font_kerning_none };
-	enum css_font_optical_sizing { font_optical_sizing_auto, font_optical_sizing_none };
+
+	enum css_font_kerning {
+		font_kerning_auto,
+		font_kerning_normal,
+		font_kerning_none
+	};
+
+	enum css_font_optical_sizing {
+		font_optical_sizing_auto,
+		font_optical_sizing_none
+	};
 
 	struct css_font_size_adjust {
-		enum class Metric { ex_height, cap_height, ch_width, ic_width, ic_height };
-		enum class Mode { none, number, from_font };
+		enum class Metric {
+			ex_height,
+			cap_height,
+			ch_width,
+			ic_width,
+			ic_height
+		};
+
+		enum class Mode {
+			none,
+			number,
+			from_font
+		};
+
 		Metric metric = Metric::ex_height;
 		Mode mode = Mode::none;
 		double value = 0.0;
@@ -138,7 +208,18 @@ namespace litehtml {
 
 	bool parse_font_families(const css_token_vector& p_tokens, css_font_families& r_families);	// 解析 CSS 字体族列表
 
-	enum class css_content_kind { text, attribute, image, counter, counters, marker_counter, open_quote, close_quote, no_open_quote, no_close_quote };
+	enum class css_content_kind {
+		text,
+		attribute,
+		image,
+		counter,
+		counters,
+		marker_counter,
+		open_quote,
+		close_quote,
+		no_open_quote,
+		no_close_quote
+	};
 
 	struct css_content_item {
 		css_content_kind kind;
@@ -164,7 +245,12 @@ namespace litehtml {
 		std::optional<string> text;
 	};
 
-	enum class css_quotes_kind { automatic, none, match_parent, pairs };
+	enum class css_quotes_kind {
+		automatic,
+		none,
+		match_parent,
+		pairs
+	};
 
 	inline string_id marker_tag() {
 		static const auto marker = _id("-tag-marker");
@@ -188,12 +274,30 @@ namespace litehtml {
 	using css_counter_changes = std::vector<css_counter_change>;
 
 	enum class alignment_keyword {
-		normal, automatic, stretch,
-		start, end, center, self_start, self_end, flex_start, flex_end, left, right,
-		space_between, space_around, space_evenly, first_baseline, last_baseline
+		normal,
+		automatic,
+		stretch,
+		start,
+		end,
+		center,
+		self_start,
+		self_end,
+		flex_start,
+		flex_end,
+		left,
+		right,
+		space_between,
+		space_around,
+		space_evenly,
+		first_baseline,
+		last_baseline
 	};
 
-	enum class alignment_overflow { automatic, safe, unsafe };
+	enum class alignment_overflow {
+		automatic,
+		safe,
+		unsafe
+	};
 
 	struct css_alignment {
 		alignment_keyword keyword = alignment_keyword::normal;

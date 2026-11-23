@@ -4,6 +4,7 @@
 
 class HTMLFormElement : public HTMLElement {
 	GDCLASS(HTMLFormElement, HTMLElement)
+
 	friend class HTMLLabel;
 	godot::TypedArray<godot::Dictionary> collect_form_data(const godot::Ref<HTMLElement>& p_submitter,
 		const godot::Vector2i& p_image_coordinates) const;

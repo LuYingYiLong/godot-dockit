@@ -11,7 +11,16 @@ namespace litehtml {
 	struct css_transform_blend;
 
 	struct css_transform_function {
-		enum class kind { translate, rotate, scale, skew, matrix, matrix3d, perspective, blend };
+		enum class kind {
+			translate,
+			rotate,
+			scale,
+			skew,
+			matrix,
+			matrix3d,
+			perspective,
+			blend
+		};
 
 		kind type;
 		css_length x;
@@ -28,7 +37,7 @@ namespace litehtml {
 	using css_transform_list = std::vector<css_transform_function>;
 	using css_individual_transform = std::optional<css_transform_function>;
 
-	// The computed endpoints retain percentages until the layout supplies a reference box.
+	// 计算出的端点会保留百分比，直到布局提供参考框
 	struct css_transform_blend {
 		css_transform_list from;
 		css_transform_list to;
@@ -52,12 +61,15 @@ namespace litehtml {
 		css_length z;
 	};
 
-// 解析 CSS 变换
+	// 解析 CSS 变换
 	bool parse_css_transform(const css_token_vector& p_tokens, css_transform_list& r_value);	// 解析CSS变换
 	bool parse_css_transform_origin(
 		const css_token_vector& p_tokens,
 		css_transform_origin& r_value
 	);																							// 解析CSS变换原点
-	bool parse_css_individual_transform(css_transform_function::kind p_kind, const css_token_vector& p_tokens,
-		css_individual_transform& r_value);														// 解析 CSS 独立变换属性
+	bool parse_css_individual_transform(
+		css_transform_function::kind p_kind,
+		const css_token_vector& p_tokens,
+		css_individual_transform& r_value
+	);																							// 解析 CSS 独立变换属性
 }

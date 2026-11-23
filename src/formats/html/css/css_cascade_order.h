@@ -36,8 +36,12 @@ namespace dockit::css {
 		std::shared_ptr<const CSSCascadeSource> source;
 	};
 
-	bool takes_cascade_precedence(const CascadePriority& candidate, bool candidate_important,
-		const CascadePriority& current, bool current_important);								// 比较两个声明的 CSS 层叠优先级
+	bool takes_cascade_precedence(
+		const CascadePriority& candidate,
+		bool candidate_important,
+		const CascadePriority& current,
+		bool current_important
+	);																							// 比较两个声明的 CSS 层叠优先级
 
 	class CascadeLayers {
 		struct Layer {

@@ -53,7 +53,13 @@ namespace dockit::svg {
 			godot::Vector2 tangent;
 		};
 
-		PathMeasure(const css::SVGPath& p_path, const godot::Transform2D& p_transform, double p_tolerance, bool p_reverse);
+		PathMeasure(
+			const css::SVGPath& p_path,
+			const godot::Transform2D& p_transform,
+			double p_tolerance,
+			bool p_reverse
+		);
+		
 		double length() const { return segments.empty() ? 0 : segments.back().last_distance; }	// 获取路径的总长度
 		bool is_closed() const { return closed; }												// 检查路径是否闭合
 		Sample sample(double p_distance) const;													// 在给定距离取位置与切线，闭合路径允许回绕

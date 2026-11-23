@@ -14,14 +14,17 @@ class HTMLEventTarget;
 
 class HTMLListenerHandle : public godot::RefCounted {
 	GDCLASS(HTMLListenerHandle, godot::RefCounted)
+
 	friend class HTMLEventTarget;
 	godot::Ref<HTMLEventTarget> target;
 	godot::StringName type;
 	godot::Callable callable;
 	bool capture = false;
 	bool canceled = false;
+
 protected:
 	static void _bind_methods();
+
 public:
 	void cancel();																				// 取消此句柄关联的事件监听器
 	bool is_canceled() const { return canceled; }												// 检查监听器句柄是否已取消
@@ -31,11 +34,13 @@ public:
 // 统一持有，子类只负责把调用转发到自己的槽位（元素 / 文档 / 窗口）
 class HTMLEventTarget : public godot::RefCounted {
 	GDCLASS(HTMLEventTarget, godot::RefCounted)
+
 	godot::HashMap<godot::StringName, godot::Callable> event_handlers;
 	godot::HashSet<godot::StringName> event_handler_overrides;
 
 protected:
 	static void _bind_methods();
+
 	bool _set(const godot::StringName& p_name, const godot::Variant& p_value);
 	bool _get(const godot::StringName& p_name, godot::Variant& r_value) const;
 	void _get_property_list(godot::List<godot::PropertyInfo>* p_list) const;

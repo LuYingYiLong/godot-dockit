@@ -5,7 +5,15 @@
 namespace litehtml {
 	class element;
 
-	enum class spacing_punctuation { other, opening, closing, middle, narrow_opening, narrow_closing, ideographic_space };
+	enum class spacing_punctuation {
+		other,
+		opening,
+		closing,
+		middle,
+		narrow_opening,
+		narrow_closing,
+		ideographic_space
+	};
 
 	struct punctuation_spacing {
 		spacing_punctuation kind = spacing_punctuation::other;
@@ -19,7 +27,7 @@ namespace litehtml {
 		bool after(const punctuation_spacing& p_previous) const;								// 判断当前标点间距是否位于另一个标点之后
 	};
 
-// 计算标点间距
+	// 计算标点间距
 	bool is_fullwidth_spacing_punctuation(char32_t p_character);								// 检查字符是否为需要全角间距的标点
 	bool is_punctuation_variation_selector(char32_t p_character);								// 检查字符是否为标点变体选择符
 	punctuation_spacing get_punctuation_spacing(

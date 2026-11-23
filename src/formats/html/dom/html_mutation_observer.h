@@ -9,7 +9,12 @@
 
 namespace dockit {
 	struct HTMLMutation {
-		enum Kind { CHILD_LIST, ATTRIBUTES, CHARACTER_DATA };
+		enum Kind {
+			CHILD_LIST,
+			ATTRIBUTES,
+			CHARACTER_DATA
+		};
+
 		Kind kind;
 		godot::Ref<HTMLNode> target;
 		godot::TypedArray<HTMLNode> added;
@@ -51,8 +56,12 @@ class HTMLMutationObserver : public godot::RefCounted {
 	uint64_t delivery_version = 0;
 
 	static void _bind_methods();
-	void enqueue(dockit::HTMLDOM& p_owner, const dockit::HTMLMutation& p_change,
-		const std::vector<godot::Ref<HTMLNode>>& p_ancestry);
+
+	void enqueue(
+		dockit::HTMLDOM& p_owner,
+		const dockit::HTMLMutation& p_change,
+		const std::vector<godot::Ref<HTMLNode>>& p_ancestry
+	);
 	void clear_owner(const dockit::HTMLDOM& p_owner);
 	godot::TypedArray<godot::Dictionary> take_owner(dockit::HTMLDOM& p_owner);
 

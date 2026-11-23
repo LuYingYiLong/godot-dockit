@@ -4,11 +4,15 @@
 
 #include <godot_cpp/variant/vector2i.hpp>
 
-namespace dockit { class HTMLVideoNode; }
+namespace dockit {
+	class HTMLVideoNode;
+}
+
 class HTMLLabel;
 
 class HTMLVideoElement : public HTMLElement {
 	GDCLASS(HTMLVideoElement, HTMLElement)
+
 	friend class HTMLLabel;
 	friend class HTMLLabelCanvas;
 	friend class HTMLLayout;

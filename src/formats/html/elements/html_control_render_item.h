@@ -4,7 +4,7 @@
 #include <cmath>
 
 namespace dockit {
-	// Controls paint their current label themselves, but its intrinsic width still participates in layout.
+	// 控件会自己绘制当前的标签，但它的固有宽度仍然会参与布局
 	class HTMLControlRenderItem final : public litehtml::render_item_block {
 		litehtml::size intrinsic;
 
@@ -15,7 +15,7 @@ namespace dockit {
 		}																						// 获取渲染文本的基线位置
 		static litehtml::pixel_t paint_text_baseline(litehtml::pixel_t p_y, litehtml::pixel_t p_height,
 			const litehtml::font_metrics& p_font, litehtml::pixel_t p_ascent) {
-			// Inline text snaps the top of its laid-out text box before recording the glyphs.
+			// 内联文本在记录字形之前会使其已排版的文本框顶部对齐
 			return std::round(p_y + text_baseline(p_height, p_font) - p_ascent) + p_ascent;
 		}
 
@@ -24,7 +24,7 @@ namespace dockit {
 
 		std::optional<litehtml::pixel_t> find_layout_baseline(bool) const override {
 			if (baseline == Baseline::swatch) {
-				// The inline color control uses the bottom of its swatch wrapper.
+				// 内联颜色控制使用其色板包装底部
 				return content_offset_top() + std::max<litehtml::pixel_t>(0, m_pos.height - 4);
 			}
 			return content_offset_top() + text_baseline(m_pos.height, css().get_font_metrics());
@@ -37,9 +37,11 @@ namespace dockit {
 		}
 
 	public:
-		HTMLControlRenderItem(const litehtml::element::ptr& p_element, litehtml::size p_intrinsic,
-			Baseline p_baseline = Baseline::text) :
-			render_item_block(p_element), intrinsic(p_intrinsic), baseline(p_baseline) {}
+		HTMLControlRenderItem(
+			const litehtml::element::ptr& p_element,
+			litehtml::size p_intrinsic,
+			Baseline p_baseline = Baseline::text
+		) : render_item_block(p_element), intrinsic(p_intrinsic), baseline(p_baseline) {}
 
 		litehtml::pixel_t get_first_baseline() override { return baseline_or_border_bottom(false); }
 		litehtml::pixel_t get_last_baseline() override { return baseline_or_border_bottom(true); }

@@ -6,7 +6,7 @@ namespace litehtml {
 	class css_properties;
 	class element;
 
-// 判断 HTML 文本换行边界
+	// 判断 HTML 文本换行边界
 	bool is_explicit_wrap_point(const element& p_element);										// 检查元素是否指定了显式换行位置
 	bool is_soft_hyphen(const element& p_element);												// 检查元素是否为软连字符
 	bool is_hyphenation_fallback(const element& p_element);										// 检查断词是否使用了回退处理

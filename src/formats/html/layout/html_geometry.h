@@ -16,7 +16,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace godot { struct Projection; }
+namespace godot {
+	struct Projection;
+}
 
 namespace litehtml {
 	class element;
@@ -31,7 +33,9 @@ namespace litehtml {
 	struct css_transform_function;
 }
 
-namespace dockit::css { class ComputedStyle; }
+namespace dockit::css {
+	class ComputedStyle;
+}
 
 namespace dockit {
 	struct HTMLClipPolygon;
@@ -62,7 +66,12 @@ namespace dockit {
 		bool has_point(const godot::Vector2& p_position) const;									// 检查指定坐标是否在圆角矩形内
 	};
 
-	enum class ClipAxes { both, x, y, horizon };
+	enum class ClipAxes {
+		both,
+		x,
+		y,
+		horizon
+	};
 
 	struct TransformedClip {
 		RoundedRect shape;
@@ -77,8 +86,8 @@ namespace dockit {
 		bool contains_point(const godot::Vector2& p_point, bool p_precise) const;				// 检查几何区域是否包含指定坐标
 	};
 
-	// Visit overflow clips from the closest ancestor outward. The element's own
-	// shape is applied separately, and the remaining ancestors use their bounds.
+	// 从最近的祖先元素向外访问溢出片段
+	// 元素自身的形状会单独应用，剩余的祖先元素使用它们的边界
 	inline bool use_precise_clip(const TransformedClip& p_clip, int& r_remaining) {
 		if (p_clip.is_path || p_clip.axes == ClipAxes::horizon) return true;
 		if (r_remaining == 0 || !p_clip.needs_precise_geometry()) {
@@ -88,13 +97,20 @@ namespace dockit {
 		return true;
 	}
 
-	godot::Rect2 clipped_visual_bounds(const godot::Rect2& p_rect, const HTMLPlaneTransform& p_matrix,
-		const std::vector<TransformedClip>& p_clips);											// 获取经过裁剪后的视觉边界
-	HTMLClipPolygon svg_basic_clip_polygon(const litehtml::css_clip_path& p_path, const godot::Rect2& p_box,
-		const godot::Transform2D& p_matrix, const godot::Transform2D& p_visual_matrix);			// 将基础裁剪形状映射到 SVG 图形的坐标系
+	godot::Rect2 clipped_visual_bounds(
+		const godot::Rect2& p_rect,
+		const HTMLPlaneTransform& p_matrix,
+		const std::vector<TransformedClip>& p_clips
+	);																							// 获取经过裁剪后的视觉边界
+	HTMLClipPolygon svg_basic_clip_polygon(
+		const litehtml::css_clip_path& p_path,
+		const godot::Rect2& p_box,
+		const godot::Transform2D& p_matrix,
+		const godot::Transform2D& p_visual_matrix
+	);																							// 将基础裁剪形状映射到 SVG 图形的坐标系
 
-	// Geometry uses document coordinates after litehtml has placed and scrolled
-	// the boxes. A link to the next ancestor shares clip geometry across siblings.
+	// 几何在 litehtml 安置和滚动盒子后使用文档坐标
+	// 指向下一个祖先的链接在兄弟元素之间共享裁剪几何
 	struct OverflowClip : TransformedClip {
 		HTMLPlaneTransform inverse;
 		litehtml::render_item* item;
@@ -132,8 +148,19 @@ namespace dockit {
 	};
 
 	struct HTMLScrollOptions {
-		enum class Alignment { START, CENTER, END, NEAREST };
-		enum class Behavior { AUTO, INSTANT, SMOOTH };
+		enum class Alignment {
+			START,
+			CENTER,
+			END,
+			NEAREST
+		};
+
+		enum class Behavior {
+			AUTO,
+			INSTANT,
+			SMOOTH
+		};
+
 		Alignment block = Alignment::START;
 		Alignment inline_axis = Alignment::NEAREST;
 		Behavior behavior = Behavior::AUTO;
@@ -144,7 +171,12 @@ namespace dockit {
 		}																						// 获取滚动行为是否应使用平滑动画
 	};
 
-	enum class HTMLSnapMethod { destination, direction, relayout };
+	enum class HTMLSnapMethod {
+		destination,
+		direction,
+		relayout
+	};
+
 	struct HTMLSnapArea {
 		godot::Rect2 area;
 		const css::ComputedStyle* style;
@@ -166,8 +198,12 @@ namespace dockit {
 		std::array<const litehtml::element*, 2> areas{};
 	};
 
-	HTMLSnapResult html_select_scroll_snap(const css::ComputedStyle& p_style, const godot::Rect2& p_snapport,
-		const std::vector<HTMLSnapArea>& p_areas, const HTMLSnapRequest& p_request);			// 根据 select 菜单的滚动位置计算吸附结果
+	HTMLSnapResult html_select_scroll_snap(
+		const css::ComputedStyle& p_style,
+		const godot::Rect2& p_snapport,
+		const std::vector<HTMLSnapArea>& p_areas,
+		const HTMLSnapRequest& p_request
+	);																							// 根据 select 菜单的滚动位置计算吸附结果
 
 	godot::Rect2 html_scroll_margin_area(
 		const godot::Rect2& p_box,
@@ -185,8 +221,13 @@ namespace dockit {
 		godot::Rect2 thumb;
 		godot::real_t range = 0;
 	};
-	HTMLScrollbar make_html_scrollbar(const godot::Rect2& p_track, int p_axis,
-		godot::real_t p_page, godot::real_t p_range, godot::real_t p_offset);					// 构造HTML滚动条
+	HTMLScrollbar make_html_scrollbar(
+		const godot::Rect2& p_track,
+		int p_axis,
+		godot::real_t p_page,
+		godot::real_t p_range,
+		godot::real_t p_offset
+	);																							// 构造HTML滚动条
 	godot::Vector2i html_resize_axes(const css::ComputedStyle& p_style);						// 获取允许调整大小的坐标轴
 	godot::Rect2 html_resize_grip(const godot::Rect2& p_box);									// 计算元素边角的调整大小手柄区域
 
@@ -222,7 +263,7 @@ namespace dockit {
 	class HTMLGeometryIndex {
 		using ElementGeometry = std::vector<const RenderGeometry*>;
 
-		// Renderer and clip addresses are stable for the lifetime of one reflow.
+		// 渲染器和裁剪地址在一次重排的整个生命周期内都是稳定的
 		std::deque<OverflowClip> clips;
 		std::unordered_map<const litehtml::render_item*, RenderGeometry> renderers;
 		godot::HashMap<const litehtml::element*, ElementGeometry> elements;
@@ -240,20 +281,32 @@ namespace dockit {
 		godot::Rect2 viewport;
 
 		struct SpatialParent;
-		void index(const std::shared_ptr<litehtml::render_item>& p_item, const OverflowClip* p_overflow,
-			const HTMLPlaneTransform& p_parent_matrix, bool p_viewport_fixed_subtree,
-			const godot::Rect2& p_scrollport, const godot::Rect2& p_containing_box, const godot::Vector2& p_sticky_offset,
-			const litehtml::render_item* p_layout_overflow_boundary, bool p_transform_culled = false,
-			const godot::Projection* p_parent_perspective = nullptr, const SpatialParent* p_spatial_parent = nullptr,
-			std::optional<godot::Vector3> p_flattened_depth = std::nullopt);
+		void index(
+			const std::shared_ptr<litehtml::render_item>& p_item,
+			const OverflowClip* p_overflow,
+			const HTMLPlaneTransform& p_parent_matrix,
+			bool p_viewport_fixed_subtree,
+			const godot::Rect2& p_scrollport,
+			const godot::Rect2& p_containing_box,
+			const godot::Vector2& p_sticky_offset,
+			const litehtml::render_item* p_layout_overflow_boundary,
+			bool p_transform_culled = false,
+			const godot::Projection* p_parent_perspective = nullptr,
+			const SpatialParent* p_spatial_parent = nullptr,
+			std::optional<godot::Vector3> p_flattened_depth = std::nullopt
+		);
 
 	public:
 		HTMLGeometryIndex() = default;
 		HTMLGeometryIndex(const HTMLGeometryIndex&) = delete;
+		
 		HTMLGeometryIndex& operator=(const HTMLGeometryIndex&) = delete;						// 将另一个值赋给当前对象
 
-		void rebuild(const std::shared_ptr<litehtml::render_item>& p_root, const godot::Rect2& p_viewport = {},
-			const std::vector<std::shared_ptr<litehtml::render_item>>& p_top_layer = {});		// 重新构建当前索引数据
+		void rebuild(
+			const std::shared_ptr<litehtml::render_item>& p_root,
+			const godot::Rect2& p_viewport = {},
+			const std::vector<std::shared_ptr<litehtml::render_item>>& p_top_layer = {}
+		);																						// 重新构建当前索引数据
 		void clear();																			// 清除当前存储的数据
 		const ElementGeometry* find_element(const litehtml::element* p_element) const;			// 查找元素
 		const RenderGeometry* find_renderer(const litehtml::render_item* p_item) const;			// 查找渲染器

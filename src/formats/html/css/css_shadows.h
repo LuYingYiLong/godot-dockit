@@ -15,7 +15,7 @@ namespace litehtml {
 		bool inset = false;
 	};
 
-// 解析 CSS 阴影
+	// 解析 CSS 阴影
 	bool parse_box_shadows(
 		const css_token_vector& p_tokens,
 		document_container* p_container,

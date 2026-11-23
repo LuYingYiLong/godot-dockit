@@ -4,6 +4,7 @@
 
 class HTMLDetailsElement : public HTMLElement {
 	GDCLASS(HTMLDetailsElement, HTMLElement)
+
 	friend class dockit::HTMLDOM;
 
 	bool toggle_pending = false;

@@ -6,9 +6,10 @@
 #include <godot_cpp/core/object_id.hpp>
 
 // DOM Window：文档的全局事件目标。事件路径为 window -> document -> 元素链，
-// 因此脚本可以把监听器挂在 window 上观察整篇文档的冒泡事件。
+// 因此脚本可以把监听器挂在 window 上观察整篇文档的冒泡事件
 class HTMLWindow : public HTMLEventTarget {
 	GDCLASS(HTMLWindow, HTMLEventTarget)
+
 	friend class dockit::HTMLDOM;
 
 	godot::ObjectID layout_id;

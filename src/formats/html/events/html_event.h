@@ -17,9 +17,9 @@
 
 // DOM 事件对象。脚本可以构造合成事件并交给 HTMLEventTarget.dispatch_event()；
 // 引擎内部合成的真实输入事件由 dispatcher 设置 target/current_target/phase，
-// 这些字段只保留 getter，脚本无法篡改派发路径。
+// 这些字段只保留 getter，脚本无法篡改派发路径
 // 事件路径为 window -> document -> 元素链，因此 target/current_target 是
-// HTMLEventTarget（元素、文档节点或 window），而不是固定的 HTMLNode。
+// HTMLEventTarget（元素、文档节点或 window），而不是固定的 HTMLNode
 class HTMLEvent : public godot::RefCounted {
 	GDCLASS(HTMLEvent, godot::RefCounted)
 
@@ -54,8 +54,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	// 由派发器使用：在派发期间接管 target / current_target / phase 与事件路径。
-	// 同一事件在派发过程中再次派发会被拒绝，返回 false。
+	// 由派发器使用：在派发期间接管 target / current_target / phase 与事件路径
+	// 同一事件在派发过程中再次派发会被拒绝，返回 false
 	bool begin_dispatch(const godot::Ref<HTMLEventTarget>& p_target,
 		const std::vector<godot::Ref<HTMLEventTarget>>& p_path);
 	void set_dispatch_phase(const godot::Ref<HTMLEventTarget>& p_node, int p_phase);			// 设置dispatch阶段
@@ -252,11 +252,14 @@ public:
 
 class HTMLInputEvent : public HTMLEvent {
 	GDCLASS(HTMLInputEvent, HTMLEvent)
+
 	godot::String data;
 	godot::StringName input_type;
 	bool composing = false;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::String get_data() const { return data; }												// 获取数据
 	void set_data(const godot::String& p_data);													// 设置数据
@@ -269,8 +272,10 @@ public:
 class HTMLCompositionEvent : public HTMLEvent {
 	GDCLASS(HTMLCompositionEvent, HTMLEvent)
 	godot::String data;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::String get_data() const { return data; }												// 获取数据
 	void set_data(const godot::String& p_data);													// 设置数据
@@ -291,8 +296,10 @@ private:
 	Mode mode = MODE_READ_WRITE;
 	godot::String effect_allowed = "uninitialized";
 	godot::String drop_effect = "none";
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::String get_data(const godot::String& p_type) const;									// 获取数据
 	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);			// 设置数据
@@ -323,8 +330,10 @@ VARIANT_ENUM_CAST(HTMLDataTransfer::Mode);
 class HTMLDragEvent : public HTMLMouseEvent {
 	GDCLASS(HTMLDragEvent, HTMLMouseEvent)
 	godot::Ref<HTMLDataTransfer> data_transfer;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::Ref<HTMLDataTransfer> get_data_transfer() const { return data_transfer; }			// 获取数据传输
 	void set_data_transfer(
@@ -334,9 +343,11 @@ public:
 
 class HTMLClipboardEvent : public HTMLEvent {
 	GDCLASS(HTMLClipboardEvent, HTMLEvent)
+
 	godot::Ref<HTMLDataTransfer> clipboard_data;
 protected:
 	static void _bind_methods();
+
 public:
 	godot::Ref<HTMLDataTransfer> get_clipboard_data() const { return clipboard_data; }			// 获取剪贴板数据
 	void set_clipboard_data(
@@ -348,8 +359,10 @@ class HTMLToggleEvent : public HTMLEvent {
 	GDCLASS(HTMLToggleEvent, HTMLEvent)
 	godot::String old_state;
 	godot::String new_state;
+
 protected:
 	static void _bind_methods();
+
 public:
 	const godot::String& get_old_state() const { return old_state; }							// 获取旧值状态
 	void set_old_state(const godot::String& p_state) { old_state = p_state; }					// 设置旧值状态
@@ -359,19 +372,23 @@ public:
 
 class HTMLMediaEvent : public HTMLEvent {
 	GDCLASS(HTMLMediaEvent, HTMLEvent)
+
 protected:
 	static void _bind_methods() {}
 };
 
 class HTMLErrorEvent : public HTMLEvent {
 	GDCLASS(HTMLErrorEvent, HTMLEvent)
+
 	godot::String message;
 	godot::String filename;
 	int32_t line_number = 0;
 	int32_t column_number = 0;
 	godot::Variant error;
+
 protected:
 	static void _bind_methods();
+
 public:
 	const godot::String& get_message() const { return message; }								// 获取消息
 	void set_message(const godot::String& p_value) { message = p_value; }						// 设置消息
@@ -387,11 +404,14 @@ public:
 
 class HTMLAnimationEvent : public HTMLEvent {
 	GDCLASS(HTMLAnimationEvent, HTMLEvent)
+
 	godot::String animation_name;
 	double elapsed_time = 0.0;
 	godot::String pseudo_element;
+
 protected:
 	static void _bind_methods();
+
 public:
 	const godot::String& get_animation_name() const { return animation_name; }					// 获取动画名称
 	void set_animation_name(const godot::String& p_value) { animation_name = p_value; }			// 设置动画名称
@@ -403,11 +423,14 @@ public:
 
 class HTMLTransitionEvent : public HTMLEvent {
 	GDCLASS(HTMLTransitionEvent, HTMLEvent)
+
 	godot::String property_name;
 	double elapsed_time = 0.0;
 	godot::String pseudo_element;
+
 protected:
 	static void _bind_methods();
+
 public:
 	const godot::String& get_property_name() const { return property_name; }					// 获取属性名称
 	void set_property_name(const godot::String& p_value) { property_name = p_value; }			// 设置属性名称
@@ -419,11 +442,14 @@ public:
 
 class HTMLTouchPoint : public godot::RefCounted {
 	GDCLASS(HTMLTouchPoint, godot::RefCounted)
+
 	int32_t identifier = 0;
 	godot::Ref<HTMLElement> target;
 	godot::Vector2 position;
+
 protected:
 	static void _bind_methods();
+
 public:
 	int32_t get_identifier() const { return identifier; }										// 获取标识符
 	void set_identifier(int32_t p_value) { identifier = p_value; }								// 设置标识符
@@ -435,6 +461,7 @@ public:
 
 class HTMLTouchEvent : public HTMLEvent {
 	GDCLASS(HTMLTouchEvent, HTMLEvent)
+
 	godot::TypedArray<HTMLTouchPoint> touches;
 	godot::TypedArray<HTMLTouchPoint> target_touches;
 	godot::TypedArray<HTMLTouchPoint> changed_touches;
@@ -442,8 +469,10 @@ class HTMLTouchEvent : public HTMLEvent {
 	bool ctrl = false;
 	bool alt = false;
 	bool meta = false;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::TypedArray<HTMLTouchPoint> get_touches() const { return touches; }					// 获取当前事件包含的触摸点列表
 	void set_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { touches = p_value; }	// 设置触摸点

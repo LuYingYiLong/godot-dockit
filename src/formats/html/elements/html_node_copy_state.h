@@ -5,7 +5,10 @@ namespace litehtml {
 }
 
 namespace dockit {
-	enum class HTMLNodeCopyMode { COPY, ADOPT };
+	enum class HTMLNodeCopyMode {
+		COPY,
+		ADOPT
+	};
 
 	class HTMLNodeCopyState {
 	public:

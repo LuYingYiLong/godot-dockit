@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace dockit {
-	// A mapping between planes. The last row computes the homogeneous divisor.
+	// 平面之间的映射，最后一行计算齐次除数
 	class HTMLPlaneTransform {
 		godot::Basis matrix;
 		std::vector<godot::Vector2> project_polygon(const godot::Vector2* p_points, std::size_t p_count) const;
@@ -17,6 +17,7 @@ namespace dockit {
 	public:
 		HTMLPlaneTransform() = default;
 		HTMLPlaneTransform(const godot::Transform2D& p_affine);
+		
 		explicit HTMLPlaneTransform(const godot::Basis& p_matrix) : matrix(p_matrix) {}
 
 		const godot::Vector3& row(int p_index) const { return matrix[p_index]; }				// 获取变换矩阵的指定行
@@ -26,6 +27,7 @@ namespace dockit {
 		std::optional<HTMLPlaneTransform> try_inverse() const;									// 尝试计算变换矩阵的逆矩阵
 		HTMLPlaneTransform inverse() const;														// 计算变换矩阵的逆矩阵
 		HTMLPlaneTransform operator*(const HTMLPlaneTransform& p_other) const;					// 将两个平面变换矩阵相乘
+		
 		bool operator==(
 			const HTMLPlaneTransform& p_other
 		) const { return matrix == p_other.matrix; }											// 检查两个平面变换矩阵是否相等
@@ -36,6 +38,7 @@ namespace dockit {
 		std::vector<godot::Vector2> project_polygon(const std::vector<godot::Vector2>& p_points) const {
 			return project_polygon(p_points.data(), p_points.size());
 		}																						// 将多边形投影到目标平面
+		
 		template<std::size_t Size>
 		std::vector<godot::Vector2> project_polygon(const std::array<godot::Vector2, Size>& p_points) const {
 			return project_polygon(p_points.data(), p_points.size());

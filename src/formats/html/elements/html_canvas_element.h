@@ -16,30 +16,38 @@ class HTMLCanvasRenderingContext2D;
 
 class HTMLCanvasGradient : public godot::RefCounted {
 	GDCLASS(HTMLCanvasGradient, godot::RefCounted)
+
 	friend class HTMLCanvasRenderingContext2D;
 	struct Stop { double offset = 0.0; godot::Color color; };
 	std::vector<Stop> stops;
 	godot::Vector2 start;
 	godot::Vector2 end;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::Error add_color_stop(double p_offset, const godot::Variant& p_color);				// 为渐变添加颜色停止点
 	void configure(const godot::Vector2& p_start, const godot::Vector2& p_end);					// 设置渐变的起点和终点
 	godot::Color sample(const godot::Vector2& p_point) const;									// 获取指定坐标处的渐变颜色
+
 };
 
 class HTMLCanvasPattern : public godot::RefCounted {
 	GDCLASS(HTMLCanvasPattern, godot::RefCounted)
+
 	friend class HTMLCanvasRenderingContext2D;
 	godot::Ref<godot::Image> image;
 	bool repeat_x = true;
 	bool repeat_y = true;
+
 protected:
 	static void _bind_methods();
+
 public:
 	void configure(const godot::Ref<godot::Image>& p_image, const godot::String& p_repeat);		// 设置图案的图像来源和重复方式
 	godot::Color sample(const godot::Vector2& p_point) const;									// 获取指定坐标处的图案颜色
+
 };
 
 class HTMLCanvasElement : public HTMLElement {
@@ -61,10 +69,12 @@ public:
 		const godot::String& p_type = "image/png",
 		double p_quality = 0.92
 	) const;																					// 将画布图像编码为 Data URL
+
 };
 
 class HTMLCanvasRenderingContext2D : public godot::RefCounted {
 	GDCLASS(HTMLCanvasRenderingContext2D, godot::RefCounted)
+
 	friend class HTMLCanvasElement;
 
 	struct State {
@@ -164,5 +174,6 @@ public:
 	) const;																					// 获取图像数据
 	godot::Ref<godot::Image> get_image() const;													// 获取图像
 	godot::Ref<godot::Texture2D> get_texture();													// 获取纹理
+
 };
 

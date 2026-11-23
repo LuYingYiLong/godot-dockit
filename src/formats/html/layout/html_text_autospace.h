@@ -8,7 +8,7 @@ namespace litehtml {
 	class element;
 	class render_item;
 
-// 处理文本自动间距
+	// 处理文本自动间距
 	std::shared_ptr<element> inline_boundary_owner(
 		const element& p_before,
 		const element& p_after

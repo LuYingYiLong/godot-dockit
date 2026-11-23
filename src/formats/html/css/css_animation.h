@@ -38,7 +38,7 @@ namespace litehtml {
 		std::map<double, std::shared_ptr<const style>> frames;
 	};
 
-// 解析 CSS 动画规则
+	// 解析 CSS 动画规则
 	const std::array<string_id, 8>& css_animation_property_names();								// 返回 CSS animation 属性名对应的标识列表
 	void parse_css_animation(
 		css_value_parser& parser,

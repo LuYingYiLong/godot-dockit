@@ -13,7 +13,9 @@ namespace litehtml {
 	class element;
 }
 
-namespace dockit { class HTMLDOM; }
+namespace dockit {
+	class HTMLDOM;
+}
 
 class HTMLLayout;
 class HTMLInputElement;

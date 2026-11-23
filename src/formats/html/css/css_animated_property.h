@@ -30,7 +30,7 @@ namespace dockit::css {
 		bool distinguish_number = false;
 	};
 
-// 读取和计算 CSS 动画属性
+	// 读取和计算 CSS 动画属性
 	const std::vector<AnimatedProperty>& animated_properties();									// 获取支持动画的 CSS 属性列表
 	AnimatedValues read_animated_values(const ComputedStyle& style);							// 读取动画值
 	bool equal_animated_value(

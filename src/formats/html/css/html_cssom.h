@@ -7,7 +7,8 @@
 
 namespace dockit::css {
 	class ComputedStyle;
-// 读取和序列化 CSSOM 规则
+
+	// 读取和序列化 CSSOM 规则
 	std::string property_name(const godot::String& name);										// 获取 CSS 属性标识对应的名称
 	raw_declaration::vector inline_declarations(const godot::String& text);						// 解析 style 属性中的 CSS 声明
 	std::string serialize_declarations(const raw_declaration::vector& declarations);			// 将 CSS 声明序列化为文本

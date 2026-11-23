@@ -4,7 +4,7 @@
 #include "css_token_compat.h"
 
 namespace litehtml {
-// 解析 CSS 常用值
+	// 解析 CSS 常用值
 	bool parse_url(const css_token& token, string& url);										// 解析 CSS URL 值
 	bool parse_length(
 		const css_token& tok,
@@ -25,5 +25,4 @@ namespace litehtml {
 		val = (Enum)(first_keyword_value + idx);
 		return true;
 	}																							// 解析 CSS 关键字
-
 }

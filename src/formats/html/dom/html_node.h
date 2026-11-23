@@ -26,6 +26,7 @@ class HTMLWindow;
 
 class HTMLNode : public HTMLEventTarget {
 	GDCLASS(HTMLNode, HTMLEventTarget)
+
 	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 	friend class HTMLDocumentFragment;
@@ -51,10 +52,21 @@ protected:
 	std::shared_ptr<litehtml::element> lock_related_node(const godot::Ref<HTMLNode>& p_node) const;
 
 public:
-	enum NodeType { ELEMENT_NODE = 1, TEXT_NODE = 3, COMMENT_NODE = 8, DOCUMENT_NODE = 9, DOCUMENT_FRAGMENT_NODE = 11 };
+	enum NodeType {
+		ELEMENT_NODE = 1,
+		TEXT_NODE = 3,
+		COMMENT_NODE = 8,
+		DOCUMENT_NODE = 9,
+		DOCUMENT_FRAGMENT_NODE = 11
+	};
+
 	enum DocumentPosition {
-		POSITION_DISCONNECTED = 1, POSITION_PRECEDING = 2, POSITION_FOLLOWING = 4,
-		POSITION_CONTAINS = 8, POSITION_CONTAINED_BY = 16, POSITION_IMPLEMENTATION_SPECIFIC = 32,
+		POSITION_DISCONNECTED = 1,
+		POSITION_PRECEDING = 2,
+		POSITION_FOLLOWING = 4,
+		POSITION_CONTAINS = 8,
+		POSITION_CONTAINED_BY = 16,
+		POSITION_IMPLEMENTATION_SPECIFIC = 32,
 	};
 
 	virtual NodeType get_node_type() const = 0;													// 返回节点类型

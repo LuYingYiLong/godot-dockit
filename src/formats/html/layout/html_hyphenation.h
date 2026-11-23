@@ -15,6 +15,9 @@ namespace dockit {
 	};
 	using HTMLAutomaticHyphens = std::unordered_map<const litehtml::render_item*, std::vector<HTMLAutomaticHyphen>>;
 
-	void prepare_hyphenation(const std::vector<litehtml::render_item*>& p_text, litehtml::pixel_t p_line_width,
-		HTMLAutomaticHyphens& r_automatic);														// 为文本准备自动断词位置
+	void prepare_hyphenation(
+		const std::vector<litehtml::render_item*>& p_text,
+		litehtml::pixel_t p_line_width,
+		HTMLAutomaticHyphens& r_automatic
+	);																							// 为文本准备自动断词位置
 }

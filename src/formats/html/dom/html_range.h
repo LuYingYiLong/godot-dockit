@@ -18,6 +18,7 @@ class HTMLSelection;
 
 class HTMLRange : public godot::RefCounted {
 	GDCLASS(HTMLRange, godot::RefCounted)
+
 	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 	friend class HTMLSelection;

@@ -10,8 +10,21 @@
 namespace litehtml { class element; }
 
 namespace dockit::css {
-	enum class PlaybackCommand { seek, play, pause, cancel, finish, reverse };
-	enum class PlaybackState { idle, running, paused, finished };
+	enum class PlaybackCommand {
+		seek,
+		play,
+		pause,
+		cancel,
+		finish,
+		reverse
+	};
+
+	enum class PlaybackState {
+		idle,
+		running,
+		paused,
+		finished
+	};
 
 	struct Playback {
 		uint64_t id = 0;

@@ -18,7 +18,11 @@
 #include <utility>
 
 namespace dockit {
-	namespace css { class AnimationState; class TransitionState; }
+	namespace css {
+		class AnimationState;
+		class TransitionState;
+	}
+
 	class HTMLDOM;
 	struct HTMLSVGClipDocument;
 

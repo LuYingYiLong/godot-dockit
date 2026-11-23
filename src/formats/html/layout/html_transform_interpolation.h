@@ -5,7 +5,7 @@
 #include <optional>
 
 namespace dockit {
-	// Returns no matrix if either endpoint cannot be decomposed.
+	// 如果任一端点无法分解，则不返回矩阵
 	std::optional<godot::Projection> interpolate_transform_matrices(const godot::Projection& p_from,
 		const godot::Projection& p_to, double p_progress);
 }

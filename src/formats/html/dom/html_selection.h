@@ -4,6 +4,7 @@
 
 class HTMLSelection : public godot::RefCounted {
 	GDCLASS(HTMLSelection, godot::RefCounted)
+
 	friend class dockit::HTMLDOM;
 	friend class HTMLLayout;
 

@@ -38,7 +38,7 @@ namespace litehtml {
 
 	using css_counter_style_lookup = std::function<const css_counter_style*(const string&)>;
 
-// 解析和格式化 CSS 计数器
+	// 解析和格式化 CSS 计数器
 	std::optional<int> parse_counter_integer(const css_token& token);							// 解析 CSS 计数器整数值
 	std::optional<css_counter_style_reference> parse_counter_style_reference(
 		const css_token& token,

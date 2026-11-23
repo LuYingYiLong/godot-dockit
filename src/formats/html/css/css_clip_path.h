@@ -6,8 +6,25 @@
 #include <array>
 
 namespace litehtml {
-	enum class css_clip_shape { box, inset, rect, xywh, circle, ellipse, polygon, path, shape, reference };
-	enum class css_shape_box { margin, border, padding, content };
+	enum class css_clip_shape {
+		box,
+		inset,
+		rect,
+		xywh,
+		circle,
+		ellipse,
+		polygon,
+		path,
+		shape,
+		reference
+	};
+
+	enum class css_shape_box {
+		margin,
+		border,
+		padding,
+		content
+	};
 
 	struct css_clip_path {
 		css_clip_shape shape = css_clip_shape::box;
@@ -24,6 +41,7 @@ namespace litehtml {
 		std::string base_url;
 		bool even_odd = false;
 	};
+
 	using css_clip_path_ref = std::shared_ptr<const css_clip_path>;
 
 	std::optional<css_shape_box> parse_css_shape_box(const css_token& token);					// 解析 CSS clip-path 使用的形状参考盒

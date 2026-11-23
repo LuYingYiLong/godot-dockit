@@ -6,7 +6,14 @@
 #include <litehtml/html_tag.h>
 
 namespace dockit {
-	enum class HTMLVideoPart { none, play, position, mute, volume, fullscreen };
+	enum class HTMLVideoPart {
+		none,
+		play,
+		position,
+		mute,
+		volume,
+		fullscreen
+	};
 
 	struct HTMLVideoControlPainter {
 		std::function<void(const godot::Rect2&, const godot::Color&)> fill;

@@ -12,7 +12,7 @@ namespace dockit {
 		size_t size;
 	};
 
-// 查找自动断词词典
+	// 查找自动断词词典
 	const HyphenationPatternData* find_hyphenation_patterns(std::string_view p_locale);			// 根据语言查找自动断词模式
 	const HyphenationPatternData* hyphenation_patterns_for_language(
 		std::string_view p_language

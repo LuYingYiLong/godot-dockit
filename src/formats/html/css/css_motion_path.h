@@ -40,7 +40,7 @@ namespace litehtml {
 		bool enabled() const { return path.enabled(); }											// 检查是否已设置有效的运动路径
 	};
 
-// 解析 CSS 运动路径
+	// 解析 CSS 运动路径
 	std::optional<css_offset_position> parse_offset_position(
 		const css_token_vector& p_tokens,
 		bool p_accept_normal
