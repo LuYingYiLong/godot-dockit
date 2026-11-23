@@ -26,8 +26,30 @@ namespace dockit {
 		void paint_contents(LiteHTMLContainer& p_container, const godot::Rect2& p_box);
 
 	public:
-		enum class Type { TEXT, SEARCH, PASSWORD, EMAIL, URL, TEL, NUMBER, RANGE, CHECKBOX, RADIO,
-			HIDDEN, BUTTON, SUBMIT, RESET, DATE, MONTH, WEEK, TIME, LOCAL, COLOR, FILE, IMAGE };
+		enum class Type {
+			TEXT,
+			SEARCH,
+			PASSWORD,
+			EMAIL,
+			URL,
+			TEL,
+			NUMBER,
+			RANGE,
+			CHECKBOX,
+			RADIO,
+			HIDDEN,
+			BUTTON,
+			SUBMIT,
+			RESET,
+			DATE,
+			MONTH,
+			WEEK,
+			TIME,
+			LOCAL,
+			COLOR,
+			FILE,
+			IMAGE
+		};
 
 	private:
 		Type previous_type = Type::TEXT;

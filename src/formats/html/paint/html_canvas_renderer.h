@@ -41,11 +41,27 @@ namespace dockit {
 			std::vector<std::pair<godot::RID, godot::RID>> texture_dependencies;
 
 			void clear();
-			godot::RID add_item(godot::RenderingServer& p_server, const godot::RID& p_parent, int32_t p_draw_index);
-			Surface add_surface(godot::RenderingServer& p_server, const godot::RID& p_parent, const godot::Vector2i& p_size,
-				const godot::Transform2D& p_mapping, bool p_hdr);
-			void set_surface_parent(godot::RenderingServer& p_server, const godot::RID& p_surface, const godot::RID& p_parent);
-			void order_surface_passes(godot::RenderingServer& p_server, const godot::RID& p_viewport, std::size_t p_start);
+			godot::RID add_item(
+				godot::RenderingServer& p_server,
+				const godot::RID& p_parent,
+				int32_t p_draw_index
+			);
+			Surface add_surface(
+				godot::RenderingServer& p_server,
+				const godot::RID& p_parent,
+				const godot::Vector2i& p_size,
+				const godot::Transform2D& p_mapping,
+				bool p_hdr
+			);
+			void set_surface_parent(
+				godot::RenderingServer& p_server,
+				const godot::RID& p_surface, const godot::RID& p_parent
+			);
+			void order_surface_passes(
+				godot::RenderingServer& p_server,
+				const godot::RID& p_viewport,
+				std::size_t p_start
+			);
 		};
 
 		godot::HashMap<uint64_t, CanvasDrawing> drawings;
@@ -58,12 +74,24 @@ namespace dockit {
 		uint64_t next_redraw_id = 0;
 
 		void on_canvas_redraw(uint64_t p_canvas_id);
-		static void finish_canvas_redraw(uint64_t p_renderer_id, uint64_t p_canvas_id, uint64_t p_redraw_id);
+		static void finish_canvas_redraw(
+			uint64_t p_renderer_id,
+			uint64_t p_canvas_id,
+			uint64_t p_redraw_id
+		);
 		void detach_canvas(uint64_t p_canvas_id);
-		Surface filter_surface(godot::RenderingServer& p_server, CanvasDrawing& p_drawing, Surface p_source,
-			const godot::RID& p_parent, const godot::Vector2i& p_size, const godot::Vector2& p_scale,
-			const std::vector<HTMLPaintFilter>& p_filters, const godot::Transform2D& p_matrix, bool p_hdr,
-			const FilterRegion* p_region = nullptr);
+		Surface filter_surface(
+			godot::RenderingServer& p_server,
+			CanvasDrawing& p_drawing,
+			Surface p_source,
+			const godot::RID& p_parent,
+			const godot::Vector2i& p_size,
+			const godot::Vector2& p_scale,
+			const std::vector<HTMLPaintFilter>& p_filters,
+			const godot::Transform2D& p_matrix,
+			bool p_hdr,
+			const FilterRegion* p_region = nullptr
+		);
 
 	protected:
 		static void _bind_methods() {}
@@ -71,10 +99,18 @@ namespace dockit {
 	public:
 		~HTMLCanvasRenderer() override;
 
-		void submit(godot::CanvasItem& p_canvas, const godot::Vector2& p_position, const godot::Rect2& p_clip,
-			const std::vector<HTMLPaintRun>& p_runs, const std::vector<HTMLPaintGroup>& p_groups, const std::vector<HTMLPaintRun>& p_diagnostics,
-			const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const godot::Vector2& p_viewport_origin,
-			bool p_selection_only = false);
+		void submit(
+			godot::CanvasItem& p_canvas,
+			const godot::Vector2& p_position,
+			const godot::Rect2& p_clip,
+			const std::vector<HTMLPaintRun>& p_runs,
+			const std::vector<HTMLPaintGroup>& p_groups,
+			const std::vector<HTMLPaintRun>& p_diagnostics,
+			const HTMLHighlight& p_selection,
+			const HTMLHighlight& p_search,
+			const godot::Vector2& p_viewport_origin,
+			bool p_selection_only = false
+		);
 		void queue_redraws() const;
 	};
 }

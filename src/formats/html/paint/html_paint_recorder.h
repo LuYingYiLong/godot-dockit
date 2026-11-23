@@ -23,9 +23,30 @@ namespace litehtml {
 }
 
 namespace dockit {
-	enum class HTMLControlIcon { play, pause, volume_up, volume_off, resize, fullscreen, fullscreen_exit,
-		down, up, left, right, radio_checked, calendar, clock, colorize, unfold_more, radio_unchecked,
-		checkbox_checked, checkbox_unchecked, checkbox_indeterminate, close_small, count };
+	enum class HTMLControlIcon {
+		play,
+		pause,
+		volume_up,
+		volume_off,
+		resize,
+		fullscreen,
+		fullscreen_exit,
+		down,
+		up,
+		left,
+		right,
+		radio_checked,
+		calendar,
+		clock,
+		colorize,
+		unfold_more,
+		radio_unchecked,
+		checkbox_checked,
+		checkbox_unchecked,
+		checkbox_indeterminate,
+		close_small,
+		count
+	};
 
 	struct HTMLInputPaintColors {
 		std::optional<litehtml::web_color> selection_foreground;
@@ -211,27 +232,64 @@ namespace dockit {
 		const godot::String& get_accessible_text() const { return accessible_text; }
 		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
 		bool has_selectable_text(int64_t p_from, int64_t p_to) const;
-		HTMLSelectionPoint selection_point_at(const godot::Vector2& p_point, std::shared_ptr<litehtml::element> p_target,
-			const litehtml::element* p_scope = nullptr) const;
+		HTMLSelectionPoint selection_point_at(
+			const godot::Vector2& p_point,
+			std::shared_ptr<litehtml::element> p_target,
+			const litehtml::element* p_scope = nullptr
+		) const;
 		const auto& get_auto_content_text() const { return auto_content_text; }
 		int64_t hit_test_text(const godot::Vector2& p_point, const litehtml::element* p_scope = nullptr) const;
 		godot::Vector2i text_range_in(const litehtml::element& p_scope) const;
-		bool hit_test_selectable_text(const godot::Vector2& p_point, const litehtml::element& p_target, bool* r_text_hit = nullptr) const;
-		godot::TypedArray<godot::Rect2> get_selection_rects(int64_t p_from, int64_t p_to) const;
+		bool hit_test_selectable_text(
+			const godot::Vector2& p_point,
+			const litehtml::element& p_target,
+			bool* r_text_hit = nullptr
+		) const;
+		godot::TypedArray<godot::Rect2> get_selection_rects(
+			int64_t p_from,
+			int64_t p_to
+		) const;
 
 		void clear_diagnostics() { diagnostic_runs.clear(); }
-		void record_css_diagnostic(const RenderGeometry& p_geometry, const godot::Rect2& p_box);
-		void draw_text(const HTMLShapedText& p_shaped, int64_t p_length, litehtml::web_color p_color,
-			const litehtml::position& p_position, const std::vector<litehtml::box_shadow>& p_shadows,
-			const litehtml::css_underline& p_underline);
-		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
-			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
-			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent, float p_descent, const HTMLInputPaintColors& p_colors);
-		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color, float p_radius = 0);
-		void draw_image_alt(const godot::Rect2& p_box, const std::vector<HTMLTextLayout>& p_lines,
-			float p_line_height, litehtml::web_color p_color, litehtml::text_align p_align);
+		void record_css_diagnostic(
+			const RenderGeometry& p_geometry,
+			const godot::Rect2& p_box
+		);
+		void draw_text(
+			const HTMLShapedText& p_shaped,
+			int64_t p_length,
+			litehtml::web_color p_color,
+			const litehtml::position& p_position,
+			const std::vector<litehtml::box_shadow>& p_shadows,
+			const litehtml::css_underline& p_underline
+		);
+		void draw_input(
+			const godot::Rect2& p_box,
+			const HTMLTextLayout& p_text,
+			const godot::Vector2& p_origin,
+			const litehtml::web_color& p_color,
+			const godot::PackedVector2Array& p_selection,
+			const godot::PackedVector2Array& p_preedit,
+			const godot::Rect2& p_caret,
+			float p_ascent,
+			float p_descent,
+			const HTMLInputPaintColors& p_colors
+		);
+		void draw_input_chrome(
+			const godot::Rect2& p_clip,
+			const godot::Rect2& p_rect,
+			const godot::Color& p_color,
+			float p_radius = 0
+		);
+		void draw_image_alt(
+			const godot::Rect2& p_box,
+			const std::vector<HTMLTextLayout>& p_lines,
+			float p_line_height,
+			litehtml::web_color p_color,
+			litehtml::text_align p_align
+		);
 		void draw_list_marker(const litehtml::list_marker& p_marker, const godot::Ref<godot::Texture2D>& p_texture);
-		litehtml::image_rendering get_image_sampling() const; // 获取当前图层的 CSS 采样方式
+		litehtml::image_rendering get_image_sampling() const;								// 获取当前图层的 CSS 采样方式
 		void draw_image(const litehtml::background_layer& p_layer, const godot::Ref<godot::Texture2D>& p_texture);
 		void draw_solid_fill(const litehtml::background_layer& p_layer, const litehtml::web_color& p_color);
 		void draw_box_shadows(const litehtml::html_tag& p_element, const litehtml::position& p_box,

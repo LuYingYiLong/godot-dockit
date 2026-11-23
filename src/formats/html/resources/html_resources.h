@@ -22,9 +22,9 @@
 #include <vector>
 
 namespace dockit {
-	bool is_html_stylesheet_link(const char* p_rel);								// 判断 rel 是否声明默认应用的样式表
-	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path); // 读取大小受限的本地 UTF-8 样式表
-	std::optional<godot::String> read_html_svg_source(const godot::String& p_path); // 读取大小受限的本地 UTF-8 SVG 文件
+	bool is_html_stylesheet_link(const char* p_rel);										// 判断 rel 是否声明默认应用的样式表
+	std::optional<godot::String> read_html_stylesheet(const godot::String& p_path);			// 读取大小受限的本地 UTF-8 样式表
+	std::optional<godot::String> read_html_svg_source(const godot::String& p_path);			// 读取大小受限的本地 UTF-8 SVG 文件
 
 	class HTMLResources {
 		HTMLResourceBase fallback_base;
@@ -85,9 +85,9 @@ namespace dockit {
 		void import_css(std::string& r_text, const std::string& p_url, std::string& r_css_base);
 		godot::String resolve_svg_clip_source(std::string_view p_url, const char* p_css_base) const;
 		std::optional<godot::String> get_svg_clip_source(const godot::String& p_path) const;
-		godot::String resolve_image_source(std::string_view p_source) const; // 返回保留片段的项目图片路径
-		bool is_vector_image(const char* p_src, const char* p_css_base) const; // 判断本地图片是否为 SVG
-		double get_image_dpi(const char* p_src, const char* p_css_base); // 获取导入保存或从源图片读取的 DPI
+		godot::String resolve_image_source(std::string_view p_source) const;				// 返回保留片段的项目图片路径
+		bool is_vector_image(const char* p_src, const char* p_css_base) const;				// 判断本地图片是否为 SVG
+		double get_image_dpi(const char* p_src, const char* p_css_base);					// 获取导入保存或从源图片读取的 DPI
 		godot::Ref<godot::Texture2D> load_texture(const char* p_src, const char* p_css_base,
 			litehtml::css_image_orientation p_orientation = litehtml::css_image_orientation::from_image,
 			bool p_affects_layout = true);

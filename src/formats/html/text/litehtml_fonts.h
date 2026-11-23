@@ -95,18 +95,46 @@ namespace dockit {
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);
 
-		litehtml::uint_ptr create_font(const litehtml::font_description& p_description, litehtml::font_metrics* r_metrics);
+		litehtml::uint_ptr create_font(
+			const litehtml::font_description& p_description,
+			litehtml::font_metrics* r_metrics
+		);
 		void delete_font(litehtml::uint_ptr p_font);
 		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font);
-		litehtml::pixel_t measure_text(const godot::String& p_text, litehtml::uint_ptr p_font, litehtml::font_metrics& r_metrics);
-		std::vector<size_t> get_bidi_visual_order(const godot::String& p_text, litehtml::uint_ptr p_font,
-			bool p_right_to_left, const std::vector<std::pair<int64_t, int64_t>>& p_ranges);
-		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim);
-		HTMLTextLayout shape_text(litehtml::uint_ptr p_font, const godot::String& p_text);
-		HTMLTextLayout shape_text_for_outline(litehtml::uint_ptr p_font, const godot::String& p_text,
-			bool p_right_to_left, float& r_scale); // 保留字形索引和分数像素字号的轮廓排版
-		HTMLShapedText shape_styled_text(litehtml::uint_ptr p_font, const godot::String& p_text,
-			litehtml::text_justify_adjustment p_justification, float p_advance, int64_t p_start = 0, int64_t p_end = -1,
-			litehtml::punctuation_trim p_trim = litehtml::punctuation_trim::none);
+		litehtml::pixel_t measure_text(
+			const godot::String& p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::font_metrics& r_metrics
+		);
+		std::vector<size_t> get_bidi_visual_order(
+			const godot::String& p_text,
+			litehtml::uint_ptr p_font,
+			bool p_right_to_left,
+			const std::vector<std::pair<int64_t, int64_t>>& p_ranges
+		);
+		litehtml::pixel_t trimmed_punctuation_width(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::punctuation_trim p_trim
+		);
+		HTMLTextLayout shape_text(
+			litehtml::uint_ptr p_font,
+			const godot::String& p_text
+		);
+		HTMLTextLayout shape_text_for_outline(
+			litehtml::uint_ptr p_font,
+			const godot::String& p_text,
+			bool p_right_to_left,
+			float& r_scale
+		);											// 保留字形索引和分数像素字号的轮廓排版
+		HTMLShapedText shape_styled_text(
+			litehtml::uint_ptr p_font,
+			const godot::String& p_text,
+			litehtml::text_justify_adjustment p_justification,
+			float p_advance,
+			int64_t p_start = 0,
+			int64_t p_end = -1,
+			litehtml::punctuation_trim p_trim = litehtml::punctuation_trim::none
+		);
 	};
 }

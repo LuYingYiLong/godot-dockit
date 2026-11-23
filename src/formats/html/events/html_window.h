@@ -20,12 +20,12 @@ protected:
 	class HTMLLayout* get_owner() const;
 
 public:
-	bool is_valid() const override; // 检查窗口是否仍属于当前文档
-	godot::Ref<HTMLDocumentNode> get_document() const; // 返回窗口关联的文档节点
+	bool is_valid() const override;																// 检查窗口是否仍属于当前文档
+	godot::Ref<HTMLDocumentNode> get_document() const;											// 返回窗口关联的文档节点
 	godot::Error add_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
 		const godot::Dictionary& p_options = {}) override;
 	godot::Error remove_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
 		const godot::Dictionary& p_options = {}) override;
-	bool dispatch_event(const godot::Ref<HTMLEvent>& p_event) override; // 从 window 派发事件，路径只包含 window
+	bool dispatch_event(const godot::Ref<HTMLEvent>& p_event) override;							// 从 window 派发事件，路径只包含 window
 	bool has_event_listener(const godot::StringName& p_type) const override;
 };

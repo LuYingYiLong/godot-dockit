@@ -28,7 +28,7 @@ public:
 };
 
 // DOM EventTarget。HTMLNode 与 HTMLWindow 的共同基类：监听器由所属文档的 HTMLDOM
-// 统一持有，子类只负责把调用转发到自己的槽位（元素 / 文档 / 窗口）。
+// 统一持有，子类只负责把调用转发到自己的槽位（元素 / 文档 / 窗口）
 class HTMLEventTarget : public godot::RefCounted {
 	GDCLASS(HTMLEventTarget, godot::RefCounted)
 	godot::HashMap<godot::StringName, godot::Callable> event_handlers;
@@ -43,13 +43,13 @@ protected:
 public:
 	bool has_event_handler_override(const godot::StringName& p_type) const;
 	godot::Callable get_event_handler(const godot::StringName& p_type) const;
-	virtual bool is_valid() const = 0; // 检查目标是否仍属于当前文档
+	virtual bool is_valid() const = 0;															// 检查目标是否仍属于当前文档
 	virtual godot::Error add_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-		const godot::Dictionary& p_options = {}) = 0; // 注册监听器
+		const godot::Dictionary& p_options = {}) = 0;											// 注册监听器
 	godot::Ref<HTMLListenerHandle> listen(const godot::StringName& p_type, const godot::Callable& p_callable,
 		const godot::Dictionary& p_options = {});
 	virtual godot::Error remove_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-		const godot::Dictionary& p_options = {}) = 0; // 移除之前注册的监听器
-	virtual bool dispatch_event(const godot::Ref<HTMLEvent>& p_event) = 0; // 从此目标派发事件，返回默认动作是否未被取消
-	virtual bool has_event_listener(const godot::StringName& p_type) const = 0; // 检查是否注册了该类型的监听器
+		const godot::Dictionary& p_options = {}) = 0;											// 移除之前注册的监听器
+	virtual bool dispatch_event(const godot::Ref<HTMLEvent>& p_event) = 0;						// 从此目标派发事件，返回默认动作是否未被取消
+	virtual bool has_event_listener(const godot::StringName& p_type) const = 0;					// 检查是否注册了该类型的监听器
 };

@@ -73,7 +73,7 @@ protected:
 
 public:
 	~HTMLBehavior() override;
-	godot::Ref<HTMLDocumentNode> get_document() const; // 返回当前挂载的实时文档节点
+	godot::Ref<HTMLDocumentNode> get_document() const;										// 返回当前挂载的实时文档节点
 	HTMLLabel* get_label() const;
 	godot::Ref<HTMLBehaviorStorage> get_local_storage() const;
 	godot::Ref<HTMLBehaviorStorage> get_session_storage() const;

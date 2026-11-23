@@ -55,11 +55,11 @@ namespace dockit {
 		godot::Vector4 radii_y;
 
 		RoundedRect(const godot::Rect2& p_rect, const litehtml::border_radiuses& p_radii);
-		RoundedRect inset(const godot::Rect2& p_rect) const; // 返回内缩到指定矩形并相应缩小圆角后的形状
-		RoundedRect outset(const godot::Rect2& p_rect) const; // 按各边距更新圆角，使用外阴影的扩张公式
-		RoundedRect spread(godot::real_t p_distance) const; // 按阴影扩张距离调整边界和圆角
-		bool has_radius() const; // 检查是否存在有效的圆角
-		bool has_point(const godot::Vector2& p_position) const; // 检查指定坐标是否在圆角矩形内
+		RoundedRect inset(const godot::Rect2& p_rect) const;								// 返回内缩到指定矩形并相应缩小圆角后的形状
+		RoundedRect outset(const godot::Rect2& p_rect) const;								// 按各边距更新圆角，使用外阴影的扩张公式
+		RoundedRect spread(godot::real_t p_distance) const;									// 按阴影扩张距离调整边界和圆角
+		bool has_radius() const;															// 检查是否存在有效的圆角
+		bool has_point(const godot::Vector2& p_position) const;								// 检查指定坐标是否在圆角矩形内
 	};
 
 	enum class ClipAxes { both, x, y, horizon };
@@ -89,7 +89,7 @@ namespace dockit {
 	godot::Rect2 clipped_visual_bounds(const godot::Rect2& p_rect, const HTMLPlaneTransform& p_matrix,
 		const std::vector<TransformedClip>& p_clips);
 	HTMLClipPolygon svg_basic_clip_polygon(const litehtml::css_clip_path& p_path, const godot::Rect2& p_box,
-		const godot::Transform2D& p_matrix, const godot::Transform2D& p_visual_matrix); // 将基础裁剪形状映射到 SVG 图形的坐标系
+		const godot::Transform2D& p_matrix, const godot::Transform2D& p_visual_matrix);		// 将基础裁剪形状映射到 SVG 图形的坐标系
 
 	// Geometry uses document coordinates after litehtml has placed and scrolled
 	// the boxes. A link to the next ancestor shares clip geometry across siblings.
@@ -193,12 +193,12 @@ namespace dockit {
 		const OverflowClip* child_overflow = nullptr;
 		const OverflowClip* path_clip = nullptr;
 		const litehtml::render_item* layout_overflow_boundary = nullptr;
-		std::optional<godot::Vector3> depth_plane; // Coefficients of Z/W in document space
+		std::optional<godot::Vector3> depth_plane;											// Coefficients of Z/W in document space
 		std::optional<godot::Vector3> enclosing_depth_plane;
 		bool starts_3d_context = false;
 		bool flattens_3d_context = false;
 
-		std::array<HTMLScrollbar, 2> scrollbars() const; // 计算两个轴的覆盖式滚动条
+		std::array<HTMLScrollbar, 2> scrollbars() const;									// 计算两个轴的覆盖式滚动条
 		godot::Rect2 resize_grip() const;
 		bool contains_visible_point(const godot::Vector2& p_point) const;
 		bool has_visible_area(const godot::Rect2& p_box) const;

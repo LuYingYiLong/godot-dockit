@@ -13,13 +13,28 @@ namespace litehtml {
 }
 
 namespace dockit::svg {
-	const litehtml::element* resolve_fragment(const litehtml::element& p_root, std::string_view p_url); // 在当前文档解析片段引用
-	std::shared_ptr<litehtml::document> reference_document(const litehtml::element& p_target,
-		std::string_view p_url, const std::string& p_css_base); // 取得片段引用所属的文档
-	bool is_svg(const litehtml::element& p_node); // 检查节点是否位于 SVG 图形树
-	double length_attribute(const litehtml::element& p_node, const char* p_name, double p_basis, double p_default = 0);
-	godot::Transform2D transform_attribute(const litehtml::element& p_node); // 读取 SVG 变换列表
-	css::SVGPath shape_path(const litehtml::element& p_shape, const godot::Vector2& p_basis, std::string_view p_tag); // 返回 SVG 图形的等效路径
+	const litehtml::element* resolve_fragment(
+		const litehtml::element& p_root,
+		std::string_view p_url
+	);																							// 在当前文档解析片段引用
+	std::shared_ptr<litehtml::document> reference_document(
+		const litehtml::element& p_target,
+		std::string_view p_url,
+		const std::string& p_css_base
+	);																							// 取得片段引用所属的文档
+	bool is_svg(const litehtml::element& p_node);												// 检查节点是否位于 SVG 图形树
+	double length_attribute(
+		const litehtml::element& p_node,
+		const char* p_name,
+		double p_basis,
+		double p_default = 0
+	);
+	godot::Transform2D transform_attribute(const litehtml::element& p_node);					// 读取 SVG 变换列表
+	css::SVGPath shape_path(
+		const litehtml::element& p_shape,
+		const godot::Vector2& p_basis,
+		std::string_view p_tag
+	);																							// 返回 SVG 图形的等效路径
 
 	class PathMeasure {
 		struct Segment {
@@ -41,7 +56,7 @@ namespace dockit::svg {
 		PathMeasure(const css::SVGPath& p_path, const godot::Transform2D& p_transform, double p_tolerance, bool p_reverse);
 		double length() const { return segments.empty() ? 0 : segments.back().last_distance; }
 		bool is_closed() const { return closed; }
-		Sample sample(double p_distance) const; // 在给定距离取位置与切线，闭合路径允许回绕
+		Sample sample(double p_distance) const;													// 在给定距离取位置与切线，闭合路径允许回绕
 		godot::Vector2 end() const { return segments.empty() ? godot::Vector2() : segments.back().end; }
 	};
 }
