@@ -39,7 +39,7 @@ namespace dockit::css {
 	}
 
 	void AnimationState::Track::resolve(const html_tag& node, const std::shared_ptr<document>& doc,
-			const css_keyframes& keyframes) {
+		const css_keyframes& keyframes) {
 		stops.clear();
 		const auto& supported = animated_properties();
 		for (const auto& [offset, declarations] : keyframes.frames) {
@@ -57,13 +57,13 @@ namespace dockit::css {
 			const auto easing = keyframe_easing(frame, node);
 			for (std::size_t index = 0; index < supported.size(); ++index) {
 				const auto& property = supported[index];
-				if (properties.count(property.name)) stops[index].push_back({offset, property.read(computed), easing});
+				if (properties.count(property.name)) stops[index].push_back({ offset, property.read(computed), easing });
 			}
 		}
 		for (auto& [index, series] : stops) {
 			const auto& property = supported[index];
-			if (series.front().offset != 0) series.insert(series.begin(), {0, property.read(node.css()), {}, true});
-			if (series.back().offset != 1) series.push_back({1, property.read(node.css()), {}, true});
+			if (series.front().offset != 0) series.insert(series.begin(), { 0, property.read(node.css()),{}, true });
+			if (series.back().offset != 1) series.push_back({ 1, property.read(node.css()),{}, true });
 		}
 	}
 
@@ -115,7 +115,7 @@ namespace dockit::css {
 			const auto* subject = dynamic_cast<const html_tag*>(node.get());
 			if (settings && subject) {
 				const auto pseudo = animation_pseudo(*node);
-				// Style rebuilds recreate generated boxes. Keep their clocks on the originating element.
+				// 样式重建会重新创建生成的盒子，保持它们的时钟在原始元素上
 				const auto owner = pseudo == empty_id ? node : node->parent();
 				if (!owner) return;
 				const auto old = tracks.find(owner);
@@ -127,7 +127,7 @@ namespace dockit::css {
 				const auto old_count = previous_tracks ? previous_tracks->size() : 0;
 				std::vector<bool> matched(old_count);
 				std::vector<Track> resolved;
-				// The last occurrence of a repeated name keeps the last matching player.
+				// 重复名称的最后一次出现会保留最后匹配的播放器
 				for (std::size_t index = settings->names.size(); index-- > 0;) {
 					const auto& name = settings->names[index];
 					const auto* rule = name ? doc->find_keyframes(*name) : nullptr;
@@ -155,7 +155,7 @@ namespace dockit::css {
 				}
 			}
 			for (const auto& child : node->children()) visit(visit, child);
-		};
+			};
 		visit(visit, doc->root());
 		for (auto& [weak, targets] : tracks) {
 			const auto previous = targets.find(empty_id);
@@ -177,7 +177,7 @@ namespace dockit::css {
 	}
 
 	uint64_t AnimationState::create(const std::shared_ptr<element>& node, const std::shared_ptr<document>& doc,
-			std::shared_ptr<const css_keyframes> frames, const css_animation& settings, double now) {
+		std::shared_ptr<const css_keyframes> frames, const css_animation& settings, double now) {
 		const auto* subject = dynamic_cast<const html_tag*>(node.get());
 		if (!subject) return 0;
 		Track track;
@@ -214,9 +214,9 @@ namespace dockit::css {
 					if (!target) return std::nullopt;
 					const char* pseudo_name = pseudo == __tag_before_ ? "::before" : pseudo == __tag_after_ ? "::after" :
 						pseudo == marker_tag() ? "::marker" : "";
-					return PlaybackInfo{target, track.name, pseudo_name, track.playback.time(now, track.end(), track.animation.paused),
+					return PlaybackInfo{ target, track.name, pseudo_name, track.playback.time(now, track.end(), track.animation.paused),
 						track.duration(), track.playback.state(now, track.end(), track.animation.paused), bool(track.scripted),
-						track.animation.duration, track.animation.delay};
+						track.animation.duration, track.animation.delay };
 				}
 			}
 		}

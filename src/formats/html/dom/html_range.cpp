@@ -48,25 +48,26 @@ namespace {
 
 	std::vector<Piece> range_contents(const Ref<HTMLNode>& p_parent, const HTMLBoundary& p_start, const HTMLBoundary& p_end) {
 		if (character_node(*p_parent.ptr())) {
-			return {{p_parent, false, p_start.node == p_parent ? p_start.offset : 0,
-				p_end.node == p_parent ? p_end.offset : dockit::html_node_length(*p_parent.ptr()), {}}};
+			return { { p_parent, false, p_start.node == p_parent ? p_start.offset : 0,
+				p_end.node == p_parent ? p_end.offset : dockit::html_node_length(*p_parent.ptr()),{} } };
 		}
 		std::vector<Piece> contents;
 		const auto children = p_parent->get_child_nodes();
 		for (int64_t i = 0; i < children.size(); ++i) {
-			const HTMLBoundary before{p_parent, i};
-			const HTMLBoundary after{p_parent, i + 1};
+			const HTMLBoundary before{ p_parent, i };
+			const HTMLBoundary after{ p_parent, i + 1 };
 			if (dockit::compare_html_boundaries(after, p_start) <= 0) continue;
 			if (dockit::compare_html_boundaries(before, p_end) >= 0) break;
 			const Ref<HTMLNode> child = children[i];
 			const bool whole = dockit::compare_html_boundaries(p_start, before) <= 0 &&
 				dockit::compare_html_boundaries(after, p_end) <= 0;
-			if (whole) contents.push_back({child, true, 0, 0, {}});
+			if (whole) contents.push_back({ child, true, 0, 0,{} });
 			else if (character_node(*child.ptr())) {
 				auto partial = range_contents(child, p_start, p_end);
 				contents.push_back(std::move(partial.front()));
-			} else {
-				contents.push_back({child, false, 0, 0, range_contents(child, p_start, p_end)});
+			}
+			else {
+				contents.push_back({ child, false, 0, 0, range_contents(child, p_start, p_end) });
 			}
 		}
 		return contents;
@@ -148,7 +149,7 @@ void HTMLRange::set_boundaries(HTMLBoundary p_start, HTMLBoundary p_end) {
 }
 
 Error HTMLRange::set_start(const Ref<HTMLNode>& p_node, int64_t p_offset) {
-	const HTMLBoundary proposed{p_node, p_offset};
+	const HTMLBoundary proposed{ p_node, p_offset };
 	if (!accepts(proposed)) return ERR_INVALID_PARAMETER;
 	const bool reset_end = !is_valid() || p_node->get_root_node() != end.node->get_root_node() ||
 		dockit::compare_html_boundaries(proposed, end) > 0;
@@ -157,7 +158,7 @@ Error HTMLRange::set_start(const Ref<HTMLNode>& p_node, int64_t p_offset) {
 }
 
 Error HTMLRange::set_end(const Ref<HTMLNode>& p_node, int64_t p_offset) {
-	const HTMLBoundary proposed{p_node, p_offset};
+	const HTMLBoundary proposed{ p_node, p_offset };
 	if (!accepts(proposed)) return ERR_INVALID_PARAMETER;
 	const bool reset_start = !is_valid() || p_node->get_root_node() != start.node->get_root_node() ||
 		dockit::compare_html_boundaries(proposed, start) < 0;
@@ -173,18 +174,18 @@ Error HTMLRange::collapse(bool p_to_start) {
 }
 
 Error HTMLRange::select_node(const Ref<HTMLNode>& p_node) {
-	if (!accepts({p_node, 0})) return ERR_INVALID_PARAMETER;
+	if (!accepts({ p_node, 0 })) return ERR_INVALID_PARAMETER;
 	const auto parent = p_node->get_parent_node();
 	if (parent.is_null()) return ERR_INVALID_PARAMETER;
 	const int64_t index = parent->get_child_nodes().find(p_node);
 	if (index < 0) return ERR_INVALID_PARAMETER;
-	set_boundaries({parent, index}, {parent, index + 1});
+	set_boundaries({ parent, index }, { parent, index + 1 });
 	return OK;
 }
 
 Error HTMLRange::select_node_contents(const Ref<HTMLNode>& p_node) {
-	if (!accepts({p_node, 0})) return ERR_INVALID_PARAMETER;
-	set_boundaries({p_node, 0}, {p_node, dockit::html_node_length(*p_node.ptr())});
+	if (!accepts({ p_node, 0 })) return ERR_INVALID_PARAMETER;
+	set_boundaries({ p_node, 0 }, { p_node, dockit::html_node_length(*p_node.ptr()) });
 	return OK;
 }
 
@@ -199,7 +200,7 @@ String HTMLRange::get_text() const {
 			else if (piece.node->get_node_type() == HTMLNode::TEXT_NODE) text += node_data(piece.node).substr(piece.from, piece.to - piece.from);
 			else p_visit(p_visit, piece.children);
 		}
-	};
+		};
 	append(append, range_contents(parent, start, end));
 	return text;
 }
@@ -226,13 +227,13 @@ Ref<HTMLDocumentFragment> HTMLRange::process_contents(Contents p_action) {
 		for (const auto& piece : pieces) if (piece.whole) return {};
 	}
 
-	// Keep the collapse point live while extraction or deletion adjusts surrounding boundaries.
+	// 在提取或删除调整周围边界时保持折叠点活跃
 	Ref<HTMLRange> bookmark;
 	if (edit) {
 		HTMLBoundary point = start;
 		if (!start.node->contains(end.node)) {
 			const auto branch = branch_under(start.node, parent);
-			point = {parent, parent->get_child_nodes().find(branch) + 1};
+			point = { parent, parent->get_child_nodes().find(branch) + 1 };
 		}
 		bookmark = dom->create_range();
 		bookmark->set_boundaries(point, point);
@@ -247,12 +248,14 @@ Ref<HTMLDocumentFragment> HTMLRange::process_contents(Contents p_action) {
 					? dom->edit_nodes(p_target->lock_element(), HTMLDOM::TreeEdit::APPEND, Array::make(item.node))
 					: dom->edit_nodes(source, HTMLDOM::TreeEdit::REPLACE, {});
 				if (changed != OK) return false;
-			} else if (character_node(*item.node.ptr())) {
+			}
+			else if (character_node(*item.node.ptr())) {
 				const String data = node_data(item.node);
 				if (output) clone = dom->create_character_node(item.whole ? data : data.substr(item.from, item.to - item.from),
 					item.node->get_node_type() == HTMLNode::COMMENT_NODE);
 				if (edit && dom->replace_character_data(source, "", item.from, item.to - item.from) != OK) return false;
-			} else {
+			}
+			else {
 				if (output) clone = dom->copy_node(*dom, *source, item.whole);
 				if (output && clone.is_null()) return false;
 				if (!item.whole && !p_visit(p_visit, item.children, clone)) return false;
@@ -260,18 +263,26 @@ Ref<HTMLDocumentFragment> HTMLRange::process_contents(Contents p_action) {
 			if (clone.is_valid() && dom->edit_nodes(p_target->lock_element(), HTMLDOM::TreeEdit::APPEND, Array::make(clone)) != OK) return false;
 		}
 		return true;
-	};
+		};
 	if (!transfer(transfer, pieces, result)) return {};
 	if (edit) set_boundaries(bookmark->start, bookmark->start);
 	return result;
 }
 
-Ref<HTMLDocumentFragment> HTMLRange::clone_contents() { return process_contents(Contents::CLONE); }
-Ref<HTMLDocumentFragment> HTMLRange::extract_contents() { return process_contents(Contents::EXTRACT); }
-Error HTMLRange::delete_contents() { return process_contents(Contents::DELETE).is_valid() ? OK : ERR_INVALID_PARAMETER; }
+Ref<HTMLDocumentFragment> HTMLRange::clone_contents() {
+	return process_contents(Contents::CLONE);
+}
+
+Ref<HTMLDocumentFragment> HTMLRange::extract_contents() {
+	return process_contents(Contents::EXTRACT);
+}
+
+Error HTMLRange::delete_contents() {
+	return process_contents(Contents::DELETE).is_valid() ? OK : ERR_INVALID_PARAMETER;
+}
 
 Error HTMLRange::insert_node(const Ref<HTMLNode>& p_node) {
-	if (!is_valid() || !accepts({p_node, 0}) || p_node == start.node || start.node->get_node_type() == HTMLNode::COMMENT_NODE) return ERR_INVALID_PARAMETER;
+	if (!is_valid() || !accepts({ p_node, 0 }) || p_node == start.node || start.node->get_node_type() == HTMLNode::COMMENT_NODE) return ERR_INVALID_PARAMETER;
 	const auto dom = owner.lock();
 	HTMLDOM::ChangeScope changes(*dom);
 	const HTMLBoundary original = start;
@@ -286,7 +297,8 @@ Error HTMLRange::insert_node(const Ref<HTMLNode>& p_node) {
 		const auto suffix = dom->split_range_text(original);
 		if (suffix.is_null()) return ERR_INVALID_PARAMETER;
 		reference = suffix;
-	} else {
+	}
+	else {
 		const auto children = parent->get_child_nodes();
 		if (original.offset < children.size()) reference = children[original.offset];
 	}
@@ -300,13 +312,13 @@ Error HTMLRange::insert_node(const Ref<HTMLNode>& p_node) {
 		reference.is_valid() ? HTMLDOM::TreeEdit::BEFORE : HTMLDOM::TreeEdit::APPEND, Array::make(p_node));
 	if (inserted == OK && collapsed && last.is_valid()) {
 		const int64_t index = parent->get_child_nodes().find(last);
-		if (index >= 0) set_boundaries(start, {parent, index + 1});
+		if (index >= 0) set_boundaries(start, { parent, index + 1 });
 	}
 	return inserted;
 }
 
 Error HTMLRange::surround_contents(const Ref<HTMLElement>& p_element) {
-	if (!is_valid() || !accepts({p_element, 0})) return ERR_INVALID_PARAMETER;
+	if (!is_valid() || !accepts({ p_element, 0 })) return ERR_INVALID_PARAMETER;
 	const auto parent = common_container(start, end);
 	if (parent.is_null() || p_element->contains(parent)) return ERR_INVALID_PARAMETER;
 	for (const auto& item : range_contents(parent, start, end)) {

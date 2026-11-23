@@ -18,7 +18,7 @@ using namespace litehtml;
 namespace dockit {
 	namespace {
 		class SVGClipResolver {
-			static constexpr size_t MAX_NESTED_SOURCES = 24; // At most two pending shader operands per source
+			static constexpr size_t MAX_NESTED_SOURCES = 24; // 每个源最多两个待处理的着色器操作数
 			static constexpr size_t MAX_RESOLVED_SOURCES = 1024;
 			const Transform2D& visual_matrix;
 			std::vector<const element*> active_sources;
@@ -32,7 +32,8 @@ namespace dockit {
 					if (auto clip = resolve(p_owner, path->url, path->base_url, p_box, p_basis, p_matrix)) {
 						r_clips.push_back(std::move(*clip));
 					}
-				} else {
+				}
+				else {
 					r_clips.push_back(svg_basic_clip_polygon(*path, p_box, p_matrix, visual_matrix));
 				}
 			}
@@ -59,7 +60,8 @@ namespace dockit {
 				auto& outline = local.outlines.emplace_back();
 				if (std::string_view(shape->get_tagName()) == "text") {
 					outline = resolve_svg_text_outline(*shape, p_basis, 0.2 / scale);
-				} else {
+				}
+				else {
 					const auto path = svg::shape_path(*shape, p_basis, shape->get_tagName());
 					outline.even_odd = shape->css().uses_even_odd_clip_rule();
 					for (const auto& source_contour : css::flatten_svg_path(path, 0.2 / scale)) {
@@ -110,7 +112,7 @@ namespace dockit {
 						result.outlines.push_back(std::move(*outline));
 					}
 				}
-				// A clip applied to the clipPath resource itself keeps the original target's reference box.
+				// 应用于 clipPath 资源本身的裁剪会保留原始目标的参考框
 				append_clip(result.clips, *source, p_box, p_basis, p_matrix);
 				active_sources.pop_back();
 				return result;

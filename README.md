@@ -1,6 +1,6 @@
 <img alt="Banner" src="assets/banner.png" />
 
-<p align="center">Render interactive Markdown, HTML, LaTeX formulas, Mermaid diagrams, and PDF pages in Godot 4.</p>
+<p align="center">Render interactive Markdown, LaTeX formulas, Mermaid diagrams, PDF pages, HTML, and reStructuredText in Godot 4.</p>
 
 ## Features
 

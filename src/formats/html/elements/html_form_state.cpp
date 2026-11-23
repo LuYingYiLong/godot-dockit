@@ -303,7 +303,7 @@ void synchronize(const element::ptr& p_tree, const element::ptr& p_preferred) {
 	};
 	if (!p_tree) return;
 	const auto root = root_of(*p_tree);
-	// Checked nodes moved into a group take precedence over its old selection.
+	// 被勾选的节点移动到一个组中会优先于它原来的选择
 	HTMLDOM::visit_elements(root, reconcile);
 	std::vector<element::ptr> containers;
 	std::unordered_set<const element*> invalid_containers;

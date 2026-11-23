@@ -134,7 +134,8 @@ Error HTMLCanvasGradient::add_color_stop(double p_offset, const Variant& p_color
 		const auto parsed = parse_canvas_color(String(p_color));
 		if (!parsed) return ERR_INVALID_PARAMETER;
 		color = *parsed;
-	} else return ERR_INVALID_PARAMETER;
+	}
+	else return ERR_INVALID_PARAMETER;
 	stops.push_back({ p_offset, color });
 	std::stable_sort(stops.begin(), stops.end(), [](const Stop& p_left, const Stop& p_right) { return p_left.offset < p_right.offset; });
 	return OK;
@@ -238,8 +239,8 @@ void HTMLCanvasRenderingContext2D::put_pixel(const Vector2& p_point, const Color
 
 void HTMLCanvasRenderingContext2D::clear_rect(double p_x, double p_y, double p_width, double p_height) {
 	if (std::abs(state.transform.determinant()) < CMP_EPSILON) return;
-	const Vector2 points[] = {state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
-		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height))};
+	const Vector2 points[] = { state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
+		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height)) };
 	for (const Vector2& point : points) if (!point.is_finite()) return;
 	Rect2 bounds(points[0], Vector2());
 	for (int i = 1; i < 4; ++i) bounds = bounds.expand(points[i]);
@@ -309,14 +310,14 @@ void HTMLCanvasRenderingContext2D::draw_line_segment(const Vector2& p_from, cons
 }
 
 void HTMLCanvasRenderingContext2D::fill_rect(double p_x, double p_y, double p_width, double p_height) {
-	fill_polygon({state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
-		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height))}, state.fill_style);
+	fill_polygon({ state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
+		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height)) }, state.fill_style);
 	mark_dirty();
 }
 
 void HTMLCanvasRenderingContext2D::stroke_rect(double p_x, double p_y, double p_width, double p_height) {
-	const Vector2 points[] = {state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
-		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height))};
+	const Vector2 points[] = { state.transform.xform(Vector2(p_x, p_y)), state.transform.xform(Vector2(p_x + p_width, p_y)),
+		state.transform.xform(Vector2(p_x + p_width, p_y + p_height)), state.transform.xform(Vector2(p_x, p_y + p_height)) };
 	for (int i = 0; i < 4; ++i) draw_line_segment(points[i], points[(i + 1) % 4], state.stroke_style);
 	mark_dirty();
 }
@@ -413,7 +414,7 @@ void HTMLCanvasRenderingContext2D::draw_text(const String& p_text, const Vector2
 							const Vector2 fraction = sample - Vector2(sample_pos);
 							const auto pixel = [&](const Vector2i& p_point) {
 								return atlas->get_pixelv(p_point.clamp(uv.position, uv.get_end() - Vector2i(1, 1)));
-							};
+								};
 							const Color sample_color = pixel(sample_pos).lerp(pixel(sample_pos + Vector2i(1, 0)), fraction.x).lerp(
 								pixel(sample_pos + Vector2i(0, 1)).lerp(pixel(sample_pos + Vector2i(1, 1)), fraction.x), fraction.y);
 							const float coverage = msdf
@@ -426,7 +427,7 @@ void HTMLCanvasRenderingContext2D::draw_text(const String& p_text, const Vector2
 						}
 					}
 				}
-		}
+			}
 		}
 		pen += advance * repeat;
 	}
@@ -467,8 +468,8 @@ void HTMLCanvasRenderingContext2D::draw_image_region(const Variant& p_source, do
 	Ref<Image> source = image_from_source(p_source);
 	if (source.is_null() || p_sw <= 0 || p_sh <= 0 || p_dw == 0 || p_dh == 0 ||
 		std::abs(state.transform.determinant()) < CMP_EPSILON) return;
-	const Vector2 corners[] = {state.transform.xform(Vector2(p_dx, p_dy)), state.transform.xform(Vector2(p_dx + p_dw, p_dy)),
-		state.transform.xform(Vector2(p_dx + p_dw, p_dy + p_dh)), state.transform.xform(Vector2(p_dx, p_dy + p_dh))};
+	const Vector2 corners[] = { state.transform.xform(Vector2(p_dx, p_dy)), state.transform.xform(Vector2(p_dx + p_dw, p_dy)),
+		state.transform.xform(Vector2(p_dx + p_dw, p_dy + p_dh)), state.transform.xform(Vector2(p_dx, p_dy + p_dh)) };
 	for (const Vector2& point : corners) if (!point.is_finite()) return;
 	Rect2 bounds(corners[0], Vector2());
 	for (int index = 1; index < 4; ++index) bounds = bounds.expand(corners[index]);
@@ -579,9 +580,11 @@ String HTMLCanvasElement::to_data_url(const String& p_type, double p_quality) co
 	if (mime == "image/jpeg" || mime == "image/jpg") {
 		mime = "image/jpeg";
 		bytes = bitmap->save_jpg_to_buffer(std::clamp(p_quality, 0.0, 1.0));
-	} else if (mime == "image/webp") {
+	}
+	else if (mime == "image/webp") {
 		bytes = bitmap->save_webp_to_buffer(true, std::clamp(p_quality, 0.0, 1.0));
-	} else {
+	}
+	else {
 		mime = "image/png";
 		bytes = bitmap->save_png_to_buffer();
 	}
@@ -589,32 +592,32 @@ String HTMLCanvasElement::to_data_url(const String& p_type, double p_quality) co
 }
 
 namespace dockit {
-void HTMLCanvasNode::parse_attributes() {
-	if (const char* width = get_attr("width")) map_to_dimension_property(litehtml::_width_, width);
-	if (const char* height = get_attr("height")) map_to_dimension_property(litehtml::_height_, height);
-}
-void HTMLCanvasNode::get_content_size(litehtml::size& r_size, litehtml::pixel_t) {
-	const char* width = get_attr("width");
-	const char* height = get_attr("height");
-	r_size = {static_cast<litehtml::pixel_t>(width ? std::max(1, std::atoi(width)) : 300),
-		static_cast<litehtml::pixel_t>(height ? std::max(1, std::atoi(height)) : 150)};
-}
-std::shared_ptr<litehtml::render_item> HTMLCanvasNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
-	auto result = std::make_shared<litehtml::render_item_image>(shared_from_this());
-	result->parent(p_parent);
-	return result;
-}
-void HTMLCanvasNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,
-	const litehtml::position* p_clip, const std::shared_ptr<litehtml::render_item>& p_item) {
-	litehtml::html_tag::draw(p_hdc, p_x, p_y, p_clip, p_item);
-	if (context.is_null()) return;
-	auto pos = p_item->pos();
-	pos.x += p_x;
-	pos.y += p_y;
-	if (pos.width <= 0 || pos.height <= 0 || css().skips_contents()) return;
-	const Ref<Texture2D> bitmap = context->get_texture();
-	if (bitmap.is_null()) return;
-	auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
-	container->get_paint_recorder().draw_image(litehtml::make_replaced_object_layer(*this, pos, *p_item), bitmap);
-}
+	void HTMLCanvasNode::parse_attributes() {
+		if (const char* width = get_attr("width")) map_to_dimension_property(litehtml::_width_, width);
+		if (const char* height = get_attr("height")) map_to_dimension_property(litehtml::_height_, height);
+	}
+	void HTMLCanvasNode::get_content_size(litehtml::size& r_size, litehtml::pixel_t) {
+		const char* width = get_attr("width");
+		const char* height = get_attr("height");
+		r_size = { static_cast<litehtml::pixel_t>(width ? std::max(1, std::atoi(width)) : 300),
+			static_cast<litehtml::pixel_t>(height ? std::max(1, std::atoi(height)) : 150) };
+	}
+	std::shared_ptr<litehtml::render_item> HTMLCanvasNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
+		auto result = std::make_shared<litehtml::render_item_image>(shared_from_this());
+		result->parent(p_parent);
+		return result;
+	}
+	void HTMLCanvasNode::draw(litehtml::uint_ptr p_hdc, litehtml::pixel_t p_x, litehtml::pixel_t p_y,
+		const litehtml::position* p_clip, const std::shared_ptr<litehtml::render_item>& p_item) {
+		litehtml::html_tag::draw(p_hdc, p_x, p_y, p_clip, p_item);
+		if (context.is_null()) return;
+		auto pos = p_item->pos();
+		pos.x += p_x;
+		pos.y += p_y;
+		if (pos.width <= 0 || pos.height <= 0 || css().skips_contents()) return;
+		const Ref<Texture2D> bitmap = context->get_texture();
+		if (bitmap.is_null()) return;
+		auto* container = static_cast<LiteHTMLContainer*>(get_document()->container());
+		container->get_paint_recorder().draw_image(litehtml::make_replaced_object_layer(*this, pos, *p_item), bitmap);
+	}
 }

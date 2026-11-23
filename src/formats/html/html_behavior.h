@@ -63,7 +63,7 @@ class HTMLBehavior : public godot::RefCounted {
 	void process_async(double p_delta);
 	void cancel_async_work();
 	bool has_async_work() const;
-	void notify_host_processing_changed();
+	void notify_host_processing_changed() const;
 	void complete_request(uint64_t p_request_id, const godot::Callable& p_callback,
 		const godot::String& p_url, int p_status_code, const godot::PackedStringArray& p_headers,
 		const godot::PackedByteArray& p_body, const godot::String& p_error);

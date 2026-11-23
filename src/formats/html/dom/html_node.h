@@ -32,7 +32,6 @@ class HTMLNode : public HTMLEventTarget {
 	friend class HTMLDocumentFragment;
 	friend class ::HTMLLabel;
 	friend class ::HTMLLabelCanvas;
-	friend class HTMLComponent;
 	friend class HTMLRange;
 	friend class HTMLMutationObserver;
 

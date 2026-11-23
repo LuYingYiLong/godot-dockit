@@ -194,15 +194,16 @@ namespace dockit {
 
 	void HTMLTextEditor::move_single(int p_direction, bool p_extend) {
 		if (has_preedit()) return;
-		// Hit-test the shaper on either side of the current visual stop so RTL runs
-		// use the same geometry for keys, pointer and drawing.
+		// 在当前可视停靠点的任一侧对形状器进行命中测试，这样 RTL 运行
+		// 对键、指针和绘图使用相同的几何形状
 		int64_t next = caret;
 		std::optional<float> visual_stop;
 		if (!p_extend && anchor != caret) {
 			const float a = caret_x(anchor);
 			const float b = caret_x(caret);
 			next = ((a < b) == (p_direction < 0)) ? anchor : caret;
-		} else if (shaped.is_valid() && !showing_placeholder) {
+		}
+		else if (shaped.is_valid() && !showing_placeholder) {
 			const float origin = caret_x(caret);
 			const float edge = p_direction < 0 ? 0.0f : shaped.width();
 			const float extent = std::abs(edge - origin);
@@ -226,7 +227,8 @@ namespace dockit {
 				if (distance == extent) break;
 				previous = distance;
 			}
-		} else {
+		}
+		else {
 			next = step_boundary(value, caret, p_direction);
 		}
 		set_selection(p_extend ? anchor : next, next);
@@ -250,9 +252,9 @@ namespace dockit {
 	}
 
 	bool HTMLTextEditor::insert_character(char32_t p_character, const char* p_maxlength, uint64_t p_frame, bool p_ime_event) {
-		// Godot sends each character in an IME result as a key event in the same input frame.
+		// Godot 会在同一输入帧中将 IME 结果的每个字符作为按键事件发送
 		auto batch = ime_edit && ime_edit->frame == p_frame ? ime_edit : std::nullopt;
-		if (!batch && (p_ime_event || has_preedit())) batch = ImeEdit{p_frame, selection()};
+		if (!batch && (p_ime_event || has_preedit())) batch = ImeEdit{ p_frame, selection() };
 		const bool changed = replace_selection(String::chr(p_character), p_maxlength,
 			batch ? batch->before : selection(), batch && batch->recorded);
 		if (batch) batch->recorded |= changed;
@@ -297,12 +299,12 @@ namespace dockit {
 		if (!p_merge || history_position == 0 || history_position != history.size()) {
 			history.erase(history.begin() + history_position, history.end());
 			if (history.size() == MAX_UNDO_EDITS) history.erase(history.begin());
-			history.push_back({p_before, selection(), {}});
+			history.push_back({ p_before, selection(),{} });
 			history_position = history.size();
 		}
 		auto& edit = history.back();
 		edit.after = selection();
-		edit.replacements.push_back({from, removed, text});
+		edit.replacements.push_back({ from, removed, text });
 		if (value_changed) value_changed();
 		return true;
 	}
@@ -363,9 +365,10 @@ namespace dockit {
 	void HTMLTextEditor::update_preedit(const String& p_text, const Vector2i& p_selection, uint64_t p_frame) {
 		if (!p_text.is_empty()) {
 			finish_ime_edit();
-		} else if (has_preedit()) {
-			// Some backends clear the marked text before handing off the result.
-			ime_edit = ImeEdit{p_frame, selection()};
+		}
+		else if (has_preedit()) {
+			// 一些后台会在交接结果前清除标记的文本
+			ime_edit = ImeEdit{ p_frame, selection() };
 		}
 		set_preedit(p_text, p_selection);
 	}
@@ -398,7 +401,7 @@ namespace dockit {
 		HTMLInputPaintColors input_paint_colors(const litehtml::html_tag& host) {
 			const auto& color = host.css().get_color();
 			const auto selection = host.get_selection_colors(color);
-			return {selection.foreground, selection.background, host.css().get_caret_color().resolve(color)};
+			return { selection.foreground, selection.background, host.css().get_caret_color().resolve(color) };
 		}
 
 		litehtml::web_color placeholder_ink(const litehtml::html_tag& host, const css::ComputedStyle* style) {
@@ -454,7 +457,8 @@ namespace dockit {
 				const auto selected_from = std::clamp<int64_t>(preedit_selection.x, 0, preedit.length());
 				const auto selected_to = std::clamp<int64_t>(selected_from + std::max(0, preedit_selection.y), selected_from, preedit.length());
 				selected = shaped.selection(*server.ptr(), from + selected_from, from + selected_to);
-			} else if (from != to) {
+			}
+			else if (from != to) {
 				selected = shaped.selection(*server.ptr(), from, to);
 			}
 		}
@@ -542,7 +546,7 @@ namespace dockit {
 				auto probe = [&](float p_distance) {
 					return nearest_boundary(value, line.start +
 						line.shaped.hit_test(start_x + p_direction * p_distance - line.baseline.x));
-				};
+					};
 				while ((next = probe(high)) == caret && high < extent) {
 					low = high;
 					high = std::min(high * 2, extent);
@@ -619,8 +623,8 @@ namespace dockit {
 			const float baseline = full_size.y + (p_line_height + ascent - descent) * 0.5f;
 			full_size.y += p_line_height;
 			full_size.x = std::max(full_size.x, width);
-			lines.push_back({p_start, p_end, p_layout, Vector2(x, baseline), float(full_size.y)});
-		};
+			lines.push_back({ p_start, p_end, p_layout, Vector2(x, baseline), float(full_size.y) });
+			};
 		for (int64_t start = 0; start <= p_text.length();) {
 			const auto newline = p_text.find("\n", start);
 			const auto end = newline < 0 ? p_text.length() : newline;
@@ -634,7 +638,8 @@ namespace dockit {
 					add_line(start + from, start + to, paragraph.subrange(from, to));
 				}
 				if (ranges.size() < 2) add_line(start, end, paragraph);
-			} else {
+			}
+			else {
 				add_line(start, end, paragraph);
 			}
 			if (newline < 0) break;
@@ -776,7 +781,7 @@ namespace dockit {
 				const auto end = std::min(line.end, p_end);
 				return begin < end && line.shaped.is_valid() ?
 					line.shaped.selection(*server.ptr(), begin - line.start, end - line.start) : PackedVector2Array{};
-			};
+				};
 			const float ascent = line.baseline.y - (line.bottom - height);
 			PackedVector2Array selected;
 			if (p_focused && !showing_placeholder) {

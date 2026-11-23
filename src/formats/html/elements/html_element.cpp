@@ -241,6 +241,7 @@ void HTMLElement::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "inert"), "set_inert", "get_inert");
 	ClassDB::bind_method(D_METHOD("get_tab_index"), &HTMLElement::get_tab_index);
 	ClassDB::bind_method(D_METHOD("set_tab_index", "value"), &HTMLElement::set_tab_index);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_index"), "set_tab_index", "get_tab_index");
 }
 
@@ -692,7 +693,8 @@ bool HTMLElement::replace_class(const String& p_old_name, const String& p_new_na
 		if (name == p_old_name || name == p_new_name) {
 			if (!replaced) classes.append(p_new_name);
 			replaced = true;
-		} else {
+		}
+		else {
 			classes.append(name);
 		}
 	}
@@ -730,7 +732,8 @@ Error HTMLElement::insert_adjacent_html(const String& p_position, const String& 
 	try {
 		const auto fragment = get_dom().parse_fragment(p_html, context);
 		return fragment.is_valid() ? get_dom().edit_nodes(node, *edit, Array::make(fragment)) : ERR_PARSE_ERROR;
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return ERR_PARSE_ERROR;
 	}
 }
@@ -748,7 +751,8 @@ Error HTMLElement::set_outer_html(const String& p_html) {
 	try {
 		const auto fragment = get_dom().parse_fragment(p_html, parent);
 		return fragment.is_valid() ? get_dom().edit_nodes(node, dockit::HTMLDOM::TreeEdit::REPLACE, Array::make(fragment)) : ERR_PARSE_ERROR;
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return ERR_PARSE_ERROR;
 	}
 }
@@ -763,7 +767,7 @@ String HTMLElement::get_inner_text() const {
 		if (p_text.is_empty()) return;
 		result += separator + p_text;
 		separator = String();
-	};
+		};
 	const auto visit = [&](const auto& p_visit, const litehtml::element& p_node) -> void {
 		using namespace litehtml;
 		const auto& css = p_node.css();
@@ -777,7 +781,8 @@ String HTMLElement::get_inner_text() const {
 			if (css.get_visibility() != visibility_visible) return;
 			if (p_node.is_white_space()) {
 				if (!result.is_empty() && separator.is_empty() && !result.ends_with("\n")) separator = " ";
-			} else {
+			}
+			else {
 				append(String::utf8(text->get_rendered_text().c_str()));
 			}
 			return;
@@ -796,7 +801,7 @@ String HTMLElement::get_inner_text() const {
 		}
 		if (block && !result.is_empty() && (separator == " " || separator.length() < boundary.length())) separator = boundary;
 		if (display == display_table_cell && separator.is_empty() && !result.is_empty()) separator = "\t";
-	};
+		};
 	visit(visit, *root);
 	return result;
 }

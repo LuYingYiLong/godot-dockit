@@ -7,9 +7,10 @@ using namespace godot;
 void CSSStyleSheet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_css_text", "text"), &CSSStyleSheet::set_css_text);
 	ClassDB::bind_method(D_METHOD("get_css_text"), &CSSStyleSheet::get_css_text);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "css_text", PROPERTY_HINT_MULTILINE_TEXT), "set_css_text", "get_css_text");
+
 	ClassDB::bind_method(D_METHOD("set_source_path", "path"), &CSSStyleSheet::set_source_path);
 	ClassDB::bind_method(D_METHOD("get_source_path"), &CSSStyleSheet::get_source_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "css_text", PROPERTY_HINT_MULTILINE_TEXT), "set_css_text", "get_css_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "source_path", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_source_path", "get_source_path");
 }
 

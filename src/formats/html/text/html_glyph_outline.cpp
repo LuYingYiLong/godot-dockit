@@ -14,19 +14,23 @@ namespace dockit {
 			constexpr auto on_curve = TextServer::CONTOUR_CURVE_TAG_ON;
 			constexpr auto conic = TextServer::CONTOUR_CURVE_TAG_OFF_CONIC;
 			constexpr auto cubic = TextServer::CONTOUR_CURVE_TAG_OFF_CUBIC;
-			const auto point = [&](int64_t i) { return Point{p_points[i].x, p_points[i].y}; };
+			const auto point = [&](int64_t i) { return Point{ p_points[i].x, p_points[i].y }; };
 			const auto tag = [&](int64_t i) { return static_cast<int>(p_points[i].z); };
 
 			Point origin = point(p_first);
 			if (tag(p_first) == on_curve) {
 				++p_first;
-			} else if (tag(p_first) != conic) {
+			}
+			else if (tag(p_first) != conic) {
 				return false;
-			} else if (tag(p_last) == on_curve) {
+			}
+			else if (tag(p_last) == on_curve) {
 				origin = point(p_last--);
-			} else if (tag(p_last) == conic) {
+			}
+			else if (tag(p_last) == conic) {
 				origin = (origin + point(p_last)) * 0.5;
-			} else {
+			}
+			else {
 				return false;
 			}
 			if (!r_path.move_to(origin)) return false;
@@ -36,21 +40,24 @@ namespace dockit {
 				const Point current = point(i++);
 				if (kind == on_curve) {
 					segment.end = current;
-				} else if (kind == conic) {
+				}
+				else if (kind == conic) {
 					segment.kind = Segment::Kind::quadratic;
 					segment.control_1 = current;
 					if (i > p_last) segment.end = origin;
 					else if (tag(i) == on_curve) segment.end = point(i++);
 					else if (tag(i) == conic) segment.end = (current + point(i)) * 0.5;
 					else return false;
-				} else if (kind == cubic && i <= p_last && tag(i) == cubic) {
+				}
+				else if (kind == cubic && i <= p_last && tag(i) == cubic) {
 					segment.kind = Segment::Kind::cubic;
 					segment.control_1 = current;
 					segment.control_2 = point(i++);
 					if (i > p_last) segment.end = origin;
 					else if (tag(i) == on_curve) segment.end = point(i++);
 					else return false;
-				} else {
+				}
+				else {
 					return false;
 				}
 				if (!r_path.append(segment)) return false;

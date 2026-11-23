@@ -76,12 +76,12 @@ namespace dockit {
 	}
 
 	std::shared_ptr<litehtml::render_item> HTMLTextAreaNode::create_render_item(const std::shared_ptr<litehtml::render_item>& p_parent) {
-		// The DOM text supplies the default value. The editor paints the live value.
+		// DOM 文本提供默认值，编辑器显示实时值
 		struct RestoreChildren {
 			litehtml::elements_list& target;
 			litehtml::elements_list children;
 			~RestoreChildren() { target.swap(children); }
-		} restore{m_children, std::exchange(m_children, {})};
+		} restore{ m_children, std::exchange(m_children,{}) };
 		return html_tag::create_render_item(p_parent);
 	}
 

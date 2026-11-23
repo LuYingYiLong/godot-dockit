@@ -33,7 +33,7 @@ namespace dockit {
 			const auto from_native = [&](float p_offset) {
 				const float adjusted = p_layout.spacing ? p_layout.spacing->from_native(p_offset) : p_offset;
 				return std::clamp(adjusted - p_layout.trim_start(), 0.0f, p_layout.width());
-			};
+				};
 			float cursor = 0;
 			for (int64_t i = 0; i < glyphs.size();) {
 				const Dictionary info = glyphs[i];
@@ -70,7 +70,7 @@ namespace dockit {
 					const auto projected = to_context.xform(p_rect);
 					return Vector2(p_sign * (p_sign > 0 ? projected.position.x : projected.get_end().x),
 						p_sign * (p_sign > 0 ? projected.get_end().x : projected.position.x));
-				};
+					};
 				const position placement = box.get_placement();
 				const auto* text = dynamic_cast<const el_text*>(box.src_el().get());
 				if (!text) {
@@ -148,7 +148,7 @@ namespace dockit {
 			if (!p_source || p_from >= p_to) return;
 			r_mark.sources.push_back({ p_source, p_from, p_to });
 			elided_text_offsets.try_emplace(p_source, -1, -1);
-		};
+			};
 		const auto add_subtree = [&](auto&& self, Ellipsis& r_mark, const element& p_source) -> void {
 			if (const auto* text = dynamic_cast<const el_text*>(&p_source)) {
 				add_source(r_mark, text, 0, String::utf8(text->get_source_text().c_str()).length());
@@ -156,7 +156,7 @@ namespace dockit {
 			else if (p_source.css().get_display() != display_none) {
 				for (const auto& child : p_source.children()) self(self, r_mark, *child);
 			}
-		};
+			};
 
 		for (const auto& line : p_context.line_boxes()) {
 			Rect2 line_clip = viewport;
@@ -170,7 +170,7 @@ namespace dockit {
 			if (std::none_of(pieces.begin(), pieces.end(), [&](const LinePiece& p_piece) { return p_piece.end > end + 0.01; })) continue;
 			std::stable_sort(pieces.begin(), pieces.end(), [](const LinePiece& p_left, const LinePiece& p_right) {
 				return p_left.start < p_right.start;
-			});
+				});
 			const auto first = std::find_if(pieces.begin(), pieces.end(), [&](const LinePiece& p_piece) { return p_piece.end > start; });
 			// Preserve the first character or atomic inline even when nothing else fits.
 			if (first == pieces.end() || first->end >= end) continue;
@@ -182,7 +182,7 @@ namespace dockit {
 			const real_t baseline = context_box.position.y + line->bottom() - line->baseline() - p_context.get_scroll_top();
 			const real_t top = std::round(baseline - ellipsis.ascent) + ellipsis.ascent - ellipsis.line_ascent();
 			Ellipsis mark{ ellipsis, Vector2(rtl ? -cut - ellipsis.width() : cut, top),
-				{ RoundedRect(line_clip, {}), geometry->matrix, axes }, {}, rtl };
+				{ RoundedRect(line_clip,{}), geometry->matrix, axes },{}, rtl };
 			Rect2 retained = line_clip;
 			if (rtl) {
 				retained.position.x = -cut;
@@ -197,7 +197,7 @@ namespace dockit {
 					add_subtree(add_subtree, mark, *piece.renderer->src_el());
 				}
 				else {
-					paint.clip = TransformedClip{ RoundedRect(retained, {}), geometry->matrix, axes };
+					paint.clip = TransformedClip{ RoundedRect(retained,{}), geometry->matrix, axes };
 					add_source(mark, piece.source, piece.from, piece.to);
 				}
 			}

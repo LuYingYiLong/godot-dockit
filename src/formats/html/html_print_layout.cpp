@@ -76,7 +76,8 @@ namespace {
 			Ref<FontFile> font;
 			if (const auto* cached = r_font_cache.getptr(font_name)) {
 				font = *cached;
-			} else {
+			}
+			else {
 				font = dockit::load_system_font_face(font_name);
 				if (font.is_valid() && !font->get_data().is_empty()) r_font_cache.insert(font_name, font);
 				else r_unavailable_fonts.insert(font_name);
@@ -90,10 +91,10 @@ namespace {
 	}
 
 	struct PageStyle {
-		Vector2 size{DEFAULT_A4_WIDTH, DEFAULT_A4_HEIGHT};
-		Vector4 margins{37.79527559055118, 37.79527559055118, 37.79527559055118, 37.79527559055118};
+		Vector2 size{ DEFAULT_A4_WIDTH, DEFAULT_A4_HEIGHT };
+		Vector4 margins{ 37.79527559055118, 37.79527559055118, 37.79527559055118, 37.79527559055118 };
 		bool has_size = false;
-		std::array<bool, 4> has_margin_side{false, false, false, false};
+		std::array<bool, 4> has_margin_side{ false, false, false, false };
 		String name;
 	};
 
@@ -111,7 +112,8 @@ namespace {
 					values.push_back(current);
 					current = String();
 				}
-			} else {
+			}
+			else {
 				current += String::chr(character);
 			}
 		}
@@ -122,8 +124,8 @@ namespace {
 	double css_length(const String& p_value, double p_fallback) {
 		const String value = trim_lower(p_value);
 		if (value.is_empty()) return p_fallback;
-		const char* units[] = {"mm", "cm", "in", "pt", "pc", "px"};
-		const double scales[] = {96.0 / 25.4, 96.0 / 2.54, 96.0, 96.0 / 72.0, 16.0, 1.0};
+		const char* units[] = { "mm", "cm", "in", "pt", "pc", "px" };
+		const double scales[] = { 96.0 / 25.4, 96.0 / 2.54, 96.0, 96.0 / 72.0, 16.0, 1.0 };
 		for (int i = 0; i < 6; ++i) {
 			const String unit = String(units[i]);
 			if (value.ends_with(unit)) {
@@ -149,7 +151,8 @@ namespace {
 		}
 		if ((first == "landscape") || (values.size() >= 2 && trim_lower(values[1]) == "landscape")) {
 			if (p_style.size.x < p_style.size.y) std::swap(p_style.size.x, p_style.size.y);
-		} else if ((first == "portrait") || (values.size() >= 2 && trim_lower(values[1]) == "portrait")) {
+		}
+		else if ((first == "portrait") || (values.size() >= 2 && trim_lower(values[1]) == "portrait")) {
 			if (p_style.size.x > p_style.size.y) std::swap(p_style.size.x, p_style.size.y);
 		}
 		p_style.has_size = true;
@@ -232,7 +235,7 @@ namespace {
 			if (name == "break-before" || name == "page-break-before") before = is_forced_break_value(declarations[i].substr(colon + 1));
 			else if (name == "break-after" || name == "page-break-after") after = is_forced_break_value(declarations[i].substr(colon + 1));
 		}
-		return {before, after};
+		return { before, after };
 	}
 
 	void add_element_break_positions(const TypedArray<HTMLElement>& p_elements, bool p_before, bool p_after,
@@ -268,9 +271,11 @@ namespace {
 			const String lowered = selector.to_lower();
 			if (lowered.begins_with("@media")) {
 				if (!lowered.contains("screen") || lowered.contains("print")) collect_break_rule_block(body, p_layout, r_breaks);
-			} else if (lowered.begins_with("@supports")) {
+			}
+			else if (lowered.begins_with("@supports")) {
 				collect_break_rule_block(body, p_layout, r_breaks);
-			} else if (!selector.begins_with("@")) {
+			}
+			else if (!selector.begins_with("@")) {
 				const auto declarations = forced_break_declarations(body);
 				if (declarations.first.value_or(false) || declarations.second.value_or(false)) {
 					for (const String& item : selector.split(",", false)) {
@@ -327,7 +332,7 @@ namespace {
 		std::sort(r_breaks.begin(), r_breaks.end());
 		r_breaks.erase(std::unique(r_breaks.begin(), r_breaks.end(), [](double p_a, double p_b) {
 			return std::abs(p_a - p_b) < 0.5;
-		}), r_breaks.end());
+			}), r_breaks.end());
 	}
 
 	void apply_option_overrides(const Dictionary& p_options, PageStyle& r_style) {
@@ -351,9 +356,11 @@ namespace {
 			if (value.get_type() == Variant::FLOAT || value.get_type() == Variant::INT) {
 				const double margin = value;
 				r_style.margins = Vector4(margin, margin, margin, margin);
-			} else if (value.get_type() == Variant::VECTOR4) {
+			}
+			else if (value.get_type() == Variant::VECTOR4) {
 				r_style.margins = value;
-			} else if (value.get_type() == Variant::DICTIONARY) {
+			}
+			else if (value.get_type() == Variant::DICTIONARY) {
 				const Dictionary margins = value;
 				r_style.margins = Vector4(margins.get("left", r_style.margins.x), margins.get("top", r_style.margins.y),
 					margins.get("right", r_style.margins.z), margins.get("bottom", r_style.margins.w));
@@ -391,6 +398,7 @@ void HTMLPrintLayout::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_error_message"), &HTMLPrintLayout::get_error_message);
 	ClassDB::bind_method(D_METHOD("to_pdf"), &HTMLPrintLayout::to_pdf);
 	ClassDB::bind_method(D_METHOD("save_pdf", "path"), &HTMLPrintLayout::save_pdf);
+
 	ADD_SIGNAL(MethodInfo("ready"));
 }
 
@@ -477,7 +485,7 @@ void HTMLPrintLayout::prepare(const HTMLDocument& p_document, const Dictionary& 
 			p_style.size.x > p_style.margins.x + p_style.margins.z && p_style.size.y > p_style.margins.y + p_style.margins.w &&
 			p_style.margins.x >= 0 && p_style.margins.y >= 0 && p_style.margins.z >= 0 && p_style.margins.w >= 0 &&
 			p_style.size.x <= std::numeric_limits<int32_t>::max() && p_style.size.y <= std::numeric_limits<int32_t>::max();
-	};
+		};
 	if (!valid_page_style(page_style) || !valid_page_style(first_style) || !valid_page_style(left_style) || !valid_page_style(right_style)) {
 		layout_error = pending_error = ERR_INVALID_PARAMETER;
 		add_diagnostic_once("The selected page margins leave no printable area.");
@@ -491,9 +499,9 @@ void HTMLPrintLayout::prepare(const HTMLDocument& p_document, const Dictionary& 
 		std::abs(right_style.size.x - right_style.margins.x - right_style.margins.z - base_content_width) > 0.5) {
 		add_diagnostic_once("Page-specific content widths do not trigger separate text reflow; all pages share one layout width.");
 	}
-	this->first_style = {first_style.size, first_style.margins};
-	this->left_style = {left_style.size, left_style.margins};
-	this->right_style = {right_style.size, right_style.margins};
+	this->first_style = { first_style.size, first_style.margins };
+	this->left_style = { left_style.size, left_style.margins };
+	this->right_style = { right_style.size, right_style.margins };
 	layout_width = int64_t(std::floor(page_style.size.x - page_style.margins.x - page_style.margins.z));
 	if (layout_width <= 0 || layout->layout(Vector2i(int32_t(layout_width), int32_t(std::max<double>(1.0,
 		double(page_style.size.y - page_style.margins.y - page_style.margins.w))))) != OK) {
@@ -530,7 +538,7 @@ void HTMLPrintLayout::rebuild_pages() {
 			source_end = forced_page_breaks[next_break++];
 		}
 		if (source_end <= source_y) source_end = std::min(content_height, source_y + height);
-		pages.push_back({selected.size, Rect2(selected.margins.x, selected.margins.y, width, height), source_y, source_end});
+		pages.push_back({ selected.size, Rect2(selected.margins.x, selected.margins.y, width, height), source_y, source_end });
 		source_y = source_end;
 		if (source_y >= content_height && index >= 0) break;
 	}
@@ -684,7 +692,8 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 						if (font.is_valid()) {
 							if (const auto* cached = embedded_pdf_fonts.getptr(font_name)) {
 								text_font = *cached;
-							} else {
+							}
+							else {
 								text_font = writer->load_font(font->get_data(), PDFWriter::FONT_TRUETYPE, true);
 								if (text_font) embedded_pdf_fonts.insert(font_name, text_font);
 							}
@@ -693,7 +702,8 @@ PackedByteArray HTMLPrintLayout::to_pdf() {
 							add_diagnostic_once("Some Unicode text was omitted because no embeddable system font with matching glyphs was found.");
 							continue;
 						}
-					} else {
+					}
+					else {
 						if (!standard_font) standard_font = writer->load_standard_font("Helvetica");
 						text_font = standard_font;
 					}

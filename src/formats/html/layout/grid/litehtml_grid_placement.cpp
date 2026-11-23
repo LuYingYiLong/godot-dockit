@@ -1,6 +1,7 @@
 #include "litehtml_grid_placement.h"
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -25,6 +26,22 @@ namespace litehtml {
 			int span;
 		};
 
+		std::int64_t saturating_add(std::int64_t p_left, std::int64_t p_right) {
+			if (p_right > 0 && p_left > std::numeric_limits<std::int64_t>::max() - p_right)
+				return std::numeric_limits<std::int64_t>::max();
+			if (p_right < 0 && p_left < std::numeric_limits<std::int64_t>::min() - p_right)
+				return std::numeric_limits<std::int64_t>::min();
+			return p_left + p_right;
+		}
+
+		std::int64_t saturating_subtract(std::int64_t p_left, std::int64_t p_right) {
+			if (p_right > 0 && p_left < std::numeric_limits<std::int64_t>::min() + p_right)
+				return std::numeric_limits<std::int64_t>::min();
+			if (p_right < 0 && p_left > std::numeric_limits<std::int64_t>::max() + p_right)
+				return std::numeric_limits<std::int64_t>::max();
+			return p_left - p_right;
+		}
+
 		line_range clamp_range(std::int64_t start, std::int64_t end, line_range limits) {
 			return { static_cast<int>(std::clamp<std::int64_t>(start, limits.start, limits.end - 1)),
 				static_cast<int>(std::clamp<std::int64_t>(end, limits.start + 1, limits.end)) };
@@ -32,6 +49,7 @@ namespace litehtml {
 
 		std::int64_t find_named_line(const grid_line_indices& names, const std::string& name, std::int64_t count,
 			std::int64_t from, int explicit_end, bool forward) {
+			if (count <= 0) return from;
 			const auto found = names.find(name);
 			// Only implicit lines on the side we are searching toward match.
 			if (forward) {
@@ -42,7 +60,8 @@ namespace litehtml {
 					if (count <= matches) return first[count - 1];
 					count -= matches;
 				}
-				return std::max<std::int64_t>(from, explicit_end + 1) + (count - 1);
+				const auto first_implicit = saturating_add(static_cast<std::int64_t>(explicit_end), 1);
+				return saturating_add(std::max(from, first_implicit), saturating_subtract(count, 1));
 			}
 			if (found != names.end()) {
 				const auto& lines = found->second;
@@ -51,7 +70,7 @@ namespace litehtml {
 				if (count <= matches) return *(end - count);
 				count -= matches;
 			}
-			return std::min<std::int64_t>(from, -1) - (count - 1);
+			return saturating_subtract(std::min<std::int64_t>(from, -1), saturating_subtract(count, 1));
 		}
 
 		std::optional<std::int64_t> resolve_line(const grid_line& line, int explicit_end, const grid_line_indices& names, bool start) {
@@ -62,9 +81,10 @@ namespace litehtml {
 				if (found != names.end()) return found->second.front();
 			}
 			const auto value = line.value;
-			if (line.name.empty()) return value > 0 ? value - 1 : explicit_end + 1 + value;
+			if (line.name.empty()) return value > 0 ? value - 1 :
+				saturating_add(saturating_add(static_cast<std::int64_t>(explicit_end), 1), value);
 			return value > 0 ? find_named_line(names, line.name, value, 0, explicit_end, true) :
-				find_named_line(names, line.name, -value, explicit_end, explicit_end, false);
+				find_named_line(names, line.name, saturating_subtract(0, value), explicit_end, explicit_end, false);
 		}
 
 		axis_position resolve_axis(const grid_axis_placement& placement, int explicit_end, const grid_line_indices& names, line_range limits) {
@@ -73,22 +93,23 @@ namespace litehtml {
 			auto end = resolve_line(placement.end, explicit_end, names, false);
 			if (start && end) {
 				if (*start > *end) std::swap(start, end);
-				return { clamp_range(*start, std::max(*end, *start + 1), limits), 1 };
+				return { clamp_range(*start, std::max(*end, saturating_add(*start, 1)), limits), 1 };
 			}
 			const auto& span = placement.start.type == kind::span ? placement.start : placement.end;
 			const auto length = span.type == kind::span ? span.value : 1;
 			const bool named_span = span.type == kind::span && !span.name.empty();
 			if (start) {
-				const auto last = named_span ? find_named_line(names, span.name, length, *start + 1, explicit_end, true) :
-					*start + length;
+				const auto last = named_span ? find_named_line(names, span.name, length, saturating_add(*start, 1), explicit_end, true) :
+					saturating_add(*start, length);
 				return { clamp_range(*start, last, limits), 1 };
 			}
 			if (end) {
-				const auto first = named_span ? find_named_line(names, span.name, length, *end - 1, explicit_end, false) :
-					*end - length;
+				const auto first = named_span ? find_named_line(names, span.name, length, saturating_subtract(*end, 1), explicit_end, false) :
+					saturating_subtract(*end, length);
 				return { clamp_range(first, *end, limits), 1 };
 			}
-			const auto auto_span = named_span ? 1 : std::min<std::int64_t>(length, limits.end - limits.start);
+			const auto auto_span = named_span ? 1 : std::min<std::int64_t>(length,
+				static_cast<std::int64_t>(limits.end) - limits.start);
 			return { std::nullopt, static_cast<int>(auto_span) };
 		}
 
@@ -149,21 +170,21 @@ namespace litehtml {
 		const bool fixed_minor = flow.by_column ? subgrid_rows : subgrid_columns;
 		const auto limits = [](bool fixed, std::size_t tracks) {
 			return fixed ? line_range{ 0, static_cast<int>(std::max<std::size_t>(1, tracks)) } : line_range{ first_line, last_line };
-		};
+			};
 		const auto major_limits = limits(fixed_major, explicit_major);
 		const auto minor_limits = limits(fixed_minor, explicit_minor);
 		const auto& major_names = flow.by_column ? column_names : row_names;
 		const auto& minor_names = flow.by_column ? row_names : column_names;
 		const auto record = [&](grid_track_range major, grid_track_range minor) {
 			result.items.push_back(flow.by_column ? grid_item_placement{ minor, major } : grid_item_placement{ major, minor });
-		};
+			};
 		const auto set_extents = [&](std::size_t major_extent, std::size_t minor_extent,
 			std::size_t major_offset, std::size_t minor_offset) {
-			result.row_count = flow.by_column ? minor_extent : major_extent;
-			result.column_count = flow.by_column ? major_extent : minor_extent;
-			result.row_offset = flow.by_column ? minor_offset : major_offset;
-			result.column_offset = flow.by_column ? major_offset : minor_offset;
-		};
+				result.row_count = flow.by_column ? minor_extent : major_extent;
+				result.column_count = flow.by_column ? major_extent : minor_extent;
+				result.row_offset = flow.by_column ? minor_offset : major_offset;
+				result.column_offset = flow.by_column ? major_offset : minor_offset;
+			};
 
 		struct pending_item {
 			axis_position major;
@@ -184,7 +205,7 @@ namespace litehtml {
 			occupied.add(box);
 			major_end = std::max(major_end, box.major.end);
 			minor_end = std::max(minor_end, box.minor.end);
-		};
+			};
 		for (std::size_t index = 0; index < items.size(); ++index) {
 			const auto& item = items[index];
 			const auto major = resolve_axis(flow.by_column ? item.columns : item.rows, static_cast<int>(explicit_major), major_names, major_limits);
@@ -215,7 +236,7 @@ namespace litehtml {
 			const auto major = *item.major.range;
 			int minor = flow.dense ? minor_start : locked_cursors.try_emplace(major.start, minor_start).first->second;
 			for (;;) {
-				const auto range = clamp_range(minor, minor + item.minor.span, minor_limits);
+				const auto range = clamp_range(minor, saturating_add(minor, item.minor.span), minor_limits);
 				const int next = occupied.next_start({ major, range }, &area::minor);
 				if (next == range.start || minor >= minor_limits.end) {
 					commit(index, { major, range });
@@ -245,7 +266,7 @@ namespace litehtml {
 				if (item.minor.range->start < minor) ++major;
 				minor = item.minor.range->start;
 				for (;;) {
-					const area box{ clamp_range(major, major + item.major.span, major_limits), *item.minor.range };
+					const area box{ clamp_range(major, saturating_add(major, item.major.span), major_limits), *item.minor.range };
 					const int next = occupied.next_start(box, &area::major);
 					if (next == box.major.start || major >= major_limits.end) {
 						commit(index, box);
@@ -262,7 +283,8 @@ namespace litehtml {
 					minor = minor_start;
 					++major;
 				}
-				const area box{ clamp_range(major, major + item.major.span, major_limits), { minor, minor + span } };
+				const area box{ clamp_range(major, saturating_add(major, item.major.span), major_limits),
+					{ minor, static_cast<int>(saturating_add(minor, span)) } };
 				const int next = occupied.next_start(box, &area::minor);
 				if (next == minor || major >= major_limits.end) {
 					commit(index, box);
@@ -272,7 +294,10 @@ namespace litehtml {
 			}
 		}
 
-		set_extents(major_end - major_start, minor_end - minor_start, -major_start, -minor_start);
+		set_extents(static_cast<std::size_t>(static_cast<std::int64_t>(major_end) - major_start),
+			static_cast<std::size_t>(static_cast<std::int64_t>(minor_end) - minor_start),
+			static_cast<std::size_t>(-static_cast<std::int64_t>(major_start)),
+			static_cast<std::size_t>(-static_cast<std::int64_t>(minor_start)));
 		for (const auto& box : placed) {
 			record(normalize_range(box.major, major_start), normalize_range(box.minor, minor_start));
 		}

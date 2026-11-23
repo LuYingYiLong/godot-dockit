@@ -28,7 +28,7 @@ namespace dockit {
 				previous = point;
 				prior_depth = depth;
 			}
-			return {std::move(behind), std::move(in_front)};
+			return { std::move(behind), std::move(in_front) };
 		}
 	}
 
@@ -39,17 +39,17 @@ namespace dockit {
 			const Rect2& area = p_layers[i].bounds;
 			if (!area.has_area()) continue;
 			const Vector2 end = area.get_end();
-			input.push_back({i, {area.position, Vector2(end.x, area.position.y), end, Vector2(area.position.x, end.y)}});
+			input.push_back({ i,{ area.position, Vector2(end.x, area.position.y), end, Vector2(area.position.x, end.y) } });
 		}
 		if (input.empty()) return input;
 		const auto& first = p_layers[input.front().layer].depth;
 		if (std::all_of(input.begin(), input.end(), [&](const Slice& p_slice) {
-				const auto& depth = p_layers[p_slice.layer].depth;
-				return depth.x == first.x && depth.y == first.y;
+			const auto& depth = p_layers[p_slice.layer].depth;
+			return depth.x == first.x && depth.y == first.y;
 			})) {
 			std::stable_sort(input.begin(), input.end(), [&](const Slice& a, const Slice& b) {
 				return p_layers[a.layer].depth.z < p_layers[b.layer].depth.z;
-			});
+				});
 			return input;
 		}
 
@@ -59,7 +59,7 @@ namespace dockit {
 			bool emit = false;
 		};
 		std::vector<Branch> stack;
-		stack.push_back({std::move(input)});
+		stack.push_back({ std::move(input) });
 		std::vector<Slice> result;
 		while (!stack.empty()) {
 			auto branch = std::move(stack.back());
@@ -82,14 +82,17 @@ namespace dockit {
 				}
 				if (low >= -DEPTH_EPSILON && high <= DEPTH_EPSILON) {
 					plane.slices.push_back(std::move(slice));
-				} else if (high <= 0) {
+				}
+				else if (high <= 0) {
 					behind.slices.push_back(std::move(slice));
-				} else if (low >= 0) {
+				}
+				else if (low >= 0) {
 					in_front.slices.push_back(std::move(slice));
-				} else {
+				}
+				else {
 					auto [far_half, near_half] = split_by_depth(slice.polygon, difference);
-					behind.slices.push_back({slice.layer, std::move(far_half)});
-					in_front.slices.push_back({slice.layer, std::move(near_half)});
+					behind.slices.push_back({ slice.layer, std::move(far_half) });
+					in_front.slices.push_back({ slice.layer, std::move(near_half) });
 				}
 			}
 			stack.push_back(std::move(in_front));

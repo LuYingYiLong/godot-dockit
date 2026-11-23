@@ -53,10 +53,10 @@ namespace {
 
 	bool cjk_letter(char32_t p_character) {
 		static constexpr std::pair<char32_t, char32_t> ranges[] = {
-			{ 0x1100, 0x11ff }, { 0x3041, 0x3096 }, { 0x30a1, 0x30fa }, { 0x3105, 0x312f },
-			{ 0x3131, 0x318e }, { 0x31a0, 0x31bf }, { 0x31f0, 0x31ff }, { 0x3400, 0x4dbf },
-			{ 0x4e00, 0x9fff }, { 0xa960, 0xa97c }, { 0xac00, 0xd7fb }, { 0xf900, 0xfaff },
-			{ 0xff66, 0xff9d }, { 0x1aff0, 0x1b16f }, { 0x20000, 0x323af },
+			{ 0x1100, 0x11ff },{ 0x3041, 0x3096 },{ 0x30a1, 0x30fa },{ 0x3105, 0x312f },
+			{ 0x3131, 0x318e },{ 0x31a0, 0x31bf },{ 0x31f0, 0x31ff },{ 0x3400, 0x4dbf },
+			{ 0x4e00, 0x9fff },{ 0xa960, 0xa97c },{ 0xac00, 0xd7fb },{ 0xf900, 0xfaff },
+			{ 0xff66, 0xff9d },{ 0x1aff0, 0x1b16f },{ 0x20000, 0x323af },
 		};
 		const auto* range = std::lower_bound(std::begin(ranges), std::end(ranges), p_character,
 			[](const auto& p_range, char32_t p_value) { return p_range.second < p_value; });
@@ -209,7 +209,7 @@ bool litehtml::allows_text_boundary_wrap(const element& p_left, const element& p
 	const auto right_group = break_all || after >= 0x80 ? unicode_line_group(after) : LineGroup::other;
 	const auto is_word_unit = [](LineGroup group) {
 		return group == LineGroup::word_unit || group == LineGroup::southeast_asian;
-	};
+		};
 	if (break_all && (left_group == LineGroup::forbid_after || left_group == LineGroup::quotation ||
 		(right_group == LineGroup::quotation && !p_left.is_space()) ||
 		left_group == LineGroup::glue || right_group == LineGroup::glue || before == 0x200d ||
@@ -266,7 +266,7 @@ void dockit::LiteHTMLContainer::split_text(const char* p_text, const std::functi
 		if (p_start == p_end) return;
 		const CharString utf8 = text.substr(p_start, p_end - p_start).utf8();
 		p_callback(utf8.get_data());
-	};
+		};
 	int64_t start = 0;
 	int64_t next_break = 0;
 	for (int64_t index = 0; index < text.length();) {

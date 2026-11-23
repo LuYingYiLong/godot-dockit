@@ -25,7 +25,8 @@ namespace dockit {
 			rid(server->shaped_text_substr(source->get_rid(), p_start, p_end - p_start)), start(p_start),
 			ascent(rid.is_valid() ? server->shaped_text_get_ascent(rid) : 0),
 			descent(rid.is_valid() ? server->shaped_text_get_descent(rid) : 0),
-			width(rid.is_valid() ? server->shaped_text_get_width(rid) : 0) {}
+			width(rid.is_valid() ? server->shaped_text_get_width(rid) : 0) {
+		}
 
 		~HTMLTextSlice() {
 			if (rid.is_valid()) server->free_rid(rid);
@@ -33,7 +34,8 @@ namespace dockit {
 	};
 
 	HTMLTextLayout::HTMLTextLayout(const Ref<TextLine>& p_line, float p_ascent, int64_t p_source_prefix, int64_t p_source_suffix) :
-		line(p_line), source_prefix(p_source_prefix), source_suffix(p_source_suffix), ascent(p_ascent) {}
+		line(p_line), source_prefix(p_source_prefix), source_suffix(p_source_suffix), ascent(p_ascent) {
+	}
 
 	RID HTMLTextLayout::get_rid() const {
 		return slice ? slice->rid : line->get_rid();
@@ -75,7 +77,7 @@ namespace dockit {
 
 	void HTMLTextLayout::set_run_metrics(std::vector<HTMLTextRunMetrics> p_runs) {
 		if (p_runs.empty()) return;
-		layout_metrics = std::make_shared<const LayoutMetrics>(LayoutMetrics{ascent, descent, std::move(p_runs)});
+		layout_metrics = std::make_shared<const LayoutMetrics>(LayoutMetrics{ ascent, descent, std::move(p_runs) });
 		for (const auto& run : layout_metrics->runs) {
 			ascent = std::max(ascent, run.ascent);
 			descent = std::max(descent, run.descent);

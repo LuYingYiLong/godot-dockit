@@ -27,7 +27,7 @@ namespace {
 		return minutes + String(":") + String::num_int64(seconds % 60).pad_zeros(2);
 	}
 
-	constexpr std::array parts{HTMLAudioPart::play, HTMLAudioPart::position, HTMLAudioPart::mute, HTMLAudioPart::volume};
+	constexpr std::array parts{ HTMLAudioPart::play, HTMLAudioPart::position, HTMLAudioPart::mute, HTMLAudioPart::volume };
 	constexpr float CONTROL_WIDTH = 30.0f;
 
 	Rect2 row_rect(const Rect2& p_box, float p_x, float p_width) {
@@ -56,14 +56,14 @@ Rect2 HTMLAudioNode::part_rect(HTMLAudioPart p_part) const {
 	const float position_end = end - mute_width - volume_width;
 
 	switch (p_part) {
-		case HTMLAudioPart::play: return row_rect(content_box, start, std::min(CONTROL_WIDTH, end - start));
-		case HTMLAudioPart::position:
-			return position_end > position_start + 18.0f ? row_rect(content_box, position_start, position_end - position_start) : Rect2();
-		case HTMLAudioPart::mute:
-			return show_mute ? row_rect(content_box, position_end, mute_width) : Rect2();
-		case HTMLAudioPart::volume:
-			return show_volume ? row_rect(content_box, end - volume_width, volume_width) : Rect2();
-		case HTMLAudioPart::none: return {};
+	case HTMLAudioPart::play: return row_rect(content_box, start, std::min(CONTROL_WIDTH, end - start));
+	case HTMLAudioPart::position:
+		return position_end > position_start + 18.0f ? row_rect(content_box, position_start, position_end - position_start) : Rect2();
+	case HTMLAudioPart::mute:
+		return show_mute ? row_rect(content_box, position_end, mute_width) : Rect2();
+	case HTMLAudioPart::volume:
+		return show_volume ? row_rect(content_box, end - volume_width, volume_width) : Rect2();
+	case HTMLAudioPart::none: return {};
 	}
 	return {};
 }
@@ -88,7 +88,7 @@ std::shared_ptr<render_item> HTMLAudioNode::create_render_item(const std::shared
 }
 
 void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const position* p_clip,
-		const std::shared_ptr<render_item>& p_item) {
+	const std::shared_ptr<render_item>& p_item) {
 	html_tag::draw(p_hdc, p_x, p_y, p_clip, p_item);
 	const auto pos = p_item->pos();
 	content_box = Rect2(pos.x + p_x, pos.y + p_y, pos.width, pos.height);
@@ -99,7 +99,7 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 	const Color track_color(foreground.r, foreground.g, foreground.b, 0.26f);
 	const auto draw = [&](const Rect2& p_box, const Color& p_color, float p_radius = 0.0f) {
 		if (p_box.has_area()) container->draw_input_chrome(content_box, p_box, p_color, p_radius);
-	};
+		};
 	const auto draw_track = [&](const Rect2& p_part, double p_value, bool p_enabled) {
 		if (!p_part.has_area()) return;
 		const Rect2 track(p_part.position.x + 5.0f, p_part.get_center().y - 2.0f, p_part.size.x - 10.0f, 4.0f);
@@ -109,7 +109,7 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 		const float progress = std::clamp(p_value, 0.0, 1.0) * track.size.x;
 		draw(Rect2(track.position, Vector2(progress, 4.0f)), foreground, 2.0f);
 		draw(Rect2(track.position.x + progress - 3.0f, track.position.y - 1.0f, 6.0f, 6.0f), foreground, 3.0f);
-	};
+		};
 	if (has_pseudo_class(_id("focus-visible"))) {
 		const auto focused = part_rect(focus_part);
 		if (focused.has_area()) {
@@ -120,10 +120,10 @@ void HTMLAudioNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 	const auto play = part_rect(HTMLAudioPart::play);
 	const auto draw_icon = [&](HTMLControlIcon p_icon, const Rect2& p_part) {
 		if (!p_part.has_area()) return;
-		const float extent = std::min({20.0f, p_part.size.x, p_part.size.y});
+		const float extent = std::min({ 20.0f, p_part.size.x, p_part.size.y });
 		const Vector2 size(extent, extent);
 		container->draw_input_icon(p_icon, content_box, Rect2(p_part.get_center() - size * 0.5f, size), foreground);
-	};
+		};
 	draw_icon(paused ? HTMLControlIcon::play : HTMLControlIcon::pause, play);
 	if (content_box.size.x >= 210.0f) {
 		const String time_text = format_time(time) + String(" / ") + format_time(duration);
@@ -160,6 +160,7 @@ void HTMLAudioElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_paused"), &HTMLAudioElement::is_paused);
 	ClassDB::bind_method(D_METHOD("play"), &HTMLAudioElement::play);
 	ClassDB::bind_method(D_METHOD("pause"), &HTMLAudioElement::pause);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "src"), "set_src", "get_src");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "controls"), "set_controls", "has_controls");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autoplay"), "set_autoplay", "is_autoplay_enabled");

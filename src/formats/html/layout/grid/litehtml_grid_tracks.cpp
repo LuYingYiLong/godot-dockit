@@ -32,9 +32,9 @@ namespace litehtml {
 			const auto track_breadth = [basis](const grid_track& track) {
 				const auto resolve = [basis](const grid_breadth& breadth) {
 					return breadth.kind == grid_breadth_kind::length ? static_cast<double>(breadth.length.calc_percent(basis)) : 0.0;
-				};
+					};
 				return std::max({ 0.0, resolve(track.minimum), resolve(track.maximum) });
-			};
+				};
 			const double gap_size = std::max<pixel_t>(0, gap.calc_percent(basis));
 			// Charge one gutter per track and then remove the trailing gutter.
 			double fixed_extent = -gap_size;
@@ -127,15 +127,15 @@ namespace litehtml {
 
 		bool affects_track(grid_breadth_kind kind, span_sizing step) {
 			switch (step) {
-				case span_sizing::intrinsic_base:
-				case span_sizing::minimum_limit:
-					return is_intrinsic(kind);
-				case span_sizing::min_content_base:
-					return is_one_of(kind, grid_breadth_kind::min_content, grid_breadth_kind::max_content);
-				case span_sizing::max_content_base:
-					return kind == grid_breadth_kind::max_content;
-				case span_sizing::preferred_limit:
-					return is_intrinsic(kind) && kind != grid_breadth_kind::min_content;
+			case span_sizing::intrinsic_base:
+			case span_sizing::minimum_limit:
+				return is_intrinsic(kind);
+			case span_sizing::min_content_base:
+				return is_one_of(kind, grid_breadth_kind::min_content, grid_breadth_kind::max_content);
+			case span_sizing::max_content_base:
+				return kind == grid_breadth_kind::max_content;
+			case span_sizing::preferred_limit:
+				return is_intrinsic(kind) && kind != grid_breadth_kind::min_content;
 			}
 			return false;
 		}
@@ -171,7 +171,8 @@ namespace litehtml {
 				const double capacity = std::max(0.0, limit - current);
 				if (applies) {
 					eligible.push_back({ i, capacity, track.factor });
-				} else if (!flexible && capacity > 0 &&
+				}
+				else if (!flexible && capacity > 0 &&
 					!(step == span_sizing::preferred_limit && kind == grid_breadth_kind::min_content)) {
 					others.push_back({ i, capacity, 0 });
 				}
@@ -183,7 +184,8 @@ namespace litehtml {
 					[](double sum, const auto& entry) { return sum + entry.factor; });
 				const double equal = space * std::max(0.0, 1.0 - factors) / eligible.size();
 				for (auto& entry : eligible) entry.increase = space * entry.factor / std::max(1.0, factors) + equal;
-			} else {
+			}
+			else {
 				distribute_within_limits(eligible, space);
 				distribute_within_limits(others, space);
 				for (const auto& entry : others)
@@ -222,14 +224,14 @@ namespace litehtml {
 			for (auto group = spans.begin(); group != spans.end();) {
 				const auto group_end = flexible ? spans.end() : std::find_if(group + 1, spans.end(), [&](const auto* item) {
 					return span_of(item->range) != span_of((*group)->range);
-				});
+					});
 				const auto plan_increases = [&](span_sizing step) {
 					std::fill(planned.begin(), planned.end(), 0);
-					for (auto it = group; it != group_end; ++it) {
+					for (std::vector<const grid_track_contribution*>::const_iterator it = group; it != group_end; ++it) {
 						const auto& item = **it;
 						span_increase(sizes, item, gap * gutters.count_inside(item.range), flexible, step, planned, eligible, others);
 					}
-				};
+					};
 				for (const auto step : { span_sizing::intrinsic_base, span_sizing::min_content_base, span_sizing::max_content_base }) {
 					plan_increases(step);
 					for (std::size_t i = 0; i < sizes.size(); ++i) {
@@ -245,7 +247,7 @@ namespace litehtml {
 						sizes[i].limit += planned[i];
 					}
 					// The unbounded tracks can absorb both limit increases for this span length.
-					for (auto it = group; it != group_end; ++it)
+					for (std::vector<const grid_track_contribution*>::const_iterator it = group; it != group_end; ++it)
 						for (auto i = (*it)->range.start; i < (*it)->range.end; ++i) sizes[i].unbounded = false;
 				}
 				group = group_end;
@@ -277,19 +279,19 @@ namespace litehtml {
 			const auto row_end = std::min(bounds.rows.end, rows.explicit_count);
 			const auto column_end = std::min(bounds.columns.end, columns.explicit_count);
 			if (bounds.rows.start >= row_end || bounds.columns.start >= column_end) continue;
-			rows.areas.insert_or_assign(name, grid_track_range{bounds.rows.start, row_end});
-			columns.areas.insert_or_assign(name, grid_track_range{bounds.columns.start, column_end});
+			rows.areas.insert_or_assign(name, grid_track_range{ bounds.rows.start, row_end });
+			columns.areas.insert_or_assign(name, grid_track_range{ bounds.columns.start, column_end });
 		}
 	}
 
 	grid_line_indices grid_placement_names(const expanded_grid_tracks& axis) {
-		auto names = axis.names;
+		grid_line_indices names = axis.names;
 		const auto add_name = [](grid_line_indices& names, const std::string& name, std::size_t index) {
 			auto& lines = names[name];
 			const auto line = static_cast<int>(index);
 			const auto at = std::lower_bound(lines.begin(), lines.end(), line);
 			if (at == lines.end() || *at != line) lines.insert(at, line);
-		};
+			};
 		for (const auto& [name, bounds] : axis.areas) {
 			add_name(names, name + "-start", bounds.start);
 			add_name(names, name + "-end", bounds.end);
@@ -308,7 +310,7 @@ namespace litehtml {
 			for (auto i = sized_end; i < count; ++i)
 				axis.tracks[i] = pattern[(i - sized_end) % pattern.size()];
 		}
-		grid_track_gutters gutters{ count, {} };
+		grid_track_gutters gutters{ count,{} };
 		if (!axis.fit_range) return gutters;
 
 		const auto start = axis.fit_range->start + offset;
@@ -414,7 +416,8 @@ namespace litehtml {
 				single.minimum = std::max(single.minimum, item.minimum);
 				single.min_content = std::max(single.min_content, item.min_content);
 				single.preferred = std::max(single.preferred, item.preferred);
-			} else {
+			}
+			else {
 				bool crosses_flexible = false;
 				for (auto i = item.range.start; i < item.range.end; ++i)
 					if (tracks[i].maximum.kind == grid_breadth_kind::fraction) {
@@ -435,10 +438,10 @@ namespace litehtml {
 			size.minimum = min_kind;
 			size.maximum = max_kind;
 			switch (min_kind) {
-				case grid_breadth_kind::length: size.base = track.minimum.length.calc_percent(basis); break;
-				case grid_breadth_kind::min_content: size.base = content.min_content; break;
-				case grid_breadth_kind::max_content: size.base = content.preferred; break;
-				default: size.base = content.minimum; break;
+			case grid_breadth_kind::length: size.base = track.minimum.length.calc_percent(basis); break;
+			case grid_breadth_kind::min_content: size.base = content.min_content; break;
+			case grid_breadth_kind::max_content: size.base = content.preferred; break;
+			default: size.base = content.minimum; break;
 			}
 			if (min_kind == grid_breadth_kind::automatic && max_kind == grid_breadth_kind::length)
 				size.base = std::min(size.base, fixed_max);
@@ -457,7 +460,7 @@ namespace litehtml {
 		resolve_spans(sizes, flexible_spans, gutters, gap, true);
 		const double minimum = std::accumulate(sizes.begin(), sizes.end(), gaps, [](double sum, const auto& track) {
 			return sum + track.base;
-		});
+			});
 		result.minimum = static_cast<pixel_t>(minimum);
 		if (available) {
 			double free_space = std::max(0.0, *available - minimum);
@@ -466,7 +469,7 @@ namespace litehtml {
 			if (stretch && free_space > 0) {
 				const auto automatic = std::count_if(sizes.begin(), sizes.end(), [](const auto& track) {
 					return track.maximum == grid_breadth_kind::automatic;
-				});
+					});
 				if (automatic)
 					for (auto& track : sizes)
 						if (track.maximum == grid_breadth_kind::automatic) track.base += free_space / static_cast<double>(automatic);

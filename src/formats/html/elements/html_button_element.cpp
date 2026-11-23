@@ -15,6 +15,7 @@ void HTMLButtonElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_name", "name"), &HTMLButtonElement::set_name);
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLButtonElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLButtonElement::set_value);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");

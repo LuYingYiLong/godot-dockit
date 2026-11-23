@@ -15,14 +15,16 @@ using dockit::HTMLTextAreaNode;
 
 void HTMLTextAreaElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLTextAreaElement::get_form);
-	ClassDB::bind_method(D_METHOD("get_value"), &HTMLTextAreaElement::get_value);
-	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLTextAreaElement::set_value);
-	ClassDB::bind_method(D_METHOD("get_default_value"), &HTMLTextAreaElement::get_default_value);
-	ClassDB::bind_method(D_METHOD("set_default_value", "value"), &HTMLTextAreaElement::set_default_value);
 	ClassDB::bind_method(D_METHOD("get_selection_start"), &HTMLTextAreaElement::get_selection_start);
 	ClassDB::bind_method(D_METHOD("get_selection_end"), &HTMLTextAreaElement::get_selection_end);
 	ClassDB::bind_method(D_METHOD("set_selection_range", "start", "end"), &HTMLTextAreaElement::set_selection_range);
+	
+	ClassDB::bind_method(D_METHOD("get_value"), &HTMLTextAreaElement::get_value);
+	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLTextAreaElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	
+	ClassDB::bind_method(D_METHOD("get_default_value"), &HTMLTextAreaElement::get_default_value);
+	ClassDB::bind_method(D_METHOD("set_default_value", "value"), &HTMLTextAreaElement::set_default_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "default_value"), "set_default_value", "get_default_value");
 }
 

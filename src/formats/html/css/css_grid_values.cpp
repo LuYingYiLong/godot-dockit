@@ -12,7 +12,7 @@ namespace litehtml {
 	namespace {
 		bool read_integer(const css_token& token, std::int64_t& integer) {
 			if (token.type != NUMBER || token.n.number_type != css_number_integer) return false;
-			// Keep the sign and exact digits independently of the tokenizer's float.
+			// 保持符号和精确数字，与分词器的浮点数无关
 			const auto& repr = token.repr;
 			if (repr.empty()) return false;
 			const bool negative = repr.front() == '-';
@@ -171,7 +171,8 @@ namespace litehtml {
 				for (auto it = args.begin() + 2; it != args.end(); ++it) {
 					if (it->type == SQUARE_BLOCK) {
 						if (pattern_line_names || !append_grid_line_names(*it, pattern)) return false;
-					} else {
+					}
+					else {
 						grid_track track;
 						if (pattern.tracks.size() == max_length || !parse_track(*it, track)) return false;
 						pattern.tracks.push_back(std::move(track));
@@ -184,7 +185,8 @@ namespace litehtml {
 				if (automatic) {
 					if (parsed.repeat || !std::all_of(pattern.tracks.begin(), pattern.tracks.end(), has_fixed_breadth)) return false;
 					parsed.repeat = grid_auto_repeat{ std::move(pattern), keyword == "auto-fit" };
-				} else {
+				}
+				else {
 					for (std::int64_t i = 0; i < count; ++i)
 						append_grid_segment(segment, pattern);
 				}
@@ -199,7 +201,8 @@ namespace litehtml {
 		if (parsed.repeat) {
 			for (const auto* segment : { &parsed.prefix, &parsed.suffix })
 				if (!std::all_of(segment->tracks.begin(), segment->tracks.end(), has_fixed_breadth)) return false;
-		} else if (parsed.prefix.tracks.empty()) return false;
+		}
+		else if (parsed.prefix.tracks.empty()) return false;
 		tracks = std::move(parsed);
 		return true;
 	}
@@ -215,7 +218,7 @@ namespace litehtml {
 			}
 			lists.push_back(std::move(names));
 			return true;
-		};
+			};
 		grid_subgrid_lines result;
 		std::size_t remaining = grid_track_limit + 1;
 		for (auto it = tokens.begin() + 1; it != tokens.end(); ++it) {
@@ -234,7 +237,8 @@ namespace litehtml {
 			if (args.front().ident() == "auto-fill") {
 				if (!result.automatic.empty()) return std::nullopt;
 				result.automatic = std::move(pattern);
-			} else {
+			}
+			else {
 				std::int64_t count = 0;
 				if (!read_integer(args.front(), count) || count <= 0 ||
 					static_cast<std::uint64_t>(count) > remaining / pattern.size()) return std::nullopt;
@@ -259,7 +263,7 @@ namespace litehtml {
 					if (at == indices.end() || *at != index) indices.insert(at, index);
 				}
 			}
-		};
+			};
 		append(value.prefix);
 		const auto fixed = value.prefix.size() + value.suffix.size();
 		if (!value.automatic.empty() && capacity > fixed) {
@@ -302,9 +306,11 @@ namespace litehtml {
 			if (!has_direction && (keyword == "row" || keyword == "column")) {
 				parsed.by_column = keyword == "column";
 				has_direction = true;
-			} else if (!parsed.dense && keyword == "dense") {
+			}
+			else if (!parsed.dense && keyword == "dense") {
 				parsed.dense = true;
-			} else return false;
+			}
+			else return false;
 		}
 		flow = parsed;
 		return true;
@@ -334,15 +340,17 @@ namespace litehtml {
 				if (column == grid_track_limit) return false;
 				if (ch == '.') {
 					while (index < row.size() && row[index] == '.') ++index;
-				} else if (is_grid_cell_name_byte(ch)) {
+				}
+				else if (is_grid_cell_name_byte(ch)) {
 					while (index < row.size() && is_grid_cell_name_byte(row[index])) ++index;
-					const grid_item_placement cell{ { parsed.rows, parsed.rows + 1 }, { column, column + 1 } };
+					const grid_item_placement cell{ { parsed.rows, parsed.rows + 1 },{ column, column + 1 } };
 					auto& area = cells.try_emplace(row.substr(first, index - first), area_cells{ cell }).first->second;
 					area.bounds.rows.end = cell.rows.end;
 					area.bounds.columns.start = std::min(area.bounds.columns.start, column);
 					area.bounds.columns.end = std::max(area.bounds.columns.end, column + 1);
 					++area.count;
-				} else return false;
+				}
+				else return false;
 				++column;
 			}
 			if (column == 0 || (parsed.rows && parsed.columns != column)) return false;
@@ -403,7 +411,7 @@ namespace litehtml {
 			definition = {};
 			return true;
 		}
-		// Slash tokens inside functions (such as calc()) are already grouped.
+		// 函数内部的斜杠标记（比如 calc()）已经被分组了
 		const auto slash = std::find_if(tokens.begin(), tokens.end(), [](const auto& token) { return token.ch == '/'; });
 		const bool has_columns = slash != tokens.end();
 		const css_token_vector rows(tokens.begin(), slash);
@@ -418,13 +426,16 @@ namespace litehtml {
 			if (auto_rows) {
 				if (!parse_auto_flow_axis(rows, parsed.flow, parsed.auto_rows) || !parse_grid_tracks(columns, parsed.columns))
 					return false;
-			} else if (!parse_grid_tracks(rows, parsed.rows) || !parse_auto_flow_axis(columns, parsed.flow, parsed.auto_columns)) {
+			}
+			else if (!parse_grid_tracks(rows, parsed.rows) || !parse_auto_flow_axis(columns, parsed.flow, parsed.auto_columns)) {
 				return false;
 			}
-		} else if (std::any_of(rows.begin(), rows.end(), [](const auto& token) { return token.type == STRING; })) {
+		}
+		else if (std::any_of(rows.begin(), rows.end(), [](const auto& token) { return token.type == STRING; })) {
 			if (!parse_template_with_areas(rows, parsed) || (has_columns && !parse_track_template(columns, parsed.columns, false)))
 				return false;
-		} else if (!has_columns || !parse_grid_tracks(rows, parsed.rows) || !parse_grid_tracks(columns, parsed.columns)) {
+		}
+		else if (!has_columns || !parse_grid_tracks(rows, parsed.rows) || !parse_grid_tracks(columns, parsed.columns)) {
 			return false;
 		}
 		definition = std::move(parsed);

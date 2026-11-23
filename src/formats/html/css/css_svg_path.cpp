@@ -57,7 +57,8 @@ namespace dockit::css {
 					if (p_command == 'A' && (i == 3 || i == 4)) {
 						if ((i == 3 && !separated) || (peek() != '0' && peek() != '1')) return false;
 						r_values[i] = source[offset++] - '0';
-					} else {
+					}
+					else {
 						if (p_command == 'A' && i < 2 && (peek() == '-' || peek() == '+')) return false;
 						if (!read_number(r_values[i])) return false;
 					}
@@ -68,42 +69,42 @@ namespace dockit::css {
 			bool append_segment(char p_command, bool p_relative, const std::array<double, 7>& p_values) {
 				const Point current = path.position();
 				const Point origin = p_relative ? current : Point{};
-				const auto point = [&](int index) { return origin + Point{p_values[index], p_values[index + 1]}; };
+				const auto point = [&](int index) { return origin + Point{ p_values[index], p_values[index + 1] }; };
 				Segment segment;
 				switch (p_command) {
-					case 'L': segment.end = point(0); break;
-					case 'H': segment.end = {origin.x + p_values[0], current.y}; break;
-					case 'V': segment.end = {current.x, origin.y + p_values[0]}; break;
-					case 'C':
-						segment.kind = Segment::Kind::cubic;
-						segment.control_1 = point(0);
-						segment.control_2 = point(2);
-						segment.end = point(4);
-						break;
-					case 'S':
-						segment.kind = Segment::Kind::cubic;
-						segment.control_1 = path.reflected_control(segment.kind);
-						segment.control_2 = point(0);
-						segment.end = point(2);
-						break;
-					case 'Q':
-						segment.kind = Segment::Kind::quadratic;
-						segment.control_1 = point(0);
-						segment.end = point(2);
-						break;
-					case 'T':
-						segment.kind = Segment::Kind::quadratic;
-						segment.control_1 = path.reflected_control(segment.kind);
-						segment.end = point(0);
-						break;
-					case 'A':
-						segment.kind = Segment::Kind::arc;
-						segment.radii = {p_values[0], p_values[1]};
-						segment.rotation = p_values[2];
-						segment.large_arc = p_values[3] != 0;
-						segment.sweep = p_values[4] != 0;
-						segment.end = point(5);
-						break;
+				case 'L': segment.end = point(0); break;
+				case 'H': segment.end = { origin.x + p_values[0], current.y }; break;
+				case 'V': segment.end = { current.x, origin.y + p_values[0] }; break;
+				case 'C':
+					segment.kind = Segment::Kind::cubic;
+					segment.control_1 = point(0);
+					segment.control_2 = point(2);
+					segment.end = point(4);
+					break;
+				case 'S':
+					segment.kind = Segment::Kind::cubic;
+					segment.control_1 = path.reflected_control(segment.kind);
+					segment.control_2 = point(0);
+					segment.end = point(2);
+					break;
+				case 'Q':
+					segment.kind = Segment::Kind::quadratic;
+					segment.control_1 = point(0);
+					segment.end = point(2);
+					break;
+				case 'T':
+					segment.kind = Segment::Kind::quadratic;
+					segment.control_1 = path.reflected_control(segment.kind);
+					segment.end = point(0);
+					break;
+				case 'A':
+					segment.kind = Segment::Kind::arc;
+					segment.radii = { p_values[0], p_values[1] };
+					segment.rotation = p_values[2];
+					segment.large_arc = p_values[3] != 0;
+					segment.sweep = p_values[4] != 0;
+					segment.end = point(5);
+					break;
 				}
 				return path.append(segment);
 			}
@@ -114,7 +115,7 @@ namespace dockit::css {
 			std::optional<SVGPath> parse(bool p_keep_prefix = false) {
 				const auto fail = [&]() -> std::optional<SVGPath> {
 					return p_keep_prefix && !path.empty() ? std::optional<SVGPath>(path.take_path()) : std::nullopt;
-				};
+					};
 				char command = 0;
 				bool relative = false;
 				for (;;) {
@@ -126,30 +127,32 @@ namespace dockit::css {
 						command = relative ? static_cast<char>(next - 'a' + 'A') : next;
 						++offset;
 						skip_space();
-					} else if (command != 0) {
+					}
+					else if (command != 0) {
 						comma_space();
 					}
 					if (path.empty() && command != 'M') return fail();
 					int count = 0;
 					switch (command) {
-						case 'M': case 'L': case 'T': count = 2; break;
-						case 'H': case 'V': count = 1; break;
-						case 'Q': case 'S': count = 4; break;
-						case 'C': count = 6; break;
-						case 'A': count = 7; break;
-						case 'Z':
-							path.close();
-							command = 0;
-							continue;
-						default: return fail();
+					case 'M': case 'L': case 'T': count = 2; break;
+					case 'H': case 'V': count = 1; break;
+					case 'Q': case 'S': count = 4; break;
+					case 'C': count = 6; break;
+					case 'A': count = 7; break;
+					case 'Z':
+						path.close();
+						command = 0;
+						continue;
+					default: return fail();
 					}
 					std::array<double, 7> values{};
 					if (!read_arguments(command, count, values)) return fail();
 					if (command == 'M') {
-						const Point point{values[0], values[1]};
+						const Point point{ values[0], values[1] };
 						if (!path.move_to(relative ? path.position() + point : point)) return fail();
 						command = 'L';
-					} else if (!append_segment(command, relative, values)) {
+					}
+					else if (!append_segment(command, relative, values)) {
 						return fail();
 					}
 				}
@@ -201,13 +204,13 @@ namespace dockit::css {
 			const double c = std::cos(rotation);
 			const double s = std::sin(rotation);
 			const Point delta = p_start * 0.5 - end * 0.5;
-			const Point local{c * delta.x + s * delta.y, c * delta.y - s * delta.x};
+			const Point local{ c * delta.x + s * delta.y, c * delta.y - s * delta.x };
 			const double required = std::hypot(local.x / rx, local.y / ry);
 			if (required > 1) {
 				rx *= required;
 				ry *= required;
 			}
-			const Point unit{local.x / rx, local.y / ry};
+			const Point unit{ local.x / rx, local.y / ry };
 			const double chord = std::hypot(unit.x, unit.y);
 			if (!std::isfinite(required) || !std::isfinite(rx) || !std::isfinite(ry) || chord == 0) {
 				r_points.push_back(end);
@@ -215,9 +218,9 @@ namespace dockit::css {
 			}
 			const double sign = p_arc.large_arc == p_arc.sweep ? -1 : 1;
 			const double distance = sign * std::sqrt(std::max(0.0, 1 - chord * chord));
-			const Point mid{(unit.y / chord) * distance, (-unit.x / chord) * distance};
+			const Point mid{ (unit.y / chord) * distance, (-unit.x / chord) * distance };
 			const Point center = p_start * 0.5 + end * 0.5 +
-				Point{c * (rx * mid.x) - s * (ry * mid.y), s * (rx * mid.x) + c * (ry * mid.y)};
+				Point{ c * (rx * mid.x) - s * (ry * mid.y), s * (rx * mid.x) + c * (ry * mid.y) };
 			const Point a = unit - mid;
 			const Point b = unit * -1 - mid;
 			const double first = std::atan2(a.y, a.x);
@@ -230,7 +233,7 @@ namespace dockit::css {
 				const double angle = first + sweep * i / pieces;
 				const double x = rx * std::cos(angle);
 				const double y = ry * std::sin(angle);
-				r_points.push_back(center + Point{c * x - s * y, s * x + c * y});
+				r_points.push_back(center + Point{ c * x - s * y, s * x + c * y });
 			}
 			r_points.push_back(end);
 		}
@@ -247,7 +250,7 @@ namespace dockit::css {
 	bool SVGPathBuilder::move_to(SVGPathPoint p_position) {
 		if (!finite(p_position)) return false;
 		current = p_position;
-		subpaths.push_back({current, {}});
+		subpaths.push_back({ current,{} });
 		open = true;
 		return true;
 	}
@@ -282,24 +285,24 @@ namespace dockit::css {
 
 	std::vector<SVGPathPoint> flatten_svg_subpath(const SVGSubpath& p_subpath, double p_tolerance) {
 		Point current = p_subpath.start;
-		std::vector<Point> points{current};
+		std::vector<Point> points{ current };
 		for (const auto& segment : p_subpath.segments) {
 			switch (segment.kind) {
-				case Segment::Kind::line:
-					points.push_back(segment.end);
-					break;
-				case Segment::Kind::quadratic: {
-					const Point a = current * (1.0 / 3) + segment.control_1 * (2.0 / 3);
-					const Point b = segment.end * (1.0 / 3) + segment.control_1 * (2.0 / 3);
-					flatten_cubic(points, current, a, b, segment.end, p_tolerance);
-					break;
-				}
-				case Segment::Kind::cubic:
-					flatten_cubic(points, current, segment.control_1, segment.control_2, segment.end, p_tolerance);
-					break;
-				case Segment::Kind::arc:
-					flatten_arc(points, current, segment, p_tolerance);
-					break;
+			case Segment::Kind::line:
+				points.push_back(segment.end);
+				break;
+			case Segment::Kind::quadratic: {
+				const Point a = current * (1.0 / 3) + segment.control_1 * (2.0 / 3);
+				const Point b = segment.end * (1.0 / 3) + segment.control_1 * (2.0 / 3);
+				flatten_cubic(points, current, a, b, segment.end, p_tolerance);
+				break;
+			}
+			case Segment::Kind::cubic:
+				flatten_cubic(points, current, segment.control_1, segment.control_2, segment.end, p_tolerance);
+				break;
+			case Segment::Kind::arc:
+				flatten_arc(points, current, segment, p_tolerance);
+				break;
 			}
 			current = segment.end;
 		}

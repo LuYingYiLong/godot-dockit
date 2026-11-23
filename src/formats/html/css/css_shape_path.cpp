@@ -58,19 +58,23 @@ namespace dockit::css {
 						r_command.single_radius = false;
 						++p_index;
 					}
-				} else if (keyword == "rotate" && !has_rotation) {
+				}
+				else if (keyword == "rotate" && !has_rotation) {
 					has_rotation = true;
 					const auto angle = parse_css_angle(at(p_tokens, p_index++));
 					if (!angle) return false;
 					constexpr double degrees_per_radian = 57.295779513082320876;
 					r_command.rotation_degrees = *angle * degrees_per_radian;
-				} else if (is_one_of(keyword, "cw", "ccw") && !has_sweep) {
+				}
+				else if (is_one_of(keyword, "cw", "ccw") && !has_sweep) {
 					has_sweep = true;
 					r_command.sweep = keyword == "cw";
-				} else if (is_one_of(keyword, "large", "small") && !has_size) {
+				}
+				else if (is_one_of(keyword, "large", "small") && !has_size) {
 					has_size = true;
 					r_command.large_arc = keyword == "large";
-				} else {
+				}
+				else {
 					return false;
 				}
 			}
@@ -97,8 +101,9 @@ namespace dockit::css {
 				auto& axis = horizontal ? result.end.x : result.end.y;
 				if (result.relative) {
 					if (!axis.offset.from_token(p_tokens[2], length_flags)) return std::nullopt;
-				} else {
-					const auto position = parse_axis_position({p_tokens[2]}, horizontal, false);
+				}
+				else {
+					const auto position = parse_axis_position({ p_tokens[2] }, horizontal, false);
 					if (!position) return std::nullopt;
 					axis = *position;
 				}
@@ -129,7 +134,8 @@ namespace dockit::css {
 			}
 			if (split == end) {
 				result.kind = Kind::quadratic;
-			} else {
+			}
+			else {
 				if (!parse_control(p_tokens, split + 1, end, result.relative, result.controls[1])) return std::nullopt;
 				result.kind = Kind::cubic;
 			}
@@ -162,7 +168,7 @@ namespace dockit::css {
 			r_point.y.resolve_flow_direction(false);
 			p_context.cvt_units(r_point.x.offset, p_font, 0);
 			p_context.cvt_units(r_point.y.offset, p_font, 0);
-		};
+			};
 		position(r_path.start);
 		for (auto& command : r_path.commands) {
 			position(command.end);
@@ -175,8 +181,8 @@ namespace dockit::css {
 		using Segment = SVGPathSegment;
 		SVGPathBuilder outline;
 		const auto position = [&](const css_image_position& p_position) -> SVGPathPoint {
-			return {p_position.x.resolve(p_width), p_position.y.resolve(p_height)};
-		};
+			return { p_position.x.resolve(p_width), p_position.y.resolve(p_height) };
+			};
 		if (!outline.move_to(position(p_path.start))) return std::nullopt;
 		for (const auto& command : p_path.commands) {
 			if (command.kind == Kind::close) {
@@ -199,37 +205,38 @@ namespace dockit::css {
 				if (point.anchor == Anchor::start) value = start + value;
 				if (point.anchor == Anchor::end) value = end + value;
 				return value;
-			};
+				};
 			Segment segment;
 			segment.end = end;
 			switch (command.kind) {
-				case Kind::quadratic:
-				case Kind::smooth_quadratic:
-					segment.kind = Segment::Kind::quadratic;
-					segment.control_1 = command.kind == Kind::quadratic ? control(0) : outline.reflected_control(segment.kind);
-					break;
-				case Kind::cubic:
-				case Kind::smooth_cubic:
-					segment.kind = Segment::Kind::cubic;
-					segment.control_1 = command.kind == Kind::cubic ? control(0) : outline.reflected_control(segment.kind);
-					segment.control_2 = control(command.kind == Kind::cubic ? 1 : 0);
-					break;
-				case Kind::arc:
-					segment.kind = Segment::Kind::arc;
-					if (command.single_radius) {
-						const auto size = static_cast<pixel_t>(std::hypot(p_width, p_height) / std::sqrt(2.0));
-						const auto radius = std::abs(command.radii[0].calc_percent(size));
-						segment.radii = {radius, radius};
-					} else {
-						segment.radii = {std::abs(command.radii[0].calc_percent(p_width)),
-							std::abs(command.radii[1].calc_percent(p_height))};
-					}
-					segment.rotation = command.rotation_degrees;
-					segment.sweep = command.sweep;
-					segment.large_arc = command.large_arc;
-					break;
-				default:
-					break;
+			case Kind::quadratic:
+			case Kind::smooth_quadratic:
+				segment.kind = Segment::Kind::quadratic;
+				segment.control_1 = command.kind == Kind::quadratic ? control(0) : outline.reflected_control(segment.kind);
+				break;
+			case Kind::cubic:
+			case Kind::smooth_cubic:
+				segment.kind = Segment::Kind::cubic;
+				segment.control_1 = command.kind == Kind::cubic ? control(0) : outline.reflected_control(segment.kind);
+				segment.control_2 = control(command.kind == Kind::cubic ? 1 : 0);
+				break;
+			case Kind::arc:
+				segment.kind = Segment::Kind::arc;
+				if (command.single_radius) {
+					const auto size = static_cast<pixel_t>(std::hypot(p_width, p_height) / std::sqrt(2.0));
+					const auto radius = std::abs(command.radii[0].calc_percent(size));
+					segment.radii = { radius, radius };
+				}
+				else {
+					segment.radii = { std::abs(command.radii[0].calc_percent(p_width)),
+						std::abs(command.radii[1].calc_percent(p_height)) };
+				}
+				segment.rotation = command.rotation_degrees;
+				segment.sweep = command.sweep;
+				segment.large_arc = command.large_arc;
+				break;
+			default:
+				break;
 			}
 			if (!outline.append(segment)) return std::nullopt;
 		}

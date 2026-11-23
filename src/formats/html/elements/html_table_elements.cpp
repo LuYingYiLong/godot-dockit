@@ -174,16 +174,10 @@ Error HTMLTableSectionElement::delete_row(int64_t p_index) {
 }
 
 void HTMLTableElement::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_caption"), &HTMLTableElement::get_caption);
-	ClassDB::bind_method(D_METHOD("set_caption", "caption"), &HTMLTableElement::set_caption);
 	ClassDB::bind_method(D_METHOD("create_caption"), &HTMLTableElement::create_caption);
 	ClassDB::bind_method(D_METHOD("delete_caption"), &HTMLTableElement::delete_caption);
-	ClassDB::bind_method(D_METHOD("get_t_head"), &HTMLTableElement::get_t_head);
-	ClassDB::bind_method(D_METHOD("set_t_head", "head"), &HTMLTableElement::set_t_head);
 	ClassDB::bind_method(D_METHOD("create_t_head"), &HTMLTableElement::create_t_head);
 	ClassDB::bind_method(D_METHOD("delete_t_head"), &HTMLTableElement::delete_t_head);
-	ClassDB::bind_method(D_METHOD("get_t_foot"), &HTMLTableElement::get_t_foot);
-	ClassDB::bind_method(D_METHOD("set_t_foot", "foot"), &HTMLTableElement::set_t_foot);
 	ClassDB::bind_method(D_METHOD("create_t_foot"), &HTMLTableElement::create_t_foot);
 	ClassDB::bind_method(D_METHOD("delete_t_foot"), &HTMLTableElement::delete_t_foot);
 	ClassDB::bind_method(D_METHOD("get_t_bodies"), &HTMLTableElement::get_t_bodies);
@@ -191,8 +185,17 @@ void HTMLTableElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_rows"), &HTMLTableElement::get_rows);
 	ClassDB::bind_method(D_METHOD("insert_row", "index"), &HTMLTableElement::insert_row, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("delete_row", "index"), &HTMLTableElement::delete_row);
+	
+	ClassDB::bind_method(D_METHOD("get_caption"), &HTMLTableElement::get_caption);
+	ClassDB::bind_method(D_METHOD("set_caption", "caption"), &HTMLTableElement::set_caption);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "caption", PROPERTY_HINT_RESOURCE_TYPE, "HTMLTableCaptionElement"), "set_caption", "get_caption");
+	
+	ClassDB::bind_method(D_METHOD("get_t_head"), &HTMLTableElement::get_t_head);
+	ClassDB::bind_method(D_METHOD("set_t_head", "head"), &HTMLTableElement::set_t_head);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "t_head", PROPERTY_HINT_RESOURCE_TYPE, "HTMLTableSectionElement"), "set_t_head", "get_t_head");
+	
+	ClassDB::bind_method(D_METHOD("get_t_foot"), &HTMLTableElement::get_t_foot);
+	ClassDB::bind_method(D_METHOD("set_t_foot", "foot"), &HTMLTableElement::set_t_foot);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "t_foot", PROPERTY_HINT_RESOURCE_TYPE, "HTMLTableSectionElement"), "set_t_foot", "get_t_foot");
 }
 

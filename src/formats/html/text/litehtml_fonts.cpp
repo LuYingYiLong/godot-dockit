@@ -45,28 +45,28 @@ namespace dockit {
 			String prefix;
 			String suffix;
 			switch (p_mode) {
-				case css_unicode_bidi::embed:
-					prefix = String::chr(embed_start);
-					suffix = String::chr(0x202c);
-					break;
-				case css_unicode_bidi::bidi_override:
-					prefix = String::chr(override_start);
-					suffix = String::chr(0x202c);
-					break;
-				case css_unicode_bidi::isolate:
-					prefix = String::chr(isolate_start);
-					suffix = String::chr(0x2069);
-					break;
-				case css_unicode_bidi::isolate_override:
-					prefix = String::chr(isolate_start) + String::chr(override_start);
-					suffix = String::chr(0x202c) + String::chr(0x2069);
-					break;
-				case css_unicode_bidi::plaintext:
-					prefix = String::chr(0x2068);
-					suffix = String::chr(0x2069);
-					break;
-				case css_unicode_bidi::normal:
-					return { p_text };
+			case css_unicode_bidi::embed:
+				prefix = String::chr(embed_start);
+				suffix = String::chr(0x202c);
+				break;
+			case css_unicode_bidi::bidi_override:
+				prefix = String::chr(override_start);
+				suffix = String::chr(0x202c);
+				break;
+			case css_unicode_bidi::isolate:
+				prefix = String::chr(isolate_start);
+				suffix = String::chr(0x2069);
+				break;
+			case css_unicode_bidi::isolate_override:
+				prefix = String::chr(isolate_start) + String::chr(override_start);
+				suffix = String::chr(0x202c) + String::chr(0x2069);
+				break;
+			case css_unicode_bidi::plaintext:
+				prefix = String::chr(0x2068);
+				suffix = String::chr(0x2069);
+				break;
+			case css_unicode_bidi::normal:
+				return { p_text };
 			}
 			return { prefix + p_text + suffix, prefix.length(), suffix.length() };
 		}
@@ -107,9 +107,9 @@ namespace dockit {
 
 		// Limit the Windows generic preferences to Han and East Asian punctuation.
 		const css_unicode_ranges CHINESE_FONT_RANGES = {
-			{0x2e80, 0x2fff}, {0x3000, 0x303f}, {0x31c0, 0x31ef}, {0x3400, 0x4dbf},
-			{0x4e00, 0x9fff}, {0xf900, 0xfaff}, {0xfe10, 0xfe1f}, {0xfe30, 0xfe4f},
-			{0xff01, 0xff60}, {0xffe0, 0xffe6}, {0x20000, 0x2fa1f}, {0x30000, 0x3ffff},
+			{ 0x2e80, 0x2fff },{ 0x3000, 0x303f },{ 0x31c0, 0x31ef },{ 0x3400, 0x4dbf },
+			{ 0x4e00, 0x9fff },{ 0xf900, 0xfaff },{ 0xfe10, 0xfe1f },{ 0xfe30, 0xfe4f },
+			{ 0xff01, 0xff60 },{ 0xffe0, 0xffe6 },{ 0x20000, 0x2fa1f },{ 0x30000, 0x3ffff },
 		};
 #endif
 
@@ -166,7 +166,8 @@ namespace dockit {
 			if (p_metric == Metric::ex_height || p_metric == Metric::cap_height) {
 				const char32_t character = p_metric == Metric::ex_height ? U'x' : U'H';
 				measure = glyph_height(p_server, p_face, sample_size, character, 0.0f);
-			} else {
+			}
+			else {
 				const char32_t character = p_metric == Metric::ch_width ? U'0' : U'\u6c34';
 				const auto glyph = p_server->font_get_glyph_index(p_face, sample_size, character, 0);
 				if (!glyph) return {};
@@ -195,14 +196,14 @@ namespace dockit {
 			const char32_t* folded;
 		};
 
-		#include "unicode_case_folding.inc"
+#include "unicode_case_folding.inc"
 
 		struct CodepointRange {
 			char32_t first;
 			char32_t last;
 		};
 
-		#include "unicode_emphasis_skip.inc"
+#include "unicode_emphasis_skip.inc"
 
 		bool skips_emphasis(char32_t p_value) {
 			const auto* range = std::lower_bound(std::begin(EMPHASIS_SKIP_RANGES), std::end(EMPHASIS_SKIP_RANGES), p_value,
@@ -479,7 +480,7 @@ namespace dockit {
 				}
 			}
 			r_line.add_object(offset, {}, INLINE_ALIGNMENT_TOP, p_end - offset);
-		};
+			};
 		const auto add_system_fallback = [&](int64_t p_end) {
 			const String value = p_text.substr(run_start, p_end - run_start);
 			// Let TextServer choose installed fallback faces with the original language and shaping context.
@@ -499,14 +500,15 @@ namespace dockit {
 				const int32_t size = adjusted_font_size(p_size, *size_adjust_reference / *aspect);
 				if (size == 0) {
 					add_zero(run_start + p_first, run_start + p_last);
-				} else {
+				}
+				else {
 					TypedArray<RID> faces;
 					faces.append(p_face);
 					if (!server->shaped_text_add_string(r_line.get_rid(), span, faces, size, features, language)) {
 						r_line.add_string(span, unrestricted, base_size, language);
 					}
 				}
-			};
+				};
 			int64_t first = 0;
 			int64_t covered = 0;
 			RID face;
@@ -525,25 +527,25 @@ namespace dockit {
 			}
 			emit(first, covered, face);
 			emit(covered, value.length(), {});
-		};
+			};
 		const auto flush = [&](int64_t p_end) {
 			if (run.is_null() || p_end <= run_start) return;
-			if (r_runs) r_runs->push_back({run_start, run_choice});
+			if (r_runs) r_runs->push_back({ run_start, run_choice });
 			if (run_size == 0) add_zero(run_start, p_end);
 			else if (!run_choice && size_adjust_reference) add_system_fallback(p_end);
 			else r_line.add_string(p_text.substr(run_start, p_end - run_start), run, run_size, language);
-		};
+			};
 		const auto append = [&](int64_t p_first, const FontChoice* p_choice) {
 			const auto& font = p_choice ? p_choice->font : unrestricted;
 			const int32_t next_size = p_choice ? adjusted_font_size(p_size, p_choice->size_adjust) : base_size;
-		if (run != font || run_size != next_size || ((r_runs || size_adjust_reference) && run_choice != p_choice)) {
+			if (run != font || run_size != next_size || ((r_runs || size_adjust_reference) && run_choice != p_choice)) {
 				flush(p_first);
 				run_start = p_first;
 				run = font;
 				run_choice = p_choice;
 				run_size = next_size;
 			}
-		};
+			};
 		for (const auto end : breaks) {
 			if (end <= start || end > p_text.length()) continue;
 			if (const auto* choice = match(p_text, start, end)) {
@@ -640,7 +642,8 @@ namespace dockit {
 					choice->metrics == stack->primary_metrics && primary_rids.has(face)) {
 					top = r_layout.ascent;
 					bottom = r_layout.descent;
-				} else {
+				}
+				else {
 					const int64_t glyph_size = glyph["font_size"];
 					top = server->font_get_ascent(face, glyph_size) + server->font_get_spacing(face, TextServer::SPACING_TOP);
 					bottom = server->font_get_descent(face, glyph_size) + server->font_get_spacing(face, TextServer::SPACING_BOTTOM);
@@ -662,8 +665,9 @@ namespace dockit {
 				previous.end = std::max(previous.end, glyph_end);
 				previous.ascent = std::max(previous.ascent, top);
 				previous.descent = std::max(previous.descent, bottom);
-			} else {
-				metrics.push_back({start, glyph_end, top, bottom});
+			}
+			else {
+				metrics.push_back({ start, glyph_end, top, bottom });
 			}
 		}
 		r_layout.set_run_metrics(std::move(metrics));
@@ -706,7 +710,7 @@ namespace dockit {
 			const auto han_advance = [&](char32_t p_character) {
 				const auto id = server->font_get_glyph_index(font, font_size, p_character, 0);
 				return id > 0 ? server->font_get_glyph_advance(font, font_size, id).x : real_t(0);
-			};
+				};
 			const float full = layout.width();
 			const float ideograph = han_advance(U'水');
 			if (ideograph <= 0 || std::abs(full - ideograph) > 0.5f ||
@@ -727,7 +731,7 @@ namespace dockit {
 				layout.trim_inline_advance(trim_left, trim_right);
 			}
 			return layout;
-		}();
+			}();
 		cache.insert(p_text, trimmed);
 		return trimmed;
 	}
@@ -856,10 +860,10 @@ namespace dockit {
 		}
 		const auto rank = [](const Candidate& p_candidate) {
 			return std::tie(p_candidate.width_rank, p_candidate.style_rank, p_candidate.weight_rank);
-		};
+			};
 		std::stable_sort(matches.begin(), matches.end(), [&](const Candidate& a, const Candidate& b) {
 			return rank(a) < rank(b);
-		});
+			});
 		const Candidate* best = nullptr;
 		for (const auto& candidate : matches) {
 			if (best && rank(candidate) != rank(*best)) break;
@@ -986,15 +990,15 @@ namespace dockit {
 			variation->set_variation_opentype(axes);
 			variation->set_fallbacks(p_font->get_fallbacks());
 			return variation;
-		};
+			};
 		const String text_name = fold_font_family(default_font->get_font_name());
 		const Ref<Font>& themed_variant = bold && italic ? fonts.bold_italic : (bold ? fonts.bold : fonts.italic);
 		const Ref<Font> text_font = (bold || italic) && themed_variant.is_valid() ?
 			with_style(themed_variant, false, text_name) : with_style(default_font, true, text_name);
 		std::vector<FontChoice> choices;
 		const auto append = [&](const Ref<Font>& p_font) {
-			if (p_font.is_valid()) choices.push_back({ p_font, {} });
-		};
+			if (p_font.is_valid()) choices.push_back({ p_font,{} });
+			};
 		const auto append_installed = [&](const char* p_names, const css_unicode_ranges& p_ranges = {}) {
 			for (const String& name : String(p_names).split("|")) {
 				const auto font = find_installed_font(name, installed_weight, italic, p_description.width);
@@ -1004,7 +1008,7 @@ namespace dockit {
 				}
 			}
 			return false;
-		};
+			};
 		constexpr const char* serif_fonts = "Times New Roman|Noto Serif|DejaVu Serif|Liberation Serif|Times|Droid Serif";
 		const String code_name = fonts.code.is_valid() ? fold_font_family(fonts.code->get_font_name()) : String();
 		const String block_name = fonts.code_block.is_valid() ? fold_font_family(fonts.code_block->get_font_name()) : String();
@@ -1111,8 +1115,8 @@ namespace dockit {
 		const auto primary = std::find_if(choices.begin(), choices.end(), [](const FontChoice& choice) {
 			return choice.ranges.empty() || std::any_of(choice.ranges.begin(), choice.ranges.end(), [](const auto& range) {
 				return range.first <= U' ' && U' ' <= range.second;
+				});
 			});
-		});
 		const auto& adjust = p_description.size_adjust;
 		std::optional<double> reference;
 		if (adjust.mode != css_font_size_adjust::Mode::none) {
@@ -1227,7 +1231,7 @@ namespace dockit {
 				else ascent += r_metrics->emphasis_extent;
 			}
 		}
-		auto* data = new FontData{ stack, size, primary_size, ascent, descent, p_description, emphasis, {}, {} };
+		auto* data = new FontData{ stack, size, primary_size, ascent, descent, p_description, emphasis,{},{} };
 		r_metrics->font_size = size;
 		r_metrics->ascent = ascent;
 		r_metrics->descent = descent;
@@ -1301,7 +1305,7 @@ namespace dockit {
 		}
 		std::stable_sort(order.begin(), order.end(), [&](size_t p_left, size_t p_right) {
 			return first_glyph[p_left] < first_glyph[p_right];
-		});
+			});
 		return order;
 	}
 

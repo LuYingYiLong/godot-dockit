@@ -43,8 +43,8 @@ namespace dockit {
 			const Vector2 x(a / scale_x, b / scale_x);
 			const Vector2 y(c / scale_y, d / scale_y);
 			const double angle = std::atan2(b / scale_x, a / scale_x);
-			return Decomposed2D{Vector2(matrix[3].x, matrix[3].y), Vector2(scale_x, scale_y), angle,
-				x * x.x - y * x.y, x * x.y + y * x.x};
+			return Decomposed2D{ Vector2(matrix[3].x, matrix[3].y), Vector2(scale_x, scale_y), angle,
+				x * x.x - y * x.y, x * x.y + y * x.x };
 		}
 
 		std::optional<Projection> interpolate_2d(const Projection& from, const Projection& to, double progress) {
@@ -120,8 +120,8 @@ namespace dockit {
 
 			const real_t sign = determinant < 0 ? -1 : 1;
 			const auto rotation = Basis(x * sign, y * sign, z * sign).get_quaternion().normalized();
-			return Decomposed3D{translation, Vector3(sx, sy, sz) * sign, Vector3(xy / sy, xz / sz, yz / sz),
-				rotation, Vector4(p.x, p.y, p.z, perspective_w)};
+			return Decomposed3D{ translation, Vector3(sx, sy, sz) * sign, Vector3(xy / sy, xz / sz, yz / sz),
+				rotation, Vector4(p.x, p.y, p.z, perspective_w) };
 		}
 
 		std::optional<Projection> interpolate_3d(const Projection& from, const Projection& to, double progress) {
@@ -142,7 +142,7 @@ namespace dockit {
 	}
 
 	std::optional<Projection> interpolate_transform_matrices(const Projection& p_from, const Projection& p_to,
-			double p_progress) {
+		double p_progress) {
 		if (!is_finite(p_from) || !is_finite(p_to)) return std::nullopt;
 		const auto sample = is_2d(p_from) && is_2d(p_to) ?
 			interpolate_2d(p_from, p_to, p_progress) : interpolate_3d(p_from, p_to, p_progress);

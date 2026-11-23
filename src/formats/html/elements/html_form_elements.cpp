@@ -27,6 +27,7 @@ void HTMLFormElement::_bind_methods() {
 
 void HTMLLabelElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_control"), &HTMLLabelElement::get_control);
+
 	ClassDB::bind_method(D_METHOD("get_html_for"), &HTMLLabelElement::get_html_for);
 	ClassDB::bind_method(D_METHOD("set_html_for", "value"), &HTMLLabelElement::set_html_for);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "html_for"), "set_html_for", "get_html_for");
@@ -39,6 +40,7 @@ void HTMLLabelElement::set_html_for(const String& p_value) {
 
 void HTMLFieldSetElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLFieldSetElement::get_form);
+
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLFieldSetElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLFieldSetElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
@@ -57,25 +59,32 @@ void HTMLLegendElement::_bind_methods() {
 void HTMLSelectElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_options"), &HTMLSelectElement::get_options);
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLSelectElement::get_form);
+	ClassDB::bind_method(D_METHOD("get_selected_options"), &HTMLSelectElement::get_selected_options);
+
 	ClassDB::bind_method(D_METHOD("get_name"), &HTMLSelectElement::get_name);
 	ClassDB::bind_method(D_METHOD("set_name", "value"), &HTMLSelectElement::set_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLSelectElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLSelectElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
 	ClassDB::bind_method(D_METHOD("is_required"), &HTMLSelectElement::is_required);
 	ClassDB::bind_method(D_METHOD("set_required", "value"), &HTMLSelectElement::set_required);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "required"), "set_required", "is_required");
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLSelectElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLSelectElement::set_value);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+
 	ClassDB::bind_method(D_METHOD("is_multiple"), &HTMLSelectElement::is_multiple);
 	ClassDB::bind_method(D_METHOD("set_multiple", "value"), &HTMLSelectElement::set_multiple);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "multiple"), "set_multiple", "is_multiple");
+
 	ClassDB::bind_method(D_METHOD("get_size"), &HTMLSelectElement::get_size);
 	ClassDB::bind_method(D_METHOD("set_size", "value"), &HTMLSelectElement::set_size);
-	ClassDB::bind_method(D_METHOD("get_selected_options"), &HTMLSelectElement::get_selected_options);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "multiple"), "set_multiple", "is_multiple");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "size"), "set_size", "get_size");
+
 	ClassDB::bind_method(D_METHOD("get_selected_index"), &HTMLSelectElement::get_selected_index);
 	ClassDB::bind_method(D_METHOD("set_selected_index", "value"), &HTMLSelectElement::set_selected_index);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "selected_index"), "set_selected_index", "get_selected_index");
@@ -102,15 +111,19 @@ void HTMLOptionElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLOptionElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLOptionElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+
 	ClassDB::bind_method(D_METHOD("get_label"), &HTMLOptionElement::get_label);
 	ClassDB::bind_method(D_METHOD("set_label", "value"), &HTMLOptionElement::set_label);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "label"), "set_label", "get_label");
+
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLOptionElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLOptionElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+
 	ClassDB::bind_method(D_METHOD("is_selected"), &HTMLOptionElement::is_selected);
 	ClassDB::bind_method(D_METHOD("set_selected", "value"), &HTMLOptionElement::set_selected);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selected"), "set_selected", "is_selected");
+
 	ClassDB::bind_method(D_METHOD("is_default_selected"), &HTMLOptionElement::is_default_selected);
 	ClassDB::bind_method(D_METHOD("set_default_selected", "value"), &HTMLOptionElement::set_default_selected);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "default_selected"), "set_default_selected", "is_default_selected");
@@ -132,6 +145,7 @@ void HTMLOptGroupElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_label"), &HTMLOptGroupElement::get_label);
 	ClassDB::bind_method(D_METHOD("set_label", "value"), &HTMLOptGroupElement::set_label);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "label"), "set_label", "get_label");
+
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLOptGroupElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLOptGroupElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
@@ -394,15 +408,19 @@ void HTMLOutputElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLOutputElement::get_form);
 	ClassDB::bind_method(D_METHOD("get_labels"), &HTMLOutputElement::get_labels);
 	ClassDB::bind_method(D_METHOD("reset"), &HTMLOutputElement::reset);
+	
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLOutputElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLOutputElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+	
 	ClassDB::bind_method(D_METHOD("get_default_value"), &HTMLOutputElement::get_default_value);
 	ClassDB::bind_method(D_METHOD("set_default_value", "value"), &HTMLOutputElement::set_default_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "default_value"), "set_default_value", "get_default_value");
+	
 	ClassDB::bind_method(D_METHOD("get_name"), &HTMLOutputElement::get_name);
 	ClassDB::bind_method(D_METHOD("set_name", "value"), &HTMLOutputElement::set_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	
 	ClassDB::bind_method(D_METHOD("get_html_for"), &HTMLOutputElement::get_html_for);
 	ClassDB::bind_method(D_METHOD("set_html_for", "value"), &HTMLOutputElement::set_html_for);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "html_for"), "set_html_for", "get_html_for");

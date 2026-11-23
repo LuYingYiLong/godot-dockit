@@ -11,7 +11,7 @@ namespace litehtml {
 	namespace {
 		constexpr int MAX_CONDITION_DEPTH = 64;
 
-		// Empty blocks and functions are valid in <general-enclosed>.
+		// 空的代码块和函数在 <general-enclosed> 中是有效的
 		bool valid_enclosed_tokens(const css_token_vector& p_tokens, int p_depth) {
 			if (p_depth >= MAX_CONDITION_DEPTH) return false;
 			for (const auto& token : p_tokens) {

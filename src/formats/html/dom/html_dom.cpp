@@ -56,14 +56,14 @@ namespace {
 	bool is_valid_tag_name(std::string_view p_name) {
 		const auto is_letter = [](unsigned char p_byte) {
 			return (p_byte >= 'A' && p_byte <= 'Z') || (p_byte >= 'a' && p_byte <= 'z');
-		};
+			};
 		if (p_name.empty() || !is_letter(p_name.front())) {
 			return false;
 		}
 		return std::all_of(p_name.begin(), p_name.end(), [&](unsigned char p_byte) {
 			return is_letter(p_byte) || (p_byte >= '0' && p_byte <= '9') ||
 				p_byte == '-' || p_byte == '_' || p_byte == '.' || p_byte == ':' || p_byte >= 0x80;
-		});
+			});
 	}
 
 	bool is_void_element(const litehtml::element& p_element) {
@@ -133,7 +133,7 @@ namespace {
 			}
 			if (!parts.empty()) return parts;
 		}
-		return {p_node};
+		return { p_node };
 	}
 
 	litehtml::element::ptr clone_character_data(const litehtml::element& p_source, const litehtml::document::ptr& p_document) {
@@ -169,80 +169,81 @@ namespace {
 		const auto p_tag = p_element.tag();
 		if (p_element.is_html_namespace()) {
 			switch (p_tag) {
-				case litehtml::_html_: return instantiate_element_handle<HTMLHtmlElement>();
-				case litehtml::_head_: return instantiate_element_handle<HTMLHeadElement>();
-				case litehtml::_body_: return instantiate_element_handle<HTMLBodyElement>();
-				case litehtml::_title_: return instantiate_element_handle<HTMLTitleElement>();
-				case litehtml::_meta_: return instantiate_element_handle<HTMLMetaElement>();
-				case litehtml::_base_: return instantiate_element_handle<HTMLBaseElement>();
-				case litehtml::_script_: return instantiate_element_handle<HTMLScriptElement>();
-				case litehtml::_link_: return instantiate_element_handle<HTMLLinkElement>();
-				case litehtml::_style_: return instantiate_element_handle<HTMLStyleElement>();
-				default: break;
+			case litehtml::_html_: return instantiate_element_handle<HTMLHtmlElement>();
+			case litehtml::_head_: return instantiate_element_handle<HTMLHeadElement>();
+			case litehtml::_body_: return instantiate_element_handle<HTMLBodyElement>();
+			case litehtml::_title_: return instantiate_element_handle<HTMLTitleElement>();
+			case litehtml::_meta_: return instantiate_element_handle<HTMLMetaElement>();
+			case litehtml::_base_: return instantiate_element_handle<HTMLBaseElement>();
+			case litehtml::_script_: return instantiate_element_handle<HTMLScriptElement>();
+			case litehtml::_link_: return instantiate_element_handle<HTMLLinkElement>();
+			case litehtml::_style_: return instantiate_element_handle<HTMLStyleElement>();
+			default: break;
 			}
 		}
 		if (p_tag == litehtml::_id("menu")) return instantiate_element_handle<HTMLMenuElement>();
 		if (p_tag == litehtml::_id("dialog")) return instantiate_element_handle<HTMLDialogElement>();
 		switch (p_tag) {
-			case litehtml::_a_: return instantiate_element_handle<HTMLAnchorElement>();
-			case litehtml::_button_: return instantiate_element_handle<HTMLButtonElement>();
-			case litehtml::_form_: return instantiate_element_handle<HTMLFormElement>();
-			case litehtml::_label_: return instantiate_element_handle<HTMLLabelElement>();
-			case litehtml::_fieldset_: return instantiate_element_handle<HTMLFieldSetElement>();
-			case litehtml::_legend_: return instantiate_element_handle<HTMLLegendElement>();
-			case litehtml::_select_: return instantiate_element_handle<HTMLSelectElement>();
-			case litehtml::_option_: return instantiate_element_handle<HTMLOptionElement>();
-			case litehtml::_optgroup_: return instantiate_element_handle<HTMLOptGroupElement>();
-			case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
-			case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
-			case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
-			case litehtml::_pre_: return instantiate_element_handle<HTMLPreElement>();
-			case litehtml::_datalist_: return instantiate_element_handle<HTMLDataListElement>();
-			case litehtml::_output_: return instantiate_element_handle<HTMLOutputElement>();
-			case litehtml::_details_: return instantiate_element_handle<HTMLDetailsElement>();
-			case litehtml::_meter_: return instantiate_element_handle<HTMLMeterElement>();
-			case litehtml::_video_: return instantiate_element_handle<HTMLVideoElement>();
-			case litehtml::_audio_: return instantiate_element_handle<HTMLAudioElement>();
-			case litehtml::_progress_: return instantiate_element_handle<HTMLProgressElement>();
-			case litehtml::_hr_: return instantiate_element_handle<HTMLHRElement>();
-			case litehtml::_br_: return instantiate_element_handle<HTMLBRElement>();
-			case litehtml::_blockquote_:
-			case litehtml::_q_: return instantiate_element_handle<HTMLQuoteElement>();
-			case litehtml::_dl_: return instantiate_element_handle<HTMLDListElement>();
-			case litehtml::_section_: return instantiate_element_handle<HTMLSectionElement>();
-			case litehtml::_article_: return instantiate_element_handle<HTMLArticleElement>();
-			case litehtml::_ol_: return instantiate_element_handle<HTMLOListElement>();
-			case litehtml::_ul_: return instantiate_element_handle<HTMLUListElement>();
-			case litehtml::_li_: return instantiate_element_handle<HTMLLIElement>();
-			case litehtml::_h1_:
-			case litehtml::_h2_:
-			case litehtml::_h3_:
-			case litehtml::_h4_:
-			case litehtml::_h5_:
-			case litehtml::_h6_: return instantiate_element_handle<HTMLHeadingElement>();
-			case litehtml::_img_: return instantiate_element_handle<HTMLImageElement>();
-			case litehtml::_canvas_: return instantiate_element_handle<HTMLCanvasElement>();
-			case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
-			case litehtml::_template_: return instantiate_element_handle<HTMLTemplateElement>();
-			case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
-			case litehtml::_table_: return instantiate_element_handle<HTMLTableElement>();
-			case litehtml::_caption_: return instantiate_element_handle<HTMLTableCaptionElement>();
-			case litehtml::_col_:
-			case litehtml::_colgroup_: return instantiate_element_handle<HTMLTableColElement>();
-			case litehtml::_thead_:
-			case litehtml::_tbody_:
-			case litehtml::_tfoot_: return instantiate_element_handle<HTMLTableSectionElement>();
-			case litehtml::_tr_: return instantiate_element_handle<HTMLTableRowElement>();
-			case litehtml::_td_:
-			case litehtml::_th_: return instantiate_element_handle<HTMLTableCellElement>();
-			default: return instantiate_element_handle<HTMLElement>();
+		case litehtml::_a_: return instantiate_element_handle<HTMLAnchorElement>();
+		case litehtml::_button_: return instantiate_element_handle<HTMLButtonElement>();
+		case litehtml::_form_: return instantiate_element_handle<HTMLFormElement>();
+		case litehtml::_label_: return instantiate_element_handle<HTMLLabelElement>();
+		case litehtml::_fieldset_: return instantiate_element_handle<HTMLFieldSetElement>();
+		case litehtml::_legend_: return instantiate_element_handle<HTMLLegendElement>();
+		case litehtml::_select_: return instantiate_element_handle<HTMLSelectElement>();
+		case litehtml::_option_: return instantiate_element_handle<HTMLOptionElement>();
+		case litehtml::_optgroup_: return instantiate_element_handle<HTMLOptGroupElement>();
+		case litehtml::_div_: return instantiate_element_handle<HTMLDivElement>();
+		case litehtml::_p_: return instantiate_element_handle<HTMLParagraphElement>();
+		case litehtml::_span_: return instantiate_element_handle<HTMLSpanElement>();
+		case litehtml::_pre_: return instantiate_element_handle<HTMLPreElement>();
+		case litehtml::_datalist_: return instantiate_element_handle<HTMLDataListElement>();
+		case litehtml::_output_: return instantiate_element_handle<HTMLOutputElement>();
+		case litehtml::_details_: return instantiate_element_handle<HTMLDetailsElement>();
+		case litehtml::_meter_: return instantiate_element_handle<HTMLMeterElement>();
+		case litehtml::_video_: return instantiate_element_handle<HTMLVideoElement>();
+		case litehtml::_audio_: return instantiate_element_handle<HTMLAudioElement>();
+		case litehtml::_progress_: return instantiate_element_handle<HTMLProgressElement>();
+		case litehtml::_hr_: return instantiate_element_handle<HTMLHRElement>();
+		case litehtml::_br_: return instantiate_element_handle<HTMLBRElement>();
+		case litehtml::_blockquote_:
+		case litehtml::_q_: return instantiate_element_handle<HTMLQuoteElement>();
+		case litehtml::_dl_: return instantiate_element_handle<HTMLDListElement>();
+		case litehtml::_section_: return instantiate_element_handle<HTMLSectionElement>();
+		case litehtml::_article_: return instantiate_element_handle<HTMLArticleElement>();
+		case litehtml::_ol_: return instantiate_element_handle<HTMLOListElement>();
+		case litehtml::_ul_: return instantiate_element_handle<HTMLUListElement>();
+		case litehtml::_li_: return instantiate_element_handle<HTMLLIElement>();
+		case litehtml::_h1_:
+		case litehtml::_h2_:
+		case litehtml::_h3_:
+		case litehtml::_h4_:
+		case litehtml::_h5_:
+		case litehtml::_h6_: return instantiate_element_handle<HTMLHeadingElement>();
+		case litehtml::_img_: return instantiate_element_handle<HTMLImageElement>();
+		case litehtml::_canvas_: return instantiate_element_handle<HTMLCanvasElement>();
+		case litehtml::_input_: return instantiate_element_handle<HTMLInputElement>();
+		case litehtml::_template_: return instantiate_element_handle<HTMLTemplateElement>();
+		case litehtml::_textarea_: return instantiate_element_handle<HTMLTextAreaElement>();
+		case litehtml::_table_: return instantiate_element_handle<HTMLTableElement>();
+		case litehtml::_caption_: return instantiate_element_handle<HTMLTableCaptionElement>();
+		case litehtml::_col_:
+		case litehtml::_colgroup_: return instantiate_element_handle<HTMLTableColElement>();
+		case litehtml::_thead_:
+		case litehtml::_tbody_:
+		case litehtml::_tfoot_: return instantiate_element_handle<HTMLTableSectionElement>();
+		case litehtml::_tr_: return instantiate_element_handle<HTMLTableRowElement>();
+		case litehtml::_td_:
+		case litehtml::_th_: return instantiate_element_handle<HTMLTableCellElement>();
+		default: return instantiate_element_handle<HTMLElement>();
 		}
 	}
 
 } // namespace
 
 HTMLNode::DetachedTree::DetachedTree(std::weak_ptr<HTMLDOM> p_owner, const litehtml::element::ptr& p_root) :
-	owner(std::move(p_owner)), root(p_root) {}
+	owner(std::move(p_owner)), root(p_root) {
+}
 
 HTMLNode::DetachedTree::~DetachedTree() {
 	if (const auto dom = owner.lock(); root && dom) {
@@ -253,13 +254,14 @@ HTMLNode::DetachedTree::~DetachedTree() {
 			dom->node_handles.erase(&p_node);
 			dom->forget_source_attributes(p_node);
 			for (const auto& child : p_node.children()) p_visit(p_visit, *child);
-		};
+			};
 		remove_entries(remove_entries, *root);
 	}
 }
 
 HTMLDOM::HTMLDOM(std::function<void()> p_on_change) :
-	on_change(std::move(p_on_change)) {}
+	on_change(std::move(p_on_change)) {
+}
 
 void HTMLDOM::set_document(litehtml::document::ptr p_document, ObjectID p_owner_id, uint64_t p_generation) {
 	document = std::move(p_document);
@@ -289,16 +291,17 @@ void HTMLDOM::sync_open_dialogs() {
 		if (!dialog->get_attr("open") || !is_element_connected(*dialog)) dialog->open_sequence = 0;
 		else if (!dialog->open_sequence) opened.push_back(dialog);
 		return false;
-	}), dialog_nodes.end());
+		}), dialog_nodes.end());
 	if (opened.size() == 1) {
 		opened.front()->open_sequence = ++last_dialog_sequence;
-	} else if (!opened.empty()) {
+	}
+	else if (!opened.empty()) {
 		// A parsed or inserted subtree opens its dialogs in document order.
 		visit_elements(document->root(), [&](const auto& p_element) {
 			if (auto* dialog = dynamic_cast<HTMLDialogNode*>(p_element.get()); dialog && !dialog->open_sequence && dialog->get_attr("open"))
 				dialog->open_sequence = ++last_dialog_sequence;
 			return false;
-		});
+			});
 	}
 }
 
@@ -322,7 +325,7 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 		const char* name = p_element->get_attr("name");
 		if (p_element->tag() == litehtml::_details_ && name && *name && p_element->get_attr("open")) open.push_back(p_element);
 		return false;
-	});
+		});
 	if (!p_moved.empty()) {
 		std::unordered_set<const litehtml::element*> moved_roots;
 		for (const auto& node : p_moved) moved_roots.insert(node.get());
@@ -331,7 +334,7 @@ void HTMLDOM::normalize_details(const litehtml::element::ptr& p_tree, const std:
 				if (moved_roots.count(current.get())) return true;
 			}
 			return false;
-		};
+			};
 		std::stable_partition(open.begin(), open.end(), [&](const auto& p_node) { return moved(p_node) == p_prefer_moved; });
 	}
 	std::unordered_set<std::string> names;
@@ -389,7 +392,7 @@ void HTMLDOM::clear() {
 	selection.unref();
 	node_handles.clear();
 	document_handle = ObjectID();
-	// Releasing one root can destroy nested template fragments and unregister them.
+	// 释放一个根节点可能会销毁嵌套的模板片段并注销它们
 	std::vector<std::shared_ptr<HTMLNode::DetachedTree>> trees;
 	for (const auto& entry : detached_trees) {
 		if (auto tree = entry.value.lock()) {
@@ -489,14 +492,16 @@ Ref<HTMLNode> HTMLDOM::make_node(const litehtml::element::ptr& p_node) const {
 		Ref<HTMLCommentNode> comment;
 		comment.instantiate();
 		handle = comment;
-	} else if (p_node->is_text() || dynamic_cast<const litehtml::el_cdata*>(p_node.get())) {
+	}
+	else if (p_node->is_text() || dynamic_cast<const litehtml::el_cdata*>(p_node.get())) {
 		if (const auto* native = dynamic_cast<const litehtml::el_text*>(p_node.get())) {
 			if (const auto first = native->dom_source(); first && first != p_node) return make_node(first);
 		}
 		Ref<HTMLTextNode> text;
 		text.instantiate();
 		handle = text;
-	} else if (const auto tree = get_detached_tree(*p_node); tree && tree->root == p_node && tree->public_fragment) {
+	}
+	else if (const auto tree = get_detached_tree(*p_node); tree && tree->root == p_node && tree->public_fragment) {
 		Ref<HTMLDocumentFragment> fragment;
 		fragment.instantiate();
 		handle = fragment;
@@ -542,10 +547,12 @@ TypedArray<HTMLElement> HTMLDOM::get_elements(const String& p_value, Lookup p_lo
 		bool matches = false;
 		if (p_lookup == Lookup::TAG) {
 			matches = tag == "*" || tag == String::utf8(node->get_tagName());
-		} else if (p_lookup == Lookup::NAME) {
+		}
+		else if (p_lookup == Lookup::NAME) {
 			const char* name = get_element_attribute(*node, "name");
 			matches = name && p_value == String::utf8(name);
-		} else {
+		}
+		else {
 			const auto classes = make_element(node)->get_class_list();
 			matches = true;
 			for (const String& class_name : tokens) {
@@ -557,7 +564,7 @@ TypedArray<HTMLElement> HTMLDOM::get_elements(const String& p_value, Lookup p_lo
 		}
 		if (matches) result.append(make_element(node));
 		return false;
-	});
+		});
 	return result;
 }
 
@@ -662,7 +669,8 @@ Ref<HTMLNode> HTMLDOM::create_character_node(const String& p_data, bool p_commen
 		const auto node = std::make_shared<litehtml::el_comment>(document);
 		node->set_data(data.get_data());
 		parts.push_back(node);
-	} else {
+	}
+	else {
 		parts = DocumentAdapter::create_text(document, data.get_data(), true);
 		if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
 	}
@@ -685,7 +693,7 @@ HTMLBoundary HTMLDOM::text_boundary(const litehtml::element::ptr& p_part, int64_
 		if (litehtml::is_generated_tag(node->tag())) return {};
 	}
 	if (const auto* text = dynamic_cast<const litehtml::el_text*>(p_part.get())) {
-		return {make_node(p_part), p_offset + text->dom_offset()};
+		return { make_node(p_part), p_offset + text->dom_offset() };
 	}
 	return {};
 }
@@ -730,11 +738,12 @@ Ref<HTMLNode> HTMLDOM::split_range_text(const HTMLBoundary& p_boundary) {
 		if (!current || !current->is_valid()) continue;
 		const auto capture = [&](const HTMLBoundary& point, bool p_start) {
 			if (point.node == p_boundary.node && point.offset > p_boundary.offset) {
-				tracked.push_back({Ref<HTMLRange>(current), p_start, point.offset - p_boundary.offset, true});
-			} else if (point.node == parent && point.offset == parent_offset) {
-				tracked.push_back({Ref<HTMLRange>(current), p_start, point.offset + 1, false});
+				tracked.push_back({ Ref<HTMLRange>(current), p_start, point.offset - p_boundary.offset, true });
 			}
-		};
+			else if (point.node == parent && point.offset == parent_offset) {
+				tracked.push_back({ Ref<HTMLRange>(current), p_start, point.offset + 1, false });
+			}
+			};
 		capture(current->start, true);
 		capture(current->end, false);
 	}
@@ -742,7 +751,7 @@ Ref<HTMLNode> HTMLDOM::split_range_text(const HTMLBoundary& p_boundary) {
 		replace_character_data(text, "", p_boundary.offset, data.length(), false) != OK) return {};
 	bool selection_moved = false;
 	for (const auto& item : tracked) {
-		(item.start ? item.range->start : item.range->end) = {item.in_tail ? suffix : parent, item.offset};
+		(item.start ? item.range->start : item.range->end) = { item.in_tail ? suffix : parent, item.offset };
 		selection_moved |= selection.is_valid() && selection->range == item.range;
 	}
 	if (selection_moved) selection_changed();
@@ -767,7 +776,8 @@ Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, cons
 		const auto comment = std::make_shared<litehtml::el_comment>(document);
 		comment->set_data(data.get_data());
 		parts.push_back(comment);
-	} else {
+	}
+	else {
 		const bool split = parent->tag() != litehtml::_textarea_ && !has_raw_text(*parent);
 		parts = DocumentAdapter::create_text(document, data.get_data(), split);
 		if (parts.empty()) parts.push_back(std::make_shared<litehtml::el_text>("", document));
@@ -789,7 +799,7 @@ Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, cons
 	bool selection_moved = false;
 	for (ObjectID id : ranges) {
 		if (auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id)); range && range->is_valid()) {
-			for (auto* point : {&range->start, &range->end}) {
+			for (auto* point : { &range->start, &range->end }) {
 				if (point->node != handle || point->offset <= p_offset) continue;
 				const int64_t offset = point->offset <= p_offset + count ? p_offset : point->offset + p_data.length() - count;
 				selection_moved |= selection.is_valid() && selection->range.ptr() == range && point->offset != offset;
@@ -798,7 +808,7 @@ Error HTMLDOM::replace_character_data(const litehtml::element::ptr& p_node, cons
 		}
 	}
 	if (!observers.empty() && handle.is_valid()) {
-		HTMLMutation record{HTMLMutation::CHARACTER_DATA, handle};
+		HTMLMutation record{ HTMLMutation::CHARACTER_DATA, handle };
 		record.old_value = previous;
 		std::vector<Ref<HTMLNode>> ancestry;
 		for (auto node = handle; node.is_valid(); node = node->get_parent_node()) ancestry.push_back(node);
@@ -818,18 +828,19 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 	if (!dynamic_cast<litehtml::html_tag*>(parent.get()) || is_void_element(*parent) ||
 		dynamic_cast<HTMLTemplateNode*>(parent.get())) return ERR_INVALID_PARAMETER;
 
-	// Flatten by logical node. A repeated node takes its final position, as in a fragment.
+	// 按逻辑节点扁平化，重复节点采用其最终位置，就像在片段中一样
 	std::list<litehtml::elements_list> units;
 	HashMap<const litehtml::element*, decltype(units)::iterator> indices;
 	const auto collect = [&](litehtml::elements_list p_parts) {
 		const auto* key = p_parts.front().get();
 		if (const auto* known = indices.getptr(key)) {
 			units.splice(units.end(), units, *known);
-		} else {
+		}
+		else {
 			units.push_back(std::move(p_parts));
 			indices.insert(key, std::prev(units.end()));
 		}
-	};
+		};
 	for (const Variant& item : p_items) {
 		if (item.get_type() == Variant::STRING) {
 			const auto source = String(item).utf8();
@@ -851,7 +862,8 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 				std::advance(it, parts.size());
 				collect(std::move(parts));
 			}
-		} else {
+		}
+		else {
 			// The document element and its implicit document parent cannot be moved here.
 			if (!native->parent() && is_element_connected(*native)) return ERR_INVALID_PARAMETER;
 			collect(node_parts(native));
@@ -876,12 +888,12 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 			parent_indices.insert(p_parent.get(), parents.size());
 			parents.emplace_back(p_parent, litehtml::elements_list());
 		}
-	};
+		};
 	add_parent(parent);
 	for (const auto& parts : units) {
 		const auto& root = parts.front();
 		add_parent(root->parent());
-		moved_nodes.push_back({root, get_detached_tree(*root)});
+		moved_nodes.push_back({ root, get_detached_tree(*root) });
 		for (const auto& part : parts) moved.insert(part.get());
 	}
 
@@ -898,7 +910,8 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 			}
 			if (child == after) ready = true;
 		}
-	} else {
+	}
+	else {
 		for (const auto& child : parent->children()) {
 			if (!moved.has(child.get()) && (child->tag() == litehtml::_after_ ||
 				(p_edit == TreeEdit::PREPEND && !litehtml::is_generated_tag(child->tag())))) {
@@ -917,7 +930,8 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 			if (owner == parent && (replaced.has(child.get()) || (p_edit == TreeEdit::REPLACE_CHILDREN &&
 				!litehtml::is_generated_tag(child->tag())))) {
 				removed.push_back(child);
-			} else {
+			}
+			else {
 				children.push_back(child);
 			}
 		}
@@ -930,7 +944,7 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 	if (parents.empty()) return OK;
 	const bool connected = std::any_of(parents.begin(), parents.end(), [&](const auto& p_entry) {
 		return is_element_connected(*p_entry.first);
-	});
+		});
 	std::vector<ChildChange> tracked;
 	for (const auto& [owner, children] : parents) {
 		auto change = capture_children(owner);
@@ -941,7 +955,7 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 		const bool second_target = p_second.target->lock_element() == parent;
 		if (first_target != second_target) return !first_target;
 		return p_first.ancestry.size() > p_second.ancestry.size();
-	});
+		});
 	const auto target_tree = get_detached_tree(*parent);
 	DocumentAdapter::replace_child_lists(parents);
 	std::vector<litehtml::element::ptr> preferred;
@@ -962,7 +976,8 @@ Error HTMLDOM::edit_nodes(const litehtml::element::ptr& p_target, TreeEdit p_edi
 			const auto holder = std::make_shared<litehtml::html_tag>(document);
 			DocumentAdapter::replace_children(*holder, std::move(parts));
 			retain_detached_subtree(holder);
-		} else {
+		}
+		else {
 			removed.pop_front();
 			retain_detached_subtree(first);
 		}
@@ -987,9 +1002,11 @@ Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 				const String part = node->get_data();
 				if (first.is_null() && !part.is_empty()) {
 					first = node;
-				} else if (first.is_valid()) {
+				}
+				else if (first.is_valid()) {
 					suffix += part;
-				} else {
+				}
+				else {
 					edit_nodes(node->lock_element(), TreeEdit::REPLACE, {}, false);
 					changed = true;
 				}
@@ -1005,9 +1022,9 @@ Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 						for (ObjectID id : ranges) {
 							auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id));
 							if (!range || !range->is_valid()) continue;
-							for (auto* point : {&range->start, &range->end}) {
+							for (auto* point : { &range->start, &range->end }) {
 								if (point->node == node || (point->node == parent && point->offset == index)) {
-									*point = {first, offset + (point->node == node ? point->offset : 0)};
+									*point = { first, offset + (point->node == node ? point->offset : 0) };
 									selection_moved |= selection.is_valid() && selection->range.ptr() == range;
 								}
 							}
@@ -1020,20 +1037,21 @@ Error HTMLDOM::normalize(const litehtml::element::ptr& p_root) {
 				}
 			}
 			run.clear();
-		};
+			};
 		const auto wrapper = make_node(p_parent);
 		if (wrapper.is_null()) return;
 		for (const Ref<HTMLNode>& child : wrapper->get_child_nodes()) {
 			const Ref<HTMLTextNode> text = child;
 			if (text.is_valid()) {
 				run.push_back(text);
-			} else {
+			}
+			else {
 				flush();
 				if (child->get_node_type() == HTMLNode::ELEMENT_NODE) p_visit(p_visit, child->lock_element());
 			}
 		}
 		flush();
-	};
+		};
 	merge(merge, p_root);
 	if (selection_moved) selection_changed();
 	if (changed && is_element_connected(*p_root)) notify_changed();
@@ -1069,7 +1087,7 @@ bool HTMLDOM::adopt_node(HTMLDOM& p_source_dom, const litehtml::element::ptr& p_
 		return false;
 	}
 	p_source_dom.release_pointer_captures_in_subtree(*p_source);
-	// Stage the detached target before editing the source. Its owner cleans up on failure.
+	// 在编辑源之前先暂存分离的目标，失败时，它的所有者会清理
 	const auto target_tree = register_detached_tree(copy);
 	if (parent && !parent->removeChild(p_source)) {
 		return false;
@@ -1117,7 +1135,7 @@ litehtml::element::ptr HTMLDOM::clone_subtree(const HTMLDOM& p_source_dom, const
 		const auto copy = clone_character_data(p_source, document);
 		if (copy && r_adoption) {
 			r_adoption->nodes.emplace_back(p_source.shared_from_this(), copy);
-			if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) r_adoption->handles.push_back({&p_source, copy, handle});
+			if (const auto handle = p_source_dom.find_node_handle(p_source); handle.is_valid()) r_adoption->handles.push_back({ &p_source, copy, handle });
 		}
 		return copy;
 	}
@@ -1192,7 +1210,8 @@ bool HTMLDOM::is_host_including_ancestor(const litehtml::element& p_ancestor, li
 		}
 		if (auto parent = p_node->parent()) {
 			p_node = std::move(parent);
-		} else {
+		}
+		else {
 			const auto tree = get_detached_tree(*p_node);
 			p_node = tree ? tree->host.lock() : nullptr;
 		}
@@ -1245,7 +1264,7 @@ TypedArray<HTMLElement> HTMLDOM::select_elements(const String& p_selector, Selec
 		return matches;
 	}
 	const auto root = p_scope ? p_scope : document->root();
-	const syntax::MatchContext context{root.get(), syntax::MatchMode::complete, p_scope && !is_element(*p_scope)};
+	const syntax::MatchContext context{ root.get(), syntax::MatchMode::complete, p_scope && !is_element(*p_scope) };
 	const auto& dom_view = litehtml::selector_dom_view();
 	const auto collect = [&](const litehtml::element::ptr& p_element) {
 		if (syntax::match_selector_list(dom_view, p_element.get(), selectors, context) == syntax::match_none) {
@@ -1253,7 +1272,7 @@ TypedArray<HTMLElement> HTMLDOM::select_elements(const String& p_selector, Selec
 		}
 		matches.append(make_element(p_element));
 		return p_query != SelectorQuery::ALL;
-	};
+		};
 
 	if (p_query == SelectorQuery::SELF || p_query == SelectorQuery::CLOSEST) {
 		for (auto element = root; element; element = element->parent()) {
@@ -1305,7 +1324,7 @@ Ref<HTMLElement> HTMLDOM::get_element_by_id(const String& p_id, const litehtml::
 			match = p_element;
 		}
 		return match != nullptr;
-	});
+		});
 	return make_element(match);
 }
 
@@ -1322,7 +1341,7 @@ void HTMLDOM::set_source_attribute(const litehtml::element::ptr& p_element, cons
 	auto* source = source_attributes.getptr(p_element.get());
 	if (p_value) {
 		if (!source || source->element.expired()) {
-			source_attributes.insert(p_element.get(), SourceAttributes{ p_element, {} });
+			source_attributes.insert(p_element.get(), SourceAttributes{ p_element,{} });
 			source = source_attributes.getptr(p_element.get());
 		}
 		source->values[p_name] = p_value;
@@ -1380,14 +1399,16 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 		if (open_presence_changed) {
 			const Ref<HTMLDetailsElement> details = make_element(p_element);
 			if (details.is_valid()) details->queue_toggle(bool(previous));
-			if (p_value) normalize_details(p_element, {p_element}, true);
-		} else if (std::string_view(p_name) == "name" && p_element->get_attr("open")) {
-			normalize_details(p_element, {p_element});
+			if (p_value) normalize_details(p_element, { p_element }, true);
+		}
+		else if (std::string_view(p_name) == "name" && p_element->get_attr("open")) {
+			normalize_details(p_element, { p_element });
 		}
 	}
 	if (auto* input = dynamic_cast<HTMLInputNode*>(p_element.get())) {
 		input->attribute_changed(p_name);
-	} else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
+	}
+	else if (auto* textarea = dynamic_cast<HTMLTextAreaNode*>(p_element.get())) {
 		textarea->update_pseudos();
 	}
 	const std::string_view name(p_name);
@@ -1399,11 +1420,13 @@ Error HTMLDOM::edit_attribute(const litehtml::element::ptr& p_element, const cha
 	}
 	if (name == "checked" || name == "type" || name == "name" || name == "form" || name == "id" || name == "disabled" || name == "selected" || name == "multiple" || name == "size") {
 		dockit::forms::synchronize(p_element, p_element);
-	} else if (name == "value" || name == "required" || name == "readonly" || name == "minlength" || name == "maxlength" ||
+	}
+	else if (name == "value" || name == "required" || name == "readonly" || name == "minlength" || name == "maxlength" ||
 		name == "min" || name == "max" || name == "step" || name == "command" || name == "commandfor") {
 		if (const auto* option = dynamic_cast<const dockit::HTMLOptionNode*>(p_element.get())) {
 			if (auto* select = option->select()) dockit::forms::update_validity(*select);
-		} else if (dockit::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
+		}
+		else if (dockit::forms::is_listed(*p_element) && p_element->tag() != litehtml::_fieldset_) {
 			dockit::forms::update_validity(*p_element);
 		}
 	}
@@ -1425,39 +1448,39 @@ String HTMLDOM::serialize(const litehtml::element& p_element, bool p_outer) cons
 	std::string html;
 	const auto append_node = [&](const auto& p_visit, const litehtml::element& p_node, bool p_include_self,
 		bool p_raw_text = false) -> void {
-		if (litehtml::is_generated_tag(p_node.tag())) return;
-		if (p_include_self && !is_element(p_node)) {
-			std::string text;
-			p_node.get_text(text);
-			if (p_node.is_comment()) html += "<!--" + text + "-->";
-			else if (p_raw_text) html += text;
-			else append_escaped(html, text, false);
-			return;
-		}
-		if (p_include_self) {
-			html += '<';
-			html += p_node.get_tagName();
-			if (const auto* attributes = get_source_attributes(p_node)) {
-				for (const auto& [name, value] : *attributes) {
-					html += ' ';
-					html += name;
-					html += "=\"";
-					append_escaped(html, value, true);
-					html += '"';
-				}
+			if (litehtml::is_generated_tag(p_node.tag())) return;
+			if (p_include_self && !is_element(p_node)) {
+				std::string text;
+				p_node.get_text(text);
+				if (p_node.is_comment()) html += "<!--" + text + "-->";
+				else if (p_raw_text) html += text;
+				else append_escaped(html, text, false);
+				return;
 			}
-			html += '>';
-			if (is_void_element(p_node)) return;
-		}
-		const auto* node = dynamic_cast<const HTMLTemplateNode*>(&p_node);
-		const auto& contents = node ? *node->content->detached_tree->root : p_node;
-		for (const auto& child : contents.children()) p_visit(p_visit, *child, true, has_raw_text(p_node));
-		if (p_include_self) {
-			html += "</";
-			html += p_node.get_tagName();
-			html += '>';
-		}
-	};
+			if (p_include_self) {
+				html += '<';
+				html += p_node.get_tagName();
+				if (const auto* attributes = get_source_attributes(p_node)) {
+					for (const auto& [name, value] : *attributes) {
+						html += ' ';
+						html += name;
+						html += "=\"";
+						append_escaped(html, value, true);
+						html += '"';
+					}
+				}
+				html += '>';
+				if (is_void_element(p_node)) return;
+			}
+			const auto* node = dynamic_cast<const HTMLTemplateNode*>(&p_node);
+			const auto& contents = node ? *node->content->detached_tree->root : p_node;
+			for (const auto& child : contents.children()) p_visit(p_visit, *child, true, has_raw_text(p_node));
+			if (p_include_self) {
+				html += "</";
+				html += p_node.get_tagName();
+				html += '>';
+			}
+		};
 	append_node(append_node, p_element, p_outer);
 	return String::utf8(html.data(), html.size());
 }
@@ -1492,7 +1515,7 @@ Error HTMLDOM::replace_children(const litehtml::element::ptr& p_element, const S
 		textarea->sync_default_value();
 	}
 	dockit::forms::synchronize(target, target);
-	normalize_details(target, {target});
+	normalize_details(target, { target });
 	if (!node && is_element_connected(*p_element)) {
 		notify_changed();
 	}
@@ -1587,9 +1610,9 @@ Error HTMLDOM::place_child(const litehtml::element::ptr& p_parent, const litehtm
 		dockit::forms::synchronize(p_reference);
 	}
 	finish_children(source_change);
-	finish_children(target_change, {p_child});
+	finish_children(target_change, { p_child });
 	dockit::forms::synchronize(p_parent, p_child);
-	normalize_details(p_parent, {p_child});
+	normalize_details(p_parent, { p_child });
 	if (old_parent && tree_root(*old_parent) != tree_root(*p_parent)) dockit::forms::synchronize(old_parent);
 	if (p_notify && (!source_tree || !target_tree)) {
 		notify_changed();

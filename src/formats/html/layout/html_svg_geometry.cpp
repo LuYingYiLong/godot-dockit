@@ -175,17 +175,17 @@ namespace dockit::svg {
 		double rx = std::clamp(specified_rx < 0 ? specified_ry : specified_rx, 0.0, width * 0.5);
 		double ry = std::clamp(specified_ry < 0 ? specified_rx : specified_ry, 0.0, height * 0.5);
 		if (rx == 0 || ry == 0) rx = ry = 0;
-		const Point radii{rx, ry};
+		const Point radii{ rx, ry };
 		Builder path;
-		path.move_to({x + rx, y});
-		line(path, {x + width - rx, y});
-		if (rx > 0) arc(path, {x + width, y + ry}, radii);
-		line(path, {x + width, y + height - ry});
-		if (rx > 0) arc(path, {x + width - rx, y + height}, radii);
-		line(path, {x + rx, y + height});
-		if (rx > 0) arc(path, {x, y + height - ry}, radii);
-		line(path, {x, y + ry});
-		if (rx > 0) arc(path, {x + rx, y}, radii);
+		path.move_to({ x + rx, y });
+		line(path, { x + width - rx, y });
+		if (rx > 0) arc(path, { x + width, y + ry }, radii);
+		line(path, { x + width, y + height - ry });
+		if (rx > 0) arc(path, { x + width - rx, y + height }, radii);
+		line(path, { x + rx, y + height });
+		if (rx > 0) arc(path, { x, y + height - ry }, radii);
+		line(path, { x, y + ry });
+		if (rx > 0) arc(path, { x + rx, y }, radii);
 		path.close();
 		return path.take_path();
 	}
@@ -194,8 +194,9 @@ namespace dockit::svg {
 		Point radii;
 		if (p_circle) {
 			const double radius = length_attribute(p_shape, "r", std::hypot(p_basis.x, p_basis.y) / std::sqrt(2));
-			radii = {radius, radius};
-		} else {
+			radii = { radius, radius };
+		}
+		else {
 			radii.x = length_attribute(p_shape, "rx", p_basis.x);
 			radii.y = length_attribute(p_shape, "ry", p_basis.y);
 		}
@@ -203,9 +204,9 @@ namespace dockit::svg {
 		const double x = length_attribute(p_shape, "cx", p_basis.x);
 		const double y = length_attribute(p_shape, "cy", p_basis.y);
 		Builder path;
-		path.move_to({x + radii.x, y});
-		arc(path, {x - radii.x, y}, radii);
-		arc(path, {x + radii.x, y}, radii);
+		path.move_to({ x + radii.x, y });
+		arc(path, { x - radii.x, y }, radii);
+		arc(path, { x + radii.x, y }, radii);
 		path.close();
 		return path.take_path();
 	}
@@ -275,7 +276,8 @@ namespace dockit::svg {
 		if (closed) {
 			p_distance = std::fmod(p_distance, length());
 			if (p_distance < 0) p_distance += length();
-		} else {
+		}
+		else {
 			p_distance = std::clamp(p_distance, 0.0, length());
 		}
 		const auto next = std::upper_bound(segments.begin(), segments.end(), p_distance,

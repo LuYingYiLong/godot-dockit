@@ -16,6 +16,7 @@ void HTMLDetailsElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_open", "open"), &HTMLDetailsElement::set_open);
 	ClassDB::bind_method(D_METHOD("get_name"), &HTMLDetailsElement::get_name);
 	ClassDB::bind_method(D_METHOD("set_name", "name"), &HTMLDetailsElement::set_name);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open"), "set_open", "is_open");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
 	ADD_SIGNAL(MethodInfo("toggled", PropertyInfo(Variant::BOOL, "open")));
@@ -70,30 +71,30 @@ void HTMLDetailsElement::emit_toggle() {
 }
 
 namespace dockit {
-element::ptr details_summary(const element& p_details) {
-	const auto& children = p_details.children();
-	const auto first = std::find_if(children.begin(), children.end(), [](const auto& child) { return child->tag() == _summary_; });
-	return first == children.end() ? element::ptr() : *first;
-}
-
-element::ptr details_activation_target(const element::ptr& p_candidate) {
-	if (!p_candidate) return {};
-	if (p_candidate->tag() == _details_ && !details_summary(*p_candidate)) return p_candidate;
-	if (p_candidate->tag() != _summary_) return {};
-	const auto parent = p_candidate->parent();
-	return parent && parent->tag() == _details_ && details_summary(*parent) == p_candidate ? parent : element::ptr();
-}
-
-std::shared_ptr<render_item> HTMLDetailsNode::create_render_item(const std::shared_ptr<render_item>& p_parent) {
-	if (get_attr("open")) return html_tag::create_render_item(p_parent);
-	const auto summary = details_summary(*this);
-	elements_list original;
-	original.swap(m_children);
-	for (const auto& child : original) {
-		if (child == summary || is_generated_tag(child->tag())) m_children.push_back(child);
+	element::ptr details_summary(const element& p_details) {
+		const auto& children = p_details.children();
+		const auto first = std::find_if(children.begin(), children.end(), [](const auto& child) { return child->tag() == _summary_; });
+		return first == children.end() ? element::ptr() : *first;
 	}
-	auto item = html_tag::create_render_item(p_parent);
-	original.swap(m_children);
-	return item;
-}
+
+	element::ptr details_activation_target(const element::ptr& p_candidate) {
+		if (!p_candidate) return {};
+		if (p_candidate->tag() == _details_ && !details_summary(*p_candidate)) return p_candidate;
+		if (p_candidate->tag() != _summary_) return {};
+		const auto parent = p_candidate->parent();
+		return parent && parent->tag() == _details_ && details_summary(*parent) == p_candidate ? parent : element::ptr();
+	}
+
+	std::shared_ptr<render_item> HTMLDetailsNode::create_render_item(const std::shared_ptr<render_item>& p_parent) {
+		if (get_attr("open")) return html_tag::create_render_item(p_parent);
+		const auto summary = details_summary(*this);
+		elements_list original;
+		original.swap(m_children);
+		for (const auto& child : original) {
+			if (child == summary || is_generated_tag(child->tag())) m_children.push_back(child);
+		}
+		auto item = html_tag::create_render_item(p_parent);
+		original.swap(m_children);
+		return item;
+	}
 }

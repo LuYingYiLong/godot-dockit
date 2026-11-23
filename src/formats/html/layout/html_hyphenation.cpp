@@ -68,20 +68,20 @@ namespace dockit {
 			for (int64_t index = p_right.start; index < p_right.end && after == WordClass::ignored; ++index) after = word_class(p_text[index]);
 			const auto letter = [](WordClass kind) { return kind == WordClass::letter || kind == WordClass::hebrew; };
 			switch (punctuation) {
-				case WordClass::connector: {
-					const auto adjoining = [&](WordClass kind) { return letter(kind) || kind == WordClass::number || kind == WordClass::katakana; };
-					return adjoining(before) && adjoining(after);
-				}
-				case WordClass::letter_punctuation:
-					return letter(before) && letter(after);
-				case WordClass::number_punctuation:
-					return before == WordClass::number && after == WordClass::number;
-				case WordClass::shared_punctuation:
-					return (letter(before) && letter(after)) || (before == WordClass::number && after == WordClass::number);
-				case WordClass::hebrew_quote:
-					return before == WordClass::hebrew && after == WordClass::hebrew;
-				default:
-					return false;
+			case WordClass::connector: {
+				const auto adjoining = [&](WordClass kind) { return letter(kind) || kind == WordClass::number || kind == WordClass::katakana; };
+				return adjoining(before) && adjoining(after);
+			}
+			case WordClass::letter_punctuation:
+				return letter(before) && letter(after);
+			case WordClass::number_punctuation:
+				return before == WordClass::number && after == WordClass::number;
+			case WordClass::shared_punctuation:
+				return (letter(before) && letter(after)) || (before == WordClass::number && after == WordClass::number);
+			case WordClass::hebrew_quote:
+				return before == WordClass::hebrew && after == WordClass::hebrew;
+			default:
+				return false;
 			}
 		}
 

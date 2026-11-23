@@ -69,7 +69,7 @@ namespace dockit {
 				return p_char - 'a' + 10;
 			}
 			return p_char >= 'A' && p_char <= 'F' ? p_char - 'A' + 10 : -1;
-		};
+			};
 		const CharString utf8 = p_fragment.utf8();
 		std::string bytes;
 		bytes.reserve(utf8.length());

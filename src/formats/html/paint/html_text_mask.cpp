@@ -44,27 +44,27 @@ namespace dockit {
 			const float y = p_position.y - p_decoration.rect.get_center().y;
 			float distance = width * 0.5f - std::abs(y);
 			switch (p_decoration.style) {
-				case text_decoration_style_double:
-					distance = width * 0.5f - std::min(std::abs(y), std::abs(y - 2.0f * width));
-					break;
-				case text_decoration_style_dotted: {
-					const float x = Math::fposmod(p_position.x, 2.0f * width) - width;
-					distance = width * 0.5f - std::hypot(x, y);
-					break;
-				}
-				case text_decoration_style_dashed: {
-					const float x = Math::fposmod(p_position.x, 5.0f * width) - 2.5f * width;
-					distance = std::min(distance, 1.5f * width - std::abs(x));
-					break;
-				}
-				case text_decoration_style_wavy: {
-					const float phase = Math::fposmod(p_position.x, 6.0f * width) / (6.0f * width) * Math_TAU;
-					const float slope = std::cos(phase) * Math_TAU / 6.0f;
-					distance = width * 0.5f - std::abs(y - std::sin(phase) * width) / std::hypot(1.0f, slope);
-					break;
-				}
-				default:
-					break;
+			case text_decoration_style_double:
+				distance = width * 0.5f - std::min(std::abs(y), std::abs(y - 2.0f * width));
+				break;
+			case text_decoration_style_dotted: {
+				const float x = Math::fposmod(p_position.x, 2.0f * width) - width;
+				distance = width * 0.5f - std::hypot(x, y);
+				break;
+			}
+			case text_decoration_style_dashed: {
+				const float x = Math::fposmod(p_position.x, 5.0f * width) - 2.5f * width;
+				distance = std::min(distance, 1.5f * width - std::abs(x));
+				break;
+			}
+			case text_decoration_style_wavy: {
+				const float phase = Math::fposmod(p_position.x, 6.0f * width) / (6.0f * width) * Math_TAU;
+				const float slope = std::cos(phase) * Math_TAU / 6.0f;
+				distance = width * 0.5f - std::abs(y - std::sin(phase) * width) / std::hypot(1.0f, slope);
+				break;
+			}
+			default:
+				break;
 			}
 			return std::clamp(distance + 0.5f, 0.0f, 1.0f) * p_decoration.alpha;
 		}
@@ -135,7 +135,7 @@ namespace dockit {
 			const auto pixel = [&](const Vector2i& p_pixel) {
 				const Vector2i sample = p_pixel.clamp(p_glyph.uv.position, p_glyph.uv.get_end() - Vector2i(1, 1));
 				return p_glyph.atlas->get_pixelv(sample);
-			};
+				};
 			const Color color = pixel(start).lerp(pixel(start + Vector2i(1, 0)), fraction.x).lerp(
 				pixel(start + Vector2i(0, 1)).lerp(pixel(start + Vector2i(1, 1)), fraction.x), fraction.y);
 			if (p_glyph.msdf_scale > 0.0f) {
@@ -194,7 +194,7 @@ namespace dockit {
 					}
 				}
 			}
-		};
+			};
 		for (const auto& glyph : glyphs) {
 			paint(glyph.rect, [&](const Vector2& p_sample) { return sample_glyph(glyph, p_sample); });
 		}
@@ -205,7 +205,7 @@ namespace dockit {
 			for (const auto& glyph : emphasis_glyphs) {
 				paint(Rect2(glyph.rect.position + mark.position, glyph.rect.size), [&](const Vector2& p_sample) {
 					return sample_glyph(glyph, p_sample - mark.position) * mark.alpha;
-				});
+					});
 			}
 		}
 		const Ref<Image> image = Image::create_from_data(size.x, size.y, false, Image::FORMAT_LA8, data);

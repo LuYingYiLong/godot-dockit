@@ -91,8 +91,8 @@ Error HTMLSelection::set_base_and_extent(const Ref<HTMLNode>& p_anchor, int64_t 
 	const Ref<HTMLNode>& p_focus, int64_t p_focus_offset) {
 	if (!is_valid() || p_anchor.is_null() || p_focus.is_null() || !p_anchor->is_connected() || !p_focus->is_connected()) return ERR_INVALID_PARAMETER;
 	const auto selection_range = owner.lock()->create_range();
-	const HTMLBoundary anchor{p_anchor, p_anchor_offset};
-	const HTMLBoundary focus{p_focus, p_focus_offset};
+	const HTMLBoundary anchor{ p_anchor, p_anchor_offset };
+	const HTMLBoundary focus{ p_focus, p_focus_offset };
 	if (!selection_range->accepts(anchor) || !selection_range->accepts(focus)) return ERR_INVALID_PARAMETER;
 	const bool reversed = dockit::compare_html_boundaries(anchor, focus) > 0;
 	selection_range->set_boundaries(reversed ? focus : anchor, reversed ? anchor : focus);

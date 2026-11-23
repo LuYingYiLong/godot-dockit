@@ -20,7 +20,7 @@ namespace dockit {
 
 		char32_t full_width(char32_t p_character) {
 			if (p_character >= 0x0021 && p_character <= 0x007e) return p_character + 0xfee0;
-			// Unicode Decomposition_Mapping, inverting <wide> and applying <narrow> directly.
+			// Unicode 分解映射，直接将 <wide> 反转并应用 <narrow>
 			static constexpr CodepointMapping other_widths[] = {
 				{ 0x0020, 0x3000 }, { 0x00a2, 0xffe0 }, { 0x00a3, 0xffe1 }, { 0x00a5, 0xffe5 },
 				{ 0x00a6, 0xffe4 }, { 0x00ac, 0xffe2 }, { 0x00af, 0xffe3 }, { 0x20a9, 0xffe6 },
@@ -48,7 +48,7 @@ namespace dockit {
 		}
 
 		char32_t full_size_kana(char32_t p_character) {
-			// CSS Text 4 Appendix G, including the supplementary small-kana block.
+			// CSS Text 4 附录 G，包括补充的小型假名区块
 			static constexpr CodepointMapping kana[] = {
 				{ 0x3041, 0x3042 }, { 0x3043, 0x3044 }, { 0x3045, 0x3046 }, { 0x3047, 0x3048 },
 				{ 0x3049, 0x304a }, { 0x3063, 0x3064 }, { 0x3083, 0x3084 }, { 0x3085, 0x3086 },

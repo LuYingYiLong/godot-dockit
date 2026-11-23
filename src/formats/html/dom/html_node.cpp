@@ -133,8 +133,6 @@ Ref<HTMLWindow> HTMLDocumentNode::get_default_view() const {
 }
 
 void HTMLNode::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_mutation_revision"), &HTMLNode::get_mutation_revision);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "mutation_revision", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_mutation_revision");
 	ClassDB::bind_method(D_METHOD("get_node_type"), &HTMLNode::get_node_type);
 	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLNode::is_valid);
 	ClassDB::bind_method(D_METHOD("is_connected"), &HTMLNode::is_connected);
@@ -142,13 +140,18 @@ void HTMLNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_child_nodes"), &HTMLNode::get_child_nodes);
 	ClassDB::bind_method(D_METHOD("get_first_child"), &HTMLNode::get_first_child);
 	ClassDB::bind_method(D_METHOD("get_next_sibling"), &HTMLNode::get_next_sibling);
-	ClassDB::bind_method(D_METHOD("get_assigned_slot"), &HTMLNode::get_assigned_slot);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_slot", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE, "HTMLElement"), "", "get_assigned_slot");
 	ClassDB::bind_method(D_METHOD("get_root_node"), &HTMLNode::get_root_node);
 	ClassDB::bind_method(D_METHOD("contains", "node"), &HTMLNode::contains);
 	ClassDB::bind_method(D_METHOD("compare_document_position", "node"), &HTMLNode::compare_document_position);
 	ClassDB::bind_method(D_METHOD("is_equal_node", "node"), &HTMLNode::is_equal_node);
 	ClassDB::bind_method(D_METHOD("normalize"), &HTMLNode::normalize);
+	
+	ClassDB::bind_method(D_METHOD("get_assigned_slot"), &HTMLNode::get_assigned_slot);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "assigned_slot", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE, "HTMLElement"), "", "get_assigned_slot");
+	
+	ClassDB::bind_method(D_METHOD("get_mutation_revision"), &HTMLNode::get_mutation_revision);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "mutation_revision", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_mutation_revision");
+	
 	BIND_ENUM_CONSTANT(ELEMENT_NODE);
 	BIND_ENUM_CONSTANT(TEXT_NODE);
 	BIND_ENUM_CONSTANT(COMMENT_NODE);
@@ -266,7 +269,7 @@ int32_t HTMLNode::compare_document_position(const Ref<HTMLNode>& p_node) const {
 			p_start = p_start->get_parent_node();
 		}
 		return result;
-	};
+		};
 	const auto self = path(Ref<HTMLNode>(const_cast<HTMLNode*>(this)));
 	const auto other = path(p_node);
 	if (self.back() != other.back()) {

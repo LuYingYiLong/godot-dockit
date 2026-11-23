@@ -5,26 +5,33 @@
 using namespace godot;
 
 void HTMLImageElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_intrinsic_size"), &HTMLImageElement::get_intrinsic_size);
+
 	ClassDB::bind_method(D_METHOD("get_src"), &HTMLImageElement::get_src);
 	ClassDB::bind_method(D_METHOD("set_src", "src"), &HTMLImageElement::set_src);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "src"), "set_src", "get_src");
+
 	ClassDB::bind_method(D_METHOD("get_srcset"), &HTMLImageElement::get_srcset);
 	ClassDB::bind_method(D_METHOD("set_srcset", "srcset"), &HTMLImageElement::set_srcset);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "srcset"), "set_srcset", "get_srcset");
+
 	ClassDB::bind_method(D_METHOD("get_sizes"), &HTMLImageElement::get_sizes);
 	ClassDB::bind_method(D_METHOD("set_sizes", "sizes"), &HTMLImageElement::set_sizes);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "sizes"), "set_sizes", "get_sizes");
+
 	ClassDB::bind_method(D_METHOD("get_current_src"), &HTMLImageElement::get_current_src);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_src"), "", "get_current_src");
+
 	ClassDB::bind_method(D_METHOD("get_alt"), &HTMLImageElement::get_alt);
 	ClassDB::bind_method(D_METHOD("set_alt", "alt"), &HTMLImageElement::set_alt);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "alt"), "set_alt", "get_alt");
+
 	ClassDB::bind_method(D_METHOD("get_width_hint"), &HTMLImageElement::get_width_hint);
 	ClassDB::bind_method(D_METHOD("set_width_hint", "width"), &HTMLImageElement::set_width_hint);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "width_hint"), "set_width_hint", "get_width_hint");
+
 	ClassDB::bind_method(D_METHOD("get_height_hint"), &HTMLImageElement::get_height_hint);
 	ClassDB::bind_method(D_METHOD("set_height_hint", "height"), &HTMLImageElement::set_height_hint);
-	ClassDB::bind_method(D_METHOD("get_intrinsic_size"), &HTMLImageElement::get_intrinsic_size);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "src"), "set_src", "get_src");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "srcset"), "set_srcset", "get_srcset");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "sizes"), "set_sizes", "get_sizes");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_src"), "", "get_current_src");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "alt"), "set_alt", "get_alt");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "width_hint"), "set_width_hint", "get_width_hint");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height_hint"), "set_height_hint", "get_height_hint");
 }
 

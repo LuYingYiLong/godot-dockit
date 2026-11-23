@@ -22,17 +22,17 @@ namespace dockit {
 		const auto& margin = p_style.get_scroll_margin();
 		const Vector2 start = p_box.position - Vector2(margin[3].calc_percent(0), margin[0].calc_percent(0));
 		const Vector2 end = p_box.get_end() + Vector2(margin[1].calc_percent(0), margin[2].calc_percent(0));
-		return {start, (end - start).max(Vector2())};
+		return { start, (end - start).max(Vector2()) };
 	}
 
 	Rect2 html_scroll_padding_area(const Rect2& p_port, const css::ComputedStyle& p_style) {
 		const auto& padding = p_style.get_scroll_padding();
 		const auto inset = [&](size_t side, real_t basis) {
 			return std::clamp<real_t>(padding[side].calc_percent(basis), 0, basis);
-		};
+			};
 		const Vector2 start(inset(3, p_port.size.x), inset(0, p_port.size.y));
 		const Vector2 end(inset(1, p_port.size.x), inset(2, p_port.size.y));
-		return {p_port.position + start, (p_port.size - start - end).max(Vector2())};
+		return { p_port.position + start, (p_port.size - start - end).max(Vector2()) };
 	}
 
 	Vector2 html_scroll_delta(const Rect2& p_target, const Rect2& p_port, std::optional<float> p_align,
@@ -44,42 +44,42 @@ namespace dockit {
 			if ((leading < 0 && size <= extent) || (trailing > 0 && size > extent)) return leading;
 			if ((trailing > 0 && size <= extent) || (leading < 0 && size > extent)) return trailing;
 			return real_t(0);
-		};
+			};
 		const Vector2 start = p_target.position - p_port.position;
 		if (p_options) {
 			using Alignment = HTMLScrollOptions::Alignment;
 			const auto aligned = [&](int p_axis, Alignment p_value) -> real_t {
 				const auto difference = p_target.size[p_axis] - p_port.size[p_axis];
 				switch (p_value) {
-					case Alignment::START: return start[p_axis];
-					case Alignment::CENTER: return start[p_axis] + difference * 0.5;
-					case Alignment::END: return start[p_axis] + difference;
-					case Alignment::NEAREST: return nearest(p_target.position[p_axis], p_target.size[p_axis],
-						p_port.position[p_axis], p_port.size[p_axis]);
+				case Alignment::START: return start[p_axis];
+				case Alignment::CENTER: return start[p_axis] + difference * 0.5;
+				case Alignment::END: return start[p_axis] + difference;
+				case Alignment::NEAREST: return nearest(p_target.position[p_axis], p_target.size[p_axis],
+					p_port.position[p_axis], p_port.size[p_axis]);
 				}
 				return 0;
-			};
-			return {aligned(0, p_options->inline_axis), aligned(1, p_options->block)};
+				};
+			return { aligned(0, p_options->inline_axis), aligned(1, p_options->block) };
 		}
 		if (p_align) {
 			const real_t align = std::isfinite(*p_align) ? std::clamp(*p_align, 0.0f, 1.0f) : 0.0f;
 			// HTMLLabel's align parameter positions the target's leading edge.
-			return {start.x < 0 || start.x >= p_port.size.x ? start.x : real_t(0),
-				start.y - p_port.size.y * align};
+			return { start.x < 0 || start.x >= p_port.size.x ? start.x : real_t(0),
+				start.y - p_port.size.y * align };
 		}
-		return {nearest(p_target.position.x, p_target.size.x, p_port.position.x, p_port.size.x),
-			nearest(p_target.position.y, p_target.size.y, p_port.position.y, p_port.size.y)};
+		return { nearest(p_target.position.x, p_target.size.x, p_port.position.x, p_port.size.x),
+			nearest(p_target.position.y, p_target.size.y, p_port.position.y, p_port.size.y) };
 	}
 
 	HTMLSnapResult html_select_scroll_snap(const css::ComputedStyle& p_style, const Rect2& p_snapport,
 		const std::vector<HTMLSnapArea>& p_areas, const HTMLSnapRequest& p_request) {
 		const auto& type = p_style.get_scroll_snap_type();
-		HTMLSnapResult result{p_request.end.clamp(Vector2(), p_request.limit), {}};
+		HTMLSnapResult result{ p_request.end.clamp(Vector2(), p_request.limit),{} };
 		if (!type.enabled() || p_areas.empty()) return result;
 		const Vector2 natural = result.offset;
 		const Vector2 direction = natural - p_request.start;
 		const bool directional = p_request.method == HTMLSnapMethod::direction;
-		const bool enabled[] = {type.x && p_request.axes.x, type.y && p_request.axes.y};
+		const bool enabled[] = { type.x && p_request.axes.x, type.y && p_request.axes.y };
 		struct Candidate {
 			const HTMLSnapArea* area;
 			real_t position;
@@ -93,7 +93,7 @@ namespace dockit {
 			const real_t port_start = p_snapport.position[axis] + offset;
 			const real_t port_end = port_start + p_snapport.size[axis];
 			return area.area.position[axis] < port_end && area.area.get_end()[axis] > port_start;
-		};
+			};
 		const auto alignment = [&](const HTMLSnapArea& area, int axis) -> std::optional<real_t> {
 			const auto& align = area.style->get_scroll_snap_align();
 			const auto value = axis == 0 ? align.inline_axis : align.block;
@@ -105,7 +105,7 @@ namespace dockit {
 			else if ((value == scroll_snap_align::end) != rtl) position += extra;
 			position = std::clamp(position, real_t(0), p_request.limit[axis]);
 			return overlaps(area, axis, position) ? std::optional(position) : std::nullopt;
-		};
+			};
 		const auto choose = [&](int axis, const Choice& other) {
 			const int cross = 1 - axis;
 			const real_t origin = p_request.start[axis];
@@ -123,7 +123,7 @@ namespace dockit {
 					const bool crosses_area = directional && area.area.position[cross] < corridor_end && area.area.get_end()[cross] > corridor_start;
 					if (!crosses_area && !(enabled[cross] && alignment(area, cross))) continue;
 				}
-				candidates.push_back({&area, *position});
+				candidates.push_back({ &area, *position });
 			}
 			std::vector<real_t> positions;
 			positions.reserve(candidates.size());
@@ -141,7 +141,7 @@ namespace dockit {
 				const bool forward = (intended > 0 && travel > 0.01) || (intended < 0 && travel < -0.01);
 				if (directional && forward && area.style->stops_scroll_snap() && std::abs(travel) <= std::abs(intended) &&
 					(!stop.area || std::abs(travel) < std::abs(stop.position - origin))) {
-					stop = {&area, candidate.position, true};
+					stop = { &area, candidate.position, true };
 				}
 
 				real_t position = candidate.position;
@@ -157,13 +157,13 @@ namespace dockit {
 				const real_t distance = std::abs(position - end);
 				if (!preferred && !type.mandatory && distance > length * real_t(0.3)) continue;
 				if (preferred || distance < best_distance) {
-					best = {&area, position, false};
+					best = { &area, position, false };
 					best_distance = distance;
 					if (preferred) break;
 				}
 			}
 			return stop.area ? stop : best;
-		};
+			};
 
 		const int first = enabled[0] && (!enabled[1] || std::abs(direction.x) > std::abs(direction.y)) ? 0 : 1;
 		const int second = 1 - first;
@@ -282,33 +282,33 @@ namespace dockit {
 		Projection transform_function_matrix(const css_transform_function& p_function, const Vector2& p_size) {
 			using Kind = css_transform_function::kind;
 			switch (p_function.type) {
-				case Kind::translate:
-					return spatial_translate(Vector3(p_function.x.calc_percent(p_size.x), p_function.y.calc_percent(p_size.y),
-						p_function.z.calc_percent(0)));
-				case Kind::rotate:
-					return Projection(Transform3D(rotation_basis(p_function), Vector3()));
-				case Kind::scale:
-					return Projection(Transform3D(Basis(p_function.first, 0, 0, 0, p_function.second, 0, 0, 0, p_function.third), Vector3()));
-				case Kind::skew:
-					return Projection(Transform3D(Basis(1, std::tan(p_function.first), 0, std::tan(p_function.second), 1, 0, 0, 0, 1), Vector3()));
-				case Kind::matrix: {
-					const auto& m = p_function.matrix;
-					return Projection(Transform3D(Basis(m[0], m[2], 0, m[1], m[3], 0, 0, 0, 1), Vector3(m[4], m[5], 0)));
-				}
-				case Kind::matrix3d: {
-					const auto& m = p_function.matrix;
-					return { Vector4(m[0], m[1], m[2], m[3]), Vector4(m[4], m[5], m[6], m[7]),
-						Vector4(m[8], m[9], m[10], m[11]), Vector4(m[12], m[13], m[14], m[15]) };
-				}
-				case Kind::perspective:
-					return perspective_matrix(p_function.z);
-				case Kind::blend: {
-					const auto& blend = *p_function.blend;
-					const auto from = transform_list_matrix(blend.from, p_size);
-					const auto to = transform_list_matrix(blend.to, p_size);
-					if (const auto sample = interpolate_transform_matrices(from, to, blend.progress)) return *sample;
-					return blend.allow_discrete && blend.progress < 0.5 ? from : to;
-				}
+			case Kind::translate:
+				return spatial_translate(Vector3(p_function.x.calc_percent(p_size.x), p_function.y.calc_percent(p_size.y),
+					p_function.z.calc_percent(0)));
+			case Kind::rotate:
+				return Projection(Transform3D(rotation_basis(p_function), Vector3()));
+			case Kind::scale:
+				return Projection(Transform3D(Basis(p_function.first, 0, 0, 0, p_function.second, 0, 0, 0, p_function.third), Vector3()));
+			case Kind::skew:
+				return Projection(Transform3D(Basis(1, std::tan(p_function.first), 0, std::tan(p_function.second), 1, 0, 0, 0, 1), Vector3()));
+			case Kind::matrix: {
+				const auto& m = p_function.matrix;
+				return Projection(Transform3D(Basis(m[0], m[2], 0, m[1], m[3], 0, 0, 0, 1), Vector3(m[4], m[5], 0)));
+			}
+			case Kind::matrix3d: {
+				const auto& m = p_function.matrix;
+				return { Vector4(m[0], m[1], m[2], m[3]), Vector4(m[4], m[5], m[6], m[7]),
+					Vector4(m[8], m[9], m[10], m[11]), Vector4(m[12], m[13], m[14], m[15]) };
+			}
+			case Kind::perspective:
+				return perspective_matrix(p_function.z);
+			case Kind::blend: {
+				const auto& blend = *p_function.blend;
+				const auto from = transform_list_matrix(blend.from, p_size);
+				const auto to = transform_list_matrix(blend.to, p_size);
+				if (const auto sample = interpolate_transform_matrices(from, to, blend.progress)) return *sample;
+				return blend.allow_discrete && blend.progress < 0.5 ? from : to;
+			}
 			}
 			return {};
 		}
@@ -345,10 +345,10 @@ namespace dockit {
 			margin_box += p_item.get_margins();
 			Rect2 box;
 			switch (p_path.box) {
-				case css_shape_box::margin: box = to_rect(margin_box); break;
-				case css_shape_box::border: box = to_rect(border_box); break;
-				case css_shape_box::padding: box = to_rect(padding_box); break;
-				case css_shape_box::content: box = to_rect(content_box); break;
+			case css_shape_box::margin: box = to_rect(margin_box); break;
+			case css_shape_box::border: box = to_rect(border_box); break;
+			case css_shape_box::padding: box = to_rect(padding_box); break;
+			case css_shape_box::content: box = to_rect(content_box); break;
 			}
 			box.size = box.size.max(Vector2());
 			if (!box.is_finite()) return RoundedRect(Rect2(), {});
@@ -392,7 +392,8 @@ namespace dockit {
 							contour.push_back(point);
 						}
 					}
-				} else {
+				}
+				else {
 					auto& contour = region.contours.emplace_back();
 					contour.reserve(p_path.vertices.size());
 					for (const auto& vertex : p_path.vertices) {
@@ -423,7 +424,7 @@ namespace dockit {
 					}
 					if (value.is_predefined()) return value.predef() == 0 ? near[axis] : far[axis];
 					return value.calc_percent(box.size[axis]);
-				};
+					};
 				const Vector2 axes = Vector2(radius(0), radius(p_path.shape == css_clip_shape::circle ? 0 : 1)).max(Vector2());
 				const Rect2 ellipse(box.position + center - axes, axes * 2);
 				if (!ellipse.is_finite()) return RoundedRect(Rect2(), {});
@@ -437,7 +438,8 @@ namespace dockit {
 			if (p_path.shape == css_clip_shape::xywh) {
 				rectangle = Rect2(box.position + Vector2(dimensions[0].calc_percent(box.size.x), dimensions[1].calc_percent(box.size.y)),
 					Vector2(dimensions[2].calc_percent(box.size.x), dimensions[3].calc_percent(box.size.y)).max(Vector2()));
-			} else {
+			}
+			else {
 				Vector2 start(dimensions[3].calc_percent(box.size.x), dimensions[0].calc_percent(box.size.y));
 				Vector2 end(dimensions[1].calc_percent(box.size.x), dimensions[2].calc_percent(box.size.y));
 				if (p_path.shape == css_clip_shape::inset) {
@@ -449,7 +451,8 @@ namespace dockit {
 						}
 					}
 					end = box.size - end;
-				} else {
+				}
+				else {
 					if (dimensions[1].is_predefined()) end.x = box.size.x;
 					if (dimensions[2].is_predefined()) end.y = box.size.y;
 				}
@@ -496,9 +499,11 @@ namespace dockit {
 			for (; parent; parent = parent->parent()) {
 				if (positioning == element_position_absolute) {
 					if (parent->establishes_positioned_containing_block()) break;
-				} else if (positioning == element_position_fixed) {
+				}
+				else if (positioning == element_position_fixed) {
 					if (parent->establishes_effect_containing_block()) break;
-				} else if (parent->css().get_display() != display_inline) {
+				}
+				else if (parent->css().get_display() != display_inline) {
 					break;
 				}
 			}
@@ -529,7 +534,7 @@ namespace dockit {
 				const auto crossing = [](double start, double end, double direction) {
 					if (std::abs(direction) < 1e-12) return std::numeric_limits<double>::infinity();
 					return direction > 0 ? end / direction : -start / direction;
-				};
+					};
 				return std::min(crossing(to_start.x, to_end.x, p_direction.x), crossing(to_start.y, to_end.y, p_direction.y));
 			}
 			const auto near = to_start.abs().min(to_end.abs());
@@ -542,7 +547,7 @@ namespace dockit {
 
 		css::SVGPath closed_motion_outline(const css_clip_path& p_shape, const RoundedRect& p_reference,
 			const std::optional<Vector2>& p_start, const Transform2D& p_matrix, std::optional<Rect2>& r_ellipse) {
-			auto shape = p_shape;
+			css_clip_path shape = p_shape;
 			const bool ellipse = is_one_of(shape.shape, css_clip_shape::circle, css_clip_shape::ellipse);
 			if (p_start && !shape.center_explicit && ellipse) {
 				const Vector2 center = *p_start - p_reference.rect.position;
@@ -557,10 +562,10 @@ namespace dockit {
 				const Vector2 center = bounds.rect.get_center();
 				const Vector2 axes = bounds.rect.size * 0.5;
 				css::SVGPathBuilder path;
-				path.move_to({center.x + axes.x, center.y});
+				path.move_to({ center.x + axes.x, center.y });
 				for (const auto point : { Vector2(center.x, center.y + axes.y), Vector2(center.x - axes.x, center.y),
 					Vector2(center.x, center.y - axes.y), Vector2(center.x + axes.x, center.y) }) {
-					css::SVGPathSegment arc{ css::SVGPathSegment::Kind::arc, { point.x, point.y } };
+					css::SVGPathSegment arc{ css::SVGPathSegment::Kind::arc,{ point.x, point.y } };
 					arc.radii = { axes.x, axes.y };
 					arc.sweep = true;
 					path.append(arc);
@@ -571,20 +576,21 @@ namespace dockit {
 			Polygon points;
 			if (polygon && !polygon->outlines.empty() && !polygon->outlines.front().contours.empty()) {
 				points = polygon->outlines.front().contours.front();
-			} else {
+			}
+			else {
 				points = clip_polygon({ bounds, Transform2D() }, true);
 				if (bounds.has_radius()) {
 					const Vector2 start = bounds.rect.position + Vector2(bounds.radii_x.x, 0);
 					const auto first = std::min_element(points.begin(), points.end(), [&](const Vector2& a, const Vector2& b) {
 						return a.distance_squared_to(start) < b.distance_squared_to(start);
-					});
+						});
 					std::rotate(points.begin(), first, points.end());
 				}
 			}
 			css::SVGPathBuilder path;
 			for (const auto& point : points) {
 				if (path.empty()) path.move_to({ point.x, point.y });
-				else path.append({ css::SVGPathSegment::Kind::line, { point.x, point.y } });
+				else path.append({ css::SVGPathSegment::Kind::line,{ point.x, point.y } });
 			}
 			path.close();
 			return path.take_path();
@@ -617,10 +623,12 @@ namespace dockit {
 			if (shape->svg_path) {
 				path = *shape->svg_path;
 				placement = Transform2D(0, default_origin);
-			} else if (shape->shape_path) {
+			}
+			else if (shape->shape_path) {
 				path = css::resolve_shape_path(*shape->shape_path, reference.rect.size.x, reference.rect.size.y).value_or(css::SVGPath());
 				placement = Transform2D(0, reference.rect.position);
-			} else if (shape->shape == css_clip_shape::reference) {
+			}
+			else if (shape->shape == css_clip_shape::reference) {
 				const auto fragment = shape->url.find('#');
 				const auto document = svg::reference_document(*p_item.src_el(), shape->url, shape->base_url);
 				const auto root = document ? document->root() : nullptr;
@@ -630,7 +638,8 @@ namespace dockit {
 					path = svg::shape_path(*target, reference.rect.size, target->get_tagName());
 					placement = Transform2D(0, reference.rect.position) * svg::transform_attribute(*target);
 				}
-			} else {
+			}
+			else {
 				path = closed_motion_outline(*shape, reference, start, p_matrix, ellipse);
 			}
 			if (path.empty()) return { default_origin, Vector2(1, 0) };
@@ -806,9 +815,11 @@ namespace dockit {
 			const bool use_precise = use_precise_clip(*clip, remaining);
 			if (clip->polygon && use_precise) {
 				polygon_clips.push_back(clip->polygon->transformed(clip->matrix));
-			} else if (clip->axes == ClipAxes::horizon) {
+			}
+			else if (clip->axes == ClipAxes::horizon) {
 				intersect_horizon(polygon, clip->matrix);
-			} else if (clip->axes != ClipAxes::both) {
+			}
+			else if (clip->axes != ClipAxes::both) {
 				const int axis = clip->axes == ClipAxes::x ? 0 : 1;
 				if (clip->shape.rect.size[axis] <= 0) return {};
 				if (use_precise) intersect_strip(polygon, *clip);
@@ -873,7 +884,7 @@ namespace dockit {
 				return p_radius + p_distance * (1 + ratio * ratio * ratio);
 			}
 			return std::max<real_t>(0, p_radius + p_distance);
-		};
+			};
 		const Vector2 leading = rect.position - p_rect.position;
 		const Vector2 trailing = p_rect.get_end() - rect.get_end();
 		border_radiuses radii;
@@ -960,14 +971,14 @@ namespace dockit {
 			const auto to_color = [&](const web_color& p_color) {
 				const auto srgb = p_color.to_srgb(p_style.get_color());
 				return Color(srgb.red / 255.0f, srgb.green / 255.0f, srgb.blue / 255.0f, srgb.alpha / 255.0f);
-			};
+				};
 			result.colors = HTMLScrollbarColors{ to_color(colors->thumb), to_color(colors->track) };
 		}
 		return result;
 	}
 
 	HTMLScrollbar make_html_scrollbar(const Rect2& p_track, int p_axis, real_t p_page, real_t p_range, real_t p_offset) {
-		HTMLScrollbar bar{p_track, p_track, p_range};
+		HTMLScrollbar bar{ p_track, p_track, p_range };
 		if (p_track.has_area() && p_range > 0) {
 			const real_t length = p_track.size[p_axis];
 			bar.thumb.size[p_axis] = std::clamp(length * p_page / (p_page + p_range), std::min<real_t>(17, length * 0.5), length);
@@ -979,17 +990,17 @@ namespace dockit {
 	Vector2i html_resize_axes(const css::ComputedStyle& p_style) {
 		if (!p_style.is_scroll_container()) return {};
 		switch (p_style.get_resize()) {
-			case resize_both: return {1, 1};
-			case resize_horizontal:
-			case resize_inline: return {1, 0};
-			case resize_vertical:
-			case resize_block: return {0, 1};
-			default: return {};
+		case resize_both: return { 1, 1 };
+		case resize_horizontal:
+		case resize_inline: return { 1, 0 };
+		case resize_vertical:
+		case resize_block: return { 0, 1 };
+		default: return {};
 		}
 	}
 
 	Rect2 html_resize_grip(const Rect2& p_box) {
-		const real_t edge = std::min<real_t>({14, p_box.size.x, p_box.size.y});
+		const real_t edge = std::min<real_t>({ 14, p_box.size.x, p_box.size.y });
 		const Vector2 size(edge, edge);
 		return p_box.has_area() ? Rect2(p_box.get_end() - size, size) : Rect2();
 	}
@@ -1016,7 +1027,7 @@ namespace dockit {
 		const Vector2 range = Vector2(content->width - placement.width, content->height - placement.height).max(Vector2());
 		const auto shows_scrollbar = [](litehtml::overflow p_mode, real_t p_range) {
 			return p_mode == overflow_scroll || (p_mode == overflow_auto && p_range > 0);
-		};
+			};
 		const bool horizontal = shows_scrollbar(css.get_overflow_x(), range.x);
 		const bool vertical = shows_scrollbar(css.get_overflow_y(), range.y);
 		const Vector2 size = viewport.size.min(Vector2(thickness, thickness));
@@ -1043,7 +1054,7 @@ namespace dockit {
 		if (!local.is_finite()) return false;
 		const bool inside = std::any_of(fragments.begin(), fragments.end(), [&](const RoundedRect& p_fragment) {
 			return p_fragment.has_point(local);
-		});
+			});
 		if (!inside) {
 			return false;
 		}
@@ -1063,7 +1074,7 @@ namespace dockit {
 			for (auto* clip = overflow; clip; clip = clip->parent)
 				if (clip->polygon || clip->matrix != Transform2D() || clip->axes != ClipAxes::both) return true;
 			return false;
-		};
+			};
 		if (matrix != Transform2D() || transformed_clip()) {
 			std::vector<TransformedClip> shapes;
 			for (auto* entry = overflow; entry; entry = entry->parent) shapes.push_back(*entry);
@@ -1228,9 +1239,10 @@ namespace dockit {
 				if (p_parent_perspective && !fixed) local = *p_parent_perspective * local;
 				if (participates) {
 					if (shift != Vector2()) local = spatial_translate(Vector3(shift.x, shift.y, 0)) * local;
-					spatial = SpatialParent{p_spatial_parent->accumulated * local, p_spatial_parent->outer};
-				} else {
-					spatial = SpatialParent{local, matrix};
+					spatial = SpatialParent{ p_spatial_parent->accumulated * local, p_spatial_parent->outer };
+				}
+				else {
+					spatial = SpatialParent{ local, matrix };
 				}
 				const HTMLPlaneTransform projected = project_to_plane(spatial->accumulated);
 				const real_t determinant = spatial->accumulated.determinant();
@@ -1254,7 +1266,7 @@ namespace dockit {
 		}
 		const auto inverse = matrix.try_inverse();
 		auto& entry = renderers.emplace(p_item.get(),
-			RenderGeometry{ p_item, {}, {}, std::nullopt, matrix,
+			RenderGeometry{ p_item,{},{}, std::nullopt, matrix,
 				p_transform_culled || plane_culled ? std::nullopt : inverse, p_overflow, fixed_subtree }).first->second;
 		entry.layout_overflow_boundary = p_layout_overflow_boundary;
 		entry.starts_3d_context = preserves && !participates;
@@ -1267,7 +1279,7 @@ namespace dockit {
 		}
 		// Preserve each flattened ancestor's visible side when multiple projective maps compose.
 		if (inverse && local_horizon && !preserves && !matrix.is_affine()) {
-			clips.push_back({ { RoundedRect(Rect2(), {}), matrix, ClipAxes::horizon }, *inverse, p_item.get(), p_overflow });
+			clips.push_back({ { RoundedRect(Rect2(),{}), matrix, ClipAxes::horizon }, *inverse, p_item.get(), p_overflow });
 			p_overflow = &clips.back();
 			entry.overflow = p_overflow;
 		}
@@ -1311,7 +1323,7 @@ namespace dockit {
 			position box = p_item->get_placement();
 			box += p_item->get_paddings();
 			box += p_item->get_borders();
-			clips.push_back({ { RoundedRect(to_rect(box), {}), matrix }, *inverse, p_item.get(), p_overflow });
+			clips.push_back({ { RoundedRect(to_rect(box),{}), matrix }, *inverse, p_item.get(), p_overflow });
 			p_overflow = &clips.back();
 		}
 
@@ -1412,7 +1424,7 @@ namespace dockit {
 						item->extend_scroll_size(size(end.x, end.y));
 					}
 				}
-			};
+				};
 			for (const auto& fragment : geometry.fragments) include(fragment.rect);
 			const auto& css = geometry.item->css();
 			if (!css.has_layout_containment() && (css.get_overflow_x() == overflow_visible || css.get_overflow_y() == overflow_visible)) {

@@ -107,6 +107,7 @@ void HTMLBehavior::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("cancel_frame", "id"), &HTMLBehavior::cancel_frame);
 	ClassDB::bind_method(D_METHOD("request", "url", "options", "callback"), &HTMLBehavior::request);
 	ClassDB::bind_method(D_METHOD("cancel_request", "id"), &HTMLBehavior::cancel_request);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDocumentNode", PROPERTY_USAGE_NONE),
 		"", "get_document");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "label", PROPERTY_HINT_NODE_TYPE, "HTMLLabel", PROPERTY_USAGE_NONE),
@@ -115,6 +116,7 @@ void HTMLBehavior::_bind_methods() {
 		"", "get_local_storage");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "session_storage", PROPERTY_HINT_RESOURCE_TYPE, "HTMLBehaviorStorage", PROPERTY_USAGE_NONE),
 		"", "get_session_storage");
+
 	GDVIRTUAL_BIND(_attach_document, "document");
 	GDVIRTUAL_BIND(_attach, "label");
 	GDVIRTUAL_BIND(_detach);
@@ -143,7 +145,7 @@ Ref<HTMLBehaviorStorage> HTMLBehavior::get_session_storage() const {
 int64_t HTMLBehavior::set_timeout(const Callable& p_callback, double p_delay) {
 	if (!p_callback.is_valid() || !std::isfinite(p_delay) || p_delay < 0.0 || !get_label()) return 0;
 	const int64_t id = ++next_async_id;
-	timers.emplace(id, TimerEntry{p_callback, p_delay, 0.0});
+	timers.emplace(id, TimerEntry{ p_callback, p_delay, 0.0 });
 	notify_host_processing_changed();
 	return id;
 }
@@ -152,7 +154,7 @@ int64_t HTMLBehavior::set_interval(const Callable& p_callback, double p_interval
 	if (!p_callback.is_valid() || !std::isfinite(p_interval) || p_interval < 0.0 || !get_label()) return 0;
 	const int64_t id = ++next_async_id;
 	const double interval = std::max(p_interval, 0.001);
-	timers.emplace(id, TimerEntry{p_callback, interval, interval});
+	timers.emplace(id, TimerEntry{ p_callback, interval, interval });
 	notify_host_processing_changed();
 	return id;
 }
@@ -272,7 +274,7 @@ bool HTMLBehavior::has_async_work() const {
 	return !timers.empty() || !frame_callbacks.empty();
 }
 
-void HTMLBehavior::notify_host_processing_changed() {
+void HTMLBehavior::notify_host_processing_changed() const {
 	if (HTMLLabel* label = get_label()) label->update_internal_processing();
 }
 

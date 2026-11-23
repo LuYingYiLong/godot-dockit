@@ -146,7 +146,7 @@ namespace litehtml {
 					const auto options = parse_comma_separated_list(entry[next].value);
 					if (!std::all_of(options.begin(), options.end(), [](const auto& option) {
 						return option.size() == 1 && supports_font_tech(option.front().ident());
-					})) continue;
+						})) continue;
 					variations = true;
 					++next;
 				}
@@ -195,7 +195,7 @@ namespace litehtml {
 			if (const auto value = evaluate_css_scalar_math(*token, css_math_scalar::number))
 				return static_cast<uint32_t>(std::clamp(std::floor(*value + 0.5), 0.0, maximum));
 			return std::nullopt;
-		});
+			});
 	}
 
 	std::optional<css_font_variations> parse_css_font_variations(const css_token_vector& tokens) {
@@ -207,7 +207,7 @@ namespace litehtml {
 				return static_cast<float>(std::clamp(*value, -maximum, maximum));
 			}
 			return std::nullopt;
-		});
+			});
 	}
 
 	bool parse_css_font_style(const css_token_vector& tokens, int& index, css_font_style& result) {
@@ -254,7 +254,7 @@ namespace litehtml {
 			if (token.ident() == "normal") return true;
 			ratio = parse_nonnegative_percentage(token);
 			return ratio.has_value();
-		};
+			};
 		css_font_metric_override result;
 		if (!parse(tokens.front(), result.horizontal)) return {};
 		if (tokens.size() == 2 && !parse(tokens.back(), result.vertical)) return {};

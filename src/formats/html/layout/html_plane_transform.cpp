@@ -9,7 +9,8 @@ using namespace godot;
 
 namespace dockit {
 	HTMLPlaneTransform::HTMLPlaneTransform(const Transform2D& p_affine) :
-		matrix(p_affine[0].x, p_affine[1].x, p_affine[2].x, p_affine[0].y, p_affine[1].y, p_affine[2].y, 0, 0, 1) {}
+		matrix(p_affine[0].x, p_affine[1].x, p_affine[2].x, p_affine[0].y, p_affine[1].y, p_affine[2].y, 0, 0, 1) {
+	}
 
 	bool HTMLPlaneTransform::is_affine() const {
 		return matrix[2].x == 0 && matrix[2].y == 0 && matrix[2].z > 0;
@@ -91,7 +92,7 @@ namespace dockit {
 			homogeneous.push_back(mapped);
 		}
 		if (farthest <= 0) return result;
-		// Horizon intersections project far beyond nearby points while remaining finite.
+		// 地平线的交点远远超过附近的点，但仍然是有限的
 		const real_t horizon = farthest / 65536;
 		Vector3 previous = homogeneous.back();
 		for (const auto& point : homogeneous) {

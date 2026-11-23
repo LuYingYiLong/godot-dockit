@@ -35,7 +35,7 @@ namespace {
 			const auto found = std::find(std::begin(names), std::end(names), name);
 			if (found == std::end(names)) return std::nullopt;
 			css_filter operation{ static_cast<Type>(found - std::begin(names) + 1) };
-			auto args = token.value;
+			css_token_vector args = token.value;
 			args.erase(std::remove_if(args.begin(), args.end(), [](const css_token& arg) { return arg.type == WHITESPACE; }), args.end());
 			if (operation.type == Type::drop_shadow) {
 				std::vector<box_shadow> shadows;
@@ -561,7 +561,8 @@ void css_value_parser::parse_outline(string_id name, const css_token_vector& tok
 // <line-width> || <line-style> || <color>
 // <line-width> = <length [0,∞]> | thin | medium | thick
 // <line-style> = none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset
-bool parse_border_helper(const css_token_vector& tokens, document_container* container,
+
+static bool parse_border_helper(const css_token_vector& tokens, document_container* container,
 	css_length& width, border_style& style, web_color& color)
 {
 	// initial values:  https://developer.mozilla.org/en-US/docs/Web/CSS/border#formal_definition
@@ -951,7 +952,7 @@ bool parse_bg_size(const css_token_vector& tokens, int& index, css_size& size)
 	return true;
 }
 
-bool is_one_of_predef(const css_length& x, int idx1, int idx2)
+static bool is_one_of_predef(const css_length& x, int idx1, int idx2)
 {
 	return x.is_predefined() && is_one_of(x.predef(), idx1, idx2);
 }

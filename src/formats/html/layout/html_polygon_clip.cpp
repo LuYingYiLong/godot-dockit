@@ -86,12 +86,13 @@ namespace dockit {
 		std::vector<Span> merge_spans(std::vector<Span> p_spans, double p_y) {
 			std::sort(p_spans.begin(), p_spans.end(), [p_y](const Span& a, const Span& b) {
 				return a.left->at(p_y) < b.left->at(p_y);
-			});
+				});
 			std::vector<Span> merged;
 			for (const auto& span : p_spans) {
 				if (merged.empty() || merged.back().right->at(p_y) < span.left->at(p_y)) {
 					merged.push_back(span);
-				} else if (merged.back().right->at(p_y) < span.right->at(p_y)) {
+				}
+				else if (merged.back().right->at(p_y) < span.right->at(p_y)) {
 					merged.back().right = span.right;
 				}
 			}
@@ -120,7 +121,7 @@ namespace dockit {
 			std::vector<double>& r_heights, std::vector<const Edge*>& r_edges) {
 			ClipArea result;
 			for (const auto& outline : p_polygon.outlines) {
-				Contour contour{{}, outline.even_odd};
+				Contour contour{ {}, outline.even_odd };
 				outline.for_each_edge([&](const Vector2& a, const Vector2& b) {
 					const auto& start = a.y <= b.y ? a : b;
 					const auto& end = a.y <= b.y ? b : a;
@@ -130,10 +131,10 @@ namespace dockit {
 						std::min(start.x, end.x), std::max(start.x, end.x), a.y < b.y ? 1 : -1 });
 					if (start.y > p_common.position.y) r_heights.push_back(start.y);
 					if (end.y < p_common.get_end().y) r_heights.push_back(end.y);
-				});
+					});
 				if (contour.edges.empty()) continue;
 				for (const auto& edge : contour.edges) r_edges.push_back(&edge);
-				auto& entry = result.outlines.emplace_back(ClipArea::Outline{ std::move(contour), {} });
+				auto& entry = result.outlines.emplace_back(ClipArea::Outline{ std::move(contour),{} });
 				for (const auto& clip : outline.clips) {
 					entry.clips.push_back(build_clip_area(clip, p_common, r_heights, r_edges));
 				}
@@ -235,18 +236,18 @@ namespace dockit {
 					(static_cast<double>(p_point.y) - a.y) / (static_cast<double>(b.y) - a.y);
 				if (cross_x > p_point.x) winding += downward ? 1 : -1;
 			}
-		});
+			});
 		return filled(winding, even_odd) && std::all_of(clips.begin(), clips.end(), [&](const HTMLClipPolygon& clip) {
 			return clip.contains_point(p_point);
-		});
+			});
 	}
 
 	bool HTMLClipPolygon::contains_point(const Vector2& p_point) const {
 		return std::all_of(clips.begin(), clips.end(), [&](const HTMLClipPolygon& clip) {
 			return clip.contains_point(p_point);
-		}) && std::any_of(outlines.begin(), outlines.end(), [&](const HTMLClipOutline& outline) {
-			return outline.contains_point(p_point);
-		});
+			}) && std::any_of(outlines.begin(), outlines.end(), [&](const HTMLClipOutline& outline) {
+				return outline.contains_point(p_point);
+				});
 	}
 
 	HTMLClipPolygon HTMLClipPolygon::transformed(const HTMLPlaneTransform& p_matrix) const {

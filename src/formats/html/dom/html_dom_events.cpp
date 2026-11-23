@@ -422,7 +422,7 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 				return shadow->get_host();
 			}
 			return current->get_parent_node();
-		}()) {
+			}()) {
 			EventPathEntry entry;
 			entry.slot = current->get_node_type() == HTMLNode::DOCUMENT_NODE ?
 				EventTargetSlot::DOCUMENT : EventTargetSlot::ELEMENT;
@@ -462,7 +462,7 @@ bool HTMLDOM::dispatch_event(const Ref<HTMLEventTarget>& p_target, const Ref<HTM
 	const std::shared_ptr<HTMLDOM> keep_alive = shared_from_this();
 	EventDispatchScope dispatch_scope(event_dispatch_depth, p_event, [keep_alive]() {
 		keep_alive->flush_pointer_capture_events();
-	});
+		});
 
 	for (std::size_t index = entries.size(); index > 1; --index) {
 		if (p_event->is_propagation_stopped()) break;

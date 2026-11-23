@@ -178,7 +178,7 @@ namespace {
 		std::optional<Rect2> bounds;
 		const auto include = [&](const Rect2& p_rect) {
 			if (p_rect.is_finite()) bounds = bounds ? bounds->merge(p_rect) : p_rect;
-		};
+			};
 		for (const auto* renderer : p_renderers) {
 			if (!renderer->item->is_visible() || !renderer->inverse) continue;
 			const auto matrix = p_from_document * renderer->matrix;
@@ -199,7 +199,7 @@ namespace {
 			const String name = String::utf8(id);
 			if (renderers && !r_anchors.has(name)) {
 				if (const auto bounds = scroll_target_bounds(*renderers, {}, true)) {
-					r_anchors.insert(name, {*bounds, p_element.weak_from_this()});
+					r_anchors.insert(name, { *bounds, p_element.weak_from_this() });
 				}
 			}
 		}
@@ -288,7 +288,7 @@ struct HTMLLayout::State {
 	Vector2i viewport_unit_size;
 	Vector2i viewport_scroll_offset;
 	Vector2 viewport_gutters;
-	std::array<litehtml::overflow, 2> viewport_overflow{litehtml::overflow_auto, litehtml::overflow_auto};
+	std::array<litehtml::overflow, 2> viewport_overflow{ litehtml::overflow_auto, litehtml::overflow_auto };
 	Vector2i content_size;
 	String imported_video_base_dir;
 	Dictionary audio_streams;
@@ -410,15 +410,16 @@ namespace {
 			(*matrix)[1].z == 0.0 && (*matrix)[1].w == 0.0 &&
 			(*matrix)[2] == Vector4(0, 0, 1, 0) && (*matrix)[3].z == 0.0 && (*matrix)[3].w == 1.0;
 		using Kind = css_transform_function::kind;
-		css_transform_function value{flat ? Kind::matrix : Kind::matrix3d};
+		css_transform_function value{ flat ? Kind::matrix : Kind::matrix3d };
 		if (flat) {
-			value.matrix = {(*matrix)[0].x, (*matrix)[0].y, (*matrix)[1].x, (*matrix)[1].y, (*matrix)[3].x, (*matrix)[3].y};
-		} else {
+			value.matrix = { (*matrix)[0].x, (*matrix)[0].y, (*matrix)[1].x, (*matrix)[1].y, (*matrix)[3].x, (*matrix)[3].y };
+		}
+		else {
 			for (int i = 0; i < 4; ++i) {
 				for (int j = 0; j < 4; ++j) value.matrix[i * 4 + j] = (*matrix)[i][j];
 			}
 		}
-		return dockit::css::serialize_value(_transform_, property_value(css_transform_list{value}, false));
+		return dockit::css::serialize_value(_transform_, property_value(css_transform_list{ value }, false));
 	}
 
 	String read_computed(const HTMLGeometryIndex& geometry, const html_tag& element, const std::string& name, const String& pseudo) {
@@ -441,7 +442,8 @@ namespace {
 		if (name.compare(0, 2, "--") == 0) {
 			css_token_vector tokens;
 			if (target->get_custom_property(id, tokens)) result = get_repr(tokens, 0, -1, true);
-		} else {
+		}
+		else {
 			if (id == _transform_ && !placeholder) result = transform_matrix_value(geometry, *target);
 			if (result.empty()) result = dockit::css::serialize_computed(id, *style);
 			if (result.empty() && !placeholder) {
@@ -467,12 +469,12 @@ Dictionary HTMLLayout::get_computed_style(const Ref<HTMLElement>& p_element, con
 	const auto read = [&](const std::string& name) {
 		const String value = read_computed(state->geometry, *node, name, p_pseudo);
 		if (!value.is_empty()) result[String::utf8(name.c_str())] = value;
-	};
+		};
 	for (const auto& property : syntax::animated_properties()) read(litehtml::_s(property.name));
-	for (const char* name : {"display", "position", "visibility", "overflow-x", "overflow-y", "box-sizing", "direction",
+	for (const char* name : { "display", "position", "visibility", "overflow-x", "overflow-y", "box-sizing", "direction",
 			"font-family", "font-weight", "font-style", "text-align", "line-height", "cursor", "z-index",
 			"grid-template-columns", "grid-template-rows", "grid-auto-flow", "grid-auto-rows", "grid-auto-columns",
-			"align-items", "align-self", "align-content", "justify-items", "justify-self", "justify-content"}) read(name);
+			"align-items", "align-self", "align-content", "justify-items", "justify-self", "justify-content" }) read(name);
 	std::vector<litehtml::string_id> names;
 	if (const auto* tag = cssom_tag(*node, p_pseudo)) tag->collect_property_names(names);
 	for (auto parent = node->parent(); parent; parent = parent->parent()) {
@@ -508,7 +510,7 @@ Dictionary HTMLLayout::get_computed_style(const Ref<HTMLElement>& p_element, con
 
 std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
 	if (!refresh_cssom()) return {};
-	static std::atomic<int64_t> next_id{1};
+	static std::atomic<int64_t> next_id{ 1 };
 	for (auto it = state->stylesheet_identities.begin(); it != state->stylesheet_identities.end();) {
 		if (it->first.expired()) it = state->stylesheet_identities.erase(it);
 		else ++it;
@@ -520,11 +522,11 @@ std::vector<HTMLLayout::CSSOMSheet> HTMLLayout::collect_stylesheets() {
 		auto [entry, added] = state->stylesheet_identities.try_emplace(owner);
 		if (added) entry->second.id = next_id++;
 		state->css_rule_revisions.try_emplace(entry->second.id, 0);
-		result.push_back({entry->second.id, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled});
+		result.push_back({ entry->second.id, std::move(owner), sheet.text, sheet.baseurl, sheet.media, sheet.disabled });
 	}
 	if (state->extra_stylesheet_id == 0) state->extra_stylesheet_id = next_id++;
 	state->css_rule_revisions.try_emplace(state->extra_stylesheet_id, 0);
-	result.push_back({state->extra_stylesheet_id, {}, state->user_styles, {}, {}});
+	result.push_back({ state->extra_stylesheet_id,{}, state->user_styles,{},{} });
 	return result;
 }
 
@@ -619,9 +621,11 @@ TypedArray<Dictionary> HTMLLayout::get_matched_css_declarations(const Ref<HTMLEl
 		int64_t stylesheet_id = 0;
 		if (origin == "user_agent") {
 			stylesheet_id = -1;
-		} else if (origin == "author_extra") {
+		}
+		else if (origin == "author_extra") {
 			stylesheet_id = state->extra_stylesheet_id;
-		} else if (owner_id != 0) {
+		}
+		else if (owner_id != 0) {
 			for (const auto& sheet : sheets) {
 				if (sheet.owner && reinterpret_cast<int64_t>(sheet.owner.get()) == owner_id) {
 					stylesheet_id = sheet.id;
@@ -655,7 +659,8 @@ String HTMLLayout::get_css_rule_text(int64_t p_stylesheet, const PackedInt32Arra
 	if (p_stylesheet == -1) {
 		if (!refresh_cssom()) return {};
 		source = state->master_styles;
-	} else {
+	}
+	else {
 		const auto sheets = collect_stylesheets();
 		const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
 		if (sheet == sheets.end()) return {};
@@ -682,7 +687,8 @@ PackedStringArray HTMLLayout::get_css_rule_children(int64_t p_stylesheet, const 
 	if (p_stylesheet == -1) {
 		if (!refresh_cssom()) return result;
 		source = state->master_styles;
-	} else {
+	}
+	else {
 		const auto sheets = collect_stylesheets();
 		const auto sheet = std::find_if(sheets.begin(), sheets.end(), [&](const auto& item) { return item.id == p_stylesheet; });
 		if (sheet == sheets.end()) return result;
@@ -710,20 +716,22 @@ namespace {
 	bool valid_cssom_rule(const RawRule::ptr& p_rule, litehtml::document_mode p_mode, bool p_top_level) {
 		if (!p_rule) return false;
 		bool accepted = false;
-		const RawRules rules{p_rule};
+		const RawRules rules{ p_rule };
 		dockit::css::visit_stylesheet_rules(rules, p_top_level, [&](const dockit::css::StylesheetRule& rule) {
 			bool valid = true;
 			if (rule.kind == dockit::css::StylesheetRuleKind::style) {
 				valid = !dockit::css::parse_selector_list(rule.syntax.prelude, dockit::css::strict_mode,
 					litehtml::selector_mode(p_mode)).empty();
-			} else if (rule.kind == dockit::css::StylesheetRuleKind::supports) {
+			}
+			else if (rule.kind == dockit::css::StylesheetRuleKind::supports) {
 				valid = litehtml::evaluate_css_supports(rule.syntax.prelude, p_mode).has_value();
-			} else if (rule.kind == dockit::css::StylesheetRuleKind::keyframes) {
+			}
+			else if (rule.kind == dockit::css::StylesheetRuleKind::keyframes) {
 				valid = dockit::css::parse_keyframe_rule(rule.syntax.prelude, rule.syntax.block.value).has_value();
 			}
 			if (&rule.syntax == p_rule.get()) accepted = valid;
 			return valid;
-		});
+			});
 		return accepted;
 	}
 
@@ -744,7 +752,8 @@ namespace {
 				auto parsed = dockit::css::parse_cssom_rule(*p_text);
 				if (!parsed) return false;
 				p_rules.insert(p_rules.begin() + p_index, std::move(parsed));
-			} else {
+			}
+			else {
 				p_rules.erase(p_rules.begin() + p_index);
 			}
 			return true;
@@ -810,7 +819,8 @@ Error HTMLLayout::set_css_rule_text(int64_t p_stylesheet, const PackedInt32Array
 		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
 			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
 		}
-	} else {
+	}
+	else {
 		state->user_styles = updated;
 	}
 	++state->css_rule_revisions[p_stylesheet];
@@ -836,7 +846,8 @@ Error HTMLLayout::edit_css_rule_nested(int64_t p_stylesheet, const PackedInt32Ar
 		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
 			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, updated);
 		}
-	} else {
+	}
+	else {
 		state->user_styles = updated;
 	}
 	++state->css_rule_revisions[p_stylesheet];
@@ -879,26 +890,30 @@ Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const Str
 			bool valid = true;
 			if (rule.kind == syntax::StylesheetRuleKind::style) {
 				valid = !syntax::parse_selector_list(rule.syntax.prelude, syntax::strict_mode, litehtml::selector_mode(mode)).empty();
-			} else if (rule.kind == syntax::StylesheetRuleKind::supports) {
+			}
+			else if (rule.kind == syntax::StylesheetRuleKind::supports) {
 				valid = litehtml::evaluate_css_supports(rule.syntax.prelude, mode).has_value();
-			} else if (rule.kind == syntax::StylesheetRuleKind::keyframes) {
+			}
+			else if (rule.kind == syntax::StylesheetRuleKind::keyframes) {
 				valid = syntax::parse_keyframe_rule(rule.syntax.prelude, rule.syntax.block.value).has_value();
 			}
 			if (&rule.syntax == input.get()) accepted = valid;
 			return valid;
-		});
+			});
 		if (!accepted) return ERR_PARSE_ERROR;
 		// An insertion must not move existing imports past the allowed prefix.
 		bool past_imports = false;
 		for (const auto& rule : rules) {
 			if (rule->type == syntax::raw_rule::at && syntax::detail::lowcase(rule->name) == "import") {
 				if (past_imports) return ERR_INVALID_DATA;
-			} else if (!(rule->type == syntax::raw_rule::at && rule->block.type != syntax::CURLY_BLOCK &&
+			}
+			else if (!(rule->type == syntax::raw_rule::at && rule->block.type != syntax::CURLY_BLOCK &&
 				syntax::detail::lowcase(rule->name) == "layer")) {
 				past_imports = true;
 			}
 		}
-	} else {
+	}
+	else {
 		rules.erase(rules.begin() + p_index);
 	}
 	std::string updated;
@@ -907,7 +922,8 @@ Error HTMLLayout::edit_css_rule(int64_t p_stylesheet, int64_t p_index, const Str
 		if (!update_linked_stylesheet_resource(sheet->owner, updated)) {
 			DocumentAdapter::edit_stylesheet(*state->dom->get_document(), sheet->owner, std::move(updated));
 		}
-	} else {
+	}
+	else {
 		state->user_styles = std::move(updated);
 	}
 	++state->css_rule_revisions[p_stylesheet];
@@ -968,8 +984,8 @@ namespace {
 		}
 		const auto easing = animation_easing(options.get("easing", "linear"));
 		if (!duration || *duration < 0 || !delay || !iterations || *iterations < 0 || !easing) return std::nullopt;
-		const std::array<String, 4> directions{"normal", "reverse", "alternate", "alternate-reverse"};
-		const std::array<String, 4> fills{"none", "forwards", "backwards", "both"};
+		const std::array<String, 4> directions{ "normal", "reverse", "alternate", "alternate-reverse" };
+		const std::array<String, 4> fills{ "none", "forwards", "backwards", "both" };
 		const auto direction = std::find(directions.begin(), directions.end(), String(options.get("direction", "normal")));
 		const auto fill = std::find(fills.begin(), fills.end(), String(options.get("fill", "none")));
 		if (direction == directions.end() || fill == fills.end()) return std::nullopt;
@@ -1325,7 +1341,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	document->container()->get_media_features(image_media);
 	const dockit::HTMLImageSourceResolver resolve_image = [this](std::string_view p_source) {
 		return state->container->resolve_image_source(p_source);
-	};
+		};
 	std::vector<litehtml::el_image*> images;
 	bool image_hints_changed = false;
 	auto& scroll_offsets = state->skipped_scroll_offsets;
@@ -1352,7 +1368,7 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 			}
 		}
 		return false;
-	});
+		});
 	const auto selected_content = selected_auto_content();
 	state->anchors.clear();
 	state->container->clear_recording();
@@ -1380,7 +1396,8 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 			container_states.emplace(std::move(containers.rule_matches), std::move(containers.dimensions)).second) {
 			if (containers.rules_changed) {
 				DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
-			} else {
+			}
+			else {
 				DocumentAdapter::compute_styles(*document);
 				DocumentAdapter::rebuild_render_tree(*document);
 			}
@@ -1404,7 +1421,8 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 		}
 		if (state->geometry.has_sticky()) {
 			rebuild_document_geometry(p_viewport_size);
-		} else if (restored_scroll) {
+		}
+		else if (restored_scroll) {
 			rebuild_document_geometry(p_viewport_size);
 		}
 		resnap_nested(p_viewport_size);
@@ -1475,7 +1493,7 @@ bool HTMLLayout::update_auto_content_visibility(const Vector2i& p_viewport_size,
 				const real_t x = litehtml::is_scrollable_overflow(overflow.get_overflow_x()) ? margin : 0;
 				const real_t y = litehtml::is_scrollable_overflow(overflow.get_overflow_y()) ? margin : 0;
 				shape = shape.outset(shape.rect.grow_individual(x, y, x, y));
-				clips.push_back({shape, clip->matrix, clip->axes});
+				clips.push_back({ shape, clip->matrix, clip->axes });
 			}
 			const auto intersects = [&](Rect2 p_box) {
 				p_box.size = p_box.size.max(Vector2(1, 1));
@@ -1483,12 +1501,12 @@ bool HTMLLayout::update_auto_content_visibility(const Vector2i& p_viewport_size,
 				if (clips.empty()) return true;
 				const Rect2 visible = dockit::clipped_visual_bounds(p_box, geometry->matrix, clips);
 				return visible.has_area() && nearby.intersects(visible, true);
-			};
+				};
 			for (const auto& fragment : geometry->fragments) {
 				if (intersects(fragment.rect)) return true;
 			}
 			return geometry->anchor_fallback && intersects(*geometry->anchor_fallback);
-		};
+			};
 		const bool skip = !focused.count(node.get()) && !p_selected.count(node.get()) &&
 			!r_revealed.count(node.get()) && !near_viewport();
 		if (p_test_only) {
@@ -1753,7 +1771,7 @@ void HTMLLayout::set_dom_selection_change_callback(const Callable& p_callback) {
 		if (state->canvas_renderer.is_valid()) state->canvas_renderer->queue_redraws();
 		if (p_callback.is_valid()) p_callback.call();
 		callable_mp(this, &HTMLLayout::request_auto_content_update).call_deferred();
-	});
+		});
 }
 
 dockit::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
@@ -1765,7 +1783,7 @@ dockit::HTMLBoundary HTMLLayout::text_boundary_at(int64_t p_offset) const {
 	const auto mapped = [&](const auto& p_span, int64_t p_local) {
 		const auto point = state->dom->text_boundary(p_span.source.lock(), p_local);
 		return point.node.is_valid() && point.node->is_connected() ? point : dockit::HTMLBoundary();
-	};
+		};
 	if (at != spans.end() && p_offset >= at->from) {
 		if (const auto point = mapped(*at, p_offset - at->from); point.node.is_valid()) return point;
 	}
@@ -1791,7 +1809,8 @@ int64_t HTMLLayout::document_text_offset(const dockit::HTMLBoundary& p_boundary,
 		if (p_boundary.node == point.node) {
 			if (p_boundary.offset < point.offset) return p_forward ? span.from : previous;
 			if (p_boundary.offset <= point.offset + span.to - span.from) return span.from + p_boundary.offset - point.offset;
-		} else if (dockit::compare_html_boundaries(p_boundary, point) < 0) {
+		}
+		else if (dockit::compare_html_boundaries(p_boundary, point) < 0) {
 			return p_forward ? span.from : previous;
 		}
 		previous = span.to;
@@ -1858,7 +1877,7 @@ Ref<HTMLElement> HTMLLayout::get_title_element() const {
 			if (p_node->tag() != litehtml::_title_ || !p_node->is_html_namespace()) return false;
 			title = state->dom->make_element(p_node);
 			return true;
-		});
+			});
 	}
 	return title;
 }
@@ -1909,7 +1928,8 @@ Ref<HTMLDocumentFragment> HTMLLayout::parse_fragment(const String& p_html, const
 	if (p_context.is_valid() && (!context || p_context->get_owner() != this)) return {};
 	try {
 		if (ensure_document_for_editing()) return state->dom->parse_fragment(p_html, context);
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return {};
 	}
 	return {};
@@ -1918,7 +1938,8 @@ Ref<HTMLDocumentFragment> HTMLLayout::parse_fragment(const String& p_html, const
 Ref<HTMLDocumentFragment> HTMLLayout::import_fragment(const Ref<HTMLDocumentFragment>& p_fragment) {
 	try {
 		if (p_fragment.is_valid() && ensure_document_for_editing()) return state->dom->import_fragment(*p_fragment.ptr());
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return {};
 	}
 	return {};
@@ -1927,7 +1948,8 @@ Ref<HTMLDocumentFragment> HTMLLayout::import_fragment(const Ref<HTMLDocumentFrag
 Ref<HTMLDocumentFragment> HTMLLayout::adopt_fragment(const Ref<HTMLDocumentFragment>& p_fragment) {
 	try {
 		if (p_fragment.is_valid() && ensure_document_for_editing() && state->dom->adopt_fragment(*p_fragment.ptr())) return p_fragment;
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return {};
 	}
 	return {};
@@ -2050,34 +2072,35 @@ void HTMLLayout::dispatch_css_animation_events() {
 	std::map<EventKey, State::AnimationEventTrack> current_tracks;
 	const auto dispatch_event = [&](bool p_transition, const Ref<HTMLElement>& p_target, const String& p_name,
 		const String& p_pseudo, const StringName& p_type, double p_elapsed) {
-		if (p_target.is_null() || !p_target->is_valid()) return;
-		Ref<HTMLEvent> event;
-		if (p_transition) {
-			Ref<HTMLTransitionEvent> transition_event;
-			transition_event.instantiate();
-			transition_event->set_property_name(p_name);
-			transition_event->set_pseudo_element(p_pseudo);
-			transition_event->set_elapsed_time(p_elapsed);
-			event = transition_event;
-		} else {
-			Ref<HTMLAnimationEvent> animation_event;
-			animation_event.instantiate();
-			animation_event->set_animation_name(p_name);
-			animation_event->set_pseudo_element(p_pseudo);
-			animation_event->set_elapsed_time(p_elapsed);
-			event = animation_event;
-		}
-		event->set_type(p_type);
-		event->set_bubbles(true);
-		event->set_composed(true);
-		event->mark_trusted();
-		dom->dispatch_event(p_target, event);
-	};
+			if (p_target.is_null() || !p_target->is_valid()) return;
+			Ref<HTMLEvent> event;
+			if (p_transition) {
+				Ref<HTMLTransitionEvent> transition_event;
+				transition_event.instantiate();
+				transition_event->set_property_name(p_name);
+				transition_event->set_pseudo_element(p_pseudo);
+				transition_event->set_elapsed_time(p_elapsed);
+				event = transition_event;
+			}
+			else {
+				Ref<HTMLAnimationEvent> animation_event;
+				animation_event.instantiate();
+				animation_event->set_animation_name(p_name);
+				animation_event->set_pseudo_element(p_pseudo);
+				animation_event->set_elapsed_time(p_elapsed);
+				event = animation_event;
+			}
+			event->set_type(p_type);
+			event->set_bubbles(true);
+			event->set_composed(true);
+			event->mark_trusted();
+			dom->dispatch_event(p_target, event);
+		};
 	const auto collect = [&](bool p_transition, const std::vector<uint64_t>& p_ids) {
 		for (uint64_t id : p_ids) {
 			const auto info = p_transition ? state->transitions.info(id, now) : state->animations.info(id, now);
 			if (!info || !dom->is_element_connected(*info->target) || (!p_transition && info->scripted)) continue;
-			const EventKey key{p_transition, id};
+			const EventKey key{ p_transition, id };
 			State::AnimationEventTrack track;
 			track.target = info->target;
 			track.name = String::utf8(info->name.c_str());
@@ -2115,7 +2138,8 @@ void HTMLLayout::dispatch_css_animation_events() {
 				if (track.playback_state == PlaybackState::finished)
 					dispatch_event(p_transition, target, track.name, track.pseudo,
 						p_transition ? StringName("transitionend") : StringName("animationend"), track.duration);
-			} else {
+			}
+			else {
 				const State::AnimationEventTrack& old = previous->second;
 				const Ref<HTMLElement> target = dom->make_element(info->target);
 				if (!old.started && track.started) {
@@ -2133,7 +2157,7 @@ void HTMLLayout::dispatch_css_animation_events() {
 			}
 			current_tracks.emplace(key, std::move(track));
 		}
-	};
+		};
 	collect(false, state->animations.list(nullptr));
 	collect(true, state->transitions.list(nullptr, now));
 	for (const auto& [key, previous] : state->animation_event_tracks) {
@@ -2145,7 +2169,7 @@ void HTMLLayout::dispatch_css_animation_events() {
 			const Ref<HTMLElement> target = dom->make_element(target_node);
 			dispatch_event(transition, target, previous.name, previous.pseudo,
 				finished ? (transition ? StringName("transitionend") : StringName("animationend")) :
-					(transition ? StringName("transitioncancel") : StringName("animationcancel")),
+				(transition ? StringName("transitioncancel") : StringName("animationcancel")),
 				finished ? previous.duration : std::clamp(previous.time - previous.delay, 0.0, previous.duration));
 		}
 	}
@@ -2261,7 +2285,7 @@ litehtml::element::ptr HTMLLayout::image_map_area_at(const litehtml::element::pt
 		if (name != map_name && id != map_name) return false;
 		map = p_element;
 		return true;
-	});
+		});
 	if (!map) return {};
 
 	litehtml::element::ptr area;
@@ -2269,7 +2293,7 @@ litehtml::element::ptr HTMLLayout::image_map_area_at(const litehtml::element::pt
 		if (p_element->tag() != litehtml::_area_ || !image_map_area_contains(*p_element, image_point, coordinate_size)) return false;
 		area = p_element;
 		return true;
-	});
+		});
 	return area;
 }
 
@@ -2289,7 +2313,7 @@ namespace {
 		const auto unscrolled = [](const litehtml::render_item& p_box) {
 			const auto placement = p_box.calc_placement();
 			return Vector2(placement.x + p_box.get_scroll_left(), placement.y + p_box.get_scroll_top());
-		};
+			};
 		Vector2 result = unscrolled(p_item);
 		const litehtml::render_item* item = &p_item;
 		for (auto parent = item->parent(); parent && !item->is_viewport_fixed(); parent = item->parent()) {
@@ -2306,8 +2330,8 @@ namespace {
 
 	Vector2 padding_box_size(const litehtml::render_item& p_item) {
 		const auto size = p_item.calc_placement();
-		return {size.width + p_item.padding_left() + p_item.padding_right(),
-			size.height + p_item.padding_top() + p_item.padding_bottom()};
+		return { size.width + p_item.padding_left() + p_item.padding_right(),
+			size.height + p_item.padding_top() + p_item.padding_bottom() };
 	}
 }
 
@@ -2337,7 +2361,7 @@ Vector2 HTMLLayout::element_client_offset(const HTMLElement& p_element) const {
 	const auto* box = element_geometry(p_element);
 	if (!box || uses_viewport_dimensions(*box->item->src_el()) ||
 		(box->item->css().get_display() == litehtml::display_inline && !box->item->src_el()->is_replaced())) return {};
-	return {box->item->border_left(), box->item->border_top()};
+	return { box->item->border_left(), box->item->border_top() };
 }
 
 Ref<HTMLElement> HTMLLayout::element_offset_parent(const HTMLElement& p_element) const {
@@ -2407,14 +2431,14 @@ TypedArray<HTMLElement> HTMLLayout::get_elements_at(const Vector2& p_position) c
 	TypedArray<HTMLElement> result;
 	const auto first = get_element_at(p_position);
 	if (first.is_null()) return result;
-	std::unordered_set<const HTMLElement*> visited{first.ptr()};
+	std::unordered_set<const HTMLElement*> visited{ first.ptr() };
 	result.append(first);
 	state->container->get_paint_recorder().visit_hit_elements(p_position, false, [&](const auto& p_node) {
 		if (!allows_modal_interaction(*p_node)) return false;
 		const auto handle = wrap_hit_element(p_node);
 		if (handle.is_valid() && visited.insert(handle.ptr()).second) result.append(handle);
 		return false;
-	});
+		});
 	return result;
 }
 
@@ -2442,7 +2466,7 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 			if (const auto area = image_map_area_at(p_target, p_position); area && allows_modal_interaction(*area)) return area;
 		}
 		return p_target;
-	};
+		};
 	if (const auto bar = scrollbar_at(p_position)) {
 		if (r_scrollbar) *r_scrollbar = true;
 		return bar->element.lock();
@@ -2453,7 +2477,7 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 			if (!allows_modal_interaction(*p_node)) return false;
 			target = p_node;
 			return true;
-		});
+			});
 		return resolve_image_map_target(target);
 	}
 	if (state->geometry.uses_visual_hit_order()) {
@@ -2462,11 +2486,11 @@ litehtml::element::ptr HTMLLayout::hit_test_element(const Vector2& p_position, b
 	const auto accepts_geometry = [&](const dockit::RenderGeometry* p_geometry) {
 		return p_geometry && p_geometry->item->is_visible() && (p_text_selection || p_geometry->item->css().accepts_pointer_events()) &&
 			p_geometry->contains_visible_point(p_position);
-	};
+		};
 	const auto accepts = [&](const std::shared_ptr<litehtml::render_item>& p_item) {
 		// Some litehtml fallback paths offer another fragment of the same element.
 		return accepts_geometry(state->geometry.find_renderer(p_item.get()));
-	};
+		};
 	struct SkippedItems {
 		std::vector<litehtml::render_item*> items;
 		~SkippedItems() {
@@ -2514,11 +2538,11 @@ Vector2 HTMLLayout::scroll_input_steps(const Ref<InputEvent>& p_event) {
 	if (wheel.is_null() || !wheel->is_pressed()) return {};
 	Vector2 delta;
 	switch (wheel->get_button_index()) {
-		case MOUSE_BUTTON_WHEEL_UP: delta.y = -1; break;
-		case MOUSE_BUTTON_WHEEL_DOWN: delta.y = 1; break;
-		case MOUSE_BUTTON_WHEEL_LEFT: delta.x = -1; break;
-		case MOUSE_BUTTON_WHEEL_RIGHT: delta.x = 1; break;
-		default: return {};
+	case MOUSE_BUTTON_WHEEL_UP: delta.y = -1; break;
+	case MOUSE_BUTTON_WHEEL_DOWN: delta.y = 1; break;
+	case MOUSE_BUTTON_WHEEL_LEFT: delta.x = -1; break;
+	case MOUSE_BUTTON_WHEEL_RIGHT: delta.x = 1; break;
+	default: return {};
 	}
 	if (wheel->is_shift_pressed()) delta = Vector2(delta.y, delta.x);
 	const float factor = wheel->get_factor();
@@ -2527,11 +2551,12 @@ Vector2 HTMLLayout::scroll_input_steps(const Ref<InputEvent>& p_event) {
 
 bool HTMLLayout::forward_scroll_remainder(const Ref<InputEvent>& p_event, const Vector2& p_remaining) {
 	if (p_remaining.is_zero_approx()) return false;
-	// Godot transforms the GUI event for each parent. Carry only the unconsumed distance into that next dispatch.
+	// Godot 会为每个父节点转发 GUI 事件，只把未消耗的距离带到下一次分发
 	const Ref<InputEventPanGesture> pan = p_event;
 	if (pan.is_valid()) {
 		pan->set_delta(p_remaining);
-	} else {
+	}
+	else {
 		const Ref<InputEventMouseButton> wheel = p_event;
 		wheel->set_factor(std::max(std::abs(p_remaining.x), std::abs(p_remaining.y)));
 	}
@@ -2593,14 +2618,14 @@ namespace {
 			if (!renderers) continue;
 			if (const auto bounds = scroll_target_bounds(*renderers, p_from_document, false)) {
 				const auto area = dockit::html_scroll_margin_area(dockit::translate_rect(*bounds, p_origin), item.css());
-				if (area.is_finite()) areas.push_back({area, &item.css(), element});
+				if (area.is_finite()) areas.push_back({ area, &item.css(), element });
 			}
 		}
 		return areas;
 	}
 
 	Vector2 item_scroll_position(const litehtml::render_item& p_item) {
-		return {p_item.get_scroll_left(), p_item.get_scroll_top()};
+		return { p_item.get_scroll_left(), p_item.get_scroll_top() };
 	}
 
 	Vector2 item_scroll_limit(const litehtml::render_item& p_item) {
@@ -2629,13 +2654,13 @@ Vector2i HTMLLayout::viewport_snap_axes() const {
 	const auto root = document && state->has_layout() ? document->root() : nullptr;
 	if (!root) return {};
 	const auto& type = root->css().get_scroll_snap_type();
-	return {type.x, type.y};
+	return { type.x, type.y };
 }
 
 dockit::HTMLSnapResult HTMLLayout::snap_viewport(const Vector2& p_viewport, dockit::HTMLSnapRequest p_request) {
 	if (viewport_snap_axes() == Vector2i()) {
 		state->viewport_snap_memory = {};
-		return {p_request.end.clamp(Vector2(), p_request.limit), {}};
+		return { p_request.end.clamp(Vector2(), p_request.limit),{} };
 	}
 	const auto root = state->dom->get_document()->root();
 	auto& memory = state->viewport_snap_memory.areas;
@@ -2652,7 +2677,7 @@ dockit::HTMLSnapResult HTMLLayout::snap_nested(const litehtml::render_item& p_co
 	const auto* geometry = state->geometry.find_renderer(&p_container);
 	if (!p_container.css().get_scroll_snap_type().enabled() || !geometry || !geometry->inverse || !geometry->child_overflow) {
 		state->nested_snap_memory.erase(element.get());
-		return {p_request.end.clamp(Vector2(), p_request.limit), {}};
+		return { p_request.end.clamp(Vector2(), p_request.limit),{} };
 	}
 	const auto& scrollport = geometry->child_overflow->shape.rect;
 	p_request.axes.x = p_request.axes.x != 0 && litehtml::is_scrollable_overflow(p_container.css().get_overflow_x());
@@ -2678,7 +2703,7 @@ void HTMLLayout::resnap_nested(const Vector2i& p_viewport_size) {
 		const auto animating = [&](const auto& p_motion) { return p_motion.second.element.lock() == item.src_el(); };
 		if (std::any_of(state->scroll_motions.begin(), state->scroll_motions.end(), animating)) continue;
 		const Vector2 current = item_scroll_position(item);
-		const auto result = snap_nested(item, {current, current, item_scroll_limit(item), {1, 1}, dockit::HTMLSnapMethod::relayout});
+		const auto result = snap_nested(item, { current, current, item_scroll_limit(item),{ 1, 1 }, dockit::HTMLSnapMethod::relayout });
 		const Vector2 delta = result.offset - current;
 		if (delta == Vector2()) continue;
 		item.h_scroll(delta.x);
@@ -2743,8 +2768,8 @@ Vector2 HTMLLayout::scroll_overflow(const Vector2& p_position, const Vector2& p_
 		if (!p_pan_owner && delta != Vector2() && item->css().get_scroll_snap_type().enabled()) {
 			const Vector2 current = item_scroll_position(*item);
 			const Vector2 limit = item_scroll_limit(*item);
-			const auto snap = snap_nested(*item, {current, current + delta, limit,
-				{delta.x != 0, delta.y != 0}, dockit::HTMLSnapMethod::direction});
+			const auto snap = snap_nested(*item, { current, current + delta, limit,
+				{ delta.x != 0, delta.y != 0 }, dockit::HTMLSnapMethod::direction });
 			stopped = snap.stopped;
 			for (int axis = 0; axis < 2; ++axis) {
 				const bool at_boundary = delta[axis] > 0 ? snap.offset[axis] >= limit[axis] : snap.offset[axis] <= 0;
@@ -2754,7 +2779,7 @@ Vector2 HTMLLayout::scroll_overflow(const Vector2& p_position, const Vector2& p_
 		}
 		const Vector2 moved(item->h_scroll(delta.x), item->v_scroll(delta.y));
 		if (p_pan_owner && moved != Vector2() && item->css().get_scroll_snap_type().enabled()) {
-			queue_nested_snap(item->src_el(), {moved.x != 0, moved.y != 0}, *p_pan_owner, p_changed);
+			queue_nested_snap(item->src_el(), { moved.x != 0, moved.y != 0 }, *p_pan_owner, p_changed);
 		}
 		box_moved |= moved != Vector2();
 		for (int axis = 0; axis < 2; ++axis) {
@@ -2858,7 +2883,8 @@ void HTMLLayout::cancel_nested_scroll(const litehtml::element& p_element) {
 		if (!element || element.get() == &p_element) {
 			motion->second.tween->kill();
 			motion = state->scroll_motions.erase(motion);
-		} else {
+		}
+		else {
 			++motion;
 		}
 	}
@@ -2959,8 +2985,8 @@ std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(con
 		const Vector2 from(item->get_scroll_left(), item->get_scroll_top());
 		if (css.get_scroll_snap_type().enabled()) {
 			const auto preferred = closest_scroller == item ? &p_element : nullptr;
-			const dockit::HTMLSnapRequest request{from, from + delta, item_scroll_limit(*item), {1, 1},
-				dockit::HTMLSnapMethod::destination, {preferred, preferred}};
+			const dockit::HTMLSnapRequest request{ from, from + delta, item_scroll_limit(*item),{ 1, 1 },
+				dockit::HTMLSnapMethod::destination,{ preferred, preferred } };
 			delta = snap_nested(*item, request).offset - from;
 		}
 		const auto dx = litehtml::is_scrollable_overflow(css.get_overflow_x()) ? item->h_scroll(delta.x) : 0;
@@ -2969,7 +2995,7 @@ std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(con
 			moved = true;
 			const bool smooth = p_options ? p_options->smooth(css.uses_smooth_scroll()) : css.uses_smooth_scroll();
 			if (smooth && p_owner.is_inside_tree()) {
-				animated.push_back({item, from, Vector2(item->get_scroll_left(), item->get_scroll_top())});
+				animated.push_back({ item, from, Vector2(item->get_scroll_left(), item->get_scroll_top()) });
 			}
 			rebuild_scroll_geometry();
 			renderers = state->geometry.find_element(&p_element);
@@ -2982,12 +3008,12 @@ std::optional<dockit::HTMLScrollTarget> HTMLLayout::scroll_element_into_view(con
 		motion.item->v_scroll(motion.from.y - motion.to.y);
 		const uint64_t id = ++state->next_scroll_motion;
 		const auto callback = callable_mp_static(&HTMLLayout::advance_nested_scroll).bind(get_instance_id(), id);
-		state->scroll_motions.emplace(id, State::ScrollMotion{motion.item->src_el(), motion.from, motion.to,
-			start_scroll_tween(p_owner, callback), p_changed});
+		state->scroll_motions.emplace(id, State::ScrollMotion{ motion.item->src_el(), motion.from, motion.to,
+			start_scroll_tween(p_owner, callback), p_changed });
 	}
 	if (moved) refresh_overflow_paint(!animated.empty());
 	if (!bounds) return std::nullopt;
-	return dockit::HTMLScrollTarget{dockit::html_scroll_margin_area(*bounds, p_element.css()), viewport_fixed, &p_element};
+	return dockit::HTMLScrollTarget{ dockit::html_scroll_margin_area(*bounds, p_element.css()), viewport_fixed, &p_element };
 }
 
 void HTMLLayout::set_viewport_scroll_offset(const Vector2i& p_offset) {
@@ -3022,8 +3048,8 @@ dockit::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
 	if (!root || root->css().get_display() == litehtml::display_none) return {};
 	// Read the computed values, before viewport propagation changes the root box's used overflow.
 	const dockit::css::ComputedStyle& css = root->css();
-	return {dockit::html_scrollbar_appearance(css), state->viewport_overflow,
-		{css.get_overflow_x(), css.get_overflow_y()}, css.get_scrollbar_gutter(), css.get_color_scheme()};
+	return { dockit::html_scrollbar_appearance(css), state->viewport_overflow,
+		{ css.get_overflow_x(), css.get_overflow_y() }, css.get_scrollbar_gutter(), css.get_color_scheme() };
 }
 
 bool HTMLLayout::can_skip_hover_base_layout(const Vector2i& p_media_size) const {
@@ -3083,7 +3109,7 @@ void HTMLLayout::update_scrollbar_hover(const std::optional<Vector2>& p_position
 				if (const auto local = input_local_point(*element.ptr(), *p_position)) {
 					const auto resize = textarea->resize_axes() != Vector2i() && textarea->get_resize_handle().has_point(*local);
 					if (const auto axis = textarea->editor.scrollbar_at(*local); axis && !resize) {
-						target = dockit::HTMLScrollbarDrag{textarea, *axis ? 1 : 0, 0};
+						target = dockit::HTMLScrollbarDrag{ textarea, *axis ? 1 : 0, 0 };
 					}
 				}
 			}
@@ -3137,7 +3163,7 @@ bool HTMLLayout::settle_nested_snap(const litehtml::element& p_element, const Ve
 		auto& item = *renderer->item;
 		if (!item.css().get_scroll_snap_type().enabled() || !item.scrollable_content_size()) continue;
 		const Vector2 current = item_scroll_position(item);
-		const auto snap = snap_nested(item, {current, current, item_scroll_limit(item), p_axes, dockit::HTMLSnapMethod::destination});
+		const auto snap = snap_nested(item, { current, current, item_scroll_limit(item), p_axes, dockit::HTMLSnapMethod::destination });
 		const auto dx = item.h_scroll(snap.offset.x - current.x);
 		const auto dy = item.v_scroll(snap.offset.y - current.y);
 		if (dx == 0 && dy == 0) return false;
@@ -3246,10 +3272,10 @@ std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::suggestion_menu_rows(const Re
 		if (!input->is_suggestion_valid(value) || !seen.insert(value).second) return false;
 		const auto text = label.is_empty() ? value : label;
 		const auto color = input->css().get_color().to_srgb();
-		rows.push_back({state->container->shape_input(input->css().get_font(), text),
-			Color::from_rgba8(color.red, color.green, color.blue, color.alpha), Color(0, 0, 0, 0), -1, true, value});
+		rows.push_back({ state->container->shape_input(input->css().get_font(), text),
+			Color::from_rgba8(color.red, color.green, color.blue, color.alpha), Color(0, 0, 0, 0), -1, true, value });
 		return false;
-	});
+		});
 	return rows;
 }
 
@@ -3264,7 +3290,7 @@ dockit::HTMLTextLayout HTMLLayout::shape_control_text(const Ref<HTMLElement>& p_
 	auto font = node->css().get_font();
 	if (p_size > 0) {
 		litehtml::font_description description;
-		description.families = {{"Arial", false}, {"sans-serif", true}};
+		description.families = { { "Arial", false },{ "sans-serif", true } };
 		description.size = p_size;
 		description.weight = p_bold ? 700 : 400;
 		litehtml::font_metrics metrics;
@@ -3279,17 +3305,17 @@ std::vector<dockit::HTMLSelectMenuRow> HTMLLayout::select_menu_rows(const Ref<HT
 	if (!select) return result;
 	const auto to_color = [](const litehtml::web_color& p_color) {
 		return Color(p_color.red / 255.0f, p_color.green / 255.0f, p_color.blue / 255.0f, p_color.alpha / 255.0f);
-	};
+		};
 	const auto options = select->get_options();
 	const int64_t selected = select->selected_index(options);
 	const auto make_row = [&](const litehtml::element& p_node, const String& p_text, int64_t p_index, bool p_enabled) {
 		const auto& style = p_node.css();
 		const auto font = style.get_font() ? style.get_font() : select->css().get_font();
 		const auto bg = style.get_bg().m_color.to_srgb(style.get_color());
-		result.push_back({state->container->shape_input(font, p_text), to_color(style.get_color().to_srgb()),
+		result.push_back({ state->container->shape_input(font, p_text), to_color(style.get_color().to_srgb()),
 			to_color(bg.alpha ? bg : select->css().get_bg().m_color.to_srgb(select->css().get_color())), p_index, p_enabled,
-			{}, p_index >= 0 && p_index == selected});
-	};
+			{}, p_index >= 0 && p_index == selected });
+		};
 	litehtml::element::ptr previous_group;
 	int64_t index = 0;
 	for (const auto& option : options) {
@@ -3419,7 +3445,7 @@ Ref<HTMLElement> HTMLLayout::dialog_focus_target(const Ref<HTMLDialogElement>& p
 		}
 		if (first.is_null() && candidate != p_dialog && explicit_tab_index(*p_node).value_or(0) >= 0) first = candidate;
 		return false;
-	});
+		});
 	if (autofocus.is_valid()) return autofocus;
 	if (first.is_valid()) return first;
 	return is_focusable(p_dialog) ? Ref<HTMLElement>(p_dialog) : Ref<HTMLElement>();
@@ -3502,15 +3528,15 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 					if (tab_stop != p_element) return false;
 				}
 				if (index >= 0 && (!dynamic_cast<const dockit::HTMLDialogNode*>(p_element.get()) ||
-						explicit_tab_index(*p_element))) elements.push_back({handle, index});
+					explicit_tab_index(*p_element))) elements.push_back({ handle, index });
 			}
 			return false;
-		});
+			});
 	}
 	std::stable_sort(elements.begin(), elements.end(), [](const TabElement& p_left, const TabElement& p_right) {
 		if (p_left.index == 0 || p_right.index == 0) return p_left.index > p_right.index;
 		return p_left.index < p_right.index;
-	});
+		});
 	std::vector<Ref<HTMLElement>> result;
 	result.reserve(elements.size());
 	for (auto& entry : elements) result.push_back(std::move(entry.element));
@@ -3567,8 +3593,8 @@ std::optional<HTMLLayout::ResizeTarget> HTMLLayout::resize_grip_at(const Vector2
 			box += item.get_paddings();
 			box += item.get_borders();
 		}
-		return ResizeTarget{state->dom->make_element(item.src_el()), *grip->inverse,
-			Vector2(box.width, box.height), dockit::html_resize_axes(item.css())};
+		return ResizeTarget{ state->dom->make_element(item.src_el()), *grip->inverse,
+			Vector2(box.width, box.height), dockit::html_resize_axes(item.css()) };
 	}
 	const auto element = get_element_at(p_point);
 	const auto node = text_control(element);
@@ -3579,7 +3605,7 @@ std::optional<HTMLLayout::ResizeTarget> HTMLLayout::resize_grip_at(const Vector2
 	if (!inverse || axes == Vector2i() || !textarea->get_resize_handle().has_point(inverse->xform(p_point))) return {};
 	const Vector2 size = textarea->css().get_box_sizing() == litehtml::box_sizing_border_box ?
 		textarea->get_border_size() : textarea->get_border_size() - textarea->get_border_extras();
-	return ResizeTarget{element, *inverse, size, axes};
+	return ResizeTarget{ element, *inverse, size, axes };
 }
 
 bool HTMLLayout::resize_element(const Ref<HTMLElement>& p_element, const Vector2& p_size, const Vector2i& p_axes) {
@@ -3668,7 +3694,7 @@ dockit::HTMLHoverUpdate HTMLLayout::update_hover(const std::optional<Vector2>& p
 	}
 	auto& previous = state->hovered_elements;
 	if (std::equal(previous.begin(), previous.end(), next.begin(), next.end(),
-			[](const auto& p_left, const auto& p_right) { return p_left.lock() == p_right.lock(); })) {
+		[](const auto& p_left, const auto& p_right) { return p_left.lock() == p_right.lock(); })) {
 		return dockit::HTMLHoverUpdate::unchanged;
 	}
 
@@ -3784,7 +3810,7 @@ void HTMLLayout::record_css_diagnostics() {
 			}
 		}
 		return false;
-	});
+		});
 }
 
 String HTMLLayout::get_css_diagnostic_tooltip(const Vector2& p_position) const {
@@ -3823,7 +3849,7 @@ TypedArray<HTMLVideoElement> HTMLLayout::video_elements() const {
 		HTMLDOM::visit_elements(document->root(), [&](const auto& node) {
 			if (node->tag() == litehtml::_video_) result.append(state->dom->make_element(node));
 			return false;
-		});
+			});
 	}
 	return result;
 }
@@ -3841,7 +3867,7 @@ PackedStringArray HTMLLayout::video_paths(const HTMLVideoElement& p_element) con
 			path = dockit::resolve_html_video_path(state->video_sources.get(value, String()), base_dir);
 		}
 		if (!path.is_empty() && !result.has(path)) result.append(path);
-	};
+		};
 	if (const char* src = element->get_attr("src")) append(src);
 	else for (const auto& child : element->children()) {
 		if (child->tag() == litehtml::_source_) append(child->get_attr("src"));
@@ -3868,7 +3894,7 @@ TypedArray<HTMLAudioElement> HTMLLayout::audio_elements() const {
 		HTMLDOM::visit_elements(document->root(), [&](const auto& node) {
 			if (node->tag() == litehtml::_audio_) result.append(state->dom->make_element(node));
 			return false;
-		});
+			});
 	}
 	return result;
 }
@@ -3882,7 +3908,7 @@ PackedStringArray HTMLLayout::audio_sources(const HTMLAudioElement& p_element) c
 		if (!p_src) return;
 		const String path = dockit::resolve_html_audio_path(String::utf8(p_src), state->container->get_document_base().directory);
 		if (!path.is_empty()) result.append(path);
-	};
+		};
 	if (const char* src = element->get_attr("src")) append_source(src);
 	else {
 		for (const auto& child : element->children()) {
@@ -3947,7 +3973,7 @@ void HTMLLayout::clear() {
 	state->viewport_unit_size = Vector2i();
 	state->viewport_scroll_offset = Vector2i();
 	state->viewport_gutters = Vector2();
-	state->viewport_overflow = {litehtml::overflow_auto, litehtml::overflow_auto};
+	state->viewport_overflow = { litehtml::overflow_auto, litehtml::overflow_auto };
 	state->content_size = Vector2i();
 	state->error = String();
 	state->parse_error = OK;

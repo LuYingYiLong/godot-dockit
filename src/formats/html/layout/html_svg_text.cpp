@@ -42,7 +42,8 @@ namespace dockit {
 				if (token.type == dockit::css::NUMBER) {
 					if (!std::isfinite(token.n.number)) return {};
 					values.push_back(token.n.number);
-				} else {
+				}
+				else {
 					css_length length;
 					if (p_rotation || !length.from_token(token, f_length_percentage | f_math)) return {};
 					p_node.get_document()->cvt_units(length, p_node.css().get_font_metrics(), 0);
@@ -63,7 +64,8 @@ namespace dockit {
 				position_list(p_node, "x", p_basis.x, false), position_list(p_node, "y", p_basis.y, false),
 				position_list(p_node, "dx", p_basis.x, false), position_list(p_node, "dy", p_basis.y, false),
 				position_list(p_node, "rotate", 0, true)
-			} {}
+			} {
+			}
 		};
 
 		struct TextRun {
@@ -105,7 +107,7 @@ namespace dockit {
 					const bool reposition = position[X] || position[Y] || position[DX] || position[DY];
 					if (runs.empty() || reposition || runs.back().position[ROTATE] != position[ROTATE] ||
 						runs.back().style != &p_style || runs.back().path_owner != p_path_owner) {
-						runs.push_back({ &p_style, p_path_owner, position, {}, {} });
+						runs.push_back({ &p_style, p_path_owner, position,{},{} });
 					}
 					runs.back().content.push_back(character);
 				}
@@ -121,7 +123,8 @@ namespace dockit {
 						std::string text;
 						child->get_text(text);
 						append(p_node, String::utf8(text.data(), text.size()), p_path_owner);
-					} else {
+					}
+					else {
 						const std::string_view tag = child->get_tagName();
 						if (tag == "tspan" || (tag == "textpath" && !p_path_owner)) collect(*child, p_path_owner);
 					}
@@ -205,7 +208,8 @@ namespace dockit {
 					const double window = anchor == 1 ? -length * 0.5 :
 						(right_to_left ? anchor == 0 : anchor == 2) ? -length : 0;
 					if (local_middle < window || local_middle > window + length) return {};
-				} else if (middle < 0 || middle > length) {
+				}
+				else if (middle < 0 || middle > length) {
 					return {};
 				}
 				const auto sample = path->measure.sample(middle);

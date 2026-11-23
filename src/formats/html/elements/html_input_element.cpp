@@ -16,10 +16,12 @@ Ref<HTMLFormElement> HTMLInputElement::get_form() const { return get_form_owner(
 using dockit::HTMLInputNode;
 
 void HTMLInputFile::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_name"), &HTMLInputFile::get_name);
-	ClassDB::bind_method(D_METHOD("get_size"), &HTMLInputFile::get_size);
 	ClassDB::bind_method(D_METHOD("read_bytes", "offset", "count"), &HTMLInputFile::read_bytes);
+
+	ClassDB::bind_method(D_METHOD("get_name"), &HTMLInputFile::get_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "", "get_name");
+
+	ClassDB::bind_method(D_METHOD("get_size"), &HTMLInputFile::get_size);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "size"), "", "get_size");
 }
 
@@ -46,21 +48,9 @@ PackedByteArray HTMLInputFile::read_bytes(int64_t p_offset, int64_t p_count) {
 
 void HTMLInputElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_form"), &HTMLInputElement::get_form);
-	ClassDB::bind_method(D_METHOD("get_type"), &HTMLInputElement::get_type);
-	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLInputElement::set_type);
-	ClassDB::bind_method(D_METHOD("get_value_as_number"), &HTMLInputElement::get_value_as_number);
-	ClassDB::bind_method(D_METHOD("set_value_as_number", "value"), &HTMLInputElement::set_value_as_number);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "value_as_number"), "set_value_as_number", "get_value_as_number");
-	ClassDB::bind_method(D_METHOD("get_value"), &HTMLInputElement::get_value);
-	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLInputElement::set_value);
-	ClassDB::bind_method(D_METHOD("is_checked"), &HTMLInputElement::is_checked);
-	ClassDB::bind_method(D_METHOD("set_checked", "checked"), &HTMLInputElement::set_checked);
 	ClassDB::bind_method(D_METHOD("get_selection_start"), &HTMLInputElement::get_selection_start);
 	ClassDB::bind_method(D_METHOD("get_selection_end"), &HTMLInputElement::get_selection_end);
 	ClassDB::bind_method(D_METHOD("set_selection_range", "start", "end"), &HTMLInputElement::set_selection_range);
-	ClassDB::bind_method(D_METHOD("is_indeterminate"), &HTMLInputElement::is_indeterminate);
-	ClassDB::bind_method(D_METHOD("set_indeterminate", "value"), &HTMLInputElement::set_indeterminate);
 	ClassDB::bind_method(D_METHOD("get_validity"), &HTMLInputElement::get_validity);
 	ClassDB::bind_method(D_METHOD("step_up", "count"), &HTMLInputElement::step_up, DEFVAL(1));
 	ClassDB::bind_method(D_METHOD("step_down", "count"), &HTMLInputElement::step_down, DEFVAL(1));
@@ -68,8 +58,25 @@ void HTMLInputElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_value_as_date", "parts"), &HTMLInputElement::set_value_as_date);
 	ClassDB::bind_method(D_METHOD("get_files"), &HTMLInputElement::get_files);
 	ClassDB::bind_method(D_METHOD("show_picker"), &HTMLInputElement::show_picker);
+
+	ClassDB::bind_method(D_METHOD("get_type"), &HTMLInputElement::get_type);
+	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLInputElement::set_type);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+
+	ClassDB::bind_method(D_METHOD("get_value_as_number"), &HTMLInputElement::get_value_as_number);
+	ClassDB::bind_method(D_METHOD("set_value_as_number", "value"), &HTMLInputElement::set_value_as_number);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "value_as_number"), "set_value_as_number", "get_value_as_number");
+
+	ClassDB::bind_method(D_METHOD("get_value"), &HTMLInputElement::get_value);
+	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLInputElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "value"), "set_value", "get_value");
+
+	ClassDB::bind_method(D_METHOD("is_checked"), &HTMLInputElement::is_checked);
+	ClassDB::bind_method(D_METHOD("set_checked", "checked"), &HTMLInputElement::set_checked);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "checked"), "set_checked", "is_checked");
+
+	ClassDB::bind_method(D_METHOD("is_indeterminate"), &HTMLInputElement::is_indeterminate);
+	ClassDB::bind_method(D_METHOD("set_indeterminate", "value"), &HTMLInputElement::set_indeterminate);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "indeterminate"), "set_indeterminate", "is_indeterminate");
 }
 
@@ -106,9 +113,11 @@ void HTMLInputElement::set_value(const String& p_value) {
 	if (const auto input = get_input()) {
 		if (input->type() == HTMLInputNode::Type::FILE) {
 			if (p_value.is_empty() && input->set_files({})) get_owner()->update_input(*input);
-		} else if (input->is_toggle() || input->is_button() || input->type() == HTMLInputNode::Type::HIDDEN) {
+		}
+		else if (input->is_toggle() || input->is_button() || input->type() == HTMLInputNode::Type::HIDDEN) {
 			set_attribute("value", p_value);
-		} else if (input->editor.set_value(input->sanitize_value(p_value))) {
+		}
+		else if (input->editor.set_value(input->sanitize_value(p_value))) {
 			get_owner()->update_input(*input);
 		}
 	}

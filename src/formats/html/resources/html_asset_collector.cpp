@@ -72,7 +72,7 @@ namespace dockit {
 				}
 				const String clip = resolve_html_svg_clip_path(url, p_base_dir);
 				if (clip.begins_with("res://")) r_svg_clips.insert(clip);
-			};
+				};
 			const auto add_string_source = [&](const css_token& p_source) {
 				const css_token* source = &p_source;
 				while (source->type == CV_FUNCTION && equal_i(source->name, "var") &&
@@ -80,7 +80,7 @@ namespace dockit {
 					source = &source->value[2];
 				}
 				if (source->type == STRING) add_image_path(r_images, source->str.c_str(), p_base_dir);
-			};
+				};
 			const auto tokens = normalize(std::string(p_css), f_componentize | f_remove_whitespace);
 			std::vector<const css_token_vector*> pending{ &tokens };
 			while (!pending.empty()) {

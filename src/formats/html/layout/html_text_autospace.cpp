@@ -90,17 +90,17 @@ namespace litehtml {
 		pixel_t measure_space(const element& p_owner, Space p_space) {
 			const auto& metrics = p_owner.css().get_font_metrics();
 			switch (p_space) {
-				case Space::interscript:
-					return metrics.ic_width / 8;
-				case Space::narrow_no_break:
-				case Space::no_break: {
-					const auto font = p_owner.css().get_font();
-					if (!font) return 0;
-					const char* space = p_space == Space::narrow_no_break ? "\xe2\x80\xaf" : "\xc2\xa0";
-					return p_owner.get_document()->container()->text_width(space, font);
-				}
-				case Space::none:
-					return 0;
+			case Space::interscript:
+				return metrics.ic_width / 8;
+			case Space::narrow_no_break:
+			case Space::no_break: {
+				const auto font = p_owner.css().get_font();
+				if (!font) return 0;
+				const char* space = p_space == Space::narrow_no_break ? "\xe2\x80\xaf" : "\xc2\xa0";
+				return p_owner.get_document()->container()->text_width(space, font);
+			}
+			case Space::none:
+				return 0;
 			}
 			return 0;
 		}
@@ -179,7 +179,7 @@ namespace litehtml {
 					const auto space = spacing_between(*owner, *before, source);
 					if (space != Space::none) {
 						const auto word_spacing = spaces.front()->css().get_font_metrics().word_spacing;
-						// NBSP already carries the boundary owner's word spacing when measured.
+						// NBSP 在测量时已经带有边界拥有者的字间距
 						const auto preserved = word_spacing - (space == Space::no_break ?
 							owner->css().get_font_metrics().word_spacing : 0);
 						const auto width = std::max(pixel_t(0), measure_space(*owner, space) + preserved);
@@ -189,6 +189,6 @@ namespace litehtml {
 			}
 			spaces.clear();
 			before = &source;
-		});
+			});
 	}
 }

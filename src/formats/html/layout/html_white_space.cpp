@@ -58,7 +58,7 @@ namespace litehtml {
 				std::vector<Range> cuts;
 				const auto cut = [&](size_t p_begin, size_t p_end) {
 					if (p_begin < p_end) cuts.push_back({ p_begin, p_end });
-				};
+					};
 				for (const auto& request : requests) {
 					const auto [begin, end] = request.content;
 					if (request.flags & white_space_discard_before) {
@@ -87,7 +87,7 @@ namespace litehtml {
 					}
 				}
 
-				// Combine the cuts before pruning. Nested boxes may request the same whitespace.
+				// 在修剪之前先合并切割，嵌套的盒子可能会请求相同的空白
 				std::sort(cuts.begin(), cuts.end(), [](const Range& p_left, const Range& p_right) { return p_left.begin < p_right.begin; });
 				size_t removed_through = 0;
 				for (const auto& range : cuts) {
@@ -118,7 +118,7 @@ namespace litehtml {
 					if (flags) r_flow.requests.push_back({ { start, r_flow.parts.size() }, flags, false });
 				}
 				else {
-					// Non-inline contents belong to their own context. The box itself interrupts this flow.
+					// 非内联内容属于它们自己的上下文，这个盒子本身会打断这个流程
 					r_flow.parts.push_back(child.get());
 					const int outer = flags & (white_space_discard_before | white_space_discard_after);
 					if (outer && is_block_container(source)) r_flow.requests.push_back({ { start, start + 1 }, outer, false });
@@ -139,7 +139,7 @@ namespace litehtml {
 		bool uses_trim(render_item& p_item) {
 			return p_item.css().get_white_space_trim() || std::any_of(p_item.children().begin(), p_item.children().end(), [](const auto& p_child) {
 				return uses_trim(*p_child);
-			});
+				});
 		}
 
 		void prune_items(render_item& p_item, const TrimmedItems& p_removed) {

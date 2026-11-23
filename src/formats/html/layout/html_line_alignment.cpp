@@ -130,7 +130,7 @@ namespace litehtml {
 					const auto& render = earlier->get_el();
 					return earlier->get_type() == line_box_item::type_text_part && !render->skip() &&
 						(render->width() > 0 || !is_explicit_wrap_point(*render->src_el()));
-				})) break;
+					})) break;
 			const auto* prefix = is_soft_hyphen(source) ? hyphen_prefix(std::next(item), m_items.crend()) : nullptr;
 			const auto opportunity = wrap_between(source, next, prefix);
 			if (opportunity != wrap_opportunity::none) {
@@ -147,7 +147,7 @@ namespace litehtml {
 						m_ordinary_wrap_end = ordinary_wrap_end(boundary);
 					}
 				}
-				else if (m_allow_overflow_wrap && (!hyphen || wrap_between(*prefix, next) != wrap_opportunity::none)) {
+				else if (m_allow_overflow_wrap && (!hyphen || (prefix && wrap_between(*prefix, next) != wrap_opportunity::none))) {
 					m_last_overflow_wrap_point = boundary;
 				}
 			}
@@ -194,11 +194,11 @@ namespace litehtml {
 			}
 			if (fits) return std::nullopt;
 			force_wrap = false;
-			opportunity = wrap_between(*prefix, source);
+			opportunity = prefix ? wrap_between(*prefix, source) : wrap_opportunity::none;
 		}
 		if (opportunity == wrap_opportunity::normal) return item_list{};
 		if (force_wrap) return item_list{};
-		auto boundary = m_last_wrap_point;
+		item_list::iterator boundary = m_last_wrap_point;
 		if (boundary == m_items.end() && m_allow_overflow_wrap) {
 			if (opportunity == wrap_opportunity::overflow || opportunity == wrap_opportunity::overflow_intrinsic) return item_list{};
 			boundary = m_last_overflow_wrap_point;
@@ -206,7 +206,7 @@ namespace litehtml {
 		if (boundary == m_items.end()) return std::nullopt;
 
 		item_list tail;
-		for (auto moved = boundary; moved != m_items.end(); ++moved) m_width -= (*moved)->occupied_width();
+		for (item_list::iterator moved = boundary; moved != m_items.end(); ++moved) m_width -= (*moved)->occupied_width();
 		tail.splice(tail.end(), m_items, boundary, m_items.end());
 		if (m_last_wrap_hyphen) apply_line_end_hyphen(*m_last_wrap_hyphen);
 		m_last_wrap_point = m_items.end();
@@ -239,7 +239,7 @@ namespace litehtml {
 			first_group = false;
 			has_inline_edge = has_opening_edge;
 			preceding_punctuation = {};
-		};
+			};
 		for (const auto& item : m_items) {
 			m_rendered_width.natural_width += item->get_rendered_natural_width() + item->spacing_before();
 			const pixel_t advance = item->get_rendered_min_width();
@@ -266,7 +266,7 @@ namespace litehtml {
 			}
 			auto opportunity = previous ? wrap_between(*previous, source, previous_word_part) : wrap_opportunity::none;
 			if (opportunity == wrap_opportunity::hyphen && !m_hyphenation_limits.allows_line(0)) {
-				opportunity = wrap_between(*previous_word_part, source);
+				opportunity = previous_word_part ? wrap_between(*previous_word_part, source) : wrap_opportunity::none;
 			}
 			const bool breakable = opportunity == wrap_opportunity::normal || opportunity == wrap_opportunity::overflow_intrinsic ||
 				opportunity == wrap_opportunity::hyphen;
@@ -314,7 +314,7 @@ namespace litehtml {
 		if (src_el()->tag() != empty_id) return true;
 		const auto enclosing = parent();
 		if (!enclosing) return true;
-		// An anonymous block's first line inherits this distinction from its enclosing block.
+		// 一个匿名块的第一行会继承其外部块的这种特性
 		for (const auto& sibling : enclosing->children()) {
 			if (sibling.get() == this) break;
 			if (!sibling->src_el()->is_float() && sibling->src_el()->tag() != marker_tag() &&
@@ -413,7 +413,7 @@ namespace litehtml {
 			const auto* text = dynamic_cast<const el_text*>(render->src_el().get());
 			const auto parent = text ? text->parent() : nullptr;
 			const auto font = parent ? parent->css().get_font() : 0;
-			if (!font || text->is_break() || text->css().preserves_white_space()) {
+			if (!text || !parent || !font || text->is_break() || text->css().preserves_white_space()) {
 				previous_character = 0;
 				continue;
 			}
@@ -426,7 +426,7 @@ namespace litehtml {
 			const bool gap = dockit::has_text_justification_gap(method, previous_character, info.first) &&
 				dockit::has_text_justification_gap(previous_method, previous_character, info.first);
 			parts.push_back({ item, method, info.count, gap });
-			opportunities += info.count + int(gap);
+			opportunities += static_cast<size_t>(info.count) + static_cast<size_t>(gap);
 			previous_character = info.last;
 			previous_method = method;
 		}
@@ -436,7 +436,7 @@ namespace litehtml {
 		pixel_t shift = 0;
 		auto next = m_items.begin();
 		for (const auto& part : parts) {
-			// Split a boundary gap at inline box edges, as with letter-spacing.
+			// 在内联盒子边缘拆分边界间隙，就像字间距一样
 			const pixel_t gap = part.gap_before ? extra : 0;
 			for (; next != part.item; ++next) (*next)->pos().x += shift + gap / 2;
 			shift += gap;

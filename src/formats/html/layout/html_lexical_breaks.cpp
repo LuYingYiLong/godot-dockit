@@ -153,7 +153,7 @@ namespace dockit {
 			if (needs_hyphenation) prepare_hyphenation(pieces, p_line_width, result.automatic_hyphens);
 			pieces.clear();
 			needs_hyphenation = false;
-		};
+			};
 		go_inside_inline descendants;
 		inline_selector items;
 		elements_iterator iterator(false, &descendants, &items);
@@ -176,7 +176,7 @@ namespace dockit {
 				needs_hyphenation |= is_soft_hyphen(source) || source.css().get_hyphens() == hyphens_auto;
 			}
 			else if (source.tag() != _id("wbr")) finish_word();
-		});
+			});
 		finish_word();
 		result.lexical = runs.complete();
 		return result;

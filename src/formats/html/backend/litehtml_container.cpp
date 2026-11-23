@@ -112,7 +112,8 @@ namespace dockit {
 		document::ptr source;
 
 		explicit HTMLSVGClipDocument(const String& p_base_dir) :
-			container(*dom, p_base_dir, {}, false, {}, {}, {}, {}, {}, {}, true) {}
+			container(*dom, p_base_dir, {}, false, {}, {}, {}, {}, {}, {}, true) {
+		}
 	};
 
 	LiteHTMLContainer::LiteHTMLContainer(HTMLDOM& p_dom, const String& p_base_dir, const Dictionary& p_textures, bool p_fit_images,
@@ -137,7 +138,7 @@ namespace dockit {
 			return canvas;
 		}
 		if (!p_attributes.empty()) {
-			// The inner call selects litehtml's normal element type. The outer call applies the attributes.
+			// 内部调用选择 litehtml 的普通元素类型，外部调用应用属性
 			const auto element = p_document->create_element(p_tag, {});
 			if (element) {
 				dom.remember_source_attributes(element, p_attributes);
@@ -180,7 +181,7 @@ namespace dockit {
 		HTMLDOM::visit_elements(p_root, [&](const auto& p_node) {
 			if (p_node->tag() == litehtml::_base_ && p_node->is_html_namespace()) href = p_node->get_attr("href");
 			return href != nullptr;
-		});
+			});
 		resources.set_document_base_href(href);
 	}
 
@@ -221,10 +222,10 @@ namespace dockit {
 			return {};
 		}
 		if (p_inline) {
-			return { css_source_kind::inline_style, {} };
+			return { css_source_kind::inline_style,{} };
 		}
 		if (css_source_kind == css_source_kind::none || p_base.empty()) {
-			return { css_source_kind, {} };
+			return { css_source_kind,{} };
 		}
 		return { css_source_kind::local_stylesheet, std::string(HTMLResources::stylesheet_path(p_base)) };
 	}
@@ -308,10 +309,10 @@ namespace dockit {
 			std::max(p_content_size.y, viewport_size.y));
 		paint.begin(p_geometry, p_document.root_render().get(), [this](uint_ptr p_font, const String& p_text,
 			int64_t p_start, int64_t p_end, const render_item* p_item) {
-			if (!p_item) return fonts.shape_text(p_font, p_text);
-			return fonts.shape_styled_text(p_font, p_text, p_item->get_text_justification(), p_item->get_placement().width,
-				p_start, p_end, p_item->get_punctuation_trim()).layout;
-		});
+				if (!p_item) return fonts.shape_text(p_font, p_text);
+				return fonts.shape_styled_text(p_font, p_text, p_item->get_text_justification(), p_item->get_placement().width,
+					p_start, p_end, p_item->get_punctuation_trim()).layout;
+			});
 		p_document.draw(0, 0, 0, &bounds);
 		const auto& root_render = p_document.root_render();
 		if (p_viewport_gutters != Vector2() && root_render && root_render->is_visible()) {
@@ -325,14 +326,14 @@ namespace dockit {
 					background->draw_layers(0, root_render->pos(), root.get(), root_render, *this, [&](background_layer& layer) {
 						layer.clip_box = layer.border_box = canvas;
 						layer.border_radius = {};
+						});
 					});
-				});
 			}
 		}
 		paint.finish(p_document.root(), [this](const element& p_element, const String& p_text) {
 			const auto font = p_element.parent()->css().get_font();
 			return font ? fonts.shape_text(font, p_text) : HTMLTextLayout{};
-		});
+			});
 		resources.end_image_paint();
 	}
 
@@ -458,7 +459,8 @@ namespace dockit {
 				}
 				p_doc->add_stylesheet(node->linked_text.c_str(), node->linked_path.c_str(), p_element->get_attr("media"),
 					p_element->parent().get(), p_element, true);
-			} else {
+			}
+			else {
 				litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 			}
 			return;
@@ -477,13 +479,14 @@ namespace dockit {
 			node->linked_path = std::move(base);
 			node->linked_text = std::move(css);
 			node->linked_resource = resources.get_stylesheet_resource(resolved_path);
-		} else if (!node->linked_path.empty()) {
+		}
+		else if (!node->linked_path.empty()) {
 			litehtml::dockit_editor::reset_stylesheet_source(*p_element);
 		}
 	}
 
 	void LiteHTMLContainer::load_image(const char* p_src, const char* p_css_base, bool, css_image_orientation p_orientation) {
-		// Style computation preloads images even when none of their dimensions enter layout.
+		// 样式计算会预加载图片，即使它们的尺寸没有进入布局
 		if (!svg_clip_only) resources.load_texture(p_src, p_css_base, p_orientation, false);
 	}
 
@@ -598,7 +601,7 @@ namespace dockit {
 			const auto draw = [&](const css_cross_fade& mix) {
 				return rasterize_cross_fade(tile, mix, base, computed.get_color(), computed.get_bg().m_direction,
 					paint.get_image_sampling(), resources);
-			};
+				};
 			texture = value.type == image::type_cross_fade ? draw(*value.m_cross_fade) : draw({ { { value, 1.0 } } });
 		}
 		if (texture.is_null() || source_size.x <= 0 || source_size.y <= 0) return false;

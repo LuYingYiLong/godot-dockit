@@ -97,7 +97,7 @@ namespace dockit {
 		if (!extent.is_finite() || extent.x <= 0 || extent.y <= 0) return {};
 		const bool uniform = std::all_of(p_mix.layers.begin(), p_mix.layers.end(), [](const auto& p_layer) {
 			return p_layer.value.type == image::type_solid || p_layer.value.type == image::type_none;
-		});
+			});
 		const double scale = std::min(1.0, static_cast<double>(MAX_TILE_SIDE) / std::max(extent.x, extent.y));
 		const int width = uniform ? 1 : std::max(1, static_cast<int>(std::ceil(extent.x * scale)));
 		const int height = uniform ? 1 : std::max(1, static_cast<int>(std::ceil(extent.y * scale)));
@@ -107,7 +107,7 @@ namespace dockit {
 			for (int y = 0; y < height; ++y)
 				for (int x = 0; x < width; ++x)
 					mixed[static_cast<size_t>(y) * width + x] += p_sample(x, y) * p_weight;
-		};
+			};
 		for (const auto& layer : p_mix.layers) {
 			const auto& value = layer.value;
 			const float weight = static_cast<float>(layer.weight);
@@ -131,13 +131,13 @@ namespace dockit {
 					const uint8_t* pixel = bytes + (static_cast<size_t>(p_y) * pixel_size.x + p_x) * 4;
 					const float alpha = pixel[3] / 255.0f;
 					return Color(pixel[0] * alpha / 255.0f, pixel[1] * alpha / 255.0f, pixel[2] * alpha / 255.0f, alpha);
-				};
+					};
 				accumulate(weight, [&](int p_x, int p_y) {
 					const auto& x = horizontal[p_x];
 					const auto& y = vertical[p_y];
 					return read(x.left, y.left).lerp(read(x.right, y.left), x.fraction)
 						.lerp(read(x.left, y.right).lerp(read(x.right, y.right), x.fraction), y.fraction);
-				});
+					});
 			}
 			else if (value.type == image::type_gradient) {
 				litehtml::background gradient;
@@ -152,27 +152,27 @@ namespace dockit {
 					accumulate(weight, [&](int p_x, int p_y) {
 						const Vector2 point((p_x + 0.5f) * extent.x / width, (p_y + 0.5f) * extent.y / height);
 						return sample_gradient(stops, p_progress(*p_gradient, point));
-					});
-				};
+						});
+					};
 				if (value.m_gradient.is_linear()) {
 					paint(gradient.get_linear_gradient_layer(0, tile), [](const auto& p_gradient, const Vector2& p_point) {
 						const Vector2 start(p_gradient.start.x, p_gradient.start.y);
 						const Vector2 ray = Vector2(p_gradient.end.x, p_gradient.end.y) - start;
 						return (p_point - start).dot(ray) / std::max(ray.length_squared(), real_t(0.000001));
-					});
+						});
 				}
 				else if (value.m_gradient.is_radial()) {
 					paint(gradient.get_radial_gradient_layer(0, tile), [](const auto& p_gradient, const Vector2& p_point) {
 						const Vector2 radius(std::max(p_gradient.radius.x, 0.000001f), std::max(p_gradient.radius.y, 0.000001f));
 						return ((p_point - Vector2(p_gradient.position.x, p_gradient.position.y)) / radius).length();
-					});
+						});
 				}
 				else if (value.m_gradient.is_conic()) {
 					paint(gradient.get_conic_gradient_layer(0, tile), [](const auto& p_gradient, const Vector2& p_point) {
 						const Vector2 delta = p_point - Vector2(p_gradient.position.x, p_gradient.position.y);
 						const double phase = std::atan2(delta.x, -delta.y) / Math_TAU - p_gradient.angle / 360.0;
 						return static_cast<float>(phase - std::floor(phase));
-					});
+						});
 				}
 			}
 		}

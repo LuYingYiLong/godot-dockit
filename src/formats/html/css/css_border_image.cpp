@@ -37,7 +37,7 @@ namespace {
 	std::optional<css_border_image_slice> parse_slice(const css_token_vector& tokens, size_t& index) {
 		css_border_image_slice result;
 		size_t count = 0;
-		// The optional fill keyword may precede or follow the complete list.
+		// 可选的 fill 关键字可以出现在完整列表的前面或后面
 		if (tokens[index].ident() == "fill") {
 			result.fill = true;
 			++index;

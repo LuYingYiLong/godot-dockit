@@ -18,8 +18,8 @@ using namespace litehtml;
 using namespace dockit;
 
 namespace {
-	constexpr std::array video_parts{HTMLVideoPart::play, HTMLVideoPart::position, HTMLVideoPart::mute,
-		HTMLVideoPart::volume, HTMLVideoPart::fullscreen};
+	constexpr std::array video_parts{ HTMLVideoPart::play, HTMLVideoPart::position, HTMLVideoPart::mute,
+		HTMLVideoPart::volume, HTMLVideoPart::fullscreen };
 
 	String format_video_time(double p_time) {
 		const int64_t seconds = static_cast<int64_t>(std::clamp(std::isfinite(p_time) ? p_time : 0.0, 0.0, 35999999.0));
@@ -40,12 +40,12 @@ void HTMLVideoNode::parse_attributes() {
 }
 
 void HTMLVideoNode::get_content_size(litehtml::size& r_size, pixel_t) {
-	r_size = {300, 150};
+	r_size = { 300, 150 };
 	if (dimensions.x > 0 && dimensions.y > 0) {
-		r_size = {pixel_t(dimensions.x), pixel_t(dimensions.y)};
+		r_size = { pixel_t(dimensions.x), pixel_t(dimensions.y) };
 		return;
 	}
-	// Keep the poster's layout size even when optional decoding is unavailable.
+	// 即使可选解码不可用，也要保持海报的布局大小
 	if (const char* poster = get_attr("poster")) {
 		litehtml::size poster_size;
 		get_document()->container()->get_css_image_size(poster, nullptr, 0.0, poster_size, css().get_image_orientation());
@@ -69,15 +69,15 @@ Rect2 HTMLVideoNode::part_rect(const Rect2& p_box, HTMLVideoPart p_part) const {
 	const float bottom = p_box.get_end().y;
 	const float y = bottom - height;
 	switch (p_part) {
-		case HTMLVideoPart::play: return Rect2(left, y, button, height);
-		case HTMLVideoPart::fullscreen: return Rect2(right - button, y, button, height);
-		case HTMLVideoPart::mute:
-			return p_box.size.x >= 118.0f ? Rect2(right - button * 2.0f, y, button, height) : Rect2();
-		case HTMLVideoPart::volume:
-			return p_box.size.x >= 250.0f ? Rect2(right - button * 2.0f - 52.0f, y, 48.0f, height) : Rect2();
-		case HTMLVideoPart::position:
-			return Rect2(left, std::max(p_box.position.y, y - 13.0f), right - left, std::min(13.0f, y - p_box.position.y));
-		default: return {};
+	case HTMLVideoPart::play: return Rect2(left, y, button, height);
+	case HTMLVideoPart::fullscreen: return Rect2(right - button, y, button, height);
+	case HTMLVideoPart::mute:
+		return p_box.size.x >= 118.0f ? Rect2(right - button * 2.0f, y, button, height) : Rect2();
+	case HTMLVideoPart::volume:
+		return p_box.size.x >= 250.0f ? Rect2(right - button * 2.0f - 52.0f, y, 48.0f, height) : Rect2();
+	case HTMLVideoPart::position:
+		return Rect2(left, std::max(p_box.position.y, y - 13.0f), right - left, std::min(13.0f, y - p_box.position.y));
+	default: return {};
 	}
 }
 
@@ -100,10 +100,10 @@ void HTMLVideoNode::draw_controls(const Rect2& p_box, const HTMLVideoControlPain
 	const auto draw_icon = [&](HTMLVideoPart p_part, HTMLControlIcon p_icon) {
 		const auto box = part_rect(p_box, p_part);
 		if (!box.has_area()) return;
-		const float extent = std::min({22.0f, box.size.x, box.size.y});
+		const float extent = std::min({ 22.0f, box.size.x, box.size.y });
 		const Vector2 size(extent, extent);
 		p_painter.icon(p_icon, Rect2(box.get_center() - size * 0.5f, size));
-	};
+		};
 	const auto draw_track = [&](HTMLVideoPart p_part, double p_value, bool p_enabled) {
 		const auto box = part_rect(p_box, p_part);
 		if (!box.has_area()) return;
@@ -111,7 +111,7 @@ void HTMLVideoNode::draw_controls(const Rect2& p_box, const HTMLVideoControlPain
 		p_painter.fill(track, Color(1, 1, 1, 0.35f));
 		const float width = track.size.x * std::clamp(p_value, 0.0, 1.0);
 		if (p_enabled && width > 0.0f) p_painter.fill(Rect2(track.position, Vector2(width, track.size.y)), Color(1, 1, 1));
-	};
+		};
 	if (p_focused) {
 		const auto box = part_rect(p_box, focus_part);
 		if (box.has_area()) p_painter.fill(box, Color(1, 1, 1, 0.22f));
@@ -153,57 +153,73 @@ void HTMLVideoNode::draw(uint_ptr p_hdc, pixel_t p_x, pixel_t p_y, const positio
 			const auto line = container->shape_input(css().get_font(), caption);
 			const auto& metrics = css().get_font_metrics();
 			container->draw_input(box, line, Vector2(box.position.x, box.get_center().y + (metrics.ascent - metrics.descent) * 0.5f),
-				web_color(255, 255, 255, 255), {}, {}, {});
+				web_color(255, 255, 255, 255),{},{},{});
 		},
-	}, has_pseudo_class(_id("focus-visible")));
+		}, has_pseudo_class(_id("focus-visible")));
 }
 
 void HTMLVideoElement::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_src"), &HTMLVideoElement::get_src);
-	ClassDB::bind_method(D_METHOD("set_src", "src"), &HTMLVideoElement::set_src);
-	ClassDB::bind_method(D_METHOD("get_poster"), &HTMLVideoElement::get_poster);
-	ClassDB::bind_method(D_METHOD("set_poster", "poster"), &HTMLVideoElement::set_poster);
-	ClassDB::bind_method(D_METHOD("has_controls"), &HTMLVideoElement::has_controls);
-	ClassDB::bind_method(D_METHOD("set_controls", "controls"), &HTMLVideoElement::set_controls);
-	ClassDB::bind_method(D_METHOD("is_autoplay_enabled"), &HTMLVideoElement::is_autoplay_enabled);
-	ClassDB::bind_method(D_METHOD("set_autoplay", "autoplay"), &HTMLVideoElement::set_autoplay);
-	ClassDB::bind_method(D_METHOD("is_looping"), &HTMLVideoElement::is_looping);
-	ClassDB::bind_method(D_METHOD("set_loop", "loop"), &HTMLVideoElement::set_loop);
-	ClassDB::bind_method(D_METHOD("is_muted"), &HTMLVideoElement::is_muted);
-	ClassDB::bind_method(D_METHOD("set_muted", "muted"), &HTMLVideoElement::set_muted);
-	ClassDB::bind_method(D_METHOD("get_width"), &HTMLVideoElement::get_width);
-	ClassDB::bind_method(D_METHOD("set_width", "width"), &HTMLVideoElement::set_width);
-	ClassDB::bind_method(D_METHOD("get_height"), &HTMLVideoElement::get_height);
-	ClassDB::bind_method(D_METHOD("set_height", "height"), &HTMLVideoElement::set_height);
-	ClassDB::bind_method(D_METHOD("get_volume"), &HTMLVideoElement::get_volume);
-	ClassDB::bind_method(D_METHOD("set_volume", "volume"), &HTMLVideoElement::set_volume);
-	ClassDB::bind_method(D_METHOD("get_current_src"), &HTMLVideoElement::get_current_src);
-	ClassDB::bind_method(D_METHOD("get_current_time"), &HTMLVideoElement::get_current_time);
-	ClassDB::bind_method(D_METHOD("get_duration"), &HTMLVideoElement::get_duration);
-	ClassDB::bind_method(D_METHOD("is_paused"), &HTMLVideoElement::is_paused);
-	ClassDB::bind_method(D_METHOD("get_video_width"), &HTMLVideoElement::get_video_width);
-	ClassDB::bind_method(D_METHOD("get_video_height"), &HTMLVideoElement::get_video_height);
 	ClassDB::bind_method(D_METHOD("play"), &HTMLVideoElement::play);
 	ClassDB::bind_method(D_METHOD("pause"), &HTMLVideoElement::pause);
 	ClassDB::bind_method(D_METHOD("seek", "seconds"), &HTMLVideoElement::seek);
 	ClassDB::bind_method(D_METHOD("request_fullscreen"), &HTMLVideoElement::request_fullscreen);
 	ClassDB::bind_method(D_METHOD("exit_fullscreen"), &HTMLVideoElement::exit_fullscreen);
 	ClassDB::bind_method(D_METHOD("is_fullscreen"), &HTMLVideoElement::is_fullscreen);
+
+	ClassDB::bind_method(D_METHOD("get_src"), &HTMLVideoElement::get_src);
+	ClassDB::bind_method(D_METHOD("set_src", "src"), &HTMLVideoElement::set_src);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "src", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_src", "get_src");
+
+	ClassDB::bind_method(D_METHOD("get_poster"), &HTMLVideoElement::get_poster);
+	ClassDB::bind_method(D_METHOD("set_poster", "poster"), &HTMLVideoElement::set_poster);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "poster", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_poster", "get_poster");
+
+	ClassDB::bind_method(D_METHOD("has_controls"), &HTMLVideoElement::has_controls);
+	ClassDB::bind_method(D_METHOD("set_controls", "controls"), &HTMLVideoElement::set_controls);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "controls", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_controls", "has_controls");
+
+	ClassDB::bind_method(D_METHOD("is_autoplay_enabled"), &HTMLVideoElement::is_autoplay_enabled);
+	ClassDB::bind_method(D_METHOD("set_autoplay", "autoplay"), &HTMLVideoElement::set_autoplay);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autoplay", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_autoplay", "is_autoplay_enabled");
+
+	ClassDB::bind_method(D_METHOD("is_looping"), &HTMLVideoElement::is_looping);
+	ClassDB::bind_method(D_METHOD("set_loop", "loop"), &HTMLVideoElement::set_loop);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "loop", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_loop", "is_looping");
+
+	ClassDB::bind_method(D_METHOD("is_muted"), &HTMLVideoElement::is_muted);
+	ClassDB::bind_method(D_METHOD("set_muted", "muted"), &HTMLVideoElement::set_muted);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "muted", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_muted", "is_muted");
+
+	ClassDB::bind_method(D_METHOD("get_width"), &HTMLVideoElement::get_width);
+	ClassDB::bind_method(D_METHOD("set_width", "width"), &HTMLVideoElement::set_width);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "width", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_width", "get_width");
+
+	ClassDB::bind_method(D_METHOD("get_height"), &HTMLVideoElement::get_height);
+	ClassDB::bind_method(D_METHOD("set_height", "height"), &HTMLVideoElement::set_height);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_height", "get_height");
+
+	ClassDB::bind_method(D_METHOD("get_volume"), &HTMLVideoElement::get_volume);
+	ClassDB::bind_method(D_METHOD("set_volume", "volume"), &HTMLVideoElement::set_volume);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_volume", "get_volume");
+
+	ClassDB::bind_method(D_METHOD("get_current_src"), &HTMLVideoElement::get_current_src);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_src", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_current_src");
+
+	ClassDB::bind_method(D_METHOD("get_current_time"), &HTMLVideoElement::get_current_time);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_current_time");
+
+	ClassDB::bind_method(D_METHOD("get_duration"), &HTMLVideoElement::get_duration);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "duration", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_duration");
+
+	ClassDB::bind_method(D_METHOD("is_paused"), &HTMLVideoElement::is_paused);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "paused", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "is_paused");
+
+	ClassDB::bind_method(D_METHOD("get_video_width"), &HTMLVideoElement::get_video_width);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_width", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_video_width");
+
+	ClassDB::bind_method(D_METHOD("get_video_height"), &HTMLVideoElement::get_video_height);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_height", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_video_height");
+
 }
 
 std::shared_ptr<HTMLVideoNode> HTMLVideoElement::get_video_node() const {
@@ -215,20 +231,61 @@ HTMLLabel* HTMLVideoElement::playback_host() const {
 	return layout ? Object::cast_to<HTMLLabel>(ObjectDB::get_instance(layout->video_host)) : nullptr;
 }
 
-String HTMLVideoElement::get_src() const { return get_attribute("src"); }
-void HTMLVideoElement::set_src(const String& p_src) { set_attribute("src", p_src); }
-String HTMLVideoElement::get_poster() const { return get_attribute("poster"); }
-void HTMLVideoElement::set_poster(const String& p_poster) { set_attribute("poster", p_poster); }
-bool HTMLVideoElement::has_controls() const { return has_attribute("controls"); }
-void HTMLVideoElement::set_controls(bool p_enabled) { toggle_attribute("controls", p_enabled); }
-bool HTMLVideoElement::is_autoplay_enabled() const { return has_attribute("autoplay"); }
-void HTMLVideoElement::set_autoplay(bool p_enabled) { toggle_attribute("autoplay", p_enabled); }
-bool HTMLVideoElement::is_looping() const { return has_attribute("loop"); }
-void HTMLVideoElement::set_loop(bool p_enabled) { toggle_attribute("loop", p_enabled); }
-int32_t HTMLVideoElement::get_width() const { return std::clamp<int64_t>(get_attribute("width").to_int(), 0, INT32_MAX); }
-int32_t HTMLVideoElement::get_height() const { return std::clamp<int64_t>(get_attribute("height").to_int(), 0, INT32_MAX); }
-void HTMLVideoElement::set_width(int32_t p_width) { set_attribute("width", String::num_int64(std::max(0, p_width))); }
-void HTMLVideoElement::set_height(int32_t p_height) { set_attribute("height", String::num_int64(std::max(0, p_height))); }
+String HTMLVideoElement::get_src() const {
+	return get_attribute("src");
+}
+
+void HTMLVideoElement::set_src(const String& p_src) {
+	set_attribute("src", p_src);
+}
+
+String HTMLVideoElement::get_poster() const {
+	return get_attribute("poster");
+}
+
+void HTMLVideoElement::set_poster(const String& p_poster) {
+	set_attribute("poster", p_poster);
+}
+
+bool HTMLVideoElement::has_controls() const {
+	return has_attribute("controls");
+}
+
+void HTMLVideoElement::set_controls(bool p_enabled) {
+	toggle_attribute("controls", p_enabled);
+}
+
+bool HTMLVideoElement::is_autoplay_enabled() const {
+	return has_attribute("autoplay");
+}
+
+void HTMLVideoElement::set_autoplay(bool p_enabled) {
+	toggle_attribute("autoplay", p_enabled);
+}
+
+bool HTMLVideoElement::is_looping() const {
+	return has_attribute("loop");
+}
+
+void HTMLVideoElement::set_loop(bool p_enabled) {
+	toggle_attribute("loop", p_enabled);
+}
+
+int32_t HTMLVideoElement::get_width() const {
+	return std::clamp<int64_t>(get_attribute("width").to_int(), 0, INT32_MAX);
+}
+
+int32_t HTMLVideoElement::get_height() const {
+	return std::clamp<int64_t>(get_attribute("height").to_int(), 0, INT32_MAX);
+}
+
+void HTMLVideoElement::set_width(int32_t p_width) {
+	set_attribute("width", String::num_int64(std::max(0, p_width)));
+}
+
+void HTMLVideoElement::set_height(int32_t p_height) {
+	set_attribute("height", String::num_int64(std::max(0, p_height)));
+}
 
 bool HTMLVideoElement::is_muted() const {
 	const auto node = get_video_node();

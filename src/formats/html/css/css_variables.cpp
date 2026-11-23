@@ -81,37 +81,37 @@ namespace litehtml {
 		const auto& token = p_tokens.front();
 		for (const auto syntax : p_registration.syntax) {
 			switch (syntax) {
-				case css_registered_syntax::number:
-					if (token.type == NUMBER || evaluate_css_scalar_math(token, css_math_scalar::number)) return true;
-					break;
-				case css_registered_syntax::integer:
-					if (token.type == NUMBER && token.n.number_type == css_number_integer) return true;
-					if (const auto value = evaluate_css_scalar_math(token, css_math_scalar::number);
-						value && std::floor(*value) == *value) return true;
-					break;
-				case css_registered_syntax::length: {
-					css_length value;
-					if (value.from_token(token, f_length | f_math) && std::isfinite(value.val())) return true;
-					break;
-				}
-				case css_registered_syntax::percentage: {
-					css_length value;
-					if (value.from_token(token, f_percentage | f_math) && std::isfinite(value.val())) return true;
-					break;
-				}
-				case css_registered_syntax::length_percentage: {
-					css_length value;
-					if (value.from_token(token, f_length_percentage | f_math) && std::isfinite(value.val())) return true;
-					break;
-				}
-				case css_registered_syntax::color: {
-					web_color value;
-					if (parse_color(token, value, p_container)) return true;
-					break;
-				}
-				case css_registered_syntax::custom_ident:
-					if (token.type == IDENT && !is_one_of(token.ident(), "initial", "inherit", "unset", "revert", "revert-layer", "default")) return true;
-					break;
+			case css_registered_syntax::number:
+				if (token.type == NUMBER || evaluate_css_scalar_math(token, css_math_scalar::number)) return true;
+				break;
+			case css_registered_syntax::integer:
+				if (token.type == NUMBER && token.n.number_type == css_number_integer) return true;
+				if (const auto value = evaluate_css_scalar_math(token, css_math_scalar::number);
+					value && std::floor(*value) == *value) return true;
+				break;
+			case css_registered_syntax::length: {
+				css_length value;
+				if (value.from_token(token, f_length | f_math) && std::isfinite(value.val())) return true;
+				break;
+			}
+			case css_registered_syntax::percentage: {
+				css_length value;
+				if (value.from_token(token, f_percentage | f_math) && std::isfinite(value.val())) return true;
+				break;
+			}
+			case css_registered_syntax::length_percentage: {
+				css_length value;
+				if (value.from_token(token, f_length_percentage | f_math) && std::isfinite(value.val())) return true;
+				break;
+			}
+			case css_registered_syntax::color: {
+				web_color value;
+				if (parse_color(token, value, p_container)) return true;
+				break;
+			}
+			case css_registered_syntax::custom_ident:
+				if (token.type == IDENT && !is_one_of(token.ident(), "initial", "inherit", "unset", "revert", "revert-layer", "default")) return true;
+				break;
 			}
 		}
 		return false;
@@ -179,14 +179,14 @@ namespace litehtml {
 							node.self_reference |= name == target;
 						}
 					}
-					// Fallback arguments also contribute edges to the CSS dependency graph.
+					// 回退参数也会为 CSS 依赖图增加边
 					p_self(p_self, token.value, p_depth + 1);
 				}
-			};
+				};
 			collect(collect, value->get<css_token_vector>(), 0);
 		}
 
-		// Tarjan's algorithm, with an explicit stack so long dependency chains stay off the C++ stack.
+		// Tarjan 算法，使用显式栈，这样长依赖链就不会占用 C 栈
 		struct Frame { string_id name; size_t next = 0; };
 		std::vector<Frame> frames;
 		std::vector<string_id> component;
@@ -197,7 +197,7 @@ namespace litehtml {
 			node.on_stack = true;
 			component.push_back(p_name);
 			frames.push_back({ p_name });
-		};
+			};
 		for (const auto& [name, start] : graph) {
 			if (start.index >= 0) continue;
 			enter(name);
@@ -240,12 +240,12 @@ namespace litehtml {
 		const auto use_initial = [&]() {
 			if (registration != registered.end() && registration->second.initial_value)
 				entry->second = *registration->second.initial_value;
-		};
+			};
 		const auto use_inherited = [&]() {
 			css_token_vector value_from_parent;
 			if (inherited(p_name, value_from_parent)) entry->second = std::move(value_from_parent);
 			else use_initial();
-		};
+			};
 		if (value && value->is<css_token_vector>()) {
 			css_token_vector output;
 			size_t budget = MAX_EXPANDED_BYTES;
@@ -257,39 +257,39 @@ namespace litehtml {
 				return entry->second;
 			}
 			switch (const auto keyword = read_css_wide_keyword(output)) {
-				case css_wide_keyword::none:
-					if (registration == registered.end() || registration->second.universal ||
-						matches_registered_syntax(output, registration->second, container))
-						entry->second = std::move(output);
-					else if (registration->second.inherits) use_inherited();
-					else use_initial();
-					return entry->second;
-				case css_wide_keyword::initial:
-					use_initial();
-					return entry->second;
-				case css_wide_keyword::inherit:
-					use_inherited();
-					return entry->second;
-				case css_wide_keyword::unset:
-					if (registration != registered.end() && !registration->second.inherits) use_initial();
-					else use_inherited();
-					return entry->second;
-				case css_wide_keyword::revert:
-				case css_wide_keyword::revert_layer:
-					value = &rollback(p_name, *value, keyword);
-					if (value->is<css_token_vector>()) {
-						const auto& restored = value->get<css_token_vector>();
-						if (inspect_css_variables(restored) == css_variable_syntax::valid) {
-							// Switch the candidate before rebuilding the graph so cycles through restored values are detected.
-							declaration->second = value;
-							dependencies_changed = true;
-						}
-						else {
-							entry->second = restored;
-						}
-						return entry->second;
+			case css_wide_keyword::none:
+				if (registration == registered.end() || registration->second.universal ||
+					matches_registered_syntax(output, registration->second, container))
+					entry->second = std::move(output);
+				else if (registration->second.inherits) use_inherited();
+				else use_initial();
+				return entry->second;
+			case css_wide_keyword::initial:
+				use_initial();
+				return entry->second;
+			case css_wide_keyword::inherit:
+				use_inherited();
+				return entry->second;
+			case css_wide_keyword::unset:
+				if (registration != registered.end() && !registration->second.inherits) use_initial();
+				else use_inherited();
+				return entry->second;
+			case css_wide_keyword::revert:
+			case css_wide_keyword::revert_layer:
+				value = &rollback(p_name, *value, keyword);
+				if (value->is<css_token_vector>()) {
+					const auto& restored = value->get<css_token_vector>();
+					if (inspect_css_variables(restored) == css_variable_syntax::valid) {
+						// Switch the candidate before rebuilding the graph so cycles through restored values are detected.
+						declaration->second = value;
+						dependencies_changed = true;
 					}
-					break;
+					else {
+						entry->second = restored;
+					}
+					return entry->second;
+				}
+				break;
 			}
 		}
 		if (value && value->is<initial_value>()) use_initial();
@@ -354,7 +354,7 @@ namespace litehtml {
 	}
 
 	css_computed_variables css_variable_resolver::take_computed() {
-		// Inherited cache entries can be looked up through the parent if another child needs them.
+		// 如果另一个子需要的话，可以通过父级查找继承的缓存条目
 		for (auto it = computed.begin(); it != computed.end();) {
 			if (!declarations.count(it->first) && !registered.count(it->first)) it = computed.erase(it);
 			else ++it;

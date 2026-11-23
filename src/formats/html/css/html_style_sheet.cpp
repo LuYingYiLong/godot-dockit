@@ -8,26 +8,34 @@
 using namespace godot;
 
 void HTMLStyleSheet::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLStyleSheet::is_valid);
-	ClassDB::bind_method(D_METHOD("get_id"), &HTMLStyleSheet::get_id);
-	ClassDB::bind_method(D_METHOD("get_owner_node"), &HTMLStyleSheet::get_owner_node);
-	ClassDB::bind_method(D_METHOD("get_href"), &HTMLStyleSheet::get_href);
-	ClassDB::bind_method(D_METHOD("get_media"), &HTMLStyleSheet::get_media);
-	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLStyleSheet::is_disabled);
-	ClassDB::bind_method(D_METHOD("is_read_only"), &HTMLStyleSheet::is_read_only);
-	ClassDB::bind_method(D_METHOD("get_origin"), &HTMLStyleSheet::get_origin);
-	ClassDB::bind_method(D_METHOD("get_css_rules"), &HTMLStyleSheet::get_css_rules);
 	ClassDB::bind_method(D_METHOD("get_rules"), &HTMLStyleSheet::get_rules);
 	ClassDB::bind_method(D_METHOD("insert_rule", "rule", "index"), &HTMLStyleSheet::insert_rule, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("delete_rule", "index"), &HTMLStyleSheet::delete_rule);
+	ClassDB::bind_method(D_METHOD("is_valid"), &HTMLStyleSheet::is_valid);
+	
+	ClassDB::bind_method(D_METHOD("get_id"), &HTMLStyleSheet::get_id);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "id"), "", "get_id");
+	
+	ClassDB::bind_method(D_METHOD("get_owner_node"), &HTMLStyleSheet::get_owner_node);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "owner_node", PROPERTY_HINT_NONE, "",
 		PROPERTY_USAGE_DEFAULT, "HTMLElement"), "", "get_owner_node");
+	
+	ClassDB::bind_method(D_METHOD("get_href"), &HTMLStyleSheet::get_href);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "href"), "", "get_href");
+	
+	ClassDB::bind_method(D_METHOD("get_media"), &HTMLStyleSheet::get_media);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "", "get_media");
+	
+	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLStyleSheet::is_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "", "is_disabled");
+	
+	ClassDB::bind_method(D_METHOD("is_read_only"), &HTMLStyleSheet::is_read_only);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "read_only"), "", "is_read_only");
+	
+	ClassDB::bind_method(D_METHOD("get_origin"), &HTMLStyleSheet::get_origin);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "origin"), "", "get_origin");
+	
+	ClassDB::bind_method(D_METHOD("get_css_rules"), &HTMLStyleSheet::get_css_rules);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "rules", PROPERTY_HINT_ARRAY_TYPE, "CSSRule"), "", "get_rules");
 }
 
@@ -37,9 +45,13 @@ HTMLLayout* HTMLStyleSheet::get_layout() const {
 		layout->is_stylesheet_handle_current(*this) ? layout : nullptr;
 }
 
-bool HTMLStyleSheet::is_valid() const { return get_layout() != nullptr; }
+bool HTMLStyleSheet::is_valid() const {
+	return get_layout() != nullptr;
+}
 
-int64_t HTMLStyleSheet::get_id() const { return is_valid() ? id : 0; }
+int64_t HTMLStyleSheet::get_id() const {
+	return is_valid() ? id : 0;
+}
 
 Ref<HTMLElement> HTMLStyleSheet::get_owner_node() const {
 	const auto* layout = get_layout();

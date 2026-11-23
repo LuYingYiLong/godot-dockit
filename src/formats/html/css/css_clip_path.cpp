@@ -53,7 +53,8 @@ namespace litehtml {
 			while (round < tokens.size() && tokens[round].ident() != "round") ++round;
 			if (result.shape == css_clip_shape::inset) {
 				if (!parse_quad(tokens, 0, round, result.dimensions, length_flags)) return false;
-			} else {
+			}
+			else {
 				if (round != 4) return false;
 				for (size_t i = 0; i < 4; ++i) {
 					const int flags = length_flags | (result.shape == css_clip_shape::xywh && i >= 2 ? f_positive : 0);
@@ -113,7 +114,8 @@ namespace litehtml {
 				if (!is_one_of(fill, "evenodd", "nonzero") || tokens[1].ch != ',') return false;
 				result.even_odd = fill == "evenodd";
 				index = 2;
-			} else if (tokens.size() != 1) {
+			}
+			else if (tokens.size() != 1) {
 				return false;
 			}
 			if (tokens[index].type != STRING) return false;
@@ -167,7 +169,8 @@ namespace litehtml {
 				if (has_box) return std::nullopt;
 				result.box = *box;
 				has_box = true;
-			} else if (result.shape != css_clip_shape::box || !parse_shape(token, result)) {
+			}
+			else if (result.shape != css_clip_shape::box || !parse_shape(token, result)) {
 				return std::nullopt;
 			}
 		}

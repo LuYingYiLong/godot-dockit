@@ -24,13 +24,16 @@ namespace litehtml {
 					css_image_position position;
 					if (result.origin || !parse_image_position(p_tokens, i, position)) return {};
 					result.origin = position;
-				} else if (keyword == "contain") {
+				}
+				else if (keyword == "contain") {
 					if (result.contain) return {};
 					result.contain = true;
-				} else if (const auto value = parse_css_angle(token)) {
+				}
+				else if (const auto value = parse_css_angle(token)) {
 					if (angle) return {};
 					angle = value;
-				} else {
+				}
+				else {
 					using Size = css_offset_ray::size;
 					if (size_set) return {};
 					if (keyword == "closest-side") result.extent = Size::closest_side;
@@ -78,7 +81,7 @@ namespace litehtml {
 		if (p_tokens.size() == 1) {
 			const auto keyword = p_tokens.front().ident();
 			if (keyword == "auto") return css_offset_position{};
-			if (p_accept_normal && keyword == "normal") return css_offset_position{ css_offset_position::mode::normal, {} };
+			if (p_accept_normal && keyword == "normal") return css_offset_position{ css_offset_position::mode::normal,{} };
 		}
 		css_offset_position position;
 		position.kind = css_offset_position::mode::explicit_position;
@@ -95,7 +98,8 @@ namespace litehtml {
 			const auto keyword = token.ident();
 			if ((keyword == "auto" || keyword == "reverse") && direction.empty()) {
 				direction = keyword == "auto" ? "auto" : "reverse";
-			} else {
+			}
+			else {
 				if (angle) return {};
 				angle = parse_css_angle(token);
 				if (!angle) return {};
@@ -115,7 +119,8 @@ namespace litehtml {
 				if (has_box || *box == css_shape_box::margin) return {};
 				has_box = true;
 				result.box = *box;
-			} else {
+			}
+			else {
 				if (path) return {};
 				path = &token;
 			}
@@ -126,7 +131,7 @@ namespace litehtml {
 			return result.ray ? std::optional<css_offset_path>(result) : std::nullopt;
 		}
 		if (function == "path" && path->value.size() != 1) return {};
-		const auto shape = parse_css_clip_path(path ? css_token_vector{*path} : p_tokens, p_base);
+		const auto shape = parse_css_clip_path(path ? css_token_vector{ *path } : p_tokens, p_base);
 		if (!shape || !*shape) return {};
 		result.shape = *shape;
 		return result;

@@ -29,13 +29,13 @@ namespace litehtml {
 		};
 
 		constexpr MathFunction MATH_FUNCTIONS[]{
-			{ "min", MathOp::MIN, 1, SIZE_MAX }, { "max", MathOp::MAX, 1, SIZE_MAX }, { "clamp", MathOp::CLAMP, 3, 3 },
-			{ "round", MathOp::ROUND, 1, 2 }, { "mod", MathOp::MOD, 2, 2 }, { "rem", MathOp::REM, 2, 2 },
-			{ "sin", MathOp::SIN, 1, 1 }, { "cos", MathOp::COS, 1, 1 }, { "tan", MathOp::TAN, 1, 1 },
-			{ "asin", MathOp::ASIN, 1, 1 }, { "acos", MathOp::ACOS, 1, 1 }, { "atan", MathOp::ATAN, 1, 1 },
-			{ "atan2", MathOp::ATAN2, 2, 2 }, { "pow", MathOp::POW, 2, 2 }, { "sqrt", MathOp::SQRT, 1, 1 },
-			{ "hypot", MathOp::HYPOT, 1, SIZE_MAX }, { "log", MathOp::LOG, 1, 2 }, { "exp", MathOp::EXP, 1, 1 },
-			{ "abs", MathOp::ABS, 1, 1 }, { "sign", MathOp::SIGN, 1, 1 },
+			{ "min", MathOp::MIN, 1, SIZE_MAX },{ "max", MathOp::MAX, 1, SIZE_MAX },{ "clamp", MathOp::CLAMP, 3, 3 },
+			{ "round", MathOp::ROUND, 1, 2 },{ "mod", MathOp::MOD, 2, 2 },{ "rem", MathOp::REM, 2, 2 },
+			{ "sin", MathOp::SIN, 1, 1 },{ "cos", MathOp::COS, 1, 1 },{ "tan", MathOp::TAN, 1, 1 },
+			{ "asin", MathOp::ASIN, 1, 1 },{ "acos", MathOp::ACOS, 1, 1 },{ "atan", MathOp::ATAN, 1, 1 },
+			{ "atan2", MathOp::ATAN2, 2, 2 },{ "pow", MathOp::POW, 2, 2 },{ "sqrt", MathOp::SQRT, 1, 1 },
+			{ "hypot", MathOp::HYPOT, 1, SIZE_MAX },{ "log", MathOp::LOG, 1, 2 },{ "exp", MathOp::EXP, 1, 1 },
+			{ "abs", MathOp::ABS, 1, 1 },{ "sign", MathOp::SIGN, 1, 1 },
 		};
 		constexpr double PI = 3.14159265358979323846;
 		constexpr double E = 2.71828182845904523536;
@@ -55,16 +55,16 @@ namespace litehtml {
 
 	css_length interpolate_css_length(const css_length& from, const css_length& to, double progress, bool non_negative) {
 		const auto operation = [](MathOp op, int type, css_math_node_ptr left, css_math_node_ptr right) {
-			return std::make_shared<css_math_node>(css_math_node{op, type, 0, css_units_none, {std::move(left), std::move(right)}});
-		};
+			return std::make_shared<css_math_node>(css_math_node{ op, type, 0, css_units_none,{ std::move(left), std::move(right) } });
+			};
 		const auto scaled = [&](const css_length& length, double weight) {
 			const auto node = length.expression() ? length.expression()->root :
-				std::make_shared<css_math_node>(css_math_node{MathOp::LITERAL,
+				std::make_shared<css_math_node>(css_math_node{ MathOp::LITERAL,
 					length.units() == css_units_percentage ? PERCENT_TYPE : LENGTH_TYPE,
-					length.val(), length.units(), {}});
-			const auto factor = std::make_shared<css_math_node>(css_math_node{MathOp::LITERAL, NUMBER_TYPE, weight, css_units_none, {}});
+					length.val(), length.units(),{} });
+			const auto factor = std::make_shared<css_math_node>(css_math_node{ MathOp::LITERAL, NUMBER_TYPE, weight, css_units_none,{} });
 			return operation(MathOp::MULTIPLY, node->type, node, factor);
-		};
+			};
 		if (!from.expression() && !to.expression() && from.units() == to.units()) {
 			const auto result = std::clamp(from.val() + (to.val() - from.val()) * progress,
 				non_negative ? 0.0 : -CSS_LENGTH_LIMIT, CSS_LENGTH_LIMIT);
@@ -76,14 +76,14 @@ namespace litehtml {
 		css_length result;
 		result.set_expression(std::make_shared<css_math_expression>(css_math_expression{
 			operation(MathOp::ADD, type, left, right), (type & PERCENT_TYPE) != 0, non_negative, false
-		}));
+			}));
 		return result;
 	}
 
 	namespace {
 		css_math_node_ptr literal(double p_number, css_units p_unit = css_units_none, int p_dimension = NUMBER_TYPE) {
 			const int type = p_unit == css_units_none ? p_dimension : (p_unit == css_units_percentage ? PERCENT_TYPE : LENGTH_TYPE);
-			return std::make_shared<css_math_node>(css_math_node{ MathOp::LITERAL, type, p_number, p_unit, {} });
+			return std::make_shared<css_math_node>(css_math_node{ MathOp::LITERAL, type, p_number, p_unit,{} });
 		}
 
 		std::optional<double> resolution_dimension(const css_token& p_token) {
@@ -106,19 +106,19 @@ namespace litehtml {
 
 		int function_result(MathOp p_operation, int p_input) {
 			switch (p_operation) {
-				case MathOp::SIN:
-				case MathOp::COS:
-				case MathOp::TAN: return p_input == NUMBER_TYPE || p_input == ANGLE_TYPE ? NUMBER_TYPE : -1;
-				case MathOp::ASIN:
-				case MathOp::ACOS:
-				case MathOp::ATAN: return p_input == NUMBER_TYPE ? ANGLE_TYPE : -1;
-				case MathOp::ATAN2: return ANGLE_TYPE;
-				case MathOp::SIGN: return NUMBER_TYPE;
-				case MathOp::POW:
-				case MathOp::SQRT:
-				case MathOp::LOG:
-				case MathOp::EXP: return p_input == NUMBER_TYPE ? NUMBER_TYPE : -1;
-				default: return p_input;
+			case MathOp::SIN:
+			case MathOp::COS:
+			case MathOp::TAN: return p_input == NUMBER_TYPE || p_input == ANGLE_TYPE ? NUMBER_TYPE : -1;
+			case MathOp::ASIN:
+			case MathOp::ACOS:
+			case MathOp::ATAN: return p_input == NUMBER_TYPE ? ANGLE_TYPE : -1;
+			case MathOp::ATAN2: return ANGLE_TYPE;
+			case MathOp::SIGN: return NUMBER_TYPE;
+			case MathOp::POW:
+			case MathOp::SQRT:
+			case MathOp::LOG:
+			case MathOp::EXP: return p_input == NUMBER_TYPE ? NUMBER_TYPE : -1;
+			default: return p_input;
 			}
 		}
 
@@ -159,7 +159,7 @@ namespace litehtml {
 						operation = MathOp::DIVIDE;
 					}
 					if (type < 0) return {};
-					left = std::make_shared<css_math_node>(css_math_node{ operation, type, 0.0, css_units_none, { left, right } });
+					left = std::make_shared<css_math_node>(css_math_node{ operation, type, 0.0, css_units_none,{ left, right } });
 				}
 				return left;
 			}
@@ -175,7 +175,7 @@ namespace litehtml {
 					if (names) {
 						const auto input = std::find(names->begin(), names->end(), name);
 						if (input != names->end()) return std::make_shared<css_math_node>(css_math_node{
-							MathOp::INPUT, NUMBER_TYPE, double(input - names->begin()), css_units_none, {}});
+							MathOp::INPUT, NUMBER_TYPE, double(input - names->begin()), css_units_none,{} });
 					}
 					if (name == "pi") return literal(PI);
 					if (name == "e") return literal(E);
@@ -254,7 +254,7 @@ namespace litehtml {
 				if (type < 0) return {};
 				return std::make_shared<css_math_node>(css_math_node{
 					operation, type, 0.0, css_units_none, std::move(args), strategy,
-				});
+					});
 			}
 		};
 
@@ -291,72 +291,72 @@ namespace litehtml {
 		double evaluate_node(const css_math_node& p_node, double p_basis, const css_math_input_values* p_inputs = nullptr) {
 			const auto at = [&](size_t p_index) { return evaluate_node(*p_node.args[p_index], p_basis, p_inputs); };
 			switch (p_node.op) {
-				case MathOp::LITERAL: return p_node.unit == css_units_percentage ? p_node.number * p_basis / 100.0 : p_node.number;
-				case MathOp::INPUT: return p_inputs ? (*p_inputs)[static_cast<size_t>(p_node.number)] : 0.0;
-				case MathOp::ADD: return at(0) + at(1);
-				case MathOp::SUBTRACT: return at(0) - at(1);
-				case MathOp::MULTIPLY: return at(0) * at(1);
-				case MathOp::DIVIDE: return at(0) / at(1);
-				case MathOp::ROUND: return round_to_step(at(0), at(1), p_node.strategy);
-				case MathOp::MOD: return modulus(at(0), at(1));
-				case MathOp::REM: return std::fmod(at(0), at(1));
-				case MathOp::SIN: return std::sin(at(0));
-				case MathOp::COS: return std::cos(at(0));
-				case MathOp::TAN: return std::tan(at(0));
-				case MathOp::ASIN: return std::asin(at(0));
-				case MathOp::ACOS: return std::acos(at(0));
-				case MathOp::ATAN: return std::atan(at(0));
-				case MathOp::ATAN2: return std::atan2(at(0), at(1));
-				case MathOp::POW: {
-					const double base = at(0);
-					const double exponent = at(1);
-					if (std::isnan(base) || std::isnan(exponent) || (std::abs(base) == 1.0 && std::isinf(exponent)))
-						return std::numeric_limits<double>::quiet_NaN();
-					return std::pow(base, exponent);
+			case MathOp::LITERAL: return p_node.unit == css_units_percentage ? p_node.number * p_basis / 100.0 : p_node.number;
+			case MathOp::INPUT: return p_inputs ? (*p_inputs)[static_cast<size_t>(p_node.number)] : 0.0;
+			case MathOp::ADD: return at(0) + at(1);
+			case MathOp::SUBTRACT: return at(0) - at(1);
+			case MathOp::MULTIPLY: return at(0) * at(1);
+			case MathOp::DIVIDE: return at(0) / at(1);
+			case MathOp::ROUND: return round_to_step(at(0), at(1), p_node.strategy);
+			case MathOp::MOD: return modulus(at(0), at(1));
+			case MathOp::REM: return std::fmod(at(0), at(1));
+			case MathOp::SIN: return std::sin(at(0));
+			case MathOp::COS: return std::cos(at(0));
+			case MathOp::TAN: return std::tan(at(0));
+			case MathOp::ASIN: return std::asin(at(0));
+			case MathOp::ACOS: return std::acos(at(0));
+			case MathOp::ATAN: return std::atan(at(0));
+			case MathOp::ATAN2: return std::atan2(at(0), at(1));
+			case MathOp::POW: {
+				const double base = at(0);
+				const double exponent = at(1);
+				if (std::isnan(base) || std::isnan(exponent) || (std::abs(base) == 1.0 && std::isinf(exponent)))
+					return std::numeric_limits<double>::quiet_NaN();
+				return std::pow(base, exponent);
+			}
+			case MathOp::SQRT: return std::sqrt(at(0));
+			case MathOp::LOG: {
+				const double value = at(0);
+				if (p_node.args.size() == 1) return std::log(value);
+				const double base = at(1);
+				if (std::isnan(value) || std::isnan(base) || value < 0.0 || base <= 0.0 || base == 1.0)
+					return std::numeric_limits<double>::quiet_NaN();
+				if (value == 0.0 || std::isinf(value)) return std::log(value);
+				return std::log(value) / std::log(base);
+			}
+			case MathOp::EXP: return std::exp(at(0));
+			case MathOp::ABS: return std::abs(at(0));
+			case MathOp::SIGN: {
+				const double value = at(0);
+				return value == 0.0 || std::isnan(value) ? value : std::copysign(1.0, value);
+			}
+			case MathOp::HYPOT: {
+				double value = 0.0;
+				for (size_t i = 0; i < p_node.args.size(); ++i) {
+					const double next = at(i);
+					if (std::isnan(next)) return next;
+					value = std::hypot(value, next);
 				}
-				case MathOp::SQRT: return std::sqrt(at(0));
-				case MathOp::LOG: {
-					const double value = at(0);
-					if (p_node.args.size() == 1) return std::log(value);
-					const double base = at(1);
-					if (std::isnan(value) || std::isnan(base) || value < 0.0 || base <= 0.0 || base == 1.0)
-						return std::numeric_limits<double>::quiet_NaN();
-					if (value == 0.0 || std::isinf(value)) return std::log(value);
-					return std::log(value) / std::log(base);
+				return value;
+			}
+			case MathOp::MIN:
+			case MathOp::MAX: {
+				double result = at(0);
+				if (std::isnan(result)) return result;
+				for (size_t index = 1; index < p_node.args.size(); ++index) {
+					const double next = at(index);
+					if (std::isnan(next)) return next;
+					result = p_node.op == MathOp::MIN ? std::min(result, next) : std::max(result, next);
 				}
-				case MathOp::EXP: return std::exp(at(0));
-				case MathOp::ABS: return std::abs(at(0));
-				case MathOp::SIGN: {
-					const double value = at(0);
-					return value == 0.0 || std::isnan(value) ? value : std::copysign(1.0, value);
-				}
-				case MathOp::HYPOT: {
-					double value = 0.0;
-					for (size_t i = 0; i < p_node.args.size(); ++i) {
-						const double next = at(i);
-						if (std::isnan(next)) return next;
-						value = std::hypot(value, next);
-					}
-					return value;
-				}
-				case MathOp::MIN:
-				case MathOp::MAX: {
-					double result = at(0);
-					if (std::isnan(result)) return result;
-					for (size_t index = 1; index < p_node.args.size(); ++index) {
-						const double next = at(index);
-						if (std::isnan(next)) return next;
-						result = p_node.op == MathOp::MIN ? std::min(result, next) : std::max(result, next);
-					}
-					return result;
-				}
-				case MathOp::CLAMP: {
-					const double lower = p_node.args[0] ? at(0) : -std::numeric_limits<double>::infinity();
-					const double middle = at(1);
-					const double upper = p_node.args[2] ? at(2) : std::numeric_limits<double>::infinity();
-					if (std::isnan(lower) || std::isnan(middle) || std::isnan(upper)) return std::numeric_limits<double>::quiet_NaN();
-					return std::max(lower, std::min(middle, upper));
-				}
+				return result;
+			}
+			case MathOp::CLAMP: {
+				const double lower = p_node.args[0] ? at(0) : -std::numeric_limits<double>::infinity();
+				const double middle = at(1);
+				const double upper = p_node.args[2] ? at(2) : std::numeric_limits<double>::infinity();
+				if (std::isnan(lower) || std::isnan(middle) || std::isnan(upper)) return std::numeric_limits<double>::quiet_NaN();
+				return std::max(lower, std::min(middle, upper));
+			}
 			}
 			return 0.0;
 		}
@@ -377,19 +377,19 @@ namespace litehtml {
 		string serialize_node(const css_math_node& p_node) {
 			char binary_operator = '\0';
 			switch (p_node.op) {
-				case MathOp::INPUT: return "input(" + std::to_string(static_cast<size_t>(p_node.number)) + ')';
-				case MathOp::LITERAL: {
-					if (std::isnan(p_node.number)) return "NaN";
-					if (std::isinf(p_node.number)) return p_node.number < 0 ? "-infinity" : "infinity";
-					const auto suffix = p_node.type == ANGLE_TYPE ? "rad" :
-						p_node.type == RESOLUTION_TYPE ? "dppx" : (p_node.unit == css_units_none ? "" : index_value(p_node.unit, css_units_strings));
-					return std::to_string(p_node.number) + suffix;
-				}
-				case MathOp::ADD: binary_operator = '+'; break;
-				case MathOp::SUBTRACT: binary_operator = '-'; break;
-				case MathOp::MULTIPLY: binary_operator = '*'; break;
-				case MathOp::DIVIDE: binary_operator = '/'; break;
-				default: break;
+			case MathOp::INPUT: return "input(" + std::to_string(static_cast<size_t>(p_node.number)) + ')';
+			case MathOp::LITERAL: {
+				if (std::isnan(p_node.number)) return "NaN";
+				if (std::isinf(p_node.number)) return p_node.number < 0 ? "-infinity" : "infinity";
+				const auto suffix = p_node.type == ANGLE_TYPE ? "rad" :
+					p_node.type == RESOLUTION_TYPE ? "dppx" : (p_node.unit == css_units_none ? "" : index_value(p_node.unit, css_units_strings));
+				return std::to_string(p_node.number) + suffix;
+			}
+			case MathOp::ADD: binary_operator = '+'; break;
+			case MathOp::SUBTRACT: binary_operator = '-'; break;
+			case MathOp::MULTIPLY: binary_operator = '*'; break;
+			case MathOp::DIVIDE: binary_operator = '/'; break;
+			default: break;
 			}
 			if (binary_operator) {
 				return "(" + serialize_node(*p_node.args[0]) + " " + binary_operator + " " + serialize_node(*p_node.args[1]) + ")";
@@ -431,7 +431,7 @@ namespace litehtml {
 			((root->type & PERCENT_TYPE) && !(p_options & f_percentage))) return {};
 		return std::make_shared<css_math_expression>(css_math_expression{
 			root, uses_basis(root), bool(p_options & f_positive), root->type == NUMBER_TYPE,
-		});
+			});
 	}
 
 	css_math_node_ptr parse_css_scalar_math(const css_token& p_token, css_math_scalar p_type,
@@ -469,7 +469,7 @@ namespace litehtml {
 		constexpr double full_turn = 2.0 * PI;
 		const auto normalize = [p_normalize](double value, double period) {
 			return p_normalize ? std::remainder(value, period) : value;
-		};
+			};
 		if (p_token.type == CV_FUNCTION) {
 			const auto angle = evaluate_css_scalar_math(p_token, css_math_scalar::angle);
 			if (!angle) return std::nullopt;
@@ -503,7 +503,7 @@ namespace litehtml {
 		const std::function<pixel_t(const css_length&)>& p_resolve_length) {
 		return std::make_shared<css_math_expression>(css_math_expression{
 			compute_node(p_value.root, p_resolve_length), p_value.has_percentage, p_value.non_negative, p_value.is_number,
-		});
+			});
 	}
 
 	double css_math_expression::evaluate(double p_basis) const {

@@ -87,9 +87,18 @@ namespace dockit {
 			bool p_right_to_left, float& r_scale) {
 			return p_font ? fonts.shape_text_for_outline(p_font, p_text, p_right_to_left, r_scale) : HTMLTextLayout{};
 		}
-		void draw_input(const godot::Rect2& p_box, const HTMLTextLayout& p_text, const godot::Vector2& p_origin,
-			const litehtml::web_color& p_color, const godot::PackedVector2Array& p_selection,
-			const godot::PackedVector2Array& p_preedit, const godot::Rect2& p_caret, float p_ascent = 0, float p_descent = 0, const HTMLInputPaintColors& p_colors = {}) {
+		void draw_input(
+			const godot::Rect2& p_box,
+			const HTMLTextLayout& p_text,
+			const godot::Vector2& p_origin,
+			const litehtml::web_color& p_color,
+			const godot::PackedVector2Array& p_selection,
+			const godot::PackedVector2Array& p_preedit,
+			const godot::Rect2& p_caret,
+			float p_ascent = 0,
+			float p_descent = 0,
+			const HTMLInputPaintColors& p_colors = {}
+		) {
 			paint.draw_input(p_box, p_text, p_origin, p_color, p_selection, p_preedit, p_caret, p_ascent, p_descent, p_colors);
 		}
 		void draw_input_chrome(const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color,
@@ -133,12 +142,23 @@ namespace dockit {
 			int64_t p_index
 		) const;
 		std::vector<HTMLTextCluster> get_shaped_clusters(litehtml::uint_ptr p_font, const godot::String& p_text);
-		std::vector<size_t> get_bidi_visual_order(const char* p_text, litehtml::uint_ptr p_font, bool p_right_to_left,
-			const std::vector<std::pair<int64_t, int64_t>>& p_ranges) override {
+		std::vector<size_t> get_bidi_visual_order(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			bool p_right_to_left,
+			const std::vector<std::pair<int64_t, int64_t>>& p_ranges
+		) override {
 			return fonts.get_bidi_visual_order(godot::String::utf8(p_text), p_font, p_right_to_left, p_ranges);
 		}
-		void draw_text_fragment(const godot::String& p_text, int64_t p_start, int64_t p_end, const litehtml::position& p_position,
-			const litehtml::element& p_element, litehtml::text_justify_adjustment p_justification, litehtml::punctuation_trim p_trim);
+		void draw_text_fragment(
+			const godot::String& p_text,
+			int64_t p_start,
+			int64_t p_end,
+			const litehtml::position& p_position,
+			const litehtml::element& p_element,
+			litehtml::text_justify_adjustment p_justification,
+			litehtml::punctuation_trim p_trim
+		);
 		void draw_automatic_hyphen(const litehtml::position& p_position, const litehtml::element& p_element,
 			litehtml::text_justify_adjustment p_justification);
 		HTMLDOM& get_dom() { return dom; }
@@ -171,59 +191,170 @@ namespace dockit {
 		godot::HashMap<godot::String, std::shared_ptr<HTMLSVGClipDocument>> svg_clip_documents;
 		HTMLPaintRecorder paint;
 
-		litehtml::css_source get_css_source(const litehtml::string& p_base, bool p_inline) const override;
-		bool is_image_available(const char* p_source, const char* p_base, litehtml::css_image_orientation p_orientation) override;
-		std::shared_ptr<HTMLImageAltText> shape_image_alt(const char* p_alt, const litehtml::html_tag& p_image) override;
-		void draw_image_alt(HTMLImageAltText& p_text, const litehtml::position& p_box, const litehtml::html_tag& p_image) override;
-		void report_css_diagnostic(const litehtml::css_diagnostic& p_diagnostic, const litehtml::html_tag* p_element) override;
-		litehtml::uint_ptr create_font(const litehtml::font_description& p_description, const litehtml::document*,
-			litehtml::font_metrics* r_metrics) override;
+		litehtml::css_source get_css_source(
+			const litehtml::string& p_base,
+			bool p_inline) const override;
+		bool is_image_available(
+			const char* p_source,
+			const char* p_base,
+			litehtml::css_image_orientation p_orientation
+		) override;
+		std::shared_ptr<HTMLImageAltText> shape_image_alt(
+			const char* p_alt,
+			const litehtml::html_tag& p_image
+		) override;
+		void draw_image_alt(
+			HTMLImageAltText& p_text,
+			const litehtml::position& p_box,
+			const litehtml::html_tag& p_image
+		) override;
+		void report_css_diagnostic(
+			const litehtml::css_diagnostic& p_diagnostic,
+			const litehtml::html_tag* p_element
+		) override;
+		litehtml::uint_ptr create_font(
+			const litehtml::font_description& p_description,
+			const litehtml::document*,
+			litehtml::font_metrics* r_metrics
+		) override;
 		void delete_font(litehtml::uint_ptr p_font) override;
-		litehtml::pixel_t text_width(const char* p_text, litehtml::uint_ptr p_font) override;
-		litehtml::pixel_t measure_text(const char* p_text, litehtml::uint_ptr p_font, litehtml::font_metrics& r_metrics) override;
-		litehtml::pixel_t trimmed_punctuation_width(const char* p_text, litehtml::uint_ptr p_font, litehtml::punctuation_trim p_trim) override;
-		litehtml::text_justify_info get_text_justify_info(const char* p_text, litehtml::uint_ptr p_font,
-			litehtml::text_justify p_method) override;
-		void draw_text(litehtml::uint_ptr, const char* p_text, litehtml::uint_ptr p_font,
-			litehtml::web_color p_color, const litehtml::position& p_position) override;
-		void draw_styled_text(litehtml::uint_ptr, const char* p_text, litehtml::uint_ptr p_font,
-			litehtml::web_color p_color, const litehtml::position& p_position, const litehtml::element& p_element,
-			litehtml::text_justify_adjustment p_justification, litehtml::punctuation_trim p_trim) override;
-		void record_text(const char* p_text, litehtml::uint_ptr p_font, litehtml::web_color p_color,
-			const litehtml::position& p_position, const std::vector<litehtml::box_shadow>& p_shadows,
-			const litehtml::css_underline& p_underline = {}, litehtml::text_justify_adjustment p_justification = {},
-			litehtml::punctuation_trim p_trim = litehtml::punctuation_trim::none);
+		litehtml::pixel_t text_width(
+			const char* p_text,
+			litehtml::uint_ptr p_font
+		) override;
+		litehtml::pixel_t measure_text(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::font_metrics& r_metrics
+		) override;
+		litehtml::pixel_t trimmed_punctuation_width(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::punctuation_trim p_trim
+		) override;
+		litehtml::text_justify_info get_text_justify_info(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::text_justify p_method
+		) override;
+		void draw_text(
+			litehtml::uint_ptr,
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::web_color p_color,
+			const litehtml::position& p_position
+		) override;
+		void draw_styled_text(
+			litehtml::uint_ptr,
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::web_color p_color,
+			const litehtml::position& p_position,
+			const litehtml::element& p_element,
+			litehtml::text_justify_adjustment p_justification,
+			litehtml::punctuation_trim p_trim
+		) override;
+		void record_text(
+			const char* p_text,
+			litehtml::uint_ptr p_font,
+			litehtml::web_color p_color,
+			const litehtml::position& p_position,
+			const std::vector<litehtml::box_shadow>& p_shadows,
+			const litehtml::css_underline& p_underline = {},
+			litehtml::text_justify_adjustment p_justification = {},
+			litehtml::punctuation_trim p_trim = litehtml::punctuation_trim::none
+		);
 		litehtml::pixel_t pt_to_px(float p_points) const override;
 		litehtml::pixel_t get_default_font_size() const override;
 		const char* get_default_font_name() const override;
 		litehtml::pixel_t get_default_fixed_font_size() const override;
-		void draw_list_marker(litehtml::uint_ptr, const litehtml::list_marker& p_marker) override;
-		void load_image(const char* p_src, const char* p_css_base, bool, litehtml::css_image_orientation p_orientation) override;
-		void get_image_size(const char* p_src, const char* p_css_base, litehtml::size& r_size,
-			litehtml::css_image_orientation p_orientation) override;
+		void draw_list_marker(
+			litehtml::uint_ptr,
+			const litehtml::list_marker& p_marker
+		) override;
+		void load_image(
+			const char* p_src,
+			const char* p_css_base,
+			bool,
+			litehtml::css_image_orientation p_orientation
+		) override;
+		void get_image_size(
+			const char* p_src,
+			const char* p_css_base,
+			litehtml::size& r_size,
+			litehtml::css_image_orientation p_orientation
+		) override;
 		double get_image_dpi(const char* p_src, const char* p_css_base) override;
-		void get_css_image_size(const char* p_src, const char* p_css_base, double p_density, litehtml::size& r_size,
-			litehtml::css_image_orientation p_orientation) override;
-		void draw_image(litehtml::uint_ptr, const litehtml::background_layer& p_layer, const std::string& p_url,
-			const std::string& p_css_base) override;
-		void draw_cross_fade(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
-			const litehtml::css_cross_fade& p_mix, const std::string& p_css_base, const litehtml::web_color& p_color, int p_direction) override;
-		void draw_solid_fill(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
-			const litehtml::web_color& p_color) override;
-		void draw_box_shadows(const litehtml::html_tag& p_element, const litehtml::position& p_box,
-			const litehtml::borders& p_borders, bool p_inset) override;
-		bool draw_border_image(const litehtml::html_tag& p_element, const litehtml::borders& p_borders,
-			const litehtml::position& p_box, const litehtml::position* p_fragment, bool p_first, bool p_last) override;
-		void draw_borders(litehtml::uint_ptr, const litehtml::borders& p_borders,
-			const litehtml::position& p_position, bool) override;
-		void transform_text(litehtml::string& r_text, litehtml::text_transform p_transform) override;
-		void split_text(const char* p_text, const std::function<void(const char*)>& p_word,
-			const std::function<void(const char*)>& p_space) override;
-		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses&) override;
+		void get_css_image_size(
+			const char* p_src,
+			const char* p_css_base,
+			double p_density,
+			litehtml::size& r_size,
+			litehtml::css_image_orientation p_orientation
+		) override;
+		void draw_image(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const std::string& p_url,
+			const std::string& p_css_base
+		) override;
+		void draw_cross_fade(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const litehtml::css_cross_fade& p_mix,
+			const std::string& p_css_base,
+			const litehtml::web_color& p_color,
+			int p_direction
+		) override;
+		void draw_solid_fill(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const litehtml::web_color& p_color
+		) override;
+		void draw_box_shadows(
+			const litehtml::html_tag& p_element,
+			const litehtml::position& p_box,
+			const litehtml::borders& p_borders,
+			bool p_inset
+		) override;
+		bool draw_border_image(
+			const litehtml::html_tag& p_element,
+			const litehtml::borders& p_borders,
+			const litehtml::position& p_box,
+			const litehtml::position* p_fragment,
+			bool p_first,
+			bool p_last
+		) override;
+		void draw_borders(
+			litehtml::uint_ptr,
+			const litehtml::borders& p_borders,
+			const litehtml::position& p_position,
+			bool
+		) override;
+		void transform_text(
+			litehtml::string& r_text,
+			litehtml::text_transform p_transform
+		) override;
+		void split_text(
+			const char* p_text,
+			const std::function<void(const char*)>& p_word,
+			const std::function<void(const char*)>& p_space
+		) override;
+		void set_clip(
+			const litehtml::position& p_position,
+			const litehtml::border_radiuses&
+		) override;
 		void set_overflow_clip(const litehtml::render_item& p_item) override;
-		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
-			const litehtml::render_item& p_item) override;
-		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration) override;
+		void set_render_item_clip(
+			const litehtml::position& p_position,
+			const litehtml::border_radiuses& p_radii,
+			const litehtml::render_item& p_item
+		) override;
+		bool begin_render_item(
+			const litehtml::render_item& p_item,
+			const litehtml::position*& r_clip,
+			bool p_decoration
+		) override;
 		void end_render_item() override;
 		void draw_scrollbars(const litehtml::render_item& p_item) override;
 		void draw_text_overflow(const litehtml::render_item& p_item) override;
@@ -234,24 +365,43 @@ namespace dockit {
 		void del_clip() override;
 		void get_viewport(litehtml::position& r_viewport) const override;
 		void get_media_features(litehtml::media_features& r_media) const override;
-		void get_language(litehtml::string& r_language, litehtml::string& r_culture) const override;
+		void get_language(
+			litehtml::string& r_language,
+			litehtml::string& r_culture
+		) const override;
 
-		void import_css(litehtml::string& r_text, const litehtml::string& p_url, litehtml::string& r_css_base) override;
+		void import_css(
+			litehtml::string& r_text,
+			const litehtml::string& p_url,
+			litehtml::string& r_css_base
+		) override;
 		void set_base_url(const char*) override {}												// 文档基准在读取样式表前按 DOM 顺序计算
 		void set_caption(const char*) override {}
-		void link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) override;
+		void link(
+			const std::shared_ptr<litehtml::document>& p_doc,
+			const litehtml::element::ptr& p_element
+		) override;
 		void on_anchor_click(const char*, const litehtml::element::ptr&) override {}
 		void on_mouse_event(const litehtml::element::ptr&, litehtml::mouse_event) override {}
 		void set_cursor(const char*) override {}
 		litehtml::element::ptr create_element(const char* p_tag, const litehtml::string_map&,
 			const std::shared_ptr<litehtml::document>& p_document) override;
 
-		void draw_linear_gradient(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
-			const litehtml::background_layer::linear_gradient& p_gradient) override;
-		void draw_radial_gradient(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
-			const litehtml::background_layer::radial_gradient& p_gradient) override;
-		void draw_conic_gradient(litehtml::uint_ptr, const litehtml::background_layer& p_layer,
-			const litehtml::background_layer::conic_gradient& p_gradient) override;
+		void draw_linear_gradient(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::linear_gradient& p_gradient
+		) override;
+		void draw_radial_gradient(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::radial_gradient& p_gradient
+		) override;
+		void draw_conic_gradient(
+			litehtml::uint_ptr,
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::conic_gradient& p_gradient
+		) override;
 	};
 } // namespace dockit
 

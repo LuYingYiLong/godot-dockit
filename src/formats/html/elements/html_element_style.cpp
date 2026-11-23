@@ -31,10 +31,11 @@ namespace {
 			const auto parsed = parse(declaration);
 			if (declaration.name == name && (parsed.status == css_declaration_status::parsed ||
 				parsed.status == css_declaration_status::deferred)) {
-				result = {syntax::get_repr(declaration.value), declaration.important, true};
-			} else if (const auto found = parsed.properties.find(id); found != parsed.properties.end()) {
-				result = {found->second.deferred ? std::string() : syntax::serialize_value(id, found->second),
-					declaration.important, true};
+				result = { syntax::get_repr(declaration.value), declaration.important, true };
+			}
+			else if (const auto found = parsed.properties.find(id); found != parsed.properties.end()) {
+				result = { found->second.deferred ? std::string() : syntax::serialize_value(id, found->second),
+					declaration.important, true };
 			}
 		}
 		if (syntax::is_box_shorthand(id)) {
@@ -47,7 +48,7 @@ namespace {
 				priority = part.important;
 			}
 			const auto text = syntax::serialize_box_shorthand(std::move(values));
-			if (!text.empty()) return {text, priority.value_or(false), true};
+			if (!text.empty()) return { text, priority.value_or(false), true };
 		}
 		return result;
 	}
@@ -57,7 +58,7 @@ namespace {
 		const auto& longhands = css_longhands(id);
 		const auto affects = [&](string_id property) {
 			return property == id || std::find(longhands.begin(), longhands.end(), property) != longhands.end();
-		};
+			};
 		const auto declarations = syntax::inline_declarations(element.get_attribute("style"));
 		syntax::raw_declaration::vector result;
 		for (const auto& declaration : declarations) {
@@ -76,7 +77,7 @@ namespace {
 							serializable = false;
 							break;
 						}
-						syntax::raw_declaration expanded{property_name, litehtml::normalize(text, syntax::f_componentize), value.m_important};
+						syntax::raw_declaration expanded{ property_name, litehtml::normalize(text, syntax::f_componentize), value.m_important };
 						if (parse(expanded).status != css_declaration_status::parsed) {
 							serializable = false;
 							break;
@@ -124,7 +125,7 @@ Error HTMLElement::set_style_property(const String& p_name, const String& p_valu
 	if (name_tokens.size() != 1 || name_tokens.front().type != syntax::IDENT || name_tokens.front().str != name ||
 		(!p_priority.is_empty() && p_priority.nocasecmp_to("important") != 0)) return ERR_INVALID_PARAMETER;
 	if (p_value.is_empty()) return edit(*this, name, nullptr);
-	syntax::raw_declaration declaration{name, litehtml::normalize(p_value.utf8().get_data(), syntax::f_componentize), !p_priority.is_empty()};
+	syntax::raw_declaration declaration{ name, litehtml::normalize(p_value.utf8().get_data(), syntax::f_componentize), !p_priority.is_empty() };
 	if (!syntax::is_declaration_value(declaration.value)) return ERR_INVALID_DATA;
 	const auto status = parse(declaration).status;
 	if (status != litehtml::css_declaration_status::parsed && status != litehtml::css_declaration_status::deferred) return ERR_INVALID_DATA;

@@ -80,13 +80,13 @@ namespace litehtml {
 					return std::nullopt;
 
 				css_length offset;
-				if (index < end && !value->is_center && offset.from_token(p_tokens[index], POSITION_LENGTH)) {
+				if (index < end && !value->is_center&& offset.from_token(p_tokens[index], POSITION_LENGTH)) {
 					value->position.offset = offset;
 					++index;
 				}
 				else if (p_count == 4) return std::nullopt;
 				return value;
-			};
+				};
 			const auto a = read_edge();
 			const auto b = read_edge();
 			if (!a || !b || index != end) return std::nullopt;

@@ -48,12 +48,13 @@ namespace litehtml {
 				continue;
 			}
 			if (token.type != CV_FUNCTION) return std::nullopt;
-			const auto type = feature_index(token.name);
-			if (type == css_alternate_count || seen[type]) return std::nullopt;
+			const size_t type = feature_index(token.name);
+			if (type >= css_alternate_count) return std::nullopt;
+			if (seen[type]) return std::nullopt;
 			seen[type] = true;
 			const auto args = parse_comma_separated_list(token.value);
 			if (args.size() != 1 && type != size_t(css_alternate_type::styleset) &&
-					type != size_t(css_alternate_type::character_variant)) return std::nullopt;
+				type != size_t(css_alternate_type::character_variant)) return std::nullopt;
 			for (const auto& arg : args) {
 				if (arg.size() != 1 || arg.front().type != IDENT) return std::nullopt;
 				result.names.push_back({ static_cast<css_alternate_type>(type), arg.front().name });
@@ -78,7 +79,7 @@ namespace litehtml {
 		css_parser(contents).consume_style_block_contents(descriptors, blocks);
 		for (const auto& block : blocks) {
 			if (block->type != raw_rule::at || block->block.type != CURLY_BLOCK ||
-					std::any_of(block->prelude.begin(), block->prelude.end(), [](const auto& token) { return token.type != WHITESPACE; })) continue;
+				std::any_of(block->prelude.begin(), block->prelude.end(), [](const auto& token) { return token.type != WHITESPACE; })) continue;
 			const auto type = feature_index(block->name);
 			if (type == css_alternate_count) continue;
 			const bool styleset = type == size_t(css_alternate_type::styleset);
@@ -93,7 +94,7 @@ namespace litehtml {
 				std::vector<uint32_t> indexes;
 				for (const auto& value : declaration.value) {
 					if (value.type != NUMBER || value.n.number_type != css_number_integer ||
-							!std::isfinite(value.n.number) || value.n.number < 0) break;
+						!std::isfinite(value.n.number) || value.n.number < 0) break;
 					indexes.push_back(static_cast<uint32_t>(std::min<double>(value.n.number, std::numeric_limits<int32_t>::max())));
 				}
 				if (indexes.size() == declaration.value.size()) {
@@ -107,7 +108,9 @@ namespace litehtml {
 	css_font_features resolve_font_feature_names(const css_font_alternates& alternates, const css_font_feature_names& definitions) {
 		css_font_features result;
 		for (const auto& [type, name] : alternates.names) {
-			const auto& feature_names = definitions[size_t(type)];
+			const size_t index = static_cast<size_t>(type);
+			if (index >= css_alternate_count) continue;
+			const auto& feature_names = definitions[index];
 			const auto definition = feature_names.find(name);
 			if (definition == feature_names.end()) continue;
 			const auto& values = definition->second;

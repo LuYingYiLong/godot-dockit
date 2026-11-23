@@ -87,7 +87,11 @@ bool CSSRule::is_valid() const {
 		!stylesheet->get_rule_text(path).is_empty();
 }
 
-int64_t CSSRule::get_index() const { return is_valid() && !path.is_empty() ? path[path.size() - 1] : -1; }
+int64_t CSSRule::get_index() const {
+	if (!is_valid()) return -1;
+	const int64_t path_size = path.size();
+	return path_size > 0 ? path[path_size - 1] : -1;
+}
 
 String CSSRule::get_type() const {
 	if (!is_valid()) return {};
@@ -209,7 +213,8 @@ void CSSStyleDeclaration::set_css_text(const String& p_text) {
 String CSSStyleDeclaration::get_property_value(const String& p_name) const {
 	if (!is_valid()) return {};
 	const std::string name = normalized_name(p_name);
-	const auto declarations = parse_style_rule(rule->get_css_text()).declarations;
+	const auto style = parse_style_rule(rule->get_css_text());
+	const auto& declarations = style.declarations;
 	for (auto it = declarations.rbegin(); it != declarations.rend(); ++it) {
 		if (it->name == name) return String::utf8(dockit::css::get_repr(it->value).c_str());
 	}
@@ -219,7 +224,8 @@ String CSSStyleDeclaration::get_property_value(const String& p_name) const {
 String CSSStyleDeclaration::get_property_priority(const String& p_name) const {
 	if (!is_valid()) return {};
 	const std::string name = normalized_name(p_name);
-	const auto declarations = parse_style_rule(rule->get_css_text()).declarations;
+	const auto style = parse_style_rule(rule->get_css_text());
+	const auto& declarations = style.declarations;
 	for (auto it = declarations.rbegin(); it != declarations.rend(); ++it) {
 		if (it->name == name) return it->important ? String("important") : String();
 	}
@@ -238,11 +244,13 @@ void CSSStyleDeclaration::set_property(const String& p_name, const String& p_val
 	for (auto it = style.declarations.begin(); it != style.declarations.end();) {
 		if (it->name != name) {
 			++it;
-		} else if (!replaced) {
+		}
+		else if (!replaced) {
 			*it = parsed.front();
 			replaced = true;
 			++it;
-		} else {
+		}
+		else {
 			it = style.declarations.erase(it);
 		}
 	}

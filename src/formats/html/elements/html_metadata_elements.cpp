@@ -20,7 +20,8 @@ namespace dockit {
 		const auto doc = get_document();
 		if (tag() == litehtml::_link_) {
 			doc->container()->link(doc, shared_from_this());
-		} else if (accepts_style_text()) {
+		}
+		else if (accepts_style_text()) {
 			litehtml::string text;
 			get_text(text);
 			doc->add_stylesheet(text.c_str(), nullptr, get_attr("media"), parent().get(), shared_from_this(), style_disabled);
@@ -47,15 +48,19 @@ void HTMLMetaElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_name"), &HTMLMetaElement::get_name);
 	ClassDB::bind_method(D_METHOD("set_name", "value"), &HTMLMetaElement::set_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	
 	ClassDB::bind_method(D_METHOD("get_content"), &HTMLMetaElement::get_content);
 	ClassDB::bind_method(D_METHOD("set_content", "value"), &HTMLMetaElement::set_content);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "content"), "set_content", "get_content");
+	
 	ClassDB::bind_method(D_METHOD("get_http_equiv"), &HTMLMetaElement::get_http_equiv);
 	ClassDB::bind_method(D_METHOD("set_http_equiv", "value"), &HTMLMetaElement::set_http_equiv);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "http_equiv"), "set_http_equiv", "get_http_equiv");
+	
 	ClassDB::bind_method(D_METHOD("get_media"), &HTMLMetaElement::get_media);
 	ClassDB::bind_method(D_METHOD("set_media", "value"), &HTMLMetaElement::set_media);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "set_media", "get_media");
+	
 	ClassDB::bind_method(D_METHOD("get_charset"), &HTMLMetaElement::get_charset);
 	ClassDB::bind_method(D_METHOD("set_charset", "value"), &HTMLMetaElement::set_charset);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "charset"), "set_charset", "get_charset");
@@ -77,13 +82,15 @@ String HTMLMetaElement::get_charset() const { return get_attribute("charset"); }
 void HTMLMetaElement::set_charset(const String& p_value) { set_attribute("charset", p_value); }
 
 void HTMLBaseElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLBaseElement::get_resolved_href);
+	
 	ClassDB::bind_method(D_METHOD("get_href"), &HTMLBaseElement::get_href);
 	ClassDB::bind_method(D_METHOD("set_href", "value"), &HTMLBaseElement::set_href);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "href"), "set_href", "get_href");
+	
 	ClassDB::bind_method(D_METHOD("get_target"), &HTMLBaseElement::get_target);
 	ClassDB::bind_method(D_METHOD("set_target", "value"), &HTMLBaseElement::set_target);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "target"), "set_target", "get_target");
-	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLBaseElement::get_resolved_href);
 }
 
 String HTMLBaseElement::get_href() const { return get_attribute("href"); }
@@ -99,18 +106,23 @@ String HTMLBaseElement::get_resolved_href() const {
 
 void HTMLScriptElement::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text"), "set_text_content", "get_text_content");
+	
 	ClassDB::bind_method(D_METHOD("get_src"), &HTMLScriptElement::get_src);
 	ClassDB::bind_method(D_METHOD("set_src", "value"), &HTMLScriptElement::set_src);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "src"), "set_src", "get_src");
+	
 	ClassDB::bind_method(D_METHOD("get_type"), &HTMLScriptElement::get_type);
 	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLScriptElement::set_type);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+	
 	ClassDB::bind_method(D_METHOD("is_async"), &HTMLScriptElement::is_async);
 	ClassDB::bind_method(D_METHOD("set_async", "value"), &HTMLScriptElement::set_async);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "async"), "set_async", "is_async");
+	
 	ClassDB::bind_method(D_METHOD("is_defer"), &HTMLScriptElement::is_defer);
 	ClassDB::bind_method(D_METHOD("set_defer", "value"), &HTMLScriptElement::set_defer);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "defer"), "set_defer", "is_defer");
+	
 	ClassDB::bind_method(D_METHOD("is_no_module"), &HTMLScriptElement::is_no_module);
 	ClassDB::bind_method(D_METHOD("set_no_module", "value"), &HTMLScriptElement::set_no_module);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "no_module"), "set_no_module", "is_no_module");
@@ -141,26 +153,32 @@ void HTMLScriptElement::set_no_module(bool p_value) {
 }
 
 void HTMLLinkElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLLinkElement::get_resolved_href);
+	
 	ClassDB::bind_method(D_METHOD("get_href"), &HTMLLinkElement::get_href);
 	ClassDB::bind_method(D_METHOD("set_href", "value"), &HTMLLinkElement::set_href);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "href"), "set_href", "get_href");
+	
 	ClassDB::bind_method(D_METHOD("get_rel"), &HTMLLinkElement::get_rel);
 	ClassDB::bind_method(D_METHOD("set_rel", "value"), &HTMLLinkElement::set_rel);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "rel"), "set_rel", "get_rel");
+	
 	ClassDB::bind_method(D_METHOD("get_type"), &HTMLLinkElement::get_type);
 	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLLinkElement::set_type);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+	
 	ClassDB::bind_method(D_METHOD("get_media"), &HTMLLinkElement::get_media);
 	ClassDB::bind_method(D_METHOD("set_media", "value"), &HTMLLinkElement::set_media);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "set_media", "get_media");
+	
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLLinkElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLLinkElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	
 	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLLinkElement::get_stylesheet_id);
 	ClassDB::bind_method(D_METHOD("get_sheet"), &HTMLLinkElement::get_sheet);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "sheet", PROPERTY_HINT_NONE, "",
 		PROPERTY_USAGE_DEFAULT, "HTMLStyleSheet"), "", "get_sheet");
-	ClassDB::bind_method(D_METHOD("get_resolved_href"), &HTMLLinkElement::get_resolved_href);
 }
 
 String HTMLLinkElement::get_href() const { return get_attribute("href"); }
@@ -199,15 +217,19 @@ void HTMLLinkElement::set_disabled(bool p_value) {
 
 void HTMLStyleElement::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text"), "set_text_content", "get_text_content");
+	
 	ClassDB::bind_method(D_METHOD("get_type"), &HTMLStyleElement::get_type);
 	ClassDB::bind_method(D_METHOD("set_type", "value"), &HTMLStyleElement::set_type);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "type"), "set_type", "get_type");
+	
 	ClassDB::bind_method(D_METHOD("get_media"), &HTMLStyleElement::get_media);
 	ClassDB::bind_method(D_METHOD("set_media", "value"), &HTMLStyleElement::set_media);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "media"), "set_media", "get_media");
+	
 	ClassDB::bind_method(D_METHOD("is_disabled"), &HTMLStyleElement::is_disabled);
 	ClassDB::bind_method(D_METHOD("set_disabled", "value"), &HTMLStyleElement::set_disabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
+	
 	ClassDB::bind_method(D_METHOD("get_stylesheet_id"), &HTMLStyleElement::get_stylesheet_id);
 	ClassDB::bind_method(D_METHOD("get_sheet"), &HTMLStyleElement::get_sheet);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "sheet", PROPERTY_HINT_NONE, "",

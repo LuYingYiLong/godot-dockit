@@ -9,13 +9,13 @@ namespace litehtml {
 		using alignment = alignment_keyword;
 
 		constexpr std::pair<alignment, const char*> alignment_words[] = {
-			{ alignment::normal, "normal" }, { alignment::automatic, "auto" }, { alignment::stretch, "stretch" },
-			{ alignment::start, "start" }, { alignment::end, "end" }, { alignment::center, "center" },
-			{ alignment::self_start, "self-start" }, { alignment::self_end, "self-end" },
-			{ alignment::flex_start, "flex-start" }, { alignment::flex_end, "flex-end" },
-			{ alignment::left, "left" }, { alignment::right, "right" },
-			{ alignment::space_between, "space-between" }, { alignment::space_around, "space-around" },
-			{ alignment::space_evenly, "space-evenly" }, { alignment::first_baseline, "baseline" },
+			{ alignment::normal, "normal" },{ alignment::automatic, "auto" },{ alignment::stretch, "stretch" },
+			{ alignment::start, "start" },{ alignment::end, "end" },{ alignment::center, "center" },
+			{ alignment::self_start, "self-start" },{ alignment::self_end, "self-end" },
+			{ alignment::flex_start, "flex-start" },{ alignment::flex_end, "flex-end" },
+			{ alignment::left, "left" },{ alignment::right, "right" },
+			{ alignment::space_between, "space-between" },{ alignment::space_around, "space-around" },
+			{ alignment::space_evenly, "space-evenly" },{ alignment::first_baseline, "baseline" },
 			{ alignment::last_baseline, "baseline" },
 		};
 
@@ -37,8 +37,8 @@ namespace litehtml {
 		const bool content = is_one_of(p_property, _justify_content_, _align_content_);
 		const bool justify = is_one_of(p_property, _justify_items_, _justify_self_, _justify_content_);
 		const auto word = (p_end - 1)->ident();
-		auto prefix = count == 2 ? p_begin->ident() : string();
-		const auto keyword_word = prefix == "baseline" && is_one_of(word, "first", "last") ? prefix : word;
+		string prefix = count == 2 ? p_begin->ident() : string();
+		const string keyword_word = prefix == "baseline" && is_one_of(word, "first", "last") ? prefix : word;
 		if (keyword_word != word) prefix = word;
 		const auto found = std::find_if(std::begin(alignment_words), std::end(alignment_words),
 			[&](const auto& entry) { return keyword_word == entry.second; });
@@ -54,11 +54,13 @@ namespace litehtml {
 		if (count == 2) {
 			if (keyword == alignment::first_baseline && is_one_of(prefix, "first", "last")) {
 				keyword = prefix == "last" ? alignment::last_baseline : alignment::first_baseline;
-			} else if (is_one_of(prefix, "safe", "unsafe") &&
+			}
+			else if (is_one_of(prefix, "safe", "unsafe") &&
 				((keyword >= alignment::start && keyword <= alignment::right) ||
 					(keyword == alignment::normal && is_one_of(p_property, _justify_self_, _align_self_)))) {
 				overflow = prefix == "safe" ? alignment_overflow::safe : alignment_overflow::unsafe;
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
@@ -73,7 +75,7 @@ namespace litehtml {
 	bool parse_place_alignment(string_id p_align_property, string_id p_justify_property,
 		const css_token_vector& p_tokens, css_alignment& r_align, css_alignment& r_justify) {
 		if (p_tokens.empty() || p_tokens.size() > 4) return false;
-		// Baseline and overflow positions can each consume two tokens.
+		// 基线和溢出位置每个都可以消耗两个令牌
 		const auto begin = p_tokens.begin();
 		const auto end = p_tokens.end();
 		for (auto split = begin + std::min<std::size_t>(2, p_tokens.size()); split != begin; --split) {
@@ -85,7 +87,8 @@ namespace litehtml {
 					is_one_of(align.keyword, alignment::first_baseline, alignment::last_baseline);
 				if (content_baseline) justify.keyword = alignment::start;
 				else if (!parse_alignment_value(p_justify_property, begin, split, justify)) continue;
-			} else if (!parse_alignment_value(p_justify_property, split, end, justify)) {
+			}
+			else if (!parse_alignment_value(p_justify_property, split, end, justify)) {
 				continue;
 			}
 			r_align = align;
@@ -116,11 +119,11 @@ namespace litehtml {
 		const auto is_generic = [](const string& p_name) {
 			return is_one_of(p_name, "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "math",
 				"ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded");
-		};
+			};
 		const auto is_reserved = [&](const string& p_name) {
 			return is_generic(p_name) || value_in_list(p_name, font_system_family_name_strings) ||
 				is_one_of(p_name, "default", "initial", "inherit", "unset", "revert", "revert-layer");
-		};
+			};
 		css_font_families families;
 		for (const auto& tokens : parse_comma_separated_list(p_tokens)) {
 			if (tokens.empty()) {
@@ -194,7 +197,7 @@ namespace litehtml {
 				has_style = true;
 			}
 			else if (!has_thickness && r_decoration.thickness.from_token(token,
-					f_length_percentage | f_positive, style_text_decoration_thickness_strings)) {
+				f_length_percentage | f_positive, style_text_decoration_thickness_strings)) {
 				has_thickness = true;
 			}
 			else if (!has_color && parse_color(token, r_decoration.color, p_container)) {

@@ -4,7 +4,6 @@
 #include "formats/html/elements/html_select_node.h"
 
 #include "formats/html/css/css_selector_matcher.h"
-#include "formats/html/css/css_shadows.h"
 #include "formats/html/css/css_default_stylesheet.h"
 #include "formats/html/css/html_cssom.h"
 #include "formats/html/css/css_litehtml_dom.h"
@@ -94,63 +93,64 @@ namespace litehtml {
 		Error status;
 		while ((status = parser->read()) == OK) {
 			switch (parser->get_node_type()) {
-				case XMLParser::NODE_ELEMENT: {
-					if (frames.size() >= 128 || (frames.empty() && doc->m_root)) return {};
-					const String name = parser->get_node_name();
-					const int64_t colon = name.find(":");
-					const String local = colon >= 0 ? name.substr(colon + 1) : name;
-					auto namespaces = frames.empty() ? Dictionary() : frames.back().namespaces;
-					bool changed_namespaces = false;
+			case XMLParser::NODE_ELEMENT: {
+				if (frames.size() >= 128 || (frames.empty() && doc->m_root)) return {};
+				const String name = parser->get_node_name();
+				const int64_t colon = name.find(":");
+				const String local = colon >= 0 ? name.substr(colon + 1) : name;
+				auto namespaces = frames.empty() ? Dictionary() : frames.back().namespaces;
+				bool changed_namespaces = false;
+				for (int i = 0; i < parser->get_attribute_count(); ++i) {
+					const String attribute = parser->get_attribute_name(i);
+					if (attribute != "xmlns" && !attribute.begins_with("xmlns:")) continue;
+					if (!changed_namespaces) {
+						namespaces = namespaces.duplicate();
+						changed_namespaces = true;
+					}
+					namespaces[attribute == "xmlns" ? String() : attribute.substr(6)] = parser->get_attribute_value(i);
+				}
+				const String ns = namespaces.get(colon >= 0 ? name.substr(0, colon) : String(), String());
+				const bool svg = ns == "http://www.w3.org/2000/svg";
+				if (frames.empty() && (!svg || local != "svg")) return {};
+				element::ptr node;
+				if (svg && (frames.empty() || frames.back().node)) {
+					string_map attributes;
 					for (int i = 0; i < parser->get_attribute_count(); ++i) {
-						const String attribute = parser->get_attribute_name(i);
-						if (attribute != "xmlns" && !attribute.begins_with("xmlns:")) continue;
-						if (!changed_namespaces) {
-							namespaces = namespaces.duplicate();
-							changed_namespaces = true;
+						String attr = parser->get_attribute_name(i);
+						if (attr == "xmlns" || attr.begins_with("xmlns:")) continue;
+						const int64_t separator = attr.find(":");
+						if (separator >= 0 && String(namespaces.get(attr.substr(0, separator), String())) == "http://www.w3.org/1999/xlink") {
+							attr = "xlink:" + attr.substr(separator + 1);
 						}
-						namespaces[attribute == "xmlns" ? String() : attribute.substr(6)] = parser->get_attribute_value(i);
+						attributes[attr.utf8().get_data()] = parser->get_attribute_value(i).utf8().get_data();
 					}
-					const String ns = namespaces.get(colon >= 0 ? name.substr(0, colon) : String(), String());
-					const bool svg = ns == "http://www.w3.org/2000/svg";
-					if (frames.empty() && (!svg || local != "svg")) return {};
-					element::ptr node;
-					if (svg && (frames.empty() || frames.back().node)) {
-						string_map attributes;
-						for (int i = 0; i < parser->get_attribute_count(); ++i) {
-							String attr = parser->get_attribute_name(i);
-							if (attr == "xmlns" || attr.begins_with("xmlns:")) continue;
-							const int64_t separator = attr.find(":");
-							if (separator >= 0 && String(namespaces.get(attr.substr(0, separator), String())) == "http://www.w3.org/1999/xlink") {
-								attr = "xlink:" + attr.substr(separator + 1);
-							}
-							attributes[attr.utf8().get_data()] = parser->get_attribute_value(i).utf8().get_data();
-						}
-						node = doc->create_element(local.utf8().get_data(), attributes);
-						if (!node) return {};
-						if (frames.empty()) doc->m_root = node;
-						else frames.back().node->appendChild(node);
-					}
-					if (!parser->is_empty()) frames.push_back({ name, std::move(namespaces), std::move(node) });
-					break;
+					node = doc->create_element(local.utf8().get_data(), attributes);
+					if (!node) return {};
+					if (frames.empty()) doc->m_root = node;
+					else frames.back().node->appendChild(node);
 				}
-				case XMLParser::NODE_ELEMENT_END:
-					if (frames.empty() || frames.back().name != parser->get_node_name()) return {};
-					frames.pop_back();
-					break;
-				case XMLParser::NODE_TEXT:
-				case XMLParser::NODE_CDATA: {
-					const String data = parser->get_node_type() == XMLParser::NODE_TEXT ?
-						parser->get_node_data() : parser->get_node_name();
-					if (frames.empty()) {
-						if (!data.strip_edges().is_empty()) return {};
-					} else if (const auto& node = frames.back().node; node &&
-						is_one_of(node->tag(), _style_, _id("text"), _id("tspan"), _id("textpath"))) {
-						for (const auto& text : create_text(doc, data.utf8().get_data(), false)) node->appendChild(text);
-					}
-					break;
+				if (!parser->is_empty()) frames.push_back({ name, std::move(namespaces), std::move(node) });
+				break;
+			}
+			case XMLParser::NODE_ELEMENT_END:
+				if (frames.empty() || frames.back().name != parser->get_node_name()) return {};
+				frames.pop_back();
+				break;
+			case XMLParser::NODE_TEXT:
+			case XMLParser::NODE_CDATA: {
+				const String data = parser->get_node_type() == XMLParser::NODE_TEXT ?
+					parser->get_node_data() : parser->get_node_name();
+				if (frames.empty()) {
+					if (!data.strip_edges().is_empty()) return {};
 				}
-				default:
-					break;
+				else if (const auto& node = frames.back().node; node &&
+					is_one_of(node->tag(), _style_, _id("text"), _id("tspan"), _id("textpath"))) {
+					for (const auto& text : create_text(doc, data.utf8().get_data(), false)) node->appendChild(text);
+				}
+				break;
+			}
+			default:
+				break;
 			}
 		}
 		if (status != ERR_FILE_EOF || !frames.empty() || !doc->m_root) return {};
@@ -280,7 +280,7 @@ namespace litehtml {
 			return generated;
 			});
 		if (auto* tag = dynamic_cast<html_tag*>(&p_element)) {
-			// Container queries match against the preceding computed styles until the cascade is resolved again.
+			// 容器查询会与前面的计算样式进行匹配，直到层叠再次被解析
 			tag->m_style.clear(true);
 			tag->m_auxiliary_pseudos.reset();
 		}
@@ -295,7 +295,7 @@ namespace litehtml {
 	}
 
 	void dockit_editor::set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size) {
-		p_document.m_viewport_unit_size = {static_cast<pixel_t>(p_size.x), static_cast<pixel_t>(p_size.y)};
+		p_document.m_viewport_unit_size = { static_cast<pixel_t>(p_size.x), static_cast<pixel_t>(p_size.y) };
 	}
 
 	void dockit_editor::compute_styles(document& p_document) {
@@ -310,7 +310,7 @@ namespace litehtml {
 			const auto& box = p_item.pos();
 			p_item.src_el()->css_w().remember_content_size(box.width, box.height);
 			for (const auto& child : p_item.children()) p_visit(p_visit, *child);
-		};
+			};
 		if (p_document.m_root_render) remember(remember, *p_document.m_root_render);
 	}
 
@@ -323,15 +323,15 @@ namespace litehtml {
 			const auto* tag = dynamic_cast<const html_tag*>(&node);
 			if (const auto* placeholder = tag ? tag->get_placeholder_style() : nullptr)
 				used.insert(placeholder->get_font());
-		};
+			};
 		const auto visit_nodes = [&](const auto& visit, const element& node) -> void {
 			collect(node);
 			for (const auto& child : node.children()) visit(visit, *child);
-		};
+			};
 		const auto visit_boxes = [&](const auto& visit, const render_item& box) -> void {
 			collect(*box.src_el());
 			for (const auto& child : box.children()) visit(visit, *child);
-		};
+			};
 		if (p_document.m_root) visit_nodes(visit_nodes, *p_document.m_root);
 		if (p_document.m_root_render) visit_boxes(visit_boxes, *p_document.m_root_render);
 
@@ -366,7 +366,7 @@ namespace litehtml {
 				if (uses_units && inserted) update.dimensions.push_back(dimensions);
 			}
 			for (const auto& child : item.children()) visit(visit, *child);
-		};
+			};
 		if (doc.m_root_render) capture_sizes(capture_sizes, *doc.m_root_render);
 		update.units_changed = uses_units && sizes != doc.m_query_container_sizes;
 		doc.m_query_container_sizes = std::move(sizes);
@@ -384,14 +384,14 @@ namespace litehtml {
 				}
 			}
 			for (const auto& child : node.children()) visit(visit, *child);
-		};
+			};
 		compare(compare, *doc.m_root);
 		return update;
 	}
 
 	std::array<overflow, 2> dockit_editor::propagate_viewport_overflow(document& p_document) {
 		const auto& root = p_document.m_root;
-		if (root->css().get_display() == display_none) return {overflow_auto, overflow_auto};
+		if (root->css().get_display() == display_none) return { overflow_auto, overflow_auto };
 
 		element* source = root.get();
 		const dockit::css::ComputedStyle& root_style = root->css();
@@ -408,10 +408,10 @@ namespace litehtml {
 		const auto viewport_mode = [](overflow p_value) {
 			if (p_value == overflow_clip) return overflow_hidden;
 			return is_scrollable_overflow(p_value) ? p_value : overflow_auto;
-		};
+			};
 		auto& css = source->m_css;
 		const dockit::css::ComputedStyle& computed = css;
-		const std::array modes{viewport_mode(computed.get_overflow_x()), viewport_mode(computed.get_overflow_y())};
+		const std::array modes{ viewport_mode(computed.get_overflow_x()), viewport_mode(computed.get_overflow_y()) };
 		css.propagate_overflow_to_viewport();
 		return modes;
 	}
@@ -435,7 +435,7 @@ namespace litehtml {
 				rule->m_style->collect_property_names(properties);
 				if (std::any_of(properties.begin(), properties.end(), [](string_id p_property) {
 					return _s(p_property).rfind("transition", 0) == 0;
-				})) return true;
+					})) return true;
 			}
 		}
 		const auto visit = [&](const auto& self, const element& p_element) -> bool {
@@ -444,7 +444,7 @@ namespace litehtml {
 				if (self(self, *child)) return true;
 			}
 			return false;
-		};
+			};
 		const auto root = p_document.root();
 		return root && visit(visit, *root);
 	}
@@ -462,15 +462,15 @@ namespace litehtml {
 				if (attribute.type == dockit::css::select_pseudo_element) return attribute.name;
 			}
 			return self(self, p_selector->m_left.get());
-		};
+			};
 		const auto source_origin_name = [](dockit::css::CSSCascadeOrigin p_origin) {
 			switch (p_origin) {
-				case dockit::css::CSSCascadeOrigin::user_agent: return godot::String("user_agent");
-				case dockit::css::CSSCascadeOrigin::author_extra: return godot::String("author_extra");
-				case dockit::css::CSSCascadeOrigin::author: return godot::String("author");
+			case dockit::css::CSSCascadeOrigin::user_agent: return godot::String("user_agent");
+			case dockit::css::CSSCascadeOrigin::author_extra: return godot::String("author_extra");
+			case dockit::css::CSSCascadeOrigin::author: return godot::String("author");
 			}
 			return godot::String("author");
-		};
+			};
 		const auto source_value = [](string_id p_name, const property_value& p_value) {
 			if (p_value.deferred) return godot::String::utf8(get_repr(p_value.deferred->tokens, 0, -1, true).c_str());
 			if (p_value.is<css_token_vector>()) return godot::String::utf8(get_repr(p_value.get<css_token_vector>(), 0, -1, true).c_str());
@@ -479,7 +479,7 @@ namespace litehtml {
 			if (p_value.is<revert_value>()) return godot::String("revert");
 			if (p_value.is<revert_layer_value>()) return godot::String("revert-layer");
 			return godot::String::utf8(dockit::css::serialize_value(p_name, p_value).c_str());
-		};
+			};
 		for (const auto& used : p_element.m_used_styles) {
 			if (!used || !used->m_used || !used->m_selector || !used->m_selector->m_style || !used->m_selector->m_source) continue;
 			const auto& selector = *used->m_selector;
@@ -555,7 +555,7 @@ namespace litehtml {
 	void dockit_editor::edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text) {
 		for (const auto& sheet : p_document.m_css) {
 			if (sheet.owner.lock() == p_owner) {
-				p_document.m_cssom_overrides[p_owner] = {sheet.text, sheet.baseurl, std::move(p_text)};
+				p_document.m_cssom_overrides[p_owner] = { sheet.text, sheet.baseurl, std::move(p_text) };
 				return;
 			}
 		}
@@ -623,7 +623,8 @@ namespace litehtml {
 				const std::string direction = lowcase(tag->get_attr("dir", ""));
 				if (is_one_of(direction, "ltr", "rtl")) {
 					tag->m_style.add_property(_id("direction"), direction);
-				} else if (direction == "auto" || tag->tag() == _bdi_) {
+				}
+				else if (direction == "auto" || tag->tag() == _bdi_) {
 					tag->m_style.add_property(_id("direction"), compute_auto_direction(*tag));
 				}
 				if (const char* rule = tag->get_attr("clip-rule")) {
@@ -653,8 +654,8 @@ namespace litehtml {
 				}
 				if (is_one_of(tag->tag(), _ol_, _li_)) {
 					static const std::map<std::string_view, const char*> marker_types{
-						{ "1", "decimal" }, { "a", "lower-alpha" }, { "A", "upper-alpha" },
-						{ "i", "lower-roman" }, { "I", "upper-roman" },
+						{ "1", "decimal" },{ "a", "lower-alpha" },{ "A", "upper-alpha" },
+						{ "i", "lower-roman" },{ "I", "upper-roman" },
 					};
 					const auto type = marker_types.find(tag->get_attr("type", ""));
 					if (type != marker_types.end()) {
@@ -689,7 +690,7 @@ namespace litehtml {
 				const auto collect = [&](const auto& visit, const element& child) -> void {
 					if (child.tag() == _style_) { string source; child.get_text(source); text += source; }
 					for (const auto& next : child.children()) visit(visit, *next);
-				};
+					};
 				collect(collect, root);
 				local.parse_css_stylesheet(text, "", p_document);
 				local.sort_selectors(false);
@@ -697,7 +698,7 @@ namespace litehtml {
 				self(self, root);
 			}
 			for (const auto& child : node.children()) self(self, *child);
-		};
+			};
 		prepare_shadow(prepare_shadow, *root);
 		compute_styles(doc);
 		if (p_build_render_tree) rebuild_render_tree(doc);
@@ -709,7 +710,7 @@ namespace litehtml {
 				node.m_renders.clear();
 				if (node.shadow_tree) visit(visit, *node.shadow_tree);
 				for (const auto& child : node.children()) visit(visit, *child);
-			};
+				};
 			clear_render_items(clear_render_items, *doc.m_root);
 		}
 		doc.m_root_render.reset();
@@ -762,7 +763,7 @@ namespace litehtml {
 			}
 			element->set_pseudo_class(_id("modal"), false);
 			return true;
-		}), layer.end());
+			}), layer.end());
 	}
 
 	bool dockit_editor::set_attribute(element& p_element, const char* p_name, const char* p_value) {

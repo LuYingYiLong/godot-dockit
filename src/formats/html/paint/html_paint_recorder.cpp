@@ -694,7 +694,8 @@ void fragment() {
 				tile(to_rect(p_layer.origin_box)), repeat_axes(p_layer.repeat.x != background_repeat::no_repeat,
 					p_layer.repeat.y != background_repeat::no_repeat),
 				spacing(p_layer.tile_spacing.width, p_layer.tile_spacing.height),
-				fixed(p_layer.attachment == background_attachment_fixed) {}
+				fixed(p_layer.attachment == background_attachment_fixed) {
+			}
 
 			Rect2 bounds(const Rect2& p_clip) const {
 				if (!tile.is_finite() || !tile.has_area()) return {};
@@ -720,15 +721,15 @@ void fragment() {
 
 		BorderPaint get_border_paint(border_style p_style) {
 			switch (p_style) {
-				case border_style_solid: return BORDER_SOLID;
-				case border_style_dotted: return BORDER_DOTTED;
-				case border_style_dashed: return BORDER_DASHED;
-				case border_style_double: return BORDER_DOUBLE;
-				case border_style_groove:
-				case border_style_ridge: return BORDER_BEVEL_BANDS;
-				case border_style_inset:
-				case border_style_outset: return BORDER_BEVEL_SOLID;
-				default: return BORDER_NONE;
+			case border_style_solid: return BORDER_SOLID;
+			case border_style_dotted: return BORDER_DOTTED;
+			case border_style_dashed: return BORDER_DASHED;
+			case border_style_double: return BORDER_DOUBLE;
+			case border_style_groove:
+			case border_style_ridge: return BORDER_BEVEL_BANDS;
+			case border_style_inset:
+			case border_style_outset: return BORDER_BEVEL_SOLID;
+			default: return BORDER_NONE;
 			}
 		}
 
@@ -831,7 +832,7 @@ void fragment() {
 			}
 		}
 		String separator;
-		AccessibleTextIndex accessibility{accessible_text, {}};
+		AccessibleTextIndex accessibility{ accessible_text,{} };
 		index_text(p_root, p_shape_text, separator, &accessibility);
 		// Paint order can differ from document order for positioned or floating text.
 		// The DOM pass assigns offsets while the paint runs retain the exact clip geometry.
@@ -887,41 +888,41 @@ void fragment() {
 		};
 		const auto depth_at_pointer = [&](const std::optional<Vector3>& p_plane) {
 			return p_plane ? html_depth_at(*p_plane, p_point) : real_t(0);
-		};
+			};
 		const auto visit = [&](auto&& self, std::size_t p_first, std::size_t p_last, std::size_t p_child,
 			std::size_t p_after, bool p_sort) -> bool {
-			std::vector<Candidate> candidates;
-			const auto include_targets = [&](std::size_t p_end) {
-				for (; p_first < p_end; ++p_first) {
-					const auto& target = pointer_targets[p_first];
-					if (!target.geometry->contains_visible_point(p_point)) continue;
-					candidates.push_back({p_first, false, p_sort ? depth_at_pointer(target.geometry->depth_plane) : real_t(0)});
+				std::vector<Candidate> candidates;
+				const auto include_targets = [&](std::size_t p_end) {
+					for (; p_first < p_end; ++p_first) {
+						const auto& target = pointer_targets[p_first];
+						if (!target.geometry->contains_visible_point(p_point)) continue;
+						candidates.push_back({ p_first, false, p_sort ? depth_at_pointer(target.geometry->depth_plane) : real_t(0) });
+					}
+					};
+				for (auto child = p_child; child < p_after; child = paint_groups[child].after_group) {
+					const auto& group = paint_groups[child];
+					include_targets(group.first_pointer);
+					if (group.first_pointer < group.last_pointer)
+						candidates.push_back({ child, true, p_sort ? depth_at_pointer(group.depth_plane) : real_t(0) });
+					p_first = group.last_pointer;
 				}
+				include_targets(p_last);
+				if (p_sort) {
+					std::stable_sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
+						return a.depth < b.depth;
+						});
+				}
+				for (auto it = candidates.rbegin(); it != candidates.rend(); ++it) {
+					if (!it->group) {
+						if (p_visit(pointer_targets[it->index])) return true;
+						continue;
+					}
+					const auto& group = paint_groups[it->index];
+					if (self(self, group.first_pointer, group.last_pointer, it->index + 1, group.after_group, group.sorts_depth))
+						return true;
+				}
+				return false;
 			};
-			for (auto child = p_child; child < p_after; child = paint_groups[child].after_group) {
-				const auto& group = paint_groups[child];
-				include_targets(group.first_pointer);
-				if (group.first_pointer < group.last_pointer)
-					candidates.push_back({child, true, p_sort ? depth_at_pointer(group.depth_plane) : real_t(0)});
-				p_first = group.last_pointer;
-			}
-			include_targets(p_last);
-			if (p_sort) {
-				std::stable_sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
-					return a.depth < b.depth;
-				});
-			}
-			for (auto it = candidates.rbegin(); it != candidates.rend(); ++it) {
-				if (!it->group) {
-					if (p_visit(pointer_targets[it->index])) return true;
-					continue;
-				}
-				const auto& group = paint_groups[it->index];
-				if (self(self, group.first_pointer, group.last_pointer, it->index + 1, group.after_group, group.sorts_depth))
-					return true;
-			}
-			return false;
-		};
 		visit(visit, 0, pointer_targets.size(), 0, paint_groups.size(), false);
 	}
 
@@ -930,7 +931,7 @@ void fragment() {
 		visit_hit_elements(p_point, p_text_selection, [&](const auto& p_element) {
 			element = p_element;
 			return true;
-		});
+			});
 		return element;
 	}
 
@@ -944,7 +945,7 @@ void fragment() {
 				return p_visit(geometry->item->src_el());
 			}
 			return false;
-		});
+			});
 	}
 
 	const HTMLPaintRecorder::PointerTarget* HTMLPaintRecorder::overflow_control_at(const Vector2& p_point) const {
@@ -959,7 +960,7 @@ void fragment() {
 			if (!p_target.bounds.has_point(local) || !geometry.child_overflow->contains_point(p_point, true)) return false;
 			result = &p_target;
 			return true;
-		});
+			});
 		return result;
 	}
 
@@ -972,7 +973,7 @@ void fragment() {
 		const auto bar = geometry.scrollbars()[axis];
 		const real_t fraction = bar.thumb.has_point(local) ?
 			(local[axis] - bar.thumb.position[axis]) / bar.thumb.size[axis] : 0.5;
-		return HTMLScrollbarDrag{geometry.item->src_el(), axis, fraction};
+		return HTMLScrollbarDrag{ geometry.item->src_el(), axis, fraction };
 	}
 
 	const RenderGeometry* HTMLPaintRecorder::resize_grip_at(const Vector2& p_point) const {
@@ -999,7 +1000,7 @@ void fragment() {
 			Rect2(p_box.position.x, end.y - stroke, p_box.size.x, stroke),
 			Rect2(p_box.position.x, p_box.position.y + stroke, stroke, p_box.size.y - 2 * stroke),
 			Rect2(end.x - stroke, p_box.position.y + stroke, stroke, p_box.size.y - 2 * stroke),
-		}) {
+			}) {
 			if (edge.has_area()) {
 				add_command_to(diagnostic_runs, Fill{ edge, color });
 			}
@@ -1013,7 +1014,8 @@ void fragment() {
 		if (p_from >= p_to) return;
 		if (!excluded_selection.empty() && excluded_selection.back().y == p_from) {
 			excluded_selection.back().y = static_cast<int32_t>(p_to);
-		} else {
+		}
+		else {
 			excluded_selection.emplace_back(static_cast<int32_t>(p_from), static_cast<int32_t>(p_to));
 		}
 	}
@@ -1083,9 +1085,9 @@ void fragment() {
 			const auto append = [&](const String& p_source) {
 				const int64_t start = index_source_text(p_source, r_separator, p_selectable, p_accessible);
 				if (elided != elided_text_offsets.end()) elided->second = { start, p_source.length() };
-				if (!p_source.is_empty()) text_index_spans.push_back({p_element, start, start + p_source.length()});
+				if (!p_source.is_empty()) text_index_spans.push_back({ p_element, start, start + p_source.length() });
 				return start;
-			};
+				};
 			const auto append_unpainted = [&](const el_text& p_text) {
 				const auto whitespace = p_text.css().get_white_space_collapse();
 				if (p_text.is_white_space() && whitespace == white_space_discard) return;
@@ -1099,7 +1101,7 @@ void fragment() {
 					append(source == "\r" || (whitespace == white_space_preserve_spaces && (source == "\t" || source == "\n")) ?
 						String(" ") : String::utf8(source.c_str()));
 				}
-			};
+				};
 			if (visible) {
 				if (const auto* fragments = painted_text_by_source.getptr(p_element.get())) {
 					const auto& text = static_cast<const el_text&>(*p_element);
@@ -1115,7 +1117,7 @@ void fragment() {
 			p_element->run_on_renderers([&](const std::shared_ptr<render_item>& p_item) {
 				item = p_item;
 				return false;
-			});
+				});
 			if (!visible) return;
 			const auto* node = dynamic_cast<const el_text*>(p_element.get());
 			if (!node) return;
@@ -1201,7 +1203,8 @@ void fragment() {
 				if (tag && tag->get_content_alternative()) {
 					p_accessible->append(String::utf8(tag->get_content_alternative()->c_str()));
 					child_accessibility = nullptr;
-				} else if (p_element->tag() == _img_) {
+				}
+				else if (p_element->tag() == _img_) {
 					p_accessible->append(String::utf8(p_element->get_attr("alt", "")));
 				}
 			}
@@ -1234,7 +1237,8 @@ void fragment() {
 				r_separator = "\t";
 				separator_selectable.reset();
 			}
-		} else if (block) {
+		}
+		else if (block) {
 			r_separator = preceding_separator;
 			separator_selectable = preceding_separator_selection;
 		}
@@ -1282,7 +1286,7 @@ void fragment() {
 		const auto scope_at = [&](const element& p_element) {
 			const auto found = selection_scopes.find(&p_element);
 			return found == selection_scopes.end() ? Vector2i() : found->second;
-		};
+			};
 		css_user_select used = css_user_select::automatic;
 		bool crossed_override = false;
 		for (auto node = std::move(p_target); node; node = node->parent()) {
@@ -1293,7 +1297,8 @@ void fragment() {
 			if (specified != used) crossed_override = true;
 			if (specified == css_user_select::all && crossed_override) {
 				result.enclosing_all = scope_at(*node);
-			} else if (!crossed_override && specified != css_user_select::text) {
+			}
+			else if (!crossed_override && specified != css_user_select::text) {
 				result.scope = scope_at(*node);
 			}
 		}
@@ -1314,7 +1319,7 @@ void fragment() {
 			int remaining = MAX_ROUNDED_CLIPS;
 			const bool clipped = std::any_of(run->clips.rbegin(), run->clips.rend(), [&](const auto& clip) {
 				return !clip.contains_point(p_point, use_precise_clip(clip, remaining));
-			});
+				});
 			if (clipped) continue;
 			bool matches = run->selection_owner == &p_target;
 			for (auto owner = run->selection_owner->parent(); !matches && owner; owner = owner->parent()) {
@@ -1456,7 +1461,7 @@ void fragment() {
 					edges.emplace_back();
 					outline.for_each_edge([&](const Vector2& a, const Vector2& b) {
 						edges.emplace_back(a.x, a.y, b.x, b.y);
-					});
+						});
 					edges[header] = Vector4(edges.size() - header - 1, outline.even_odd ? 1.0 : 0.0, 0, 0);
 					for (const auto& clip : outline.clips) {
 						self(self, clip);
@@ -1468,10 +1473,10 @@ void fragment() {
 					self(self, clip);
 					edges.emplace_back(0.0f, 0.0f, 2.0f, 0.0f);
 				}
-			};
+				};
 			append_area(append_area, *p_polygon);
 			return Vector4(first, edges.size() - first, 0, 0);
-		};
+			};
 		const auto matrix = !p_composite && active_geometry ? active_geometry->matrix : HTMLPlaneTransform();
 		bool transformed = false;
 		const auto append = [&](const TransformedClip& p_clip) {
@@ -1486,7 +1491,7 @@ void fragment() {
 			offsets.push_back(Vector2(relative.row(0).z, relative.row(1).z));
 			const auto& w = relative.row(2);
 			divisors.push_back(Vector4(w.x, w.y, w.z, 0));
-		};
+			};
 		int remaining = MAX_ROUNDED_CLIPS;
 		for (auto clip = clips.rbegin(); p_include_clips && clip != clips.rend() && boxes.size() < MAX_ROUNDED_CLIPS; ++clip) {
 			if (use_precise_clip(*clip, remaining)) {
@@ -1594,7 +1599,7 @@ void fragment() {
 		const bool boundary = &r_runs == &paint_runs && std::exchange(separate_run, false);
 		if (boundary || r_runs.empty() || r_runs.back().clip != clip || r_runs.back().matrix != matrix || r_runs.back().material != p_material ||
 			r_runs.back().sampling != p_sampling || r_runs.back().fixed_background != p_fixed_background || r_runs.back().depth_plane != depth) {
-			r_runs.push_back({ clip, matrix, {}, p_material, {}, p_sampling, p_fixed_background, depth });
+			r_runs.push_back({ clip, matrix,{}, p_material,{}, p_sampling, p_fixed_background, depth });
 			if (filter_depth > 0) {
 				for (const auto& group : open_groups) {
 					if (group.enclosing_clips) for (const auto& entry : *group.enclosing_clips) r_runs.back().clips.push_back(entry);
@@ -1624,15 +1629,15 @@ void fragment() {
 		}
 		int pattern;
 		switch (p_style) {
-			case text_decoration_style_dotted: pattern = 1; break;
-			case text_decoration_style_dashed: pattern = 2; break;
-			case text_decoration_style_wavy: pattern = 3; break;
-			default:
-				fill_rect(p_rect, p_color);
-				if (p_style == text_decoration_style_double) {
-					fill_rect(Rect2(p_rect.position + Vector2(0, p_rect.size.y * 2), p_rect.size), p_color);
-				}
-				return;
+		case text_decoration_style_dotted: pattern = 1; break;
+		case text_decoration_style_dashed: pattern = 2; break;
+		case text_decoration_style_wavy: pattern = 3; break;
+		default:
+			fill_rect(p_rect, p_color);
+			if (p_style == text_decoration_style_double) {
+				fill_rect(Rect2(p_rect.position + Vector2(0, p_rect.size.y * 2), p_rect.size), p_color);
+			}
+			return;
 		}
 		const auto material = create_material();
 		material->set_shader_parameter("decoration_pattern", pattern);
@@ -1659,7 +1664,7 @@ void fragment() {
 			const float free = std::max(0.0f, float(p_box.size.x) - line.width());
 			const float x = p_align == text_align_center ? free * 0.5f : p_align == text_align_right ? free : 0.0f;
 			const float leading = (p_line_height - line.line_ascent() - line.line_descent()) * 0.5f;
-			add_command(Text{line, p_box.position + Vector2(x, top + leading), color});
+			add_command(Text{ line, p_box.position + Vector2(x, top + leading), color });
 			top += p_line_height;
 		}
 		del_clip();
@@ -1680,13 +1685,13 @@ void fragment() {
 	}
 
 	Ref<Texture2D> HTMLPaintRecorder::get_control_icon(HTMLControlIcon p_icon) {
-		static constexpr std::array svg{control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
+		static constexpr std::array svg{ control_icons::play_arrow, control_icons::pause, control_icons::volume_up,
 			control_icons::volume_off, control_icons::resize_window, control_icons::fullscreen, control_icons::fullscreen_exit,
 			control_icons::arrow_drop_down, control_icons::arrow_drop_up, control_icons::arrow_left, control_icons::arrow_right,
 			control_icons::radio_button_checked, control_icons::calendar_today, control_icons::schedule,
 			control_icons::colorize, control_icons::unfold_more, control_icons::radio_button_unchecked,
 			control_icons::check_box, control_icons::check_box_outline_blank, control_icons::indeterminate_check_box,
-			control_icons::close_small};
+			control_icons::close_small };
 		static_assert(svg.size() == static_cast<size_t>(HTMLControlIcon::count));
 		const auto index = static_cast<size_t>(p_icon);
 		auto& texture = control_icon_textures[index];
@@ -1711,7 +1716,7 @@ void fragment() {
 	void HTMLPaintRecorder::draw_input_icon(HTMLControlIcon p_icon, const Rect2& p_clip, const Rect2& p_rect, const Color& p_color) {
 		const auto texture = get_control_icon(p_icon);
 		if (texture.is_null() || !p_rect.has_area() || !push_content_clip(p_clip)) return;
-		add_image(Image{texture, p_rect, Rect2(Vector2(), texture->get_size()), p_color});
+		add_image(Image{ texture, p_rect, Rect2(Vector2(), texture->get_size()), p_color });
 		del_clip();
 	}
 
@@ -1720,8 +1725,8 @@ void fragment() {
 		if (texture.is_null() || !p_grip.has_area() || !push_content_clip(p_clip)) return;
 		// Chromium pairs translucent black strokes with a white highlight one pixel below.
 		const Rect2 source(Vector2(), texture->get_size());
-		add_image(Image{texture, p_grip, source, Color(0, 0, 0, 0.6f)});
-		add_image(Image{texture, Rect2(p_grip.position + Vector2(0, 1), p_grip.size), source, Color(1, 1, 1, 0.6f)});
+		add_image(Image{ texture, p_grip, source, Color(0, 0, 0, 0.6f) });
+		add_image(Image{ texture, Rect2(p_grip.position + Vector2(0, 1), p_grip.size), source, Color(1, 1, 1, 0.6f) });
 		del_clip();
 	}
 
@@ -1754,9 +1759,9 @@ void fragment() {
 				const auto paint_slice = [&](real_t begin, real_t end, const Color& ink) {
 					if (end <= begin || ink.a <= 0) return;
 					push_clip(RoundedRect(Rect2(begin, p_box.position.y, end - begin, p_box.size.y), {}), matrix);
-					add_command(Text{p_text, top_left, ink});
+					add_command(Text{ p_text, top_left, ink });
 					del_clip();
-				};
+					};
 				const Color selection_ink = to_color(*p_colors.selection_foreground, p_color);
 				real_t left = p_box.position.x;
 				for (const Vector2 range : ranges) {
@@ -1766,8 +1771,9 @@ void fragment() {
 					left = range.y;
 				}
 				paint_slice(left, p_box.get_end().x, color);
-			} else {
-				add_command(Text{p_text, top_left, color});
+			}
+			else {
+				add_command(Text{ p_text, top_left, color });
 			}
 		}
 		for (const Vector2 range : p_preedit) {
@@ -1802,7 +1808,7 @@ void fragment() {
 			if ((decoration & p_flag) && rect.has_area() && rect.is_finite() && decoration_color.a > 0.0f) {
 				decorations.push_back({ rect, p_shaped.decoration_style, decoration_color.a });
 			}
-		};
+			};
 		if (decoration != text_decoration_line_none) {
 			real_t underline = p_underline.offset.value_or(layout.underline_position());
 			if (p_underline.position == underline_from_font) {
@@ -1835,7 +1841,7 @@ void fragment() {
 		HTMLTextMask mask;
 		const bool mipmaps = std::any_of(p_shadows.begin(), p_shadows.end(), [](const box_shadow& p_shadow) {
 			return p_shadow.blur.val() > 3.0f;
-		});
+			});
 		for (auto shadow = p_shadows.rbegin(); shadow != p_shadows.rend(); ++shadow) {
 			const Color shadow_color = to_color(shadow->color, p_color);
 			const Vector2 offset(shadow->x.val(), shadow->y.val());
@@ -1902,13 +1908,13 @@ void fragment() {
 		const auto mode = get_image_sampling();
 		HTMLTextureSampling sampling{ HTMLTextureFilter::inherited, p_repeat != Vector2i() };
 		switch (mode) {
-			case image_rendering::automatic: break;
-			case image_rendering::crisp_edges:
-			case image_rendering::optimize_speed: sampling.filter = HTMLTextureFilter::nearest; break;
-			case image_rendering::high_quality: sampling.filter = HTMLTextureFilter::linear_mipmaps; break;
-			case image_rendering::smooth:
-			case image_rendering::optimize_quality:
-			case image_rendering::pixelated: sampling.filter = HTMLTextureFilter::linear; break;
+		case image_rendering::automatic: break;
+		case image_rendering::crisp_edges:
+		case image_rendering::optimize_speed: sampling.filter = HTMLTextureFilter::nearest; break;
+		case image_rendering::high_quality: sampling.filter = HTMLTextureFilter::linear_mipmaps; break;
+		case image_rendering::smooth:
+		case image_rendering::optimize_quality:
+		case image_rendering::pixelated: sampling.filter = HTMLTextureFilter::linear; break;
 		}
 		if (mode == image_rendering::pixelated && p_material.is_valid()) {
 			p_material->set_shader_parameter("pixelated", true);
@@ -2049,7 +2055,7 @@ void fragment() {
 			const float spread = pixels(shadow->spread);
 			const Vector2 offset(pixels(shadow->x), pixels(shadow->y));
 			if (!offset.is_finite() || !std::isfinite(blur) || !std::isfinite(spread) ||
-					(blur == 0.0f && spread == 0.0f && offset == Vector2())) {
+				(blur == 0.0f && spread == 0.0f && offset == Vector2())) {
 				continue;
 			}
 			RoundedRect shape = base.spread(p_inset ? -spread : spread);
@@ -2111,7 +2117,7 @@ void fragment() {
 		}
 		const auto width = [&](int p_side, float p_maximum) {
 			return styles[p_side] == BORDER_NONE ? 0.0f : std::clamp(sides[p_side]->width, 0.0f, p_maximum);
-		};
+			};
 		const float top = width(0, rect.size.y);
 		const float bottom = width(2, rect.size.y - top);
 		const float left = width(3, rect.size.x);
@@ -2139,7 +2145,7 @@ void fragment() {
 				const Vector2 leading(left * p_fraction, top * p_fraction);
 				const Vector2 trailing(right * p_fraction, bottom * p_fraction);
 				return outer.inset(Rect2(rect.position + leading, rect.size - leading - trailing));
-			};
+				};
 			const RoundedRect inner = inset(1.0f);
 			const Ref<ShaderMaterial> material = create_material(&outer);
 			material->set_shader_parameter("draw_border", true);
@@ -2229,7 +2235,7 @@ void fragment() {
 		const auto fill = [&](const Rect2& p_stripe, const web_color& p_color) {
 			const Color color = to_color(p_color);
 			if (p_stripe.has_area() && color.a > 0) add_command_to(r_runs, Fill{ p_stripe, color });
-		};
+			};
 		fill(Rect2(rect.position, Vector2(rect.size.x, top)), p_borders.top.color);
 		fill(Rect2(rect.position.x, end.y - bottom, rect.size.x, bottom), p_borders.bottom.color);
 		fill(Rect2(rect.position.x, rect.position.y + top, left, inner_height), p_borders.left.color);
@@ -2312,7 +2318,7 @@ void fragment() {
 		const auto matches = [&](const auto& p_target) {
 			return p_target && p_target->axis == p_axis && active_geometry &&
 				p_target->element.lock() == active_geometry->item->src_el();
-		};
+			};
 		const bool pressed = matches(scrollbar_pressed);
 		const bool hot = pressed || matches(scrollbar_hovered);
 		fill_rect(p_track, p_appearance.track_color());
@@ -2334,10 +2340,10 @@ void fragment() {
 		const auto bars = geometry->scrollbars();
 		active_geometry = geometry;
 		const auto add_target = [&](int p_axis, const Rect2& p_box) {
-			pointer_targets.push_back({geometry, p_axis, p_box});
+			pointer_targets.push_back({ geometry, p_axis, p_box });
 			const Rect2 bounds = geometry->matrix.xform(p_box);
 			overflow_control_bounds = overflow_control_bounds.has_area() ? overflow_control_bounds.merge(bounds) : bounds;
-		};
+			};
 		const auto appearance = html_scrollbar_appearance(p_item.css());
 		for (int axis = 0; axis < 2; ++axis) {
 			const auto& bar = bars[axis];
@@ -2369,7 +2375,7 @@ void fragment() {
 
 	HTMLPaintGroup& HTMLPaintRecorder::start_isolated_group(float p_opacity) {
 		open_groups.back().isolated_group = paint_groups.size();
-		paint_groups.push_back({paint_runs.size(), 0, 0, p_opacity});
+		paint_groups.push_back({ paint_runs.size(), 0, 0, p_opacity });
 		auto& group = paint_groups.back();
 		group.first_pointer = pointer_targets.size();
 		separate_run = true;
@@ -2425,13 +2431,13 @@ void fragment() {
 					output.push_back({ filter.type, amount, Vector2(filter.x.calc_percent(0), filter.y.calc_percent(0)),
 						to_color(filter.color, style.get_color()) });
 				}
-			};
+				};
 			if (style.has_backdrop_filters() && geometry && geometry->inverse && !geometry->fragments.empty()) {
 				record_filters(style.get_backdrop_filters(), group.backdrop_filters);
 				for (const auto& fragment : geometry->fragments) {
 					if (!fragment.rect.has_area()) continue;
 					const TransformedClip shape{ fragment, geometry->matrix };
-					const TransformedClip rectangle{ RoundedRect(fragment.rect, {}), geometry->matrix };
+					const TransformedClip rectangle{ RoundedRect(fragment.rect,{}), geometry->matrix };
 					const auto output_clip = style.has_filters() || clips.empty() ? std::nullopt : clips.back().bounds;
 					group.backdrop_areas.push_back({ shape, create_material(&shape.shape, true, &shape, !style.has_filters()),
 						create_material(&rectangle.shape, true, &rectangle, false), output_clip });
@@ -2451,7 +2457,8 @@ void fragment() {
 				const Rect2 bounds = path->matrix.xform(path->shape.rect);
 				group.output_clip = group.output_clip ? group.output_clip->intersection(bounds) : bounds;
 				group.output_material = create_material(&path->shape, true, path, style.has_filters());
-			} else if (style.has_filters() && !clips.empty() && clips.back().has_precise_clip) {
+			}
+			else if (style.has_filters() && !clips.empty() && clips.back().has_precise_clip) {
 				group.output_material = create_material(nullptr, true);
 			}
 			if (style.has_filters()) {
@@ -2493,8 +2500,8 @@ void fragment() {
 
 		const bool unbounded = std::find(source.m_clip.begin(), source.m_clip.end(), background_box_no_clip) != source.m_clip.end() ||
 			std::any_of(source.m_image.begin(), source.m_image.end(), [](const litehtml::image& p_image) {
-				return p_image.type == litehtml::image::type_url && p_image.url.find('#') != std::string::npos;
-			});
+			return p_image.type == litehtml::image::type_url && p_image.url.find('#') != std::string::npos;
+				});
 		const Rect2 ink = unbounded ? p_geometry.inverse->xform(html_group_ink_bounds(paint_runs, paint_groups, p_group)) : Rect2();
 		auto element = item->src_el();
 		auto* container = element->get_document()->container();
@@ -2505,7 +2512,7 @@ void fragment() {
 		const auto* previous_geometry = std::exchange(active_geometry, &p_geometry);
 		const auto box_of = [](const Rect2& p_box) -> litehtml::position {
 			return { p_box.position.x, p_box.position.y, p_box.size.x, p_box.size.y };
-		};
+			};
 
 		const bool inline_box = item->css().get_display() == display_inline && !p_geometry.fragments.empty();
 		const bool sliced = inline_box && p_geometry.fragments.size() > 1;
@@ -2545,14 +2552,15 @@ void fragment() {
 				if (clip == background_box_no_clip) {
 					layer.border_box = layer.clip_box = box_of(ink);
 					layer.border_radius = {};
-				} else if (clip == background_box_margin) {
+				}
+				else if (clip == background_box_margin) {
 					layer.border_box = layer.clip_box;
 					layer.border_radius = {};
 				}
 				if (p_slice) push_clip(*p_slice, p_geometry.matrix);
 				source.draw_layer(0, static_cast<int>(index), layer, container);
 				if (p_slice) del_clip();
-			};
+				};
 			if (inline_box) {
 				float offset = 0.0f;
 				for (const auto& fragment : p_geometry.fragments) {
@@ -2565,7 +2573,8 @@ void fragment() {
 					draw(content, sliced ? &fragment : nullptr);
 					offset += fragment.rect.size.x;
 				}
-			} else {
+			}
+			else {
 				draw(item->get_placement(), nullptr);
 			}
 			layer_output.runs.swap(paint_runs);
@@ -2620,7 +2629,7 @@ void fragment() {
 		const auto outset_radius = [&](int p_corner) {
 			if (shape.radii_x[p_corner] <= 0 || shape.radii_y[p_corner] <= 0) return Vector2();
 			return (Vector2(shape.radii_x[p_corner], shape.radii_y[p_corner]) + outsets).max(Vector2());
-		};
+			};
 		const Vector2 top_left = outset_radius(0);
 		const Vector2 top_right = outset_radius(1);
 		const Vector2 bottom_right = outset_radius(2);

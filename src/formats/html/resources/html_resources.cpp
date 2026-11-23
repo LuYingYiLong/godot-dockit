@@ -28,7 +28,7 @@ namespace dockit {
 	namespace {
 
 		struct ImageFragment {
-			std::array<int, 4> coordinates;
+			std::array<int, 4> coordinates{};
 			bool percent = false;
 
 			Rect2i region(const Vector2i& p_size) const {
@@ -85,20 +85,20 @@ namespace dockit {
 			if (mipmaps) pixels->clear_mipmaps();
 			Vector2i nominal_size(p_texture->get_size());
 			switch (p_orientation) {
-				case orientation::rotate_90:
-				case orientation::transpose:
-					pixels->rotate_90(CLOCKWISE);
-					nominal_size = Vector2i(nominal_size.y, nominal_size.x);
-					break;
-				case orientation::rotate_270:
-				case orientation::transverse:
-					pixels->rotate_90(COUNTERCLOCKWISE);
-					nominal_size = Vector2i(nominal_size.y, nominal_size.x);
-					break;
-				case orientation::rotate_180:
-					pixels->rotate_180();
-					break;
-				default: break;
+			case orientation::rotate_90:
+			case orientation::transpose:
+				pixels->rotate_90(CLOCKWISE);
+				nominal_size = Vector2i(nominal_size.y, nominal_size.x);
+				break;
+			case orientation::rotate_270:
+			case orientation::transverse:
+				pixels->rotate_90(COUNTERCLOCKWISE);
+				nominal_size = Vector2i(nominal_size.y, nominal_size.x);
+				break;
+			case orientation::rotate_180:
+				pixels->rotate_180();
+				break;
+			default: break;
 			}
 			if (p_orientation == orientation::flip_x || p_orientation == orientation::transpose ||
 				p_orientation == orientation::transverse) pixels->flip_x();
@@ -140,7 +140,7 @@ namespace dockit {
 			const auto is = [token](std::string_view p_name) {
 				return token.size() == p_name.size() &&
 					litehtml::t_strncasecmp(token.data(), p_name.data(), token.size()) == 0;
-			};
+				};
 			if (is("alternate")) {
 				return false;
 			}
@@ -266,7 +266,7 @@ namespace dockit {
 			++failed_remote_resources;
 			return true;
 		}
-		remote_stylesheets.insert(p_url, {RemoteStylesheetStatus::ready, p_final_url, p_text});
+		remote_stylesheets.insert(p_url, { RemoteStylesheetStatus::ready, p_final_url, p_text });
 		return true;
 	}
 
@@ -308,7 +308,8 @@ namespace dockit {
 			if (!cached) remote_stylesheets.insert(path, sheet);
 			source = sheet.url;
 			file = sheet.text;
-		} else {
+		}
+		else {
 			const Ref<CSSStyleSheet> stylesheet = get_stylesheet_resource(path);
 			if (stylesheet.is_valid()) file = stylesheet->get_css_text();
 			else file = read_html_stylesheet(path);
@@ -400,7 +401,7 @@ namespace dockit {
 			const auto texture = orient_texture(load_base(), p_orientation);
 			images.insert(variant_key, texture);
 			return texture;
-		};
+			};
 		if (separator < 0) return load_oriented();
 
 		const String fragment = decode_html_fragment(source.substr(separator + 1));
@@ -532,7 +533,7 @@ namespace dockit {
 			if (font->load_dynamic_font(p_path) != OK) font.unref();
 		}
 		if (font.is_valid() && !font->get_data().is_empty() && font->get_face_count() > 0) {
-			// Let shaping try the CSS font stack before using implicit system fallbacks.
+			// 让 shaping 先尝试 CSS 字体堆栈，然后再使用隐式系统回退
 			font = font->duplicate();
 			font->set_allow_system_fallback(false);
 			font->set_fallbacks(TypedArray<Font>());

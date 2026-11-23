@@ -37,9 +37,11 @@ void HTMLDialogElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("show_modal"), &HTMLDialogElement::show_modal);
 	ClassDB::bind_method(D_METHOD("close", "return_value"), &HTMLDialogElement::close, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("request_close", "return_value"), &HTMLDialogElement::request_close, DEFVAL(Variant()));
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open"), "set_open", "is_open");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "closed_by"), "set_closed_by", "get_closed_by");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "return_value"), "set_return_value", "get_return_value");
+
 	ADD_SIGNAL(MethodInfo("close_requested",
 		PropertyInfo(Variant::OBJECT, "request", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDialogCloseRequest")));
 	ADD_SIGNAL(MethodInfo("closed", PropertyInfo(Variant::STRING, "return_value")));

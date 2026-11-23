@@ -30,7 +30,9 @@ namespace dockit {
 			if (version == 0 && p_alphabet.size >= 12) {
 				const auto minimum = p_alphabet.u32(4);
 				const auto end = p_alphabet.u32(8);
-				if (p_letter < minimum || p_letter >= end || end - minimum > p_alphabet.size - 12) return 0;
+				if (p_letter < minimum || p_letter >= end) return 0;
+				const auto range_size = static_cast<size_t>(end) - static_cast<size_t>(minimum);
+				if (range_size > p_alphabet.size - 12) return 0;
 				return p_alphabet.data[12 + p_letter - minimum];
 			}
 			if (version != 1 || p_alphabet.u32(4) > (p_alphabet.size - 8) / 4) return 0;
@@ -65,8 +67,9 @@ namespace dockit {
 				const int first = std::max(0, -beginning);
 				const int past_last = std::min(length, static_cast<int>(p_word_length) + 1 - beginning);
 				for (int index = first; index < past_last; ++index) {
-					auto& weight = r_weights[beginning + index];
-					weight = std::max(weight, table.data[pool + offset + index]);
+					auto& weight = r_weights[static_cast<size_t>(beginning + index)];
+					const auto data_index = static_cast<size_t>(pool) + static_cast<size_t>(offset) + static_cast<size_t>(index);
+					weight = std::max(weight, table.data[data_index]);
 				}
 			}
 		};
@@ -84,7 +87,7 @@ namespace dockit {
 						return std::make_pair(entry.first, entry.second) < sequence;
 					});
 				return match != std::end(spellings) && match->first == first && match->second == second ? match->result : 0;
-			};
+				};
 			if (r_position < p_text.size() && p_text[r_position] >= 0x80) {
 				if (const auto combined = find(p_text[r_position])) {
 					++r_position;
@@ -157,7 +160,7 @@ namespace dockit {
 			table.pool > patterns.size || table.count > (table.pool - 16) / 4 || table.size > patterns.size - table.pool) return {};
 
 		std::array<uint32_t, MAX_WORD_LENGTH + 2> letters{};
-		std::array<int64_t, MAX_WORD_LENGTH + 1> source_offset;
+		std::array<int64_t, MAX_WORD_LENGTH + 1> source_offset{};
 		size_t word_length = 0;
 		for (size_t position = 0; position < p_word.size();) {
 			const auto code = letter_code(alphabet, canonical_letter(p_word, position));
@@ -167,7 +170,7 @@ namespace dockit {
 		}
 		if (word_length < 2 + suffix) return {};
 
-		// Liang's patterns contribute weights between characters. The greatest weight wins, with odd values denoting breaks.
+		// 梁的模式在字符之间分配权重。权重最大的获胜，奇数值表示断开
 		std::array<uint8_t, MAX_WORD_LENGTH + 1> weights{};
 		for (size_t start = 0; start <= word_length; ++start) {
 			size_t node = 0;

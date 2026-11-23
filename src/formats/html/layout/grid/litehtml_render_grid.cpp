@@ -40,17 +40,17 @@ namespace litehtml {
 		pixel_t position_offset(css_alignment value, pixel_t free_space) {
 			if (free_space < 0 && value.overflow == alignment_overflow::safe) return 0;
 			switch (value.keyword) {
-				case alignment::end:
-				case alignment::self_end:
-				case alignment::flex_end:
-				case alignment::right:
-					return free_space;
-				case alignment::last_baseline:
-					return std::max<pixel_t>(0, free_space);
-				case alignment::center:
-					return free_space / 2;
-				default:
-					return 0;
+			case alignment::end:
+			case alignment::self_end:
+			case alignment::flex_end:
+			case alignment::right:
+				return free_space;
+			case alignment::last_baseline:
+				return std::max<pixel_t>(0, free_space);
+			case alignment::center:
+				return free_space / 2;
+			default:
+				return 0;
 			}
 		}
 
@@ -73,7 +73,7 @@ namespace litehtml {
 			const auto& css = item.css();
 			const auto percentage = [](const css_length& length) {
 				return !length.is_predefined() && length.units() == css_units_percentage;
-			};
+				};
 			return horizontal ? percentage(css.get_width()) || percentage(css.get_min_width()) || percentage(css.get_max_width()) :
 				percentage(css.get_height()) || percentage(css.get_min_height()) || percentage(css.get_max_height());
 		}
@@ -167,7 +167,7 @@ namespace litehtml {
 			result.reserve(items.size());
 			for (const auto& item : items) {
 				if (!item.contribution) continue;
-				auto contribution = *item.contribution;
+				grid_track_contribution contribution = *item.contribution;
 				if (item.baselines) {
 					contribution.minimum += item.baselines->minimum.shim(minimum);
 					contribution.min_content += item.baselines->min_content.shim(min_content);
@@ -207,7 +207,7 @@ namespace litehtml {
 				css.get_flex_wrap() != flex_wrap_nowrap) return true;
 			return std::any_of(item.children().begin(), item.children().end(), [](const auto& child) {
 				return child->src_el()->in_normal_flow() && uses_height_for_intrinsic_width(*child);
-			});
+				});
 		}
 
 		rendered_width render_intrinsic_width(render_item& item, const context& grid,
@@ -218,7 +218,7 @@ namespace litehtml {
 			probe.render_width = probe.width;
 			probe.size_mode = context::size_mode_content | context::size_mode_grid_measure_width;
 			if (height) {
-				probe.height = {*height, context::cbc_value_type_absolute};
+				probe.height = { *height, context::cbc_value_type_absolute };
 				if (stretches_grid_height(item, align)) probe.size_mode |= context::size_mode_grid_stretch_height;
 			}
 			probe.context_idx = grid.context_idx;
@@ -230,7 +230,7 @@ namespace litehtml {
 			if (item.has_preferred_aspect_ratio() && css.get_width().is_predefined() &&
 				css.get_width().intrinsic_size() == css_intrinsic_size::none &&
 				(definite_block_size || (probe.size_mode & context::size_mode_grid_stretch_height))) {
-				// A definite block size transfers through the ratio to the inline contribution.
+				// 一个固定的块大小通过比例传递到内联贡献
 				widths.min_width = item.width();
 			}
 			return widths;
@@ -264,10 +264,12 @@ namespace litehtml {
 				(!item.css().get_height().is_predefined() || stretch_height) && align.horizontal.keyword != alignment::stretch;
 			if (align.shared_columns) {
 				cell.size_mode |= context::size_mode_grid_assigned_width;
-			} else if (css_width.is_predefined() && css_width.intrinsic_size() == css_intrinsic_size::none && !width_from_height) {
+			}
+			else if (css_width.is_predefined() && css_width.intrinsic_size() == css_intrinsic_size::none && !width_from_height) {
 				if (stretches(align.horizontal, replaced) && !margins.left.is_predefined() && !margins.right.is_predefined()) {
 					cell.size_mode |= context::size_mode_grid_assigned_width;
-				} else if (!replaced) {
+				}
+				else if (!replaced) {
 					if (!intrinsic) {
 						const auto measured = render_intrinsic_width(item, grid, align, height);
 						intrinsic = intrinsic_content_width(item, measured);
@@ -314,21 +316,21 @@ namespace litehtml {
 		grid_axis_spacing distribute_tracks(css_alignment align, pixel_t free_space, std::size_t active_tracks) {
 			if (active_tracks == 0) return {};
 			switch (align.keyword) {
-				case alignment::space_between:
-					if (free_space > 0 && active_tracks > 1)
-						return { 0, free_space / static_cast<pixel_t>(active_tracks - 1) };
-					return {};
-				case alignment::space_around:
-					if (free_space <= 0) return {};
-					return { free_space / (2 * static_cast<pixel_t>(active_tracks)),
-						free_space / static_cast<pixel_t>(active_tracks) };
-				case alignment::space_evenly: {
-					if (free_space <= 0) return {};
-					const auto share = free_space / static_cast<pixel_t>(active_tracks + 1);
-					return { share, share };
-				}
-				default:
-					return { position_offset(align, free_space), 0 };
+			case alignment::space_between:
+				if (free_space > 0 && active_tracks > 1)
+					return { 0, free_space / static_cast<pixel_t>(active_tracks - 1) };
+				return {};
+			case alignment::space_around:
+				if (free_space <= 0) return {};
+				return { free_space / (2 * static_cast<pixel_t>(active_tracks)),
+					free_space / static_cast<pixel_t>(active_tracks) };
+			case alignment::space_evenly: {
+				if (free_space <= 0) return {};
+				const auto share = free_space / static_cast<pixel_t>(active_tracks + 1);
+				return { share, share };
+			}
+			default:
+				return { position_offset(align, free_space), 0 };
 			}
 		}
 
@@ -340,7 +342,7 @@ namespace litehtml {
 
 			grid_axis_geometry(const std::vector<pixel_t>& track_sizes, const grid_track_gutters& gutters,
 				pixel_t gap, pixel_t available, css_alignment align) : tracks(track_sizes) {
-				const auto gutter_extent = gap * static_cast<pixel_t>(gutters.count_inside({0, tracks.size()}));
+				const auto gutter_extent = gap * static_cast<pixel_t>(gutters.count_inside({ 0, tracks.size() }));
 				const auto occupied = std::accumulate(tracks.begin(), tracks.end(), static_cast<double>(gutter_extent));
 				const auto spacing = distribute_tracks(align, static_cast<pixel_t>(available - occupied), gutters.active_count());
 				offsets.reserve(tracks.size());
@@ -357,7 +359,7 @@ namespace litehtml {
 
 			pixel_t extent(grid_track_range range) const {
 				const auto last = range.end - 1;
-				// Keep single-track sizes exact even when positioned far from the origin.
+				// 即使位置远离原点，也保持单轨尺寸准确
 				if (last == range.start) return tracks[last];
 				return offsets[last] - start(range) + tracks[last];
 			}
@@ -375,7 +377,7 @@ namespace litehtml {
 			const auto definite = [height](const grid_breadth& breadth) {
 				return breadth.kind == grid_breadth_kind::length &&
 					(height || breadth.length.units() != css_units_percentage);
-			};
+				};
 			if (!definite(track.maximum)) return std::nullopt;
 			const auto basis = height.value_or(0);
 			const auto maximum = track.maximum.length.calc_percent(basis);
@@ -386,8 +388,8 @@ namespace litehtml {
 			const std::vector<grid_track_contribution>& after) {
 			return before.size() != after.size() ||
 				!std::equal(before.begin(), before.end(), after.begin(), [](const auto& a, const auto& b) {
-					return a.range.start == b.range.start && a.range.end == b.range.end && a.min_content == b.min_content;
-				});
+				return a.range.start == b.range.start && a.range.end == b.range.end && a.min_content == b.min_content;
+					});
 		}
 
 		std::optional<pixel_t> grid_content_baseline(const std::vector<render_item*>& items,
@@ -396,7 +398,7 @@ namespace litehtml {
 			if (items.empty()) return std::nullopt;
 			const auto row_of = [last](const auto& placement) {
 				return last ? placement.rows.end - 1 : placement.rows.start;
-			};
+				};
 			auto edge = row_of(placements.front());
 			for (const auto& placement : placements) {
 				const auto row = row_of(placement);
@@ -437,15 +439,15 @@ namespace litehtml {
 		bool definite;
 
 		grid_baseline_track_source slice(std::size_t start) const {
-			return {tracks, offset + start, definite};
+			return { tracks, offset + start, definite };
 		}
 
 		bool needs_content(grid_track_range range) const {
-			return grid_range_needs_content(*tracks, {range.start + offset, range.end + offset}, definite);
+			return grid_range_needs_content(*tracks, { range.start + offset, range.end + offset }, definite);
 		}
 
 		bool has_auto_minimum(grid_track_range range) const {
-			return grid_range_has_auto_minimum(*tracks, {range.start + offset, range.end + offset}, definite);
+			return grid_range_has_auto_minimum(*tracks, { range.start + offset, range.end + offset }, definite);
 		}
 	};
 
@@ -479,10 +481,11 @@ namespace litehtml {
 			for (std::size_t i = 0; i < axis.tracks.size(); ++i) {
 				auto& track = axis.tracks[i];
 				if (shared.geometry) {
-					const grid_breadth fixed{grid_breadth_kind::length, css_length(shared.geometry->tracks[shared.range.start + i])};
-					track = {fixed, fixed};
-				} else if (shared.basis) {
-					for (auto* bound : {&track.minimum, &track.maximum}) {
+					const grid_breadth fixed{ grid_breadth_kind::length, css_length(shared.geometry->tracks[shared.range.start + i]) };
+					track = { fixed, fixed };
+				}
+				else if (shared.basis) {
+					for (auto* bound : { &track.minimum, &track.maximum }) {
 						if (bound->has_length()) bound->length = css_length(bound->length.calc_percent(*shared.basis));
 					}
 				}
@@ -501,7 +504,7 @@ namespace litehtml {
 					other->second.start + cross.offset >= cross.range.end)) continue;
 				const auto start = std::max(area.start + shared.offset, shared.range.start);
 				const auto end = std::min(area.end + shared.offset, shared.range.end);
-				if (start < end) axis.areas.emplace(name, grid_track_range{start - shared.range.start, end - shared.range.start});
+				if (start < end) axis.areas.emplace(name, grid_track_range{ start - shared.range.start, end - shared.range.start });
 			}
 			add_subgrid_line_names(lines, axis.explicit_count, axis.names);
 			return axis;
@@ -514,7 +517,7 @@ namespace litehtml {
 			const auto origin = parent.start(span) + leading;
 			const auto half_difference = [&](std::size_t after) {
 				return gap.is_predefined() ? 0.0f : (gap.calc_percent(size) - parent.gap_after(after)) / 2;
-			};
+				};
 			grid_axis_geometry result;
 			result.offsets.reserve(span.end - span.start);
 			result.tracks.reserve(span.end - span.start);
@@ -546,14 +549,14 @@ namespace litehtml {
 				}
 				if (item.baselines) {
 					auto& group = *item.baselines;
-					for (auto* sample : {&group.minimum, &group.min_content, &group.preferred}) {
+					for (auto* sample : { &group.minimum, &group.min_content, &group.preferred }) {
 						sample->distance += sample->last ? (sample->track + 1 == count ? trailing : half_difference) :
 							(sample->track == 0 ? leading : half_difference);
 						sample->track += shared.range.start;
 					}
 				}
 				shared.contributions->push_back(item);
-			};
+				};
 			std::size_t first_occupied = count;
 			std::size_t last_occupied = 0;
 			for (const auto& item : contributions) {
@@ -562,10 +565,10 @@ namespace litehtml {
 				last_occupied = std::max(last_occupied, item.contribution->range.end);
 			}
 			if (last_occupied == 0) {
-				if (count == 1) append({grid_track_contribution{{0, 1}}});
+				if (count == 1) append({ grid_track_contribution{ { 0, 1 } } });
 				else {
-					append({grid_track_contribution{{0, 1}, -half_difference, -half_difference, -half_difference}});
-					append({grid_track_contribution{{count - 1, count}, -half_difference, -half_difference, -half_difference}});
+					append({ grid_track_contribution{ { 0, 1 }, -half_difference, -half_difference, -half_difference } });
+					append({ grid_track_contribution{ { count - 1, count }, -half_difference, -half_difference, -half_difference } });
 				}
 			}
 			for (const auto& item : contributions) {
@@ -574,12 +577,12 @@ namespace litehtml {
 				// When there are empty tracks at an edge, an extra spanning
 				// contribution carries the subgrid's outer sizing to that edge.
 				if (first_occupied > 0 && leading && item.contribution->range.start == first_occupied) {
-					auto edge = item;
+					grid_sizing_item edge = item;
 					edge.contribution->range.start = 0;
 					append(edge);
 				}
 				if (last_occupied < count && trailing && item.contribution->range.end == last_occupied) {
-					auto edge = item;
+					grid_sizing_item edge = item;
 					edge.contribution->range.end = count;
 					append(edge);
 				}
@@ -603,8 +606,8 @@ namespace litehtml {
 				for (const bool last : {false, true}) {
 					const auto distance = last ? group.last : group.first;
 					if (distance) {
-						include_baseline(shared->collect_baselines->groups, {shared->range.start + index, last,
-							*distance + shared_baseline_offset(*shared, geometry, leading, index, last)});
+						include_baseline(shared->collect_baselines->groups, { shared->range.start + index, last,
+							*distance + shared_baseline_offset(*shared, geometry, leading, index, last) });
 						shared->collect_baselines->has_samples = true;
 					}
 				}
@@ -717,27 +720,29 @@ namespace litehtml {
 		const bool export_columns = shared_columns && shared_columns->contributions;
 		const bool export_rows = shared_rows && shared_rows->contributions;
 		if (shared_columns) {
-			self.min_width = {0, context::cbc_value_type_none};
-			self.max_width = {0, context::cbc_value_type_none};
+			self.min_width = { 0, context::cbc_value_type_none };
+			self.max_width = { 0, context::cbc_value_type_none };
 			self.ratio_width = false;
 			if (shared_columns->geometry) {
 				const auto size = std::max<pixel_t>(0, shared_columns->geometry->extent(shared_columns->range) - content_offset_width());
-				self.width = {size + box_sizing_width(), context::cbc_value_type_absolute};
+				self.width = { size + box_sizing_width(), context::cbc_value_type_absolute };
 				self.render_width = size;
-			} else {
-				self.width = {0, context::cbc_value_type_auto};
+			}
+			else {
+				self.width = { 0, context::cbc_value_type_auto };
 				self.render_width = std::max<pixel_t>(0, containing_block_size.width - content_offset_width());
 			}
 		}
 		if (shared_rows) {
-			self.min_height = {0, context::cbc_value_type_none};
-			self.max_height = {0, context::cbc_value_type_none};
+			self.min_height = { 0, context::cbc_value_type_none };
+			self.max_height = { 0, context::cbc_value_type_none };
 			self.ratio_height = false;
 			if (shared_rows->geometry) {
 				const auto size = std::max<pixel_t>(0, shared_rows->geometry->extent(shared_rows->range) - content_offset_height());
-				self.height = {size + box_sizing_height(), context::cbc_value_type_absolute};
-			} else {
-				self.height = {0, context::cbc_value_type_auto};
+				self.height = { size + box_sizing_height(), context::cbc_value_type_absolute };
+			}
+			else {
+				self.height = { 0, context::cbc_value_type_auto };
 			}
 		}
 		const bool inline_grid = css().get_display() == display_inline_grid;
@@ -765,10 +770,10 @@ namespace litehtml {
 		apply_grid_template_areas(css().get_grid_template_areas(), row_axis, column_axis, shared_rows != nullptr, shared_columns != nullptr);
 		const auto empty_track_sizes = [](expanded_grid_tracks axis, const grid_track_list& pattern, pixel_t gap,
 			grid_track_range grid_item_placement::* dimension, std::optional<pixel_t> fallback) {
-			if (fallback) return grid_track_sizes{ {}, *fallback, *fallback };
-			const auto gutters = finish_grid_tracks(axis, pattern, 0, axis.explicit_count, {}, dimension);
-			return size_grid_tracks(axis.tracks, {}, gutters, gap, std::nullopt, false);
-		};
+				if (fallback) return grid_track_sizes{ {}, *fallback, *fallback };
+				const auto gutters = finish_grid_tracks(axis, pattern, 0, axis.explicit_count, {}, dimension);
+				return size_grid_tracks(axis.tracks, {}, gutters, gap, std::nullopt, false);
+			};
 		std::optional<grid_track_sizes> contained_columns;
 		if (css().has_inline_size_containment()) {
 			contained_columns = empty_track_sizes(column_axis, css().get_grid_auto_columns(), column_gap.calc_percent(0),
@@ -800,11 +805,11 @@ namespace litehtml {
 		const auto row_gutters = finish_grid_tracks(row_axis, css().get_grid_auto_rows(), placement.row_offset, placement.row_count,
 			placement.items, &grid_item_placement::rows);
 		const auto column_baseline_tracks = shared_columns ? shared_columns->baseline_tracks :
-			grid_baseline_track_source{&columns, 0, definite_width};
+			grid_baseline_track_source{ &columns, 0, definite_width };
 		const auto row_baseline_tracks = shared_rows ? shared_rows->baseline_tracks :
-			grid_baseline_track_source{&rows, 0, definite_height};
+			grid_baseline_track_source{ &rows, 0, definite_height };
 
-		const css_alignment start{alignment::start, alignment_overflow::safe};
+		const css_alignment start{ alignment::start, alignment_overflow::safe };
 		const auto justify_content = shared_columns ? start : css().get_justify_content();
 		auto align_content = shared_rows ? start : css().get_align_content();
 		if (!shared_rows && containing_block_size.grid_content_edge != content_edge::none) {
@@ -826,22 +831,22 @@ namespace litehtml {
 			const bool requests_subgrid = style.get_grid_template_columns().subgrid || style.get_grid_template_rows().subgrid;
 			if (requests_subgrid && !style.has_layout_containment() && !style.has_paint_containment() &&
 				dynamic_cast<render_item_grid*>(items[index])) {
-				const grid_parent_span column_span{&column_axis, placed.columns, placement.column_offset};
-				const grid_parent_span row_span{&row_axis, placed.rows, placement.row_offset};
+				const grid_parent_span column_span{ &column_axis, placed.columns, placement.column_offset };
+				const grid_parent_span row_span{ &row_axis, placed.rows, placement.row_offset };
 				if (style.get_grid_template_columns().subgrid) {
-					inherited.columns = grid_shared_axis{column_span, row_span, column_baseline_tracks.slice(placed.columns.start),
-						width, column_gap.calc_percent(width.value_or(0))};
+					inherited.columns = grid_shared_axis{ column_span, row_span, column_baseline_tracks.slice(placed.columns.start),
+						width, column_gap.calc_percent(width.value_or(0)) };
 				}
 				if (style.get_grid_template_rows().subgrid) {
-					inherited.rows = grid_shared_axis{row_span, column_span, row_baseline_tracks.slice(placed.rows.start),
-						height, row_gap.calc_percent(height.value_or(0))};
+					inherited.rows = grid_shared_axis{ row_span, column_span, row_baseline_tracks.slice(placed.rows.start),
+						height, row_gap.calc_percent(height.value_or(0)) };
 				}
 			}
 			alignments.push_back({
 				inherited.columns ? start : resolve_self_alignment(style.get_justify_self(), css().get_justify_items()),
 				inherited.rows ? start : resolve_self_alignment(style.get_align_self(), css().get_align_items()),
 				inherited.columns.has_value(), inherited.rows.has_value()
-			});
+				});
 			const bool sensitive = uses_height_for_intrinsic_width(*item);
 			height_sensitive.push_back(sensitive);
 			has_height_sensitive_items |= sensitive;
@@ -855,10 +860,10 @@ namespace litehtml {
 				const grid_subgrid_layout*& slot;
 				const grid_subgrid_layout* previous;
 				~restore_tracks() { slot = previous; }
-			} restore{grid.shared_tracks, grid.shared_tracks};
+			} restore{ grid.shared_tracks, grid.shared_tracks };
 			grid.shared_tracks = &inherited;
 			return work();
-		};
+			};
 		std::vector<std::optional<grid_intrinsic_width>> intrinsic(items.size());
 		std::vector<bool> column_baseline_eligible(items.size());
 		const auto initial_row_gap = row_gap.calc_percent(height.value_or(0));
@@ -867,7 +872,8 @@ namespace litehtml {
 		if (has_height_sensitive_items) {
 			if (shared_rows && shared_rows->geometry) {
 				estimated_rows = subgrid_geometry(*shared_rows, specified_row_gap, available_height, content_offset_top());
-			} else {
+			}
+			else {
 				row_maxima.reserve(rows.size());
 				for (const auto& row : rows) row_maxima.push_back(row_maximum(row, height));
 				if (std::all_of(row_maxima.begin(), row_maxima.end(), [](const auto& size) { return size.has_value(); })) {
@@ -885,7 +891,8 @@ namespace litehtml {
 				const auto range = placement.items[index].rows;
 				if (geometry) {
 					heights[index] = geometry->extent(range);
-				} else {
+				}
+				else {
 					pixel_t extent = initial_row_gap * row_gutters.count_inside(range);
 					std::size_t track = range.start;
 					for (; track < range.end && row_maxima[track]; ++track) extent += *row_maxima[track];
@@ -893,82 +900,83 @@ namespace litehtml {
 				}
 			}
 			return heights;
-		};
+			};
 		const auto measure_columns = [&](const std::vector<std::optional<pixel_t>>& block_sizes,
 			const grid_axis_geometry* row_geometry, pixel_t measured_row_gap,
 			const grid_axis_geometry* previous_columns, pixel_t measured_column_gap) {
-			std::vector<grid_sizing_item> column_inputs;
-			column_inputs.reserve(items.size());
-			for (auto& inherited : subgrids) {
-				if (inherited.columns) {
-					inherited.columns->geometry = previous_columns;
-					inherited.columns->gap = measured_column_gap;
-					inherited.columns->contributions = &column_inputs;
-				}
-				if (inherited.rows) {
-					inherited.rows->geometry = row_geometry;
-					inherited.rows->gap = measured_row_gap;
-					inherited.rows->contributions = nullptr;
-				}
-			}
-			for (std::size_t index = 0; index < items.size(); ++index) {
-				const auto range = placement.items[index].columns;
-				auto& item = *items[index];
-				const auto align = alignments[index].horizontal;
-				const auto& margins = item.css().get_margins();
-				const bool needs_content = grid_range_needs_content(columns, range, definite_width);
-				const bool contributes = needs_content || export_columns;
-				if (alignments[index].shared_columns) {
-					with_subgrid(index, [&] { render_intrinsic_width(item, self, alignments[index], block_sizes[index]); });
-					continue;
-				}
-				const bool baseline_aligned = is_baseline_alignment(align) &&
-					!margins.left.is_predefined() && !margins.right.is_predefined() &&
-					!(depends_on_grid_size(item, true) && column_baseline_tracks.needs_content(range));
-				column_baseline_eligible[index] = baseline_aligned;
-				if (!contributes && !baseline_aligned) continue;
-				const auto widths = with_subgrid(index, [&] {
-					return render_intrinsic_width(item, self, alignments[index], block_sizes[index]);
-				});
-				intrinsic[index] = intrinsic_content_width(item, widths);
-				const auto& css_width = item.css().get_width();
-				const bool explicit_width = !css_width.is_predefined() && css_width.units() != css_units_percentage;
-				const auto& css_min_width = item.css().get_min_width();
-				const bool explicit_minimum = !css_min_width.is_predefined();
-				const auto min_width = explicit_minimum ? css_min_width.calc_percent(0) : 0;
-				const auto outer_min_width = std::max<pixel_t>(0, min_width - item.box_sizing_width()) + item.content_offset_width();
-				const bool auto_minimum = column_baseline_tracks.has_auto_minimum(range);
-				const auto preferred = item.width();
-				const auto min_content = explicit_width || item.src_el()->is_replaced() ? preferred :
-					std::max(outer_min_width, intrinsic[index]->minimum + item.content_offset_width());
-				const auto minimum = explicit_width ? preferred :
-					explicit_minimum || has_scrollable_overflow(item) || !auto_minimum ? outer_min_width : min_content;
-				grid_sizing_item input;
-				if (baseline_aligned) {
-					const auto margin = item.margin_left();
-					const bool intrinsic_tracks = column_baseline_tracks.needs_content(range);
-					if (const auto span = intrinsic_tracks ? std::nullopt : fixed_grid_span(columns, range, column_gutters, column_gap, width)) {
-						// Fixed tracks contribute a group reference even though they cannot grow.
-						const auto cell = cell_context(item, self, alignments[index], intrinsic[index], *span, block_sizes[index]);
-						with_subgrid(index, [&] { item.render(0, 0, cell, nullptr); });
-						const auto sample = measure_column_baseline(range, align, item.width(), item.margin_left());
-						input.baselines = grid_sizing_baselines{sample, sample, sample};
-					} else if (intrinsic_tracks) {
-						input.baselines = grid_sizing_baselines{
-							measure_column_baseline(range, align, minimum, margin),
-							measure_column_baseline(range, align, min_content, margin),
-							measure_column_baseline(range, align, preferred, margin)
-						};
+				std::vector<grid_sizing_item> column_inputs;
+				column_inputs.reserve(items.size());
+				for (auto& inherited : subgrids) {
+					if (inherited.columns) {
+						inherited.columns->geometry = previous_columns;
+						inherited.columns->gap = measured_column_gap;
+						inherited.columns->contributions = &column_inputs;
+					}
+					if (inherited.rows) {
+						inherited.rows->geometry = row_geometry;
+						inherited.rows->gap = measured_row_gap;
+						inherited.rows->contributions = nullptr;
 					}
 				}
-				if (contributes) input.contribution = grid_track_contribution{range, minimum, min_content, preferred};
-				column_inputs.push_back(input);
-			}
-			for (auto& inherited : subgrids) {
-				if (inherited.columns) inherited.columns->contributions = nullptr;
-			}
-			return column_inputs;
-		};
+				for (std::size_t index = 0; index < items.size(); ++index) {
+					const auto range = placement.items[index].columns;
+					auto& item = *items[index];
+					const auto align = alignments[index].horizontal;
+					const auto& margins = item.css().get_margins();
+					const bool needs_content = grid_range_needs_content(columns, range, definite_width);
+					const bool contributes = needs_content || export_columns;
+					if (alignments[index].shared_columns) {
+						with_subgrid(index, [&] { render_intrinsic_width(item, self, alignments[index], block_sizes[index]); });
+						continue;
+					}
+					const bool baseline_aligned = is_baseline_alignment(align) &&
+						!margins.left.is_predefined() && !margins.right.is_predefined() &&
+						!(depends_on_grid_size(item, true) && column_baseline_tracks.needs_content(range));
+					column_baseline_eligible[index] = baseline_aligned;
+					if (!contributes && !baseline_aligned) continue;
+					const auto widths = with_subgrid(index, [&] {
+						return render_intrinsic_width(item, self, alignments[index], block_sizes[index]);
+						});
+					intrinsic[index] = intrinsic_content_width(item, widths);
+					const auto& css_width = item.css().get_width();
+					const bool explicit_width = !css_width.is_predefined() && css_width.units() != css_units_percentage;
+					const auto& css_min_width = item.css().get_min_width();
+					const bool explicit_minimum = !css_min_width.is_predefined();
+					const auto min_width = explicit_minimum ? css_min_width.calc_percent(0) : 0;
+					const auto outer_min_width = std::max<pixel_t>(0, min_width - item.box_sizing_width()) + item.content_offset_width();
+					const bool auto_minimum = column_baseline_tracks.has_auto_minimum(range);
+					const auto preferred = item.width();
+					const auto min_content = explicit_width || item.src_el()->is_replaced() ? preferred :
+						std::max(outer_min_width, intrinsic[index]->minimum + item.content_offset_width());
+					const auto minimum = explicit_width ? preferred :
+						explicit_minimum || has_scrollable_overflow(item) || !auto_minimum ? outer_min_width : min_content;
+					grid_sizing_item input;
+					if (baseline_aligned) {
+						const auto margin = item.margin_left();
+						const bool intrinsic_tracks = column_baseline_tracks.needs_content(range);
+						if (const auto span = intrinsic_tracks ? std::nullopt : fixed_grid_span(columns, range, column_gutters, column_gap, width)) {
+							// Fixed tracks contribute a group reference even though they cannot grow.
+							const auto cell = cell_context(item, self, alignments[index], intrinsic[index], *span, block_sizes[index]);
+							with_subgrid(index, [&] { item.render(0, 0, cell, nullptr); });
+							const auto sample = measure_column_baseline(range, align, item.width(), item.margin_left());
+							input.baselines = grid_sizing_baselines{ sample, sample, sample };
+						}
+						else if (intrinsic_tracks) {
+							input.baselines = grid_sizing_baselines{
+								measure_column_baseline(range, align, minimum, margin),
+								measure_column_baseline(range, align, min_content, margin),
+								measure_column_baseline(range, align, preferred, margin)
+							};
+						}
+					}
+					if (contributes) input.contribution = grid_track_contribution{ range, minimum, min_content, preferred };
+					column_inputs.push_back(input);
+				}
+				for (auto& inherited : subgrids) {
+					if (inherited.columns) inherited.columns->contributions = nullptr;
+				}
+				return column_inputs;
+			};
 		const auto* preliminary_rows = estimated_rows ? &*estimated_rows : nullptr;
 		const auto preliminary_heights = heights_for_columns(preliminary_rows);
 		const auto initial_column_gap = column_gap.calc_percent(width.value_or(0));
@@ -978,9 +986,9 @@ namespace litehtml {
 		auto column_inputs = measure_columns(preliminary_heights, preliminary_rows, initial_row_gap,
 			adopted_columns ? &*adopted_columns : nullptr, initial_column_gap);
 		const auto column_content = resolve_grid_contributions(column_inputs, columns.size());
-		pixel_t preferred_track_width;
-		pixel_t minimum_track_width;
-		pixel_t horizontal_gap;
+		pixel_t preferred_track_width = 0;
+		pixel_t minimum_track_width = 0;
+		pixel_t horizontal_gap = 0;
 		const auto solve_columns = [&](const std::vector<grid_track_contribution>& column_content) {
 			const auto initial_columns = size_grid_tracks(columns, column_content, column_gutters,
 				column_gap.calc_percent(width.value_or(0)), width, stretches(justify_content));
@@ -999,7 +1007,7 @@ namespace litehtml {
 			return shared_columns && shared_columns->geometry ?
 				subgrid_geometry(*shared_columns, specified_column_gap, m_pos.width, content_offset_left()) :
 				grid_axis_geometry(column_sizes.tracks, column_gutters, horizontal_gap, m_pos.width, justify_content);
-		};
+			};
 		auto column_geometry = solve_columns(column_content);
 		const bool refine_shared_contributions = export_columns && shared_columns->geometry && !shared_rows;
 		const bool may_refine_columns = (!shared_columns || refine_shared_contributions) && (!shared_rows || shared_rows->geometry) &&
@@ -1007,14 +1015,14 @@ namespace litehtml {
 		const auto export_inline_contributions = [&] {
 			if (shared_columns) contribute_subgrid(*shared_columns, column_inputs, initial_column_gap,
 				content_offset_left(), content_offset_right());
-		};
+			};
 		const auto intrinsic_widths = [&]() -> rendered_width {
 			const auto& intrinsic = containing_block_size.intrinsic_inline;
 			const bool fit = is_one_of(css().get_width().intrinsic_size(), css_intrinsic_size::fit_content, css_intrinsic_size::fit_content_limit);
 			const auto minimum = intrinsic.preferred && !fit ? m_pos.width :
 				std::min(m_pos.width, std::max(minimum_track_width, intrinsic.minimum.value_or(0)));
 			return { m_pos.width + content_offset_width(), minimum + content_offset_width() };
-		};
+			};
 		if (measure_width && !may_refine_columns) {
 			export_inline_contributions();
 			return intrinsic_widths();
@@ -1024,7 +1032,7 @@ namespace litehtml {
 		using row_alignment = grid_row_measurement::alignment_mode;
 		std::vector<grid_sizing_item> row_inputs;
 		row_inputs.reserve(items.size());
-		pixel_t vertical_gap;
+		pixel_t vertical_gap = 0;
 		const auto measure_and_solve_rows = [&]() {
 			row_inputs.clear();
 			std::fill(measurements.begin(), measurements.end(), grid_row_measurement{});
@@ -1043,7 +1051,7 @@ namespace litehtml {
 			for (std::size_t index = 0; index < items.size(); ++index) {
 				const auto& placed = placement.items[index];
 				auto& item = *items[index];
-				const auto align = alignments[index];
+				const auto& align = alignments[index];
 				auto& measurement = measurements[index];
 				const bool needs_content = grid_range_needs_content(rows, placed.rows, definite_height);
 				const bool contributes = export_rows || needs_content || (!definite_height && grid_range_needs_content(rows, placed.rows, true));
@@ -1066,7 +1074,7 @@ namespace litehtml {
 					if (baseline_aligned) cell.size_mode |= context::size_mode_grid_measure_baseline;
 					set_content_baseline_context(cell, item, measurement.mode == row_alignment::self_baseline ? align.vertical : css_alignment{});
 					item.render(0, 0, cell, nullptr);
-				});
+					});
 				if (align.shared_rows) continue;
 				if (!dependent || span_height) {
 					if (measurement.mode == row_alignment::self_baseline)
@@ -1087,9 +1095,9 @@ namespace litehtml {
 			}
 			for (const auto& measurement : measurements) {
 				if (!measurement.contribution && !measurement.baseline) continue;
-				grid_sizing_item measured{measurement.contribution, std::nullopt};
+				grid_sizing_item measured{ measurement.contribution, std::nullopt };
 				if (const auto& sample = measurement.baseline)
-					measured.baselines = grid_sizing_baselines{*sample, *sample, *sample};
+					measured.baselines = grid_sizing_baselines{ *sample, *sample, *sample };
 				row_inputs.push_back(measured);
 			}
 			for (auto& inherited : subgrids) {
@@ -1116,7 +1124,7 @@ namespace litehtml {
 			return shared_rows && shared_rows->geometry ?
 				subgrid_geometry(*shared_rows, specified_row_gap, m_pos.height, content_offset_top()) :
 				grid_axis_geometry(row_sizes.tracks, row_gutters, vertical_gap, m_pos.height, align_content);
-		};
+			};
 		auto row_geometry = measure_and_solve_rows();
 		// Revisit the inline contributions once using the resolved block geometry.
 		// A subgrid on the inline axis returns those measurements to its owner.
@@ -1170,8 +1178,8 @@ namespace litehtml {
 		grid_baseline_groups column_baselines(columns.size());
 		const auto inherited_row_baselines = inherit_used_baselines(shared_rows, row_geometry, content_offset_top());
 		const auto inherited_column_baselines = inherit_used_baselines(shared_columns, column_geometry, content_offset_left());
-		std::vector<grid_baseline_sink> row_sources(items.size(), {row_baselines});
-		std::vector<grid_baseline_sink> column_sources(items.size(), {column_baselines});
+		std::vector<grid_baseline_sink> row_sources(items.size(), { row_baselines });
+		std::vector<grid_baseline_sink> column_sources(items.size(), { column_baselines });
 		for (std::size_t index = 0; index < items.size(); ++index) {
 			auto& inherited = subgrids[index];
 			if (inherited.rows) {
@@ -1190,20 +1198,20 @@ namespace litehtml {
 			const position area{ column_geometry.start(placed.columns), row_geometry.start(placed.rows),
 				column_geometry.extent(placed.columns), row_geometry.extent(placed.rows) };
 			auto& item = *items[index];
-			const auto align = alignments[index];
+			const auto& align = alignments[index];
 			auto& measurement = measurements[index];
 			with_subgrid(index, [&] {
 				auto cell = cell_context(item, self, align, intrinsic[index], area.width, area.height);
 				if (!align.shared_rows)
 					set_content_baseline_context(cell, item, measurement.mode == row_alignment::self_baseline ? align.vertical : css_alignment{});
 				item.render(area.x, area.y, cell, nullptr);
-			});
-		};
+				});
+			};
 		for (std::size_t index = 0; index < items.size(); ++index) {
 			render_final_cell(index);
 			const auto& placed = placement.items[index];
 			auto& item = *items[index];
-			const auto align = alignments[index];
+			const auto& align = alignments[index];
 			auto& measurement = measurements[index];
 			const auto height = row_geometry.extent(placed.rows);
 			if (column_baseline_eligible[index]) {
@@ -1214,7 +1222,8 @@ namespace litehtml {
 			if (align.shared_rows) continue;
 			if (measurement.mode == row_alignment::self_baseline) {
 				measurement.baseline = measure_row_baseline(item, placed.rows, align.vertical);
-			} else {
+			}
+			else {
 				const auto space = height - item.height();
 				const auto top = align_row_item(item, align.vertical, height);
 				item.pos().y += top;
@@ -1270,7 +1279,8 @@ namespace litehtml {
 			const auto height = row_geometry.extent(placed.rows);
 			if (measurement.mode == row_alignment::self_baseline) {
 				item.pos().y += baseline->last ? height - item.height() - shim : shim;
-			} else if (shim > 0) {
+			}
+			else if (shim > 0) {
 				const auto width = column_geometry.extent(placed.columns);
 				auto cell = cell_context(item, self, alignments[index], intrinsic[index], width, height);
 				const auto& css = item.css();
@@ -1280,7 +1290,7 @@ namespace litehtml {
 				set_content_baseline_context(cell, item, {}, shim);
 				with_subgrid(index, [&] {
 					item.render(column_geometry.start(placed.columns), row_geometry.start(placed.rows), cell, nullptr);
-				});
+					});
 				item.pos().y += align_row_item(item, alignments[index].vertical, height);
 			}
 		}
@@ -1324,7 +1334,8 @@ namespace litehtml {
 				cell.width = width;
 				cell.height = height;
 				item.apply_relative_shift(cell);
-			} else if (item.css().get_position() == element_position_sticky) {
+			}
+			else if (item.css().get_position() == element_position_sticky) {
 				item.set_sticky_grid_area({ column_geometry.start(placed.columns), row_geometry.start(placed.rows), width, height });
 			}
 		}

@@ -1,11 +1,9 @@
 #include "css_transition_state.h"
 
 #include <litehtml/element.h>
-#include <litehtml/html.h>
 #include <litehtml/html_tag.h>
 
 #include <algorithm>
-#include <cmath>
 
 namespace dockit::css {
 	using namespace litehtml;
@@ -39,12 +37,12 @@ namespace dockit::css {
 		visit_styled(root, [&](const element::ptr& node) {
 			if (node->get_render_item() || node->css().get_display() == display_contents)
 				before.emplace(node, read_animated_values(node->css()));
-		});
+			});
 		return before;
 	}
 
 	void TransitionState::commit(const std::shared_ptr<element>& root, const Snapshot& before, double now,
-			const TransformInterpolationCheck& can_interpolate_transform) {
+		const TransformInterpolationCheck& can_interpolate_transform) {
 		decltype(running) next;
 		visit_styled(root, [&](const element::ptr& node) {
 			const auto* styles = node->css().get_transitions();
@@ -73,7 +71,8 @@ namespace dockit::css {
 				if (equal_animated_value(property, from, to) || config->duration + config->delay <= 0) continue;
 				bool discrete = !can_interpolate_animated_value(property, from, to);
 				if (std::holds_alternative<css_transform_list>(from)) {
-					const auto sample = std::get<css_transform_list>(interpolate_animated_value(property, from, to, 0.5, false));
+					const css_transform_list sample = std::get<css_transform_list>(
+						interpolate_animated_value(property, from, to, 0.5, false));
 					discrete = !can_interpolate_transform(*node, sample);
 				}
 				if (discrete && !config->allow_discrete) continue;
@@ -85,12 +84,12 @@ namespace dockit::css {
 				Playback playback;
 				playback.id = next_id++;
 				playback.updated_at = now;
-				updated.emplace(index, Track{from, std::move(to), reversing ? current->to : from, delay,
-					config->duration * factor, factor, config->easing, discrete, config->allow_discrete, playback});
+				updated.emplace(index, Track{ from, std::move(to), reversing ? current->to : from, delay,
+					config->duration * factor, factor, config->easing, discrete, config->allow_discrete, playback });
 			}
 			if (!updated.empty())
 				next.emplace(node, std::move(updated));
-		});
+			});
 		running.swap(next);
 		sample(now);
 	}
@@ -138,9 +137,9 @@ namespace dockit::css {
 				if (track.playback.id != id) continue;
 				const auto target = weak.lock();
 				if (!target) return std::nullopt;
-				return PlaybackInfo{target, _s(animated_properties()[index].name), {},
+				return PlaybackInfo{ target, _s(animated_properties()[index].name),{},
 					track.playback.time(now, track.end(), false), track.duration, track.playback.state(now, track.end(), false),
-					false, 0.0, track.delay};
+					false, 0.0, track.delay };
 			}
 		}
 		return std::nullopt;

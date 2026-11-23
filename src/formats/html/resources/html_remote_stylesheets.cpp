@@ -16,7 +16,7 @@ namespace dockit {
 		constexpr uint64_t RETRY_DELAY_MS = 20'000;
 
 		struct Entry {
-			RemoteStylesheet sheet{RemoteStylesheetStatus::loading, {}, {}};
+			RemoteStylesheet sheet{ RemoteStylesheetStatus::loading,{},{} };
 			std::vector<Callable> listeners;
 			uint64_t used = 0;
 		};
@@ -41,7 +41,7 @@ namespace dockit {
 			const auto mime = http_response_header(p_response.headers, "Content-Type").get_slice(";", 0).strip_edges();
 			const auto text = p_response.error.is_empty() && (mime.is_empty() || mime.nocasecmp_to("text/css") == 0)
 				? decode_html_source_text(p_response.body) : std::nullopt;
-			entry.sheet = text ? RemoteStylesheet{RemoteStylesheetStatus::ready, p_response.url, *text} : RemoteStylesheet{};
+			entry.sheet = text ? RemoteStylesheet{ RemoteStylesheetStatus::ready, p_response.url, *text } : RemoteStylesheet{};
 			entry.used = Time::get_singleton()->get_ticks_msec();
 			auto listeners = std::move(entry.listeners);
 			trim(p_request_url, MAX_ENTRIES);
@@ -71,7 +71,7 @@ namespace dockit {
 			entry = sheets.getptr(p_url);
 			queue_http_request(p_url, MAX_HTML_SOURCE_BYTES, true, [p_url](const HTTPResponse& p_response) {
 				completed(p_url, p_response);
-			});
+				});
 		}
 		if (entry->sheet.status != RemoteStylesheetStatus::failed) entry->used = now;
 		if (entry->sheet.status == RemoteStylesheetStatus::loading && p_completed.is_valid() &&

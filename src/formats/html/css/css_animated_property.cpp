@@ -4,7 +4,6 @@
 #include "css_math.h"
 
 #include <algorithm>
-#include <cmath>
 #include <limits>
 
 namespace dockit::css {
@@ -44,7 +43,7 @@ namespace dockit::css {
 		}
 
 		css_transform_function identity(const css_transform_function& model) {
-			css_transform_function result{model.type};
+			css_transform_function result{ model.type };
 			result.axis = model.axis;
 			if (model.type == Kind::scale) result.first = result.second = 1;
 			if (model.type == Kind::perspective) result.z = css_length::predef_value();
@@ -54,25 +53,25 @@ namespace dockit::css {
 		}
 
 		css_transform_function blend_matrices(css_transform_list from, css_transform_list to, double progress,
-				bool allow_discrete) {
-			css_transform_function result{Kind::blend};
+			bool allow_discrete) {
+			css_transform_function result{ Kind::blend };
 			result.blend = std::make_shared<css_transform_blend>(
-				css_transform_blend{std::move(from), std::move(to), progress, allow_discrete});
+				css_transform_blend{ std::move(from), std::move(to), progress, allow_discrete });
 			return result;
 		}
 
 		css_transform_list interpolate_transforms(const css_transform_list& a, const css_transform_list& b,
-				double progress, bool allow_discrete) {
+			double progress, bool allow_discrete) {
 			css_transform_list result;
 			result.reserve(std::max(a.size(), b.size()));
 			const auto lerp = [progress](double from, double to) { return from + (to - from) * progress; };
 			for (std::size_t index = 0; index < std::max(a.size(), b.size()); ++index) {
 				if ((index < a.size() && a[index].type == Kind::blend) ||
-						(index < b.size() && b[index].type == Kind::blend) ||
-						(index < a.size() && index < b.size() && a[index].type != b[index].type)) {
+					(index < b.size() && b[index].type == Kind::blend) ||
+					(index < a.size() && index < b.size() && a[index].type != b[index].type)) {
 					result.push_back(blend_matrices(
-						{a.begin() + std::min(index, a.size()), a.end()},
-						{b.begin() + std::min(index, b.size()), b.end()}, progress, allow_discrete));
+						{ a.begin() + std::min(index, a.size()), a.end() },
+						{ b.begin() + std::min(index, b.size()), b.end() }, progress, allow_discrete));
 					break;
 				}
 				auto first = index < a.size() ? a[index] : identity(b[index]);
@@ -82,15 +81,16 @@ namespace dockit::css {
 					continue;
 				}
 				if (first.type == Kind::matrix || first.type == Kind::matrix3d || first.type == Kind::perspective ||
-						(first.type == Kind::rotate && first.axis != second.axis && first.first != 0 && second.first != 0)) {
-					result.push_back(blend_matrices({std::move(first)}, {second}, progress, allow_discrete));
+					(first.type == Kind::rotate && first.axis != second.axis && first.first != 0 && second.first != 0)) {
+					result.push_back(blend_matrices({ std::move(first) }, { second }, progress, allow_discrete));
 					continue;
 				}
 				if (first.type == Kind::translate) {
 					first.x = interpolate_css_length(first.x, second.x, progress);
 					first.y = interpolate_css_length(first.y, second.y, progress);
 					first.z = interpolate_css_length(first.z, second.z, progress);
-				} else {
+				}
+				else {
 					if (first.type == Kind::rotate && first.first == 0) first.axis = second.axis;
 					first.first = lerp(first.first, second.first);
 					first.second = lerp(first.second, second.second);
@@ -106,82 +106,82 @@ namespace dockit::css {
 	const std::vector<AnimatedProperty>& animated_properties() {
 		using Range = AnimatedRange;
 		static const std::vector<AnimatedProperty> properties{
-			{_id("opacity"), [](const ComputedStyle& css) -> AnimatedValue { return static_cast<float>(css.get_opacity()); }, Range::unit_interval},
-			{_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_color(); }},
-			{_background_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_bg().m_color.resolve(css.get_color()); }},
-			{_border_top_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().top.color.resolve(css.get_color()); }},
-			{_border_right_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().right.color.resolve(css.get_color()); }},
-			{_border_bottom_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().bottom.color.resolve(css.get_color()); }},
-			{_border_left_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().left.color.resolve(css.get_color()); }},
-			{_width_, read_computed<&ComputedStyle::get_width>},
-			{_height_, read_computed<&ComputedStyle::get_height>},
-			{_min_width_, read_computed<&ComputedStyle::get_min_width>},
-			{_min_height_, read_computed<&ComputedStyle::get_min_height>},
-			{_max_width_, read_computed<&ComputedStyle::get_max_width>},
-			{_max_height_, read_computed<&ComputedStyle::get_max_height>},
-			{_row_gap_, read_computed<&ComputedStyle::get_row_gap>},
-			{_column_gap_, read_computed<&ComputedStyle::get_column_gap>},
-			{_flex_basis_, read_computed<&ComputedStyle::get_flex_basis>},
-			{_flex_grow_, read_computed<&ComputedStyle::get_flex_grow>},
-			{_flex_shrink_, read_computed<&ComputedStyle::get_flex_shrink>},
-			{__litehtml_border_spacing_x_, read_computed<&ComputedStyle::get_border_spacing_x>},
-			{__litehtml_border_spacing_y_, read_computed<&ComputedStyle::get_border_spacing_y>},
-			{_margin_top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().top; }, Range::unrestricted},
-			{_margin_right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().right; }, Range::unrestricted},
-			{_margin_bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().bottom; }, Range::unrestricted},
-			{_margin_left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().left; }, Range::unrestricted},
-			{_padding_top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().top; }},
-			{_padding_right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().right; }},
-			{_padding_bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().bottom; }},
-			{_padding_left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().left; }},
-			{_top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().top; }, Range::unrestricted},
-			{_right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().right; }, Range::unrestricted},
-			{_bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().bottom; }, Range::unrestricted},
-			{_left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().left; }, Range::unrestricted},
-			{_border_top_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().top.width; }},
-			{_border_right_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().right.width; }},
-			{_border_bottom_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().bottom.width; }},
-			{_border_left_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().left.width; }},
-			{_border_top_left_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_left_x; }},
-			{_border_top_left_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_left_y; }},
-			{_border_top_right_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_right_x; }},
-			{_border_top_right_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_right_y; }},
-			{_border_bottom_right_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_right_x; }},
-			{_border_bottom_right_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_right_y; }},
-			{_border_bottom_left_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_left_x; }},
-			{_border_bottom_left_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_left_y; }},
-			{_id("scroll-padding-top"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[0]; }},
-			{_id("scroll-padding-right"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[1]; }},
-			{_id("scroll-padding-bottom"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[2]; }},
-			{_id("scroll-padding-left"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[3]; }},
-			{_id("scroll-margin-top"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[0]; }, Range::unrestricted},
-			{_id("scroll-margin-right"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[1]; }, Range::unrestricted},
-			{_id("scroll-margin-bottom"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[2]; }, Range::unrestricted},
-			{_id("scroll-margin-left"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[3]; }, Range::unrestricted},
-			{_id("outline-width"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().width; }},
-			{_id("outline-offset"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().offset; }, Range::unrestricted},
-			{_font_size_, [](const ComputedStyle& css) -> AnimatedValue { return css_length(css.get_font_size()); }},
-			{_id("font-size-adjust"), read_computed<&ComputedStyle::get_font_size_adjust>},
-			{_font_weight_, [](const ComputedStyle& css) -> AnimatedValue {
+			{ _id("opacity"), [](const ComputedStyle& css) -> AnimatedValue { return static_cast<float>(css.get_opacity()); }, Range::unit_interval },
+			{ _color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_color(); } },
+			{ _background_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_bg().m_color.resolve(css.get_color()); } },
+			{ _border_top_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().top.color.resolve(css.get_color()); } },
+			{ _border_right_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().right.color.resolve(css.get_color()); } },
+			{ _border_bottom_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().bottom.color.resolve(css.get_color()); } },
+			{ _border_left_color_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().left.color.resolve(css.get_color()); } },
+			{ _width_, read_computed<&ComputedStyle::get_width> },
+			{ _height_, read_computed<&ComputedStyle::get_height> },
+			{ _min_width_, read_computed<&ComputedStyle::get_min_width> },
+			{ _min_height_, read_computed<&ComputedStyle::get_min_height> },
+			{ _max_width_, read_computed<&ComputedStyle::get_max_width> },
+			{ _max_height_, read_computed<&ComputedStyle::get_max_height> },
+			{ _row_gap_, read_computed<&ComputedStyle::get_row_gap> },
+			{ _column_gap_, read_computed<&ComputedStyle::get_column_gap> },
+			{ _flex_basis_, read_computed<&ComputedStyle::get_flex_basis> },
+			{ _flex_grow_, read_computed<&ComputedStyle::get_flex_grow> },
+			{ _flex_shrink_, read_computed<&ComputedStyle::get_flex_shrink> },
+			{ __litehtml_border_spacing_x_, read_computed<&ComputedStyle::get_border_spacing_x> },
+			{ __litehtml_border_spacing_y_, read_computed<&ComputedStyle::get_border_spacing_y> },
+			{ _margin_top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().top; }, Range::unrestricted },
+			{ _margin_right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().right; }, Range::unrestricted },
+			{ _margin_bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().bottom; }, Range::unrestricted },
+			{ _margin_left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_margins().left; }, Range::unrestricted },
+			{ _padding_top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().top; } },
+			{ _padding_right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().right; } },
+			{ _padding_bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().bottom; } },
+			{ _padding_left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_padding().left; } },
+			{ _top_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().top; }, Range::unrestricted },
+			{ _right_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().right; }, Range::unrestricted },
+			{ _bottom_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().bottom; }, Range::unrestricted },
+			{ _left_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_offsets().left; }, Range::unrestricted },
+			{ _border_top_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().top.width; } },
+			{ _border_right_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().right.width; } },
+			{ _border_bottom_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().bottom.width; } },
+			{ _border_left_width_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().left.width; } },
+			{ _border_top_left_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_left_x; } },
+			{ _border_top_left_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_left_y; } },
+			{ _border_top_right_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_right_x; } },
+			{ _border_top_right_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.top_right_y; } },
+			{ _border_bottom_right_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_right_x; } },
+			{ _border_bottom_right_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_right_y; } },
+			{ _border_bottom_left_radius_x_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_left_x; } },
+			{ _border_bottom_left_radius_y_, [](const ComputedStyle& css) -> AnimatedValue { return css.get_borders().radius.bottom_left_y; } },
+			{ _id("scroll-padding-top"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[0]; } },
+			{ _id("scroll-padding-right"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[1]; } },
+			{ _id("scroll-padding-bottom"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[2]; } },
+			{ _id("scroll-padding-left"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_padding()[3]; } },
+			{ _id("scroll-margin-top"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[0]; }, Range::unrestricted },
+			{ _id("scroll-margin-right"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[1]; }, Range::unrestricted },
+			{ _id("scroll-margin-bottom"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[2]; }, Range::unrestricted },
+			{ _id("scroll-margin-left"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_scroll_margin()[3]; }, Range::unrestricted },
+			{ _id("outline-width"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().width; } },
+			{ _id("outline-offset"), [](const ComputedStyle& css) -> AnimatedValue { return css.get_outline().offset; }, Range::unrestricted },
+			{ _font_size_, [](const ComputedStyle& css) -> AnimatedValue { return css_length(css.get_font_size()); } },
+			{ _id("font-size-adjust"), read_computed<&ComputedStyle::get_font_size_adjust> },
+			{ _font_weight_, [](const ComputedStyle& css) -> AnimatedValue {
 				return css_length(css.get_font_weight(), css_units_none);
-			}, Range::font_weight},
-			{_id("font-width"), read_computed<&ComputedStyle::get_font_width>},
-			{_line_height_, [](const ComputedStyle& css) -> AnimatedValue {
+			}, Range::font_weight },
+			{ _id("font-width"), read_computed<&ComputedStyle::get_font_width> },
+			{ _line_height_, [](const ComputedStyle& css) -> AnimatedValue {
 				return css.line_height().css_value;
-			}, Range::non_negative, true},
-			{_id("letter-spacing"), read_computed<&ComputedStyle::get_letter_spacing>, Range::unrestricted},
-			{_id("word-spacing"), read_computed<&ComputedStyle::get_word_spacing>, Range::unrestricted},
-			{_text_indent_, read_computed<&ComputedStyle::get_text_indent>, Range::unrestricted},
-			{_id("tab-size"), read_computed<&ComputedStyle::get_tab_size>, Range::non_negative, true},
-			{_text_decoration_thickness_, read_computed<&ComputedStyle::get_text_decoration_thickness>},
-			{_id("text-underline-offset"), read_computed<&ComputedStyle::get_text_underline_offset>, Range::unrestricted},
-			{_text_decoration_color_, [](const ComputedStyle& css) -> AnimatedValue {
+			}, Range::non_negative, true },
+			{ _id("letter-spacing"), read_computed<&ComputedStyle::get_letter_spacing>, Range::unrestricted },
+			{ _id("word-spacing"), read_computed<&ComputedStyle::get_word_spacing>, Range::unrestricted },
+			{ _text_indent_, read_computed<&ComputedStyle::get_text_indent>, Range::unrestricted },
+			{ _id("tab-size"), read_computed<&ComputedStyle::get_tab_size>, Range::non_negative, true },
+			{ _text_decoration_thickness_, read_computed<&ComputedStyle::get_text_decoration_thickness> },
+			{ _id("text-underline-offset"), read_computed<&ComputedStyle::get_text_underline_offset>, Range::unrestricted },
+			{ _text_decoration_color_, [](const ComputedStyle& css) -> AnimatedValue {
 				return css.get_text_decoration_color().resolve(css.get_color());
-			}},
-			{_text_emphasis_color_, [](const ComputedStyle& css) -> AnimatedValue {
+			} },
+			{ _text_emphasis_color_, [](const ComputedStyle& css) -> AnimatedValue {
 				return css.get_text_emphasis_color().resolve(css.get_color());
-			}},
-			{_transform_, read_computed<&ComputedStyle::get_transforms>},
+			} },
+			{ _transform_, read_computed<&ComputedStyle::get_transforms> },
 		};
 		return properties;
 	}
@@ -227,7 +227,7 @@ namespace dockit::css {
 	}
 
 	AnimatedValue interpolate_animated_value(const AnimatedProperty& property, const AnimatedValue& a,
-			const AnimatedValue& b, double progress, bool allow_discrete) {
+		const AnimatedValue& b, double progress, bool allow_discrete) {
 		if (progress == 0) return a;
 		if (progress == 1) return b;
 		if (const auto* from = std::get_if<css_font_size_adjust>(&a)) {

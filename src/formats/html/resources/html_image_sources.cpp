@@ -52,13 +52,13 @@ namespace dockit {
 			for (auto entry : parse_comma_separated_list(tokens)) {
 				while (!entry.empty() && entry.back().type == WHITESPACE) entry.pop_back();
 				if (entry.empty()) continue;
-				const auto value = normalize(css_token_vector{entry.back()}, f_remove_whitespace);
+				const auto value = normalize(css_token_vector{ entry.back() }, f_remove_whitespace);
 				css_length length;
 				if (!length.from_token(value.front(), f_length | f_math | f_positive) || length.is_predefined()) continue;
 				entry.pop_back();
 				while (!entry.empty() && entry.back().type == WHITESPACE) entry.pop_back();
 				if (!entry.empty() && !matches_media_condition(entry, p_document, p_media)) continue;
-				const double pixels = p_document->to_pixels(length, initial_font, 0, {&initial_font, &p_media});
+				const double pixels = p_document->to_pixels(length, initial_font, 0, { &initial_font, &p_media });
 				if (std::isfinite(pixels) && pixels >= 0) return pixels;
 			}
 			return p_media.width;
@@ -70,7 +70,7 @@ namespace dockit {
 			const bool uses_width = std::any_of(candidates.begin(), candidates.end(),
 				[](const HTMLImageCandidate& p_candidate) { return p_candidate.width_descriptor; });
 			// A source-set 1x entry wins a tie with the appended fallback.
-			if (!candidates.empty() && *p_fallback && !uses_width) candidates.push_back({p_fallback});
+			if (!candidates.empty() && *p_fallback && !uses_width) candidates.push_back({ p_fallback });
 
 			const double output_density = p_media.resolution > 0 ? p_media.resolution / litehtml::CSS_DPI_PER_DPPX : 1.0;
 			const double slot = uses_width ? source_size(p_source.get_attr("sizes", ""), p_source.get_document(), p_media) : 1.0;
@@ -84,11 +84,11 @@ namespace dockit {
 					if (previous >= output_density ? !enough || density >= previous : !enough && density <= previous) continue;
 				}
 				const auto resolved = p_resolve(candidate.url);
-				if (!resolved.is_empty()) selected = {candidate.url, resolved.utf8().get_data(), density, {}};
+				if (!resolved.is_empty()) selected = { candidate.url, resolved.utf8().get_data(), density,{} };
 			}
 			if (selected.source.empty() && *p_fallback) {
 				const auto resolved = p_resolve(p_fallback);
-				if (!resolved.is_empty()) selected = {p_fallback, resolved.utf8().get_data(), {}, {}};
+				if (!resolved.is_empty()) selected = { p_fallback, resolved.utf8().get_data(),{},{} };
 			}
 			return selected;
 		}
@@ -106,7 +106,7 @@ namespace dockit {
 			auto url = p_srcset.substr(start, index - start);
 			if (url.back() == ',') {
 				while (!url.empty() && url.back() == ',') url.remove_suffix(1);
-				result.push_back({std::string(url)});
+				result.push_back({ std::string(url) });
 				continue;
 			}
 
@@ -119,7 +119,7 @@ namespace dockit {
 				if (ch == '(') in_parens = true;
 				else if (ch == ')') in_parens = false;
 			}
-			HTMLImageCandidate candidate{std::string(url)};
+			HTMLImageCandidate candidate{ std::string(url) };
 			if (parse_descriptor(p_srcset.substr(descriptor, index - descriptor), candidate)) result.push_back(std::move(candidate));
 		}
 		return result;
@@ -142,7 +142,7 @@ namespace dockit {
 				if (selection.source.empty()) continue;
 				const char* width = source->get_attr("width");
 				const char* height = source->get_attr("height");
-				if (width || height) selection.dimensions = HTMLImageDimensions{width ? width : "", height ? height : ""};
+				if (width || height) selection.dimensions = HTMLImageDimensions{ width ? width : "", height ? height : "" };
 				return selection;
 			}
 		}

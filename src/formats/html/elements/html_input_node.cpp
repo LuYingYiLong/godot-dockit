@@ -13,7 +13,6 @@
 #include "formats/html/markup/html_number.h"
 
 #include <godot_cpp/classes/reg_ex.hpp>
-#include <godot_cpp/classes/reg_ex_match.hpp>
 #include <litehtml/document.h>
 #include <litehtml/el_image.h>
 #include <litehtml/render_item.h>
@@ -29,12 +28,12 @@ namespace dockit {
 	namespace {
 		using Type = HTMLInputNode::Type;
 		constexpr std::pair<const char*, Type> types[] = {
-			{"text", Type::TEXT}, {"search", Type::SEARCH}, {"password", Type::PASSWORD}, {"email", Type::EMAIL},
-			{"url", Type::URL}, {"tel", Type::TEL}, {"number", Type::NUMBER}, {"range", Type::RANGE},
-			{"checkbox", Type::CHECKBOX}, {"radio", Type::RADIO}, {"hidden", Type::HIDDEN},
-			{"button", Type::BUTTON}, {"submit", Type::SUBMIT}, {"reset", Type::RESET},
-			{"date", Type::DATE}, {"month", Type::MONTH}, {"week", Type::WEEK}, {"time", Type::TIME},
-			{"datetime-local", Type::LOCAL}, {"color", Type::COLOR}, {"file", Type::FILE}, {"image", Type::IMAGE},
+			{ "text", Type::TEXT },{ "search", Type::SEARCH },{ "password", Type::PASSWORD },{ "email", Type::EMAIL },
+			{ "url", Type::URL },{ "tel", Type::TEL },{ "number", Type::NUMBER },{ "range", Type::RANGE },
+			{ "checkbox", Type::CHECKBOX },{ "radio", Type::RADIO },{ "hidden", Type::HIDDEN },
+			{ "button", Type::BUTTON },{ "submit", Type::SUBMIT },{ "reset", Type::RESET },
+			{ "date", Type::DATE },{ "month", Type::MONTH },{ "week", Type::WEEK },{ "time", Type::TIME },
+			{ "datetime-local", Type::LOCAL },{ "color", Type::COLOR },{ "file", Type::FILE },{ "image", Type::IMAGE },
 		};
 
 		struct NumberLimits {
@@ -49,7 +48,7 @@ namespace dockit {
 			const auto parse = [kind](const char* p_value) -> std::optional<double> {
 				if (kind == input_time::Kind::none) return html_number(p_value, true);
 				return p_value ? input_time::parse(kind, String::utf8(p_value)) : std::nullopt;
-			};
+				};
 			auto min = parse(p_node.get_attr("min"));
 			auto max = parse(p_node.get_attr("max"));
 			auto step = html_number(p_node.get_attr("step"), true);
@@ -185,12 +184,12 @@ namespace dockit {
 	input_time::Kind HTMLInputNode::time_kind() const {
 		using Kind = input_time::Kind;
 		switch (type()) {
-			case Type::DATE: return Kind::date;
-			case Type::MONTH: return Kind::month;
-			case Type::WEEK: return Kind::week;
-			case Type::TIME: return Kind::time;
-			case Type::LOCAL: return Kind::local;
-			default: return Kind::none;
+		case Type::DATE: return Kind::date;
+		case Type::MONTH: return Kind::month;
+		case Type::WEEK: return Kind::week;
+		case Type::TIME: return Kind::time;
+		case Type::LOCAL: return Kind::local;
+		default: return Kind::none;
 		}
 	}
 
@@ -242,7 +241,8 @@ namespace dockit {
 			if (!actual.is_empty() && (kind == Type::EMAIL || kind == Type::URL)) {
 				if (kind == Type::EMAIL && get_attr("multiple")) {
 					for (const String& item : actual.split(",", true)) type_mismatch |= !valid_email(item.strip_edges());
-				} else type_mismatch = !is_suggestion_valid(actual);
+				}
+				else type_mismatch = !is_suggestion_valid(actual);
 			}
 			if (supports_selection() || kind == Type::EMAIL) {
 				too_short = editor.has_length_violation(get_attr("minlength"), nullptr);
@@ -253,7 +253,8 @@ namespace dockit {
 					if (regex->compile("\\A(?:" + String::utf8(pattern) + ")\\z", false) == OK) {
 						if (kind == Type::EMAIL && get_attr("multiple")) {
 							for (const String& item : actual.split(",", true)) pattern_mismatch |= regex->search(item.strip_edges()).is_null();
-						} else pattern_mismatch = regex->search(actual).is_null();
+						}
+						else pattern_mismatch = regex->search(actual).is_null();
 					}
 				}
 			}
@@ -307,7 +308,7 @@ namespace dockit {
 	}
 
 	double HTMLInputNode::value_as_number() const {
-		const double missing = std::numeric_limits<double>::quiet_NaN();
+		constexpr double missing = std::numeric_limits<double>::quiet_NaN();
 		if (time_kind() != input_time::Kind::none) return input_time::parse(time_kind(), get_value()).value_or(missing);
 		if (type() != Type::NUMBER && type() != Type::RANGE) return missing;
 		return html_number(get_value().utf8().get_data(), true).value_or(missing);
@@ -355,7 +356,8 @@ namespace dockit {
 				editor.set_selection(0, editor.get_value().length());
 				r_changed = editor.insert(next);
 			}
-		} else if (!std::isfinite(current) || (p_step > 0 ? !limits.max || current <= *limits.max :
+		}
+		else if (!std::isfinite(current) || (p_step > 0 ? !limits.max || current <= *limits.max :
 			!limits.min || current >= *limits.min)) {
 			r_changed = set_numeric_from_user(target);
 		}
@@ -383,14 +385,15 @@ namespace dockit {
 			const auto reflected = [](Type p_type) {
 				return p_type == Type::CHECKBOX || p_type == Type::RADIO || p_type == Type::HIDDEN ||
 					p_type == Type::BUTTON || p_type == Type::RESET || p_type == Type::SUBMIT || p_type == Type::IMAGE;
-			};
+				};
 			if (!reflected(old_type) && old_type != Type::FILE && reflected(current) && !editor.get_value().is_empty()) {
 				html_tag::set_attr("value", editor.get_value().utf8().get_data());
 			}
 			if (old_type == Type::FILE || current == Type::FILE) files.clear();
 			if (reflected(old_type) || reflected(current) || old_type == Type::FILE || current == Type::FILE) {
 				editor.reset_value(sanitize_value(String::utf8(get_attr("value", ""))));
-			} else if (editor.has_dirty_value()) {
+			}
+			else if (editor.has_dirty_value()) {
 				editor.set_value(sanitize_value(editor.get_value()));
 			}
 		}
@@ -526,7 +529,8 @@ namespace dockit {
 		if (type() == Type::IMAGE) {
 			if (const char* width = get_attr("width")) map_to_dimension_property(litehtml::_width_, width);
 			if (const char* height = get_attr("height")) map_to_dimension_property(litehtml::_height_, height);
-		} else if (supports_selection() || type() == Type::EMAIL) {
+		}
+		else if (supports_selection() || type() == Type::EMAIL) {
 			if (const char* size = get_attr("size")) {
 				const String width = String::utf8(size).strip_edges();
 				if (width.is_valid_int() && width.to_int() > 0) {
@@ -548,7 +552,7 @@ namespace dockit {
 		}
 		if (css().get_font()) {
 			const CharString text = button_text().utf8();
-			r_size = {container->text_width(text.get_data(), css().get_font()), css().line_height().computed_value};
+			r_size = { container->text_width(text.get_data(), css().get_font()), css().line_height().computed_value };
 		}
 	}
 
@@ -573,8 +577,8 @@ namespace dockit {
 				natural.width = get_document()->container()->text_width(text.get_data(), css().get_font());
 			}
 			else if (type() == Type::FILE) natural.width = 19 * css().get_font_size();
-			else if (is_toggle()) natural = {11, 11};
-			else if (type() == Type::RANGE) natural = {129, 16};
+			else if (is_toggle()) natural = { 11, 11 };
+			else if (type() == Type::RANGE) natural = { 129, 16 };
 			auto item = std::make_shared<HTMLControlRenderItem>(shared_from_this(), natural);
 			item->parent(p_parent);
 			return item;
@@ -591,7 +595,7 @@ namespace dockit {
 		const auto baseline = [&](const Rect2& p_rect, const HTMLTextLayout& p_line) {
 			return HTMLControlRenderItem::paint_text_baseline(p_rect.position.y, p_rect.size.y,
 				css().get_font_metrics(), p_line.ascent);
-		};
+			};
 		if (is_button()) {
 			const auto line = p_container.shape_input(css().get_font(), button_text());
 			if (line.is_valid()) p_container.draw_input(p_box, line,
@@ -641,7 +645,8 @@ namespace dockit {
 			HTMLControlIcon icon;
 			if (kind == Type::RADIO) {
 				icon = checked ? HTMLControlIcon::radio_checked : HTMLControlIcon::radio_unchecked;
-			} else {
+			}
+			else {
 				icon = mixed ? HTMLControlIcon::checkbox_indeterminate :
 					checked ? HTMLControlIcon::checkbox_checked : HTMLControlIcon::checkbox_unchecked;
 			}
@@ -690,7 +695,7 @@ namespace dockit {
 				if (line.is_valid()) p_container.draw_input(p_rect, line,
 					Vector2(p_rect.position.x, baseline(p_rect, line)),
 					color, {}, {}, {});
-			};
+				};
 			const auto label = p_container.shape_input(css().get_font(), button);
 			const float width = std::min<float>(p_box.size.x, label.width() + 16);
 			const Rect2 button_box(p_box.position, Vector2(width, p_box.size.y));
@@ -745,13 +750,15 @@ namespace dockit {
 			const auto draw_icon = [&](HTMLControlIcon p_icon, Vector2 p_center, float p_size) {
 				const Vector2 size(p_size, p_size);
 				p_container.draw_input_icon(p_icon, p_box, Rect2(p_center - size * 0.5, size), ink);
-			};
+				};
 			if (kind == Type::NUMBER) {
 				draw_icon(HTMLControlIcon::up, decoration_box.get_center() - Vector2(0, decoration_box.size.y / 4), 12);
 				draw_icon(HTMLControlIcon::down, decoration_box.get_center() + Vector2(0, decoration_box.size.y / 4), 12);
-			} else if (kind == Type::SEARCH) {
+			}
+			else if (kind == Type::SEARCH) {
 				draw_icon(HTMLControlIcon::close_small, decoration_box.get_center(), 14);
-			} else {
+			}
+			else {
 				draw_icon(time == input_time::Kind::time ? HTMLControlIcon::clock : HTMLControlIcon::calendar,
 					decoration_box.get_center(), 14);
 			}
@@ -786,12 +793,12 @@ namespace dockit {
 				begin = end - 1;
 			}
 			return result;
-		};
+			};
 		const auto fields = segments(editor.get_value());
 		if (fields.empty()) return false;
 		int index = 0;
 		const auto position = editor.selection_start();
-		while (index + 1 < fields.size() && fields[index].y < position) ++index;
+		while (static_cast<size_t>(index) + 1 < fields.size() && fields[index].y < position) ++index;
 		if (!p_step) {
 			index = std::clamp(index + p_direction, 0, int(fields.size()) - 1);
 			editor.set_selection(fields[index].x, fields[index].y);
@@ -810,14 +817,18 @@ namespace dockit {
 				if (!fallback) return false;
 				target = next.value_or(*fallback);
 			}
-		} else if ((kind == Kind::date || kind == Kind::local) && index == 2) target += p_direction * input_time::day;
+		}
+		else if ((kind == Kind::date || kind == Kind::local) && index == 2) target += p_direction * input_time::day;
 		else if (kind == Kind::time || (kind == Kind::local && index >= 3)) {
 			constexpr double units[] = { 3600000, 60000, 1000, 1 };
 			target += p_direction * units[std::clamp(index - (kind == Kind::local ? 3 : 0), 0, 3)];
 			if (kind == Kind::time) target = std::fmod(target + input_time::day, input_time::day);
-		} else {
+		}
+		else {
 			const int64_t year = parts["year"], month = parts["month"];
-			const auto next_month = (year - 1) * 12 + month - 1 + p_direction * (index == 0 ? 12 : 1);
+			if (year < 1 || year > 275760 || month < 1 || month > 12) return false;
+			const int64_t month_step = index == 0 ? 12 : 1;
+			const int64_t next_month = (year - 1) * 12 + (month - 1) + static_cast<int64_t>(p_direction) * month_step;
 			if (next_month < 0 || next_month >= 275760 * 12LL) return false;
 			parts["year"] = next_month / 12 + 1;
 			parts["month"] = next_month % 12 + 1;

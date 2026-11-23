@@ -60,7 +60,8 @@ namespace dockit {
 			material->set_shader_parameter("ordinary_ink", p_selection_only ? Color(0, 0, 0, 0) : text->color);
 			if (spans.size() == 1) {
 				material->set_shader_parameter("selection_first_span", spans.front());
-			} else {
+			}
+			else {
 				const size_t columns = std::min<size_t>(spans.size(), 2048);
 				const size_t rows = (spans.size() + columns - 1) / columns;
 				const auto image = Image::create_empty(columns, rows, false, Image::FORMAT_RGF);
@@ -75,10 +76,10 @@ namespace dockit {
 
 		RenderingServer::CanvasItemTextureFilter to_canvas_filter(HTMLTextureFilter p_filter) {
 			switch (p_filter) {
-				case HTMLTextureFilter::nearest: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST;
-				case HTMLTextureFilter::linear: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR;
-				case HTMLTextureFilter::linear_mipmaps: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS;
-				case HTMLTextureFilter::inherited: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
+			case HTMLTextureFilter::nearest: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST;
+			case HTMLTextureFilter::linear: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR;
+			case HTMLTextureFilter::linear_mipmaps: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS;
+			case HTMLTextureFilter::inherited: return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
 			}
 			return RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
 		}
@@ -117,16 +118,19 @@ namespace dockit {
 				using Draw = std::decay_t<decltype(p_draw)>;
 				if constexpr (std::is_same_v<Draw, HTMLFill>) {
 					return p_draw.rect;
-				} else if constexpr (std::is_same_v<Draw, HTMLText>) {
+				}
+				else if constexpr (std::is_same_v<Draw, HTMLText>) {
 					// Include glyph overhang and decorations beyond the measured line box.
 					return Rect2(p_draw.position, p_draw.layout.size()).grow(std::max(1.0f, p_draw.layout.height()));
-				} else if constexpr (std::is_same_v<Draw, HTMLImage>) {
+				}
+				else if constexpr (std::is_same_v<Draw, HTMLImage>) {
 					return p_draw.destination;
-				} else {
+				}
+				else {
 					const Vector2 radius(p_draw.radius + 1.0f, p_draw.radius + 1.0f);
 					return { p_draw.center - radius, radius * 2.0f };
 				}
-			}, p_command);
+				}, p_command);
 		}
 
 		void include_bounds(Rect2& r_bounds, const Rect2& p_rect) {
@@ -158,7 +162,7 @@ namespace dockit {
 					for (; run_index < p_end; ++run_index) {
 						include_bounds(box, run_bounds(p_runs[run_index]));
 					}
-				};
+					};
 				for (std::size_t child = index + 1; child < group.after_group; child = p_groups[child].after_group) {
 					include_runs(p_groups[child].first_run);
 					include_bounds(box, bounds[child - p_first]);
@@ -412,7 +416,7 @@ void fragment() {
 						p_server.canvas_item_add_polyline(p_canvas, points, PackedColorArray({ p_draw.color }), 1.0f, true);
 					}
 				}
-			}, command);
+				}, command);
 		}
 	}
 
@@ -478,7 +482,7 @@ void fragment() {
 				consumers[p_input].push_back(*index);
 				++inputs[*index];
 			}
-		};
+			};
 		for (std::size_t i = 0; i < count; ++i) depend(i, pass_parents[i]);
 		for (const auto& [source, consumer] : texture_dependencies) depend(*pass_indices.getptr(source), consumer);
 		std::vector<std::size_t> ordered;
@@ -498,7 +502,8 @@ void fragment() {
 				p_server.viewport_set_parent_viewport(surface, parent);
 				parent = surface;
 			}
-		} else {
+		}
+		else {
 			ERR_PRINT("Dockit: cyclic dependencies between HTML paint passes.");
 		}
 		pass_indices.clear();
@@ -523,24 +528,24 @@ void fragment() {
 			material->set_shader_parameter("hdr", p_hdr);
 			p_drawing.materials.push_back(material);
 			return material;
-		};
+			};
 		const auto render_pass = [&](const Surface& p_input, const Surface& p_dependency, const Ref<ShaderMaterial>& p_material,
 			const Vector2i& p_target_size) {
-			const auto surface = p_drawing.add_surface(p_server, p_parent, p_target_size, Transform2D(), p_hdr);
-			p_drawing.set_surface_parent(p_server, p_dependency.viewport, surface.viewport);
-			const RID item = p_drawing.add_item(p_server, surface.canvas, 0);
-			p_server.canvas_item_set_material(item, p_material->get_rid());
-			p_server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR);
-			p_server.canvas_item_add_texture_rect(item, Rect2(Vector2(), Vector2(p_target_size)), p_server.viewport_get_texture(p_input.viewport));
-			return surface;
-		};
+				const auto surface = p_drawing.add_surface(p_server, p_parent, p_target_size, Transform2D(), p_hdr);
+				p_drawing.set_surface_parent(p_server, p_dependency.viewport, surface.viewport);
+				const RID item = p_drawing.add_item(p_server, surface.canvas, 0);
+				p_server.canvas_item_set_material(item, p_material->get_rid());
+				p_server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR);
+				p_server.canvas_item_add_texture_rect(item, Rect2(Vector2(), Vector2(p_target_size)), p_server.viewport_get_texture(p_input.viewport));
+				return surface;
+			};
 		const auto blur = [&](Surface p_input, float p_sigma, bool p_full_size, bool p_reflect) {
 			if (p_sigma <= 0.0f) return p_input;
 			Vector2i working_size = p_size;
 			Vector2 scale = p_scale;
 			const auto target_radius = [&]() {
 				return 3.0f * p_sigma * std::max((p_matrix[0] * scale).length(), (p_matrix[1] * scale).length());
-			};
+				};
 			Ref<ShaderMaterial> copy;
 			// Downsample wide kernels before filtering to preserve thin detail between taps.
 			while (!p_reflect && target_radius() > FILTER_TAPS) {
@@ -588,11 +593,12 @@ void fragment() {
 			}
 			if (p_full_size && copy.is_valid()) p_input = render_pass(p_input, p_input, copy, p_size);
 			return p_input;
-		};
+			};
 		for (const auto& filter : p_filters) {
 			if (filter.type == Filter::blur) {
 				p_source = blur(p_source, filter.amount, true, p_region != nullptr);
-			} else if (filter.type == Filter::drop_shadow) {
+			}
+			else if (filter.type == Filter::drop_shadow) {
 				if (filter.color.a <= 0.0f) continue;
 				const auto mask = blur(p_source, filter.amount, false, false);
 				const auto material = make_material(static_cast<int>(filter.type));
@@ -601,7 +607,8 @@ void fragment() {
 				const auto& color = filter.color;
 				material->set_shader_parameter("shadow_color", Vector4(color.r, color.g, color.b, color.a));
 				p_source = render_pass(p_source, mask, material, p_size);
-			} else {
+			}
+			else {
 				const auto material = make_material(static_cast<int>(filter.type));
 				material->set_shader_parameter("amount", std::min(filter.amount, 1000000.0f));
 				p_source = render_pass(p_source, p_source, material, p_size);
@@ -664,7 +671,7 @@ void fragment() {
 			if (p_run.sampling.repeat) {
 				server.canvas_item_set_default_texture_repeat(p_item, RenderingServer::CANVAS_ITEM_TEXTURE_REPEAT_ENABLED);
 			}
-		};
+			};
 		const auto add_ink_canvas = [&](const HTMLPaintRun& p_run, const RID& p_parent, const Ref<ShaderMaterial>& p_ink) {
 			if (p_ink.is_null()) return RID();
 			const RID item = drawing->add_item(server, p_parent, 0);
@@ -672,67 +679,67 @@ void fragment() {
 			configure_run_item(item, p_run);
 			if (hdr && p_run.material.is_null()) server.canvas_item_set_instance_shader_parameter(item, "hdr_output", true);
 			return item;
-		};
+			};
 		const auto submit_projected = [&](const HTMLPaintRun& p_run, const RID& p_parent, const RID& p_viewport,
 			const std::optional<Rect2>& p_clip) {
-			Rect2 source_bounds;
-			for (const auto& command : p_run.commands) include_bounds(source_bounds, command_bounds(command));
-			Rect2 area = p_run.matrix.xform(source_bounds);
-			if (p_clip) area = area.intersection(*p_clip);
-			const auto inverse = p_run.matrix.try_inverse();
-			if (!area.has_area() || !area.is_finite() || !inverse) return;
-			const Rect2 sampled = p_clip ? source_bounds.intersection(inverse->xform(area)) : source_bounds;
-			if (!sampled.has_area() || !sampled.is_finite()) return;
+				Rect2 source_bounds;
+				for (const auto& command : p_run.commands) include_bounds(source_bounds, command_bounds(command));
+				Rect2 area = p_run.matrix.xform(source_bounds);
+				if (p_clip) area = area.intersection(*p_clip);
+				const auto inverse = p_run.matrix.try_inverse();
+				if (!area.has_area() || !area.is_finite() || !inverse) return;
+				const Rect2 sampled = p_clip ? source_bounds.intersection(inverse->xform(area)) : source_bounds;
+				if (!sampled.has_area() || !sampled.is_finite()) return;
 
-			// Use the viewport to bound raster resolution. Canvas motion can later reveal the same run.
-			const Vector2 extent = visible.has_area() ? area.size.min(visible.size) : area.size;
-			const Vector2 resolution = (extent * scale * 4.0f).clamp(Vector2(2, 2), Vector2(8192, 8192));
-			const auto tangent = p_run.matrix.affine_at(sampled.get_center());
-			const Vector2 magnification((tangent[0] * scale).length(), (tangent[1] * scale).length());
-			const Vector2 raster_scale = scale.max(magnification).min(resolution / sampled.size);
-			const Vector2 origin = (sampled.position * raster_scale).floor();
-			const Vector2i pixels((sampled.get_end() * raster_scale).ceil() - origin);
-			if (projection_shader.is_null()) {
-				projection_shader.instantiate();
-				projection_shader->set_code(PROJECTION_SHADER);
-			}
-			const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), Vector2(), p_selection_only);
-			if (ink.is_valid()) drawing->materials.push_back(ink);
-			for (int y = 0; y < pixels.y; y += GROUP_TILE_SIZE) {
-				for (int x = 0; x < pixels.x; x += GROUP_TILE_SIZE) {
-					const Vector2 start = origin + Vector2(x, y);
-					const Vector2 size(std::min(GROUP_TILE_SIZE, pixels.x - x), std::min(GROUP_TILE_SIZE, pixels.y - y));
-					const Rect2 tile(start / raster_scale, size / raster_scale);
-					const Rect2 destination = p_run.matrix.xform(tile).intersection(area);
-					if (!destination.has_area()) continue;
-					const Vector2 buffer_start = start - Vector2(1, 1);
-					const Transform2D mapping(Vector2(raster_scale.x, 0), Vector2(0, raster_scale.y), -buffer_start);
-					const auto surface = drawing->add_surface(server, p_viewport, Vector2i(size) + Vector2i(2, 2), mapping, hdr);
-					const RID source = drawing->add_item(server, surface.canvas, 0);
-					if (p_run.material.is_valid()) server.canvas_item_set_material(source, p_run.material->get_rid());
-					configure_run_item(source, p_run);
-					p_run.draw(server, source, Vector2(), text_server.ptr(), p_search, p_selection,
-						add_ink_canvas(p_run, source, ink), p_selection_only);
-
-					Ref<ShaderMaterial> material;
-					material.instantiate();
-					material->set_shader(projection_shader);
-					material->set_shader_parameter("inverse_x", inverse->row(0));
-					material->set_shader_parameter("inverse_y", inverse->row(1));
-					material->set_shader_parameter("inverse_w", inverse->row(2));
-					material->set_shader_parameter("tile", Vector4(tile.position.x, tile.position.y, tile.get_end().x, tile.get_end().y));
-					material->set_shader_parameter("source_origin", buffer_start);
-					material->set_shader_parameter("source_scale", raster_scale);
-					const RID item = drawing->add_item(server, p_parent, drawing->run_count++);
-					server.canvas_item_set_material(item, material->get_rid());
-					server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
-					server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR);
-					server.canvas_item_add_texture_rect(item, destination, server.viewport_get_texture(surface.viewport));
-					drawing->materials.push_back(material);
+				// Use the viewport to bound raster resolution. Canvas motion can later reveal the same run.
+				const Vector2 extent = visible.has_area() ? area.size.min(visible.size) : area.size;
+				const Vector2 resolution = (extent * scale * 4.0f).clamp(Vector2(2, 2), Vector2(8192, 8192));
+				const auto tangent = p_run.matrix.affine_at(sampled.get_center());
+				const Vector2 magnification((tangent[0] * scale).length(), (tangent[1] * scale).length());
+				const Vector2 raster_scale = scale.max(magnification).min(resolution / sampled.size);
+				const Vector2 origin = (sampled.position * raster_scale).floor();
+				const Vector2i pixels((sampled.get_end() * raster_scale).ceil() - origin);
+				if (projection_shader.is_null()) {
+					projection_shader.instantiate();
+					projection_shader->set_code(PROJECTION_SHADER);
 				}
-			}
-			if (p_run.material.is_valid()) drawing->materials.push_back(p_run.material);
-		};
+				const auto ink = partial_selection_material(p_run, p_selection, text_server.ptr(), Vector2(), p_selection_only);
+				if (ink.is_valid()) drawing->materials.push_back(ink);
+				for (int y = 0; y < pixels.y; y += GROUP_TILE_SIZE) {
+					for (int x = 0; x < pixels.x; x += GROUP_TILE_SIZE) {
+						const Vector2 start = origin + Vector2(x, y);
+						const Vector2 size(std::min(GROUP_TILE_SIZE, pixels.x - x), std::min(GROUP_TILE_SIZE, pixels.y - y));
+						const Rect2 tile(start / raster_scale, size / raster_scale);
+						const Rect2 destination = p_run.matrix.xform(tile).intersection(area);
+						if (!destination.has_area()) continue;
+						const Vector2 buffer_start = start - Vector2(1, 1);
+						const Transform2D mapping(Vector2(raster_scale.x, 0), Vector2(0, raster_scale.y), -buffer_start);
+						const auto surface = drawing->add_surface(server, p_viewport, Vector2i(size) + Vector2i(2, 2), mapping, hdr);
+						const RID source = drawing->add_item(server, surface.canvas, 0);
+						if (p_run.material.is_valid()) server.canvas_item_set_material(source, p_run.material->get_rid());
+						configure_run_item(source, p_run);
+						p_run.draw(server, source, Vector2(), text_server.ptr(), p_search, p_selection,
+							add_ink_canvas(p_run, source, ink), p_selection_only);
+
+						Ref<ShaderMaterial> material;
+						material.instantiate();
+						material->set_shader(projection_shader);
+						material->set_shader_parameter("inverse_x", inverse->row(0));
+						material->set_shader_parameter("inverse_y", inverse->row(1));
+						material->set_shader_parameter("inverse_w", inverse->row(2));
+						material->set_shader_parameter("tile", Vector4(tile.position.x, tile.position.y, tile.get_end().x, tile.get_end().y));
+						material->set_shader_parameter("source_origin", buffer_start);
+						material->set_shader_parameter("source_scale", raster_scale);
+						const RID item = drawing->add_item(server, p_parent, drawing->run_count++);
+						server.canvas_item_set_material(item, material->get_rid());
+						server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
+						server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_LINEAR);
+						server.canvas_item_add_texture_rect(item, destination, server.viewport_get_texture(surface.viewport));
+						drawing->materials.push_back(material);
+					}
+				}
+				if (p_run.material.is_valid()) drawing->materials.push_back(p_run.material);
+			};
 		const auto submit_run = [&](const HTMLPaintRun& p_run, const RID& p_parent, const RID& p_viewport, const std::optional<Rect2>& p_limit) {
 			std::optional<Rect2> clip;
 			if (p_run.clip) {
@@ -791,7 +798,7 @@ void fragment() {
 				drawing->materials.push_back(ink);
 				target = RID();
 			}
-		};
+			};
 		const std::optional<Rect2> clip = p_clip == Rect2() ? std::nullopt : std::optional<Rect2>(p_clip);
 		if (p_selection_only) {
 			for (const HTMLPaintRun& run : p_runs) {
@@ -810,7 +817,8 @@ void fragment() {
 		}
 		if (p_groups.empty()) {
 			for (const auto& run : p_runs) submit_run(run, root, viewport->get_viewport_rid(), clip);
-		} else {
+		}
+		else {
 			if (opacity_material.is_null()) {
 				Ref<Shader> shader;
 				shader.instantiate();
@@ -822,7 +830,7 @@ void fragment() {
 			const auto first_surface = drawing->surfaces.size();
 			drawing->order_passes = std::any_of(p_groups.begin(), p_groups.end(), [](const HTMLPaintGroup& p_group) {
 				return p_group.captures_filter_backdrop;
-			});
+				});
 			std::vector<Vector2> backdrop_margins(p_groups.size());
 			for (std::size_t i = p_groups.size(); i-- > 0;) {
 				const auto& group = p_groups[i];
@@ -847,25 +855,25 @@ void fragment() {
 			};
 			const auto copy_sample = [&](const BackdropSample& p_sample, const Surface& p_target, int32_t p_order,
 				const Ref<ShaderMaterial>& p_material = Ref<ShaderMaterial>(), const std::optional<Rect2>& p_clip = std::nullopt) {
-				if (drawing->order_passes)
-					drawing->texture_dependencies.emplace_back(p_sample.source.viewport, p_target.viewport);
-				RID parent = p_target.canvas;
-				if (p_clip) {
-					parent = drawing->add_item(server, parent, p_order);
-					server.canvas_item_set_custom_rect(parent, true, *p_clip);
-					server.canvas_item_set_clip(parent, true);
-				}
-				const RID item = drawing->add_item(server, parent, p_clip ? 0 : p_order);
-				server.canvas_item_set_material(item, (p_material.is_valid() ? p_material : opacity_material)->get_rid());
-				server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
-				Rect2 destination = p_sample.buffer;
-				if (p_material.is_valid()) {
-					drawing->materials.push_back(p_material);
-					server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
-					destination.position -= p_position;
-				}
-				server.canvas_item_add_texture_rect(item, destination, server.viewport_get_texture(p_sample.source.viewport));
-			};
+					if (drawing->order_passes)
+						drawing->texture_dependencies.emplace_back(p_sample.source.viewport, p_target.viewport);
+					RID parent = p_target.canvas;
+					if (p_clip) {
+						parent = drawing->add_item(server, parent, p_order);
+						server.canvas_item_set_custom_rect(parent, true, *p_clip);
+						server.canvas_item_set_clip(parent, true);
+					}
+					const RID item = drawing->add_item(server, parent, p_clip ? 0 : p_order);
+					server.canvas_item_set_material(item, (p_material.is_valid() ? p_material : opacity_material)->get_rid());
+					server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
+					Rect2 destination = p_sample.buffer;
+					if (p_material.is_valid()) {
+						drawing->materials.push_back(p_material);
+						server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
+						destination.position -= p_position;
+					}
+					server.canvas_item_add_texture_rect(item, destination, server.viewport_get_texture(p_sample.source.viewport));
+				};
 			const auto advance_capture = [&](BlendBackdrop& r_backdrop) {
 				const auto old = r_backdrop.current;
 				const auto next = drawing->add_surface(server, r_backdrop.parent_viewport, r_backdrop.pixels, r_backdrop.mapping, hdr);
@@ -873,370 +881,376 @@ void fragment() {
 				copy_sample({ old, r_backdrop.buffer }, next, -1);
 				r_backdrop.current = next;
 				return old;
-			};
+				};
 			const auto advance_backdrop = [&](BlendBackdrop& r_backdrop, const Surface& p_source, litehtml::css_blend_mode p_mode,
 				bool p_reparent_source = true) {
-				if (element_blend_shader.is_null()) {
-					element_blend_shader.instantiate();
-					element_blend_shader->set_code(String("#define HTML_ELEMENT_BLEND\n") + html_blend_shader);
-				}
-				const auto old = advance_capture(r_backdrop);
-				const auto next = r_backdrop.current;
-				if (p_reparent_source) drawing->set_surface_parent(server, p_source.viewport, next.viewport);
-				else if (drawing->order_passes) drawing->texture_dependencies.emplace_back(p_source.viewport, next.viewport);
-				const RID old_texture = server.viewport_get_texture(old.viewport);
+					if (element_blend_shader.is_null()) {
+						element_blend_shader.instantiate();
+						element_blend_shader->set_code(String("#define HTML_ELEMENT_BLEND\n") + html_blend_shader);
+					}
+					const auto old = advance_capture(r_backdrop);
+					const auto next = r_backdrop.current;
+					if (p_reparent_source) drawing->set_surface_parent(server, p_source.viewport, next.viewport);
+					else if (drawing->order_passes) drawing->texture_dependencies.emplace_back(p_source.viewport, next.viewport);
+					const RID old_texture = server.viewport_get_texture(old.viewport);
 
-				Ref<ShaderMaterial> material;
-				material.instantiate();
-				material->set_shader(element_blend_shader);
-				material->set_shader_parameter("mode", static_cast<int>(p_mode));
-				material->set_shader_parameter("hdr", hdr);
-				material->set_shader_parameter("backdrop", old_texture);
-				const auto& box = r_backdrop.buffer;
-				material->set_shader_parameter("backdrop_rect", Vector4(box.position.x, box.position.y, box.size.x, box.size.y));
-				const RID item = drawing->add_item(server, next.canvas, drawing->run_count++);
-				server.canvas_item_set_material(item, material->get_rid());
-				drawing->materials.push_back(material);
-				return item;
-			};
+					Ref<ShaderMaterial> material;
+					material.instantiate();
+					material->set_shader(element_blend_shader);
+					material->set_shader_parameter("mode", static_cast<int>(p_mode));
+					material->set_shader_parameter("hdr", hdr);
+					material->set_shader_parameter("backdrop", old_texture);
+					const auto& box = r_backdrop.buffer;
+					material->set_shader_parameter("backdrop_rect", Vector4(box.position.x, box.position.y, box.size.x, box.size.y));
+					const RID item = drawing->add_item(server, next.canvas, drawing->run_count++);
+					server.canvas_item_set_material(item, material->get_rid());
+					drawing->materials.push_back(material);
+					return item;
+				};
 			const auto apply_backdrop = [&](const HTMLPaintGroup& p_group, const std::vector<BackdropSample>& p_samples,
 				const Surface& p_foreground, const RID& p_parent, const Rect2& p_buffer, const Vector2i& p_size,
 				const Transform2D& p_mapping) {
-				const auto result = drawing->add_surface(server, p_parent, p_size, p_mapping, hdr);
-				int32_t order = 0;
-				for (const auto& area : p_group.backdrop_areas) {
-					const auto& clip = area.clip;
-					const auto projected = translate_rect(clip.matrix.xform(clip.shape.rect), p_position).intersection(p_buffer);
-					if (!projected.has_area() || !projected.is_finite()) continue;
-					const auto matrix = clip.matrix.affine_at(clip.shape.rect.get_center());
-					const auto margin = filter_halo(p_group.backdrop_filters, matrix, scale);
-					const Vector2 origin = (projected.position * scale).floor() - margin;
-					const auto pixels = Vector2i((projected.get_end() * scale).ceil() + margin - origin).max(Vector2i(2, 2));
-					const Transform2D mapping(Vector2(scale.x, 0), Vector2(0, scale.y), -origin);
-					const Rect2 buffer(origin / scale, Vector2(pixels) / scale);
-					const auto input = drawing->add_surface(server, result.viewport, pixels, mapping, hdr);
-					int32_t layer = 0;
-					for (const auto& sample : p_samples) copy_sample(sample, input, layer++, area.input_material);
-					const HTMLPlaneTransform uv_to_document(Transform2D(Vector2(buffer.size.x, 0), Vector2(0, buffer.size.y),
-						buffer.position - p_position));
-					const auto uv_to_box = clip.matrix.inverse() * uv_to_document;
-					const FilterRegion region{ clip.shape.rect, uv_to_box, uv_to_box.inverse() };
-					const auto filtered = filter_surface(server, *drawing, input, result.viewport, pixels, scale,
-						p_group.backdrop_filters, matrix, hdr, &region);
-					const auto clip_box = area.output_clip ? std::optional<Rect2>(translate_rect(*area.output_clip, p_position)) : std::nullopt;
-					copy_sample({ filtered, buffer }, result, order++, area.material, clip_box);
-				}
-				drawing->set_surface_parent(server, p_foreground.viewport, result.viewport);
-				copy_sample({ p_foreground, p_buffer }, result, order);
-				return result;
-			};
+					const auto result = drawing->add_surface(server, p_parent, p_size, p_mapping, hdr);
+					int32_t order = 0;
+					for (const auto& area : p_group.backdrop_areas) {
+						const auto& clip = area.clip;
+						const auto projected = translate_rect(clip.matrix.xform(clip.shape.rect), p_position).intersection(p_buffer);
+						if (!projected.has_area() || !projected.is_finite()) continue;
+						const auto matrix = clip.matrix.affine_at(clip.shape.rect.get_center());
+						const auto margin = filter_halo(p_group.backdrop_filters, matrix, scale);
+						const Vector2 origin = (projected.position * scale).floor() - margin;
+						const auto pixels = Vector2i((projected.get_end() * scale).ceil() + margin - origin).max(Vector2i(2, 2));
+						const Transform2D mapping(Vector2(scale.x, 0), Vector2(0, scale.y), -origin);
+						const Rect2 buffer(origin / scale, Vector2(pixels) / scale);
+						const auto input = drawing->add_surface(server, result.viewport, pixels, mapping, hdr);
+						int32_t layer = 0;
+						for (const auto& sample : p_samples) copy_sample(sample, input, layer++, area.input_material);
+						const HTMLPlaneTransform uv_to_document(Transform2D(Vector2(buffer.size.x, 0), Vector2(0, buffer.size.y),
+							buffer.position - p_position));
+						const auto uv_to_box = clip.matrix.inverse() * uv_to_document;
+						const FilterRegion region{ clip.shape.rect, uv_to_box, uv_to_box.inverse() };
+						const auto filtered = filter_surface(server, *drawing, input, result.viewport, pixels, scale,
+							p_group.backdrop_filters, matrix, hdr, &region);
+						const auto clip_box = area.output_clip ? std::optional<Rect2>(translate_rect(*area.output_clip, p_position)) : std::nullopt;
+						copy_sample({ filtered, buffer }, result, order++, area.material, clip_box);
+					}
+					drawing->set_surface_parent(server, p_foreground.viewport, result.viewport);
+					copy_sample({ p_foreground, p_buffer }, result, order);
+					return result;
+				};
 			const auto submit_background = [&](const auto& p_submit_range, std::size_t p_stack, const RID& p_viewport,
 				const Vector2i& p_size, const Transform2D& p_mapping, const Rect2& p_buffer, const Rect2& p_clip) {
-				Surface backdrop;
-				for (std::size_t layer = p_stack + 1; layer < p_groups[p_stack].after_group; layer = p_groups[layer].after_group) {
-					const auto& group = p_groups[layer];
-					if (!translate_rect(bounds[layer], p_position).intersects(p_clip)) continue;
-					const bool blend = backdrop.viewport.is_valid() && (hdr || group.blend_mode != litehtml::css_blend_mode::normal);
-					const auto source = blend || !backdrop.viewport.is_valid() ?
-						drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr) : backdrop;
-					p_submit_range(p_submit_range, group.first_run, group.last_run, layer + 1, group.after_group,
-						source.canvas, source.viewport, p_clip);
-					if (!blend) {
-						backdrop = source;
-						continue;
-					}
+					Surface backdrop;
+					for (std::size_t layer = p_stack + 1; layer < p_groups[p_stack].after_group; layer = p_groups[layer].after_group) {
+						const auto& group = p_groups[layer];
+						if (!translate_rect(bounds[layer], p_position).intersects(p_clip)) continue;
+						const bool blend = backdrop.viewport.is_valid() && (hdr || group.blend_mode != litehtml::css_blend_mode::normal);
+						const auto source = blend || !backdrop.viewport.is_valid() ?
+							drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr) : backdrop;
+						p_submit_range(p_submit_range, group.first_run, group.last_run, layer + 1, group.after_group,
+							source.canvas, source.viewport, p_clip);
+						if (!blend) {
+							backdrop = source;
+							continue;
+						}
 
-					if (background_blend_shader.is_null()) {
-						background_blend_shader.instantiate();
-						background_blend_shader->set_code(html_blend_shader);
+						if (background_blend_shader.is_null()) {
+							background_blend_shader.instantiate();
+							background_blend_shader->set_code(html_blend_shader);
+						}
+						Ref<ShaderMaterial> material;
+						material.instantiate();
+						material->set_shader(background_blend_shader);
+						material->set_shader_parameter("mode", static_cast<int>(group.blend_mode));
+						material->set_shader_parameter("hdr", hdr);
+						material->set_shader_parameter("backdrop", server.viewport_get_texture(backdrop.viewport));
+						const auto result = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
+						drawing->set_surface_parent(server, backdrop.viewport, result.viewport);
+						drawing->set_surface_parent(server, source.viewport, result.viewport);
+						const RID item = drawing->add_item(server, result.canvas, -1);
+						server.canvas_item_set_material(item, material->get_rid());
+						server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
+						server.canvas_item_add_texture_rect(item, p_buffer, server.viewport_get_texture(source.viewport));
+						drawing->materials.push_back(material);
+						backdrop = result;
 					}
-					Ref<ShaderMaterial> material;
-					material.instantiate();
-					material->set_shader(background_blend_shader);
-					material->set_shader_parameter("mode", static_cast<int>(group.blend_mode));
-					material->set_shader_parameter("hdr", hdr);
-					material->set_shader_parameter("backdrop", server.viewport_get_texture(backdrop.viewport));
-					const auto result = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
-					drawing->set_surface_parent(server, backdrop.viewport, result.viewport);
-					drawing->set_surface_parent(server, source.viewport, result.viewport);
-					const RID item = drawing->add_item(server, result.canvas, -1);
-					server.canvas_item_set_material(item, material->get_rid());
-					server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
-					server.canvas_item_add_texture_rect(item, p_buffer, server.viewport_get_texture(source.viewport));
-					drawing->materials.push_back(material);
-					backdrop = result;
-				}
-				return backdrop;
-			};
+					return backdrop;
+				};
 
 			const auto apply_mask = [&](const HTMLPaintGroup& p_group, const Surface& p_contents, const RID& p_viewport,
 				const Vector2i& p_size, const Transform2D& p_mapping, const Rect2& p_buffer) {
-				if (mask_shader.is_null()) {
-					mask_shader.instantiate();
-					mask_shader->set_code(MASK_SHADER);
-				}
-				const auto compose = [&](const Surface& p_source, const Surface& p_lower, int p_op,
-					bool p_luminance, bool p_linear_rgb) {
-					const auto result = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
-					drawing->set_surface_parent(server, p_source.viewport, result.viewport);
-					Ref<ShaderMaterial> material;
-					material.instantiate();
-					material->set_shader(mask_shader);
-					material->set_shader_parameter("operation", p_op);
-					material->set_shader_parameter("luminance", p_luminance);
-					material->set_shader_parameter("linear_rgb", p_linear_rgb);
-					material->set_shader_parameter("hdr", hdr);
-					if (p_lower.viewport.is_valid()) {
-						drawing->set_surface_parent(server, p_lower.viewport, result.viewport);
-						material->set_shader_parameter("has_lower", true);
-						material->set_shader_parameter("lower_layers", server.viewport_get_texture(p_lower.viewport));
+					if (mask_shader.is_null()) {
+						mask_shader.instantiate();
+						mask_shader->set_code(MASK_SHADER);
 					}
-					const RID item = drawing->add_item(server, result.canvas, 0);
-					server.canvas_item_set_material(item, material->get_rid());
-					server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
-					server.canvas_item_add_texture_rect(item, p_buffer, server.viewport_get_texture(p_source.viewport));
-					drawing->materials.push_back(material);
-					return result;
-				};
-				Surface lower;
-				for (auto layer = p_group.mask.rbegin(); layer != p_group.mask.rend(); ++layer) {
-					const auto source = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
+					const auto compose = [&](const Surface& p_source, const Surface& p_lower, int p_op,
+						bool p_luminance, bool p_linear_rgb) {
+							const auto result = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
+							drawing->set_surface_parent(server, p_source.viewport, result.viewport);
+							Ref<ShaderMaterial> material;
+							material.instantiate();
+							material->set_shader(mask_shader);
+							material->set_shader_parameter("operation", p_op);
+							material->set_shader_parameter("luminance", p_luminance);
+							material->set_shader_parameter("linear_rgb", p_linear_rgb);
+							material->set_shader_parameter("hdr", hdr);
+							if (p_lower.viewport.is_valid()) {
+								drawing->set_surface_parent(server, p_lower.viewport, result.viewport);
+								material->set_shader_parameter("has_lower", true);
+								material->set_shader_parameter("lower_layers", server.viewport_get_texture(p_lower.viewport));
+							}
+							const RID item = drawing->add_item(server, result.canvas, 0);
+							server.canvas_item_set_material(item, material->get_rid());
+							server.canvas_item_set_default_texture_filter(item, RenderingServer::CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
+							server.canvas_item_add_texture_rect(item, p_buffer, server.viewport_get_texture(p_source.viewport));
+							drawing->materials.push_back(material);
+							return result;
+						};
+					Surface lower;
+					for (auto layer = p_group.mask.rbegin(); layer != p_group.mask.rend(); ++layer) {
+						const auto source = drawing->add_surface(server, p_viewport, p_size, p_mapping, hdr);
+						target = RID();
+						for (const auto& run : layer->runs) submit_run(run, source.canvas, source.viewport, p_buffer);
+						lower = compose(source, lower, layer->composite, layer->luminance, layer->linear_rgb);
+					}
 					target = RID();
-					for (const auto& run : layer->runs) submit_run(run, source.canvas, source.viewport, p_buffer);
-					lower = compose(source, lower, layer->composite, layer->luminance, layer->linear_rgb);
-				}
-				target = RID();
-				return compose(p_contents, lower, MASK_APPLY, false, false);
-			};
+					return compose(p_contents, lower, MASK_APPLY, false, false);
+				};
 
 			const auto submit_depth_scene = [&](const auto& p_submit_range, std::size_t p_scene, const Surface& p_surface,
 				const Rect2& p_clip, BlendBackdrop* p_backdrop) {
-				struct Layer {
-					std::size_t index;
-					bool group;
-					Surface surface{};
-					Vector2 origin;
-					Vector2i size;
-					bool blended = false;
-				};
-				std::vector<Layer> layers;
-				std::vector<HTMLDepthLayer> depths;
-				const auto& scene = p_groups[p_scene];
-				const auto add_layer = [&](std::size_t p_index, bool p_is_group, const Rect2& p_bounds,
-					const std::optional<Vector3>& p_plane) {
-					const Rect2 area = translate_rect(p_bounds, p_position).intersection(p_clip);
-					if (!area.has_area() || !area.is_finite()) return;
-					auto depth = p_plane.value_or(Vector3());
-					depth.z -= Vector2(depth.x, depth.y).dot(p_position);
-					layers.push_back({p_index, p_is_group});
-					depths.push_back({area, depth});
-				};
-				std::size_t run = scene.first_run;
-				const auto add_runs = [&](std::size_t p_end) {
-					for (; run < p_end; ++run) add_layer(run, false, run_bounds(p_runs[run]), p_runs[run].depth_plane);
-				};
-				for (std::size_t child = p_scene + 1; child < scene.after_group; child = p_groups[child].after_group) {
-					const auto& group = p_groups[child];
-					add_runs(group.first_run);
-					add_layer(child, true, bounds[child], group.depth_plane);
-					run = group.last_run;
-				}
-				add_runs(scene.last_run);
-				const auto slices = sort_html_depth_layers(depths);
-				std::vector<std::size_t> slice_counts(layers.size());
-				for (const auto& slice : slices) ++slice_counts[slice.layer];
-				const auto draw_layer = [&](const Layer& p_layer, const Surface& p_target, const Rect2& p_limit,
-					BlendBackdrop* p_scope, bool p_blend_output) {
-					target = RID();
-					if (p_layer.group) {
-						const auto& group = p_groups[p_layer.index];
-						p_submit_range(p_submit_range, group.first_run, group.last_run, p_layer.index, group.after_group,
-							p_target.canvas, p_target.viewport, p_limit, p_scope, p_blend_output);
-					} else {
-						submit_run(p_runs[p_layer.index], p_target.canvas, p_target.viewport, p_limit);
+					struct Layer {
+						std::size_t index;
+						bool group;
+						Surface surface{};
+						Vector2 origin;
+						Vector2i size;
+						bool blended = false;
+					};
+					std::vector<Layer> layers;
+					std::vector<HTMLDepthLayer> depths;
+					const auto& scene = p_groups[p_scene];
+					const auto add_layer = [&](std::size_t p_index, bool p_is_group, const Rect2& p_bounds,
+						const std::optional<Vector3>& p_plane) {
+							const Rect2 area = translate_rect(p_bounds, p_position).intersection(p_clip);
+							if (!area.has_area() || !area.is_finite()) return;
+							auto depth = p_plane.value_or(Vector3());
+							depth.z -= Vector2(depth.x, depth.y).dot(p_position);
+							layers.push_back({ p_index, p_is_group });
+							depths.push_back({ area, depth });
+						};
+					std::size_t run = scene.first_run;
+					const auto add_runs = [&](std::size_t p_end) {
+						for (; run < p_end; ++run) add_layer(run, false, run_bounds(p_runs[run]), p_runs[run].depth_plane);
+						};
+					for (std::size_t child = p_scene + 1; child < scene.after_group; child = p_groups[child].after_group) {
+						const auto& group = p_groups[child];
+						add_runs(group.first_run);
+						add_layer(child, true, bounds[child], group.depth_plane);
+						run = group.last_run;
 					}
-				};
-				for (const auto& slice : slices) {
-					auto& layer = layers[slice.layer];
-					const auto& layer_bounds = depths[slice.layer].bounds;
-					if (slice_counts[slice.layer] == 1) {
-						const Surface target_surface = p_backdrop ? p_backdrop->current : p_surface;
-						draw_layer(layer, target_surface, p_clip, p_backdrop, true);
-						continue;
-					}
-					const bool samples_backdrop = p_backdrop && layer.group &&
-						(!p_groups[layer.index].backdrop_areas.empty() || p_groups[layer.index].needs_parent_backdrop);
-					// Reuse rasterization unless this slice has to sample the paint order at its depth.
-					if (!layer.surface.viewport.is_valid() || samples_backdrop) {
-						std::vector<BackdropSample> behind;
-						if (samples_backdrop) {
-							behind = p_backdrop->behind;
-							behind.push_back({ advance_capture(*p_backdrop), p_backdrop->buffer });
+					add_runs(scene.last_run);
+					const auto slices = sort_html_depth_layers(depths);
+					std::vector<std::size_t> slice_counts(layers.size());
+					for (const auto& slice : slices) ++slice_counts[slice.layer];
+					const auto draw_layer = [&](const Layer& p_layer, const Surface& p_target, const Rect2& p_limit,
+						BlendBackdrop* p_scope, bool p_blend_output) {
+							target = RID();
+							if (p_layer.group) {
+								const auto& group = p_groups[p_layer.index];
+								p_submit_range(p_submit_range, group.first_run, group.last_run, p_layer.index, group.after_group,
+									p_target.canvas, p_target.viewport, p_limit, p_scope, p_blend_output);
+							}
+							else {
+								submit_run(p_runs[p_layer.index], p_target.canvas, p_target.viewport, p_limit);
+							}
+						};
+					for (const auto& slice : slices) {
+						auto& layer = layers[slice.layer];
+						const auto& layer_bounds = depths[slice.layer].bounds;
+						if (slice_counts[slice.layer] == 1) {
+							const Surface target_surface = p_backdrop ? p_backdrop->current : p_surface;
+							draw_layer(layer, target_surface, p_clip, p_backdrop, true);
+							continue;
 						}
-						const RID viewport = p_backdrop ? p_backdrop->current.viewport : p_surface.viewport;
-						layer.origin = (layer_bounds.position * scale).floor();
-						layer.size = Vector2i((layer_bounds.get_end() * scale).ceil() - layer.origin).max(Vector2i(2, 2));
-						const Transform2D mapping(Vector2(scale.x, 0), Vector2(0, scale.y), -layer.origin);
-						layer.surface = drawing->add_surface(server, viewport, layer.size, mapping, hdr);
-						BlendBackdrop isolated{layer.surface, viewport, layer.size, mapping,
-							Rect2(layer.origin / scale, Vector2(layer.size) / scale), std::move(behind)};
-						draw_layer(layer, isolated.current, layer_bounds, samples_backdrop ? &isolated : nullptr, false);
-						layer.surface = isolated.current;
-						layer.blended = false;
+						const bool samples_backdrop = p_backdrop && layer.group &&
+							(!p_groups[layer.index].backdrop_areas.empty() || p_groups[layer.index].needs_parent_backdrop);
+						// Reuse rasterization unless this slice has to sample the paint order at its depth.
+						if (!layer.surface.viewport.is_valid() || samples_backdrop) {
+							std::vector<BackdropSample> behind;
+							if (samples_backdrop) {
+								behind = p_backdrop->behind;
+								behind.push_back({ advance_capture(*p_backdrop), p_backdrop->buffer });
+							}
+							const RID viewport = p_backdrop ? p_backdrop->current.viewport : p_surface.viewport;
+							layer.origin = (layer_bounds.position * scale).floor();
+							layer.size = Vector2i((layer_bounds.get_end() * scale).ceil() - layer.origin).max(Vector2i(2, 2));
+							const Transform2D mapping(Vector2(scale.x, 0), Vector2(0, scale.y), -layer.origin);
+							layer.surface = drawing->add_surface(server, viewport, layer.size, mapping, hdr);
+							BlendBackdrop isolated{ layer.surface, viewport, layer.size, mapping,
+								Rect2(layer.origin / scale, Vector2(layer.size) / scale), std::move(behind) };
+							draw_layer(layer, isolated.current, layer_bounds, samples_backdrop ? &isolated : nullptr, false);
+							layer.surface = isolated.current;
+							layer.blended = false;
+						}
+						PackedVector2Array points, uvs;
+						for (const auto& point : slice.polygon) {
+							points.push_back(point);
+							uvs.push_back((point * scale - layer.origin) / Vector2(layer.size));
+						}
+						PackedColorArray colors;
+						colors.push_back(Color(1, 1, 1, 1));
+						RID item;
+						if (p_backdrop && layer.group && p_groups[layer.index].element_blend_mode) {
+							item = advance_backdrop(*p_backdrop, layer.surface, *p_groups[layer.index].element_blend_mode, !layer.blended);
+							layer.blended = true;
+						}
+						else {
+							const Surface target_surface = p_backdrop ? p_backdrop->current : p_surface;
+							if (drawing->order_passes)
+								drawing->texture_dependencies.emplace_back(layer.surface.viewport, target_surface.viewport);
+							item = drawing->add_item(server, target_surface.canvas, drawing->run_count++);
+							server.canvas_item_set_material(item, opacity_material->get_rid());
+						}
+						server.canvas_item_add_polygon(item, points, colors, uvs, server.viewport_get_texture(layer.surface.viewport));
 					}
-					PackedVector2Array points, uvs;
-					for (const auto& point : slice.polygon) {
-						points.push_back(point);
-						uvs.push_back((point * scale - layer.origin) / Vector2(layer.size));
-					}
-					PackedColorArray colors;
-					colors.push_back(Color(1, 1, 1, 1));
-					RID item;
-					if (p_backdrop && layer.group && p_groups[layer.index].element_blend_mode) {
-						item = advance_backdrop(*p_backdrop, layer.surface, *p_groups[layer.index].element_blend_mode, !layer.blended);
-						layer.blended = true;
-					} else {
-						const Surface target_surface = p_backdrop ? p_backdrop->current : p_surface;
-						if (drawing->order_passes)
-							drawing->texture_dependencies.emplace_back(layer.surface.viewport, target_surface.viewport);
-						item = drawing->add_item(server, target_surface.canvas, drawing->run_count++);
-						server.canvas_item_set_material(item, opacity_material->get_rid());
-					}
-					server.canvas_item_add_polygon(item, points, colors, uvs, server.viewport_get_texture(layer.surface.viewport));
-				}
-			};
+				};
 			const auto submit_range = [&](auto&& self, std::size_t p_first, std::size_t p_last, std::size_t p_child, std::size_t p_after,
 				const RID& p_parent, const RID& p_viewport, const std::optional<Rect2>& p_limit,
 				BlendBackdrop* p_backdrop = nullptr, bool p_blend_output = true) -> void {
-				target = RID();
-				const auto active_surface = [&]() {
-					return p_backdrop ? p_backdrop->current : Surface{p_viewport, p_parent};
-				};
-				const auto submit_runs_until = [&](std::size_t p_end) {
-					const auto destination = active_surface();
-					for (; p_first < p_end; ++p_first)
-						submit_run(p_runs[p_first], destination.canvas, destination.viewport, p_limit);
-				};
-				for (std::size_t child = p_child; child < p_after; child = p_groups[child].after_group) {
-					const auto& group = p_groups[child];
-					submit_runs_until(group.first_run);
-					p_first = group.last_run;
-					if (group.can_draw_directly && !group.captures_backdrop && !group.captures_filter_backdrop) {
-						const auto destination = active_surface();
-						self(self, group.first_run, group.last_run, child + 1, group.after_group, destination.canvas,
-							destination.viewport, p_limit, p_backdrop);
-						target = RID();
-						continue;
-					}
-					if (!bounds[child].has_area()) continue;
-					const bool mix = p_backdrop && p_blend_output && group.element_blend_mode.has_value();
-					Rect2 area = translate_rect(bounds[child], p_position);
-					if (p_limit) area = area.intersection(*p_limit);
-					// Large layers only allocate the region sampled by this draw.
-					if ((area.size * scale).length_squared() > 2.0f * GROUP_TILE_SIZE * GROUP_TILE_SIZE)
-						area = area.intersection(visible);
-					if (!area.has_area() || !area.is_finite() || !scale.is_finite()) continue;
-					const Vector2 origin = (area.position * scale).floor();
-					const Vector2 extent = (area.get_end() * scale).ceil() - origin;
-					constexpr double max_dimension = std::numeric_limits<int32_t>::max();
-					if (!extent.is_finite() || extent.x <= 0 || extent.y <= 0 || extent.x > max_dimension || extent.y > max_dimension) continue;
-					const Vector2i pixels(extent);
-					std::vector<BackdropSample> samples;
-					if (p_backdrop && (!group.backdrop_areas.empty() || group.needs_parent_backdrop)) {
-						samples = p_backdrop->behind;
-						samples.push_back({ advance_capture(*p_backdrop), p_backdrop->buffer });
-					}
-					const bool captures_filters = group.captures_filter_backdrop || group.needs_parent_backdrop;
-					const Vector2 foreground_margin = filter_halo(group.filters, group.matrix, scale);
-					const Vector2 halo = (foreground_margin + (captures_filters ? backdrop_margins[child] : Vector2()))
-						.min(Vector2(MAX_TILE_HALO, MAX_TILE_HALO));
-					const Vector2i buffer_margin(halo * 2.0f);
-					for (int32_t y = 0; y < pixels.y;) {
-						const int32_t height = std::min(GROUP_TILE_SIZE, pixels.y - y);
-						for (int32_t x = 0; x < pixels.x;) {
-							const Vector2i size(std::min(GROUP_TILE_SIZE, pixels.x - x), height);
-							const Vector2 start = origin + Vector2(x, y);
-							x += size.x;
-							const Rect2 tile(start / scale, Vector2(size) / scale);
-							const Rect2 tile_clip = area.intersection(tile);
-							if (!tile_clip.has_area()) continue;
-							const auto destination_surface = active_surface();
-							if (group.sorts_depth && !group.captures_backdrop && !captures_filters) {
-								submit_depth_scene(self, child, destination_surface, tile_clip, nullptr);
-								continue;
-							}
-							const Vector2 buffer_start = start - halo;
-							const auto buffer_size = (size + buffer_margin).max(Vector2i(2, 2));
-							const Transform2D mapping(Vector2(scale.x, 0.0), Vector2(0.0, scale.y), -buffer_start);
-							const Rect2 buffer(buffer_start / scale, Vector2(buffer_size) / scale);
-							Surface source;
-							if (group.blends_background) {
-								source = submit_background(self, child, destination_surface.viewport, buffer_size, mapping, buffer, tile_clip);
-								if (!source.viewport.is_valid()) continue;
-							} else {
-								source = drawing->add_surface(server, destination_surface.viewport, buffer_size, mapping, hdr);
-								BlendBackdrop nested{source, destination_surface.viewport, buffer_size, mapping, buffer,
-									group.backdrop_root ? std::vector<BackdropSample>() : samples};
-								auto* nested_backdrop = group.captures_backdrop || captures_filters ? &nested : nullptr;
-								const Rect2 input_clip = halo == Vector2() ? tile_clip : buffer;
-								if (group.sorts_depth) {
-									submit_depth_scene(self, child, source, input_clip, nested_backdrop);
-								} else {
-									self(self, group.first_run, group.last_run, child + 1, group.after_group, source.canvas,
-										source.viewport, input_clip, nested_backdrop);
-								}
-								source = nested.current;
-							}
-							if (!samples.empty() && !group.backdrop_areas.empty())
-								source = apply_backdrop(group, samples, source, destination_surface.viewport, buffer, buffer_size, mapping);
-							auto surface = filter_surface(server, *drawing, source, destination_surface.viewport, buffer_size, scale,
-								group.filters, group.matrix, hdr);
-							if (!group.mask.empty())
-								surface = apply_mask(group, surface, destination_surface.viewport, buffer_size, mapping, buffer);
-							if (mix && group.output_material.is_valid()) {
-								const auto masked = drawing->add_surface(server, destination_surface.viewport, buffer_size, mapping, hdr);
-								drawing->set_surface_parent(server, surface.viewport, masked.viewport);
-								const RID mask_item = drawing->add_item(server, masked.canvas, 0);
-								server.canvas_item_set_material(mask_item, group.output_material->get_rid());
-								drawing->materials.push_back(group.output_material);
-								server.canvas_item_set_transform(mask_item, Transform2D(0.0, p_position));
-								server.canvas_item_add_texture_rect(mask_item, translate_rect(buffer, -p_position),
-									server.viewport_get_texture(surface.viewport));
-								surface = masked;
-							}
-							RID parent = destination_surface.canvas;
-							if (!mix && halo != Vector2() && tile != tile_clip) {
-								parent = drawing->add_item(server, parent, drawing->run_count++);
-								server.canvas_item_set_custom_rect(parent, true, tile_clip);
-								server.canvas_item_set_clip(parent, true);
-							}
-							const RID item = mix ? advance_backdrop(*p_backdrop, surface, *group.element_blend_mode) :
-								drawing->add_item(server, parent, drawing->run_count++);
-							Rect2 destination = tile;
-							Rect2 texture_region(halo, Vector2(size));
-							if (mix) {
-								if (halo != Vector2() && tile != tile_clip) {
-									destination = tile_clip;
-									texture_region.position += (tile_clip.position - tile.position) * scale;
-									texture_region.size = tile_clip.size * scale;
-								}
-							} else if (group.output_material.is_valid()) {
-								server.canvas_item_set_material(item, group.output_material->get_rid());
-								drawing->materials.push_back(group.output_material);
-								server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
-								destination.position -= p_position;
-							} else {
-								server.canvas_item_set_material(item, opacity_material->get_rid());
-							}
-							server.canvas_item_add_texture_rect_region(item, destination, server.viewport_get_texture(surface.viewport),
-								texture_region, Color(1.0, 1.0, 1.0, group.opacity));
-						}
-						y += height;
-					}
 					target = RID();
-				}
-				submit_runs_until(p_last);
-			};
+					const auto active_surface = [&]() {
+						return p_backdrop ? p_backdrop->current : Surface{ p_viewport, p_parent };
+						};
+					const auto submit_runs_until = [&](std::size_t p_end) {
+						const auto destination = active_surface();
+						for (; p_first < p_end; ++p_first)
+							submit_run(p_runs[p_first], destination.canvas, destination.viewport, p_limit);
+						};
+					for (std::size_t child = p_child; child < p_after; child = p_groups[child].after_group) {
+						const auto& group = p_groups[child];
+						submit_runs_until(group.first_run);
+						p_first = group.last_run;
+						if (group.can_draw_directly && !group.captures_backdrop && !group.captures_filter_backdrop) {
+							const auto destination = active_surface();
+							self(self, group.first_run, group.last_run, child + 1, group.after_group, destination.canvas,
+								destination.viewport, p_limit, p_backdrop);
+							target = RID();
+							continue;
+						}
+						if (!bounds[child].has_area()) continue;
+						const bool mix = p_backdrop && p_blend_output && group.element_blend_mode.has_value();
+						Rect2 area = translate_rect(bounds[child], p_position);
+						if (p_limit) area = area.intersection(*p_limit);
+						// Large layers only allocate the region sampled by this draw.
+						if ((area.size * scale).length_squared() > 2.0f * GROUP_TILE_SIZE * GROUP_TILE_SIZE)
+							area = area.intersection(visible);
+						if (!area.has_area() || !area.is_finite() || !scale.is_finite()) continue;
+						const Vector2 origin = (area.position * scale).floor();
+						const Vector2 extent = (area.get_end() * scale).ceil() - origin;
+						constexpr double max_dimension = std::numeric_limits<int32_t>::max();
+						if (!extent.is_finite() || extent.x <= 0 || extent.y <= 0 || extent.x > max_dimension || extent.y > max_dimension) continue;
+						const Vector2i pixels(extent);
+						std::vector<BackdropSample> samples;
+						if (p_backdrop && (!group.backdrop_areas.empty() || group.needs_parent_backdrop)) {
+							samples = p_backdrop->behind;
+							samples.push_back({ advance_capture(*p_backdrop), p_backdrop->buffer });
+						}
+						const bool captures_filters = group.captures_filter_backdrop || group.needs_parent_backdrop;
+						const Vector2 foreground_margin = filter_halo(group.filters, group.matrix, scale);
+						const Vector2 halo = (foreground_margin + (captures_filters ? backdrop_margins[child] : Vector2()))
+							.min(Vector2(MAX_TILE_HALO, MAX_TILE_HALO));
+						const Vector2i buffer_margin(halo * 2.0f);
+						for (int32_t y = 0; y < pixels.y;) {
+							const int32_t height = std::min(GROUP_TILE_SIZE, pixels.y - y);
+							for (int32_t x = 0; x < pixels.x;) {
+								const Vector2i size(std::min(GROUP_TILE_SIZE, pixels.x - x), height);
+								const Vector2 start = origin + Vector2(x, y);
+								x += size.x;
+								const Rect2 tile(start / scale, Vector2(size) / scale);
+								const Rect2 tile_clip = area.intersection(tile);
+								if (!tile_clip.has_area()) continue;
+								const auto destination_surface = active_surface();
+								if (group.sorts_depth && !group.captures_backdrop && !captures_filters) {
+									submit_depth_scene(self, child, destination_surface, tile_clip, nullptr);
+									continue;
+								}
+								const Vector2 buffer_start = start - halo;
+								const auto buffer_size = (size + buffer_margin).max(Vector2i(2, 2));
+								const Transform2D mapping(Vector2(scale.x, 0.0), Vector2(0.0, scale.y), -buffer_start);
+								const Rect2 buffer(buffer_start / scale, Vector2(buffer_size) / scale);
+								Surface source;
+								if (group.blends_background) {
+									source = submit_background(self, child, destination_surface.viewport, buffer_size, mapping, buffer, tile_clip);
+									if (!source.viewport.is_valid()) continue;
+								}
+								else {
+									source = drawing->add_surface(server, destination_surface.viewport, buffer_size, mapping, hdr);
+									BlendBackdrop nested{ source, destination_surface.viewport, buffer_size, mapping, buffer,
+										group.backdrop_root ? std::vector<BackdropSample>() : samples };
+									auto* nested_backdrop = group.captures_backdrop || captures_filters ? &nested : nullptr;
+									const Rect2 input_clip = halo == Vector2() ? tile_clip : buffer;
+									if (group.sorts_depth) {
+										submit_depth_scene(self, child, source, input_clip, nested_backdrop);
+									}
+									else {
+										self(self, group.first_run, group.last_run, child + 1, group.after_group, source.canvas,
+											source.viewport, input_clip, nested_backdrop);
+									}
+									source = nested.current;
+								}
+								if (!samples.empty() && !group.backdrop_areas.empty())
+									source = apply_backdrop(group, samples, source, destination_surface.viewport, buffer, buffer_size, mapping);
+								auto surface = filter_surface(server, *drawing, source, destination_surface.viewport, buffer_size, scale,
+									group.filters, group.matrix, hdr);
+								if (!group.mask.empty())
+									surface = apply_mask(group, surface, destination_surface.viewport, buffer_size, mapping, buffer);
+								if (mix && group.output_material.is_valid()) {
+									const auto masked = drawing->add_surface(server, destination_surface.viewport, buffer_size, mapping, hdr);
+									drawing->set_surface_parent(server, surface.viewport, masked.viewport);
+									const RID mask_item = drawing->add_item(server, masked.canvas, 0);
+									server.canvas_item_set_material(mask_item, group.output_material->get_rid());
+									drawing->materials.push_back(group.output_material);
+									server.canvas_item_set_transform(mask_item, Transform2D(0.0, p_position));
+									server.canvas_item_add_texture_rect(mask_item, translate_rect(buffer, -p_position),
+										server.viewport_get_texture(surface.viewport));
+									surface = masked;
+								}
+								RID parent = destination_surface.canvas;
+								if (!mix && halo != Vector2() && tile != tile_clip) {
+									parent = drawing->add_item(server, parent, drawing->run_count++);
+									server.canvas_item_set_custom_rect(parent, true, tile_clip);
+									server.canvas_item_set_clip(parent, true);
+								}
+								const RID item = mix ? advance_backdrop(*p_backdrop, surface, *group.element_blend_mode) :
+									drawing->add_item(server, parent, drawing->run_count++);
+								Rect2 destination = tile;
+								Rect2 texture_region(halo, Vector2(size));
+								if (mix) {
+									if (halo != Vector2() && tile != tile_clip) {
+										destination = tile_clip;
+										texture_region.position += (tile_clip.position - tile.position) * scale;
+										texture_region.size = tile_clip.size * scale;
+									}
+								}
+								else if (group.output_material.is_valid()) {
+									server.canvas_item_set_material(item, group.output_material->get_rid());
+									drawing->materials.push_back(group.output_material);
+									server.canvas_item_set_transform(item, Transform2D(0.0, p_position));
+									destination.position -= p_position;
+								}
+								else {
+									server.canvas_item_set_material(item, opacity_material->get_rid());
+								}
+								server.canvas_item_add_texture_rect_region(item, destination, server.viewport_get_texture(surface.viewport),
+									texture_region, Color(1.0, 1.0, 1.0, group.opacity));
+							}
+							y += height;
+						}
+						target = RID();
+					}
+					submit_runs_until(p_last);
+				};
 			submit_range(submit_range, 0, p_runs.size(), 0, p_groups.size(), root, viewport->get_viewport_rid(), clip);
 			if (drawing->order_passes) drawing->order_surface_passes(server, viewport->get_viewport_rid(), first_surface);
 		}

@@ -52,15 +52,19 @@ void HTMLHRElement::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_align"), &HTMLHRElement::get_align);
 	ClassDB::bind_method(D_METHOD("set_align", "value"), &HTMLHRElement::set_align);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "align"), "set_align", "get_align");
+
 	ClassDB::bind_method(D_METHOD("get_color"), &HTMLHRElement::get_color);
 	ClassDB::bind_method(D_METHOD("set_color", "value"), &HTMLHRElement::set_color);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "color"), "set_color", "get_color");
+
 	ClassDB::bind_method(D_METHOD("is_no_shade"), &HTMLHRElement::is_no_shade);
 	ClassDB::bind_method(D_METHOD("set_no_shade", "value"), &HTMLHRElement::set_no_shade);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "no_shade"), "set_no_shade", "is_no_shade");
+
 	ClassDB::bind_method(D_METHOD("get_size"), &HTMLHRElement::get_size);
 	ClassDB::bind_method(D_METHOD("set_size", "value"), &HTMLHRElement::set_size);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "size"), "set_size", "get_size");
+
 	ClassDB::bind_method(D_METHOD("get_width"), &HTMLHRElement::get_width);
 	ClassDB::bind_method(D_METHOD("set_width", "value"), &HTMLHRElement::set_width);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "width"), "set_width", "get_width");

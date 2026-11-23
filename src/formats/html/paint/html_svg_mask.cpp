@@ -77,7 +77,7 @@ namespace dockit {
 			return !p_name.empty() && std::all_of(p_name.begin(), p_name.end(), [](char c) {
 				return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
 					c == '-' || c == '_' || c == ':';
-			});
+				});
 		}
 
 		class MaskDocument {
@@ -173,7 +173,8 @@ namespace dockit {
 					std::string text;
 					p_node.get_text(text);
 					svg += String::utf8(text.data(), text.size()).xml_escape();
-				} else if (!text) {
+				}
+				else if (!text) {
 					const bool resolve_lengths = mask || (p_resolve_lengths && lower != "svg");
 					for (const auto& child : p_node.children()) append(*child, p_depth + 1, resolve_lengths);
 				}
@@ -183,7 +184,8 @@ namespace dockit {
 		public:
 			MaskDocument(const LiteHTMLContainer& p_container, const element& p_mask, const Vector2& p_basis,
 				bool p_normalized) : container(p_container), root(source_svg(p_mask)), source(p_mask),
-				basis(p_basis), normalized(p_normalized) {}
+				basis(p_basis), normalized(p_normalized) {
+			}
 
 			String build(const Rect2& p_view_box, const Vector2i& p_pixels) {
 				svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" preserveAspectRatio=\"none\"";
@@ -219,7 +221,7 @@ namespace dockit {
 		const auto region_length = [&](const char* name, double basis, double fallback) {
 			return object_units ? svg::length_attribute(*source, name, 1.0, fallback) * basis :
 				svg::length_attribute(*source, name, basis, fallback * basis);
-		};
+			};
 		const Rect2 region(p_target_box.position + Vector2(region_length("x", region_basis.x, -0.1), region_length("y", region_basis.y, -0.1)),
 			Vector2(region_length("width", region_basis.x, 1.2), region_length("height", region_basis.y, 1.2)));
 		const Rect2 box = region.has_area() && region.is_finite() ? region.intersection(p_ink) : Rect2();

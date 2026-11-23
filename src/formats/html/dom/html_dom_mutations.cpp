@@ -26,7 +26,7 @@ void HTMLDOM::track_node_mutations(const litehtml::element::ptr& p_node) const {
 	if (!p_node->dom_mutation) p_node->dom_mutation = std::make_shared<litehtml::element::DOMMutationState>();
 	p_node->dom_mutation->notify = [owner = const_cast<HTMLDOM*>(this)->weak_from_this()](litehtml::element& node, unsigned flags) {
 		if (const auto dom = owner.lock()) dom->queue_change(node, flags);
-	};
+		};
 }
 
 void HTMLDOM::queue_change(litehtml::element& p_node, unsigned p_flags) {
@@ -38,7 +38,7 @@ void HTMLDOM::queue_change(litehtml::element& p_node, unsigned p_flags) {
 		return;
 	}
 	pending_change_indices.emplace(&p_node, pending_changes.size());
-	pending_changes.push_back({p_node.shared_from_this(), p_node.mutation_revision(), p_flags});
+	pending_changes.push_back({ p_node.shared_from_this(), p_node.mutation_revision(), p_flags });
 }
 
 void HTMLDOM::notify_changed() {
@@ -84,7 +84,7 @@ Ref<HTMLRange> HTMLDOM::create_range() {
 	range.instantiate();
 	range->owner = weak_from_this();
 	range->version = lifetime;
-	range->start = range->end = {root, 0};
+	range->start = range->end = { root, 0 };
 	ranges.erase(std::remove_if(ranges.begin(), ranges.end(),
 		[](ObjectID p_id) { return !ObjectDB::get_instance(p_id); }), ranges.end());
 	ranges.push_back(ObjectID(range->get_instance_id()));
@@ -114,7 +114,7 @@ HTMLDOM::ChildChange HTMLDOM::capture_children(const litehtml::element::ptr& p_p
 	change.before = change.target->get_child_nodes();
 	const auto capture = [&](const Ref<HTMLRange>& p_range, const HTMLBoundary& p_point, bool p_start) {
 		if (p_point.node == change.target) {
-			change.endpoints.push_back({p_range, p_start, {}, p_point.offset});
+			change.endpoints.push_back({ p_range, p_start,{}, p_point.offset });
 			return;
 		}
 		auto node = p_point.node;
@@ -122,12 +122,12 @@ HTMLDOM::ChildChange HTMLDOM::capture_children(const litehtml::element::ptr& p_p
 			auto parent = node->get_parent_node();
 			if (parent == change.target) {
 				const int64_t index = change.before.find(node);
-				if (index >= 0) change.endpoints.push_back({p_range, p_start, node, index});
+				if (index >= 0) change.endpoints.push_back({ p_range, p_start, node, index });
 				return;
 			}
 			node = std::move(parent);
 		}
-	};
+		};
 	for (ObjectID id : ranges) {
 		auto* range = Object::cast_to<HTMLRange>(ObjectDB::get_instance(id));
 		if (!range || !range->is_valid()) continue;
@@ -153,7 +153,7 @@ void HTMLDOM::finish_children(const ChildChange& p_change, const std::vector<lit
 	for (const Ref<HTMLNode>& node : before) old_children.insert(node.ptr());
 	for (const Ref<HTMLNode>& node : after) new_children.insert(node.ptr());
 
-	HTMLMutation record{HTMLMutation::CHILD_LIST, p_change.target};
+	HTMLMutation record{ HTMLMutation::CHILD_LIST, p_change.target };
 	std::vector<int64_t> removed_indices;
 	std::vector<int64_t> added_indices;
 	for (int64_t i = 0; i < before.size(); ++i) {
@@ -204,7 +204,7 @@ void HTMLDOM::finish_children(const ChildChange& p_change, const std::vector<lit
 			++offset;
 		}
 		if (point.node != p_change.target || point.offset != offset) {
-			point = {p_change.target, offset};
+			point = { p_change.target, offset };
 			selection_moved |= selection.is_valid() && selection->range == item.range;
 		}
 	}
@@ -215,7 +215,7 @@ void HTMLDOM::finish_children(const ChildChange& p_change, const std::vector<lit
 void HTMLDOM::publish_attribute(const litehtml::element::ptr& p_element, const char* p_name, const Variant& p_old) {
 	p_element->note_dom_change(litehtml::element::DOM_ATTRIBUTE);
 	if (observers.empty()) return;
-	HTMLMutation record{HTMLMutation::ATTRIBUTES, make_node(p_element)};
+	HTMLMutation record{ HTMLMutation::ATTRIBUTES, make_node(p_element) };
 	record.attribute = String::utf8(p_name);
 	record.old_value = p_old;
 	publish_mutation(record, ancestry_of(record.target));
@@ -228,7 +228,7 @@ void HTMLDOM::publish_mutation(const HTMLMutation& p_change, const std::vector<R
 		if (!observer) return true;
 		observer->enqueue(*this, p_change, p_ancestry);
 		return false;
-	}), observers.end());
+		}), observers.end());
 }
 
 void HTMLDOM::track_observer(ObjectID p_id) {
@@ -243,7 +243,8 @@ void HTMLDOM::queue_observer_delivery() {
 	auto* tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
 	if (delivering_observers && tree) {
 		tree->connect("process_frame", callback, Object::CONNECT_ONE_SHOT);
-	} else {
+	}
+	else {
 		callback.call_deferred();
 	}
 }
@@ -265,7 +266,7 @@ void HTMLDOM::deliver_observers(uint64_t p_owner_id, uint64_t p_epoch, uint64_t 
 		auto* observer = Object::cast_to<HTMLMutationObserver>(ObjectDB::get_instance(id));
 		if (!observer) continue;
 		auto records = observer->take_owner(*dom);
-		if (!records.is_empty()) deliveries.push_back({Ref<HTMLMutationObserver>(observer), records, observer->delivery_version});
+		if (!records.is_empty()) deliveries.push_back({ Ref<HTMLMutationObserver>(observer), records, observer->delivery_version });
 	}
 	for (const auto& delivery : deliveries) {
 		if (dom->lifetime != p_lifetime) break;

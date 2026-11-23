@@ -23,7 +23,7 @@ namespace {
 			std::chrono::steady_clock::now().time_since_epoch()).count();
 	}
 
-	// 只在派发器接管前允许修改，避免脚本篡改正在传播的事件。
+	// 只在派发器接管前允许修改，避免脚本篡改正在传播的事件
 	bool accepts_configuration(const HTMLEvent& p_event) {
 		return !p_event.is_dispatching();
 	}
@@ -48,6 +48,7 @@ void HTMLEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("prevent_default"), &HTMLEvent::prevent_default);
 	ClassDB::bind_method(D_METHOD("stop_propagation"), &HTMLEvent::stop_propagation);
 	ClassDB::bind_method(D_METHOD("stop_immediate_propagation"), &HTMLEvent::stop_immediate_propagation);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "type"), "set_type", "get_type");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
 		PROPERTY_USAGE_NONE), "", "get_target");
@@ -61,6 +62,7 @@ void HTMLEvent::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "default_prevented"), "", "is_default_prevented");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "trusted"), "", "is_trusted");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "time_stamp"), "", "get_time_stamp");
+
 	BIND_ENUM_CONSTANT(PHASE_NONE);
 	BIND_ENUM_CONSTANT(PHASE_CAPTURING);
 	BIND_ENUM_CONSTANT(PHASE_AT_TARGET);
@@ -145,7 +147,7 @@ void HTMLEvent::set_composed(bool p_composed) {
 
 void HTMLEvent::prevent_default() {
 	if (passive_context) {
-		// 与浏览器一致：passive 监听器里的 prevent_default 不生效，只提示一次。
+		// 与浏览器一致：passive 监听器里的 prevent_default 不生效，只提示一次
 		if (!passive_warned) {
 			passive_warned = true;
 			WARN_PRINT("prevent_default() was ignored because the listener was registered with passive = true.");
@@ -168,6 +170,7 @@ void HTMLEvent::stop_immediate_propagation() {
 void HTMLCustomEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_detail"), &HTMLCustomEvent::get_detail);
 	ClassDB::bind_method(D_METHOD("set_detail", "detail"), &HTMLCustomEvent::set_detail);
+
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "detail"), "set_detail", "get_detail");
 }
 
@@ -195,6 +198,7 @@ void HTMLMouseEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_alt_pressed", "pressed"), &HTMLMouseEvent::set_alt_pressed);
 	ClassDB::bind_method(D_METHOD("is_meta_pressed"), &HTMLMouseEvent::is_meta_pressed);
 	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLMouseEvent::set_meta_pressed);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "related_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
 		PROPERTY_USAGE_NONE), "set_related_target", "get_related_target");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "button"), "set_button", "get_button");
@@ -212,8 +216,10 @@ void HTMLWheelEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_delta", "delta"), &HTMLWheelEvent::set_delta);
 	ClassDB::bind_method(D_METHOD("get_delta_mode"), &HTMLWheelEvent::get_delta_mode);
 	ClassDB::bind_method(D_METHOD("set_delta_mode", "delta_mode"), &HTMLWheelEvent::set_delta_mode);
+
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "delta"), "set_delta", "get_delta");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "delta_mode", PROPERTY_HINT_ENUM, "Pixel"), "set_delta_mode", "get_delta_mode");
+
 	BIND_ENUM_CONSTANT(DELTA_MODE_PIXEL);
 }
 
@@ -224,6 +230,7 @@ void HTMLPointerEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_pointer_type", "pointer_type"), &HTMLPointerEvent::set_pointer_type);
 	ClassDB::bind_method(D_METHOD("is_primary"), &HTMLPointerEvent::is_primary);
 	ClassDB::bind_method(D_METHOD("set_is_primary", "primary"), &HTMLPointerEvent::set_is_primary);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "pointer_id"), "set_pointer_id", "get_pointer_id");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "pointer_type"), "set_pointer_type", "get_pointer_type");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_primary"), "set_is_primary", "is_primary");
@@ -248,6 +255,7 @@ void HTMLKeyboardEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLKeyboardEvent::set_meta_pressed);
 	ClassDB::bind_method(D_METHOD("is_echo"), &HTMLKeyboardEvent::is_echo);
 	ClassDB::bind_method(D_METHOD("set_echo", "echo"), &HTMLKeyboardEvent::set_echo);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "keycode"), "set_keycode", "get_keycode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "physical_keycode"), "set_physical_keycode", "get_physical_keycode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "key_label"), "set_key_label", "get_key_label");
@@ -262,6 +270,7 @@ void HTMLKeyboardEvent::_bind_methods() {
 void HTMLFocusEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_related_target"), &HTMLFocusEvent::get_related_target);
 	ClassDB::bind_method(D_METHOD("set_related_target", "target"), &HTMLFocusEvent::set_related_target);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "related_target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLEventTarget",
 		PROPERTY_USAGE_NONE), "set_related_target", "get_related_target");
 }
@@ -269,6 +278,7 @@ void HTMLFocusEvent::_bind_methods() {
 void HTMLSubmitEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_submitter"), &HTMLSubmitEvent::get_submitter);
 	ClassDB::bind_method(D_METHOD("set_submitter", "submitter"), &HTMLSubmitEvent::set_submitter);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "submitter", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement",
 		PROPERTY_USAGE_NONE), "set_submitter", "get_submitter");
 }
@@ -280,6 +290,7 @@ void HTMLInputEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_input_type", "input_type"), &HTMLInputEvent::set_input_type);
 	ClassDB::bind_method(D_METHOD("is_composing"), &HTMLInputEvent::is_composing);
 	ClassDB::bind_method(D_METHOD("set_is_composing", "composing"), &HTMLInputEvent::set_is_composing);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data"), "set_data", "get_data");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "input_type"), "set_input_type", "get_input_type");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_composing"), "set_is_composing", "is_composing");
@@ -292,6 +303,7 @@ void HTMLInputEvent::set_is_composing(bool p_composing) { if (accepts_configurat
 void HTMLCompositionEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_data"), &HTMLCompositionEvent::get_data);
 	ClassDB::bind_method(D_METHOD("set_data", "data"), &HTMLCompositionEvent::set_data);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data"), "set_data", "get_data");
 }
 
@@ -306,6 +318,7 @@ void HTMLDataTransfer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_effect_allowed", "value"), &HTMLDataTransfer::set_effect_allowed);
 	ClassDB::bind_method(D_METHOD("get_drop_effect"), &HTMLDataTransfer::get_drop_effect);
 	ClassDB::bind_method(D_METHOD("set_drop_effect", "value"), &HTMLDataTransfer::set_drop_effect);
+
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "types"), "", "get_types");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "effect_allowed"), "set_effect_allowed", "get_effect_allowed");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "drop_effect"), "set_drop_effect", "get_drop_effect");
@@ -349,6 +362,7 @@ namespace dockit {
 void HTMLDragEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_data_transfer"), &HTMLDragEvent::get_data_transfer);
 	ClassDB::bind_method(D_METHOD("set_data_transfer", "data_transfer"), &HTMLDragEvent::set_data_transfer);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "data_transfer", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDataTransfer"),
 		"set_data_transfer", "get_data_transfer");
 }
@@ -356,6 +370,7 @@ void HTMLDragEvent::_bind_methods() {
 void HTMLClipboardEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_clipboard_data"), &HTMLClipboardEvent::get_clipboard_data);
 	ClassDB::bind_method(D_METHOD("set_clipboard_data", "clipboard_data"), &HTMLClipboardEvent::set_clipboard_data);
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "clipboard_data", PROPERTY_HINT_RESOURCE_TYPE, "HTMLDataTransfer"),
 		"set_clipboard_data", "get_clipboard_data");
 }
@@ -365,6 +380,7 @@ void HTMLToggleEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_old_state", "state"), &HTMLToggleEvent::set_old_state);
 	ClassDB::bind_method(D_METHOD("get_new_state"), &HTMLToggleEvent::get_new_state);
 	ClassDB::bind_method(D_METHOD("set_new_state", "state"), &HTMLToggleEvent::set_new_state);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "old_state"), "set_old_state", "get_old_state");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "new_state"), "set_new_state", "get_new_state");
 }
@@ -380,6 +396,7 @@ void HTMLErrorEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_column_number", "value"), &HTMLErrorEvent::set_column_number);
 	ClassDB::bind_method(D_METHOD("get_error"), &HTMLErrorEvent::get_error);
 	ClassDB::bind_method(D_METHOD("set_error", "value"), &HTMLErrorEvent::set_error);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "message"), "set_message", "get_message");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "filename"), "set_filename", "get_filename");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "line_number"), "set_line_number", "get_line_number");
@@ -395,6 +412,7 @@ void HTMLAnimationEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_elapsed_time", "value"), &HTMLAnimationEvent::set_elapsed_time);
 	ClassDB::bind_method(D_METHOD("get_pseudo_element"), &HTMLAnimationEvent::get_pseudo_element);
 	ClassDB::bind_method(D_METHOD("set_pseudo_element", "value"), &HTMLAnimationEvent::set_pseudo_element);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "animation_name"), "set_animation_name", "get_animation_name");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "elapsed_time"), "set_elapsed_time", "get_elapsed_time");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "pseudo_element"), "set_pseudo_element", "get_pseudo_element");
@@ -407,6 +425,7 @@ void HTMLTransitionEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_elapsed_time", "value"), &HTMLTransitionEvent::set_elapsed_time);
 	ClassDB::bind_method(D_METHOD("get_pseudo_element"), &HTMLTransitionEvent::get_pseudo_element);
 	ClassDB::bind_method(D_METHOD("set_pseudo_element", "value"), &HTMLTransitionEvent::set_pseudo_element);
+
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "property_name"), "set_property_name", "get_property_name");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "elapsed_time"), "set_elapsed_time", "get_elapsed_time");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "pseudo_element"), "set_pseudo_element", "get_pseudo_element");
@@ -420,6 +439,7 @@ void HTMLTouchPoint::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_position"), &HTMLTouchPoint::get_position);
 	ClassDB::bind_method(D_METHOD("set_position", "value"), &HTMLTouchPoint::set_position);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "identifier"), "set_identifier", "get_identifier");
+
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "target", PROPERTY_HINT_RESOURCE_TYPE, "HTMLElement"), "set_target", "get_target");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "position"), "set_position", "get_position");
 }
@@ -439,6 +459,7 @@ void HTMLTouchEvent::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_alt_pressed", "pressed"), &HTMLTouchEvent::set_alt_pressed);
 	ClassDB::bind_method(D_METHOD("is_meta_pressed"), &HTMLTouchEvent::is_meta_pressed);
 	ClassDB::bind_method(D_METHOD("set_meta_pressed", "pressed"), &HTMLTouchEvent::set_meta_pressed);
+
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_touches", "get_touches");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "target_touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_target_touches", "get_target_touches");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "changed_touches", PROPERTY_HINT_ARRAY_TYPE, "HTMLTouchPoint"), "set_changed_touches", "get_changed_touches");
@@ -503,7 +524,7 @@ namespace dockit {
 			factories.insert(StringName("resize"), &instantiate_event<HTMLEvent>);
 			factories.insert(StringName("visibilitychange"), &instantiate_event<HTMLEvent>);
 			return factories;
-		}();
+			}();
 		Ref<HTMLEvent> event;
 		if (const EventFactory* factory = event_factories.getptr(p_type)) event = (*factory)();
 		else event.instantiate();

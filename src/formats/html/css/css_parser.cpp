@@ -505,7 +505,7 @@ raw_rule::vector css_parser::consume_block_contents()
 				}
 				if (!declaration || value != index || !is_one_of(type_at(end), ';', EOF)) {
 					qualified = make_shared<raw_rule>(raw_rule::qualified);
-					qualified->prelude = std::move(prefix);
+					qualified->prelude.swap(prefix);
 					qualified->block = std::move(component);
 					break;
 				}

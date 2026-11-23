@@ -10,7 +10,7 @@ using namespace godot;
 
 namespace dockit::input_time {
 namespace {
-	// Gregorian civil-date conversion using 400-year eras, with 1970-01-01 as day zero.
+	// 使用400年周期的公历日期转换，以1970-01-01为第零天
 	struct Civil { int year; int month; int day; };
 
 	int64_t floor_div(int64_t p_value, int64_t p_unit) {

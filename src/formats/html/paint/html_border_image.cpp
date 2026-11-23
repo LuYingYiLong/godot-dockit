@@ -101,7 +101,7 @@ namespace dockit {
 				patches.push_back({
 					Rect2(Vector2(source_left, source_y[y]) * texture_scale, source_size * texture_scale),
 					Rect2(position, size), position + Vector2(a.phase, b.phase), Vector2(a.tile, b.tile), Vector2(a.period, b.period),
-				});
+					});
 			}
 		}
 		return patches;

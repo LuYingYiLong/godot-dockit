@@ -97,23 +97,23 @@ namespace litehtml {
 				const auto& end = points[p_end];
 				const auto width = end.fit_end - points[p_start].start;
 				return width > capacity(p_line) ? width - end.conditional_end_reduction : width;
-			};
+				};
 			const auto allows_cut = [&](size_t p_line, size_t p_start, size_t p_end, size_t p_streak) {
 				const auto& point = points[p_end];
 				if (!point.hyphen_width) return true;
 				if ((p_protect_final_line && p_line == p_line_count - 2) || !p_hyphenation_limits.allows_line(p_streak) ||
 					std::find(p_suppressed_hyphen_lines.begin(), p_suppressed_hyphen_lines.end(), p_line_offset + p_line) !=
-						p_suppressed_hyphen_lines.end()) return false;
+					p_suppressed_hyphen_lines.end()) return false;
 				if (point.preceding_ordinary_cut <= p_start) return true;
 				const auto slack = capacity(p_line) - used_width(p_line, p_start, point.preceding_ordinary_cut);
 				return css_hyphenation_limits::allows_hyphen_in_zone(zone, static_cast<pixel_t>(slack));
-			};
+				};
 			const auto cost = [&](size_t p_line, size_t p_start, size_t p_end) {
 				const double limit = capacity(p_line);
 				const double width = used_width(p_line, p_start, p_end);
 				const double occupied = p_end == last ? std::max(width, std::min(limit, points[p_end].full_end - points[p_start].start)) : width;
 				return line_cost(p_style, (limit - occupied) / limit, p_end == last);
-			};
+				};
 
 			std::vector<size_t> greedy{ 0 };
 			std::vector<size_t> greedy_streaks{ 0 };
@@ -150,7 +150,7 @@ namespace litehtml {
 			std::vector<Choice> best((rows + 1) * points.size() * states);
 			const auto choice = [&](size_t p_row, size_t p_point, size_t p_streak) -> Choice& {
 				return best[(p_row * points.size() + p_point) * states + p_streak];
-			};
+				};
 			choice(0, greedy[first_row], states == 1 ? 0 : greedy_streaks[first_row]).cost = 0;
 			for (size_t row = 0; row < rows; ++row) {
 				const size_t line = first_row + row;
@@ -206,7 +206,7 @@ namespace litehtml {
 	}
 
 	void render_item_inline_context::avoid_last_hyphenation(const containing_block_context& self_size, formatting_context* fmt_ctx,
-			const formatting_context& initial_context) {
+		const formatting_context& initial_context) {
 		const auto* marker = last_full_line_hyphen();
 		if (!marker) return;
 		const size_t first_changed_line = m_line_boxes.size() - 2;
@@ -216,7 +216,7 @@ namespace litehtml {
 				overflow -= std::min<pixel_t>(0, m_line_boxes[index]->m_wrap_slack);
 			}
 			return overflow;
-		};
+			};
 		const auto original_overflow = tail_overflow();
 		const auto intrinsic = m_rendered_width;
 		std::unordered_set<const render_item*> attempted;
@@ -259,7 +259,7 @@ namespace litehtml {
 	}
 
 	void render_item_inline_context::apply_text_wrap(const containing_block_context& self_size, formatting_context* fmt_ctx,
-			bool protect_final_line) {
+		bool protect_final_line) {
 		const auto style = css().get_text_wrap_style();
 		const pixel_t width = self_size.render_width;
 		if (style == text_wrap_auto || style == text_wrap_stable || m_line_boxes.size() < 2 || width <= 0 ||
@@ -284,10 +284,10 @@ namespace litehtml {
 			const int flag = p_conditional ? text_spacing_allow_end : text_spacing_end;
 			return terminal_punctuation.kind == spacing_punctuation::closing && (terminal_punctuation.flags & flag) ?
 				terminal_punctuation.reduction : 0;
-		};
+			};
 		const auto finish = [&]() {
 			const auto end = advance + start_edges - collapsible_end - terminal_reduction(false);
-			current.points.push_back({ nullptr, advance, end - hanging_end, end, {}, 0, terminal_reduction(true) });
+			current.points.push_back({ nullptr, advance, end - hanging_end, end,{}, 0, terminal_reduction(true) });
 			paragraphs.push_back(std::move(current));
 			current = {};
 			advance = start_edges = collapsible_end = hanging_end = 0;
@@ -297,7 +297,7 @@ namespace litehtml {
 			has_opening_edge = false;
 			preceding_punctuation = terminal_punctuation = {};
 			ordinary_cut = 0;
-		};
+			};
 		go_inside_inline go_inside;
 		inline_selector inlines;
 		elements_iterator iterator(true, &go_inside, &inlines);
@@ -353,7 +353,7 @@ namespace litehtml {
 			const auto reduction = trim_here ? punctuation.reduction : 0;
 			const double spacing = previous_with_width && measured > 0 ?
 				line_box::fragment_spacing(*previous_with_width, previous_width - prior_reduction, *item, measured - reduction) +
-					(has_inline_edge ? 0 : text_autospace_gap(*previous_with_width->src_el(), source)) : 0;
+				(has_inline_edge ? 0 : text_autospace_gap(*previous_with_width->src_el(), source)) : 0;
 			if (current.can_plan && previous && (previous_with_width || !is_explicit_wrap_point(*previous->src_el()))) {
 				const auto* prefix = previous_with_width ? previous_with_width->src_el().get() : nullptr;
 				const auto opportunity = line_box::wrap_between(*previous->src_el(), source, prefix);
@@ -383,7 +383,7 @@ namespace litehtml {
 				if (!collapsible && !line_box::is_hanging_space(source)) terminal_punctuation = preceding_punctuation;
 				has_inline_edge = false;
 			}
-		});
+			});
 		if (unsupported_flow) return;
 		if (previous) finish();
 		const auto original = wrap_slack_by_group();

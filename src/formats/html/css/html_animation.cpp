@@ -66,10 +66,10 @@ String HTMLAnimation::get_play_state() const {
 	const auto info = get_info();
 	if (!info) return "idle";
 	switch (info->state) {
-		case PlaybackState::idle: return "idle";
-		case PlaybackState::running: return "running";
-		case PlaybackState::paused: return "paused";
-		case PlaybackState::finished: return "finished";
+	case PlaybackState::idle: return "idle";
+	case PlaybackState::running: return "running";
+	case PlaybackState::paused: return "paused";
+	case PlaybackState::finished: return "finished";
 	}
 	return "idle";
 }
@@ -84,9 +84,26 @@ double HTMLAnimation::get_current_time() const {
 	return info ? info->time : 0.0;
 }
 
-bool HTMLAnimation::set_current_time(double p_time) { return control(PlaybackCommand::seek, p_time); }
-bool HTMLAnimation::play() { return control(PlaybackCommand::play); }
-bool HTMLAnimation::pause() { return control(PlaybackCommand::pause); }
-bool HTMLAnimation::cancel() { return control(PlaybackCommand::cancel); }
-bool HTMLAnimation::finish() { return control(PlaybackCommand::finish); }
-bool HTMLAnimation::reverse() { return control(PlaybackCommand::reverse); }
+bool HTMLAnimation::set_current_time(double p_time) {
+	return control(PlaybackCommand::seek, p_time);
+}
+
+bool HTMLAnimation::play() {
+	return control(PlaybackCommand::play);
+}
+
+bool HTMLAnimation::pause() {
+	return control(PlaybackCommand::pause);
+}
+
+bool HTMLAnimation::cancel() {
+	return control(PlaybackCommand::cancel);
+}
+
+bool HTMLAnimation::finish() {
+	return control(PlaybackCommand::finish);
+}
+
+bool HTMLAnimation::reverse() {
+	return control(PlaybackCommand::reverse);
+}

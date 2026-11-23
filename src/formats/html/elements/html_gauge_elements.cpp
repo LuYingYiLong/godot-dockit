@@ -37,7 +37,7 @@ namespace {
 	MeterValue meter_value(const element* p_node) {
 		const auto number = [&](const char* p_name, double p_default) {
 			return dockit::html_number(p_node ? p_node->get_attr(p_name) : nullptr).value_or(p_default);
-		};
+			};
 		const double min = number("min", 0);
 		const double max = std::max(min, number("max", 1));
 		const double low = std::clamp(number("low", min), min, max);
@@ -109,25 +109,31 @@ TypedArray<HTMLElement> HTMLProgressElement::get_labels() const {
 }
 
 void HTMLMeterElement::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_labels"), &HTMLMeterElement::get_labels);
+	
 	ClassDB::bind_method(D_METHOD("get_min"), &HTMLMeterElement::get_min);
 	ClassDB::bind_method(D_METHOD("set_min", "value"), &HTMLMeterElement::set_min);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min"), "set_min", "get_min");
+	
 	ClassDB::bind_method(D_METHOD("get_max"), &HTMLMeterElement::get_max);
 	ClassDB::bind_method(D_METHOD("set_max", "value"), &HTMLMeterElement::set_max);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max"), "set_max", "get_max");
+	
 	ClassDB::bind_method(D_METHOD("get_value"), &HTMLMeterElement::get_value);
 	ClassDB::bind_method(D_METHOD("set_value", "value"), &HTMLMeterElement::set_value);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "value"), "set_value", "get_value");
+	
 	ClassDB::bind_method(D_METHOD("get_low"), &HTMLMeterElement::get_low);
 	ClassDB::bind_method(D_METHOD("set_low", "value"), &HTMLMeterElement::set_low);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "low"), "set_low", "get_low");
+	
 	ClassDB::bind_method(D_METHOD("get_high"), &HTMLMeterElement::get_high);
 	ClassDB::bind_method(D_METHOD("set_high", "value"), &HTMLMeterElement::set_high);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "high"), "set_high", "get_high");
+	
 	ClassDB::bind_method(D_METHOD("get_optimum"), &HTMLMeterElement::get_optimum);
 	ClassDB::bind_method(D_METHOD("set_optimum", "value"), &HTMLMeterElement::set_optimum);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "optimum"), "set_optimum", "get_optimum");
-	ClassDB::bind_method(D_METHOD("get_labels"), &HTMLMeterElement::get_labels);
 }
 
 double HTMLMeterElement::get_min() const {

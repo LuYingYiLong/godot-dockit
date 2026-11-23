@@ -42,13 +42,13 @@ namespace litehtml {
 				value.type = image::type_solid;
 				value.fallback_color = web_color::transparent;
 				return value;
-			};
+				};
 			auto light = parse_branch(tokens[0]);
 			auto dark = parse_branch(tokens[2]);
 			if (!light || !dark) return std::nullopt;
 			image result;
 			result.type = image::type_light_dark;
-			result.m_light_dark = std::make_shared<css_light_dark_image>(css_light_dark_image{std::move(*light), std::move(*dark)});
+			result.m_light_dark = std::make_shared<css_light_dark_image>(css_light_dark_image{ std::move(*light), std::move(*dark) });
 			return result;
 		}
 
@@ -269,7 +269,8 @@ namespace litehtml {
 				media_features output;
 				container->get_media_features(output);
 				select_css_image(r_image, output.resolution > 0 ? output.resolution / CSS_DPI_PER_DPPX : 1.0);
-			} else {
+			}
+			else {
 				auto selected = p_scheme == color_scheme::dark ? r_image.m_light_dark->dark : r_image.m_light_dark->light;
 				if (r_image.from_image_set) {
 					selected.from_image_set = true;
@@ -280,47 +281,47 @@ namespace litehtml {
 		}
 		if (r_image.fallback_color) r_image.fallback_color = r_image.fallback_color->compute_for_scheme(p_scheme);
 		switch (r_image.type) {
-			case image::type_url:
-				r_image.orientation = p_orientation;
-				r_image.density = resolve_image_dppx(r_image.url, p_base, *container, p_resolution,
-					r_image.from_image_set, r_image.candidate_density);
-				if (r_image.fallback_color) {
-					size natural;
-					container->get_image_size(r_image.url.c_str(), p_base.c_str(), natural, p_orientation);
-					if (natural.width <= 0 || natural.height <= 0) r_image.type = image::type_solid;
-				}
-				else if (!r_image.url.empty()) {
-					container->load_image(r_image.url.c_str(), p_base.c_str(), true, p_orientation);
-				}
-				break;
-			case image::type_gradient: {
-				auto& gradient = r_image.m_gradient;
-				for (auto* length : { &gradient.radial_radius_x, &gradient.radial_radius_y, &gradient.position_x, &gradient.position_y })
-					p_doc.cvt_units(*length, p_font, 0, p_units);
-				for (auto& stop : gradient.m_colors) {
-					stop.color = stop.color.compute_for_scheme(p_scheme);
-					if (stop.length) p_doc.cvt_units(*stop.length, p_font, 0, p_units);
-				}
-				break;
+		case image::type_url:
+			r_image.orientation = p_orientation;
+			r_image.density = resolve_image_dppx(r_image.url, p_base, *container, p_resolution,
+				r_image.from_image_set, r_image.candidate_density);
+			if (r_image.fallback_color) {
+				size natural;
+				container->get_image_size(r_image.url.c_str(), p_base.c_str(), natural, p_orientation);
+				if (natural.width <= 0 || natural.height <= 0) r_image.type = image::type_solid;
 			}
-			case image::type_cross_fade: {
-				auto mixture = std::make_shared<css_cross_fade>();
-				for (const auto& layer : r_image.m_cross_fade->layers) {
-					if (layer.weight <= 0) continue;
-					auto value = layer.value;
-					compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation, p_scheme, p_units);
-					if (value.type == image::type_cross_fade) {
-						for (const auto& nested : value.m_cross_fade->layers)
-							mixture->layers.push_back({ nested.value, nested.weight * layer.weight });
-					}
-					else {
-						mixture->layers.push_back({ std::move(value), layer.weight });
-					}
-				}
-				r_image.m_cross_fade = std::move(mixture);
-				break;
+			else if (!r_image.url.empty()) {
+				container->load_image(r_image.url.c_str(), p_base.c_str(), true, p_orientation);
 			}
-			default: break;
+			break;
+		case image::type_gradient: {
+			auto& gradient = r_image.m_gradient;
+			for (auto* length : { &gradient.radial_radius_x, &gradient.radial_radius_y, &gradient.position_x, &gradient.position_y })
+				p_doc.cvt_units(*length, p_font, 0, p_units);
+			for (auto& stop : gradient.m_colors) {
+				stop.color = stop.color.compute_for_scheme(p_scheme);
+				if (stop.length) p_doc.cvt_units(*stop.length, p_font, 0, p_units);
+			}
+			break;
+		}
+		case image::type_cross_fade: {
+			auto mixture = std::make_shared<css_cross_fade>();
+			for (const auto& layer : r_image.m_cross_fade->layers) {
+				if (layer.weight <= 0) continue;
+				auto value = layer.value;
+				compute_css_image(value, p_base, p_doc, p_font, p_resolution, p_orientation, p_scheme, p_units);
+				if (value.type == image::type_cross_fade) {
+					for (const auto& nested : value.m_cross_fade->layers)
+						mixture->layers.push_back({ nested.value, nested.weight * layer.weight });
+				}
+				else {
+					mixture->layers.push_back({ std::move(value), layer.weight });
+				}
+			}
+			r_image.m_cross_fade = std::move(mixture);
+			break;
+		}
+		default: break;
 		}
 	}
 

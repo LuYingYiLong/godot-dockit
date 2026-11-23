@@ -27,7 +27,7 @@ namespace litehtml {
 				css_length length;
 				if (length.from_token(token, f_length | f_math | (count == 2 ? f_positive : 0))) {
 					if (lengths_finished || count == max_lengths ||
-							!std::isfinite(length.val()) || (count == 2 && length.val() < 0.0f)) {
+						!std::isfinite(length.val()) || (count == 2 && length.val() < 0.0f)) {
 						return false;
 					}
 					*lengths[count++] = length;

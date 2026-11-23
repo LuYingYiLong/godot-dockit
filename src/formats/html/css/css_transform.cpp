@@ -229,20 +229,23 @@ namespace litehtml {
 		function.type = p_kind;
 		if (p_kind == kind::rotate) {
 			if (!parse_rotation(p_tokens, function)) return false;
-		} else if (p_kind == kind::translate) {
+		}
+		else if (p_kind == kind::translate) {
 			if (p_tokens.size() > 3 || !parse_length(p_tokens[0], function.x, true) ||
 				(p_tokens.size() >= 2 && !parse_length(p_tokens[1], function.y, true))) return false;
 			if (p_tokens.size() == 3) {
 				if (!parse_length(p_tokens[2], function.z, false)) return false;
 			}
-		} else if (p_kind == kind::scale) {
+		}
+		else if (p_kind == kind::scale) {
 			if (p_tokens.size() > 3 || !parse_scale(p_tokens[0], function.first)) return false;
 			function.second = function.first;
 			if (p_tokens.size() >= 2 && !parse_scale(p_tokens[1], function.second)) return false;
 			if (p_tokens.size() == 3) {
 				if (!parse_scale(p_tokens[2], function.third)) return false;
 			}
-		} else {
+		}
+		else {
 			return false;
 		}
 		r_value = std::move(function);

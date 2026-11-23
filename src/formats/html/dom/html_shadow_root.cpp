@@ -14,28 +14,36 @@ using dockit::HTMLDOM;
 
 void HTMLShadowRoot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_host"), &HTMLShadowRoot::get_host);
-	ClassDB::bind_method(D_METHOD("get_mode"), &HTMLShadowRoot::get_mode);
-	ClassDB::bind_method(D_METHOD("get_slot_assignment"), &HTMLShadowRoot::get_slot_assignment);
-	ClassDB::bind_method(D_METHOD("get_delegates_focus"), &HTMLShadowRoot::get_delegates_focus);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "host", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE, "HTMLElement"), "", "get_host");
+
+	ClassDB::bind_method(D_METHOD("get_mode"), &HTMLShadowRoot::get_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "mode", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_mode");
+
+	ClassDB::bind_method(D_METHOD("get_slot_assignment"), &HTMLShadowRoot::get_slot_assignment);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "slot_assignment", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_slot_assignment");
+
+	ClassDB::bind_method(D_METHOD("get_delegates_focus"), &HTMLShadowRoot::get_delegates_focus);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "delegates_focus", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_delegates_focus");
 }
+
 Ref<HTMLElement> HTMLShadowRoot::get_host() const {
 	return is_valid() ? get_dom().make_element(host.lock()) : Ref<HTMLElement>();
 }
+
 void HTMLSlotElement::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_name"), &HTMLSlotElement::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &HTMLSlotElement::set_name);
 	ClassDB::bind_method(D_METHOD("assigned_nodes", "flatten"), &HTMLSlotElement::assigned_nodes, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("assigned_elements", "flatten"), &HTMLSlotElement::assigned_elements, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("assign", "nodes"), &HTMLSlotElement::assign);
+
+	ClassDB::bind_method(D_METHOD("get_name"), &HTMLSlotElement::get_name);
+	ClassDB::bind_method(D_METHOD("set_name", "name"), &HTMLSlotElement::set_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
 }
+
 TypedArray<HTMLNode> HTMLSlotElement::assigned_nodes(bool p_flatten) const {
 	return is_valid() ? get_dom().slot_nodes(lock_element(), p_flatten) : TypedArray<HTMLNode>();
 }
+
 TypedArray<HTMLElement> HTMLSlotElement::assigned_elements(bool p_flatten) const {
 	TypedArray<HTMLElement> result;
 	for (const Ref<HTMLNode>& node : assigned_nodes(p_flatten)) {
@@ -44,6 +52,7 @@ TypedArray<HTMLElement> HTMLSlotElement::assigned_elements(bool p_flatten) const
 	}
 	return result;
 }
+
 Error HTMLSlotElement::assign(const Array& p_nodes) {
 	return is_valid() ? get_dom().assign_slot(lock_element(), p_nodes) : ERR_INVALID_PARAMETER;
 }
@@ -53,6 +62,7 @@ Ref<HTMLShadowRoot> HTMLDOM::get_shadow_root(const litehtml::element::ptr& p_hos
 		if (root->host.lock() == p_host && (!p_open_only || root->mode == "open")) return root;
 	return {};
 }
+
 Ref<HTMLShadowRoot> HTMLDOM::attach_shadow(const litehtml::element::ptr& p_host, const String& p_mode,
 	const String& p_assignment, bool p_focus) {
 	if (!p_host || p_host->shadow_tree || (p_mode != "open" && p_mode != "closed") ||
@@ -79,6 +89,7 @@ Ref<HTMLShadowRoot> HTMLDOM::attach_shadow(const litehtml::element::ptr& p_host,
 	notify_changed();
 	return root;
 }
+
 void HTMLDOM::initialize_shadow_roots() {
 	if (!document) return;
 	const auto visit = [&](const auto& self, const litehtml::element::ptr& parent) -> void {
@@ -98,11 +109,12 @@ void HTMLDOM::initialize_shadow_roots() {
 			}
 			self(self, child);
 		}
-	};
+		};
 	ChangeScope changes(*this);
 	visit(visit, document->root());
 	synchronize_slots();
 }
+
 void HTMLDOM::synchronize_slots() {
 	if (assigning_slots) return;
 	assigning_slots = true;
@@ -114,7 +126,7 @@ void HTMLDOM::synchronize_slots() {
 		visit_elements(root->lock_element(), [&](const auto& node) {
 			if (std::string(node->get_tagName()) == "slot") slots.push_back(node);
 			return false;
-		});
+			});
 		for (const auto& previous : root->previous_slots) {
 			if (const auto slot = previous.lock(); slot && std::find(slots.begin(), slots.end(), slot) == slots.end()) {
 				for (const auto& assigned : slot->assigned_nodes) if (auto child = assigned.lock()) child->assigned_slot.reset();
@@ -135,7 +147,8 @@ void HTMLDOM::synchronize_slots() {
 					const auto child = candidate.lock();
 					if (child && child->parent() == host) { slot->assigned_nodes.push_back(child); child->assigned_slot = slot; }
 				}
-			} else {
+			}
+			else {
 				for (const auto& child : host->children()) {
 					if (child->is_comment() || litehtml::is_generated_tag(child->tag()) || !child->assigned_slot.expired()) continue;
 					if (std::string(child->get_attr("slot", "")) == slot->get_attr("name", "")) {
@@ -159,6 +172,7 @@ void HTMLDOM::synchronize_slots() {
 		callable_mp_static(&HTMLDOM::deliver_slot_changes).bind(uint64_t(owner_id), generation).call_deferred();
 	}
 }
+
 void HTMLDOM::deliver_slot_changes(uint64_t p_owner, uint64_t p_version) {
 	auto* layout = Object::cast_to<HTMLLayout>(ObjectDB::get_instance(ObjectID(p_owner)));
 	if (!layout) return;
@@ -172,6 +186,7 @@ void HTMLDOM::deliver_slot_changes(uint64_t p_owner, uint64_t p_version) {
 		dom.dispatch_event(slot, event);
 	}
 }
+
 TypedArray<HTMLNode> HTMLDOM::slot_nodes(const litehtml::element::ptr& p_slot, bool p_flatten) const {
 	TypedArray<HTMLNode> result;
 	if (!p_slot || !p_slot->is_shadow_slot) return result;
@@ -181,13 +196,14 @@ TypedArray<HTMLNode> HTMLDOM::slot_nodes(const litehtml::element::ptr& p_slot, b
 		const auto add = [&](const litehtml::element::ptr& child) {
 			if (p_flatten && child->is_shadow_slot) self(self, child);
 			else if (auto node = make_node(child); node.is_valid() && node->get_node_type() != HTMLNode::COMMENT_NODE && !result.has(node)) result.append(node);
-		};
+			};
 		if (p_flatten && slot->assigned_nodes.empty()) for (const auto& child : slot->children()) add(child);
 		else for (const auto& candidate : slot->assigned_nodes) if (auto child = candidate.lock()) add(child);
-	};
+		};
 	collect(collect, p_slot);
 	return result;
 }
+
 Error HTMLDOM::assign_slot(const litehtml::element::ptr& p_slot, const Array& p_nodes) {
 	if (!p_slot) return ERR_INVALID_PARAMETER;
 	auto native = p_slot;
