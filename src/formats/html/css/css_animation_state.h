@@ -6,7 +6,11 @@
 #include <memory>
 #include <unordered_map>
 
-namespace litehtml { class element; class document; class html_tag; }
+namespace litehtml {
+	class element;
+	class document;
+	class html_tag;
+}
 
 namespace dockit::css {
 	class AnimationState {
@@ -40,8 +44,12 @@ namespace dockit::css {
 		uint64_t next_id = 1;
 
 	public:
-		uint64_t create(const std::shared_ptr<litehtml::element>& node, const std::shared_ptr<litehtml::document>& doc,
-			std::shared_ptr<const litehtml::css_keyframes> frames, const litehtml::css_animation& settings, double now);
+		uint64_t create(
+			const std::shared_ptr<litehtml::element>& node,
+			const std::shared_ptr<litehtml::document>& doc,
+			std::shared_ptr<const litehtml::css_keyframes> frames,
+			const litehtml::css_animation& settings, double now
+		);
 		std::vector<uint64_t> list(const litehtml::element* target) const;
 		std::optional<PlaybackInfo> info(uint64_t id, double now) const;
 		bool control(uint64_t id, PlaybackCommand command, double value, double now);

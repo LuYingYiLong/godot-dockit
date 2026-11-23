@@ -31,7 +31,9 @@ namespace litehtml {
 	};
 
 	std::optional<css_font_alternates> parse_css_font_alternates(const css_token_vector& tokens);
-	std::optional<css_font_feature_values_rule> parse_font_feature_values_rule(const css_token_vector& prelude,
-		const css_token_vector& contents);
+	std::optional<css_font_feature_values_rule> parse_font_feature_values_rule(
+		const css_token_vector& prelude,
+		const css_token_vector& contents
+	);
 	css_font_features resolve_font_feature_names(const css_font_alternates& alternates, const css_font_feature_names& definitions);
 }

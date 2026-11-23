@@ -5,14 +5,17 @@
 
 class HTMLShadowRoot : public HTMLDocumentFragment {
 	GDCLASS(HTMLShadowRoot, HTMLDocumentFragment)
+	
 	friend class dockit::HTMLDOM;
 	std::weak_ptr<litehtml::element> host;
 	godot::String mode;
 	godot::String slot_assignment;
 	bool delegates_focus = false;
 	std::vector<std::weak_ptr<litehtml::element>> previous_slots;
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::Ref<HTMLElement> get_host() const;
 	godot::String get_mode() const { return mode; }
@@ -22,8 +25,10 @@ public:
 
 class HTMLSlotElement : public HTMLElement {
 	GDCLASS(HTMLSlotElement, HTMLElement)
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::String get_name() const { return get_attribute("name"); }
 	void set_name(const godot::String& p_name) { set_attribute("name", p_name); }

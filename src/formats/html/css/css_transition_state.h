@@ -46,8 +46,12 @@ namespace dockit::css {
 		using TransformInterpolationCheck = std::function<bool(const litehtml::element&, const litehtml::css_transform_list&)>;
 
 		static Snapshot capture(const std::shared_ptr<litehtml::element>& root);
-		void commit(const std::shared_ptr<litehtml::element>& root, const Snapshot& before, double now,
-			const TransformInterpolationCheck& can_interpolate_transform);
+		void commit(
+			const std::shared_ptr<litehtml::element>& root,
+			const Snapshot& before,
+			double now,
+			const TransformInterpolationCheck& can_interpolate_transform
+		);
 		void sample(double now);
 		bool active() const { return playing; }
 		bool has_overrides() const { return !overrides.empty(); }

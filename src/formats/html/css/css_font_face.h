@@ -74,8 +74,11 @@ namespace litehtml {
 		}
 	};
 
-	std::optional<css_font_face> parse_font_face_rule(const css_token_vector& prelude,
-		const css_token_vector& block, const string& base_url);
+	std::optional<css_font_face> parse_font_face_rule(
+		const css_token_vector& prelude,
+		const css_token_vector& block,
+		const string& base_url
+	);
 	bool supports_font_format(const string& format);
 	bool supports_font_tech(const string& tech);
 }

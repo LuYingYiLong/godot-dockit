@@ -5,8 +5,19 @@
 #include <array>
 
 namespace litehtml {
-	enum class css_edge_group { margin, padding, inset, scroll_padding, scroll_margin, border_width, border_style,
-		border_color, radius_x, radius_y, count };
+	enum class css_edge_group {
+		margin,
+		padding,
+		inset,
+		scroll_padding,
+		scroll_margin,
+		border_width,
+		border_style,
+		border_color,
+		radius_x,
+		radius_y,
+		count
+	};
 
 	struct css_flow_edges {
 		std::array<string_id, 4> physical;
@@ -25,7 +36,12 @@ namespace litehtml {
 	string_id css_canonical_property(string_id name);
 	const vector<string_id>& css_longhands(string_id name);
 
-	enum class css_declaration_status { unknown, invalid, deferred, parsed };
+	enum class css_declaration_status {
+		unknown,
+		invalid,
+		deferred,
+		parsed
+	};
 
 	struct css_parsed_declaration {
 		css_declaration_status status;

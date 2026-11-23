@@ -27,5 +27,8 @@ namespace litehtml {
 	using css_clip_path_ref = std::shared_ptr<const css_clip_path>;
 
 	std::optional<css_shape_box> parse_css_shape_box(const css_token& token);
-	std::optional<css_clip_path_ref> parse_css_clip_path(const css_token_vector& tokens, const std::string& base_url); // 解析 CSS 裁剪路径与参考盒
+	std::optional<css_clip_path_ref> parse_css_clip_path(
+		const css_token_vector& tokens,
+		const std::string& base_url
+	);																							// 解析 CSS 裁剪路径与参考盒
 }

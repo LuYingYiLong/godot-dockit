@@ -39,13 +39,18 @@ namespace dockit {
 		);
 
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
-			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);		// 更新文档的字体声明和命名特性并报告是否变化
-		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size); // 更新排版和媒体查询各自使用的视口尺寸
+			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);				// 更新文档的字体声明和命名特性并报告是否变化
+		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size);	// 更新排版和媒体查询各自使用的视口尺寸
 		void set_print_media(bool p_enabled) { print_media = p_enabled; }
 		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);
 		bool set_accessibility_preferences(bool p_reduce_motion, bool p_increase_contrast);
-		std::shared_ptr<litehtml::document> get_svg_clip_document(std::string_view p_url, const char* p_base); // 读取并缓存独立 SVG 裁剪文档
-		const litehtml::string_map* get_source_attributes(const litehtml::element& p_element) const; // 读取保留原始拼写的属性
+		std::shared_ptr<litehtml::document> get_svg_clip_document(
+			std::string_view p_url,
+			const char* p_base
+		);																						// 读取并缓存独立 SVG 裁剪文档
+		const litehtml::string_map* get_source_attributes(
+			const litehtml::element& p_element
+		) const;																				// 读取保留原始拼写的属性
 		godot::String resolve_image_source(std::string_view p_source) const {
 			return resources.resolve_image_source(p_source);
 		}
@@ -70,7 +75,7 @@ namespace dockit {
 			const godot::Vector2i& p_content_size,
 			const HTMLGeometryIndex& p_geometry,
 			const godot::Vector2& p_viewport_gutters
-		);																			// 记录已排版文档的绘制命令并建立可选择文本的索引
+		);																						// 记录已排版文档的绘制命令并建立可选择文本的索引
 		HTMLTextLayout shape_input(litehtml::uint_ptr p_font, const godot::String& p_text) {
 			return p_font && !p_text.is_empty() ? fonts.shape_text(p_font, p_text) : HTMLTextLayout{};
 		}
@@ -104,19 +109,19 @@ namespace dockit {
 		void record_css_diagnostic(const RenderGeometry& p_geometry, const godot::Rect2& p_box) {
 			paint.record_css_diagnostic(p_geometry, p_box);
 		}
-		void reset_stylesheet_reads();												// 重置本轮外部样式表的读取计数
+		void reset_stylesheet_reads();															// 重置本轮外部样式表的读取计数
 		void set_document_source_path(const godot::String& p_path) { resources.set_source_path(p_path); }
 		void refresh_document_base(const litehtml::element::ptr& p_root);
 		const HTMLResourceBase& get_document_base() const { return resources.get_document_base(); }
 		const HTMLResourceBase& get_fallback_base() const { return resources.get_fallback_base(); }
-		void set_css_diagnostics_enabled(bool p_enabled);							// 设置是否收集 CSS 声明诊断
+		void set_css_diagnostics_enabled(bool p_enabled);										// 设置是否收集 CSS 声明诊断
 		void set_transition_state(const css::TransitionState* p_state) { transition_state = p_state; }
 		void set_animation_state(const css::AnimationState* p_state) { animation_state = p_state; }
 		const litehtml::property_value* transition_override(const litehtml::element* p_element, litehtml::string_id p_name) const override;
 		const litehtml::property_value* animation_override(const litehtml::element* p_element, litehtml::string_id p_name) const override;
-		void begin_css_diagnostics();												// 清空上一轮样式诊断
-		void set_css_source_kind(litehtml::css_source_kind p_kind);					// 设置当前样式表来源
-		godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;			// 返回诊断快照
+		void begin_css_diagnostics();															// 清空上一轮样式诊断
+		void set_css_source_kind(litehtml::css_source_kind p_kind);								// 设置当前样式表来源
+		godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;						// 返回诊断快照
 		const std::vector<int64_t>* get_element_diagnostics(
 			const litehtml::element& p_element
 		) const;
@@ -228,7 +233,7 @@ namespace dockit {
 		void get_language(litehtml::string& r_language, litehtml::string& r_culture) const override;
 
 		void import_css(litehtml::string& r_text, const litehtml::string& p_url, litehtml::string& r_css_base) override;
-		void set_base_url(const char*) override {} // 文档基准在读取样式表前按 DOM 顺序计算
+		void set_base_url(const char*) override {}												// 文档基准在读取样式表前按 DOM 顺序计算
 		void set_caption(const char*) override {}
 		void link(const std::shared_ptr<litehtml::document>& p_doc, const litehtml::element::ptr& p_element) override;
 		void on_anchor_click(const char*, const litehtml::element::ptr&) override {}

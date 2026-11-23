@@ -71,7 +71,7 @@ namespace dockit {
 		uint64_t observer_delivery_epoch = 0;
 
 		// 事件监听器按目标槽位分开存放：元素按 litehtml 元素指针索引，document 与 window
-		// 各有一份独立列表，避免"文档节点"和 <html> 元素共用同一个键而重复触发。
+		// 各有一份独立列表，避免"文档节点"和 <html> 元素共用同一个键而重复触发
 		struct EventListener {
 			godot::Callable callable;
 			godot::ObjectID owner;
@@ -96,17 +96,17 @@ namespace dockit {
 		ListenerStore window_event_listeners;
 		godot::HashMap<godot::StringName, std::size_t> event_counts_by_type;
 		std::size_t event_listener_count = 0;
-	bool event_debug = false;
-	bool design_mode = false;
-	godot::HashSet<int32_t> active_pointer_ids;
-	godot::HashMap<int32_t, godot::Ref<HTMLElement>> pointer_capture_targets;
-	struct PendingPointerCaptureEvent {
-		godot::StringName type;
-		godot::Ref<HTMLElement> target;
-		int32_t pointer_id = 0;
-	};
-	std::vector<PendingPointerCaptureEvent> pending_pointer_capture_events;
-	bool flushing_pointer_capture_events = false;
+		bool event_debug = false;
+		bool design_mode = false;
+		godot::HashSet<int32_t> active_pointer_ids;
+		godot::HashMap<int32_t, godot::Ref<HTMLElement>> pointer_capture_targets;
+		struct PendingPointerCaptureEvent {
+			godot::StringName type;
+			godot::Ref<HTMLElement> target;
+			int32_t pointer_id = 0;
+		};
+		std::vector<PendingPointerCaptureEvent> pending_pointer_capture_events;
+		bool flushing_pointer_capture_events = false;
 		uint64_t next_event_listener_id = 1;
 		mutable godot::ObjectID window_handle;
 		int event_dispatch_depth = 0;
@@ -277,27 +277,32 @@ namespace dockit {
 		bool has_document_event_listener(const godot::StringName& p_type) const;
 		bool has_window_event_listener(const godot::StringName& p_type) const;
 		bool has_event_listener_for_type(const godot::StringName& p_type) const;
-	std::size_t get_event_listener_count(const godot::StringName& p_type) const;
-	void set_event_debug(bool p_enabled) { event_debug = p_enabled; }
+		std::size_t get_event_listener_count(const godot::StringName& p_type) const;
+		void set_event_debug(bool p_enabled) { event_debug = p_enabled; }
 		std::size_t get_event_listener_count() const { return event_listener_count; }
-		godot::Ref<HTMLWindow> get_window() const; // 返回当前文档的 window 事件目标
+		godot::Ref<HTMLWindow> get_window() const;												// 返回当前文档的 window 事件目标
 		uint64_t get_generation() const { return generation; }
 		void clear_event_listeners();
-	void begin_pointer(int32_t p_pointer_id);
-	void end_pointer(int32_t p_pointer_id);
-	void release_pointer_captures_in_subtree(const litehtml::element& p_element);
-	void release_all_pointer_captures();
-	godot::Error set_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id);
-	godot::Error release_pointer_capture(int32_t p_pointer_id);
-	bool has_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id) const;
-	godot::Ref<HTMLElement> get_pointer_capture(int32_t p_pointer_id) const;
-	void flush_pointer_capture_events();
+		void begin_pointer(int32_t p_pointer_id);
+		void end_pointer(int32_t p_pointer_id);
+		void release_pointer_captures_in_subtree(const litehtml::element& p_element);
+		void release_all_pointer_captures();
+		godot::Error set_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id);
+		godot::Error release_pointer_capture(int32_t p_pointer_id);
+		bool has_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id) const;
+		godot::Ref<HTMLElement> get_pointer_capture(int32_t p_pointer_id) const;
+		void flush_pointer_capture_events();
 		void forget_subtree_listeners(const litehtml::element& p_element);
 		void transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_from, const litehtml::element::ptr& p_to);
 		void queue_scroll_event(const godot::Ref<HTMLNode>& p_node);
 		static void deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
 		static void deliver_scrollend(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
-		void normalize_details(const litehtml::element::ptr& p_tree, const std::vector<litehtml::element::ptr>& p_moved = {}, bool p_prefer_moved = false, bool p_notify = true);
+		void normalize_details(
+			const litehtml::element::ptr& p_tree,
+			const std::vector<litehtml::element::ptr>& p_moved = {},
+			bool p_prefer_moved = false,
+			bool p_notify = true
+		);
 		void form_state_changed(const litehtml::element::ptr& p_node);
 
 		static godot::CharString normalize_tag_name(const godot::String& p_tag_name);

@@ -15,7 +15,19 @@ namespace dockit::css {
 	};
 
 	struct ShapeCommand {
-		enum class Kind { move, line, horizontal, vertical, quadratic, cubic, smooth_quadratic, smooth_cubic, arc, close };
+		enum class Kind {
+			move,
+			line,
+			horizontal,
+			vertical,
+			quadratic,
+			cubic,
+			smooth_quadratic,
+			smooth_cubic,
+			arc,
+			close
+		};
+
 		Kind kind = Kind::line;
 		bool relative = false;
 		litehtml::css_image_position end;
@@ -33,9 +45,13 @@ namespace dockit::css {
 		bool even_odd = false;
 	};
 
-	std::optional<CSSShapePath> parse_shape_path(const css_token_vector& p_tokens); // 解析 shape() 的起点、命令和填充规则
-	void compute_shape_path(CSSShapePath& r_path, const ComputeContext& p_context,
-		const litehtml::font_metrics& p_font, bool p_rtl); // 计算相对长度和逻辑边，保留布局百分比
+	std::optional<CSSShapePath> parse_shape_path(const css_token_vector& p_tokens);				// 解析 shape() 的起点、命令和填充规则
+	void compute_shape_path(
+		CSSShapePath& r_path,
+		const ComputeContext& p_context,
+		const litehtml::font_metrics& p_font,
+		bool p_rtl
+	);																							// 计算相对长度和逻辑边，保留布局百分比
 	std::optional<SVGPath> resolve_shape_path(const CSSShapePath& p_path,
-		litehtml::pixel_t p_width, litehtml::pixel_t p_height); // 根据参考盒尺寸解析路径段
+		litehtml::pixel_t p_width, litehtml::pixel_t p_height);									// 根据参考盒尺寸解析路径段
 }

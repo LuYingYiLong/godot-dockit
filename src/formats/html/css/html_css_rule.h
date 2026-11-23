@@ -13,7 +13,7 @@ class CSSStyleDeclaration;
 
 class CSSRule : public godot::RefCounted {
 	GDCLASS(CSSRule, godot::RefCounted)
-	friend class HTMLStyleSheet;
+		friend class HTMLStyleSheet;
 	friend class CSSStyleDeclaration;
 
 	godot::Ref<HTMLStyleSheet> stylesheet;
@@ -44,7 +44,7 @@ public:
 
 class CSSStyleDeclaration : public godot::RefCounted {
 	GDCLASS(CSSStyleDeclaration, godot::RefCounted)
-	friend class CSSRule;
+		friend class CSSRule;
 
 	godot::Ref<CSSRule> rule;
 
@@ -59,7 +59,10 @@ public:
 	void set_css_text(const godot::String& p_text);
 	godot::String get_property_value(const godot::String& p_name) const;
 	godot::String get_property_priority(const godot::String& p_name) const;
-	void set_property(const godot::String& p_name, const godot::String& p_value,
-		const godot::String& p_priority = "");
+	void set_property(
+		const godot::String& p_name,
+		const godot::String& p_value,
+		const godot::String& p_priority = ""
+	);
 	godot::String remove_property(const godot::String& p_name);
 };

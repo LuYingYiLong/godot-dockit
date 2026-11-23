@@ -9,5 +9,5 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Ref<HTMLDocumentFragment> get_content() const;	// 返回模板持有的分离片段
+	godot::Ref<HTMLDocumentFragment> get_content() const;										// 返回模板持有的分离片段
 };

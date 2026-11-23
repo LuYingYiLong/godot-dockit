@@ -57,7 +57,10 @@ class HTMLMutationObserver : public godot::RefCounted {
 	godot::TypedArray<godot::Dictionary> take_owner(dockit::HTMLDOM& p_owner);
 
 public:
-	godot::Error observe(const godot::Ref<HTMLNode>& p_target, const godot::Dictionary& p_options); // 观察节点及可选的子树
-	void disconnect(); // 解除观察并清空待交付记录
-	godot::TypedArray<godot::Dictionary> take_records(); // 取出并清空待交付记录
+	godot::Error observe(
+		const godot::Ref<HTMLNode>& p_target,
+		const godot::Dictionary& p_options
+	);																							// 观察节点及可选的子树
+	void disconnect();																			// 解除观察并清空待交付记录
+	godot::TypedArray<godot::Dictionary> take_records();										// 取出并清空待交付记录
 };

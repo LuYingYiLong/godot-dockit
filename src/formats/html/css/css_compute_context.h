@@ -6,7 +6,6 @@
 #include "css_units.h"
 
 namespace dockit::css {
-
 	// The host supplies the display scale and resource queries for the current document.
 	class StyleHost {
 	public:
@@ -42,5 +41,4 @@ namespace dockit::css {
 	private:
 		UnitContext unit_context(const font_metrics& metrics, css_length_context overrides = {}) const;
 	};
-
 }
