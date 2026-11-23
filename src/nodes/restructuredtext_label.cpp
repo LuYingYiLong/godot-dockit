@@ -592,6 +592,13 @@ namespace {
 	}
 
 	static int32_t get_theme_font_size_or(Control* p_owner, const StringName& p_type, const StringName& p_name, int32_t p_default) {
+		if (p_owner != nullptr && p_owner->has_theme_font_size_override(p_name)) {
+			const int32_t value = p_owner->get_theme_font_size(p_name, p_type);
+			if (value > 0) {
+				return value;
+			}
+		}
+
 		const Ref<Theme> theme = p_owner == nullptr ? Ref<Theme>() : p_owner->get_theme();
 		if (theme.is_valid() && theme->has_font_size(p_name, p_type)) {
 			const int32_t value = theme->get_font_size(p_name, p_type);
@@ -651,6 +658,38 @@ namespace {
 		}
 
 		return Ref<StyleBox>();
+	}
+
+	static StringName get_admonition_theme_item_name(const String& p_directive, const String& p_item) {
+		String directive = p_directive.to_lower();
+		if (directive == "admonition") {
+			directive = "custom";
+		}
+		return StringName(String("admonition_") + directive + String("_") + p_item);
+	}
+
+	static int32_t get_admonition_theme_font_size_or(Control* p_owner, const String& p_directive, const String& p_item, int32_t p_default) {
+		const StringName type = "RestructuredtextLabel";
+		const int32_t shared_value = get_theme_font_size_or(p_owner, type, StringName(String("admonition_") + p_item), p_default);
+		return get_theme_font_size_or(p_owner, type, get_admonition_theme_item_name(p_directive, p_item), shared_value);
+	}
+
+	static int32_t get_admonition_theme_constant_or(Control* p_owner, const String& p_directive, const String& p_item, int32_t p_default) {
+		const StringName type = "RestructuredtextLabel";
+		const int32_t shared_value = get_theme_constant_or(p_owner, type, StringName(String("admonition_") + p_item), p_default);
+		return get_theme_constant_or(p_owner, type, get_admonition_theme_item_name(p_directive, p_item), shared_value);
+	}
+
+	static Color get_admonition_theme_color_or(Control* p_owner, const String& p_directive, const String& p_item, const Color& p_default) {
+		const StringName type = "RestructuredtextLabel";
+		const Color shared_value = get_theme_color_or(p_owner, type, StringName(String("admonition_") + p_item), p_default);
+		return get_theme_color_or(p_owner, type, get_admonition_theme_item_name(p_directive, p_item), shared_value);
+	}
+
+	static Ref<StyleBox> get_admonition_theme_stylebox_or(Control* p_owner, const String& p_directive, const String& p_item) {
+		const StringName type = "RestructuredtextLabel";
+		const Ref<StyleBox> specific = get_theme_stylebox_or(p_owner, type, get_admonition_theme_item_name(p_directive, p_item));
+		return specific.is_valid() ? specific : get_theme_stylebox_or(p_owner, type, StringName(String("admonition_") + p_item));
 	}
 
 	static Ref<StyleBoxFlat> create_internal_stylebox(const Color& p_background_color, const Color& p_border_color, int32_t p_border_left, int32_t p_border_top, int32_t p_border_right, int32_t p_border_bottom, float p_margin_left, float p_margin_top, float p_margin_right, float p_margin_bottom, int32_t p_corner_radius = 0) {
@@ -731,14 +770,14 @@ namespace {
 	static String render_admonition_block(const RSTBlock& p_block, RestructuredtextLabel* p_owner, const RSTFootnoteMap* p_footnotes = nullptr) {
 		const int32_t base_size = 16;
 		const int32_t extra = p_owner == nullptr ? 0 : p_owner->get_extra_font_size();
-		const int32_t size = std::max<int32_t>(1, get_theme_font_size_or(p_owner, "RestructuredtextLabel", "admonition_font_size", base_size) + extra);
-		const Color text_color = get_theme_color_or(p_owner, "RestructuredtextLabel", "admonition_font_color", Color(0.86, 0.88, 0.91, 1.0));
+		const int32_t size = std::max<int32_t>(1, get_admonition_theme_font_size_or(p_owner, p_block.directive, "font_size", base_size) + extra);
+		const Color text_color = get_admonition_theme_color_or(p_owner, p_block.directive, "font_color", Color(0.86, 0.88, 0.91, 1.0));
 
-		const Color accent = default_admonition_accent(p_block.directive);
+		const Color accent = get_admonition_theme_color_or(p_owner, p_block.directive, "accent_color", default_admonition_accent(p_block.directive));
 		const Color border_color = accent;
 		const Color header_color = accent;
 		const Color background_color = Color(0.10, 0.12, 0.14, 1.0);
-		const Color header_font_color = get_theme_color_or(p_owner, "RestructuredtextLabel", "admonition_header_font_color", Color(1, 1, 1, 1));
+		const Color header_font_color = get_admonition_theme_color_or(p_owner, p_block.directive, "header_font_color", Color(1, 1, 1, 1));
 		const int32_t internal_header_margin = 6;
 		const int32_t internal_body_margin = 8;
 		const int32_t internal_body_margin_left = 12;
@@ -1472,8 +1511,12 @@ void RSTDocumentCanvas::rebuild_layout() {
 		float top_padding = 0.0f;
 		float bottom_padding = 0.0f;
 		const String block_theme_prefix = canvas_block_theme_prefix(block);
-		const int32_t block_spacing_before = std::max<int32_t>(0, get_theme_constant_or(document_view, "RestructuredtextLabel", StringName(block_theme_prefix + String("_space_before")), 0));
-		const int32_t block_spacing_after = std::max<int32_t>(0, get_theme_constant_or(document_view, "RestructuredtextLabel", StringName(block_theme_prefix + String("_space_after")), paragraph_separation));
+		const int32_t block_spacing_before = std::max<int32_t>(0, block.type == RST_BLOCK_ADMONITION ?
+			get_admonition_theme_constant_or(document_view, block.directive, "space_before", 0) :
+			get_theme_constant_or(document_view, "RestructuredtextLabel", StringName(block_theme_prefix + String("_space_before")), 0));
+		const int32_t block_spacing_after = std::max<int32_t>(0, block.type == RST_BLOCK_ADMONITION ?
+			get_admonition_theme_constant_or(document_view, block.directive, "space_after", paragraph_separation) :
+			get_theme_constant_or(document_view, "RestructuredtextLabel", StringName(block_theme_prefix + String("_space_after")), paragraph_separation));
 
 		item.text_color = body_color;
 		item.background_color = Color(0, 0, 0, 0);
@@ -1531,16 +1574,16 @@ void RSTDocumentCanvas::rebuild_layout() {
 			bottom_padding = get_stylebox_margin_or(item.panel_stylebox, SIDE_BOTTOM, 8.0f);
 			break;
 		case RST_BLOCK_ADMONITION: {
-			font_size = std::max<int32_t>(1, get_theme_font_size_or(document_view, "RestructuredtextLabel", "admonition_font_size", body_base) + extra);
-			item.text_color = get_theme_color_or(document_view, "RestructuredtextLabel", "admonition_font_color", body_color);
-			const Color header_text_color = get_theme_color_or(document_view, "RestructuredtextLabel", "admonition_header_font_color", Color(1, 1, 1, 1));
+			font_size = std::max<int32_t>(1, get_admonition_theme_font_size_or(document_view, block.directive, "font_size", body_base) + extra);
+			item.text_color = get_admonition_theme_color_or(document_view, block.directive, "font_color", body_color);
+			const Color header_text_color = get_admonition_theme_color_or(document_view, block.directive, "header_font_color", Color(1, 1, 1, 1));
 			item.header_text_color = header_text_color;
-			const Color accent = default_admonition_accent(block.directive);
+			const Color accent = get_admonition_theme_color_or(document_view, block.directive, "accent_color", default_admonition_accent(block.directive));
 			item.border_color = accent;
 			item.header_color = accent;
 			item.background_color = Color(0.10, 0.12, 0.14, 1.0);
-			item.panel_stylebox = get_theme_stylebox_or(document_view, "RestructuredtextLabel", "admonition_panel");
-			item.header_stylebox = get_theme_stylebox_or(document_view, "RestructuredtextLabel", "admonition_header_panel");
+			item.panel_stylebox = get_admonition_theme_stylebox_or(document_view, block.directive, "panel");
+			item.header_stylebox = get_admonition_theme_stylebox_or(document_view, block.directive, "header_panel");
 			item.framed = true;
 			item.border_width = 4;
 			const float internal_body_margin = 8.0f;

@@ -92,22 +92,37 @@ StyleBox content margins affect the rendered inset and layout size.
 
 ### Admonitions
 
-All admonition directives share these items. Supported directives are `admonition`, `attention`, `caution`, `danger`, `error`, `hint`, `important`, `note`, `tip`, `seealso`, and `warning`.
+The shared items below provide the default style for every admonition directive. Supported directives are `admonition`, `attention`, `caution`, `danger`, `error`, `hint`, `important`, `note`, `tip`, `seealso`, and `warning`.
 
 | Category | Item | Default | Description |
 | --- | --- | --- | --- |
 | Font Size | `admonition_font_size` | Body size | Admonition text size. |
 | Color | `admonition_font_color` | Body text color | Admonition body text color. |
 | Color | `admonition_header_font_color` | White | Title text color. |
-| StyleBox | `admonition_panel` | Built-in panel | Admonition body background, border, and content margins. |
-| StyleBox | `admonition_header_panel` | Built-in title strip | Admonition title background, border, and content margins. |
+| Color | `admonition_accent_color` | Directive-specific | Accent used by the built-in panel and title strip. |
+| StyleBox | `admonition_panel` | Built-in panel | Shared body background, border, and content margins. |
+| StyleBox | `admonition_header_panel` | Built-in title strip | Shared title background, border, and content margins. |
 | Constant | `admonition_space_before`, `admonition_space_after` | 0, `paragraph_separation` | Spacing around admonitions. |
 
-When StyleBoxes are unset, the built-in accent color varies by directive. A configured `admonition_panel` and `admonition_header_panel` provide one shared style for all directives.
+Each directive can override any shared item with an item named `admonition_<directive>_<item>`. Use the lower-case directive name from the supported list. The generic `admonition` directive uses `custom` as its name because its title is supplied by the document.
+
+| Item suffix | Example | Description |
+| --- | --- | --- |
+| `font_size` | `admonition_warning_font_size` | Body and title text size. |
+| `font_color` | `admonition_warning_font_color` | Body text color. |
+| `header_font_color` | `admonition_warning_header_font_color` | Title text color. |
+| `accent_color` | `admonition_warning_accent_color` | Accent for generated panels when no matching StyleBox is set. |
+| `panel` | `admonition_warning_panel` | Directive-specific body StyleBox. |
+| `header_panel` | `admonition_warning_header_panel` | Directive-specific title StyleBox. |
+| `space_before`, `space_after` | `admonition_warning_space_after` | Directive-specific spacing. |
+
+For example, `admonition_note_panel` overrides the shared body panel for `note`, while `admonition_custom_header_panel` styles generic `admonition` directives. For each item, lookup order is directive-specific, shared, then built-in fallback. Accent lookup follows the same order: directive-specific accent, `admonition_accent_color`, then the built-in accent for that directive. The built-in accents are green for `note` and generic admonitions, amber for `attention`, `caution`, and `warning`, red for `danger` and `error`, blue for `important`, teal for `hint` and `tip`, and purple for `seealso`.
+
+A custom StyleBox uses its own colors, so the accent color does not recolor a configured shared or directive-specific StyleBox. If neither StyleBox is set, the built-in panels use the resolved accent color. The example theme sets a shared style and adds a warning-specific override.
 
 ## Customize the Theme in a Script
 
-Assign the example theme in the Inspector first. Then duplicate the active theme and edit an item in the shared type:
+Assign the example theme in the Inspector first. Then duplicate the active theme and set a directive-specific StyleBox:
 
 ```gdscript
 extends Control
@@ -116,7 +131,12 @@ extends Control
 func _ready() -> void:
 	var label: RestructuredtextLabel = %RestructuredtextLabel
 	var custom_theme: Theme = label.get_theme().duplicate() as Theme
-	custom_theme.set_color(&"link_color", &"RestructuredtextLabel", Color(0.42, 0.72, 1.0))
+	var warning_panel: StyleBoxFlat = StyleBoxFlat.new()
+	warning_panel.bg_color = Color(0.16, 0.12, 0.08, 1.0)
+	warning_panel.border_color = Color(0.95, 0.61, 0.14, 1.0)
+	warning_panel.set_border_width(SIDE_LEFT, 4)
+	custom_theme.set_stylebox(&"admonition_warning_panel", &"RestructuredtextLabel", warning_panel)
+	custom_theme.set_color(&"admonition_warning_header_font_color", &"RestructuredtextLabel", Color(0.08, 0.09, 0.11, 1.0))
 	label.theme = custom_theme
 ```
 
