@@ -13,6 +13,7 @@
 #include "formats/html/markup/html_number.h"
 
 #include <godot_cpp/classes/reg_ex.hpp>
+#include <godot_cpp/classes/reg_ex_match.hpp>
 #include <litehtml/document.h>
 #include <litehtml/el_image.h>
 #include <litehtml/render_item.h>
