@@ -65,8 +65,14 @@
 		</method>
 	</methods>
 	<members>
-		<member name="document_targets" type="Dictionary" setter="set_document_targets" getter="get_document_targets" />
-		<member name="reference_targets" type="Dictionary" setter="set_reference_targets" getter="get_reference_targets" />
-		<member name="source_fingerprint" type="String" setter="set_source_fingerprint" getter="get_source_fingerprint" />
+		<member name="document_targets" type="Dictionary" setter="set_document_targets" getter="get_document_targets">
+			Referenced document paths mapped to target dictionaries containing [code]path[/code], [code]uid[/code], and [code]anchor[/code].
+		</member>
+		<member name="reference_targets" type="Dictionary" setter="set_reference_targets" getter="get_reference_targets">
+			Cross-document [code]:ref:[/code] targets keyed by source document path and normalized label. Each target stores [code]path[/code], [code]uid[/code], and [code]anchor[/code].
+		</member>
+		<member name="source_fingerprint" type="String" setter="set_source_fingerprint" getter="get_source_fingerprint">
+			Fingerprint of configured document roots and indexed targets, used to skip unnecessary index writes.
+		</member>
 	</members>
 </class>

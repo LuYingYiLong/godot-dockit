@@ -8325,3 +8325,31 @@ msgstr "设置控件失去焦点时是否清除当前文本选区。"
 #. doc_classes/RestructuredtextLabel.xml
 msgid "The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths."
 msgstr "用于显示的 [RSTDocument] 资源。该资源的源文件路径用于解析相对资源路径。"
+
+#. doc_classes/RSTReferenceIndex.xml
+msgid "Cross-document [code]:ref:[/code] targets keyed by source document path and normalized label. Each target stores [code]path[/code], [code]uid[/code], and [code]anchor[/code]."
+msgstr "以源文档路径和规范化标签为键的跨文档 [code]:ref:[/code] 目标。每个目标包含 [code]path[/code]、[code]uid[/code] 和 [code]anchor[/code]。"
+
+#. doc_classes/RSTReferenceIndex.xml
+msgid "Fingerprint of configured document roots and indexed targets, used to skip unnecessary index writes."
+msgstr "已配置文档根目录和索引目标的指纹，用于跳过不必要的索引写入。"
+
+#. doc_classes/RSTReferenceIndex.xml
+msgid "Referenced document paths mapped to target dictionaries containing [code]path[/code], [code]uid[/code], and [code]anchor[/code]."
+msgstr "被引用的文档路径及其目标字典。每个目标字典包含 [code]path[/code]、[code]uid[/code] 和 [code]anchor[/code]。"
+
+#. doc_classes/RSTDocument.xml
+msgid "Returns the reference index used to resolve cross-document targets, or [code]null[/code] when none is assigned."
+msgstr "返回用于解析跨文档目标的引用索引；未分配时返回 [code]null[/code]。"
+
+#. doc_classes/RSTDocument.xml
+msgid "Sets the reference index used to resolve cross-document targets."
+msgstr "设置用于解析跨文档目标的引用索引。"
+
+#. doc_classes/RSTDocument.xml
+msgid "The optional generated [RSTReferenceIndex] used to resolve cross-document [code]:ref:[/code] targets."
+msgstr "用于解析跨文档 [code]:ref:[/code] 目标的可选生成 [RSTReferenceIndex]。"
+
+#. doc_classes/RSTDocument.xml
+msgid "The original project path of the imported [code].rst[/code] file. It is used to resolve relative resource paths."
+msgstr "导入的 [code].rst[/code] 文件在项目中的原始路径，用于解析相对资源路径。"

@@ -9,6 +9,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_reference_index" qualifiers="const">
+			<return type="RSTReferenceIndex" />
+			<description>
+				Returns the reference index used to resolve cross-document targets, or [code]null[/code] when none is assigned.
+			</description>
+		</method>
 		<method name="get_source_path" qualifiers="const">
 			<return type="String" />
 			<description>
@@ -28,6 +34,13 @@
 				Resolves a resource path relative to this document's source directory. [code]uid://[/code] paths are resolved through [ResourceUID].
 			</description>
 		</method>
+		<method name="set_reference_index">
+			<return type="void" />
+			<param index="0" name="reference_index" type="RSTReferenceIndex" />
+			<description>
+				Sets the reference index used to resolve cross-document targets.
+			</description>
+		</method>
 		<method name="set_source_path">
 			<return type="void" />
 			<param index="0" name="source_path" type="String" />
@@ -44,7 +57,12 @@
 		</method>
 	</methods>
 	<members>
-		<member name="source_path" type="String" setter="set_source_path" getter="get_source_path" />
+		<member name="reference_index" type="RSTReferenceIndex" setter="set_reference_index" getter="get_reference_index">
+			The optional generated [RSTReferenceIndex] used to resolve cross-document [code]:ref:[/code] targets.
+		</member>
+		<member name="source_path" type="String" setter="set_source_path" getter="get_source_path">
+			The original project path of the imported [code].rst[/code] file. It is used to resolve relative resource paths.
+		</member>
 		<member name="text" type="String" setter="set_text" getter="get_text">
 			The source text.
 		</member>
