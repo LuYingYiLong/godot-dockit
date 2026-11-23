@@ -27,7 +27,7 @@ namespace litehtml {
 		std::optional<css_offset_ray> ray;
 		css_shape_box box = css_shape_box::border;
 
-		bool enabled() const { return shape || ray.has_value(); }
+		bool enabled() const { return shape || ray.has_value(); }								// 检查是否已设置有效的运动路径
 	};
 
 	struct css_motion_path {
@@ -37,11 +37,21 @@ namespace litehtml {
 		css_length distance;
 		css_offset_rotation rotation;
 
-		bool enabled() const { return path.enabled(); }
+		bool enabled() const { return path.enabled(); }											// 检查是否已设置有效的运动路径
 	};
 
-	std::optional<css_offset_position> parse_offset_position(const css_token_vector& p_tokens, bool p_accept_normal);
-	std::optional<css_offset_rotation> parse_offset_rotation(const css_token_vector& p_tokens);
-	std::optional<css_offset_path> parse_offset_path(const css_token_vector& p_tokens, const std::string& p_base);
-	std::optional<css_motion_path> parse_motion_shorthand(const css_token_vector& p_tokens, const std::string& p_base);
+// 解析 CSS 运动路径
+	std::optional<css_offset_position> parse_offset_position(
+		const css_token_vector& p_tokens,
+		bool p_accept_normal
+	);																							// 解析偏移位置
+	std::optional<css_offset_rotation> parse_offset_rotation(const css_token_vector& p_tokens);	// 解析偏移旋转角度
+	std::optional<css_offset_path> parse_offset_path(
+		const css_token_vector& p_tokens,
+		const std::string& p_base
+	);																							// 解析 CSS offset-path 运动路径
+	std::optional<css_motion_path> parse_motion_shorthand(
+		const css_token_vector& p_tokens,
+		const std::string& p_base
+	);																							// 解析 CSS motion-path 相关简写属性
 }

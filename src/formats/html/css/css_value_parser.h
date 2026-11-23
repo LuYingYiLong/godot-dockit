@@ -4,7 +4,7 @@
 #include "css_value_helpers.h"
 
 namespace litehtml {
-	const char* css_keywords(string_id name);
+	const char* css_keywords(string_id name);													// 获取 CSS 关键字到内部标识的映射
 
 	class css_value_parser {
 		props_map properties;
@@ -12,7 +12,7 @@ namespace litehtml {
 	public:
 		void add_parsed_property(string_id name, property_value value) {
 			properties.insert_or_assign(name, std::move(value));
-		}
+		}																						// 将解析后的 CSS 属性加入样式表
 		void parse_box(string_id name, const css_token_vector& value, const string& baseurl, bool important);
 		void parse_background_and_border(string_id name, const css_token_vector& value, const string& baseurl,
 			bool important, document_container* container);
@@ -60,7 +60,7 @@ namespace litehtml {
 		template<class T> void add_four_properties(string_id top_name, T val[4], int n, bool important);
 	};
 
-	bool parse_two_lengths(const css_token_vector& tokens, css_length lengths[2], int options);
+	bool parse_two_lengths(const css_token_vector& tokens, css_length lengths[2], int options);	// 解析两个 CSS 长度值
 
 	template<class T, class... Args>
 	int parse_1234_values(const css_token_vector& tokens, T result[4],
@@ -74,9 +74,14 @@ namespace litehtml {
 			}
 		}
 		return static_cast<int>(tokens.size());
-	}
+	}																							// 按 CSS 盒模型规则解析一至四个值
 
-	int parse_1234_lengths(const css_token_vector& tokens, css_length lengths[4], int options, string keywords = "");
+	int parse_1234_lengths(
+		const css_token_vector& tokens,
+		css_length lengths[4],
+		int options,
+		string keywords = ""
+	);																							// 按 CSS 盒模型规则解析一至四个长度
 
 	template<class T>
 	void css_value_parser::add_four_properties(string_id top, T values[4], int count, bool important) {

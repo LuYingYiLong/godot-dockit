@@ -32,10 +32,12 @@ namespace litehtml {
 			const string& p_default_styles,
 			const string& p_user_styles
 		);																						// 解析 UTF-8 文档并应用初始样式
-		static document::ptr parse_svg_clip_source(const godot::String& p_svg,
-			dockit::LiteHTMLContainer& p_container);											// 解析 XML 裁剪源并计算独立的样式
+		static document::ptr parse_svg_clip_source(
+			const godot::String& p_svg,
+			dockit::LiteHTMLContainer& p_container
+		);																						// 解析 XML 裁剪源并计算独立的样式
 		static bool media_changed(document& p_document);										// 检查媒体条件的匹配结果是否改变
-		static void set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size); // 设置视口百分比单位的参考尺寸
+		static void set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size);// 设置视口百分比单位的参考尺寸
 		static void compute_styles(document& p_document);										// 按文档顺序更新计算样式与计数器
 		static void rebuild_render_tree(document& p_document);									// 用现有元素和样式重新建立渲染树
 		static void push_modal(document& p_document, const element::ptr& p_element);			// 将对话框加入文档顶层
@@ -55,11 +57,15 @@ namespace litehtml {
 		static bool has_transitions(document& p_document);										// 检查样式表或元素是否声明了 CSS 过渡
 		static void set_hover(element& p_element, bool p_hovered);								// 更新元素的悬停伪类状态
 		static bool is_command_button(const element& p_element);								// 判断元素是否有按钮激活行为
-		static css_text::vector stylesheets(const document& p_document);
+		static css_text::vector stylesheets(const document& p_document);						// 获取文档加载的样式表
 		static godot::TypedArray<godot::Dictionary> cascade_trace(const html_tag& p_element,
-			const godot::String& p_pseudo);
-		static void edit_stylesheet(document& p_document, const element::ptr& p_owner, string p_text);
-		static void reset_stylesheet_source(element& p_owner);
+			const godot::String& p_pseudo);														// 获取指定伪类的 CSS 层叠追踪信息
+		static void edit_stylesheet(
+			document& p_document,
+			const element::ptr& p_owner,
+			string p_text
+		);																						// 替换样式表源文本并触发样式更新
+		static void reset_stylesheet_source(element& p_owner);									// 重置样式表源
 
 		static bool set_attribute(
 			element& p_element,
@@ -77,7 +83,9 @@ namespace litehtml {
 			bool p_split
 		);																						// 创建纯文本节点，可按排版需要拆分文本
 		static void replace_children(element& p_parent, elements_list p_children);				// 替换父元素的子节点
-		static void replace_child_lists(std::vector<std::pair<element::ptr, elements_list>>& r_lists); // 在同一次操作中更新多个父节点
+		static void replace_child_lists(
+			std::vector<std::pair<element::ptr, elements_list>>& r_lists
+		);																						// 在同一次操作中更新多个父节点
 		static void mark_text_node(elements_list& r_parts, const char* p_text);					// 标记属于同一个 DOM 文本节点的排版片段
 		enum class child_edit_result { invalid, unchanged, changed };
 		static child_edit_result place_child(const element::ptr& p_child, element& p_parent,

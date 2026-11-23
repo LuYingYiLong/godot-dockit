@@ -51,10 +51,10 @@ public:
 	godot::String get_href() const;																// 返回外部样式表的实际资源路径
 	godot::String get_media() const;															// 返回样式表当前的媒体条件
 	bool is_disabled() const;																	// 检查样式表当前是否已禁用
-	bool is_read_only() const;
-	godot::String get_origin() const;
+	bool is_read_only() const;																	// 检查当前属性是否为只读属性
+	godot::String get_origin() const;															// 获取原点
 	godot::PackedStringArray get_css_rules() const;												// 返回顶层规则快照
-	godot::TypedArray<CSSRule> get_rules() const;
+	godot::TypedArray<CSSRule> get_rules() const;												// 获取规则
 	godot::Error insert_rule(const godot::String& p_rule, int64_t p_index = 0);					// 插入一条顶层规则
 	godot::Error delete_rule(int64_t p_index);													// 删除指定的顶层规则
 };

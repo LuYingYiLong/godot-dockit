@@ -24,8 +24,8 @@ namespace godot {
 namespace litehtml { enum class css_filter_type; }
 
 namespace dockit {
-	void release_html_paint_shader();
-	godot::Ref<godot::ShaderMaterial> make_html_paint_material(bool p_composite = false);
+	void release_html_paint_shader();															// 释放HTML绘制着色器
+	godot::Ref<godot::ShaderMaterial> make_html_paint_material(bool p_composite = false);		// 构造HTML绘制材质
 
 	struct HTMLFill {
 		godot::Rect2 rect;
@@ -61,7 +61,7 @@ namespace dockit {
 
 		bool operator!=(const HTMLTextureSampling& p_other) const {
 			return filter != p_other.filter || repeat != p_other.repeat;
-		}
+		}																						// 比较两个值是否不相等
 	};
 
 	struct HTMLCircle {
@@ -106,7 +106,7 @@ namespace dockit {
 			const HTMLHighlight& p_selection,
 			const godot::RID& p_ink_canvas = {},
 			bool p_selection_only = false
-		) const;
+		) const;																				// 按绘制指令顺序回放绘制内容
 	};
 
 	struct HTMLPaintMaskLayer {
@@ -151,5 +151,5 @@ namespace dockit {
 	};
 
 	godot::Rect2 html_group_ink_bounds(const std::vector<HTMLPaintRun>& p_runs,
-		const std::vector<HTMLPaintGroup>& p_groups, std::size_t p_group);
+		const std::vector<HTMLPaintGroup>& p_groups, std::size_t p_group);						// 计算绘制分组中墨迹内容的边界矩形
 }

@@ -202,13 +202,22 @@ namespace dockit {
 
 	public:
 		godot::Ref<HTMLShadowRoot> attach_shadow(const litehtml::element::ptr& p_host, const godot::String& p_mode,
-			const godot::String& p_assignment, bool p_delegates_focus);
-		godot::Ref<HTMLShadowRoot> get_shadow_root(const litehtml::element::ptr& p_host, bool p_open_only = true) const;
-		void synchronize_slots();
-		void initialize_shadow_roots();
-		godot::TypedArray<HTMLElement> component_candidates(const godot::String& p_tag) const;
-		godot::TypedArray<HTMLNode> slot_nodes(const litehtml::element::ptr& p_slot, bool p_flatten) const;
-		godot::Error assign_slot(const litehtml::element::ptr& p_slot, const godot::Array& p_nodes);
+			const godot::String& p_assignment, bool p_delegates_focus);							// 挂载影子
+		godot::Ref<HTMLShadowRoot> get_shadow_root(
+			const litehtml::element::ptr& p_host,
+			bool p_open_only = true
+		) const;																				// 获取组件宿主关联的影子根节点
+		void synchronize_slots();																// 根据宿主子节点更新 slot 分配结果
+		void initialize_shadow_roots();															// 为自定义元素初始化影子根节点
+		godot::TypedArray<HTMLElement> component_candidates(const godot::String& p_tag) const;	// 获取指定标签名的自定义元素候选项
+		godot::TypedArray<HTMLNode> slot_nodes(
+			const litehtml::element::ptr& p_slot,
+			bool p_flatten
+		) const;																				// 获取影子树中的插槽节点
+		godot::Error assign_slot(
+			const litehtml::element::ptr& p_slot,
+			const godot::Array& p_nodes
+		);																						// 分配插槽
 	public:
 		struct Change {
 			std::weak_ptr<litehtml::element> target;
@@ -234,79 +243,121 @@ namespace dockit {
 		void queue_change(litehtml::element& p_node, unsigned p_flags);
 		void notify_changed();
 	public:
-		void set_mutation_callback(std::function<void(const Changes&)> p_callback) { on_mutation = std::move(p_callback); }
-		void flush_changes();
+		void set_mutation_callback(
+			std::function<void(const Changes&)> p_callback
+		) {
+			on_mutation = std::move(p_callback);
+		}																						// 设置变更回调
+		void flush_changes();																	// 刷新变更
 		enum class TreeEdit { APPEND, PREPEND, BEFORE, AFTER, REPLACE, REPLACE_CHILDREN };
 		enum class Lookup { TAG, CLASS, NAME };
 		explicit HTMLDOM(std::function<void()> p_on_change);
 
-		void set_document(std::shared_ptr<litehtml::document> p_document, godot::ObjectID p_owner_id, uint64_t p_generation);
-		const std::shared_ptr<litehtml::document>& get_document() const { return document; }
-		void track_dialog(const std::shared_ptr<HTMLDialogNode>& p_dialog);
-		void sync_open_dialogs();
-		std::shared_ptr<HTMLDialogNode> last_open_dialog() const;
-		void clear();
-		uint64_t get_lifetime() const { return lifetime; }
-		HTMLLayout* get_layout() const;
-		bool is_design_mode_enabled() const { return design_mode; }
-		void set_design_mode_enabled(bool p_enabled) { design_mode = p_enabled; }
-		godot::Ref<HTMLRange> create_range();
-		godot::Ref<HTMLSelection> get_selection();
-		void range_changed(const HTMLRange& p_range);
-		void selection_changed() { queue_selectionchange(); if (on_selection_change) on_selection_change(); }
-		void queue_selectionchange();
-		static void deliver_selectionchange(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
-		void set_selection_callback(std::function<void()> p_callback) { on_selection_change = std::move(p_callback); }
-		void track_observer(godot::ObjectID p_id);
-		void queue_observer_delivery();
+		void set_document(
+			std::shared_ptr<litehtml::document> p_document,
+			godot::ObjectID p_owner_id,
+			uint64_t p_generation
+		);																						// 设置文档
+		const std::shared_ptr<litehtml::document>& get_document() const { return document; }	// 获取当前挂载的实时文档节点
+		void track_dialog(const std::shared_ptr<HTMLDialogNode>& p_dialog);						// 记录对话框的打开顺序
+		void sync_open_dialogs();																// 同步当前打开的对话框列表
+		std::shared_ptr<HTMLDialogNode> last_open_dialog() const;								// 获取当前打开顺序中最靠后的对话框
+		void clear();																			// 清除当前存储的数据
+		uint64_t get_lifetime() const { return lifetime; }										// 获取生命周期
+		HTMLLayout* get_layout() const;															// 获取布局
+		bool is_design_mode_enabled() const { return design_mode; }								// 检查文档是否启用了设计模式
+		void set_design_mode_enabled(bool p_enabled) { design_mode = p_enabled; }				// 设置设计模式模式启用状态
+		godot::Ref<HTMLRange> create_range();													// 创建范围
+		godot::Ref<HTMLSelection> get_selection();												// 获取选区
+		void range_changed(const HTMLRange& p_range);											// 响应文本范围变化并更新文档选区
+		void selection_changed() {
+			queue_selectionchange(); if (on_selection_change) on_selection_change();
+		}																						// 更新文档选区并通知宿主
+		void queue_selectionchange();															// 将 selectionchange 事件派发加入队列
+		static void deliver_selectionchange(
+			uint64_t p_owner_id,
+			uint64_t p_epoch,
+			uint64_t p_lifetime
+		);																						// 按事件传播顺序派发 selectionchange 事件
+		void set_selection_callback(
+			std::function<void()> p_callback
+		) {
+			on_selection_change = std::move(p_callback);
+		}																						// 设置选区回调
+		void track_observer(godot::ObjectID p_id);												// 注册用于跟踪 DOM 变化的观察器
+		void queue_observer_delivery();															// 安排观察器回调派发
 		godot::Error add_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
-			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);
+			const godot::Callable& p_callable, bool p_capture, bool p_once, bool p_passive);	// 添加事件监听器
 		godot::Error add_document_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-			bool p_capture, bool p_once, bool p_passive);
+			bool p_capture, bool p_once, bool p_passive);										// 添加文档事件监听器
 		godot::Error add_window_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-			bool p_capture, bool p_once, bool p_passive);
+			bool p_capture, bool p_once, bool p_passive);										// 为 HTMLWindow 注册事件监听器
 		godot::Error remove_event_listener(const litehtml::element::ptr& p_element, const godot::StringName& p_type,
-			const godot::Callable& p_callable, bool p_capture);
+			const godot::Callable& p_callable, bool p_capture);									// 移除事件监听器
 		godot::Error remove_document_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-			bool p_capture);
+			bool p_capture);																	// 移除文档事件监听器
 		godot::Error remove_window_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-			bool p_capture);
-		bool dispatch_event(const godot::Ref<HTMLEventTarget>& p_target, const godot::Ref<HTMLEvent>& p_event);
-		bool has_event_listeners() const { return event_listener_count > 0; }
-		bool has_event_listener(const litehtml::element& p_element, const godot::StringName& p_type);
-		bool has_document_event_listener(const godot::StringName& p_type) const;
-		bool has_window_event_listener(const godot::StringName& p_type) const;
-		bool has_event_listener_for_type(const godot::StringName& p_type) const;
-		std::size_t get_event_listener_count(const godot::StringName& p_type) const;
-		void set_event_debug(bool p_enabled) { event_debug = p_enabled; }
-		std::size_t get_event_listener_count() const { return event_listener_count; }
+			bool p_capture);																	// 移除窗口事件监听器
+		bool dispatch_event(
+			const godot::Ref<HTMLEventTarget>& p_target,
+			const godot::Ref<HTMLEvent>& p_event
+		);																						// 派发事件
+		bool has_event_listeners() const { return event_listener_count > 0; }					// 检查是否包含事件监听器
+		bool has_event_listener(
+			const litehtml::element& p_element,
+			const godot::StringName& p_type
+		);																						// 检查目标是否注册了指定类型的事件监听器
+		bool has_document_event_listener(const godot::StringName& p_type) const;				// 检查是否包含文档事件监听器
+		bool has_window_event_listener(const godot::StringName& p_type) const;					// 检查是否包含窗口事件监听器
+		bool has_event_listener_for_type(const godot::StringName& p_type) const;				// 检查目标是否注册了指定类型的事件监听器
+		std::size_t get_event_listener_count(const godot::StringName& p_type) const;			// 获取事件监听器数量
+		void set_event_debug(bool p_enabled) { event_debug = p_enabled; }						// 设置事件调试状态
+		std::size_t get_event_listener_count() const { return event_listener_count; }			// 获取事件监听器数量
 		godot::Ref<HTMLWindow> get_window() const;												// 返回当前文档的 window 事件目标
-		uint64_t get_generation() const { return generation; }
-		void clear_event_listeners();
-		void begin_pointer(int32_t p_pointer_id);
-		void end_pointer(int32_t p_pointer_id);
-		void release_pointer_captures_in_subtree(const litehtml::element& p_element);
-		void release_all_pointer_captures();
-		godot::Error set_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id);
-		godot::Error release_pointer_capture(int32_t p_pointer_id);
-		bool has_pointer_capture(const godot::Ref<HTMLElement>& p_target, int32_t p_pointer_id) const;
-		godot::Ref<HTMLElement> get_pointer_capture(int32_t p_pointer_id) const;
-		void flush_pointer_capture_events();
-		void forget_subtree_listeners(const litehtml::element& p_element);
-		void transfer_listeners(HTMLDOM& p_source, const litehtml::element& p_from, const litehtml::element::ptr& p_to);
-		void queue_scroll_event(const godot::Ref<HTMLNode>& p_node);
-		static void deliver_scroll_events(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
-		static void deliver_scrollend(uint64_t p_owner_id, uint64_t p_epoch, uint64_t p_lifetime);
+		uint64_t get_generation() const { return generation; }									// 获取代次
+		void clear_event_listeners();															// 清除事件监听器
+		void begin_pointer(int32_t p_pointer_id);												// 记录指针开始活动并处理捕获状态
+		void end_pointer(int32_t p_pointer_id);													// 结束指针活动并派发待处理的捕获事件
+		void release_pointer_captures_in_subtree(const litehtml::element& p_element);			// 释放子树中目标持有的指针捕获
+		void release_all_pointer_captures();													// 释放当前文档持有的全部指针捕获
+		godot::Error set_pointer_capture(
+			const godot::Ref<HTMLElement>& p_target,
+			int32_t p_pointer_id
+		);																						// 将指定指针的后续事件捕获到目标元素
+		godot::Error release_pointer_capture(int32_t p_pointer_id);								// 释放指定指针的捕获目标
+		bool has_pointer_capture(
+			const godot::Ref<HTMLElement>& p_target,
+			int32_t p_pointer_id
+		) const;																				// 检查目标元素是否捕获了指定指针
+		godot::Ref<HTMLElement> get_pointer_capture(int32_t p_pointer_id) const;				// 获取指定指针当前的捕获目标
+		void flush_pointer_capture_events();													// 派发已排队的指针捕获状态事件
+		void forget_subtree_listeners(const litehtml::element& p_element);						// 移除子树内节点注册的事件监听器
+		void transfer_listeners(
+			HTMLDOM& p_source,
+			const litehtml::element& p_from,
+			const litehtml::element::ptr& p_to
+		);																						// 将源节点的监听器迁移到目标 DOM 节点
+		void queue_scroll_event(const godot::Ref<HTMLNode>& p_node);							// 将节点加入待派发的滚动事件队列
+		static void deliver_scroll_events(
+			uint64_t p_owner_id,
+			uint64_t p_epoch,
+			uint64_t p_lifetime
+		);																						// 派发已排队的滚动事件
+		static void deliver_scrollend(
+			uint64_t p_owner_id,
+			uint64_t p_epoch,
+			uint64_t p_lifetime
+		);																						// 派发已结束滚动的 scrollend 事件
 		void normalize_details(
 			const litehtml::element::ptr& p_tree,
 			const std::vector<litehtml::element::ptr>& p_moved = {},
 			bool p_prefer_moved = false,
 			bool p_notify = true
-		);
-		void form_state_changed(const litehtml::element::ptr& p_node);
+		);																						// 根据 details 元素状态同步其内容可见性
+		void form_state_changed(const litehtml::element::ptr& p_node);							// 响应表单控件状态变化并更新关联状态
 
-		static godot::CharString normalize_tag_name(const godot::String& p_tag_name);
-		static bool is_element(const litehtml::element& p_element);
+		static godot::CharString normalize_tag_name(const godot::String& p_tag_name);			// 将 HTML 标签名规范化为小写形式
+		static bool is_element(const litehtml::element& p_element);								// 检查节点是否为普通 HTML 元素
 		template <typename Visitor>
 		static bool visit_elements(const litehtml::element::ptr& p_node, const Visitor& p_visit) {
 			if (!p_node || litehtml::is_generated_tag(p_node->tag())) {
@@ -321,7 +372,7 @@ namespace dockit {
 				}
 			}
 			return false;
-		}
+		}																						// 按文档顺序遍历元素节点
 
 		godot::Ref<HTMLElement> make_element(const litehtml::element::ptr& p_element) const;
 		godot::Ref<HTMLNode> make_node(const litehtml::element::ptr& p_node) const;

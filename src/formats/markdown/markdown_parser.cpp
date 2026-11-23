@@ -1581,7 +1581,7 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 		// Table detection
 		if (p_options.parse_gfm && line.strip_edges().begins_with("|")) {
 			PackedStringArray first_cells = parse_table_cells(line);
-			if (first_cells.size() >= 2 && index + 1 < lines.size() && is_table_separator(lines[index + 1])) {
+			if (!first_cells.is_empty() && index + 1 < lines.size() && is_table_separator(lines[index + 1])) {
 				flush_all();
 				MarkdownBlock block;
 				block.type = MARKDOWN_BLOCK_TABLE;

@@ -83,7 +83,7 @@ namespace litehtml {
 
 		bool allows(int64_t prefix, int64_t suffix) const {
 			return prefix >= before && suffix >= after && prefix + suffix >= word;
-		}
+		}																						// 检查前后文本是否满足断行许可条件
 	};
 	struct css_hyphenation_limits {
 		css_length zone;
@@ -92,7 +92,7 @@ namespace litehtml {
 
 		bool allows_line(size_t preceding) const {
 			return lines < 0 || preceding < static_cast<size_t>(lines);
-		}
+		}																						// 检查前置行数是否满足断词行数限制
 		static bool allows_hyphen_in_zone(pixel_t threshold, pixel_t ordinary_slack) {
 			return threshold <= 0 || ordinary_slack < 0 || ordinary_slack > threshold;
 		}
@@ -127,7 +127,7 @@ namespace litehtml {
 
 		bool operator==(const css_font_size_adjust& other) const {
 			return metric == other.metric && mode == other.mode && value == other.value;
-		}
+		}																						// 比较两个值是否相等
 	};
 
 	struct css_font_family {
@@ -136,7 +136,7 @@ namespace litehtml {
 	};
 	using css_font_families = std::vector<css_font_family>;
 
-	bool parse_font_families(const css_token_vector& p_tokens, css_font_families& r_families);
+	bool parse_font_families(const css_token_vector& p_tokens, css_font_families& r_families);	// 解析 CSS 字体族列表
 
 	enum class css_content_kind { text, attribute, image, counter, counters, marker_counter, open_quote, close_quote, no_open_quote, no_close_quote };
 
@@ -154,7 +154,9 @@ namespace litehtml {
 		string base_url;
 		std::vector<css_content_item> alternative;
 
-		bool is_single_image() const { return items.size() == 1 && items.front().kind == css_content_kind::image; }
+		bool is_single_image() const {
+			return items.size() == 1 && items.front().kind == css_content_kind::image;
+		}																						// 检查值是否表示单个图像
 	};
 
 	struct css_list_marker_type {
@@ -167,7 +169,7 @@ namespace litehtml {
 	inline string_id marker_tag() {
 		static const auto marker = _id("-tag-marker");
 		return marker;
-	}
+	}																							// 获取列表标记对应的 HTML 标签名
 
 	inline bool is_generated_tag(string_id p_tag) {
 		static const auto backdrop = _id("-tag-backdrop");

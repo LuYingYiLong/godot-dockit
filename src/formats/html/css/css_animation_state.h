@@ -29,11 +29,11 @@ namespace dockit::css {
 			std::shared_ptr<const litehtml::css_keyframes> scripted;
 			std::map<std::size_t, std::vector<Stop>> stops;
 
-			double duration() const;
-			double end() const;
-			void sample(double now, Sample& output, bool& needs_frames) const;
+			double duration() const;															// 获取动画持续时间
+			double end() const;																	// 获取动画结束时间
+			void sample(double now, Sample& output, bool& needs_frames) const;					// 计算动画在指定时刻的属性值
 			void resolve(const litehtml::html_tag& node, const std::shared_ptr<litehtml::document>& doc,
-				const litehtml::css_keyframes& keyframes);
+				const litehtml::css_keyframes& keyframes);										// 根据节点、文档和关键帧解析 CSS 动画参数
 		};
 
 		using ElementKey = std::weak_ptr<litehtml::element>;
@@ -49,14 +49,17 @@ namespace dockit::css {
 			const std::shared_ptr<litehtml::document>& doc,
 			std::shared_ptr<const litehtml::css_keyframes> frames,
 			const litehtml::css_animation& settings, double now
-		);
-		std::vector<uint64_t> list(const litehtml::element* target) const;
-		std::optional<PlaybackInfo> info(uint64_t id, double now) const;
-		bool control(uint64_t id, PlaybackCommand command, double value, double now);
-		void commit(const std::shared_ptr<litehtml::document>& doc, double now);
-		void sample(double now);
-		bool active() const { return playing; }
-		bool has_overrides() const { return !overrides.empty(); }
-		const litehtml::property_value* find(const litehtml::element* element, litehtml::string_id name) const;
+		);																						// 创建元素的 CSS 动画轨道
+		std::vector<uint64_t> list(const litehtml::element* target) const;						// 获取元素当前动画的标识列表
+		std::optional<PlaybackInfo> info(uint64_t id, double now) const;						// 获取指定动画的播放信息
+		bool control(uint64_t id, PlaybackCommand command, double value, double now);			// 控制指定动画的播放状态
+		void commit(const std::shared_ptr<litehtml::document>& doc, double now);				// 提交 CSS 动画当前帧的样式值
+		void sample(double now);																// 更新动画在指定时刻的属性值
+		bool active() const { return playing; }													// 检查当前动画是否仍在播放
+		bool has_overrides() const { return !overrides.empty(); }								// 检查当前动画是否具有样式覆盖项
+		const litehtml::property_value* find(
+			const litehtml::element* element,
+			litehtml::string_id name
+		) const;																				// 查找元素指定属性的动画覆盖值
 	};
 }

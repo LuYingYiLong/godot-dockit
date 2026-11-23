@@ -33,23 +33,27 @@ namespace dockit {
 		bool show_controls = true;
 		std::optional<bool> muted;
 
-		bool is_replaced() const override;
-		void parse_attributes() override;
-		void get_content_size(litehtml::size& r_size, litehtml::pixel_t p_width) override;
+		bool is_replaced() const override;														// 检查替换元素
+		void parse_attributes() override;														// 解析属性
+		void get_content_size(litehtml::size& r_size, litehtml::pixel_t p_width) override;		// 获取内容尺寸
 		std::shared_ptr<litehtml::render_item> create_render_item(
 			const std::shared_ptr<litehtml::render_item>& p_parent
-		) override;
+		) override;																				// 创建 video 控件的布局渲染项
 		void draw(
 			litehtml::uint_ptr p_hdc,
 			litehtml::pixel_t p_x,
 			litehtml::pixel_t p_y,
 			const litehtml::position* p_clip,
 			const std::shared_ptr<litehtml::render_item>& p_item
-		) override;
-		bool has_controls() const;
-		bool is_muted() const;
-		godot::Rect2 part_rect(const godot::Rect2& p_box, HTMLVideoPart p_part) const;
-		HTMLVideoPart part_at(const godot::Rect2& p_box, const godot::Vector2& p_point) const;
-		void draw_controls(const godot::Rect2& p_box, const HTMLVideoControlPainter& p_painter, bool p_focused) const;
+		) override;																				// 绘制视频画面及播放控件
+		bool has_controls() const;																// 检查是否包含控件
+		bool is_muted() const;																	// 检查视频是否已静音
+		godot::Rect2 part_rect(const godot::Rect2& p_box, HTMLVideoPart p_part) const;			// 获取视频控件部件的绘制区域
+		HTMLVideoPart part_at(const godot::Rect2& p_box, const godot::Vector2& p_point) const;	// 查找指定坐标对应的视频控件部件
+		void draw_controls(
+			const godot::Rect2& p_box,
+			const HTMLVideoControlPainter& p_painter,
+			bool p_focused
+		) const;																				// 绘制控件
 	};
 }

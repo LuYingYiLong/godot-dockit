@@ -19,21 +19,23 @@ namespace dockit {
 		HTMLPlaneTransform(const godot::Transform2D& p_affine);
 		explicit HTMLPlaneTransform(const godot::Basis& p_matrix) : matrix(p_matrix) {}
 
-		const godot::Vector3& row(int p_index) const { return matrix[p_index]; }
-		godot::real_t determinant() const { return matrix.determinant(); }
-		bool is_affine() const;
-		godot::Transform2D affine_at(const godot::Vector2& p_point) const;
-		std::optional<HTMLPlaneTransform> try_inverse() const;
-		HTMLPlaneTransform inverse() const;
-		HTMLPlaneTransform operator*(const HTMLPlaneTransform& p_other) const;
-		bool operator==(const HTMLPlaneTransform& p_other) const { return matrix == p_other.matrix; }
-		bool operator!=(const HTMLPlaneTransform& p_other) const { return !(*this == p_other); }
+		const godot::Vector3& row(int p_index) const { return matrix[p_index]; }				// 获取变换矩阵的指定行
+		godot::real_t determinant() const { return matrix.determinant(); }						// 获取变换矩阵的指定行列式
+		bool is_affine() const;																	// 检查平面变换是否可表示为二维仿射变换
+		godot::Transform2D affine_at(const godot::Vector2& p_point) const;						// 在指定平面坐标处构造二维仿射变换
+		std::optional<HTMLPlaneTransform> try_inverse() const;									// 尝试计算变换矩阵的逆矩阵
+		HTMLPlaneTransform inverse() const;														// 计算变换矩阵的逆矩阵
+		HTMLPlaneTransform operator*(const HTMLPlaneTransform& p_other) const;					// 将两个平面变换矩阵相乘
+		bool operator==(
+			const HTMLPlaneTransform& p_other
+		) const { return matrix == p_other.matrix; }											// 检查两个平面变换矩阵是否相等
+		bool operator!=(const HTMLPlaneTransform& p_other) const { return !(*this == p_other); }// 检查两个平面变换矩阵是否不相等
 
-		godot::Vector2 xform(const godot::Vector2& p_point) const;
-		godot::Rect2 xform(const godot::Rect2& p_rect) const;
+		godot::Vector2 xform(const godot::Vector2& p_point) const;								// 将二维坐标变换到目标平面
+		godot::Rect2 xform(const godot::Rect2& p_rect) const;									// 将二维坐标变换到目标平面
 		std::vector<godot::Vector2> project_polygon(const std::vector<godot::Vector2>& p_points) const {
 			return project_polygon(p_points.data(), p_points.size());
-		}
+		}																						// 将多边形投影到目标平面
 		template<std::size_t Size>
 		std::vector<godot::Vector2> project_polygon(const std::array<godot::Vector2, Size>& p_points) const {
 			return project_polygon(p_points.data(), p_points.size());

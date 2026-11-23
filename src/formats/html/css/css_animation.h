@@ -31,15 +31,21 @@ namespace litehtml {
 		std::vector<int> fills{0};
 		std::vector<int> play_states{0};
 
-		css_animation at(std::size_t index) const;
+		css_animation at(std::size_t index) const;												// 获取指定索引处的动画参数
 	};
 
 	struct css_keyframes {
 		std::map<double, std::shared_ptr<const style>> frames;
 	};
 
-	const std::array<string_id, 8>& css_animation_property_names();
-	void parse_css_animation(css_value_parser& parser, string_id name, const css_token_vector& value, bool important);
+// 解析 CSS 动画规则
+	const std::array<string_id, 8>& css_animation_property_names();								// 返回 CSS animation 属性名对应的标识列表
+	void parse_css_animation(
+		css_value_parser& parser,
+		string_id name,
+		const css_token_vector& value,
+		bool important
+	);																							// 解析 CSS animation 属性并写入样式值
 }
 
 namespace dockit::css {
@@ -48,5 +54,8 @@ namespace dockit::css {
 		std::map<double, raw_declaration::vector> frames;
 	};
 
-	std::optional<KeyframeRule> parse_keyframe_rule(const css_token_vector& prelude, const css_token_vector& body);
+	std::optional<KeyframeRule> parse_keyframe_rule(
+		const css_token_vector& prelude,
+		const css_token_vector& body
+	);																							// 解析 CSS @keyframes 规则
 }

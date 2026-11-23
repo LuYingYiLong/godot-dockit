@@ -28,7 +28,7 @@ namespace dockit::svg {
 		const char* p_name,
 		double p_basis,
 		double p_default = 0
-	);
+	);																							// 读取 SVG 长度属性并按基准换算
 	godot::Transform2D transform_attribute(const litehtml::element& p_node);					// 读取 SVG 变换列表
 	css::SVGPath shape_path(
 		const litehtml::element& p_shape,
@@ -54,9 +54,11 @@ namespace dockit::svg {
 		};
 
 		PathMeasure(const css::SVGPath& p_path, const godot::Transform2D& p_transform, double p_tolerance, bool p_reverse);
-		double length() const { return segments.empty() ? 0 : segments.back().last_distance; }
-		bool is_closed() const { return closed; }
+		double length() const { return segments.empty() ? 0 : segments.back().last_distance; }	// 获取路径的总长度
+		bool is_closed() const { return closed; }												// 检查路径是否闭合
 		Sample sample(double p_distance) const;													// 在给定距离取位置与切线，闭合路径允许回绕
-		godot::Vector2 end() const { return segments.empty() ? godot::Vector2() : segments.back().end; }
+		godot::Vector2 end() const {
+			return segments.empty() ? godot::Vector2() : segments.back().end;
+		}																						// 获取路径末端坐标
 	};
 }

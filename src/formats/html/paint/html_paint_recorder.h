@@ -173,8 +173,8 @@ namespace dockit {
 		struct AccessibleTextIndex {
 			godot::String& text;
 			godot::String separator;
-			void append(const godot::String& p_value);
-			void space();
+			void append(const godot::String& p_value);											// 将文本片段追加到无障碍文本索引
+			void space();																		// 在文本索引中追加分隔空格
 		};
 		void index_text(const std::shared_ptr<litehtml::element>& p_element, const TextShaper& p_shape_text,
 			godot::String& r_separator, AccessibleTextIndex* p_accessible, bool p_unlaid = false, bool p_selectable = true);
@@ -203,58 +203,86 @@ namespace dockit {
 		bool push_content_clip(const godot::Rect2& p_box);
 
 	public:
-		void clear();
-		void begin(const HTMLGeometryIndex& p_geometry, const litehtml::render_item* p_root, const OverflowTextShaper& p_shaper);
-		void record_viewport_background(const litehtml::render_item& p_root, const std::function<void()>& p_draw);
-		void draw_text_overflow(const litehtml::render_item& p_context);
-		void draw_scrollbars(const litehtml::render_item& p_item);
-		godot::Ref<godot::Texture2D> get_control_icon(HTMLControlIcon p_icon);
-		void draw_input_icon(HTMLControlIcon p_icon, const godot::Rect2& p_clip, const godot::Rect2& p_rect, const godot::Color& p_color);
-		void draw_resize_grip(const godot::Rect2& p_clip, const godot::Rect2& p_grip);
+		void clear();																			// 清除当前存储的数据
+		void begin(
+			const HTMLGeometryIndex& p_geometry,
+			const litehtml::render_item* p_root,
+			const OverflowTextShaper& p_shaper
+		);																						// 初始化绘制记录器并建立文本索引
+		void record_viewport_background(
+			const litehtml::render_item& p_root,
+			const std::function<void()>& p_draw
+		);																						// 记录视口背景
+		void draw_text_overflow(const litehtml::render_item& p_context);						// 绘制文本溢出
+		void draw_scrollbars(const litehtml::render_item& p_item);								// 绘制滚动条
+		godot::Ref<godot::Texture2D> get_control_icon(HTMLControlIcon p_icon);					// 获取控件图标
+		void draw_input_icon(
+			HTMLControlIcon p_icon,
+			const godot::Rect2& p_clip,
+			const godot::Rect2& p_rect,
+			const godot::Color& p_color
+		);																						// 绘制输入图标
+		void draw_resize_grip(const godot::Rect2& p_clip, const godot::Rect2& p_grip);			// 绘制调整大小拖拽手柄
 		void draw_input_scrollbar(const godot::Rect2& p_clip, const godot::Rect2& p_track, const godot::Rect2& p_thumb,
-			int p_axis, const HTMLScrollbarAppearance& p_appearance);
-		bool set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target);
-		bool set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target);
-		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;
-		const RenderGeometry* resize_grip_at(const godot::Vector2& p_point) const;
-		void finish(const std::shared_ptr<litehtml::element>& p_root, const TextShaper& p_shape_text);
+			int p_axis, const HTMLScrollbarAppearance& p_appearance);							// 绘制输入滚动条
+		bool set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target);				// 设置滚动条悬停
+		bool set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target);			// 设置滚动条按下状态
+		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;		// 查找指定坐标命中的滚动条
+		const RenderGeometry* resize_grip_at(const godot::Vector2& p_point) const;				// 查找指定坐标命中的调整大小手柄
+		void finish(
+			const std::shared_ptr<litehtml::element>& p_root,
+			const TextShaper& p_shape_text
+		);																						// 完成绘制记录并生成文本索引
 
-		const std::vector<HTMLPaintRun>& get_paint_runs() const;
-		const std::vector<HTMLPaintRun>& get_viewport_background() const { return viewport_background_runs; }
-		const std::vector<HTMLPaintGroup>& get_viewport_background_groups() const { return viewport_background_groups; }
-		const std::vector<HTMLPaintGroup>& get_paint_groups() const { return paint_groups; }
-		const std::vector<HTMLPaintRun>& get_diagnostic_runs() const { return diagnostic_runs; }
-		std::shared_ptr<litehtml::element> hit_test_element(const godot::Vector2& p_point, bool p_text_selection = false) const;
-		void visit_hit_elements(const godot::Vector2& p_point, bool p_text_selection,
-			const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit) const;
-		const godot::String& get_plain_text() const;
-		const auto& get_text_index_spans() const { return text_index_spans; }
-		const godot::String& get_accessible_text() const { return accessible_text; }
-		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;
-		bool has_selectable_text(int64_t p_from, int64_t p_to) const;
+		const std::vector<HTMLPaintRun>& get_paint_runs() const;								// 获取记录的绘制指令片段
+		const std::vector<HTMLPaintRun>& get_viewport_background() const {
+			return viewport_background_runs;
+		}																						// 获取视口背景绘制指令
+		const std::vector<HTMLPaintGroup>& get_viewport_background_groups() const {
+			return viewport_background_groups;
+		}																						// 获取视口背景绘制分组
+		const std::vector<HTMLPaintGroup>& get_paint_groups() const { return paint_groups; }	// 获取绘制分组
+		const std::vector<HTMLPaintRun>& get_diagnostic_runs() const { return diagnostic_runs; }// 获取 CSS 诊断信息对应的绘制片段
+		std::shared_ptr<litehtml::element> hit_test_element(
+			const godot::Vector2& p_point,
+			bool p_text_selection = false
+		) const;																				// 查找指定坐标命中的元素并报告滚动条状态
+		void visit_hit_elements(
+			const godot::Vector2& p_point,
+			bool p_text_selection,
+			const std::function<bool(const std::shared_ptr<litehtml::element>&)>& p_visit
+		) const;																				// 遍历命中元素
+		const godot::String& get_plain_text() const;											// 获取文档排版后的纯文本
+		const auto& get_text_index_spans() const { return text_index_spans; }					// 获取文档文本与绘制片段之间的索引映射
+		const godot::String& get_accessible_text() const { return accessible_text; }			// 获取应用替代文本后的无障碍文本
+		godot::String get_copyable_text(int64_t p_from, int64_t p_to) const;					// 提取指定文本范围内可复制的内容
+		bool has_selectable_text(int64_t p_from, int64_t p_to) const;							// 检查给定文本范围内是否包含可选择内容
 		HTMLSelectionPoint selection_point_at(
 			const godot::Vector2& p_point,
 			std::shared_ptr<litehtml::element> p_target,
 			const litehtml::element* p_scope = nullptr
-		) const;
-		const auto& get_auto_content_text() const { return auto_content_text; }
-		int64_t hit_test_text(const godot::Vector2& p_point, const litehtml::element* p_scope = nullptr) const;
-		godot::Vector2i text_range_in(const litehtml::element& p_scope) const;
+		) const;																				// 获取指定坐标对应的文本选区边界点
+		const auto& get_auto_content_text() const { return auto_content_text; }					// 获取自动内容文本
+		int64_t hit_test_text(
+			const godot::Vector2& p_point,
+			const litehtml::element* p_scope = nullptr
+		) const;																				// 返回指定坐标命中的文本偏移
+		godot::Vector2i text_range_in(const litehtml::element& p_scope) const;					// 获取指定 DOM 子树对应的文本范围
 		bool hit_test_selectable_text(
 			const godot::Vector2& p_point,
 			const litehtml::element& p_target,
 			bool* r_text_hit = nullptr
-		) const;
+		) const;																				// 检查指定坐标是否命中目标元素中的可选择文本
 		godot::TypedArray<godot::Rect2> get_selection_rects(
 			int64_t p_from,
 			int64_t p_to
-		) const;
+		) const;																				// 获取选区矩形
 
-		void clear_diagnostics() { diagnostic_runs.clear(); }
+		void clear_diagnostics() { diagnostic_runs.clear(); }									// 清除诊断信息
 		void record_css_diagnostic(
 			const RenderGeometry& p_geometry,
 			const godot::Rect2& p_box
-		);
+		);																						// 记录一条 CSS 声明诊断信息
 		void draw_text(
 			const HTMLShapedText& p_shaped,
 			int64_t p_length,
@@ -262,7 +290,7 @@ namespace dockit {
 			const litehtml::position& p_position,
 			const std::vector<litehtml::box_shadow>& p_shadows,
 			const litehtml::css_underline& p_underline
-		);
+		);																						// 绘制文本
 		void draw_input(
 			const godot::Rect2& p_box,
 			const HTMLTextLayout& p_text,
@@ -274,42 +302,79 @@ namespace dockit {
 			float p_ascent,
 			float p_descent,
 			const HTMLInputPaintColors& p_colors
-		);
+		);																						// 绘制输入
 		void draw_input_chrome(
 			const godot::Rect2& p_clip,
 			const godot::Rect2& p_rect,
 			const godot::Color& p_color,
 			float p_radius = 0
-		);
+		);																						// 绘制输入Chrome
 		void draw_image_alt(
 			const godot::Rect2& p_box,
 			const std::vector<HTMLTextLayout>& p_lines,
 			float p_line_height,
 			litehtml::web_color p_color,
 			litehtml::text_align p_align
-		);
-		void draw_list_marker(const litehtml::list_marker& p_marker, const godot::Ref<godot::Texture2D>& p_texture);
-		litehtml::image_rendering get_image_sampling() const;								// 获取当前图层的 CSS 采样方式
-		void draw_image(const litehtml::background_layer& p_layer, const godot::Ref<godot::Texture2D>& p_texture);
-		void draw_solid_fill(const litehtml::background_layer& p_layer, const litehtml::web_color& p_color);
-		void draw_box_shadows(const litehtml::html_tag& p_element, const litehtml::position& p_box,
-			const litehtml::borders& p_borders, bool p_inset, const std::vector<litehtml::box_shadow>& p_shadows);
-		void draw_border_image(const godot::Ref<godot::Texture2D>& p_texture,
-			const std::vector<HTMLBorderImagePatch>& p_patches, const godot::Rect2& p_visible, bool p_flip_x);
-		void draw_borders(const litehtml::borders& p_borders, const litehtml::position& p_position);
-		void draw_linear_gradient(const litehtml::background_layer& p_layer, const litehtml::background_layer::linear_gradient& p_gradient);
-		void draw_radial_gradient(const litehtml::background_layer& p_layer, const litehtml::background_layer::radial_gradient& p_gradient);
-		void draw_conic_gradient(const litehtml::background_layer& p_layer, const litehtml::background_layer::conic_gradient& p_gradient);
+		);																						// 绘制图像替代文本
+		void draw_list_marker(
+			const litehtml::list_marker& p_marker,
+			const godot::Ref<godot::Texture2D>& p_texture
+		);																						// 绘制列表标记
+		litehtml::image_rendering get_image_sampling() const;									// 获取当前图层的 CSS 采样方式
+		void draw_image(
+			const litehtml::background_layer& p_layer,
+			const godot::Ref<godot::Texture2D>& p_texture
+		);																						// 绘制图像
+		void draw_solid_fill(
+			const litehtml::background_layer& p_layer,
+			const litehtml::web_color& p_color
+		);																						// 绘制实线填充
+		void draw_box_shadows(
+			const litehtml::html_tag& p_element,
+			const litehtml::position& p_box,
+			const litehtml::borders& p_borders,
+			bool p_inset,
+			const std::vector<litehtml::box_shadow>& p_shadows
+		);																						// 绘制盒子阴影
+		void draw_border_image(
+			const godot::Ref<godot::Texture2D>& p_texture,
+			const std::vector<HTMLBorderImagePatch>& p_patches,
+			const godot::Rect2& p_visible,
+			bool p_flip_x
+		);																						// 绘制边框图像
+		void draw_borders(
+			const litehtml::borders& p_borders,
+			const litehtml::position& p_position
+		);																						// 绘制边框
+		void draw_linear_gradient(
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::linear_gradient& p_gradient
+		);																						// 绘制线性渐变
+		void draw_radial_gradient(
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::radial_gradient& p_gradient
+		);																						// 绘制径向渐变
+		void draw_conic_gradient(
+			const litehtml::background_layer& p_layer,
+			const litehtml::background_layer::conic_gradient& p_gradient
+		);																						// 绘制锥形渐变
 
-		void set_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii);
-		void set_overflow_clip(const litehtml::render_item& p_item);
+		void set_clip(
+			const litehtml::position& p_position,
+			const litehtml::border_radiuses& p_radii
+		);																						// 设置 Canvas 绘图裁剪区域
+		void set_overflow_clip(const litehtml::render_item& p_item);							// 设置溢出裁剪
 		void set_render_item_clip(const litehtml::position& p_position, const litehtml::border_radiuses& p_radii,
-			const litehtml::render_item& p_item);
-		bool begin_render_item(const litehtml::render_item& p_item, const litehtml::position*& r_clip, bool p_decoration);
-		void end_render_item();
-		void begin_paint_group(const litehtml::render_item& p_item);
-		void end_paint_group();
-		void begin_background_blend(std::optional<litehtml::css_blend_mode> p_layer);
-		void del_clip();
+			const litehtml::render_item& p_item);												// 设置渲染项的裁剪区域和圆角
+		bool begin_render_item(
+			const litehtml::render_item& p_item,
+			const litehtml::position*& r_clip,
+			bool p_decoration
+		);																						// 开始记录单个渲染项的绘制内容
+		void end_render_item();																	// 结束当前渲染项的绘制记录
+		void begin_paint_group(const litehtml::render_item& p_item);							// 开始绘制组
+		void end_paint_group();																	// 结束绘制组
+		void begin_background_blend(std::optional<litehtml::css_blend_mode> p_layer);			// 开始背景混合
+		void del_clip();																		// 移除当前裁剪区域
 	};
 }

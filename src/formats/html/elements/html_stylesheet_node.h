@@ -18,9 +18,9 @@ namespace dockit {
 		litehtml::string linked_text;
 		godot::Ref<CSSStyleSheet> linked_resource;
 
-		bool accepts_style_text() const;
-		void parse_attributes() override;
-		void compute_styles(bool p_recursive) override;
-		bool removeChild(const litehtml::element::ptr& p_child) override;
+		bool accepts_style_text() const;														// 检查样式元素是否接受指定文本内容
+		void parse_attributes() override;														// 解析属性
+		void compute_styles(bool p_recursive) override;											// 计算样式
+		bool removeChild(const litehtml::element::ptr& p_child) override;						// 从当前节点移除指定子节点
 	};
 }

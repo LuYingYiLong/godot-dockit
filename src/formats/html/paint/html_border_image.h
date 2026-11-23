@@ -16,9 +16,16 @@ namespace dockit {
 		godot::Vector2 period;
 	};
 
+// 构造 CSS border-image 绘制块
 	godot::Rect2 get_border_image_area(const litehtml::css_border_image& p_style,
-		const godot::Rect2& p_box, const litehtml::borders& p_borders);
-	std::vector<HTMLBorderImagePatch> make_border_image_patches(const litehtml::css_border_image& p_style,
-		const litehtml::borders& p_borders, const godot::Rect2& p_area, const godot::Vector2& p_source_size,
-		const godot::Vector2& p_natural_size, const godot::Vector2& p_texture_size, bool p_flip_x);
+		const godot::Rect2& p_box, const litehtml::borders& p_borders);							// 计算 border-image 的目标绘制区域
+	std::vector<HTMLBorderImagePatch> make_border_image_patches(
+		const litehtml::css_border_image& p_style,
+		const litehtml::borders& p_borders,
+		const godot::Rect2& p_area,
+		const godot::Vector2& p_source_size,
+		const godot::Vector2& p_natural_size,
+		const godot::Vector2& p_texture_size,
+		bool p_flip_x
+	);																							// 根据边框切片参数生成 border-image 绘制块
 }

@@ -17,7 +17,7 @@ namespace dockit {
 			const godot::Vector2i shift(p_offset, p_offset);
 			if (scope.x < scope.y) scope += shift;
 			if (enclosing_all.x < enclosing_all.y) enclosing_all += shift;
-		}
+		}																						// 按偏移量平移文本选区端点
 	};
 
 	inline godot::Vector2i html_selection_between(const HTMLSelectionPoint& p_origin, const HTMLSelectionPoint& p_target) {
@@ -41,5 +41,5 @@ namespace dockit {
 			include(p_target.enclosing_all);
 		}
 		return backwards ? godot::Vector2i(last, first) : godot::Vector2i(first, last);
-	}
+	}																							// 根据两个边界点计算文本选区范围
 }

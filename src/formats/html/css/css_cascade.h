@@ -27,10 +27,10 @@ namespace dockit::css {
 		using ParseDeferred = std::function<litehtml::css_parsed_declaration(
 			const Value::deferred_declaration&, const css_token_vector&, bool important)>;
 
-		void add(Property name, Value value, CascadePriority priority);
-		void merge(const Cascade& source, CascadePriority priority);
-		void snapshot_defaults();
-		void clear(bool keep_variables = false);
+		void add(Property name, Value value, CascadePriority priority);							// 按层叠优先级添加 CSS 属性值
+		void merge(const Cascade& source, CascadePriority priority);							// 按指定层叠优先级合并样式声明
+		void snapshot_defaults();																// 保存当前样式的默认属性快照
+		void clear(bool keep_variables = false);												// 清除当前存储的数据
 		void resolve(
 			bool has_author_layers,
 			bool inherited_rtl,
@@ -38,11 +38,11 @@ namespace dockit::css {
 			const litehtml::css_registered_properties& registered,
 			litehtml::document_container* container,
 			const ParseDeferred& parse_deferred
-		);
+		);																						// 根据层叠优先级解析并计算最终 CSS 属性值
 
-		const Value& get(Property name) const;
-		void collect_property_names(std::vector<Property>& names) const;
-		const css_token_vector* get_custom_property(Property name, bool& local) const;
-		const vector<litehtml::css_diagnostic>& get_diagnostics() const { return diagnostics; }
+		const Value& get(Property name) const;													// 获取指定 CSS 属性的最终值
+		void collect_property_names(std::vector<Property>& names) const;						// 收集属性名称
+		const css_token_vector* get_custom_property(Property name, bool& local) const;			// 获取级联后的 CSS 自定义属性值
+		const vector<litehtml::css_diagnostic>& get_diagnostics() const { return diagnostics; }	// 获取分页过程中收集的诊断信息
 	};
 } // namespace dockit::css

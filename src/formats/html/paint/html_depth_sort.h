@@ -21,5 +21,5 @@ namespace dockit {
 
 	inline godot::real_t html_depth_at(const godot::Vector3& p_plane, const godot::Vector2& p_point) {
 		return p_plane.dot(godot::Vector3(p_point.x, p_point.y, 1));
-	}
+	}																							// 计算指定坐标处的 HTML 深度值
 }

@@ -59,5 +59,5 @@ namespace dockit {
 
 	inline std::optional<double> html_number(const char* p_value, bool p_entire = false) {
 		return p_value ? html_number(std::string_view(p_value), p_entire) : std::nullopt;
-	}
+	}																							// 解析 HTML 数字属性
 }

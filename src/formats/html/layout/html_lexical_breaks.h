@@ -19,5 +19,8 @@ namespace dockit {
 		HTMLAutomaticHyphens automatic_hyphens;
 	};
 
-	HTMLInlineWordBreaks prepare_inline_word_breaks(const std::shared_ptr<litehtml::render_item>& p_root, litehtml::pixel_t p_line_width);
+	HTMLInlineWordBreaks prepare_inline_word_breaks(
+		const std::shared_ptr<litehtml::render_item>& p_root,
+		litehtml::pixel_t p_line_width
+	);																							// 为行内文本计算词语断点
 }

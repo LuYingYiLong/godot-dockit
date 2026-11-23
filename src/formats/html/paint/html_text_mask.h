@@ -29,5 +29,5 @@ namespace dockit {
 
 	HTMLTextMask create_html_text_mask(const HTMLTextLayout& p_layout, const godot::Vector2& p_position,
 		const std::vector<TextDecorationMask>& p_decorations, const std::vector<TextEmphasisMask>& p_emphasis,
-		bool p_mipmaps);
+		bool p_mipmaps);																		// 创建HTML文本蒙版
 }

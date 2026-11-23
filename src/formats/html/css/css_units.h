@@ -14,7 +14,18 @@ namespace dockit::css {
 		css_container_units container_units = {};
 	};
 
-	pixel_t length_to_pixels(const css_length& length, const font_metrics& metrics, pixel_t basis, const UnitContext& context);
-	void compute_length(css_length& length, const font_metrics& metrics, pixel_t basis, const UnitContext& context);
+// 转换 CSS 长度单位
+	pixel_t length_to_pixels(
+		const css_length& length,
+		const font_metrics& metrics,
+		pixel_t basis,
+		const UnitContext& context
+	);																							// 将 CSS 长度转换为像素值
+	void compute_length(
+		css_length& length,
+		const font_metrics& metrics,
+		pixel_t basis,
+		const UnitContext& context
+	);																							// 计算长度
 
 }

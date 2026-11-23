@@ -41,9 +41,9 @@ namespace dockit {
 		bool set_font_rules(std::vector<litehtml::css_font_face> p_faces,
 			std::vector<litehtml::css_font_feature_values_rule> p_feature_values);				// 更新文档的字体声明和命名特性并报告是否变化
 		void set_viewport(const godot::Vector2i& p_size, const godot::Vector2i& p_media_size);	// 更新排版和媒体查询各自使用的视口尺寸
-		void set_print_media(bool p_enabled) { print_media = p_enabled; }
-		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);
-		bool set_accessibility_preferences(bool p_reduce_motion, bool p_increase_contrast);
+		void set_print_media(bool p_enabled) { print_media = p_enabled; }						// 设置打印媒体
+		bool set_preferred_color_scheme(litehtml::color_scheme p_scheme);						// 设置首选项颜色配色方案
+		bool set_accessibility_preferences(bool p_reduce_motion, bool p_increase_contrast);		// 设置无障碍偏好设置
 		std::shared_ptr<litehtml::document> get_svg_clip_document(
 			std::string_view p_url,
 			const char* p_base
@@ -53,7 +53,7 @@ namespace dockit {
 		) const;																				// 读取保留原始拼写的属性
 		godot::String resolve_image_source(std::string_view p_source) const {
 			return resources.resolve_image_source(p_source);
-		}
+		}																						// 解析并定位图像源
 		void set_remote_image_callback(const godot::Callable& p_callback) { resources.set_remote_image_callback(p_callback); }
 		void set_remote_stylesheet_callback(const godot::Callable& p_callback) { resources.set_remote_stylesheet_callback(p_callback); }
 		void set_stylesheet_changed_callback(const godot::Callable& p_callback) { resources.set_stylesheet_changed_callback(p_callback); }

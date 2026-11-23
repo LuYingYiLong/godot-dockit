@@ -15,7 +15,7 @@ namespace dockit {
 		HTMLTextControlNode(const std::shared_ptr<litehtml::document>& p_document, bool p_multiline) :
 			html_tag(p_document), editor(p_multiline) {
 			editor.value_changed = [this] { note_dom_change(DOM_STATE); };
-		}
+		}																						// 获取文本控件对应的 HTML 标签名
 
 		virtual bool is_text_control() const = 0;
 		virtual bool update_pseudos() = 0;

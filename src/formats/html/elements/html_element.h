@@ -42,12 +42,16 @@ protected:
 	godot::Ref<HTMLFormElement> get_form_owner() const;
 
 public:
-	godot::Ref<HTMLShadowRoot> attach_shadow(const godot::String& p_mode = "open", const godot::String& p_assignment = "named", bool p_delegates_focus = false);
-	godot::Ref<HTMLShadowRoot> get_shadow_root() const;
+	godot::Ref<HTMLShadowRoot> attach_shadow(
+		const godot::String& p_mode = "open",
+		const godot::String& p_assignment = "named",
+		bool p_delegates_focus = false
+	);																							// 挂载影子
+	godot::Ref<HTMLShadowRoot> get_shadow_root() const;											// 获取组件宿主关联的影子根节点
 
-	godot::Error set_pointer_capture(int64_t p_pointer_id);
-	godot::Error release_pointer_capture(int64_t p_pointer_id);
-	bool has_pointer_capture(int64_t p_pointer_id) const;
+	godot::Error set_pointer_capture(int64_t p_pointer_id);										// 设置指针捕获
+	godot::Error release_pointer_capture(int64_t p_pointer_id);									// 释放指针捕获
+	bool has_pointer_capture(int64_t p_pointer_id) const;										// 检查是否包含指针捕获
 	godot::TypedArray<HTMLAnimation> get_animations();											// 返回以该元素为目标的动画
 	godot::Ref<HTMLAnimation> animate(
 		const godot::TypedArray<godot::Dictionary>& p_keyframes,
@@ -64,7 +68,7 @@ public:
 	godot::String remove_style_property(const godot::String& p_name);							// 删除内联 CSS 属性并返回旧值
 
 	NodeType get_node_type() const override { return ELEMENT_NODE; }							// 返回元素节点类型
-	bool is_content_editable() const;
+	bool is_content_editable() const;															// 检查元素是否处于可编辑状态
 	godot::String get_tag_name() const;															// 返回小写 HTML 标签名
 	bool has_attribute(const godot::String& p_name) const;										// 检查指定属性是否存在，空属性也视为存在
 	godot::String get_attribute(

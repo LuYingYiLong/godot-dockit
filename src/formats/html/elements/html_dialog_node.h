@@ -18,6 +18,6 @@ namespace dockit {
 			if (!dialog) return false;
 			if (p_mode == HTMLNodeCopyMode::ADOPT) dialog->return_value = return_value;
 			return true;
-		}
+		}																						// 将当前控件状态复制到目标节点
 	};
 }

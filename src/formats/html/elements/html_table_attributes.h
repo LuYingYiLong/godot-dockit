@@ -19,5 +19,5 @@ namespace dockit {
 			if (value >= p_maximum) return p_maximum;
 		}
 		return std::max(value, p_minimum);
-	}
+	}																							// 读取并限制表格单元格的跨行或跨列范围
 }

@@ -65,7 +65,7 @@ public:
 	godot::TypedArray<HTMLNode> get_child_nodes() const;										// 返回按树顺序排列的直接子节点快照
 	godot::Ref<HTMLNode> get_first_child() const;												// 返回第一个直接子节点
 	godot::Ref<HTMLNode> get_next_sibling() const;												// 返回下一个同父节点
-	godot::Ref<HTMLElement> get_assigned_slot() const;
+	godot::Ref<HTMLElement> get_assigned_slot() const;											// 获取分配给节点的 slot 元素
 	godot::Ref<HTMLNode> get_root_node() const;													// 返回当前树的根节点
 	bool contains(const godot::Ref<HTMLNode>& p_node) const;									// 检查是否包含该节点或其自身
 	int32_t compare_document_position(const godot::Ref<HTMLNode>& p_node) const;				// 返回节点间的位置标志
@@ -92,10 +92,10 @@ protected:
 public:
 	NodeType get_node_type() const override { return DOCUMENT_NODE; }							// 返回文档节点类型
 	godot::String get_base_uri() const;															// 返回当前文档的生效基准
-	godot::String get_visibility_state() const;
-	godot::String get_design_mode() const;
-	void set_design_mode(const godot::String& p_mode);
-	godot::Ref<HTMLElement> get_active_element() const;
+	godot::String get_visibility_state() const;													// 获取可见性状态
+	godot::String get_design_mode() const;														// 获取设计模式模式
+	void set_design_mode(const godot::String& p_mode);											// 设置设计模式模式
+	godot::Ref<HTMLElement> get_active_element() const;											// 获取活动元素
 	godot::Ref<HTMLElement> get_document_element() const;										// 返回文档的根元素
 	godot::Ref<HTMLElement> get_body() const;													// 返回文档的正文元素
 	godot::Ref<HTMLElement> query_selector(const godot::String& p_selector) const;				// 返回文档中第一个匹配选择器的元素

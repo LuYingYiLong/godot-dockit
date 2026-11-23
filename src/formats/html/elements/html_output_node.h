@@ -12,6 +12,6 @@ namespace dockit {
 	public:
 		using litehtml::html_tag::html_tag;
 		std::optional<godot::String> default_override;
-		bool copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const override;
+		bool copy_state_to(litehtml::element& p_target, HTMLNodeCopyMode p_mode) const override;// 将当前控件状态复制到目标节点
 	};
 }

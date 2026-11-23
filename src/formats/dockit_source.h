@@ -6,7 +6,7 @@ namespace dockit {
 	godot::Error read_document_text(
 		const godot::String& p_path,
 		godot::String& r_text
-	);																				// 读取 UTF-8 源文件并写入输出字符串
+	);																							// 读取 UTF-8 源文件并写入输出字符串
 
 	// 将源文件读入文档资源并保存为 .res
 	template <typename Document>
@@ -23,5 +23,5 @@ namespace dockit {
 		document.instantiate();
 		document->set_text(text);
 		return godot::ResourceSaver::get_singleton()->save(document, p_save_path + godot::String(".res"));
-	}
+	}																							// 读取源文档并保存为对应的导入资源
 } // namespace dockit

@@ -10,14 +10,23 @@ namespace dockit::css {
 	class StyleHost {
 	public:
 		virtual ~StyleHost() = default;
-		virtual pixel_t default_font_size() const = 0;
-		virtual pixel_t default_fixed_font_size() const { return default_font_size(); }
-		virtual font_metrics initial_font_metrics() const = 0;
-		virtual pixel_t points_to_pixels(float points) const = 0;
-		virtual css_container_units container_units() const = 0;
-		virtual uint_ptr get_font(const font_description& description, font_metrics* metrics) const = 0;
-		virtual void compute_image(image& value, const string& base, const font_metrics& metrics,
-			const css_image_resolution& resolution, css_image_orientation orientation, color_scheme scheme) const = 0;
+		virtual pixel_t default_font_size() const = 0;											// 获取默认字号
+		virtual pixel_t default_fixed_font_size() const { return default_font_size(); }			// 获取固定宽度字体的默认字号
+		virtual font_metrics initial_font_metrics() const = 0;									// 获取初始字体度量信息
+		virtual pixel_t points_to_pixels(float points) const = 0;								// 将磅值转换为当前文档使用的像素值
+		virtual css_container_units container_units() const = 0;								// 获取当前容器单位上下文
+		virtual uint_ptr get_font(
+			const font_description& description,
+			font_metrics* metrics
+		) const = 0;																			// 根据字体描述获取字体及度量信息
+		virtual void compute_image(
+			image& value,
+			const string& base,
+			const font_metrics& metrics,
+			const css_image_resolution& resolution,
+			css_image_orientation orientation,
+			color_scheme scheme
+		) const = 0;																			// 根据样式和分辨率计算图像资源
 	};
 
 	struct ComputeContext {
@@ -35,8 +44,8 @@ namespace dockit::css {
 		bool replacement_ignores_size_hints = false;
 
 		pixel_t to_pixels(const css_length& length, const font_metrics& metrics,
-			pixel_t basis, css_length_context overrides = {}) const;
-		void cvt_units(css_length& length, const font_metrics& metrics, pixel_t basis) const;
+			pixel_t basis, css_length_context overrides = {}) const;							// 将 CSS 长度转换为像素值
+		void cvt_units(css_length& length, const font_metrics& metrics, pixel_t basis) const;	// 将 CSS 长度单位转换为像素值
 
 	private:
 		UnitContext unit_context(const font_metrics& metrics, css_length_context overrides = {}) const;

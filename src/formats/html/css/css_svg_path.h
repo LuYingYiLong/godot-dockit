@@ -9,10 +9,14 @@ namespace dockit::css {
 		double x = 0;
 		double y = 0;
 
-		SVGPathPoint operator+(SVGPathPoint p_other) const { return {x + p_other.x, y + p_other.y}; }
-		SVGPathPoint operator-(SVGPathPoint p_other) const { return {x - p_other.x, y - p_other.y}; }
-		SVGPathPoint operator*(double p_factor) const { return {x * p_factor, y * p_factor}; }
-		bool operator==(SVGPathPoint p_other) const { return x == p_other.x && y == p_other.y; }
+		SVGPathPoint operator+(
+			SVGPathPoint p_other
+		) const { return {x + p_other.x, y + p_other.y}; }										// 将两个值相加
+		SVGPathPoint operator-(
+			SVGPathPoint p_other
+		) const { return {x - p_other.x, y - p_other.y}; }										// 将两个值相减
+		SVGPathPoint operator*(double p_factor) const { return {x * p_factor, y * p_factor}; }	// 将两个值相乘
+		bool operator==(SVGPathPoint p_other) const { return x == p_other.x && y == p_other.y; }// 比较两个值是否相等
 	};
 
 	struct SVGPathSegment {
@@ -42,8 +46,8 @@ namespace dockit::css {
 		bool open = false;
 
 	public:
-		bool empty() const { return subpaths.empty(); }
-		SVGPathPoint position() const { return current; }
+		bool empty() const { return subpaths.empty(); }											// 检查路径是否为空
+		SVGPathPoint position() const { return current; }										// 获取当前路径位置
 		SVGPathPoint reflected_control(SVGPathSegment::Kind p_kind) const;						// 获取平滑曲线的隐式控制点
 		bool move_to(SVGPathPoint p_position);													// 从绝对坐标开始新轮廓
 		bool append(const SVGPathSegment& p_segment);											// 添加已解析的路径段

@@ -37,7 +37,7 @@ namespace dockit::css {
 	};
 
 	bool takes_cascade_precedence(const CascadePriority& candidate, bool candidate_important,
-		const CascadePriority& current, bool current_important);
+		const CascadePriority& current, bool current_important);								// 比较两个声明的 CSS 层叠优先级
 
 	class CascadeLayers {
 		struct Layer {
@@ -50,9 +50,9 @@ namespace dockit::css {
 		size_t append_child(size_t parent);
 
 	public:
-		size_t register_layer(size_t parent, const vector<string>& names);
-		void assign_ranks();
-		int rank(size_t layer) const { return layers[layer].rank; }
-		bool has_layers() const { return layers.size() > 1; }
+		size_t register_layer(size_t parent, const vector<string>& names);						// 注册 CSS 层并返回其内部索引
+		void assign_ranks();																	// 根据层顺序分配层叠优先级
+		int rank(size_t layer) const { return layers[layer].rank; }								// 获取指定层的层叠顺序等级
+		bool has_layers() const { return layers.size() > 1; }									// 检查是否包含层
 	};
 } // namespace dockit::css

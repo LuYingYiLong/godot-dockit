@@ -55,13 +55,13 @@ class HTMLPrintLayout : public godot::RefCounted {
 public:
 	HTMLPrintLayout() = default;
 	~HTMLPrintLayout() override;
-	bool is_ready() const;
-	int64_t get_page_count() const;
-	godot::Vector2 get_page_size(int64_t p_page_index) const;
-	godot::Rect2 get_page_content_rect(int64_t p_page_index) const;
-	godot::PackedStringArray get_diagnostics() const;
-	int64_t get_error() const;
-	godot::String get_error_message() const;
-	godot::PackedByteArray to_pdf();
-	int64_t save_pdf(const godot::String& p_path);
+	bool is_ready() const;																		// 检查分页布局是否已完成准备
+	int64_t get_page_count() const;																// 获取页面数量
+	godot::Vector2 get_page_size(int64_t p_page_index) const;									// 获取指定页面的尺寸
+	godot::Rect2 get_page_content_rect(int64_t p_page_index) const;								// 获取指定页面的内容区域
+	godot::PackedStringArray get_diagnostics() const;											// 获取分页过程中收集的诊断信息
+	int64_t get_error() const;																	// 获取分页布局最近一次错误码
+	godot::String get_error_message() const;													// 获取最近一次操作的错误信息
+	godot::PackedByteArray to_pdf();															// 将分页布局导出为 PDF 字节数据
+	int64_t save_pdf(const godot::String& p_path);												// 将分页布局保存为 PDF 文件
 };

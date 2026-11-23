@@ -58,8 +58,8 @@ public:
 	// 同一事件在派发过程中再次派发会被拒绝，返回 false。
 	bool begin_dispatch(const godot::Ref<HTMLEventTarget>& p_target,
 		const std::vector<godot::Ref<HTMLEventTarget>>& p_path);
-	void set_dispatch_phase(const godot::Ref<HTMLEventTarget>& p_node, int p_phase);
-	void end_dispatch();
+	void set_dispatch_phase(const godot::Ref<HTMLEventTarget>& p_node, int p_phase);			// 设置dispatch阶段
+	void end_dispatch();																		// 结束dispatch
 	void set_passive_context(bool p_passive) { passive_context = p_passive; }					// 由派发器在调用 passive 监听器前后切换
 	void mark_trusted() { trusted = true; }														// 标记为引擎合成的真实输入事件
 	bool is_dispatching() const { return dispatching; }											// 返回是否正在派发
@@ -76,8 +76,8 @@ public:
 	void set_bubbles(bool p_bubbles);															// 设置是否冒泡，派发期间无效
 	bool get_cancelable() const { return cancelable; }											// 返回是否可取消
 	void set_cancelable(bool p_cancelable);														// 设置是否可取消，派发期间无效
-	bool get_composed() const { return composed; }
-	void set_composed(bool p_composed);
+	bool get_composed() const { return composed; }												// 获取合成状态
+	void set_composed(bool p_composed);															// 设置合成状态
 	bool is_default_prevented() const { return default_prevented; }								// 返回默认动作是否已被取消
 	bool is_trusted() const { return trusted; }													// 返回是否由引擎合成
 	int64_t get_time_stamp() const { return time_stamp; }										// 返回事件创建时间的毫秒时间戳
@@ -118,24 +118,26 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Ref<HTMLEventTarget> get_related_target() const { return related_target; }
-	void set_related_target(const godot::Ref<HTMLEventTarget>& p_target) { related_target = p_target; }
+	godot::Ref<HTMLEventTarget> get_related_target() const { return related_target; }			// 获取事件关联的另一目标元素
+	void set_related_target(
+		const godot::Ref<HTMLEventTarget>& p_target
+	) { related_target = p_target; }															// 设置关联目标目标
 	int get_button() const { return button; }													// 返回触发的鼠标键
-	void set_button(int p_button) { button = p_button; }
+	void set_button(int p_button) { button = p_button; }										// 设置按钮
 	int get_buttons() const { return buttons; }													// 返回按键位掩码
-	void set_buttons(int p_buttons) { buttons = p_buttons; }
+	void set_buttons(int p_buttons) { buttons = p_buttons; }									// 设置按钮
 	int get_detail() const { return detail; }													// 返回连续点击计数
-	void set_detail(int p_detail) { detail = p_detail; }
+	void set_detail(int p_detail) { detail = p_detail; }										// 设置详情
 	godot::Vector2 get_position() const { return position; }									// 返回标签局部坐标中的指针位置
-	void set_position(const godot::Vector2& p_position) { position = p_position; }
-	bool is_shift_pressed() const { return shift; }
-	void set_shift_pressed(bool p_pressed) { shift = p_pressed; }
-	bool is_ctrl_pressed() const { return ctrl; }
-	void set_ctrl_pressed(bool p_pressed) { ctrl = p_pressed; }
-	bool is_alt_pressed() const { return alt; }
-	void set_alt_pressed(bool p_pressed) { alt = p_pressed; }
-	bool is_meta_pressed() const { return meta; }
-	void set_meta_pressed(bool p_pressed) { meta = p_pressed; }
+	void set_position(const godot::Vector2& p_position) { position = p_position; }				// 设置位置
+	bool is_shift_pressed() const { return shift; }												// 检查 Shift 键是否按下
+	void set_shift_pressed(bool p_pressed) { shift = p_pressed; }								// 设置Shift 键按下状态
+	bool is_ctrl_pressed() const { return ctrl; }												// 检查 Ctrl 键是否按下
+	void set_ctrl_pressed(bool p_pressed) { ctrl = p_pressed; }									// 设置Ctrl 键按下状态
+	bool is_alt_pressed() const { return alt; }													// 检查 Alt 键是否按下
+	void set_alt_pressed(bool p_pressed) { alt = p_pressed; }									// 设置替代文本按下状态
+	bool is_meta_pressed() const { return meta; }												// 检查 Meta 键是否按下
+	void set_meta_pressed(bool p_pressed) { meta = p_pressed; }									// 设置Meta 键按下状态
 };
 
 class HTMLWheelEvent : public HTMLMouseEvent {
@@ -154,10 +156,10 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Vector2 get_delta() const { return delta; }
-	void set_delta(const godot::Vector2& p_delta) { delta = p_delta; }
-	int get_delta_mode() const { return delta_mode; }
-	void set_delta_mode(int p_delta_mode) { delta_mode = p_delta_mode; }
+	godot::Vector2 get_delta() const { return delta; }											// 获取增量
+	void set_delta(const godot::Vector2& p_delta) { delta = p_delta; }							// 设置增量
+	int get_delta_mode() const { return delta_mode; }											// 获取增量模式
+	void set_delta_mode(int p_delta_mode) { delta_mode = p_delta_mode; }						// 设置增量模式
 };
 
 VARIANT_ENUM_CAST(HTMLWheelEvent::DeltaMode);
@@ -173,12 +175,14 @@ protected:
 	static void _bind_methods();
 
 public:
-	int get_pointer_id() const { return pointer_id; }
-	void set_pointer_id(int p_pointer_id) { pointer_id = p_pointer_id; }
-	godot::StringName get_pointer_type() const { return pointer_type; }
-	void set_pointer_type(const godot::StringName& p_pointer_type) { pointer_type = p_pointer_type; }
-	bool is_primary() const { return primary; }
-	void set_is_primary(bool p_primary) { primary = p_primary; }
+	int get_pointer_id() const { return pointer_id; }											// 获取指针标识
+	void set_pointer_id(int p_pointer_id) { pointer_id = p_pointer_id; }						// 设置指针标识
+	godot::StringName get_pointer_type() const { return pointer_type; }							// 获取指针类型
+	void set_pointer_type(
+		const godot::StringName& p_pointer_type
+	) { pointer_type = p_pointer_type; }														// 设置指针类型
+	bool is_primary() const { return primary; }													// 检查主
+	void set_is_primary(bool p_primary) { primary = p_primary; }								// 设置is主
 };
 
 class HTMLKeyboardEvent : public HTMLEvent {
@@ -198,24 +202,24 @@ protected:
 	static void _bind_methods();
 
 public:
-	int get_keycode() const { return keycode; }
-	void set_keycode(int p_keycode) { keycode = p_keycode; }
-	int get_physical_keycode() const { return physical_keycode; }
-	void set_physical_keycode(int p_physical_keycode) { physical_keycode = p_physical_keycode; }
-	int get_key_label() const { return key_label; } // 返回按键在布局中的标签码
-	void set_key_label(int p_key_label) { key_label = p_key_label; }
-	int get_unicode() const { return unicode; }
-	void set_unicode(int p_unicode) { unicode = p_unicode; }
-	bool is_shift_pressed() const { return shift; }
-	void set_shift_pressed(bool p_pressed) { shift = p_pressed; }
-	bool is_ctrl_pressed() const { return ctrl; }
-	void set_ctrl_pressed(bool p_pressed) { ctrl = p_pressed; }
-	bool is_alt_pressed() const { return alt; }
-	void set_alt_pressed(bool p_pressed) { alt = p_pressed; }
-	bool is_meta_pressed() const { return meta; }
-	void set_meta_pressed(bool p_pressed) { meta = p_pressed; }
-	bool is_echo() const { return echo; } // 返回是否为按住产生的重复按键
-	void set_echo(bool p_echo) { echo = p_echo; }
+	int get_keycode() const { return keycode; }													// 获取按键码
+	void set_keycode(int p_keycode) { keycode = p_keycode; }									// 设置按键码
+	int get_physical_keycode() const { return physical_keycode; }								// 获取物理按键码
+	void set_physical_keycode(int p_physical_keycode) { physical_keycode = p_physical_keycode; }// 设置物理按键码
+	int get_key_label() const { return key_label; }												// 返回按键在布局中的标签码
+	void set_key_label(int p_key_label) { key_label = p_key_label; }							// 设置键盘按键对应的显示标签
+	int get_unicode() const { return unicode; }													// 获取Unicode
+	void set_unicode(int p_unicode) { unicode = p_unicode; }									// 设置Unicode
+	bool is_shift_pressed() const { return shift; }												// 检查 Shift 键是否按下
+	void set_shift_pressed(bool p_pressed) { shift = p_pressed; }								// 设置Shift 键按下状态
+	bool is_ctrl_pressed() const { return ctrl; }												// 检查 Ctrl 键是否按下
+	void set_ctrl_pressed(bool p_pressed) { ctrl = p_pressed; }									// 设置Ctrl 键按下状态
+	bool is_alt_pressed() const { return alt; }													// 检查 Alt 键是否按下
+	void set_alt_pressed(bool p_pressed) { alt = p_pressed; }									// 设置替代文本按下状态
+	bool is_meta_pressed() const { return meta; }												// 检查 Meta 键是否按下
+	void set_meta_pressed(bool p_pressed) { meta = p_pressed; }									// 设置Meta 键按下状态
+	bool is_echo() const { return echo; }														// 返回是否为按住产生的重复按键
+	void set_echo(bool p_echo) { echo = p_echo; }												// 设置回显状态
 };
 
 class HTMLFocusEvent : public HTMLEvent {
@@ -227,8 +231,10 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Ref<HTMLEventTarget> get_related_target() const { return related_target; } // 返回焦点转移的对端目标
-	void set_related_target(const godot::Ref<HTMLEventTarget>& p_target) { related_target = p_target; }
+	godot::Ref<HTMLEventTarget> get_related_target() const { return related_target; }			// 返回焦点转移的对端目标
+	void set_related_target(
+		const godot::Ref<HTMLEventTarget>& p_target
+	) { related_target = p_target; }															// 设置关联目标目标
 };
 
 class HTMLSubmitEvent : public HTMLEvent {
@@ -240,8 +246,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Ref<HTMLElement> get_submitter() const { return submitter; } // 返回触发提交的按钮，可能为空
-	void set_submitter(const godot::Ref<HTMLElement>& p_submitter) { submitter = p_submitter; }
+	godot::Ref<HTMLElement> get_submitter() const { return submitter; }							// 返回触发提交的按钮，可能为空
+	void set_submitter(const godot::Ref<HTMLElement>& p_submitter) { submitter = p_submitter; }	// 设置提交控件
 };
 
 class HTMLInputEvent : public HTMLEvent {
@@ -252,12 +258,12 @@ class HTMLInputEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	godot::String get_data() const { return data; }
-	void set_data(const godot::String& p_data);
-	godot::StringName get_input_type() const { return input_type; }
-	void set_input_type(const godot::StringName& p_input_type);
-	bool is_composing() const { return composing; }
-	void set_is_composing(bool p_composing);
+	godot::String get_data() const { return data; }												// 获取数据
+	void set_data(const godot::String& p_data);													// 设置数据
+	godot::StringName get_input_type() const { return input_type; }								// 获取输入类型
+	void set_input_type(const godot::StringName& p_input_type);									// 设置输入类型
+	bool is_composing() const { return composing; }												// 检查当前是否正在进行输入法组合输入
+	void set_is_composing(bool p_composing);													// 设置is组合输入状态
 };
 
 class HTMLCompositionEvent : public HTMLEvent {
@@ -266,8 +272,8 @@ class HTMLCompositionEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	godot::String get_data() const { return data; }
-	void set_data(const godot::String& p_data);
+	godot::String get_data() const { return data; }												// 获取数据
+	void set_data(const godot::String& p_data);													// 设置数据
 };
 
 class HTMLDataTransfer : public godot::RefCounted {
@@ -288,22 +294,28 @@ private:
 protected:
 	static void _bind_methods();
 public:
-	godot::String get_data(const godot::String& p_type) const;
-	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);
-	void clear_data(const godot::String& p_type = {});
-	godot::PackedStringArray get_types() const;
-	void set_text(const godot::String& p_text) { data.insert(godot::StringName("text/plain"), p_text); }
-	void set_effect_allowed(const godot::String& p_value) { if (mode == MODE_READ_WRITE) effect_allowed = p_value; }
-	const godot::String& get_effect_allowed() const { return effect_allowed; }
-	void set_drop_effect(const godot::String& p_value) { drop_effect = p_value; }
-	const godot::String& get_drop_effect() const { return drop_effect; }
-	void set_mode(Mode p_mode) { mode = p_mode; }
-	void set_read_only(bool p_read_only) { mode = p_read_only ? MODE_READ_ONLY : MODE_READ_WRITE; }
+	godot::String get_data(const godot::String& p_type) const;									// 获取数据
+	godot::Error set_data(const godot::String& p_type, const godot::String& p_value);			// 设置数据
+	void clear_data(const godot::String& p_type = {});											// 清除数据
+	godot::PackedStringArray get_types() const;													// 获取类型
+	void set_text(
+		const godot::String& p_text
+	) { data.insert(godot::StringName("text/plain"), p_text); }									// 设置文本
+	void set_effect_allowed(
+		const godot::String& p_value
+	) { if (mode == MODE_READ_WRITE) effect_allowed = p_value; }								// 设置效果允许状态
+	const godot::String& get_effect_allowed() const { return effect_allowed; }					// 获取效果允许状态
+	void set_drop_effect(const godot::String& p_value) { drop_effect = p_value; }				// 设置拖放效果
+	const godot::String& get_drop_effect() const { return drop_effect; }						// 获取拖放效果
+	void set_mode(Mode p_mode) { mode = p_mode; }												// 设置模式
+	void set_read_only(
+		bool p_read_only
+	) { mode = p_read_only ? MODE_READ_ONLY : MODE_READ_WRITE; }								// 设置read只读状态
 };
 
 namespace dockit {
-	void set_current_drag_transfer(const godot::Ref<HTMLDataTransfer>& p_transfer);
-	godot::Ref<HTMLDataTransfer> get_current_drag_transfer();
+	void set_current_drag_transfer(const godot::Ref<HTMLDataTransfer>& p_transfer);				// 设置当前拖动传输
+	godot::Ref<HTMLDataTransfer> get_current_drag_transfer();									// 获取当前拖动传输
 }
 
 VARIANT_ENUM_CAST(HTMLDataTransfer::Mode);
@@ -314,8 +326,10 @@ class HTMLDragEvent : public HTMLMouseEvent {
 protected:
 	static void _bind_methods();
 public:
-	godot::Ref<HTMLDataTransfer> get_data_transfer() const { return data_transfer; }
-	void set_data_transfer(const godot::Ref<HTMLDataTransfer>& p_data_transfer) { data_transfer = p_data_transfer; }
+	godot::Ref<HTMLDataTransfer> get_data_transfer() const { return data_transfer; }			// 获取数据传输
+	void set_data_transfer(
+		const godot::Ref<HTMLDataTransfer>& p_data_transfer
+	) { data_transfer = p_data_transfer; }														// 设置数据传输
 };
 
 class HTMLClipboardEvent : public HTMLEvent {
@@ -324,8 +338,10 @@ class HTMLClipboardEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	godot::Ref<HTMLDataTransfer> get_clipboard_data() const { return clipboard_data; }
-	void set_clipboard_data(const godot::Ref<HTMLDataTransfer>& p_data) { clipboard_data = p_data; }
+	godot::Ref<HTMLDataTransfer> get_clipboard_data() const { return clipboard_data; }			// 获取剪贴板数据
+	void set_clipboard_data(
+		const godot::Ref<HTMLDataTransfer>& p_data
+	) { clipboard_data = p_data; }																// 设置剪贴板数据
 };
 
 class HTMLToggleEvent : public HTMLEvent {
@@ -335,10 +351,10 @@ class HTMLToggleEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	const godot::String& get_old_state() const { return old_state; }
-	void set_old_state(const godot::String& p_state) { old_state = p_state; }
-	const godot::String& get_new_state() const { return new_state; }
-	void set_new_state(const godot::String& p_state) { new_state = p_state; }
+	const godot::String& get_old_state() const { return old_state; }							// 获取旧值状态
+	void set_old_state(const godot::String& p_state) { old_state = p_state; }					// 设置旧值状态
+	const godot::String& get_new_state() const { return new_state; }							// 获取新值状态
+	void set_new_state(const godot::String& p_state) { new_state = p_state; }					// 设置新值状态
 };
 
 class HTMLMediaEvent : public HTMLEvent {
@@ -357,16 +373,16 @@ class HTMLErrorEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	const godot::String& get_message() const { return message; }
-	void set_message(const godot::String& p_value) { message = p_value; }
-	const godot::String& get_filename() const { return filename; }
-	void set_filename(const godot::String& p_value) { filename = p_value; }
-	int32_t get_line_number() const { return line_number; }
-	void set_line_number(int32_t p_value) { line_number = p_value; }
-	int32_t get_column_number() const { return column_number; }
-	void set_column_number(int32_t p_value) { column_number = p_value; }
-	godot::Variant get_error() const { return error; }
-	void set_error(const godot::Variant& p_value) { error = p_value; }
+	const godot::String& get_message() const { return message; }								// 获取消息
+	void set_message(const godot::String& p_value) { message = p_value; }						// 设置消息
+	const godot::String& get_filename() const { return filename; }								// 获取文件名
+	void set_filename(const godot::String& p_value) { filename = p_value; }						// 设置文件名
+	int32_t get_line_number() const { return line_number; }										// 获取行数字
+	void set_line_number(int32_t p_value) { line_number = p_value; }							// 设置行数字
+	int32_t get_column_number() const { return column_number; }									// 获取列数字
+	void set_column_number(int32_t p_value) { column_number = p_value; }						// 设置列数字
+	godot::Variant get_error() const { return error; }											// 获取分页布局最近一次错误码
+	void set_error(const godot::Variant& p_value) { error = p_value; }							// 设置错误
 };
 
 class HTMLAnimationEvent : public HTMLEvent {
@@ -377,12 +393,12 @@ class HTMLAnimationEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	const godot::String& get_animation_name() const { return animation_name; }
-	void set_animation_name(const godot::String& p_value) { animation_name = p_value; }
-	double get_elapsed_time() const { return elapsed_time; }
-	void set_elapsed_time(double p_value) { elapsed_time = p_value; }
-	const godot::String& get_pseudo_element() const { return pseudo_element; }
-	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }
+	const godot::String& get_animation_name() const { return animation_name; }					// 获取动画名称
+	void set_animation_name(const godot::String& p_value) { animation_name = p_value; }			// 设置动画名称
+	double get_elapsed_time() const { return elapsed_time; }									// 获取经过时间时间
+	void set_elapsed_time(double p_value) { elapsed_time = p_value; }							// 设置经过时间时间
+	const godot::String& get_pseudo_element() const { return pseudo_element; }					// 获取伪类元素
+	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }			// 设置伪类元素
 };
 
 class HTMLTransitionEvent : public HTMLEvent {
@@ -393,12 +409,12 @@ class HTMLTransitionEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	const godot::String& get_property_name() const { return property_name; }
-	void set_property_name(const godot::String& p_value) { property_name = p_value; }
-	double get_elapsed_time() const { return elapsed_time; }
-	void set_elapsed_time(double p_value) { elapsed_time = p_value; }
-	const godot::String& get_pseudo_element() const { return pseudo_element; }
-	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }
+	const godot::String& get_property_name() const { return property_name; }					// 获取属性名称
+	void set_property_name(const godot::String& p_value) { property_name = p_value; }			// 设置属性名称
+	double get_elapsed_time() const { return elapsed_time; }									// 获取经过时间时间
+	void set_elapsed_time(double p_value) { elapsed_time = p_value; }							// 设置经过时间时间
+	const godot::String& get_pseudo_element() const { return pseudo_element; }					// 获取伪类元素
+	void set_pseudo_element(const godot::String& p_value) { pseudo_element = p_value; }			// 设置伪类元素
 };
 
 class HTMLTouchPoint : public godot::RefCounted {
@@ -409,12 +425,12 @@ class HTMLTouchPoint : public godot::RefCounted {
 protected:
 	static void _bind_methods();
 public:
-	int32_t get_identifier() const { return identifier; }
-	void set_identifier(int32_t p_value) { identifier = p_value; }
-	godot::Ref<HTMLElement> get_target() const { return target; }
-	void set_target(const godot::Ref<HTMLElement>& p_value) { target = p_value; }
-	godot::Vector2 get_position() const { return position; }
-	void set_position(const godot::Vector2& p_value) { position = p_value; }
+	int32_t get_identifier() const { return identifier; }										// 获取标识符
+	void set_identifier(int32_t p_value) { identifier = p_value; }								// 设置标识符
+	godot::Ref<HTMLElement> get_target() const { return target; }								// 获取目标
+	void set_target(const godot::Ref<HTMLElement>& p_value) { target = p_value; }				// 设置目标
+	godot::Vector2 get_position() const { return position; }									// 获取位置
+	void set_position(const godot::Vector2& p_value) { position = p_value; }					// 设置位置
 };
 
 class HTMLTouchEvent : public HTMLEvent {
@@ -429,20 +445,24 @@ class HTMLTouchEvent : public HTMLEvent {
 protected:
 	static void _bind_methods();
 public:
-	godot::TypedArray<HTMLTouchPoint> get_touches() const { return touches; }
-	void set_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { touches = p_value; }
-	godot::TypedArray<HTMLTouchPoint> get_target_touches() const { return target_touches; }
-	void set_target_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { target_touches = p_value; }
-	godot::TypedArray<HTMLTouchPoint> get_changed_touches() const { return changed_touches; }
-	void set_changed_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { changed_touches = p_value; }
-	bool is_shift_pressed() const { return shift; }
-	void set_shift_pressed(bool p_value) { shift = p_value; }
-	bool is_ctrl_pressed() const { return ctrl; }
-	void set_ctrl_pressed(bool p_value) { ctrl = p_value; }
-	bool is_alt_pressed() const { return alt; }
-	void set_alt_pressed(bool p_value) { alt = p_value; }
-	bool is_meta_pressed() const { return meta; }
-	void set_meta_pressed(bool p_value) { meta = p_value; }
+	godot::TypedArray<HTMLTouchPoint> get_touches() const { return touches; }					// 获取当前事件包含的触摸点列表
+	void set_touches(const godot::TypedArray<HTMLTouchPoint>& p_value) { touches = p_value; }	// 设置触摸点
+	godot::TypedArray<HTMLTouchPoint> get_target_touches() const { return target_touches; }		// 获取目标触摸点
+	void set_target_touches(
+		const godot::TypedArray<HTMLTouchPoint>& p_value
+	) { target_touches = p_value; }																// 设置目标触摸点
+	godot::TypedArray<HTMLTouchPoint> get_changed_touches() const { return changed_touches; }	// 获取变化触摸点
+	void set_changed_touches(
+		const godot::TypedArray<HTMLTouchPoint>& p_value
+	) { changed_touches = p_value; }															// 设置变化触摸点
+	bool is_shift_pressed() const { return shift; }												// 检查 Shift 键是否按下
+	void set_shift_pressed(bool p_value) { shift = p_value; }									// 设置Shift 键按下状态
+	bool is_ctrl_pressed() const { return ctrl; }												// 检查 Ctrl 键是否按下
+	void set_ctrl_pressed(bool p_value) { ctrl = p_value; }										// 设置Ctrl 键按下状态
+	bool is_alt_pressed() const { return alt; }													// 检查 Alt 键是否按下
+	void set_alt_pressed(bool p_value) { alt = p_value; }										// 设置替代文本按下状态
+	bool is_meta_pressed() const { return meta; }												// 检查 Meta 键是否按下
+	void set_meta_pressed(bool p_value) { meta = p_value; }										// 设置Meta 键按下状态
 };
 
 namespace dockit {

@@ -18,11 +18,12 @@ namespace litehtml {
 		int steps = 1;
 		std::vector<std::pair<double, double>> stops;
 
-		double sample(double progress, bool before = false) const;
+		double sample(double progress, bool before = false) const;								// 根据进度和缓动函数计算过渡值
 	};
 
-	std::optional<double> parse_css_time(const css_token& token);
-	std::optional<css_easing> parse_css_easing(const css_token& token);
+// 解析 CSS 过渡
+	std::optional<double> parse_css_time(const css_token& token);								// 解析CSS时间
+	std::optional<css_easing> parse_css_easing(const css_token& token);							// 解析CSS缓动函数
 
 	using css_transition_times = std::vector<double>;
 	using css_transition_easings = std::vector<css_easing>;
@@ -41,9 +42,14 @@ namespace litehtml {
 		css_transition_easings easings{{}};
 		std::vector<int> behaviors{0};
 
-		std::optional<css_transition> match(string_id property, bool rtl) const;
+		std::optional<css_transition> match(string_id property, bool rtl) const;				// 查找与文本片段匹配的字体
 	};
 
 	class css_value_parser;
-	void parse_css_transition(css_value_parser& parser, string_id name, const css_token_vector& value, bool important);
+	void parse_css_transition(
+		css_value_parser& parser,
+		string_id name,
+		const css_token_vector& value,
+		bool important
+	);																							// 解析CSS过渡
 }

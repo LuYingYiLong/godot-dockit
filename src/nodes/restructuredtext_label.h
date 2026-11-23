@@ -135,13 +135,43 @@ private:
 
 	void rebuild_layout();
 	void draw_selection_for_item(const RSTCanvasItem& p_item);
-	void draw_selection_for_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_global_start, int64_t p_global_end);
+	void draw_selection_for_paragraph(
+		const Ref<TextParagraph>& p_paragraph,
+		const Rect2& p_text_rect,
+		int64_t p_global_start,
+		int64_t p_global_end
+	);
 	void draw_search_highlight_for_item(const RSTCanvasItem& p_item);
-	void draw_range_background_for_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_global_start, int64_t p_global_end, int64_t p_range_start, int64_t p_range_end, const Color& p_color);
+	void draw_range_background_for_paragraph(
+		const Ref<TextParagraph>& p_paragraph,
+		const Rect2& p_text_rect,
+		int64_t p_global_start,
+		int64_t p_global_end,
+		int64_t p_range_start,
+		int64_t p_range_end,
+		const Color& p_color
+	);
 	void draw_list_markers(const RSTCanvasItem& p_item);
-	void draw_stylebox_or_rect(const Ref<StyleBox>& p_stylebox, const Rect2& p_rect, const Color& p_fallback_color);
-	void draw_span_decorations(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<RSTInlineSpan>& p_spans, int64_t p_global_start, bool p_draw_code_backgrounds, bool p_draw_link_underlines);
-	void draw_paragraph_text(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<RSTInlineSpan>& p_spans, int64_t p_global_start, const Color& p_default_color);
+	void draw_stylebox_or_rect(
+		const Ref<StyleBox>& p_stylebox,
+		const Rect2& p_rect,
+		const Color& p_fallback_color
+	);
+	void draw_span_decorations(
+		const Ref<TextParagraph>& p_paragraph,
+		const Rect2& p_text_rect,
+		const std::vector<RSTInlineSpan>& p_spans,
+		int64_t p_global_start,
+		bool p_draw_code_backgrounds,
+		bool p_draw_link_underlines
+	);
+	void draw_paragraph_text(
+		const Ref<TextParagraph>& p_paragraph,
+		const Rect2& p_text_rect,
+		const std::vector<RSTInlineSpan>& p_spans,
+		int64_t p_global_start,
+		const Color& p_default_color
+	);
 	void _generate_context_menu();
 	void _update_context_menu();
 	Key _get_menu_action_accelerator(const String& p_action);
@@ -271,7 +301,12 @@ public:
 	void clear_document();
 	void select_all();
 	void clear_selection();
-	Vector2i search(const String& p_text, int32_t p_flags, int32_t p_from_line, int32_t p_from_column) const;
+	Vector2i search(
+		const String& p_text,
+		int32_t p_flags,
+		int32_t p_from_line,
+		int32_t p_from_column
+	) const;
 	String get_selected_text() const;
 	int32_t get_rendered_block_count() const;
 	float get_content_height() const;

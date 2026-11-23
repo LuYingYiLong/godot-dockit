@@ -14,6 +14,6 @@ class HTMLComponent : public HTMLBehavior {
 protected:
 	static void _bind_methods();
 public:
-	godot::Ref<HTMLElement> get_host() const { return host; }
-	godot::Ref<HTMLShadowRoot> get_shadow_root() const;
+	godot::Ref<HTMLElement> get_host() const { return host; }									// 获取组件挂载的宿主元素
+	godot::Ref<HTMLShadowRoot> get_shadow_root() const;											// 获取组件宿主关联的影子根节点
 };

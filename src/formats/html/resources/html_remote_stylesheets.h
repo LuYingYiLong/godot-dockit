@@ -17,7 +17,11 @@ namespace dockit {
 		godot::String text;
 	};
 
-	std::optional<godot::String> decode_html_source_text(const godot::PackedByteArray& p_bytes);
-	RemoteStylesheet request_remote_stylesheet(const godot::String& p_url, const godot::Callable& p_completed);
-	void shutdown_remote_stylesheets();
+	// 加载远程样式表
+	std::optional<godot::String> decode_html_source_text(const godot::PackedByteArray& p_bytes);// 根据响应字节和字符集解码 HTML 源文本
+	RemoteStylesheet request_remote_stylesheet(
+		const godot::String& p_url,
+		const godot::Callable& p_completed
+	);																							// 发起远程样式表请求
+	void shutdown_remote_stylesheets();															// 取消远程样式表请求并释放相关资源
 }

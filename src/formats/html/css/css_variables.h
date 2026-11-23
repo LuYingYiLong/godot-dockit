@@ -24,10 +24,11 @@ namespace litehtml {
 	enum class css_wide_keyword { none, inherit, initial, unset, revert, revert_layer };
 	using css_inherited_variable = std::function<bool(string_id, css_token_vector&)>;
 	using css_custom_rollback = std::function<const property_value&(string_id, const property_value&, css_wide_keyword)>;
-	css_variable_syntax inspect_css_variables(const css_token_vector& p_tokens);
-	css_wide_keyword read_css_wide_keyword(const css_token_vector& p_tokens);
+// 处理 CSS 自定义属性
+	css_variable_syntax inspect_css_variables(const css_token_vector& p_tokens);				// 检查 CSS 自定义属性及其依赖关系
+	css_wide_keyword read_css_wide_keyword(const css_token_vector& p_tokens);					// 读取 CSS 全局关键字
 	bool matches_registered_syntax(const css_token_vector& p_tokens, const css_registered_property& p_registration,
-		document_container* p_container);
+		document_container* p_container);														// 检查值是否匹配注册的 CSS 属性语法
 
 	class css_variable_resolver {
 		const css_inherited_variable& inherited;
@@ -46,7 +47,7 @@ namespace litehtml {
 	public:
 		css_variable_resolver(const css_inherited_variable& p_inherited, css_custom_properties p_declarations,
 			const css_registered_properties& p_registered, document_container* p_container, const css_custom_rollback& p_rollback);
-		std::optional<css_token_vector> substitute(const css_token_vector& p_tokens);
-		css_computed_variables take_computed();
+		std::optional<css_token_vector> substitute(const css_token_vector& p_tokens);			// 展开 CSS 自定义属性引用
+		css_computed_variables take_computed();													// 提取已计算的 CSS 样式值
 	};
 }

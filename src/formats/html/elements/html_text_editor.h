@@ -111,43 +111,52 @@ namespace dockit {
 	public:
 		std::function<void()> value_changed;
 		explicit HTMLTextEditor(bool p_multiline) : multiline(p_multiline) {}
-		bool is_multiline() const { return multiline; }
-		const godot::String& get_value() const { return value; }
-		void use_default(const godot::String& p_value);
-		bool set_value(const godot::String& p_value);
-		void reset_value(const godot::String& p_value);
-		uint64_t get_reset_version() const { return reset_version; }
-		void copy_value_state(const HTMLTextEditor& p_source, bool p_preserve_selection);
-		int64_t selection_start() const;
-		int64_t selection_end() const;
-		int64_t caret_offset() const { return caret; }
-		bool set_selection(int64_t p_anchor, int64_t p_caret);
-		void hit_caret(const godot::Vector2& p_point, bool p_extend);
-		void move_caret(int p_direction, bool p_extend);
-		void move_vertical(int p_direction, bool p_extend);
-		void move_to_edge(bool p_end, bool p_document, bool p_extend);
-		bool erase(int p_direction);
-		bool insert(const godot::String& p_text, const char* p_maxlength = "");
-		bool insert_character(char32_t p_character, const char* p_maxlength, uint64_t p_frame, bool p_ime_event);
-		bool can_undo() const { return history_position > 0; }
-		bool can_redo() const { return history_position < history.size(); }
-		bool undo();
-		bool redo();
-		void finish_ime_edit();
-		bool cancel_preedit();
-		void update_preedit(const godot::String& p_text, const godot::Vector2i& p_selection, uint64_t p_frame);
-		bool has_preedit() const { return !preedit.is_empty(); }
-		const godot::String& get_preedit() const { return preedit; }
-		bool take_user_change();
-		bool has_length_violation(const char* p_minlength, const char* p_maxlength) const;
-		bool has_dirty_value() const { return dirty_value; }
-		godot::Rect2 get_caret_rect() const { return caret_rect; }
-		bool is_caret_visible() const { return caret_visible; }
+		bool is_multiline() const { return multiline; }											// 检查编辑器是否允许输入多行文本
+		const godot::String& get_value() const { return value; }								// 获取值
+		void use_default(const godot::String& p_value);											// 在控件值未修改时应用默认值
+		bool set_value(const godot::String& p_value);											// 设置值
+		void reset_value(const godot::String& p_value);											// 重置值
+		uint64_t get_reset_version() const { return reset_version; }							// 获取reset版本
+		void copy_value_state(const HTMLTextEditor& p_source, bool p_preserve_selection);		// 从另一个编辑器复制值并按需保留选区
+		int64_t selection_start() const;														// 获取当前选区的起始字符偏移
+		int64_t selection_end() const;															// 获取当前选区的结束字符偏移
+		int64_t caret_offset() const { return caret; }											// 获取插入光标的字符偏移
+		bool set_selection(int64_t p_anchor, int64_t p_caret);									// 设置选区
+		void hit_caret(const godot::Vector2& p_point, bool p_extend);							// 将插入光标移动到指定坐标对应的位置
+		void move_caret(int p_direction, bool p_extend);										// 按指定方向移动插入光标
+		void move_vertical(int p_direction, bool p_extend);										// 按指定方向移动插入光标所在行
+		void move_to_edge(bool p_end, bool p_document, bool p_extend);							// 将插入光标移动到行首、行尾或文档边界
+		bool erase(int p_direction);															// 按指定方向删除选中文本或相邻字符
+		bool insert(const godot::String& p_text, const char* p_maxlength = "");					// 插入文本并遵守最大长度限制
+		bool insert_character(
+			char32_t p_character,
+			const char* p_maxlength,
+			uint64_t p_frame,
+			bool p_ime_event
+		);																						// 在当前插入光标处插入字符
+		bool can_undo() const { return history_position > 0; }									// 检查是否可以撤销
+		bool can_redo() const { return history_position < history.size(); }						// 检查是否可以重做
+		bool undo();																			// 撤销最近一次文本编辑
+		bool redo();																			// 重做最近撤销的文本编辑
+		void finish_ime_edit();																	// 完成输入法编辑
+		bool cancel_preedit();																	// 取消预编辑
+		void update_preedit(
+			const godot::String& p_text,
+			const godot::Vector2i& p_selection,
+			uint64_t p_frame
+		);																						// 更新预编辑
+		bool has_preedit() const { return !preedit.is_empty(); }								// 检查是否包含预编辑
+		const godot::String& get_preedit() const { return preedit; }							// 获取预编辑
+		bool take_user_change();																// 读取并清除待应用的用户输入变更
+		bool has_length_violation(const char* p_minlength, const char* p_maxlength) const;		// 检查是否包含长度违规项
+		bool has_dirty_value() const { return dirty_value; }									// 检查当前值是否偏离默认值
+		godot::Rect2 get_caret_rect() const { return caret_rect; }								// 获取插入光标矩形
+		bool is_caret_visible() const { return caret_visible; }									// 检查插入光标可见性
 		bool set_caret_visible(bool p_visible) {
 			if (caret_visible == p_visible) return false;
 			caret_visible = p_visible;
 			return true;
-		}
+		}																						// 设置插入光标可见性
 		godot::Rect2 get_viewport() const { return viewport; }
 		godot::Vector2 scroll_by(const godot::Vector2& p_delta);
 		std::optional<bool> scrollbar_at(const godot::Vector2& p_point) const;

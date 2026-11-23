@@ -22,8 +22,8 @@
 #include "css_web_color.h"
 
 namespace litehtml {
-	struct invalid {}; // indicates "not found" condition in style::get_property
-	struct inherit {}; // "inherit" was specified as the value of this property
+	struct invalid {};																			// indicates "not found" condition in style::get_property
+	struct inherit {};																			// "inherit" was specified as the value of this property
 
 	struct initial_value {};
 	struct revert_value {};

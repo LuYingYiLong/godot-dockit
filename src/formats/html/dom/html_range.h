@@ -10,8 +10,8 @@ namespace dockit {
 		int64_t offset = 0;
 	};
 
-	int compare_html_boundaries(const HTMLBoundary& p_left, const HTMLBoundary& p_right);
-	int64_t html_node_length(const HTMLNode& p_node);
+	int compare_html_boundaries(const HTMLBoundary& p_left, const HTMLBoundary& p_right);		// 比较HTML边界
+	int64_t html_node_length(const HTMLNode& p_node);											// 获取 HTML 节点对应的文本长度
 }
 
 class HTMLSelection;

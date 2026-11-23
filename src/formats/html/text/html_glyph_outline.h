@@ -16,5 +16,5 @@ namespace dockit {
 		int p_size,
 		int64_t p_index,
 		bool& r_reverse
-	);																						// 把字形的直线、二次和三次贝塞尔轮廓转为路径
+	);																							// 把字形的直线、二次和三次贝塞尔轮廓转为路径
 }

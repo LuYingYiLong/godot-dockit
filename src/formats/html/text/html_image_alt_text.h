@@ -14,8 +14,8 @@ namespace dockit {
 
 	public:
 		HTMLImageAltText(HTMLTextLayout p_text, float p_line_height, bool p_wrap);
-		float get_width() const { return text.width(); }
-		float get_line_height() const { return line_height; }
-		const std::vector<HTMLTextLayout>& layout(float p_width);							// 测量和绘制共用按宽度切分的文字行
+		float get_width() const { return text.width(); }										// 获取宽度
+		float get_line_height() const { return line_height; }									// 获取行高度
+		const std::vector<HTMLTextLayout>& layout(float p_width);								// 测量和绘制共用按宽度切分的文字行
 	};
 }

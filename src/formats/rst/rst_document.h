@@ -20,12 +20,12 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_text(const String& p_text);
-	String get_text() const;
-	void set_source_path(const String& p_source_path);
-	String get_source_path() const;
-	void set_reference_index(const Ref<RSTReferenceIndex>& p_reference_index);
-	Ref<RSTReferenceIndex> get_reference_index() const;
+	void set_text(const String& p_text);														// 设置文本
+	String get_text() const;																	// 获取文本
+	void set_source_path(const String& p_source_path);											// 设置源路径
+	String get_source_path() const;																// 获取源路径
+	void set_reference_index(const Ref<RSTReferenceIndex>& p_reference_index);					// 设置文档使用的 RST 引用索引
+	Ref<RSTReferenceIndex> get_reference_index() const;											// 获取文档使用的 RST 引用索引
 
-	String resolve_path(const String& p_path) const;
+	String resolve_path(const String& p_path) const;											// 根据文档来源路径解析相对资源路径
 };

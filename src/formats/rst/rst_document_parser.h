@@ -50,7 +50,12 @@ struct RSTFootnoteMap {
 	std::vector<RSTFootnoteEntry> entries;
 };
 
-String format_footnote_label(const String& p_label, const RSTFootnoteMap* p_footnotes);
-RSTFootnoteMap build_footnote_map(const std::vector<String>& p_lines);
-std::vector<String> split_lines(const String& p_text);
-std::vector<RSTBlock> parse_rst_blocks(const String& p_text, RestructuredtextLabel* p_owner, const RSTFootnoteMap* p_footnotes = nullptr);
+// 解析 reStructuredText
+String format_footnote_label(const String& p_label, const RSTFootnoteMap* p_footnotes);			// 根据脚注定义格式化脚注标签
+RSTFootnoteMap build_footnote_map(const std::vector<String>& p_lines);							// 从 RST 源文本构建脚注索引
+std::vector<String> split_lines(const String& p_text);											// 按行拆分源文本
+std::vector<RSTBlock> parse_rst_blocks(
+	const String& p_text,
+	RestructuredtextLabel* p_owner,
+	const RSTFootnoteMap* p_footnotes = nullptr
+);																								// 解析 reStructuredText 文档块

@@ -23,8 +23,8 @@ class HTMLListenerHandle : public godot::RefCounted {
 protected:
 	static void _bind_methods();
 public:
-	void cancel();
-	bool is_canceled() const { return canceled; }
+	void cancel();																				// 取消此句柄关联的事件监听器
+	bool is_canceled() const { return canceled; }												// 检查监听器句柄是否已取消
 };
 
 // DOM EventTarget。HTMLNode 与 HTMLWindow 的共同基类：监听器由所属文档的 HTMLDOM
@@ -41,13 +41,13 @@ protected:
 	void _get_property_list(godot::List<godot::PropertyInfo>* p_list) const;
 
 public:
-	bool has_event_handler_override(const godot::StringName& p_type) const;
-	godot::Callable get_event_handler(const godot::StringName& p_type) const;
+	bool has_event_handler_override(const godot::StringName& p_type) const;						// 检查指定事件类型是否由 on* 属性覆盖
+	godot::Callable get_event_handler(const godot::StringName& p_type) const;					// 获取指定事件类型对应的 on* 回调
 	virtual bool is_valid() const = 0;															// 检查目标是否仍属于当前文档
 	virtual godot::Error add_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
-		const godot::Dictionary& p_options = {}) = 0;											// 注册监听器
+		const godot::Dictionary& p_options = {}) = 0;											// 注册指定类型的事件监听器
 	godot::Ref<HTMLListenerHandle> listen(const godot::StringName& p_type, const godot::Callable& p_callable,
-		const godot::Dictionary& p_options = {});
+		const godot::Dictionary& p_options = {});												// 注册事件监听器并返回可取消句柄
 	virtual godot::Error remove_event_listener(const godot::StringName& p_type, const godot::Callable& p_callable,
 		const godot::Dictionary& p_options = {}) = 0;											// 移除之前注册的监听器
 	virtual bool dispatch_event(const godot::Ref<HTMLEvent>& p_event) = 0;						// 从此目标派发事件，返回默认动作是否未被取消

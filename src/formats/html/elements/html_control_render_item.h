@@ -12,7 +12,7 @@ namespace dockit {
 		enum class Baseline { text, swatch };
 		static litehtml::pixel_t text_baseline(litehtml::pixel_t p_height, const litehtml::font_metrics& p_font) {
 			return (p_height + p_font.ascent - p_font.descent) / 2;
-		}
+		}																						// 获取渲染文本的基线位置
 		static litehtml::pixel_t paint_text_baseline(litehtml::pixel_t p_y, litehtml::pixel_t p_height,
 			const litehtml::font_metrics& p_font, litehtml::pixel_t p_ascent) {
 			// Inline text snaps the top of its laid-out text box before recording the glyphs.

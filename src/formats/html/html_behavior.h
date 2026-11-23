@@ -32,11 +32,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool has_item(const godot::String& p_key) const;
-	godot::String get_item(const godot::String& p_key) const;
-	void set_item(const godot::String& p_key, const godot::String& p_value);
-	void remove_item(const godot::String& p_key);
-	void clear();
+	bool has_item(const godot::String& p_key) const;											// 检查是否包含项目
+	godot::String get_item(const godot::String& p_key) const;									// 获取项目
+	void set_item(const godot::String& p_key, const godot::String& p_value);					// 设置项目
+	void remove_item(const godot::String& p_key);												// 移除项目
+	void clear();																				// 清除当前存储的数据
 };
 
 class HTMLBehavior : public godot::RefCounted {
@@ -73,16 +73,16 @@ protected:
 
 public:
 	~HTMLBehavior() override;
-	godot::Ref<HTMLDocumentNode> get_document() const;										// 返回当前挂载的实时文档节点
-	HTMLLabel* get_label() const;
-	godot::Ref<HTMLBehaviorStorage> get_local_storage() const;
-	godot::Ref<HTMLBehaviorStorage> get_session_storage() const;
-	int64_t set_timeout(const godot::Callable& p_callback, double p_delay);
-	int64_t set_interval(const godot::Callable& p_callback, double p_interval);
-	void clear_timer(int64_t p_id);
-	int64_t on_frame(const godot::Callable& p_callback);
-	void cancel_frame(int64_t p_id);
+	godot::Ref<HTMLDocumentNode> get_document() const;											// 返回当前挂载的实时文档节点
+	HTMLLabel* get_label() const;																// 获取挂载此行为脚本的 HTMLLabel
+	godot::Ref<HTMLBehaviorStorage> get_local_storage() const;									// 获取行为脚本的本地存储
+	godot::Ref<HTMLBehaviorStorage> get_session_storage() const;								// 获取行为脚本的会话存储
+	int64_t set_timeout(const godot::Callable& p_callback, double p_delay);						// 注册延迟执行一次的回调并返回定时器标识
+	int64_t set_interval(const godot::Callable& p_callback, double p_interval);					// 注册按间隔重复执行的回调并返回定时器标识
+	void clear_timer(int64_t p_id);																// 清除定时器
+	int64_t on_frame(const godot::Callable& p_callback);										// 注册逐帧执行的回调并返回回调标识
+	void cancel_frame(int64_t p_id);															// 取消逐帧回调
 	int64_t request(const godot::String& p_url, const godot::Dictionary& p_options,
-		const godot::Callable& p_callback);
-	void cancel_request(int64_t p_id);
+		const godot::Callable& p_callback);														// 发起网络请求并在完成时调用回调
+	void cancel_request(int64_t p_id);															// 取消请求
 };

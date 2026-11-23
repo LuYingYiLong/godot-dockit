@@ -40,28 +40,28 @@ namespace dockit {
 			std::vector<godot::RID> pass_parents;
 			std::vector<std::pair<godot::RID, godot::RID>> texture_dependencies;
 
-			void clear();
+			void clear();																		// 清除当前存储的数据
 			godot::RID add_item(
 				godot::RenderingServer& p_server,
 				const godot::RID& p_parent,
 				int32_t p_draw_index
-			);
+			);																					// 添加项目
 			Surface add_surface(
 				godot::RenderingServer& p_server,
 				const godot::RID& p_parent,
 				const godot::Vector2i& p_size,
 				const godot::Transform2D& p_mapping,
 				bool p_hdr
-			);
+			);																					// 创建并注册离屏绘制图层
 			void set_surface_parent(
 				godot::RenderingServer& p_server,
 				const godot::RID& p_surface, const godot::RID& p_parent
-			);
+			);																					// 设置图层父节点
 			void order_surface_passes(
 				godot::RenderingServer& p_server,
 				const godot::RID& p_viewport,
 				std::size_t p_start
-			);
+			);																					// 按绘制依赖关系排序离屏图层通道
 		};
 
 		godot::HashMap<uint64_t, CanvasDrawing> drawings;
@@ -110,7 +110,7 @@ namespace dockit {
 			const HTMLHighlight& p_search,
 			const godot::Vector2& p_viewport_origin,
 			bool p_selection_only = false
-		);
-		void queue_redraws() const;
+		);																						// 将绘制指令和高亮内容提交到画布
+		void queue_redraws() const;																// 执行已排队的 Canvas 重绘回调
 	};
 }

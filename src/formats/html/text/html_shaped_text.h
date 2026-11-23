@@ -12,7 +12,11 @@ namespace godot {
 }
 
 namespace dockit {
-	bool has_text_justification_gap(litehtml::text_justify p_method, char32_t p_left, char32_t p_right);
+	bool has_text_justification_gap(
+		litehtml::text_justify p_method,
+		char32_t p_left,
+		char32_t p_right
+	);																							// 检查是否包含文本两端对齐间隔
 
 	class HTMLTextSpacing {
 		struct Glyph {
@@ -32,15 +36,20 @@ namespace dockit {
 
 	public:
 		static litehtml::text_justify_info get_justification_info(const HTMLTextLayout& p_layout, const godot::String& p_text,
-			litehtml::text_justify p_method);
-		static std::shared_ptr<const HTMLTextSpacing> create(const HTMLTextLayout& p_layout, const godot::String& p_text,
-			float p_letters, float p_words, litehtml::text_justify_adjustment p_justification = {});
-		float get_width() const { return width; }
-		float glyph_offset(size_t p_index) const { return glyph_offsets[p_index]; }
-		float from_native(float p_x) const { return map(p_x, false); }
-		float to_native(float p_x) const { return map(p_x, true); }
+			litehtml::text_justify p_method);													// 获取两端对齐信息
+		static std::shared_ptr<const HTMLTextSpacing> create(
+			const HTMLTextLayout& p_layout,
+			const godot::String& p_text,
+			float p_letters,
+			float p_words,
+			litehtml::text_justify_adjustment p_justification = {}
+		);																						// 创建 HTML 文本塑形结果
+		float get_width() const { return width; }												// 获取宽度
+		float glyph_offset(size_t p_index) const { return glyph_offsets[p_index]; }				// 获取指定字形在文本中的偏移量
+		float from_native(float p_x) const { return map(p_x, false); }							// 从 Godot 原生文本布局创建 HTML 文本布局
+		float to_native(float p_x) const { return map(p_x, true); }								// 将 HTML 文本布局转换为 Godot 原生文本布局
 		void draw(const godot::TextServer& p_server, const godot::RID& p_canvas, const godot::Vector2& p_baseline,
-			const godot::Color& p_color) const;
+			const godot::Color& p_color) const;													// 绘制塑形后的 HTML 文本
 	};
 
 	struct HTMLShapedText {

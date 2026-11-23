@@ -38,12 +38,16 @@ namespace litehtml {
 
 	using css_counter_style_lookup = std::function<const css_counter_style*(const string&)>;
 
-	std::optional<int> parse_counter_integer(const css_token& token);
-	std::optional<css_counter_style_reference> parse_counter_style_reference(const css_token& token, bool allow_none);
+// 解析和格式化 CSS 计数器
+	std::optional<int> parse_counter_integer(const css_token& token);							// 解析 CSS 计数器整数值
+	std::optional<css_counter_style_reference> parse_counter_style_reference(
+		const css_token& token,
+		bool allow_none
+	);																							// 解析 CSS 计数器样式引用
 	std::optional<std::pair<string, css_counter_style>> parse_counter_style_rule(
 		const css_token_vector& prelude,
 		const css_token_vector& block
-	);
+	);																							// 解析 CSS @counter-style 规则
 	string format_css_counter(int value, const css_counter_style_reference& reference,
-		const css_counter_style_lookup& lookup, bool marker = false);
+		const css_counter_style_lookup& lookup, bool marker = false);							// 根据计数器样式格式化 CSS 计数值
 }

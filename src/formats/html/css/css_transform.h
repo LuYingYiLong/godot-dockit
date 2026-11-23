@@ -43,7 +43,7 @@ namespace litehtml {
 		css_individual_transform rotate;
 		css_individual_transform scale;
 
-		bool enabled() const { return translate || rotate || scale; }
+		bool enabled() const { return translate || rotate || scale; }							// 检查是否设置了任一独立变换属性
 	};
 
 	struct css_transform_origin {
@@ -52,8 +52,12 @@ namespace litehtml {
 		css_length z;
 	};
 
-	bool parse_css_transform(const css_token_vector& p_tokens, css_transform_list& r_value);
-	bool parse_css_transform_origin(const css_token_vector& p_tokens, css_transform_origin& r_value);
+// 解析 CSS 变换
+	bool parse_css_transform(const css_token_vector& p_tokens, css_transform_list& r_value);	// 解析CSS变换
+	bool parse_css_transform_origin(
+		const css_token_vector& p_tokens,
+		css_transform_origin& r_value
+	);																							// 解析CSS变换原点
 	bool parse_css_individual_transform(css_transform_function::kind p_kind, const css_token_vector& p_tokens,
-		css_individual_transform& r_value);
+		css_individual_transform& r_value);														// 解析 CSS 独立变换属性
 }

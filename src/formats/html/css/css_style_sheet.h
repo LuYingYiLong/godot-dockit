@@ -12,8 +12,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_css_text(const godot::String& p_text);
-	godot::String get_css_text() const;
-	void set_source_path(const godot::String& p_path);
-	godot::String get_source_path() const;
+	void set_css_text(const godot::String& p_text);												// 设置CSS文本
+	godot::String get_css_text() const;															// 获取CSS文本
+	void set_source_path(const godot::String& p_path);											// 设置源路径
+	godot::String get_source_path() const;														// 获取源路径
 };

@@ -21,6 +21,7 @@ namespace dockit::css {
 		std::optional<bool> paused;
 		bool cancelled = false;
 
+		// 根据播放状态计算动画当前时间
 		double time(double now, double end, bool css_paused) const {
 			if (cancelled) return 0;
 			if (paused.value_or(css_paused)) return elapsed;
