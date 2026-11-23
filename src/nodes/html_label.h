@@ -83,6 +83,7 @@ class HTMLLabelCanvas : public godot::Control {
 		godot::Ref<godot::InputEvent> source_event;
 		godot::Ref<HTMLElement> target;
 	};
+
 	struct TouchPointer {
 		int device = 0;
 		int index = 0;
@@ -96,7 +97,9 @@ class HTMLLabelCanvas : public godot::Control {
 		bool primary = false;
 		bool compatibility_suppressed = false;
 	};
+
 	using TouchKey = std::pair<int, int>;
+
 	struct PendingMoveEvent {
 		godot::StringName type;
 		godot::Ref<HTMLElement> target;
@@ -183,11 +186,13 @@ class HTMLLabelCanvas : public godot::Control {
 	std::optional<godot::Vector2i> ime_position;
 	godot::Timer* caret_blink_timer = nullptr;
 	bool caret_window_active = true;
+
 	struct InputMenuRow {
 		dockit::HTMLTextLayout caption;
 		dockit::HTMLTextLayout shortcut;
 		bool enabled = false;
 	};
+
 	godot::Control* input_menu = nullptr;
 	std::array<InputMenuRow, 6> input_menu_rows;
 	godot::Ref<godot::Font> input_menu_font;
@@ -336,13 +341,16 @@ protected:
 	void _notification(int p_what);
 
 public:
-	void _draw() override;
-	bool _has_point(const godot::Vector2& p_point) const override;
-	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
-	void _process(double p_delta) override;
-	godot::Variant _get_drag_data(const godot::Vector2& p_at_position) override;
-	bool _can_drop_data(const godot::Vector2& p_at_position, const godot::Variant& p_data) const override;
-	void _drop_data(const godot::Vector2& p_at_position, const godot::Variant& p_data) override;
+	void _draw() override;																		// 绘制文档内容
+	bool _has_point(const godot::Vector2& p_point) const override;								// 检查坐标是否位于控件的有效命中区域
+	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;						// 处理控件收到的 GUI 输入事件
+	void _process(double p_delta) override;														// 更新逐帧动画等运行时状态
+	godot::Variant _get_drag_data(const godot::Vector2& p_at_position) override;				// 根据当前位置构造拖动数据
+	bool _can_drop_data(
+		const godot::Vector2& p_at_position,
+		const godot::Variant& p_data
+	) const override;																			// 检查当前位置是否接受给定的拖放数据
+	void _drop_data(const godot::Vector2& p_at_position, const godot::Variant& p_data) override;// 将拖放数据写入目标区域
 };
 
 class HTMLLabel : public godot::Control {
@@ -376,6 +384,7 @@ private:
 
 	godot::Ref<HTMLDocument> document;
 	godot::Ref<HTMLLayout> layout;
+
 	struct AudioPlayback {
 		godot::Ref<HTMLAudioElement> element;
 		godot::PackedStringArray sources;
@@ -386,7 +395,9 @@ private:
 		bool load_started = false;
 		bool loaded = false;
 	};
+
 	std::vector<AudioPlayback> audio_playbacks;
+
 	struct VideoPlayback {
 		godot::Ref<HTMLVideoElement> element;
 		godot::PackedStringArray paths;
@@ -406,6 +417,7 @@ private:
 		bool loaded_data = false;
 		bool playing_event_sent = false;
 	};
+
 	std::vector<VideoPlayback> video_playbacks;
 	VideoBackend video_backend = VIDEO_BACKEND_AUTO;
 	godot::StringName video_bus = "Master";
@@ -438,8 +450,12 @@ private:
 	bool has_active_video() const;
 	void video_finished(uint64_t p_id);
 	void notify_video_failure(const godot::Ref<HTMLVideoElement>& p_element, godot::Error p_error);
-	static void emit_video_failure(uint64_t p_id, const godot::Ref<HTMLVideoElement>& p_element,
-		godot::Error p_error, const godot::String& p_message);
+	static void emit_video_failure(
+		uint64_t p_id,
+		const godot::Ref<HTMLVideoElement>& p_element,
+		godot::Error p_error,
+		const godot::String& p_message
+	);
 	void redraw_video();
 	godot::Error enter_video_fullscreen(const godot::Ref<HTMLVideoElement>& p_element);
 	void leave_video_fullscreen();
@@ -447,10 +463,22 @@ private:
 	void draw_video_fullscreen();
 	void on_video_fullscreen_input(const godot::Ref<godot::InputEvent>& p_event);
 	void wake_video_controls(const HTMLVideoElement& p_element);
-	void activate_video_part(const godot::Ref<HTMLVideoElement>& p_element, dockit::HTMLVideoPart p_part);
-	void update_video_slider(const godot::Ref<HTMLVideoElement>& p_element, dockit::HTMLVideoPart p_part,
-		const godot::Rect2& p_box, float p_x, bool p_commit);
-	bool video_key(const godot::Ref<HTMLVideoElement>& p_element, const godot::InputEventKey& p_key, const godot::Rect2& p_box);
+	void activate_video_part(
+		const godot::Ref<HTMLVideoElement>& p_element,
+		dockit::HTMLVideoPart p_part
+	);
+	void update_video_slider(
+		const godot::Ref<HTMLVideoElement>& p_element,
+		dockit::HTMLVideoPart p_part,
+		const godot::Rect2& p_box,
+		float p_x,
+		bool p_commit
+	);
+	bool video_key(
+		const godot::Ref<HTMLVideoElement>& p_element,
+		const godot::InputEventKey& p_key,
+		const godot::Rect2& p_box
+	);
 
 	godot::StringName bus = "Master";
 	bool use_fmod_bus = false;
@@ -506,9 +534,24 @@ private:
 		godot::Color sample(const godot::Vector2i& p_pixel) const;
 	};
 	std::optional<ColorEyedropper> color_eyedropper;
+
 	struct ColorPickerState {
-		enum Part { well, hue, opacity, eyedropper, format, channel, preset = channel + 3 };
-		enum Format { rgb, hsl, hex };
+		enum Part {
+			well,
+			hue,
+			opacity,
+			eyedropper,
+			format,
+			channel,
+			preset = channel + 3
+		};
+
+		enum Format {
+			rgb,
+			hsl,
+			hex
+		};
+
 		std::vector<godot::String> presets;
 		godot::String value;
 		godot::String editing;
@@ -528,9 +571,18 @@ private:
 		godot::Rect2 part_rect(int p_part) const;
 		godot::String field_text(int p_channel) const;
 	};
+
 	ColorPickerState color_picker;
+
 	struct TimePickerState {
-		enum Unit { hour, minute, second, millisecond, meridiem };
+		enum Unit {
+			hour,
+			minute,
+			second,
+			millisecond,
+			meridiem
+		};
+
 		struct Column {
 			Unit unit;
 			std::vector<int> values;
@@ -542,6 +594,7 @@ private:
 			void scroll(int p_rows);
 			void reveal();
 		};
+
 		std::vector<Column> columns;
 		godot::Dictionary initial;
 		godot::String initial_value;
@@ -564,6 +617,7 @@ private:
 		int calendar_width() const;
 		int calendar_height() const;
 	};
+
 	TimePickerState time_picker;
 	godot::Control* time_picker_canvas = nullptr;
 	godot::Dictionary picker_date;
@@ -832,7 +886,11 @@ protected:
 public:
 	HTMLLabel();
 	~HTMLLabel() override;
-	bool invoke_inline_event_handler(const godot::Ref<HTMLElement>& p_element, const godot::Ref<HTMLEvent>& p_event);
+
+	bool invoke_inline_event_handler(
+		const godot::Ref<HTMLElement>& p_element,
+		const godot::Ref<HTMLEvent>& p_event
+	);																							// 执行元素声明的内联事件处理器
 	void set_bus(const godot::StringName& p_bus);												// 设置音频输出总线
 	godot::StringName get_bus() const;															// 返回配置的音频总线
 	void set_video_backend(VideoBackend p_backend);												// 选择视频解码后端
@@ -842,31 +900,33 @@ public:
 	godot::Ref<HTMLVideoElement> get_fullscreen_video() const;									// 返回当前全屏视频的元素句柄
 	void set_use_fmod_bus(bool p_enable);														// 选择可用的 FMOD 播放后端
 	bool is_using_fmod_bus() const;																// 返回 FMOD 后端的配置值
-	void _draw() override;
-	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;
-	void _input(const godot::Ref<godot::InputEvent>& p_event) override;
-	void set_transparent_canvas(bool p_enabled);
-	bool is_transparent_canvas() const;
-	void set_event_debug(bool p_enabled);
-	bool is_event_debug_enabled() const { return event_debug; }
-	godot::String get_document_visibility_state() const;
-	int64_t get_event_listener_count(const godot::StringName& p_type) const;
+	void _draw() override;																		// 绘制文档内容
+	void _gui_input(const godot::Ref<godot::InputEvent>& p_event) override;						// 处理控件收到的 GUI 输入事件
+	void _input(const godot::Ref<godot::InputEvent>& p_event) override;							// 处理当前视口收到的输入事件
+	void set_transparent_canvas(bool p_enabled);												// 设置透明画布功能
+	bool is_transparent_canvas() const;															// 返回是否启用透明画布功能
+	void set_event_debug(bool p_enabled);														// 设置事件调试功能
+	bool is_event_debug_enabled() const { return event_debug; }									// 返回是否启用 HTML 事件调试
+	godot::String get_document_visibility_state() const;										// 返回文档当前的可见性状态
+	int64_t get_event_listener_count(const godot::StringName& p_type) const;					// 返回指定事件类型的监听器数量
 	void set_css_diagnostics_enabled(bool p_enabled);											// 设置是否收集 CSS 声明诊断
 	bool is_css_diagnostics_enabled() const;													// 返回是否收集 CSS 声明诊断
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;							// 返回 CSS 声明诊断的快照
 
-	godot::PackedStringArray _get_configuration_warnings() const override;
+	godot::PackedStringArray _get_configuration_warnings() const override;						// 返回节点配置警告
 
 	void set_document(const godot::Ref<HTMLDocument>& p_document);								// 设置用于显示的 HTML 文档资源
 	godot::Ref<HTMLDocument> get_document() const;												// 返回控件当前关联的文档资源
 	void set_behaviors_enabled(bool p_enabled);													// 设置是否挂载登记的文档行为
 	bool are_behaviors_enabled() const;															// 返回是否允许挂载文档行为
-	void reload_behaviors();
-	godot::TypedArray<godot::Dictionary> get_behavior_diagnostics() const;
-	void set_component_scripts(const godot::TypedDictionary<godot::StringName, godot::GDScript>& p_scripts);
-	godot::TypedDictionary<godot::StringName, godot::GDScript> get_component_scripts() const;
-	godot::TypedArray<godot::Dictionary> get_component_diagnostics() const;
-	void reload_components();
+	void reload_behaviors();																	// 重新解析并挂载文档行为脚本
+	godot::TypedArray<godot::Dictionary> get_behavior_diagnostics() const;						// 返回行为脚本挂载诊断信息
+	void set_component_scripts(
+		const godot::TypedDictionary<godot::StringName, godot::GDScript>& p_scripts
+	);																							// 设置组件脚本登记表
+	godot::TypedDictionary<godot::StringName, godot::GDScript> get_component_scripts() const;	// 返回当前组件脚本登记表
+	godot::TypedArray<godot::Dictionary> get_component_diagnostics() const;						// 返回组件脚本挂载诊断信息
+	void reload_components();																	// 重新解析并挂载文档组件
 	void set_behavior_scripts(
 		const godot::TypedDictionary<godot::StringName,
 		godot::GDScript>& p_scripts
@@ -874,21 +934,21 @@ public:
 	godot::TypedDictionary<godot::StringName, godot::GDScript> get_behavior_scripts() const; // 返回行为脚本登记表快照
 	void set_text(const godot::String& p_text);													// 设置控件的内联 HTML 文本
 	godot::String get_text() const;																// 返回控件的内联 HTML 文本
-	void set_access(int32_t p_access);
-	int32_t get_access() const;
-	void set_root_subfolder(const godot::String& p_root_subfolder);
-	godot::String get_root_subfolder() const;
-	godot::String get_resource_base_dir() const;
+	void set_access(int32_t p_access);															// 设置资源访问范围
+	int32_t get_access() const;																	// 返回资源访问范围
+	void set_root_subfolder(const godot::String& p_root_subfolder);								// 设置资源根子目录
+	godot::String get_root_subfolder() const;													// 返回资源根子目录
+	godot::String get_resource_base_dir() const;												// 返回解析文档相对资源时使用的基础目录
 	godot::String get_base_uri() const;															// 返回当前 DOM 的生效基准
-	void set_storage_namespace(const godot::String& p_namespace);
-	godot::String get_storage_namespace() const;
-	godot::Error navigate(const godot::String& p_url, bool p_replace = false);
-	bool back();
-	bool forward();
-	bool go(int64_t p_delta);
-	godot::String get_location() const;
+	void set_storage_namespace(const godot::String& p_namespace);								// 设置存储命名空间
+	godot::String get_storage_namespace() const;												// 返回存储命名空间
+	godot::Error navigate(const godot::String& p_url, bool p_replace = false);					// 导航到指定地址并可选择替换当前历史记录
+	bool back();																				// 导航到历史记录中的前一项
+	bool forward();																				// 导航到历史记录中的后一项
+	bool go(int64_t p_delta);																	// 按指定步数移动导航历史记录位置
+	godot::String get_location() const;															// 返回当前文档的导航地址
 	void set_source_path(const godot::String& p_path);											// 设置编辑器实时预览对应的源文件
-	godot::Error load_html_file(const godot::String& p_path);
+	godot::Error load_html_file(const godot::String& p_path);									// 加载指定路径的 HTML 文件
 	void set_stylesheet(const godot::String& p_stylesheet);										// 设置应用于内联 HTML 的附加 CSS
 	godot::String get_stylesheet() const;														// 返回内联 HTML 的附加 CSS
 	godot::Vector2i get_content_size() const;													// 返回排版后的内容尺寸
@@ -916,8 +976,11 @@ public:
 	) const;																					// 按命中顺序返回控件局部坐标下的元素
 	godot::Ref<HTMLElement> get_focused_element() const;										// 返回当前聚焦的 DOM 元素
 	bool focus_element(const godot::Ref<HTMLElement>& p_element);								// 将有效元素设为 DOM 焦点
-	void on_design_mode_changed();
-	bool execute_edit_command(const godot::String& p_command, const godot::String& p_value = {});
+	void on_design_mode_changed();																// 响应设计模式切换并更新编辑状态
+	bool execute_edit_command(
+		const godot::String& p_command,
+		const godot::String& p_value = {}
+	);																							// 执行指定的文档编辑命令
 	bool activate_element(const godot::Ref<HTMLElement>& p_element);							// 激活当前控件中可用的链接或表单控件
 	godot::Error submit_form(const godot::Ref<HTMLFormElement>& p_form,
 		const godot::Ref<HTMLElement>& p_submitter = {});										// 校验并发出有序的表单数据
@@ -932,12 +995,12 @@ public:
 	void set_animation_process_mode(AnimationProcessMode p_mode);								// 设置 CSS 动画和过渡的帧更新方式
 	AnimationProcessMode get_animation_process_mode() const;									// 返回 CSS 动画和过渡的帧更新方式
 	godot::TypedArray<HTMLAnimation> get_animations(
-		const godot::Ref<HTMLElement>& p_element = {}
+		const godot::Ref<HTMLElement>& p_element = {}											// 返回当前布局中符合条件的动画
 	);																							// 返回当前布局的动画
 	godot::Ref<HTMLAnimation> animate(
 		const godot::Ref<HTMLElement>& p_element,
 		const godot::TypedArray<godot::Dictionary>& p_keyframes,
-		const godot::Dictionary& p_options = {}
+		const godot::Dictionary& p_options = {}													// 根据关键帧和选项创建动画
 	);																							// 在当前布局中创建关键帧动画
 	godot::Dictionary get_computed_style(
 		const godot::Ref<HTMLElement>& p_element,
@@ -949,9 +1012,9 @@ public:
 		const godot::String& p_pseudo = ""
 	);																							// 返回指定属性的计算值
 	godot::TypedArray<godot::Dictionary> get_stylesheets();										// 返回当前布局的作者样式表
-	godot::TypedArray<HTMLStyleSheet> get_stylesheet_objects(bool p_include_default = true);
+	godot::TypedArray<HTMLStyleSheet> get_stylesheet_objects(bool p_include_default = true);	// 返回当前布局中的样式表资源
 	godot::TypedArray<godot::Dictionary> get_matched_css_declarations(
-		const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = "");
+		const godot::Ref<HTMLElement>& p_element, const godot::String& p_pseudo = "");			// 返回元素匹配到的 CSS 声明
 	godot::PackedStringArray get_css_rules(int64_t p_stylesheet);								// 返回指定样式表的顶层规则
 	godot::Error insert_rule(
 		int64_t p_stylesheet,
@@ -987,10 +1050,10 @@ public:
 	bool scroll_to_text_range(int64_t p_from, int64_t p_to);									// 滚动到范围内第一个可用的排版文本矩形
 	bool scroll_element_into_view(
 		const godot::Ref<HTMLElement>& p_element,
-		const godot::Dictionary& p_options = {}
+		const godot::Dictionary& p_options = {}													// 按指定选项将元素滚动到视口中
 	);																							// 按指定对齐方式滚动到元素
-	void set_drag_and_drop_selection_enabled(bool p_enabled);
-	bool is_drag_and_drop_selection_enabled() const { return drag_and_drop_selection_enabled; }
+	void set_drag_and_drop_selection_enabled(bool p_enabled);									// 设置选中文本拖放功能
+	bool is_drag_and_drop_selection_enabled() const { return drag_and_drop_selection_enabled; }	// 返回是否启用选中文本拖放功能
 };
 
 VARIANT_ENUM_CAST(::HTMLLabel::AnimationProcessMode);

@@ -33,44 +33,44 @@ public:
 
 	LatexLabel3D();
 
-	void set_text(const godot::String& p_text);
-	godot::String get_text() const;
-	void set_document(const godot::Ref<LatexDocument>& p_document);
-	godot::Ref<LatexDocument> get_document() const;
-	void set_display_mode(bool p_enabled);
-	bool is_display_mode() const;
-	void set_font_size(int p_size);
-	int get_font_size() const;
-	void set_modulate(const godot::Color& p_color);
-	godot::Color get_modulate() const;
-	void set_horizontal_alignment(godot::HorizontalAlignment p_alignment);
-	godot::HorizontalAlignment get_horizontal_alignment() const;
-	void set_vertical_alignment(godot::VerticalAlignment p_alignment);
-	godot::VerticalAlignment get_vertical_alignment() const;
-	void set_pixel_size(float p_size);
-	float get_pixel_size() const;
-	void set_offset(const godot::Vector2& p_offset);
-	godot::Vector2 get_offset() const;
+	void set_text(const godot::String& p_text);													// 设置渲染文本
+	godot::String get_text() const;																// 返回渲染文本
+	void set_document(const godot::Ref<LatexDocument>& p_document);								// 设置文档资源
+	godot::Ref<LatexDocument> get_document() const;												// 返回文档资源
+	void set_display_mode(bool p_enabled);														// 设置独立公式显示模式
+	bool is_display_mode() const;																// 返回是否启用独立公式显示模式
+	void set_font_size(int p_size);																// 设置字体大小
+	int get_font_size() const;																	// 返回字体大小
+	void set_modulate(const godot::Color& p_color);												// 设置调制颜色
+	godot::Color get_modulate() const;															// 返回调制颜色
+	void set_horizontal_alignment(godot::HorizontalAlignment p_alignment);						// 设置水平对齐方式
+	godot::HorizontalAlignment get_horizontal_alignment() const;								// 返回水平对齐方式
+	void set_vertical_alignment(godot::VerticalAlignment p_alignment);							// 设置垂直对齐方式
+	godot::VerticalAlignment get_vertical_alignment() const;									// 返回垂直对齐方式
+	void set_pixel_size(float p_size);															// 设置像素尺寸
+	float get_pixel_size() const;																// 返回像素尺寸
+	void set_offset(const godot::Vector2& p_offset);											// 设置位置偏移
+	godot::Vector2 get_offset() const;															// 返回位置偏移
 
-	void set_billboard_mode(godot::BaseMaterial3D::BillboardMode p_mode);
-	godot::BaseMaterial3D::BillboardMode get_billboard_mode() const;
-	void set_draw_flag(DrawFlags p_flag, bool p_enabled);
-	bool get_draw_flag(DrawFlags p_flag) const;
-	void set_alpha_cut_mode(AlphaCutMode p_mode);
-	AlphaCutMode get_alpha_cut_mode() const;
-	void set_alpha_scissor_threshold(float p_threshold);
-	float get_alpha_scissor_threshold() const;
-	void set_alpha_hash_scale(float p_scale);
-	float get_alpha_hash_scale() const;
-	void set_render_scale(float p_scale);
-	float get_render_scale() const;
-	void set_texture_filter(godot::BaseMaterial3D::TextureFilter p_filter);
-	godot::BaseMaterial3D::TextureFilter get_texture_filter() const;
-	void set_render_priority(int p_priority);
-	int get_render_priority() const;
+	void set_billboard_mode(godot::BaseMaterial3D::BillboardMode p_mode);						// 设置公告板模式
+	godot::BaseMaterial3D::BillboardMode get_billboard_mode() const;							// 返回公告板模式
+	void set_draw_flag(DrawFlags p_flag, bool p_enabled);										// 设置绘制标志状态
+	bool get_draw_flag(DrawFlags p_flag) const;													// 返回绘制标志状态
+	void set_alpha_cut_mode(AlphaCutMode p_mode);												// 设置透明度裁剪模式
+	AlphaCutMode get_alpha_cut_mode() const;													// 返回透明度裁剪模式
+	void set_alpha_scissor_threshold(float p_threshold);										// 设置透明度裁剪阈值
+	float get_alpha_scissor_threshold() const;													// 返回透明度裁剪阈值
+	void set_alpha_hash_scale(float p_scale);													// 设置透明度哈希缩放
+	float get_alpha_hash_scale() const;															// 返回透明度哈希缩放
+	void set_render_scale(float p_scale);														// 设置渲染缩放比例
+	float get_render_scale() const;																// 返回渲染缩放比例
+	void set_texture_filter(godot::BaseMaterial3D::TextureFilter p_filter);						// 设置纹理过滤方式
+	godot::BaseMaterial3D::TextureFilter get_texture_filter() const;							// 返回纹理过滤方式
+	void set_render_priority(int p_priority);													// 设置渲染优先级
+	int get_render_priority() const;															// 返回渲染优先级
 
-	godot::String get_render_error() const;
-	godot::PackedStringArray _get_configuration_warnings() const override;
+	godot::String get_render_error() const;														// 返回最近一次渲染错误
+	godot::PackedStringArray _get_configuration_warnings() const override;						// 返回节点配置警告
 
 protected:
 	static void _bind_methods();

@@ -4,6 +4,7 @@
 
 class HTMLComponent : public HTMLBehavior {
 	GDCLASS(HTMLComponent, HTMLBehavior)
+
 	friend class HTMLLabel;
 	godot::Ref<HTMLElement> host;
 	bool connected = false;
@@ -11,8 +12,10 @@ class HTMLComponent : public HTMLBehavior {
 	GDVIRTUAL0(_connected);
 	GDVIRTUAL0(_disconnected);
 	GDVIRTUAL0(_unmount);
+
 protected:
 	static void _bind_methods();
+
 public:
 	godot::Ref<HTMLElement> get_host() const { return host; }									// 获取组件挂载的宿主元素
 	godot::Ref<HTMLShadowRoot> get_shadow_root() const;											// 获取组件宿主关联的影子根节点

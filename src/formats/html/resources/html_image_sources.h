@@ -38,6 +38,9 @@ namespace dockit {
 	};
 
 	std::vector<HTMLImageCandidate> parse_html_srcset(std::string_view p_srcset);				// 按 HTML 候选语法解析 URL 和描述符
-	HTMLImageSelection select_html_image(const litehtml::element& p_image,
-		const HTMLImageSourceResolver& p_resolve, const litehtml::media_features& p_media);		// 根据当前视口选择单个图片来源
+	HTMLImageSelection select_html_image(
+		const litehtml::element& p_image,
+		const HTMLImageSourceResolver& p_resolve,
+		const litehtml::media_features& p_media
+	);																							// 根据当前视口选择单个图片来源
 }

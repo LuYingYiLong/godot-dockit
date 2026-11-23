@@ -17,7 +17,12 @@ protected:
 
 public:
 	HTMLSelectionDragPreview() = default;
-	HTMLSelectionDragPreview(const godot::Ref<HTMLLayout>& p_layout, const godot::Vector2i& p_selection,
-		const godot::Rect2& p_bounds, bool p_draw_element = false);
-	void _draw() override;
+	HTMLSelectionDragPreview(
+		const godot::Ref<HTMLLayout>& p_layout,
+		const godot::Vector2i& p_selection,
+		const godot::Rect2& p_bounds,
+		bool p_draw_element = false
+	);
+
+	void _draw() override;																		// 绘制文档内容
 };

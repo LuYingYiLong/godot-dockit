@@ -230,49 +230,58 @@ public:
 	MarkdownLabelCanvas();
 	~MarkdownLabelCanvas();
 
-	void _gui_input(const Ref<InputEvent>& p_event) override;
-	void _draw() override;
-	Variant _get_drag_data(const Vector2& p_at_position) override;
-	Vector2 _get_minimum_size() const override;
+	void _gui_input(const Ref<InputEvent>& p_event) override;									// 处理控件收到的 GUI 输入事件
+	void _draw() override;																		// 绘制文档内容
+	Variant _get_drag_data(const Vector2& p_at_position) override;								// 根据当前位置构造拖动数据
+	Vector2 _get_minimum_size() const override;													// 返回控件所需的最小尺寸
 
-	void set_label(MarkdownLabel* p_label);
-	void set_markdown_text(const String& p_text);
-	String resolve_image_uri(const String& p_uri, bool p_html) const;
-	int32_t get_layout_height() const;
-	void append_text_incremental(const String& p_delta);
-	void finish_stream();
-	void clear_document();
-	void set_streaming_enabled(bool p_enabled);
-	void set_max_unstable_lines(int32_t p_lines);
-	void set_deferred_layout_enabled(bool p_enabled);
-	bool is_deferred_layout_enabled() const;
-	void set_layout_flush_interval_msec(int32_t p_msec);
-	int32_t get_layout_flush_interval_msec() const;
-	bool flush_pending_layout();
-	void request_local_image(const String& p_uri);
-	void refresh_image_content();
-	static void remote_image_completed(const String& p_url, const Ref<Texture2D>& p_texture, uint64_t p_canvas);
-	static void refresh_after_html_resource(uint64_t p_canvas);
-	void update_internal_processing();
-	bool process_pending_local_images();
-	bool update_gif_animations(double p_delta);
-	void select_all();
-	void select_between_points(const Vector2& p_from, const Vector2& p_to);
-	String get_link_uri_at_point(const Vector2& p_position);
-	void clear_selection();
-	Vector2i search(const String& p_text, int32_t p_flags, int32_t p_from_line, int32_t p_from_column);
-	String get_selected_text() const;
-	int32_t get_rendered_block_count();
-	float get_content_height();
-	bool has_anchor(const String& p_anchor) const;
-	PackedStringArray get_anchors() const;
-	float get_anchor_offset(const String& p_anchor) const;
-	std::optional<float> scroll_to_html_anchor(const String& p_anchor, float p_align);
-	float get_search_result_y() const;
-	float get_bottom_position() const;
-	PopupMenu* get_menu();
-	bool is_menu_visible() const;
-	void menu_option(int p_option);
+	void set_label(MarkdownLabel* p_label);														// 将画布绑定到所属的 Markdown 标签控件
+	void set_markdown_text(const String& p_text);												// 设置要显示的 Markdown 文本
+	String resolve_image_uri(const String& p_uri, bool p_html) const;							// 将 Markdown 或 HTML 图像 URI 解析为资源路径
+	int32_t get_layout_height() const;															// 返回画布当前内容的排版高度
+	void append_text_incremental(const String& p_delta);										// 将增量文本追加到当前 Markdown 文档
+	void finish_stream();																		// 结束当前流式输入并刷新待处理排版
+	void clear_document();																		// 清除当前文档内容及其渲染状态
+	void set_streaming_enabled(bool p_enabled);													// 设置流式渲染功能
+	void set_max_unstable_lines(int32_t p_lines);												// 设置流式解析的不稳定行数上限
+	void set_deferred_layout_enabled(bool p_enabled);											// 设置延迟排版功能
+	bool is_deferred_layout_enabled() const;													// 返回是否启用延迟排版功能
+	void set_layout_flush_interval_msec(int32_t p_msec);										// 设置排版刷新间隔
+	int32_t get_layout_flush_interval_msec() const;												// 返回排版刷新间隔
+	bool flush_pending_layout();																// 立即处理等待中的排版更新
+	void request_local_image(const String& p_uri);												// 请求加载指定的本地图片
+	void refresh_image_content();																// 刷新文档中图片的加载与显示状态
+	static void remote_image_completed(
+		const String& p_url,
+		const Ref<Texture2D>& p_texture,
+		uint64_t p_canvas
+	);																							// 处理远程图片加载完成后的画布更新
+	static void refresh_after_html_resource(uint64_t p_canvas);									// 处理 HTML 资源加载完成后的画布更新
+	void update_internal_processing();															// 根据待处理资源更新内部处理状态
+	bool process_pending_local_images();														// 处理等待加载的本地图片并返回是否有变化
+	bool update_gif_animations(double p_delta);													// 按时间增量更新 GIF 动画并返回是否有变化
+	void select_all();																			// 选中当前文档中的全部可选文本
+	void select_between_points(const Vector2& p_from, const Vector2& p_to);						// 按两个画布坐标设置文本选区
+	String get_link_uri_at_point(const Vector2& p_position);									// 返回指定坐标处链接的 URI
+	void clear_selection();																		// 清除当前文本选区
+	Vector2i search(
+		const String& p_text,
+		int32_t p_flags,
+		int32_t p_from_line,
+		int32_t p_from_column
+	);																							// 从指定行列开始查找符合条件的文本
+	String get_selected_text() const;															// 返回当前选区中的文本
+	int32_t get_rendered_block_count();															// 返回当前文档中已渲染的块数量
+	float get_content_height();																	// 返回当前文档内容的总高度
+	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
+	PackedStringArray get_anchors() const;														// 返回文档中所有锚点标识
+	float get_anchor_offset(const String& p_anchor) const;										// 返回指定锚点在文档中的纵向偏移
+	std::optional<float> scroll_to_html_anchor(const String& p_anchor, float p_align);			// 将 HTML 锚点滚动到视口中的对齐位置
+	float get_search_result_y() const;															// 返回当前搜索结果的纵向位置
+	float get_bottom_position() const;															// 返回文档内容底部的纵向位置
+	PopupMenu* get_menu();																		// 返回控件的上下文菜单
+	bool is_menu_visible() const;																// 返回上下文菜单当前是否可见
+	void menu_option(int p_option);																// 执行指定的上下文菜单选项
 };
 
 class MarkdownLabel : public Control {
@@ -339,112 +348,117 @@ protected:
 	void _notification(int p_what);
 
 public:
-	Vector2 _get_minimum_size() const override;
+	Vector2 _get_minimum_size() const override;													// 返回控件所需的最小尺寸
 
-	void set_markdown_text(const String& p_text);
-	String get_markdown_text() const;
-	void set_access(int32_t p_access);
-	int32_t get_access() const;
-	void set_root_subfolder(const String& p_root_subfolder);
-	String get_root_subfolder() const;
-	void set_parse_latex(bool p_enabled);
-	void set_parse_html(bool p_enabled);
-	bool is_parsing_html() const;
-	bool is_parsing_latex() const;
-	void set_parse_gfm(bool p_enabled);
-	bool is_parsing_gfm() const;
-	void set_parse_mermaid(bool p_enabled);
-	bool is_parsing_mermaid() const;
+	void set_markdown_text(const String& p_text);												// 设置要显示的 Markdown 文本
+	String get_markdown_text() const;															// 返回当前 Markdown 文本
+	void set_access(int32_t p_access);															// 设置资源访问范围
+	int32_t get_access() const;																	// 返回资源访问范围
+	void set_root_subfolder(const String& p_root_subfolder);									// 设置资源根子目录
+	String get_root_subfolder() const;															// 返回资源根子目录
+	void set_parse_latex(bool p_enabled);														// 设置是否解析 LaTeX 语法
+	void set_parse_html(bool p_enabled);														// 设置是否解析 HTML 语法
+	bool is_parsing_html() const;																// 返回是否解析 HTML
+	bool is_parsing_latex() const;																// 返回是否解析 LaTeX
+	void set_parse_gfm(bool p_enabled);															// 设置是否解析 GFM 语法
+	bool is_parsing_gfm() const;																// 返回是否解析 GFM
+	void set_parse_mermaid(bool p_enabled);														// 设置是否解析 Mermaid 语法
+	bool is_parsing_mermaid() const;															// 返回是否解析 Mermaid
 
-	void append_text(const String& p_delta);
-	void finish_stream();
-	void clear();
+	void append_text(const String& p_delta);													// 将增量文本追加到当前文档
+	void finish_stream();																		// 结束当前流式输入并刷新待处理排版
+	void clear();																				// 清空当前文档并重置渲染状态
 
-	void set_streaming_enabled(bool p_enabled);
-	bool is_streaming_enabled() const;
+	void set_streaming_enabled(bool p_enabled);													// 设置流式渲染功能
+	bool is_streaming_enabled() const;															// 返回是否启用流式渲染功能
 
-	void set_max_unstable_lines(int32_t p_lines);
-	int32_t get_max_unstable_lines() const;
+	void set_max_unstable_lines(int32_t p_lines);												// 设置流式解析的不稳定行数上限
+	int32_t get_max_unstable_lines() const;														// 返回流式解析的不稳定行数上限
 
-	void set_deferred_layout_enabled(bool p_enabled);
-	bool is_deferred_layout_enabled() const;
+	void set_deferred_layout_enabled(bool p_enabled);											// 设置延迟排版功能
+	bool is_deferred_layout_enabled() const;													// 返回是否启用延迟排版功能
 
-	void set_layout_flush_interval_msec(int32_t p_msec);
-	int32_t get_layout_flush_interval_msec() const;
+	void set_layout_flush_interval_msec(int32_t p_msec);										// 设置排版刷新间隔
+	int32_t get_layout_flush_interval_msec() const;												// 返回排版刷新间隔
 
-	bool flush_pending_layout();
+	bool flush_pending_layout();																// 立即处理等待中的排版更新
 
-	void set_fit_content(bool p_enabled);
-	bool is_fit_content_enabled() const;
+	void set_fit_content(bool p_enabled);														// 设置是否按内容调整控件尺寸
+	bool is_fit_content_enabled() const;														// 返回是否按内容调整控件尺寸
 
-	void set_scroll_active(bool p_active);
-	bool is_scroll_active() const;
+	void set_scroll_active(bool p_active);														// 设置是否启用滚动
+	bool is_scroll_active() const;																// 返回是否启用滚动功能
 
-	void set_scroll_follow(bool p_follow);
-	bool is_scroll_following() const;
+	void set_scroll_follow(bool p_follow);														// 设置滚动跟随功能
+	bool is_scroll_following() const;															// 返回是否启用滚动跟随
 
-	void set_scroll_follow_visible_characters(bool p_follow);
-	bool is_scroll_following_visible_characters() const;
+	void set_scroll_follow_visible_characters(bool p_follow);									// 设置跟随可见字符功能
+	bool is_scroll_following_visible_characters() const;										// 返回是否按可见字符启用滚动跟随
 
-	void set_autowrap_mode(TextServer::AutowrapMode p_mode);
-	TextServer::AutowrapMode get_autowrap_mode() const;
+	void set_autowrap_mode(TextServer::AutowrapMode p_mode);									// 设置自动换行模式
+	TextServer::AutowrapMode get_autowrap_mode() const;											// 返回自动换行模式
 
-	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);
-	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;
+	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);					// 设置自动换行裁剪标志
+	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;						// 返回自动换行裁剪标志
 
-	void set_content_margin(int32_t p_margin);
-	int32_t get_content_margin() const;
+	void set_content_margin(int32_t p_margin);													// 设置内容边距
+	int32_t get_content_margin() const;															// 返回内容边距
 
-	void set_extra_font_size(int32_t p_extra);
-	int32_t get_extra_font_size() const;
+	void set_extra_font_size(int32_t p_extra);													// 设置附加字号
+	int32_t get_extra_font_size() const;														// 返回附加字号
 
-	void set_selection_enabled(bool p_enabled);
-	bool is_selection_enabled() const;
+	void set_selection_enabled(bool p_enabled);													// 设置是否允许选择文本
+	bool is_selection_enabled() const;															// 返回是否启用文本选择功能
 
-	void set_deselect_on_focus_loss_enabled(bool p_enabled);
-	bool is_deselect_on_focus_loss_enabled() const;
+	void set_deselect_on_focus_loss_enabled(bool p_enabled);									// 设置失焦时清除选区功能
+	bool is_deselect_on_focus_loss_enabled() const;												// 返回是否启用失焦时清除选区功能
 
-	void set_drag_and_drop_selection_enabled(bool p_enabled);
-	bool is_drag_and_drop_selection_enabled() const;
+	void set_drag_and_drop_selection_enabled(bool p_enabled);									// 设置选中文本拖放功能
+	bool is_drag_and_drop_selection_enabled() const;											// 返回是否启用选中文本拖放功能
 
-	void set_context_menu_enabled(bool p_enabled);
-	bool is_context_menu_enabled() const;
+	void set_context_menu_enabled(bool p_enabled);												// 设置是否显示上下文菜单
+	bool is_context_menu_enabled() const;														// 返回是否启用上下文菜单
 
-	void set_shortcut_keys_enabled(bool p_enabled);
-	bool is_shortcut_keys_enabled() const;
+	void set_shortcut_keys_enabled(bool p_enabled);												// 设置是否启用快捷键
+	bool is_shortcut_keys_enabled() const;														// 返回是否启用快捷键
 
-	void set_open_external_links(bool p_enabled);
-	bool get_open_external_links() const;
+	void set_open_external_links(bool p_enabled);												// 设置自动打开外部链接功能
+	bool get_open_external_links() const;														// 返回自动打开外部链接功能
 
-	void select_all();
-	void clear_selection();
-	String get_selected_text() const;
+	void select_all();																			// 选中当前文档中的全部可选文本
+	void clear_selection();																		// 清除当前文本选区
+	String get_selected_text() const;															// 返回当前选区中的文本
 
-	Vector2i search(const String& p_text, int32_t p_flags, int32_t p_from_line, int32_t p_from_column);
+	Vector2i search(
+		const String& p_text,
+		int32_t p_flags,
+		int32_t p_from_line,
+		int32_t p_from_column
+	);																							// 从指定行列开始查找符合条件的文本
 
-	String get_link_uri_at_point(const Vector2& p_position);
-	void activate_link_uri(const String& p_uri);
+	String get_link_uri_at_point(const Vector2& p_position);									// 返回指定坐标处链接的 URI
+	void activate_link_uri(const String& p_uri);												// 打开或处理指定的链接 URI
 
-	bool has_anchor(const String& p_anchor) const;
-	PackedStringArray get_anchors() const;
-	bool scroll_to_anchor(const String& p_anchor, float p_align = 0.0f);
-	bool scroll_to_search_result(float p_align = 0.0f);
-	double get_scroll_offset_for_source_line(double p_line, int32_t p_line_count);
-	double get_source_line_at_scroll_offset(double p_offset, int32_t p_line_count);
+	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
+	PackedStringArray get_anchors() const;														// 返回文档中所有锚点标识
+	bool scroll_to_anchor(const String& p_anchor, float p_align = 0.0f);						// 将指定锚点滚动到视口中的对齐位置
+	bool scroll_to_search_result(float p_align = 0.0f);											// 将当前搜索结果滚动到指定对齐位置
+	double get_scroll_offset_for_source_line(double p_line, int32_t p_line_count);				// 返回源文件指定行对应的滚动偏移
+	double get_source_line_at_scroll_offset(double p_offset, int32_t p_line_count);				// 返回指定滚动偏移对应的源文件行
 
-	Error load_markdown_file(const String& p_path);
-	void refresh();
-	void notify_canvas_layout_changed();
+	Error load_markdown_file(const String& p_path);												// 加载指定路径的 Markdown 文件
+	void refresh();																				// 重新解析文档并刷新渲染结果
+	void notify_canvas_layout_changed();														// 通知画布尺寸或布局已发生变化
 
-	int32_t get_rendered_block_count() const;
-	float get_content_height() const;
+	int32_t get_rendered_block_count() const;													// 返回当前文档中已渲染的块数量
+	float get_content_height() const;															// 返回当前文档内容的总高度
 
-	HScrollBar* get_h_scroll_bar() const;
-	VScrollBar* get_v_scroll_bar() const;
+	HScrollBar* get_h_scroll_bar() const;														// 返回水平滚动条节点
+	VScrollBar* get_v_scroll_bar() const;														// 返回垂直滚动条节点
 
-	PopupMenu* get_menu();
-	bool is_menu_visible() const;
-	void menu_option(int p_option);
+	PopupMenu* get_menu();																		// 返回控件的上下文菜单
+	bool is_menu_visible() const;																// 返回上下文菜单当前是否可见
+	void menu_option(int p_option);																// 执行指定的上下文菜单选项
 };
 
 VARIANT_ENUM_CAST(MarkdownLabel::MenuItems);

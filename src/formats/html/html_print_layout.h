@@ -19,6 +19,7 @@ struct HTMLPrintPageStyle {
 
 class HTMLPrintLayout : public godot::RefCounted {
 	GDCLASS(HTMLPrintLayout, godot::RefCounted)
+
 	friend class HTMLDocument;
 
 	struct Page {
@@ -55,6 +56,7 @@ class HTMLPrintLayout : public godot::RefCounted {
 public:
 	HTMLPrintLayout() = default;
 	~HTMLPrintLayout() override;
+
 	bool is_ready() const;																		// 检查分页布局是否已完成准备
 	int64_t get_page_count() const;																// 获取页面数量
 	godot::Vector2 get_page_size(int64_t p_page_index) const;									// 获取指定页面的尺寸

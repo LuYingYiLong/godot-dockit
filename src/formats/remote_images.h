@@ -4,7 +4,11 @@
 #include <godot_cpp/variant/callable.hpp>
 
 namespace dockit {
-	enum class RemoteImageStatus { loading, ready, failed };
+	enum class RemoteImageStatus {
+		loading,
+		ready,
+		failed
+	};
 
 	struct RemoteImage {
 		RemoteImageStatus status = RemoteImageStatus::failed;
@@ -12,7 +16,7 @@ namespace dockit {
 		godot::String error;
 	};
 
-// 管理远程图像资源
+	// 管理远程图像资源
 	bool is_remote_image_url(const godot::String& p_url);										// 检查 URL 是否指向可远程加载的图像
 	godot::String remote_image_request_url(const godot::String& p_url);							// 生成远程图像请求使用的 URL
 	RemoteImage request_remote_image(

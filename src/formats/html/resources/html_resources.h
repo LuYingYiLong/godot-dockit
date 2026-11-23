@@ -101,7 +101,9 @@ namespace dockit {
 		godot::String resolve_image_source(std::string_view p_source) const;					// 返回保留片段的项目图片路径
 		bool is_vector_image(const char* p_src, const char* p_css_base) const;					// 判断本地图片是否为 SVG
 		double get_image_dpi(const char* p_src, const char* p_css_base);						// 获取导入保存或从源图片读取的 DPI
-		godot::Ref<godot::Texture2D> load_texture(const char* p_src, const char* p_css_base,
+		godot::Ref<godot::Texture2D> load_texture(
+			const char* p_src,
+			const char* p_css_base,
 			litehtml::css_image_orientation p_orientation = litehtml::css_image_orientation::from_image,
 			bool p_affects_layout = true);														// 加载纹理
 		godot::Ref<godot::FontFile> load_font(const char* p_src, const char* p_css_base);		// 加载字体

@@ -188,30 +188,35 @@ protected:
 	void _notification(int p_what);
 
 public:
-	void mark_layout_dirty();
-	void _gui_input(const Ref<InputEvent>& p_event) override;
-	Variant _get_drag_data(const Vector2& p_at_position) override;
-	Vector2 _get_minimum_size() const override;
-	void set_document_view(RestructuredtextLabel* p_document_view);
-	void set_rst_text(const String& p_text);
-	void clear_document();
-	void select_all();
-	void select_between_points(const Vector2& p_from, const Vector2& p_to);
-	String get_link_uri_at_point(const Vector2& p_position);
-	void clear_selection();
-	Vector2i search(const String& p_text, int32_t p_flags, int32_t p_from_line, int32_t p_from_column);
-	String get_selected_text() const;
-	int32_t get_rendered_block_count();
-	float get_content_height();
-	int32_t get_table_cell_count();
-	Rect2 get_table_cell_rect(int32_t p_index);
-	bool has_anchor(const String& p_anchor) const;
-	PackedStringArray get_anchors() const;
-	float get_anchor_offset(const String& p_anchor) const;
-	float get_search_result_y() const;
-	PopupMenu* get_menu();
-	bool is_menu_visible() const;
-	void menu_option(int p_option);
+	void mark_layout_dirty();																	// 标记文档布局需要重新计算
+	void _gui_input(const Ref<InputEvent>& p_event) override;									// 处理控件收到的 GUI 输入事件
+	Variant _get_drag_data(const Vector2& p_at_position) override;								// 根据当前位置构造拖动数据
+	Vector2 _get_minimum_size() const override;													// 返回控件所需的最小尺寸
+	void set_document_view(RestructuredtextLabel* p_document_view);								// 将画布绑定到所属的 reStructuredText 标签控件
+	void set_rst_text(const String& p_text);													// 设置要显示的 reStructuredText 文本
+	void clear_document();																		// 清除当前文档内容及其渲染状态
+	void select_all();																			// 选中当前文档中的全部可选文本
+	void select_between_points(const Vector2& p_from, const Vector2& p_to);						// 按两个画布坐标设置文本选区
+	String get_link_uri_at_point(const Vector2& p_position);									// 返回指定坐标处链接的 URI
+	void clear_selection();																		// 清除当前文本选区
+	Vector2i search(
+		const String& p_text,
+		int32_t p_flags,
+		int32_t p_from_line,
+		int32_t p_from_column
+	);																							// 从指定行列开始查找符合条件的文本
+	String get_selected_text() const;															// 返回当前选区中的文本
+	int32_t get_rendered_block_count();															// 返回当前文档中已渲染的块数量
+	float get_content_height();																	// 返回当前文档内容的总高度
+	int32_t get_table_cell_count();																// 返回当前文档中表格单元格的数量
+	Rect2 get_table_cell_rect(int32_t p_index);													// 返回指定表格单元格在画布中的矩形
+	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
+	PackedStringArray get_anchors() const;														// 返回文档中所有锚点标识
+	float get_anchor_offset(const String& p_anchor) const;										// 返回指定锚点在文档中的纵向偏移
+	float get_search_result_y() const;															// 返回当前搜索结果的纵向位置
+	PopupMenu* get_menu();																		// 返回控件的上下文菜单
+	bool is_menu_visible() const;																// 返回上下文菜单当前是否可见
+	void menu_option(int p_option);																// 执行指定的上下文菜单选项
 };
 
 class RestructuredtextLabel : public Control {
@@ -260,69 +265,69 @@ protected:
 	void _notification(int p_what);
 
 public:
-	Vector2 _get_minimum_size() const override;
-	void set_access(int32_t p_access);
-	int32_t get_access() const;
-	void set_root_subfolder(const String& p_root_subfolder);
-	String get_root_subfolder() const;
-	String get_resource_base_dir() const;
-	void set_document(const Ref<RSTDocument>& p_document);
-	Ref<RSTDocument> get_document() const;
-	void set_rst_text(const String& p_text);
-	String get_rst_text() const;
-	void set_content_margin(int32_t p_margin);
-	int32_t get_content_margin() const;
-	void set_extra_font_size(int32_t p_extra);
-	int32_t get_extra_font_size() const;
-	void set_open_external_links(bool p_enabled);
-	bool get_open_external_links() const;
-	void set_selection_enabled(bool p_enabled);
-	bool is_selection_enabled() const;
-	void set_deselect_on_focus_loss_enabled(bool p_enabled);
-	bool is_deselect_on_focus_loss_enabled() const;
-	void set_drag_and_drop_selection_enabled(bool p_enabled);
-	bool is_drag_and_drop_selection_enabled() const;
-	void set_context_menu_enabled(bool p_enabled);
-	bool is_context_menu_enabled() const;
-	void set_shortcut_keys_enabled(bool p_enabled);
-	bool is_shortcut_keys_enabled() const;
-	void set_fit_content(bool p_enabled);
-	bool is_fit_content_enabled() const;
-	void set_scroll_active(bool p_active);
-	bool is_scroll_active() const;
-	void set_autowrap_mode(TextServer::AutowrapMode p_mode);
-	TextServer::AutowrapMode get_autowrap_mode() const;
-	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);
-	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;
+	Vector2 _get_minimum_size() const override;													// 返回控件所需的最小尺寸
+	void set_access(int32_t p_access);															// 设置资源访问范围
+	int32_t get_access() const;																	// 返回资源访问范围
+	void set_root_subfolder(const String& p_root_subfolder);									// 设置资源根子目录
+	String get_root_subfolder() const;															// 返回资源根子目录
+	String get_resource_base_dir() const;														// 返回解析文档相对资源时使用的基础目录
+	void set_document(const Ref<RSTDocument>& p_document);										// 设置文档资源
+	Ref<RSTDocument> get_document() const;														// 返回文档资源
+	void set_rst_text(const String& p_text);													// 设置要显示的 reStructuredText 文本
+	String get_rst_text() const;																// 返回当前 reStructuredText 文本
+	void set_content_margin(int32_t p_margin);													// 设置内容边距
+	int32_t get_content_margin() const;															// 返回内容边距
+	void set_extra_font_size(int32_t p_extra);													// 设置附加字号
+	int32_t get_extra_font_size() const;														// 返回附加字号
+	void set_open_external_links(bool p_enabled);												// 设置自动打开外部链接功能
+	bool get_open_external_links() const;														// 返回自动打开外部链接功能
+	void set_selection_enabled(bool p_enabled);													// 设置是否允许选择文本
+	bool is_selection_enabled() const;															// 返回是否启用文本选择功能
+	void set_deselect_on_focus_loss_enabled(bool p_enabled);									// 设置失焦时清除选区功能
+	bool is_deselect_on_focus_loss_enabled() const;												// 返回是否启用失焦时清除选区功能
+	void set_drag_and_drop_selection_enabled(bool p_enabled);									// 设置选中文本拖放功能
+	bool is_drag_and_drop_selection_enabled() const;											// 返回是否启用选中文本拖放功能
+	void set_context_menu_enabled(bool p_enabled);												// 设置是否显示上下文菜单
+	bool is_context_menu_enabled() const;														// 返回是否启用上下文菜单
+	void set_shortcut_keys_enabled(bool p_enabled);												// 设置是否启用快捷键
+	bool is_shortcut_keys_enabled() const;														// 返回是否启用快捷键
+	void set_fit_content(bool p_enabled);														// 设置是否按内容调整控件尺寸
+	bool is_fit_content_enabled() const;														// 返回是否按内容调整控件尺寸
+	void set_scroll_active(bool p_active);														// 设置是否启用滚动
+	bool is_scroll_active() const;																// 返回是否启用滚动功能
+	void set_autowrap_mode(TextServer::AutowrapMode p_mode);									// 设置自动换行模式
+	TextServer::AutowrapMode get_autowrap_mode() const;											// 返回自动换行模式
+	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);					// 设置自动换行裁剪标志
+	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;						// 返回自动换行裁剪标志
 
-	Error load_rst_file(const String& p_path);
-	void render_text(const String& p_text);
-	void refresh();
-	void clear_document();
-	void select_all();
-	void clear_selection();
+	Error load_rst_file(const String& p_path);													// 加载指定路径的 reStructuredText 文件
+	void render_text(const String& p_text);														// 解析并渲染给定的 reStructuredText 文本
+	void refresh();																				// 重新解析文档并刷新渲染结果
+	void clear_document();																		// 清除当前文档内容及其渲染状态
+	void select_all();																			// 选中当前文档中的全部可选文本
+	void clear_selection();																		// 清除当前文本选区
 	Vector2i search(
 		const String& p_text,
 		int32_t p_flags,
 		int32_t p_from_line,
 		int32_t p_from_column
-	) const;
-	String get_selected_text() const;
-	int32_t get_rendered_block_count() const;
-	float get_content_height() const;
-	String resolve_document_path(const String& p_path) const;
-	String resolve_link_uri(const String& p_role, const String& p_target) const;
-	HScrollBar* get_h_scroll_bar() const;
-	VScrollBar* get_v_scroll_bar() const;
-	void activate_link_uri(const String& p_uri);
-	void _on_meta_clicked(const Variant& p_meta);
-	bool has_anchor(const String& p_anchor) const;
-	PackedStringArray get_anchors() const;
-	bool scroll_to_anchor(const String& p_anchor, float p_align = 0.0f);
-	bool scroll_to_search_result(float p_align = 0.0f);
-	PopupMenu* get_menu();
-	bool is_menu_visible() const;
-	void menu_option(int p_option);
+	) const;																					// 从指定行列开始查找符合条件的文本
+	String get_selected_text() const;															// 返回当前选区中的文本
+	int32_t get_rendered_block_count() const;													// 返回当前文档中已渲染的块数量
+	float get_content_height() const;															// 返回当前文档内容的总高度
+	String resolve_document_path(const String& p_path) const;									// 根据当前文档和资源访问范围解析路径
+	String resolve_link_uri(const String& p_role, const String& p_target) const;				// 根据链接角色和目标解析链接 URI
+	HScrollBar* get_h_scroll_bar() const;														// 返回水平滚动条节点
+	VScrollBar* get_v_scroll_bar() const;														// 返回垂直滚动条节点
+	void activate_link_uri(const String& p_uri);												// 打开或处理指定的链接 URI
+	void _on_meta_clicked(const Variant& p_meta);												// 响应富文本链接的点击
+	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
+	PackedStringArray get_anchors() const;														// 返回文档中所有锚点标识
+	bool scroll_to_anchor(const String& p_anchor, float p_align = 0.0f);						// 将指定锚点滚动到视口中的对齐位置
+	bool scroll_to_search_result(float p_align = 0.0f);											// 将当前搜索结果滚动到指定对齐位置
+	PopupMenu* get_menu();																		// 返回控件的上下文菜单
+	bool is_menu_visible() const;																// 返回上下文菜单当前是否可见
+	void menu_option(int p_option);																// 执行指定的上下文菜单选项
 };
 
 VARIANT_ENUM_CAST(RestructuredtextLabel::MenuItems);

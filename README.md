@@ -10,7 +10,7 @@ Add a `MarkdownLabel` to a scene and set its `text` property. It supports select
 
 Enable `parse_html` to render HTML blocks and supported inline tags in Markdown.
 
-### reStructuredText documents
+### <img src="addons/dockit/icons/restructuredtext_label.svg" width=18 /> reStructuredText documents
 
 Import `.rst` files as `RSTDocument` resources and display them with `RestructuredtextLabel`. The label supports relative images and downloads, `toctree` and `:doc:` links, in-document anchors, and cross-document `:ref:` links. Set `dockit/rst/document_roots` in Project Settings to the folders or `.rst` files that contain your documentation; Dockit generates a compact reference index from the labels and documents those files actually reference. The generated index keeps resource UIDs with `res://` paths as a fallback for exported projects.
 

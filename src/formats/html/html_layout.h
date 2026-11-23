@@ -42,13 +42,27 @@ namespace dockit {
 	class HTMLPaintRecorder;
 	class HTMLTextControlNode;
 	enum class HTMLControlIcon;
+
 	struct HTMLAnchor {
 		godot::Rect2 bounds;
 		std::weak_ptr<const litehtml::element> element;
 	};
-	enum class HTMLScrollInput { ignored, forwarded, handled };
-	enum class HTMLHoverUpdate { unchanged, state_changed, paint_only, layout };
+
+	enum class HTMLScrollInput {
+		ignored,
+		forwarded,
+		handled
+	};
+
+	enum class HTMLHoverUpdate {
+		unchanged,
+		state_changed,
+		paint_only,
+		layout
+	};
+
 	using HTMLHitTestResult = std::optional<std::shared_ptr<litehtml::element>>;
+	
 	struct HTMLViewportStyle {
 		HTMLScrollbarAppearance scrollbar;
 		std::array<litehtml::overflow, 2> overflow{litehtml::overflow_auto, litehtml::overflow_auto};
@@ -56,6 +70,7 @@ namespace dockit {
 		litehtml::scrollbar_gutter gutter = litehtml::scrollbar_gutter::automatic;
 		litehtml::color_scheme scheme = litehtml::color_scheme::light;
 	};
+	
 	struct HTMLSelectMenuRow {
 		HTMLTextLayout text;
 		godot::Color color;
@@ -93,6 +108,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLLinkElement;
 	friend class HTMLStyleElement;
 	friend class HTMLStyleSheet;
+	
 	int64_t get_stylesheet_id(const HTMLElement& p_element);
 	godot::Ref<HTMLStyleSheet> get_stylesheet(const HTMLElement& p_element);
 	godot::String resolve_link_href(const godot::String& p_href, bool p_use_fallback = false) const;
@@ -117,6 +133,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::PackedStringArray audio_sources(const HTMLAudioElement& p_element) const;
 	godot::Ref<godot::Resource> audio_resource(const godot::String& p_path, bool p_fmod) const;
 	godot::TypedArray<HTMLAudioElement> audio_elements() const;
+	
 	friend class HTMLInputElement;
 	friend class HTMLTextAreaElement;
 	friend class ::HTMLLabel;
@@ -126,6 +143,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLRange;
 	friend class HTMLAnimation;
 	friend class dockit::HTMLDOM;
+	
 	int64_t document_text_offset(const dockit::HTMLBoundary& p_boundary, bool p_forward = true) const;
 	dockit::HTMLBoundary text_boundary_at(int64_t p_offset) const;
 	godot::TypedArray<godot::Rect2> range_client_rects(const HTMLRange& p_range) const;
@@ -286,6 +304,7 @@ class HTMLLayout : public godot::RefCounted {
 	godot::Error edit_css_rule(int64_t p_stylesheet, int64_t p_index, const godot::String* p_rule);
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics_for(const litehtml::element& p_element) const;
 	godot::String get_css_diagnostic_tooltip(const godot::Vector2& p_position) const;
+
 protected:
 	static void _bind_methods();
 
