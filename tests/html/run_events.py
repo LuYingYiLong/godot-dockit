@@ -72,7 +72,7 @@ filesystem/on_save/safe_save_on_backup_then_rename = false
 """)
         create_project(project, repo)
         run([godot, "--headless", "--path", str(project), "--import"], workspace)
-        run_event_checks([godot, "--headless", "--path", str(project), "--quit-after", "900"], workspace)
+        run_event_checks([godot, "--headless", "--path", str(project), "--quit-after", "3600"], workspace)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ func _ready() -> void:
 	await _check_double_click_events()
 	await _check_double_click_selection()
 	_check_word_selection_mode_api()
+	await _check_html_double_click_edges()
 	await _check_markdown_double_click_selection()
 	await _check_wheel_events()
 	await _check_touch_events()
@@ -760,6 +761,55 @@ func _check_word_selection_mode_api() -> void:
 	rst.word_selection_mode = RestructuredtextLabel.WORD_SELECTION_MODE_JIEBA
 	_check(rst.word_selection_mode == RestructuredtextLabel.WORD_SELECTION_MODE_JIEBA, "RestructuredtextLabel exposes the word selection mode property")
 	rst.free()
+
+
+func _check_html_double_click_edges() -> void:
+	label.word_selection_mode = HTMLLabel.WORD_SELECTION_MODE_TEXT_SERVER
+	label.text = "<p id=\"word-edges\">alpha beta</p>"
+	await _settle()
+	_check_html_word_edge("alpha", 4, 0.95)
+	await get_tree().create_timer(0.55).timeout
+	_check_html_word_edge("beta", 3, 0.95)
+	await get_tree().create_timer(0.55).timeout
+	var plain_text: String = label.get_plain_text()
+	var alpha_start: int = plain_text.find("alpha")
+	var beta_start: int = plain_text.find("beta")
+	if alpha_start >= 0 and beta_start > alpha_start:
+		label.set_selection_range(alpha_start + 4, alpha_start + 5)
+		var alpha_rects: Array[Rect2] = label.get_selection_rects()
+		label.set_selection_range(beta_start, beta_start + 1)
+		var beta_rects: Array[Rect2] = label.get_selection_rects()
+		if not alpha_rects.is_empty() and not beta_rects.is_empty():
+			var alpha_rect: Rect2 = alpha_rects[0]
+			var beta_rect: Rect2 = beta_rects[0]
+			var whitespace_point: Vector2 = Vector2((alpha_rect.end.x + beta_rect.position.x) * 0.5, alpha_rect.get_center().y)
+			label.clear_selection()
+			_double_click_at(whitespace_point)
+			_check(label.get_selected_text().is_empty(), "double-clicking a space between words leaves the selection collapsed")
+		else:
+			_check(false, "both sides of the inline word separator have selection rectangles")
+	else:
+		_check(false, "the plain text exposes both words in the edge fixture")
+	label.word_selection_mode = HTMLLabel.WORD_SELECTION_MODE_AUTO
+
+
+func _check_html_word_edge(word: String, character_index: int, horizontal_fraction: float) -> void:
+	var plain_text: String = label.get_plain_text()
+	var word_start: int = plain_text.find(word)
+	if word_start < 0:
+		_check(false, "HTML plain text contains the %s word-edge fixture" % word)
+		return
+	label.set_selection_range(word_start + character_index, word_start + character_index + 1)
+	var selection_rects: Array[Rect2] = label.get_selection_rects()
+	if selection_rects.is_empty():
+		_check(false, "the %s word-edge character has a selection rectangle" % word)
+		return
+	var character_rect: Rect2 = selection_rects[0]
+	label.clear_selection()
+	var point: Vector2 = Vector2(character_rect.position.x + character_rect.size.x * horizontal_fraction, character_rect.get_center().y)
+	_double_click_at(point)
+	var selected_text: String = label.get_selected_text()
+	_check(selected_text == word, "double-clicking near the right edge of %s selects '%s' at %s" % [word, selected_text, point])
 
 
 func _check_markdown_double_click_selection() -> void:

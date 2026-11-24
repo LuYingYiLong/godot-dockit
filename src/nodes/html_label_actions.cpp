@@ -1203,7 +1203,16 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 			const auto control = target->layout->text_control(event_target);
 			if (control == nullptr) {
 				const String text = target->layout->get_plain_text();
-				const int64_t offset = target->layout->selection_point_at(point).offset;
+				int64_t offset = target->layout->selection_point_at(point).offset;
+				if (offset > 0 && offset <= text.length() && !dockit::is_word_whitespace(text[offset - 1])) {
+					const TypedArray<Rect2> previous_character = target->layout->get_selection_rects(offset - 1, offset);
+					for (int64_t index = 0; index < previous_character.size(); index++) {
+						if (static_cast<Rect2>(previous_character[index]).has_point(point)) {
+							offset--;
+							break;
+						}
+					}
+				}
 				const dockit::HTMLTextLanguageRange language = target->layout->get_text_language_range_at(
 					offset, dockit::get_project_word_language());
 				const auto boundary = dockit::word_boundary_at(text, offset, language.language, language.start, language.end,
