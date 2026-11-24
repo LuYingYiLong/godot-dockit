@@ -3,6 +3,7 @@
 #include "register_types.h"
 
 #include "editor/dockit_source_editor.h"
+#include "editor/css_syntax_highlighter.h"
 #include "editor/html_syntax_highlighter.h"
 #include "editor/html_preview_editor_plugin.h"
 #include "editor/importers/html_document_importer.h"
@@ -214,6 +215,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 
 	else if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR && Engine::get_singleton()->is_editor_hint()) {
 		GDREGISTER_INTERNAL_CLASS(HTMLSyntaxHighlighter);
+		GDREGISTER_INTERNAL_CLASS(CSSSyntaxHighlighter);
 		GDREGISTER_ABSTRACT_CLASS(ScriptEditorPreviewPlugin);
 		GDREGISTER_INTERNAL_CLASS(HTMLPreviewEditorPlugin);
 		GDREGISTER_INTERNAL_CLASS(MarkdownPreviewEditorPlugin);

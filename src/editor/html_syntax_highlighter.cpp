@@ -4,19 +4,12 @@
 #include <godot_cpp/classes/editor_settings.hpp>
 #include <godot_cpp/classes/text_edit.hpp>
 
+#include <algorithm>
 #include <cstring>
 
 namespace godot {
 	namespace {
-		struct HTMLLexState {
-			bool in_comment = false;
-			bool in_tag = false;
-			bool expect_tag_name = false;
-			bool expect_value = false;
-			char32_t quote = 0;
-		};
-
-		struct HighlightColors {
+		struct HTMLHighlightColors {
 			Color tag;
 			Color attribute;
 			Color string;
@@ -43,7 +36,7 @@ namespace godot {
 
 		bool is_name_character(char32_t p_character) {
 			return is_ascii_letter(p_character) || (p_character >= '0' && p_character <= '9') ||
-				p_character == '-' || p_character == '_' || p_character == ':' || p_character == '.';
+				p_character == '-' || p_character == '_' || p_character == ':' || p_character == '.' || p_character >= 0x80;
 		}
 
 		bool matches_at(const String& p_text, int32_t p_index, const char* p_pattern) {
@@ -79,40 +72,64 @@ namespace godot {
 			if (p_end < p_line_length) set_color(p_colors, p_end, nullptr);
 		}
 
-		void scan_line(const String& p_line, HTMLLexState& r_state, const HighlightColors& p_colors, Dictionary* r_color_map) {
+		void scan_html_line(
+			const String& p_line,
+			HTMLSyntaxHighlighter::HTMLLexState& r_state,
+			const HTMLHighlightColors& p_html_colors,
+			const css_highlight::CSSHighlightColors& p_css_colors,
+			Dictionary* r_color_map) {
 			const int32_t length = p_line.length();
 			int32_t index = 0;
 
-			if (r_state.in_comment) set_color(r_color_map, 0, &p_colors.comment);
-			else if (r_state.quote != 0) set_color(r_color_map, 0, &p_colors.string);
+			if (r_state.in_comment) set_color(r_color_map, 0, &p_html_colors.comment);
+			else if (r_state.quote != 0) set_color(r_color_map, 0, &p_html_colors.string);
 
 			while (index < length) {
+				if (r_state.in_style) {
+					const int32_t style_end = css_highlight::find_style_end_tag(p_line, index);
+					const int32_t css_end = style_end < 0 ? length : style_end;
+					css_highlight::scan_css_line(p_line, r_state.css_state, p_css_colors, r_color_map, index, css_end);
+					if (style_end < 0) break;
+
+					r_state.in_style = false;
+					r_state.css_state = {};
+					r_state.in_tag = true;
+					r_state.expect_tag_name = true;
+					r_state.expect_value = false;
+					r_state.closing_tag = true;
+					r_state.self_closing_tag = false;
+					r_state.current_tag_is_style = false;
+					set_color(r_color_map, style_end, &p_html_colors.symbol);
+					index = style_end + 1;
+					continue;
+				}
+
 				if (r_state.in_comment) {
-					int32_t end = index;
-					while (end < length && !matches_at(p_line, end, "-->")) ++end;
-					if (end == length) {
-						set_range_color(r_color_map, index, length, p_colors.comment, length);
+					int32_t comment_end = index;
+					while (comment_end < length && !matches_at(p_line, comment_end, "-->")) ++comment_end;
+					if (comment_end == length) {
+						set_range_color(r_color_map, index, length, p_html_colors.comment, length);
 						break;
 					}
-					end += 3;
-					set_range_color(r_color_map, index, end, p_colors.comment, length);
+					comment_end += 3;
+					set_range_color(r_color_map, index, comment_end, p_html_colors.comment, length);
 					r_state.in_comment = false;
-					index = end;
+					index = comment_end;
 					continue;
 				}
 
 				if (r_state.quote != 0) {
-					int32_t end = index;
-					while (end < length && p_line[end] != r_state.quote) ++end;
-					if (end == length) {
-						set_range_color(r_color_map, index, length, p_colors.string, length);
+					int32_t string_end = index;
+					while (string_end < length && p_line[string_end] != r_state.quote) ++string_end;
+					if (string_end == length) {
+						set_range_color(r_color_map, index, length, p_html_colors.string, length);
 						break;
 					}
-					++end;
-					set_range_color(r_color_map, index, end, p_colors.string, length);
+					++string_end;
+					set_range_color(r_color_map, index, string_end, p_html_colors.string, length);
 					r_state.quote = 0;
 					r_state.expect_value = false;
-					index = end;
+					index = string_end;
 					continue;
 				}
 
@@ -125,13 +142,15 @@ namespace godot {
 						++index;
 						continue;
 					}
-					set_color(r_color_map, index, &p_colors.symbol);
+					set_color(r_color_map, index, &p_html_colors.symbol);
 					if (can_start_tag(p_line, index)) {
 						r_state.in_tag = true;
 						r_state.expect_tag_name = true;
 						r_state.expect_value = false;
-					}
-					else if (index + 1 < length) {
+						r_state.closing_tag = index + 1 < length && p_line[index + 1] == '/';
+						r_state.self_closing_tag = false;
+						r_state.current_tag_is_style = false;
+					} else if (index + 1 < length) {
 						set_color(r_color_map, index + 1, nullptr);
 					}
 					++index;
@@ -144,19 +163,24 @@ namespace godot {
 						++index;
 						continue;
 					}
-					if (character == '>' || character == '/') {
+					if (character == '>') {
 						r_state.expect_value = false;
+						continue;
+					}
+					if (character == '/' && index + 1 < length && p_line[index + 1] == '>') {
+						r_state.expect_value = false;
+						r_state.self_closing_tag = true;
 						continue;
 					}
 					if (character == '\'' || character == '"') {
 						r_state.quote = character;
-						set_color(r_color_map, index, &p_colors.string);
+						set_color(r_color_map, index, &p_html_colors.string);
 						++index;
 						continue;
 					}
 					const int32_t start = index;
 					while (index < length && p_line[index] != ' ' && p_line[index] != '\t' && p_line[index] != '>' && p_line[index] != '\r') ++index;
-					set_range_color(r_color_map, start, index, p_colors.string, length);
+					set_range_color(r_color_map, start, index, p_html_colors.string, length);
 					r_state.expect_value = false;
 					continue;
 				}
@@ -166,27 +190,39 @@ namespace godot {
 					continue;
 				}
 				if (character == '>') {
-					set_color(r_color_map, index, &p_colors.symbol);
+					set_color(r_color_map, index, &p_html_colors.symbol);
+					const bool enter_style = r_state.current_tag_is_style && !r_state.closing_tag && !r_state.self_closing_tag;
 					r_state.in_tag = false;
 					r_state.expect_tag_name = false;
+					r_state.expect_value = false;
 					++index;
+					if (enter_style) {
+						r_state.in_style = true;
+						r_state.css_state = {};
+					}
 					if (index < length) set_color(r_color_map, index, nullptr);
 					continue;
 				}
-				if (character == '/' || character == '!') {
-					set_color(r_color_map, index, &p_colors.symbol);
+				if (character == '/') {
+					set_color(r_color_map, index, &p_html_colors.symbol);
+					r_state.self_closing_tag = true;
+					++index;
+					continue;
+				}
+				if (character == '!') {
+					set_color(r_color_map, index, &p_html_colors.symbol);
 					++index;
 					continue;
 				}
 				if (character == '=') {
-					set_color(r_color_map, index, &p_colors.symbol);
+					set_color(r_color_map, index, &p_html_colors.symbol);
 					r_state.expect_value = true;
 					++index;
 					continue;
 				}
 				if (character == '\'' || character == '"') {
 					r_state.quote = character;
-					set_color(r_color_map, index, &p_colors.string);
+					set_color(r_color_map, index, &p_html_colors.string);
 					++index;
 					continue;
 				}
@@ -195,7 +231,8 @@ namespace godot {
 					if (is_name_character(character)) {
 						const int32_t start = index;
 						while (index < length && is_name_character(p_line[index])) ++index;
-						set_range_color(r_color_map, start, index, p_colors.tag, length);
+						set_range_color(r_color_map, start, index, p_html_colors.tag, length);
+						r_state.current_tag_is_style = p_line.substr(start, index - start).to_lower() == "style";
 						r_state.expect_tag_name = false;
 						continue;
 					}
@@ -206,7 +243,7 @@ namespace godot {
 				if (is_name_character(character)) {
 					const int32_t start = index;
 					while (index < length && is_name_character(p_line[index])) ++index;
-					set_range_color(r_color_map, start, index, p_colors.attribute, length);
+					set_range_color(r_color_map, start, index, p_html_colors.attribute, length);
 					continue;
 				}
 				++index;
@@ -236,15 +273,42 @@ namespace godot {
 		TextEdit* text_edit = get_text_edit();
 		if (text_edit == nullptr || p_line < 0 || p_line >= text_edit->get_line_count()) return {};
 
-		const HighlightColors colors{ tag_color, attribute_color, string_color, comment_color, symbol_color };
+		const uint32_t text_version = text_edit->get_version();
+		const int32_t line_count = text_edit->get_line_count();
+		if (cached_text_version != text_version || static_cast<int32_t>(line_state_cache.size()) != line_count) {
+			line_state_cache.assign(line_count, HTMLLexState{});
+			line_state_cache_valid.assign(line_count, 0);
+			cached_text_version = text_version;
+		}
+
 		HTMLLexState state;
-		for (int32_t line = 0; line < p_line; ++line) scan_line(text_edit->get_line(line), state, colors, nullptr);
+		int32_t first_line = 0;
+		for (int32_t line = p_line - 1; line >= 0; --line) {
+			if (line_state_cache_valid[line] != 0) {
+				state = line_state_cache[line];
+				first_line = line + 1;
+				break;
+			}
+		}
+
+		const HTMLHighlightColors html_colors{ tag_color, attribute_color, string_color, comment_color, symbol_color };
+		for (int32_t line = first_line; line < p_line; ++line) {
+			scan_html_line(text_edit->get_line(line), state, html_colors, css_colors, nullptr);
+			line_state_cache[line] = state;
+			line_state_cache_valid[line] = 1;
+		}
 		Dictionary color_map;
-		scan_line(text_edit->get_line(p_line), state, colors, &color_map);
+		scan_html_line(text_edit->get_line(p_line), state, html_colors, css_colors, &color_map);
+		line_state_cache[p_line] = state;
+		line_state_cache_valid[p_line] = 1;
 		return color_map;
 	}
 
-	void HTMLSyntaxHighlighter::_clear_highlighting_cache() {}
+	void HTMLSyntaxHighlighter::_clear_highlighting_cache() {
+		line_state_cache.clear();
+		line_state_cache_valid.clear();
+		cached_text_version = std::numeric_limits<uint32_t>::max();
+	}
 
 	void HTMLSyntaxHighlighter::_update_cache() {
 		tag_color = get_highlighting_color(setting_name("keyword_color"), Color(0.52, 0.78, 0.95));
@@ -252,5 +316,6 @@ namespace godot {
 		string_color = get_highlighting_color(setting_name("string_color"), Color(0.77, 0.64, 0.91));
 		comment_color = get_highlighting_color(setting_name("comment_color"), Color(0.55, 0.62, 0.58));
 		symbol_color = get_highlighting_color(setting_name("symbol_color"), Color(0.78, 0.82, 0.86));
+					css_colors = css_highlight::get_css_highlight_colors();
 	}
 } // namespace godot

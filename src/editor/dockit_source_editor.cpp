@@ -46,6 +46,9 @@ namespace godot {
 			if (extension == "html" || extension == "htm") {
 				return HTMLDocument::get_class_static();
 			}
+			if (extension == "css") {
+				return CSSStyleSheet::get_class_static();
+			}
 			if (extension == "mmd" || extension == "mermaid") {
 				return MermaidDocument::get_class_static();
 			}
@@ -238,6 +241,32 @@ namespace godot {
 		}
 	}
 
+	void DockitSourceEditorPlugin::ensure_css_syntax_highlighter_registered() {
+		if (!is_inside_tree()) {
+			return;
+		}
+		EditorInterface* editor = EditorInterface::get_singleton();
+		ScriptEditor* scripts = editor == nullptr ? nullptr : editor->get_script_editor();
+		if (scripts == nullptr) {
+			SceneTree* tree = get_tree();
+			if (tree != nullptr) {
+				const Callable retry = callable_mp(this, &DockitSourceEditorPlugin::ensure_css_syntax_highlighter_registered);
+				if (!tree->is_connected("process_frame", retry)) {
+					tree->connect("process_frame", retry, CONNECT_ONE_SHOT);
+				}
+			}
+			return;
+		}
+
+		if (!css_syntax_highlighter.is_valid()) {
+			css_syntax_highlighter.instantiate();
+		}
+		if (!css_syntax_highlighter_registered) {
+			scripts->register_syntax_highlighter(css_syntax_highlighter);
+			css_syntax_highlighter_registered = true;
+		}
+	}
+
 	void DockitSourceEditorPlugin::_enter_tree() {
 		editor_translations.load();
 		ensure_html_syntax_highlighter_registered();
@@ -312,6 +341,17 @@ namespace godot {
 		}
 		if (html_syntax_highlighter.is_valid()) {
 			html_syntax_highlighter.unref();
+		}
+		if (css_syntax_highlighter_registered && css_syntax_highlighter.is_valid()) {
+			if (EditorInterface* editor = EditorInterface::get_singleton()) {
+				if (ScriptEditor* scripts = editor->get_script_editor()) {
+					scripts->unregister_syntax_highlighter(css_syntax_highlighter);
+				}
+			}
+			css_syntax_highlighter_registered = false;
+		}
+		if (css_syntax_highlighter.is_valid()) {
+			css_syntax_highlighter.unref();
 		}
 		remove_export_plugin(video_exporter);
 		video_exporter.unref();
@@ -484,6 +524,15 @@ namespace godot {
 					CodeEdit* code = get_code_editor(current);
 					if (code != nullptr && html_syntax_highlighter.is_valid()) {
 						const Ref<EditorSyntaxHighlighter> highlighter = html_syntax_highlighter->_create();
+						if (highlighter.is_valid()) {
+							code->set_syntax_highlighter(highlighter);
+						}
+					}
+				} else if (get_document_type(p_path) == CSSStyleSheet::get_class_static()) {
+					ensure_css_syntax_highlighter_registered();
+					CodeEdit* code = get_code_editor(current);
+					if (code != nullptr && css_syntax_highlighter.is_valid()) {
+						const Ref<EditorSyntaxHighlighter> highlighter = css_syntax_highlighter->_create();
 						if (highlighter.is_valid()) {
 							code->set_syntax_highlighter(highlighter);
 						}

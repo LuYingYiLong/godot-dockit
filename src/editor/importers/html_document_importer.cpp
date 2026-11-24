@@ -14,7 +14,7 @@ namespace godot {
 	}
 
 	PackedStringArray HTMLDocumentImporter::_get_recognized_extensions() const {
-		return { "html", "htm" };
+		return { "html", "htm", "xhtml" };
 	}
 
 	TypedArray<Dictionary> HTMLDocumentImporter::_get_import_options(const String&, int32_t) const {

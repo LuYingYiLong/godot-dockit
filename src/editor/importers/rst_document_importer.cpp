@@ -243,8 +243,8 @@ Error RSTDocumentImporter::_import(const String& p_source_file, const String& p_
 
 	const PackedStringArray dependencies = scan_rst_references(p_source_file, text, reference_index);
 	for (int32_t i = 0; i < dependencies.size(); i++) {
-		// Cross-document targets are path/UID data, not imported resource references.
-		// Keeping RST documents out avoids cycles such as reciprocal :doc: links.
+		// 跨文档目标是路径/UID 数据，而不是导入的资源引用
+		// 不包含 RST 文档可以避免循环，比如相互的 :doc: 链接
 		if (dependencies[i].get_extension().to_lower() == "rst") {
 			continue;
 		}

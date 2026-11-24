@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dockit_editor_translations.h"
+#include "css_syntax_highlighter.h"
 #include "html_syntax_highlighter.h"
 #include "html_video_export_plugin.h"
 #include "editor/importers/html_document_importer.h"
@@ -41,6 +42,8 @@ namespace godot {
 		Ref<HTMLDocumentImporter> html_importer;
 		Ref<HTMLSyntaxHighlighter> html_syntax_highlighter;
 		bool html_syntax_highlighter_registered = false;
+		Ref<CSSSyntaxHighlighter> css_syntax_highlighter;
+		bool css_syntax_highlighter_registered = false;
 		Ref<CSSStyleSheetImporter> css_stylesheet_importer;
 		Ref<HTMLVideoExportPlugin> video_exporter;
 		Ref<LatexDocumentImporter> latex_importer;
@@ -56,6 +59,7 @@ namespace godot {
 
 		void install_importers();
 		void ensure_html_syntax_highlighter_registered();
+		void ensure_css_syntax_highlighter_registered();
 		void import_existing_sources();
 		void observe_restored_scene_sources(Node* p_scene);
 		void attach_source_editor();

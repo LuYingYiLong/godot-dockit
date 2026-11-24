@@ -315,6 +315,9 @@
     <ClCompile Include="src\editor\dockit_source_editor.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\css_syntax_highlighter.cpp">
+      <Filter>Source Files\editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\html_syntax_highlighter.cpp">
       <Filter>Source Files\editor</Filter>
     </ClCompile>
@@ -1008,6 +1011,9 @@
       <Filter>Header Files\editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\dockit_source_editor.h">
+      <Filter>Header Files\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\css_syntax_highlighter.h">
       <Filter>Header Files\editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\html_syntax_highlighter.h">
