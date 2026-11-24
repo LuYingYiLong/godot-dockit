@@ -8254,6 +8254,41 @@ msgstr ""
 "HTMLLabel.form_submitted]。[code]reset[/code] 仅对重置按钮执行；在脚本中调用 [method HTMLFormElement.reset] "
 "不会派发它。"
 
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"A [CSSStyleSheet] stores the source text of a project [code].css[/code] file imported by Dockit. "
+"The importer registers local [code]@import[/code] files as build dependencies so Godot can "
+"reimport the stylesheet when an imported file changes.\n"
+"HTML documents that link to the same imported stylesheet use the shared resource. Changing "
+"[member css_text] emits [signal Resource.changed], invalidating the styles of current layouts "
+"that use the resource so they can refresh. The changed text remains in memory and does not write "
+"back to the source [code].css[/code] file. Edit and reimport the source file to persist changes.\n"
+"[member source_path] records the source path assigned by the importer. It is empty for manually "
+"created resources unless set."
+msgstr ""
+"[CSSStyleSheet] 保存由 Dockit 导入的项目 [code].css[/code] 文件中的源文本。导入器会将本地 "
+"[code]@import[/code] 文件登记为构建依赖项，以便被导入文件发生更改时，Godot 可以重新导入该样式表。\n"
+"链接到同一导入样式表的 HTML 文档会共用此资源。修改 [member css_text] 会发出 "
+"[signal Resource.changed]，使当前使用该资源的布局中的样式失效并触发刷新。修改后的文本仅保留在内存中，"
+"不会写回源 [code].css[/code] 文件。要持久保存修改，请编辑源文件并重新导入。\n"
+"[member source_path] 记录导入器设置的源路径。手动创建的资源中此属性为空，除非显式设置。"
+
+#. doc_classes/CSSStyleSheet.xml
+msgid "A shared CSS resource imported from a project [code].css[/code] file."
+msgstr "从 Godot 项目中的 [code].css[/code] 文件导入的共享 CSS 资源。"
+
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"The CSS source text. Changing it emits [signal Resource.changed] so layouts using this resource "
+"can refresh."
+msgstr "CSS 源文本。修改后会发出 [signal Resource.changed]，以便使用该资源的布局刷新。"
+
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"The original [code].css[/code] source path recorded by the importer. Manually created resources "
+"leave it empty unless set."
+msgstr "导入器记录的原始 [code].css[/code] 源路径。手动创建资源时此属性为空，除非显式设置。"
+
 #. doc_classes/RestructuredtextLabel.xml
 msgid "If [code]true[/code], activated HTTP and HTTPS links are opened with the system's default application."
 msgstr "为 [code]true[/code] 时，激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开。"
@@ -8353,3 +8388,7 @@ msgstr "用于解析跨文档 [code]:ref:[/code] 目标的可选生成 [RSTRefer
 #. doc_classes/RSTDocument.xml
 msgid "The original project path of the imported [code].rst[/code] file. It is used to resolve relative resource paths."
 msgstr "导入的 [code].rst[/code] 文件在项目中的原始路径，用于解析相对资源路径。"
+
+#. doc_classes/HTMLElement.xml
+msgid "The element's open shadow root, or [code]null[/code] if it has no open root. Closed roots are not exposed."
+msgstr "元素的开放影子根；没有开放影子根时为 [code]null[/code]。此属性不公开闭合影子根。"

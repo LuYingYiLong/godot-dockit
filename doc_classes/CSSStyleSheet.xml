@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSSStyleSheet" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		A shared CSS resource imported from a project [code].css[/code] file.
+	</brief_description>
+	<description>
+		A [CSSStyleSheet] stores the source text of a project [code].css[/code] file imported by Dockit. The importer registers local [code]@import[/code] files as build dependencies so Godot can reimport the stylesheet when an imported file changes.
+		HTML documents that link to the same imported stylesheet use the shared resource. Changing [member css_text] emits [signal Resource.changed], invalidating the styles of current layouts that use the resource so they can refresh. The changed text remains in memory and does not write back to the source [code].css[/code] file. Edit and reimport the source file to persist changes.
+		[member source_path] records the source path assigned by the importer. It is empty for manually created resources unless set.
+	</description>
+	<members>
+		<member name="css_text" type="String" setter="set_css_text" getter="get_css_text" default="&quot;&quot;">
+			The CSS source text. Changing it emits [signal Resource.changed] so layouts using this resource can refresh.
+		</member>
+		<member name="source_path" type="String" setter="set_source_path" getter="get_source_path" default="&quot;&quot;">
+			The original [code].css[/code] source path recorded by the importer. Manually created resources leave it empty unless set.
+		</member>
+	</members>
+</class>

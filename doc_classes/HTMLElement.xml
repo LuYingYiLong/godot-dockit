@@ -578,6 +578,9 @@
 		<member name="inert" type="bool" setter="set_inert" getter="get_inert">
 			Reflects whether the inert attribute is present.
 		</member>
+		<member name="shadow_root" type="HTMLShadowRoot" setter="" getter="get_shadow_root">
+			The element's open shadow root, or [code]null[/code] if it has no open root. Closed roots are not exposed.
+		</member>
 		<member name="tab_index" type="int" setter="set_tab_index" getter="get_tab_index">
 			Reflects the explicit tab index, or returns the default for the element type.
 		</member>
