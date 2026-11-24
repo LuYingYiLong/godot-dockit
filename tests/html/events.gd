@@ -14,6 +14,7 @@ func _ready() -> void:
 	await _check_pointer_capture()
 	await _check_double_click_events()
 	await _check_double_click_selection()
+	_check_word_selection_mode_api()
 	await _check_markdown_double_click_selection()
 	await _check_wheel_events()
 	await _check_touch_events()
@@ -720,6 +721,45 @@ func _check_double_click_selection() -> void:
 		var source_name: String = "JiebaSegment" if uses_jieba else "TextServer fallback"
 		var selected_word: String = label.get_selected_text()
 		_check(selected_word == expected_word, "HTML lang uses " + source_name + " word boundaries for Chinese (selected '%s', expected '%s')" % [selected_word, expected_word])
+
+		var text_server_breaks: PackedInt32Array = TextServerManager.get_primary_interface().string_get_word_breaks(chinese, "zh-CN")
+		if text_server_breaks.size() >= 2:
+			var text_server_word: String = chinese.substr(text_server_breaks[0], text_server_breaks[1] - text_server_breaks[0])
+			await get_tree().create_timer(0.55).timeout
+			label.word_selection_mode = HTMLLabel.WORD_SELECTION_MODE_TEXT_SERVER
+			label.clear_selection()
+			_double_click_at(Vector2(chinese_bounds.position.x + 12.0, chinese_bounds.get_center().y))
+			_check(label.get_selected_text() == text_server_word, "TextServer mode uses TextServer word boundaries for Chinese")
+
+		await get_tree().create_timer(0.55).timeout
+		label.word_selection_mode = HTMLLabel.WORD_SELECTION_MODE_JIEBA
+		label.clear_selection()
+		_double_click_at(Vector2(chinese_bounds.position.x + 12.0, chinese_bounds.get_center().y))
+		_check(label.get_selected_text() == expected_word, "Jieba mode uses Jieba when available and falls back to TextServer otherwise")
+		label.word_selection_mode = HTMLLabel.WORD_SELECTION_MODE_AUTO
+
+
+func _check_word_selection_mode_api() -> void:
+	_check(label.word_selection_mode == HTMLLabel.WORD_SELECTION_MODE_AUTO, "HTMLLabel defaults to automatic word selection")
+	var jieba_available: bool = ClassDB.class_exists("JiebaSegment") and ClassDB.can_instantiate("JiebaSegment") and ClassDB.class_has_method("JiebaSegment", "cut_with_offsets") and ClassDB.class_has_method("JiebaSegment", "initialize")
+	var word_selection_property: Dictionary = {}
+	for property_info: Dictionary in label.get_property_list():
+		if property_info.get("name", "") == "word_selection_mode":
+			word_selection_property = property_info
+			break
+	var hint_string: String = word_selection_property.get("hint_string", "")
+	_check(("Jieba:2" in hint_string) == jieba_available, "the word mode Inspector enum reflects Jieba availability")
+	_check("Auto:0" in hint_string and "TextServer:1" in hint_string, "the word mode Inspector enum always offers Auto and TextServer")
+
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.word_selection_mode = MarkdownLabel.WORD_SELECTION_MODE_TEXT_SERVER
+	_check(markdown.word_selection_mode == MarkdownLabel.WORD_SELECTION_MODE_TEXT_SERVER, "MarkdownLabel exposes the word selection mode property")
+	markdown.free()
+
+	var rst: RestructuredtextLabel = RestructuredtextLabel.new()
+	rst.word_selection_mode = RestructuredtextLabel.WORD_SELECTION_MODE_JIEBA
+	_check(rst.word_selection_mode == RestructuredtextLabel.WORD_SELECTION_MODE_JIEBA, "RestructuredtextLabel exposes the word selection mode property")
+	rst.free()
 
 
 func _check_markdown_double_click_selection() -> void:

@@ -4002,14 +4002,16 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 								const String text = pressed_html_layout->get_plain_text();
 								const dockit::HTMLTextLanguageRange language = pressed_html_layout->get_text_language_range_at(
 									local_offset, dockit::get_project_word_language());
-								boundary = dockit::word_boundary_at(text, local_offset, language.language, language.start, language.end);
+								boundary = dockit::word_boundary_at(text, local_offset, language.language, language.start, language.end,
+									label->get_word_selection_mode());
 								if (boundary) {
 									selection_anchor = html_text_offset + boundary->start;
 									selection_caret = html_text_offset + boundary->end;
 								}
 							}
 							else {
-								boundary = dockit::word_boundary_at(plain_text, selection_origin.offset, dockit::get_project_word_language());
+								boundary = dockit::word_boundary_at(plain_text, selection_origin.offset, dockit::get_project_word_language(),
+									0, -1, label->get_word_selection_mode());
 								if (boundary) {
 									selection_anchor = boundary->start;
 									selection_caret = boundary->end;
@@ -4223,6 +4225,8 @@ void MarkdownLabel::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &MarkdownLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &MarkdownLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_word_selection_mode", "mode"), &MarkdownLabel::set_word_selection_mode);
+	ClassDB::bind_method(D_METHOD("get_word_selection_mode"), &MarkdownLabel::get_word_selection_mode);
 
 	ClassDB::bind_method(D_METHOD("set_deselect_on_focus_loss_enabled", "enabled"), &MarkdownLabel::set_deselect_on_focus_loss_enabled);
 	ClassDB::bind_method(D_METHOD("is_deselect_on_focus_loss_enabled"), &MarkdownLabel::is_deselect_on_focus_loss_enabled);
@@ -4279,6 +4283,8 @@ void MarkdownLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16"), "set_extra_font_size", "get_extra_font_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open_external_links"), "set_open_external_links", "get_open_external_links");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "word_selection_mode", PROPERTY_HINT_ENUM, "Auto:0,TextServer:1,Jieba:2"),
+		"set_word_selection_mode", "get_word_selection_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_on_focus_loss_enabled"), "set_deselect_on_focus_loss_enabled", "is_deselect_on_focus_loss_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"), "set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
@@ -4305,6 +4311,15 @@ void MarkdownLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
 	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
 	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_AUTO);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_TEXT_SERVER);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_JIEBA);
+}
+
+void MarkdownLabel::_validate_property(PropertyInfo& p_property) const {
+	if (p_property.name == StringName("word_selection_mode")) {
+		p_property.hint_string = dockit::get_word_selection_mode_hint();
+	}
 }
 
 void MarkdownLabel::ensure_controls() {
@@ -4775,6 +4790,17 @@ void MarkdownLabel::set_selection_enabled(bool p_enabled) {
 
 bool MarkdownLabel::is_selection_enabled() const {
 	return selection_enabled;
+}
+
+void MarkdownLabel::set_word_selection_mode(WordSelectionMode p_mode) {
+	if (p_mode < WORD_SELECTION_MODE_AUTO || p_mode > WORD_SELECTION_MODE_JIEBA) p_mode = WORD_SELECTION_MODE_AUTO;
+	if (word_selection_mode == p_mode) return;
+	word_selection_mode = p_mode;
+	notify_property_list_changed();
+}
+
+MarkdownLabel::WordSelectionMode MarkdownLabel::get_word_selection_mode() const {
+	return word_selection_mode;
 }
 
 void MarkdownLabel::set_deselect_on_focus_loss_enabled(bool p_enabled) {

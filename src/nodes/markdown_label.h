@@ -300,6 +300,15 @@ public:
 		ACCESS_FILE_SYSTEM,
 	};
 
+	enum WordSelectionMode {
+		WORD_SELECTION_MODE_AUTO,
+		WORD_SELECTION_MODE_TEXT_SERVER,
+		WORD_SELECTION_MODE_JIEBA,
+	};
+
+	void set_word_selection_mode(WordSelectionMode p_mode);											// 设置鼠标选词使用的分词模式
+	WordSelectionMode get_word_selection_mode() const;											// 返回鼠标选词的分词模式
+
 private:
 	friend class MarkdownLabelCanvas;
 
@@ -318,6 +327,7 @@ private:
 	bool parse_gfm = true;
 	bool parse_mermaid = false;
 	bool selection_enabled = true;
+	WordSelectionMode word_selection_mode = WORD_SELECTION_MODE_AUTO;
 	bool deselect_on_focus_loss_enabled = true;
 	bool drag_and_drop_selection_enabled = true;
 	bool context_menu_enabled = false;
@@ -345,6 +355,7 @@ private:
 
 protected:
 	static void _bind_methods();
+	void _validate_property(PropertyInfo& p_property) const;
 	void _notification(int p_what);
 
 public:
@@ -463,3 +474,4 @@ public:
 
 VARIANT_ENUM_CAST(MarkdownLabel::MenuItems);
 VARIANT_ENUM_CAST(MarkdownLabel::Access);
+VARIANT_ENUM_CAST(MarkdownLabel::WordSelectionMode);

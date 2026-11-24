@@ -16,6 +16,7 @@
 #include "formats/html/html_ui_translations.h"
 #include "formats/html/resources/html_resource_paths.h"
 #include "formats/http_requests.h"
+#include "formats/word_boundaries.h"
 
 #include "formats/html/markup/html_markup.h"
 
@@ -716,7 +717,6 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_component_scripts"), &HTMLLabel::get_component_scripts);
 	ClassDB::bind_method(D_METHOD("get_component_diagnostics"), &HTMLLabel::get_component_diagnostics);
 	ClassDB::bind_method(D_METHOD("reload_components"), &HTMLLabel::reload_components);
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "component_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"), "set_component_scripts", "get_component_scripts");
 	ClassDB::bind_method(D_METHOD("set_behavior_scripts", "scripts"), &HTMLLabel::set_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("get_behavior_scripts"), &HTMLLabel::get_behavior_scripts);
 	ClassDB::bind_method(D_METHOD("reload_behaviors"), &HTMLLabel::reload_behaviors);
@@ -770,6 +770,8 @@ void HTMLLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("scroll_to_text_range", "from", "to"), &HTMLLabel::scroll_to_text_range);
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &HTMLLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &HTMLLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_word_selection_mode", "mode"), &HTMLLabel::set_word_selection_mode);
+	ClassDB::bind_method(D_METHOD("get_word_selection_mode"), &HTMLLabel::get_word_selection_mode);
 	ClassDB::bind_method(D_METHOD("set_drag_and_drop_selection_enabled", "enabled"), &HTMLLabel::set_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_drag_and_drop_selection_enabled"), &HTMLLabel::is_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("set_transparent_canvas", "enabled"), &HTMLLabel::set_transparent_canvas);
@@ -821,9 +823,13 @@ void HTMLLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_MANUAL);
+
 	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
 	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
 	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_AUTO);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_TEXT_SERVER);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_JIEBA);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
@@ -837,8 +843,11 @@ void HTMLLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"),
 		"set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "component_scripts", PROPERTY_HINT_DICTIONARY_TYPE, "StringName;GDScript"), "set_component_scripts", "get_component_scripts");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "animation_process_mode", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
 		"set_animation_process_mode", "get_animation_process_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "word_selection_mode", PROPERTY_HINT_ENUM, "Auto:0,TextServer:1,Jieba:2"),
+		"set_word_selection_mode", "get_word_selection_mode");
 
 	ADD_GROUP("Video", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "video_backend", PROPERTY_HINT_ENUM, "Auto,FFmpeg,VLC"),
@@ -894,6 +903,9 @@ void HTMLLabel::_bind_methods() {
 
 void HTMLLabel::_validate_property(PropertyInfo& p_property) const {
 	validate_audio_property(p_property);
+	if (p_property.name == StringName("word_selection_mode")) {
+		p_property.hint_string = dockit::get_word_selection_mode_hint();
+	}
 	if (!caret_blink && p_property.name == StringName("caret_blink_interval")) {
 		p_property.usage &= ~PROPERTY_USAGE_EDITOR;
 	}
@@ -2005,6 +2017,17 @@ void HTMLLabel::set_selection_enabled(bool p_enabled) {
 
 bool HTMLLabel::is_selection_enabled() const {
 	return selection_enabled;
+}
+
+void HTMLLabel::set_word_selection_mode(WordSelectionMode p_mode) {
+	if (p_mode < WORD_SELECTION_MODE_AUTO || p_mode > WORD_SELECTION_MODE_JIEBA) p_mode = WORD_SELECTION_MODE_AUTO;
+	if (word_selection_mode == p_mode) return;
+	word_selection_mode = p_mode;
+	notify_property_list_changed();
+}
+
+HTMLLabel::WordSelectionMode HTMLLabel::get_word_selection_mode() const {
+	return word_selection_mode;
 }
 
 void HTMLLabel::set_drag_and_drop_selection_enabled(bool p_enabled) {

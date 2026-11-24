@@ -211,6 +211,12 @@
 				Returns [code]true[/code] if text selection is enabled. The default value is [code]true[/code].
 			</description>
 		</method>
+		<method name="get_word_selection_mode" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the word boundary algorithm used for double-click text selection.
+			</description>
+		</method>
 		<method name="is_scroll_active" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -390,6 +396,13 @@
 				Sets whether text selection with the mouse is enabled.
 			</description>
 		</method>
+		<method name="set_word_selection_mode">
+			<return type="void" />
+			<param index="0" name="mode" type="int" enum="MarkdownLabel.WordSelectionMode" />
+			<description>
+				Sets the word boundary algorithm used for double-click text selection.
+			</description>
+		</method>
 		<method name="set_scroll_active">
 			<return type="void" />
 			<param index="0" name="active" type="bool" />
@@ -490,6 +503,9 @@
 		<member name="selection_enabled" type="bool" setter="set_selection_enabled" getter="is_selection_enabled" default="true">
 			If [code]true[/code], text can be selected with the mouse.
 		</member>
+		<member name="word_selection_mode" type="int" setter="set_word_selection_mode" getter="get_word_selection_mode" enum="MarkdownLabel.WordSelectionMode" default="0">
+			Controls how double-click selection finds word boundaries. Auto uses Jieba for Simplified Chinese when the optional [code]JiebaSegment[/code] class is available and TextServer for other languages. Jieba mode falls back to TextServer if the class is unavailable.
+		</member>
 		<member name="scroll_active" type="bool" setter="set_scroll_active" getter="is_scroll_active" default="true">
 			If [code]true[/code], internal vertical scrolling is active.
 		</member>
@@ -553,6 +569,15 @@
 		</constant>
 		<constant name="ACCESS_FILE_SYSTEM" value="2" enum="Access">
 			Use an absolute file-system root for default relative resources.
+		</constant>
+		<constant name="WORD_SELECTION_MODE_AUTO" value="0" enum="WordSelectionMode">
+			Uses Jieba for Simplified Chinese when available and TextServer for other languages.
+		</constant>
+		<constant name="WORD_SELECTION_MODE_TEXT_SERVER" value="1" enum="WordSelectionMode">
+			Uses the active TextServer's word-break data for all languages.
+		</constant>
+		<constant name="WORD_SELECTION_MODE_JIEBA" value="2" enum="WordSelectionMode">
+			Uses Jieba when available and falls back to TextServer otherwise.
 		</constant>
 	</constants>
 </class>

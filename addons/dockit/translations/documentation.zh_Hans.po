@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-23 01:09+0800\n"
+"POT-Creation-Date: 2026-11-24 21:53+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
@@ -56,6 +56,26 @@ msgstr "HTML 元素对应的 GDScript 组件实例"
 #. doc_classes/HTMLCanvasRenderingContext2D.xml
 msgid "A GDScript-accessible 2D drawing context for an HTML canvas."
 msgstr "可供 GDScript 使用的 HTML canvas 二维绘图上下文。"
+
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"A [CSSStyleSheet] stores the source text of a project [code].css[/code] file imported by Dockit. "
+"The importer registers local [code]@import[/code] files as build dependencies so Godot can "
+"reimport the stylesheet when an imported file changes.\n"
+"HTML documents that link to the same imported stylesheet use the shared resource. Changing "
+"[member css_text] emits [signal Resource.changed], invalidating the styles of current layouts "
+"that use the resource so they can refresh. The changed text remains in memory and does not write "
+"back to the source [code].css[/code] file. Edit and reimport the source file to persist changes."
+"\n"
+"[member source_path] records the source path assigned by the importer. It is empty for manually "
+"created resources unless set."
+msgstr ""
+"[CSSStyleSheet] 保存由 Dockit 导入的项目 [code].css[/code] 文件中的源文本。导入器会将本地 [code]@import[/code] "
+"文件登记为构建依赖项，以便被导入文件发生更改时，Godot 可以重新导入该样式表。\n"
+"链接到同一导入样式表的 HTML 文档会共用此资源。修改 [member css_text] 会发出 [signal "
+"Resource.changed]，使当前使用该资源的布局中的样式失效并触发刷新。修改后的文本仅保留在内存中，不会写回源 [code].css[/code] "
+"文件。要持久保存修改，请编辑源文件并重新导入。\n"
+"[member source_path] 记录导入器设置的源路径。手动创建的资源中此属性为空，除非显式设置。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -266,12 +286,16 @@ msgstr "附加到宿主元素的独立 DOM 树"
 msgid "A shareable source document for static HTML."
 msgstr "可共享的静态 HTML 源文档。"
 
+#. doc_classes/CSSStyleSheet.xml
+msgid "A shared CSS resource imported from a project [code].css[/code] file."
+msgstr "从 Godot 项目中的 [code].css[/code] 文件导入的共享 CSS 资源。"
+
 #. doc_classes/HTMLDataTransfer.xml
 msgid "A sorted snapshot of the MIME types currently present."
 msgstr "当前 MIME 类型的排序快照。"
 
+# | msgid "A handle to an element in a parsed HTML layout."
 #. doc_classes/CSSRule.xml
-#| msgid "A handle to an element in a parsed HTML layout."
 msgid "A structured handle to a CSS rule in an HTML layout."
 msgstr "HTML 布局中 CSS 规则的结构化句柄。"
 
@@ -583,8 +607,8 @@ msgid ""
 " labelable descendant."
 msgstr "在标签所在的树中解析显式 [code]for[/code] ID。隐式标签使用第一个可标记后代。"
 
+# | msgid "Imported LaTeX document."
 #. doc_classes/RSTDocument.xml
-#| msgid "Imported LaTeX document."
 msgid "An imported reStructuredText document."
 msgstr "已导入的 reStructuredText 文档。"
 
@@ -1729,6 +1753,7 @@ msgid "Clears the current path."
 msgstr "清空当前路径。"
 
 #. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
 msgid "Clears the current text selection."
 msgstr "清除当前的文本选择。"
 
@@ -1862,8 +1887,17 @@ msgstr "控制 [member no_depth_test]。"
 msgid "Controls [member shaded]."
 msgstr "控制 [member shaded]。"
 
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Sets how rendered Markdown text wraps inside the control bounds."
+msgid ""
+"Controls how double-click selection finds word boundaries. Auto uses Jieba for Simplified Chinese"
+" when the optional [code]JiebaSegment[/code] class is available and TextServer for other "
+"languages. Jieba mode falls back to TextServer if the class is unavailable."
+msgstr "控制双击选择文本时查找词语边界的方式。自动模式在可用的 [code]JiebaSegment[/code] 类时，对简体中文使用 Jieba；其他语言使用 TextServer。Jieba 模式在该类不可用时回退到 TextServer。"
+
+# | msgid "Sets how rendered Markdown text wraps inside the control bounds."
+#. doc_classes/RestructuredtextLabel.xml
 msgid "Controls how rendered text wraps inside the control bounds."
 msgstr "控制渲染文本在控件边界内的换行方式。"
 
@@ -2141,6 +2175,14 @@ msgstr ""
 msgid "Creates and edits PDF documents through PDFium."
 msgstr "使用 PDFium 创建和编辑 PDF 文档。"
 
+#. doc_classes/RSTReferenceIndex.xml
+msgid ""
+"Cross-document [code]:ref:[/code] targets keyed by source document path and normalized label. "
+"Each target stores [code]path[/code], [code]uid[/code], and [code]anchor[/code]."
+msgstr ""
+"以源文档路径和规范化标签为键的跨文档 [code]:ref:[/code] 目标。每个目标包含 [code]path[/code]、[code]uid[/code] 和 "
+"[code]anchor[/code]。"
+
 #. doc_classes/CSSRule.xml
 msgid ""
 "Declaration block for a qualified style rule or a supported descriptor at-rule such as [code"
@@ -2169,13 +2211,15 @@ msgstr "公式的默认背景和内容边距。"
 msgid "Deferred streaming layout flush interval in milliseconds. Clamped to [code][1, 1000][/code]."
 msgstr "延迟流式排版的刷新间隔，单位为毫秒。取值限制在 [code][1, 1000][/code]。"
 
+# | msgid "" "Deletes the top-level rule at the given zero-based [param index]. Returns [constant "
+# | "ERR_INVALID_PARAMETER] for a stale handle or invalid index."
 #. doc_classes/CSSRule.xml
-#| msgid "" "Deletes the top-level rule at the given zero-based [param index]. Returns [constant "
-#| "ERR_INVALID_PARAMETER] for a stale handle or invalid index."
 msgid ""
 "Deletes the nested rule at [param index]. Returns [constant ERR_INVALID_PARAMETER] for an invalid"
 " handle or index, and [constant ERR_UNAUTHORIZED] when editing the default stylesheet."
-msgstr "删除位于 [param index] 的嵌套规则。句柄或索引无效时返回 [constant ERR_INVALID_PARAMETER]；尝试编辑默认样式表时返回 [constant ERR_UNAUTHORIZED]。"
+msgstr ""
+"删除位于 [param index] 的嵌套规则。句柄或索引无效时返回 [constant ERR_INVALID_PARAMETER]；尝试编辑默认样式表时返回 [constant "
+"ERR_UNAUTHORIZED]。"
 
 #. doc_classes/HTMLStyleSheet.xml
 msgid ""
@@ -2459,7 +2503,9 @@ msgid ""
 "[code]dockit/rst/document_roots[/code]. It stores only document targets and labels referenced by "
 "the scanned RST files, with a resource path alongside any available UID as a fallback. Projects "
 "normally do not need to create or edit it manually."
-msgstr "Dockit 会在编辑器中根据 [code]dockit/rst/document_roots[/code] 配置的根目录生成此资源。它只保存已扫描 RST 文件实际引用的文档目标和标签，并在资源路径旁记录可用的 UID 作为回退。通常无需在项目中手动创建或编辑此资源。"
+msgstr ""
+"Dockit 会在编辑器中根据 [code]dockit/rst/document_roots[/code] 配置的根目录生成此资源。它只保存已扫描 RST "
+"文件实际引用的文档目标和标签，并在资源路径旁记录可用的 UID 作为回退。通常无需在项目中手动创建或编辑此资源。"
 
 #. doc_classes/HTMLArticleElement.xml
 msgid ""
@@ -2571,7 +2617,9 @@ msgstr "取值为 open 或 closed。宿主的 shadow_root getter 不暴露闭合
 msgid ""
 "Emits [signal link_pressed] for [param uri], scrolls to a matching anchor when it points into the"
 " current document, and opens HTTP or HTTPS links when [member open_external_links] is enabled."
-msgstr "为 [param uri] 发出 [signal link_pressed]；如果链接指向当前文档中的锚点，则滚动到该锚点；启用 [member open_external_links] 后，还会打开 HTTP 或 HTTPS 链接。"
+msgstr ""
+"为 [param uri] 发出 [signal link_pressed]；如果链接指向当前文档中的锚点，则滚动到该锚点；启用 [member open_external_links] "
+"后，还会打开 HTTP 或 HTTPS 链接。"
 
 #. doc_classes/HTMLDialogElement.xml
 msgid "Emitted after [method close] closes an open dialog and [HTMLLabel] processes focus restoration."
@@ -2630,9 +2678,9 @@ msgstr ""
 msgid "Emitted when [member extra_font_size] changes, either programmatically or via Ctrl+MouseWheel."
 msgstr "[member extra_font_size] 通过代码或 Ctrl+鼠标滚轮发生变化时发出。"
 
+# | msgid "Emitted when [member extra_font_size] changes, either programmatically or via
+# | Ctrl+MouseWheel."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Emitted when [member extra_font_size] changes, either programmatically or via
-#| Ctrl+MouseWheel."
 msgid "Emitted when [member extra_font_size] changes."
 msgstr "[member extra_font_size] 发生变化时发出。"
 
@@ -2957,6 +3005,12 @@ msgstr "使用 [member fill_style] 填充当前路径。"
 msgid "Fills the transformed rectangle using [member fill_style]."
 msgstr "使用 [member fill_style] 填充变换后的矩形。"
 
+#. doc_classes/RSTReferenceIndex.xml
+msgid ""
+"Fingerprint of configured document roots and indexed targets, used to skip unnecessary index "
+"writes."
+msgstr "已配置文档根目录和索引目标的指纹，用于跳过不必要的索引写入。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Flushes any deferred streaming parse and layout update immediately. Returns [code]true[/code] if "
@@ -3000,9 +3054,9 @@ msgstr ""
 "通过 [method HTMLLayout.get_selection] 或 [method HTMLLabel.get_selection] 获取选区。它最多持有一个 "
 "[HTMLRange]。锚点可以位于焦点之后。在 [HTMLLabel] 中，该选区也用于渲染高亮和复制。"
 
+# | msgid "" "Handles a menu option selection by its identifier. Typically used with the IDs from the
+# | [enum " "MenuItems] enum."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "" "Handles a menu option selection by its identifier. Typically used with the IDs from the
-#| [enum " "MenuItems] enum."
 msgid "Handles a menu option by its identifier. Use the constants from [enum MenuItems]."
 msgstr "按标识符处理菜单选项。请使用 [enum MenuItems] 中的常量。"
 
@@ -3012,8 +3066,8 @@ msgid ""
 "MenuItems] enum."
 msgstr "按标识符处理菜单选项。通常使用 [enum MenuItems] 中定义的 ID。"
 
+# | msgid "If [code]true[/code], internal vertical scrolling is active."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "If [code]true[/code], internal vertical scrolling is active."
 msgid "If [code]false[/code], disables internal vertical scrolling."
 msgstr "为 [code]false[/code] 时，禁用内部垂直滚动。"
 
@@ -3034,13 +3088,29 @@ msgstr "为 [code]true[/code] 时，[method prevent_default] 可取消默认动�
 msgid "If [code]true[/code], a context menu with Copy and Select All options appears on right-click."
 msgstr "为 [code]true[/code] 时，右键会显示包含“复制”和“全选”选项的上下文菜单。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
+"If [code]true[/code], activated HTTP and HTTPS links are opened with the system's default "
+"application."
+msgstr "为 [code]true[/code] 时，激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "If [code]true[/code], clears the current text selection when the control loses focus."
+msgstr "为 [code]true[/code] 时，控件失去焦点后会清除当前文本选区。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid "If [code]true[/code], clicking an http/https link opens it in the system default browser."
 msgstr "为 [code]true[/code] 时，点击 http/https 链接会使用系统默认浏览器打开。"
 
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "If [code]true[/code], a context menu with Copy and Select All options appears on
-#| right-click."
+msgid ""
+"If [code]true[/code], enables selection of rendered text. Disabling selection clears the current "
+"selection."
+msgstr "为 [code]true[/code] 时，启用渲染文本选择；禁用选择时会清除当前选区。"
+
+# | msgid "If [code]true[/code], a context menu with Copy and Select All options appears on
+# | right-click."
+#. doc_classes/RestructuredtextLabel.xml
 msgid "If [code]true[/code], enables the configured Copy and Select All keyboard shortcuts."
 msgstr "为 [code]true[/code] 时，启用配置的“复制”和“全选”快捷键。"
 
@@ -3333,7 +3403,9 @@ msgid ""
 "Loads an imported [code].rst[/code] resource or reads a source file and displays it. Relative "
 "paths use [member access] and [member root_subfolder], unless the current document supplies a "
 "source directory. Returns an [enum Error] code."
-msgstr "加载已导入的 [code].rst[/code] 资源，或读取并显示源文件。相对路径使用 [member access] 和 [member root_subfolder] 解析；如果当前文档提供了源目录，则优先使用该目录。返回 [enum Error] 错误码。"
+msgstr ""
+"加载已导入的 [code].rst[/code] 资源，或读取并显示源文件。相对路径使用 [member access] 和 [member root_subfolder] "
+"解析；如果当前文档提供了源目录，则优先使用该目录。返回 [enum Error] 错误码。"
 
 #. doc_classes/HTMLLabel.xml
 msgid ""
@@ -3518,8 +3590,8 @@ msgstr "此规则代码块中的嵌套规则。"
 msgid "Nested script math style."
 msgstr "嵌套上下标样式。"
 
+# | msgid "Returns the number of pages in this layout."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns the number of pages in this layout."
 msgid "Number of declarations in this block."
 msgstr "此代码块中的声明数量。"
 
@@ -3545,7 +3617,9 @@ msgid ""
 "Obtain a declaration block from [member CSSRule.style]. Values are serialized CSS tokens. "
 "Mutations update the current layout and invalidate existing CSS rule and declaration handles for "
 "that stylesheet; they do not change the source HTML or CSS resource."
-msgstr "通过 [member CSSRule.style] 获取声明块。值以序列化的 CSS 令牌表示。修改会更新当前布局，并使该样式表现有的 CSS 规则句柄和声明句柄失效；不会更改源 HTML 或 CSS 资源。"
+msgstr ""
+"通过 [member CSSRule.style] 获取声明块。值以序列化的 CSS 令牌表示。修改会更新当前布局，并使该样式表现有的 CSS 规则句柄和声明句柄失效；不会更改源 HTML 或 "
+"CSS 资源。"
 
 #. doc_classes/HTMLElement.xml
 msgid ""
@@ -3578,7 +3652,10 @@ msgid ""
 "[member selector_text] and [member style] for style rules, and [member css_rules] for nested "
 "rules. A rule handle becomes invalid when any CSSOM edit changes its stylesheet. CSS edits only "
 "affect the current layout and are not saved to source files."
-msgstr "通过 [method HTMLStyleSheet.get_rules] 或 [method CSSRule.get_css_rules] 获取规则。样式规则使用 [member selector_text] 和 [member style]，嵌套规则使用 [member css_rules]。CSSOM 编辑更改样式表后，该规则句柄会失效。CSS 编辑只影响当前布局，不会写回源文件。"
+msgstr ""
+"通过 [method HTMLStyleSheet.get_rules] 或 [method CSSRule.get_css_rules] 获取规则。样式规则使用 [member "
+"selector_text] 和 [member style]，嵌套规则使用 [member css_rules]。CSSOM 编辑更改样式表后，该规则句柄会失效。CSS "
+"编辑只影响当前布局，不会写回源文件。"
 
 #. doc_classes/LatexLabel3D.xml
 msgid ""
@@ -3771,11 +3848,12 @@ msgstr ""
 msgid "Raw reStructuredText displayed when no [RSTDocument] is assigned."
 msgstr "未指定 [RSTDocument] 时显示的原始 reStructuredText 文本。"
 
+# | msgid "" "Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet] to get the
+# | stylesheet. It " "shares its rules with the layout's numeric CSSOM API. Changing the media
+# condition
+# | or disabled " "state keeps the handle valid. Replacing the source, removing the owner from the
+# | document, or " "clearing or replacing the layout invalidates the handle."
 #. doc_classes/HTMLStyleSheet.xml
-#| msgid "" "Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet] to get the
-#| stylesheet. It " "shares its rules with the layout's numeric CSSOM API. Changing the media condition
-#| or disabled " "state keeps the handle valid. Replacing the source, removing the owner from the
-#| document, or " "clearing or replacing the layout invalidates the handle."
 msgid ""
 "Read [member HTMLLinkElement.sheet] or [member HTMLStyleElement.sheet], or call [method "
 "HTMLLabel.get_stylesheet_objects], to get a stylesheet handle. It shares edits with the layout's "
@@ -3784,7 +3862,11 @@ msgid ""
 "CSS resource. Changing the media condition or disabled state keeps the handle valid. Replacing "
 "the source, removing the owner from the document, or clearing or replacing the layout invalidates"
 " an owned stylesheet handle. The default user-agent sheet is read-only."
-msgstr "读取 [member HTMLLinkElement.sheet] 或 [member HTMLStyleElement.sheet]，或调用 [method HTMLLabel.get_stylesheet_objects]，即可获取样式表句柄。该句柄与布局的数字型 CSSOM API 共享编辑结果。[method get_rules] 会返回包含嵌套规则和声明的结构化 [CSSRule] 句柄。CSSOM 编辑只影响当前布局，不会写回 HTML 或 CSS 资源。更改媒体条件或禁用状态不会使句柄失效。替换源内容、从文档中移除所属节点，或清除、替换布局，都会使所拥有的样式表句柄失效。默认用户代理样式表为只读。"
+msgstr ""
+"读取 [member HTMLLinkElement.sheet] 或 [member HTMLStyleElement.sheet]，或调用 [method "
+"HTMLLabel.get_stylesheet_objects]，即可获取样式表句柄。该句柄与布局的数字型 CSSOM API 共享编辑结果。[method get_rules] "
+"会返回包含嵌套规则和声明的结构化 [CSSRule] 句柄。CSSOM 编辑只影响当前布局，不会写回 HTML 或 CSS "
+"资源。更改媒体条件或禁用状态不会使句柄失效。替换源内容、从文档中移除所属节点，或清除、替换布局，都会使所拥有的样式表句柄失效。默认用户代理样式表为只读。"
 
 #. doc_classes/PDFReader.xml
 msgid "Reads and renders PDF documents through PDFium."
@@ -3796,10 +3878,16 @@ msgid ""
 " range is empty, invalid, or outside the file."
 msgstr "从零基 [param offset] 开始读取至多 [param count] 个字节。范围为空、无效或超出文件时返回空数组。"
 
+# | msgid "Returns the page count of the current document."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the page count of the current document."
 msgid "Rebuilds the layout for the current document text."
 msgstr "重新构建当前文档文本的布局。"
+
+#. doc_classes/RSTReferenceIndex.xml
+msgid ""
+"Referenced document paths mapped to target dictionaries containing [code]path[/code], "
+"[code]uid[/code], and [code]anchor[/code]."
+msgstr "被引用的文档路径及其目标字典。每个目标字典包含 [code]path[/code]、[code]uid[/code] 和 [code]anchor[/code]。"
 
 #. doc_classes/HTMLElement.xml
 msgid "Reflects the HTML ID."
@@ -4116,8 +4204,8 @@ msgstr ""
 msgid "Replaces the element with parsed markup and retains this handle as a detached element."
 msgstr "用解析后的标记替换当前元素，保留分离后的元素句柄。"
 
+# | msgid "A detached document fragment."
 #. doc_classes/RSTReferenceIndex.xml
-#| msgid "A detached document fragment."
 msgid "Replaces the indexed document targets."
 msgstr "替换已索引的文档目标。"
 
@@ -4372,6 +4460,12 @@ msgstr "将 [param label] 解析为 [param source_path] 使用的 [code]:ref:[/c
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid ""
+"Resolves [param path] relative to the current document's source directory, or to [member access] "
+"and [member root_subfolder] when no source directory is available."
+msgstr "根据当前文档的源目录解析 [param path]；没有可用的源目录时，则根据 [member access] 和 [member root_subfolder] 解析。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
 "Resolves a [code]:doc:[/code], [code]:ref:[/code], or [code]:download:[/code] target to a "
 "resource URI."
 msgstr "将 [code]:doc:[/code]、[code]:ref:[/code] 或 [code]:download:[/code] 目标解析为资源 URI。"
@@ -4548,8 +4642,8 @@ msgstr "以字符串形式返回 SVG、ASCII 或 JSON 输出。二进制输出�
 msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgstr "返回 [code]animation[/code]、[code]transition[/code] 或 [code]script[/code]。"
 
+# | msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 #. doc_classes/HTMLStyleSheet.xml
-#| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid "Returns [code]author[/code], [code]author_extra[/code], or [code]user_agent[/code]."
 msgstr "返回 [code]author[/code]、[code]author_extra[/code] 或 [code]user_agent[/code]。"
 
@@ -4561,16 +4655,16 @@ msgstr "返回 [code]idle[/code]、[code]running[/code]、[code]paused[/code] �
 msgid "Returns [code]important[/code] for an important inline property, or an empty string otherwise."
 msgstr "内联属性带有优先级时返回 [code]important[/code]，其余情况返回空字符串。"
 
+# | msgid "Returns [code]important[/code] for an important inline property, or an empty string
+# | otherwise."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns [code]important[/code] for an important inline property, or an empty string
-#| otherwise."
 msgid ""
 "Returns [code]important[/code] when the named declaration has [code]!important[/code], or an "
 "empty string otherwise."
 msgstr "指定声明包含 [code]!important[/code] 时返回 [code]important[/code]，否则返回空字符串。"
 
+# | msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid "Returns [code]style[/code], [code]at[/code], or [code]declaration-list[/code]."
 msgstr "返回 [code]style[/code]、[code]at[/code] 或 [code]declaration-list[/code]。"
 
@@ -4591,6 +4685,12 @@ msgstr "如果存在 [param key]，则返回 [code]true[/code]。"
 #. doc_classes/TeXRender.xml
 msgid "Returns [code]true[/code] if a formula layout is available."
 msgstr "有可用的公式布局时返回 [code]true[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
+"Returns [code]true[/code] if activated HTTP and HTTPS links are opened with the system's default "
+"application."
+msgstr "激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开时，返回 [code]true[/code]。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
@@ -4621,6 +4721,12 @@ msgid ""
 "visible-character clipping is implemented."
 msgstr "启用逐字显示时的滚动跟随，则返回 [code]true[/code]。MarkdownLabel 提供此属性以兼容 RichTextLabel API。实现按可见字符数裁剪前，该属性没有效果。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
+"Returns [code]true[/code] if selected text can be dragged to Godot controls that accept text "
+"drag-and-drop data."
+msgstr "选中的文本可以拖放到支持文本拖放数据的 Godot 控件时，返回 [code]true[/code]。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Returns [code]true[/code] if streaming layout updates are coalesced instead of being applied on "
@@ -4630,6 +4736,10 @@ msgstr "流式排版更新会合并处理时，返回 [code]true[/code]。启用
 #. doc_classes/MarkdownLabel.xml
 msgid "Returns [code]true[/code] if streaming mode is enabled. The default value is [code]false[/code]."
 msgstr "启用流式模式时返回 [code]true[/code]。默认值为 [code]false[/code]。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if text selection is enabled."
+msgstr "已启用文本选择时返回 [code]true[/code]。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid "Returns [code]true[/code] if text selection is enabled. The default value is [code]true[/code]."
@@ -4651,14 +4761,18 @@ msgid ""
 "height."
 msgstr "控件将渲染内容高度作为最小高度时返回 [code]true[/code]。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns [code]true[/code] if the current selection is cleared when the control loses focus."
+msgstr "控件失去焦点时会清除当前选区，则返回 [code]true[/code]。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Returns [code]true[/code] if the document contains a Markdown heading anchor or a laid-out HTML "
 "element with the given ID."
 msgstr "文档中存在指定 ID 的 Markdown 标题锚点或已排版的 HTML 元素时，返回 [code]true[/code]。"
 
+# | msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 msgid "Returns [code]true[/code] if the internal vertical scroll bar is active."
 msgstr "内部垂直滚动条处于启用状态时返回 [code]true[/code]。"
 
@@ -4847,14 +4961,17 @@ msgstr ""
 "嵌套模板元素可以匹配。通过它的 [member HTMLTemplateElement.content] 单独查询其内容。无效或不支持的选择器会报告 Godot "
 "错误。片段无效或没有匹配项时返回空数组。支持的语法见 [method HTMLLayout.query_selector_all]。"
 
+# | msgid "" "Returns a snapshot of serialized computed CSS properties. Lengths that depend on a
+# layout
+# | box can" " retain percentages. See [method HTMLElement.get_bounding_rect] for geometry."
 #. doc_classes/HTMLLabel.xml
-#| msgid "" "Returns a snapshot of serialized computed CSS properties. Lengths that depend on a layout
-#| box can" " retain percentages. See [method HTMLElement.get_bounding_rect] for geometry."
 msgid ""
 "Returns a snapshot of serialized computed CSS properties supported by the layout, including "
 "properties with initial values found in the active stylesheet set. Lengths that depend on a "
 "layout box can retain percentages. See [method HTMLElement.get_bounding_rect] for geometry."
-msgstr "返回布局支持的序列化计算后 CSS 属性快照，其中包括活动样式表集合中具有初始值的属性。依赖布局盒尺寸的长度可能仍以百分比表示。几何信息请参阅 [method HTMLElement.get_bounding_rect]。"
+msgstr ""
+"返回布局支持的序列化计算后 CSS 属性快照，其中包括活动样式表集合中具有初始值的属性。依赖布局盒尺寸的长度可能仍以百分比表示。几何信息请参阅 [method "
+"HTMLElement.get_bounding_rect]。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -4987,14 +5104,17 @@ msgid ""
 "[code]source_path[/code], [code]stylesheet_id[/code], and [code]winning[/code]. Pass a supported "
 "pseudo-element such as [code]::before[/code] in [param pseudo] to inspect its matched "
 "declarations."
-msgstr "返回已连接元素当前匹配的样式表声明和内联声明。每项包含 [code]property[/code]、[code]value[/code]、[code]important[/code]、[code]origin[/code]、[code]selector[/code]、[code]specificity[/code]、[code]layer[/code]、[code]source_order[/code]、[code]source_path[/code]、[code]stylesheet_id[/code] 和 [code]winning[/code]。在 [param pseudo] 中传入 [code]::before[/code] 等受支持的伪元素，可查看其匹配声明。"
+msgstr ""
+"返回已连接元素当前匹配的样式表声明和内联声明。每项包含 "
+"[code]property[/code]、[code]value[/code]、[code]important[/code]、[code]origin[/code]、[code]selector[/code]、[code]specificity[/code]、[code]layer[/code]、[code]source_order[/code]、[code]source_path[/code]、[code]stylesheet_id[/code]"
+" 和 [code]winning[/code]。在 [param pseudo] 中传入 [code]::before[/code] 等受支持的伪元素，可查看其匹配声明。"
 
 #. doc_classes/HTMLElement.xml
 msgid "Returns descendants matching all of the whitespace-separated class names."
 msgstr "返回匹配全部空白分隔类名的后代元素。"
 
+# | msgid "Sets how rendered Markdown text wraps inside the control bounds."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Sets how rendered Markdown text wraps inside the control bounds."
 msgid "Returns how rendered text wraps inside the control bounds."
 msgstr "返回渲染文本在控件边界内的换行方式。"
 
@@ -5071,7 +5191,9 @@ msgid ""
 "Returns stylesheet handles in document order, followed by the additional author stylesheet. When "
 "[param include_default] is [code]true[/code], the read-only user-agent stylesheet is appended "
 "last. [method get_stylesheets] remains available for the legacy dictionary snapshot."
-msgstr "按文档顺序返回样式表句柄，随后是额外的作者样式表。[param include_default] 为 [code]true[/code] 时，最后附加只读的用户代理样式表。[method get_stylesheets] 仍可用于获取旧版字典快照。"
+msgstr ""
+"按文档顺序返回样式表句柄，随后是额外的作者样式表。[param include_default] 为 [code]true[/code] 时，最后附加只读的用户代理样式表。[method "
+"get_stylesheets] 仍可用于获取旧版字典快照。"
 
 #. doc_classes/HTMLLayout.xml
 msgid ""
@@ -5120,7 +5242,11 @@ msgid ""
 msgstr "返回应用于文档全部文本的额外字号。默认值为 [code]0[/code]。"
 
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the page count of the current document."
+msgid "Returns the additional font size applied to rendered text."
+msgstr "返回应用于渲染文本的额外字号。"
+
+# | msgid "Returns the page count of the current document."
+#. doc_classes/RestructuredtextLabel.xml
 msgid "Returns the anchors available in the rendered document."
 msgstr "返回渲染文档中可用的锚点。"
 
@@ -5263,8 +5389,8 @@ msgid ""
 "there is no error."
 msgstr "返回当前图表的渲染错误。渲染期间或没有错误时返回空字符串。"
 
+# | msgid "Returns the live document node, or [code]null[/code] before a document exists."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the live document node, or [code]null[/code] before a document exists."
 msgid "Returns the current document resource, or [code]null[/code] when rendering raw text."
 msgstr "返回当前文档资源；渲染原始文本时返回 [code]null[/code]。"
 
@@ -5559,8 +5685,8 @@ msgstr "返回相对于文档起点的水平和垂直滚动偏移，单位为像
 msgid "Returns the imported source text, including its original line breaks."
 msgstr "返回导入的源文本，保留原有换行。"
 
+# | msgid "Returns the imported source text, including its original line breaks."
 #. doc_classes/RSTDocument.xml
-#| msgid "Returns the imported source text, including its original line breaks."
 msgid "Returns the imported source text."
 msgstr "返回导入的源文本。"
 
@@ -5572,9 +5698,10 @@ msgstr "返回用于选择和搜索的文档索引文本。"
 msgid "Returns the inline CSS value, or an empty string if the property has no serializable inline value."
 msgstr "返回内联 CSS 值。属性没有可序列化的内联值时返回空字符串。"
 
+# | msgid "" "Returns the internal [PopupMenu] used for the context menu. The menu is lazily created
+# on
+# | first " "access."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "" "Returns the internal [PopupMenu] used for the context menu. The menu is lazily created on
-#| first " "access."
 msgid "Returns the internal [PopupMenu] used for the context menu. The menu is created on first access."
 msgstr "返回用于上下文菜单的内部 [PopupMenu]。菜单会在首次访问时创建。"
 
@@ -5590,8 +5717,8 @@ msgid ""
 "created yet. Typically not useful since horizontal scrolling is disabled by default."
 msgstr "返回内部水平滚动条。控件尚未创建时返回 [code]null[/code]。水平滚动默认禁用。"
 
+# | msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 msgid "Returns the internal horizontal scroll bar."
 msgstr "返回内部水平滚动条。"
 
@@ -5601,8 +5728,8 @@ msgid ""
 "created yet."
 msgstr "返回内部垂直滚动条。控件尚未创建时返回 [code]null[/code]。"
 
+# | msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns [code]true[/code] if internal vertical scrolling is active."
 msgid "Returns the internal vertical scroll bar."
 msgstr "返回内部垂直滚动条。"
 
@@ -5633,9 +5760,10 @@ msgstr ""
 "按文档顺序返回排版后的文本。CSS 的 [code]text-transform[/code] "
 "只改变字形，返回值保留原始字符。块边界和显式换行以换行符表示。保留的制表符仍为制表符，表格单元格也以制表符分隔。自动折行不会添加换行符。排版前返回空字符串。"
 
+# | msgid "" "Returns the value associated with [param type], or an empty string when the type is
+# absent
+# | or " "data is protected."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "" "Returns the value associated with [param type], or an empty string when the type is absent
-#| or " "data is protected."
 msgid ""
 "Returns the last declared value for [param name], or an empty string when it is absent or this "
 "handle is stale."
@@ -5684,8 +5812,8 @@ msgstr ""
 msgid "Returns the left and top border widths in layout pixels."
 msgstr "返回左侧和顶部边框宽度，单位为布局像素。"
 
+# | msgid "Returns the autowrap space trimming flags."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the autowrap space trimming flags."
 msgid "Returns the line break space-trimming flags."
 msgstr "返回换行时的空格裁剪标志。"
 
@@ -5772,13 +5900,13 @@ msgid ""
 " been created yet."
 msgstr "返回已渲染的顶层 Markdown 块数量。绘制节点尚未创建时返回 [code]0[/code]。"
 
+# | msgid "Returns the number of pages in this layout."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the number of pages in this layout."
 msgid "Returns the number of rendered top-level blocks."
 msgstr "返回已渲染的顶层内容块数量。"
 
+# | msgid "Returns the number of pages in this layout."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns the number of pages in this layout."
 msgid "Returns the number of unique property names in this declaration block."
 msgstr "返回此声明块中不重复的属性名称数量。"
 
@@ -5798,8 +5926,8 @@ msgstr "按树顺序返回 [HTMLOptionElement] 选项句柄的快照。"
 msgid "Returns the ordered selection endpoints as offsets into [method get_plain_text]."
 msgstr "返回按从小到大排列的选区端点，以 [method get_plain_text] 的字符偏移表示。"
 
+# | msgid "Represents the [code]<hr>[/code] element."
 #. doc_classes/RSTDocument.xml
-#| msgid "Represents the [code]<hr>[/code] element."
 msgid "Returns the original [code].rst[/code] source path."
 msgstr "返回原始 [code].rst[/code] 源文件路径。"
 
@@ -5848,8 +5976,8 @@ msgid ""
 "The array is empty outside event dispatch."
 msgstr "返回当前派发的传播路径，目标位于首位、window 位于末尾。事件派发期间以外返回空数组。"
 
+# | msgid "Returns the currently selected plain text, or an empty string if nothing is selected."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns the currently selected plain text, or an empty string if nothing is selected."
 msgid "Returns the property name at [param index], or an empty string for an invalid index."
 msgstr "返回 [param index] 处的属性名称；索引无效时返回空字符串。"
 
@@ -5861,8 +5989,8 @@ msgstr "按顺序返回排队的记录字典，并清空记录队列。"
 msgid "Returns the raw output bytes of the last successful operation."
 msgstr "返回最近一次成功操作的原始输出字节。"
 
+# | msgid "Returns the supported data types currently present."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the supported data types currently present."
 msgid "Returns the raw reStructuredText text currently displayed."
 msgstr "返回当前显示的原始 reStructuredText 文本。"
 
@@ -5870,8 +5998,14 @@ msgstr "返回当前显示的原始 reStructuredText 文本。"
 msgid "Returns the reference element for [method get_offset_rect], or [code]null[/code]."
 msgstr "返回 [method get_offset_rect] 的参照元素，无参照元素时返回 [code]null[/code]。"
 
+#. doc_classes/RSTDocument.xml
+msgid ""
+"Returns the reference index used to resolve cross-document targets, or [code]null[/code] when "
+"none is assigned."
+msgstr "返回用于解析跨文档目标的引用索引；未分配时返回 [code]null[/code]。"
+
+# | msgid "Returns the total layout height in pixels."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the total layout height in pixels."
 msgid "Returns the rendered content height in pixels."
 msgstr "返回渲染内容的高度，单位为像素。"
 
@@ -5897,8 +6031,8 @@ msgstr ""
 msgid "Returns the root of the current tree. A detached node may be its own root."
 msgstr "返回当前树的根节点。分离节点可以是自己的根节点。"
 
+# | msgid "Returns the selection's focus node."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns the selection's focus node."
 msgid "Returns the selected document text."
 msgstr "返回选中的文档文本。"
 
@@ -5926,8 +6060,8 @@ msgstr "返回选区的锚点节点。"
 msgid "Returns the selection's focus node."
 msgstr "返回选区的焦点节点。"
 
+# | msgid "Returns the selected plain text, or an empty string if nothing is selected."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the selector text for a qualified style rule, or an empty string for other rule types."
 msgstr "对于限定样式规则，返回选择器文本；其他规则类型返回空字符串。"
 
@@ -5935,13 +6069,13 @@ msgstr "对于限定样式规则，返回选择器文本；其他规则类型返
 msgid "Returns the sequence of zero-based rule indices from the stylesheet root to this rule."
 msgstr "返回从样式表根节点到此规则的规则索引序列，索引从零开始。"
 
+# | msgid "Returns the selected plain text, or an empty string if nothing is selected."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the serialized declarations, or an empty string for a stale handle."
 msgstr "返回序列化后的声明；句柄已失效时返回空字符串。"
 
+# | msgid "Returns the selected plain text, or an empty string if nothing is selected."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns the selected plain text, or an empty string if nothing is selected."
 msgid "Returns the serialized rule text, or an empty string for an invalid handle."
 msgstr "返回序列化后的规则文本；句柄无效时返回空字符串。"
 
@@ -6009,6 +6143,10 @@ msgstr "返回布局总尺寸，单位为像素。"
 msgid "Returns the total layout width in pixels."
 msgstr "返回布局的总宽度，单位为像素。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the uniform margin around the document content."
+msgstr "返回文档内容四周的统一边距。"
+
 #. doc_classes/HTMLElement.xml
 msgid ""
 "Returns the union of the rectangles from [method get_client_rects], or an empty rectangle if "
@@ -6060,8 +6198,14 @@ msgid ""
 " every connected node."
 msgstr "返回此文档的 window 事件目标。注册在其上的监听器会收到所有已连接节点的事件。"
 
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the word boundary algorithm used for double-click text selection."
+msgstr "返回双击文本选择使用的词边界算法。"
+
+# | msgid "Returns the selection end, or [code]-1[/code] for an invalid textarea handle."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns the selection end, or [code]-1[/code] for an invalid textarea handle."
 msgid "Returns this rule's index within its parent rule list, or [code]-1[/code] for an invalid handle."
 msgstr "返回此规则在父规则列表中的索引；句柄无效时返回 [code]-1[/code]。"
 
@@ -6113,8 +6257,8 @@ msgstr "返回句柄是否仍指向关联的样式表。"
 msgid "Returns whether the node is connected to its document tree. A detached node can stay valid."
 msgstr "返回节点是否连接到所属文档树。分离的节点仍可有效。"
 
+# | msgid "Returns whether the range's endpoints are equal."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Returns whether the range's endpoints are equal."
 msgid "Returns whether the owning rule and stylesheet revision are still valid."
 msgstr "返回所属规则和样式表版本是否仍然有效。"
 
@@ -6130,8 +6274,8 @@ msgstr "返回范围是否仍属于有效布局，且两个端点是否都属于
 msgid "Returns whether the range's endpoints are equal."
 msgstr "返回范围的两个端点是否相同。"
 
+# | msgid "Returns whether a document is open."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns whether a document is open."
 msgid "Returns whether the rendered document contains [param anchor]."
 msgstr "返回渲染文档中是否包含 [param anchor]。"
 
@@ -6173,8 +6317,8 @@ msgstr "返回当前元素是否匹配选择器。[code]:scope[/code] 指当前�
 msgid "Returns whether this reader holds an open document."
 msgstr "返回此读取器是否已打开文档。"
 
+# | msgid "Returns whether the handle still refers to the associated stylesheet."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns whether the handle still refers to the associated stylesheet."
 msgid "Returns whether this rule handle still points to the current stylesheet revision."
 msgstr "返回此规则句柄是否仍指向当前样式表版本。"
 
@@ -6194,8 +6338,8 @@ msgstr "在同一布局时钟上反向播放。"
 msgid "Rotates the current transform in radians."
 msgstr "以弧度旋转当前变换。"
 
+# | msgid "The pointer device type: [code]mouse[/code], [code]pen[/code], or [code]touch[/code]."
 #. doc_classes/CSSRule.xml
-#| msgid "The pointer device type: [code]mouse[/code], [code]pen[/code], or [code]touch[/code]."
 msgid "Rule type: [code]style[/code], [code]at[/code], or [code]declaration-list[/code]."
 msgstr "规则类型：[code]style[/code]、[code]at[/code] 或 [code]declaration-list[/code]。"
 
@@ -6281,6 +6425,12 @@ msgstr ""
 "滚动到当前搜索结果，由先前的 [method search] 调用设置。[param align] 控制结果在视口中的位置，从 [code]0.0[/code]（顶部）到 "
 "[code]1.0[/code]（底部）。没有当前搜索结果时返回 [code]false[/code]。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
+"Scrolls to the current search result, placing it at [param align] of the viewport. Returns "
+"[code]false[/code] when there is no current result."
+msgstr "滚动到当前搜索结果，并将其放置在视口的 [param align] 位置。没有当前搜索结果时返回 [code]false[/code]。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Scrolls to the first Markdown heading or laid-out HTML element with the given anchor ID. Pass the"
@@ -6311,9 +6461,9 @@ msgstr ""
 "表示区分大小写，[code]2[/code] 表示匹配整个单词，[code]4[/code] 表示向后搜索。返回匹配位置的行列坐标 [Vector2i]，没有匹配时返回 "
 "[code]Vector2i(-1, -1)[/code]。匹配结果会在控件中高亮显示。"
 
+# | msgid "" "Searches document text from the given offset and returns the matching range, or "
+# | "[code]Vector2i(-1, -1)[/code] when absent."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "" "Searches document text from the given offset and returns the matching range, or "
-#| "[code]Vector2i(-1, -1)[/code] when absent."
 msgid ""
 "Searches the rendered document and returns the first matching line and column, or [code](-1, "
 "-1)[/code] when there is no match."
@@ -6333,9 +6483,9 @@ msgstr "跳转到指定秒数并立即采样效果。"
 msgid "Selector text for a qualified style rule."
 msgstr "限定样式规则的选择器文本。"
 
+# | msgid "" "Selects Resources, User Data, or File System as the default source for relative resource
+# | paths. A" " loaded source file's directory takes precedence."
 #. doc_classes/MarkdownLabel.xml
-#| msgid "" "Selects Resources, User Data, or File System as the default source for relative resource
-#| paths. A" " loaded source file's directory takes precedence."
 msgid ""
 "Selects Resources, User Data, or File System as the default source for relative resource paths. A"
 " loaded Markdown file's directory takes precedence."
@@ -6348,8 +6498,8 @@ msgid ""
 " loaded source file's directory takes precedence."
 msgstr "选择 Resources、User Data 或 File System 作为相对资源路径的默认来源。加载的源文件所在目录优先。"
 
+# | msgid "Selects all text in the document."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Selects all text in the document."
 msgid "Selects all rendered document text."
 msgstr "选中渲染文档中的全部文本。"
 
@@ -6362,9 +6512,9 @@ msgstr "选中文档中的所有文本。"
 msgid "Selects an available video decoder automatically."
 msgstr "自动选择可用的视频解码后端。"
 
+# | msgid "" "Selects Resources, User Data, or File System as the default source for relative resource
+# | paths. A" " loaded source file's directory takes precedence."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "" "Selects Resources, User Data, or File System as the default source for relative resource
-#| paths. A" " loaded source file's directory takes precedence."
 msgid ""
 "Selects project Resources, User Data, or File System as the default source for relative resource "
 "paths. A loaded document's directory takes precedence."
@@ -6427,7 +6577,9 @@ msgid ""
 "Sets a CSS property. Pass [code]important[/code] as [param priority] to add "
 "[code]!important[/code]. Unsupported priority strings are ignored. A successful edit invalidates "
 "this handle."
-msgstr "设置 CSS 属性。将 [code]important[/code] 作为 [param priority] 传入可添加 [code]!important[/code]。不支持的优先级字符串会被忽略。编辑成功后，此句柄会失效。"
+msgstr ""
+"设置 CSS 属性。将 [code]important[/code] 作为 [param priority] 传入可添加 "
+"[code]!important[/code]。不支持的优先级字符串会被忽略。编辑成功后，此句柄会失效。"
 
 #. doc_classes/HTMLDataTransfer.xml
 msgid "Sets a MIME payload while the transfer is writable. The type is normalized to lowercase."
@@ -6467,8 +6619,8 @@ msgstr "设置执行延迟流式排版更新的间隔。取值限制在 [code][1
 msgid "Sets how rendered Markdown text wraps inside the control bounds."
 msgstr "设置渲染后的 Markdown 文本如何在控件范围内换行。"
 
+# | msgid "Sets how rendered Markdown text wraps inside the control bounds."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Sets how rendered Markdown text wraps inside the control bounds."
 msgid "Sets how rendered text wraps inside the control bounds."
 msgstr "设置渲染文本在控件边界内的换行方式。"
 
@@ -6503,6 +6655,12 @@ msgid ""
 "search state."
 msgstr "设置要渲染的 Markdown 文本。发出 [signal text_changed]，并重置选区和搜索状态。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid ""
+"Sets the additional font size applied to rendered text. The value is clamped to the range "
+"[code]0[/code] to [code]16[/code] and emits [signal extra_font_size_changed]."
+msgstr "设置应用于渲染文本的额外字号。值会限制在 [code]0[/code] 到 [code]16[/code] 范围内，并发出 [signal extra_font_size_changed]。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Sets the content margin in pixels. Clamped to the range [code][0, 128][/code]. The default value "
@@ -6515,8 +6673,8 @@ msgid ""
 "system."
 msgstr "设置相对资源路径的默认来源：项目资源、用户数据或文件系统。"
 
+# | msgid "The HTML document or fragment to display."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "The HTML document or fragment to display."
 msgid "Sets the document resource to display."
 msgstr "设置要显示的文档资源。"
 
@@ -6526,8 +6684,8 @@ msgid ""
 "length."
 msgstr "按字符偏移设置文档选区。端点限制在文档文字长度内。"
 
+# | msgid "The document's root element."
 #. doc_classes/RSTDocument.xml
-#| msgid "The document's root element."
 msgid "Sets the document's source text."
 msgstr "设置文档的源文本。"
 
@@ -6566,8 +6724,8 @@ msgstr ""
 "用日期或时间分量设置输入值。传入空字典将清空值。没有对应日期读取接口时返回 [constant ERR_UNAVAILABLE]，分量无效时返回 [constant "
 "ERR_INVALID_PARAMETER]。"
 
+# | msgid "Sets autowrap space trimming flags. Only trim flags are stored."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Sets autowrap space trimming flags. Only trim flags are stored."
 msgid "Sets the line break space-trimming flags. Only trim flags are stored."
 msgstr "设置换行时的空格裁剪标志。仅保存裁剪相关的标志。"
 
@@ -6577,10 +6735,14 @@ msgid ""
 "to the range [code][1, 256][/code]. The default value is [code]32[/code]."
 msgstr "设置流式模式下增量解析使用的最大未稳定行数。取值限制在 [code][1, 256][/code]。默认值为 [code]32[/code]。"
 
+# | msgid "The original resource address."
 #. doc_classes/RSTDocument.xml
-#| msgid "The original resource address."
 msgid "Sets the original [code].rst[/code] source path."
 msgstr "设置原始 [code].rst[/code] 源文件路径。"
+
+#. doc_classes/RSTDocument.xml
+msgid "Sets the reference index used to resolve cross-document targets."
+msgstr "设置用于解析跨文档目标的引用索引。"
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid ""
@@ -6599,6 +6761,20 @@ msgid ""
 "Sets the start boundary. If it follows the end or has a different tree root, both endpoints move "
 "to the new boundary."
 msgstr "设置起点。如果起点位于终点之后或属于不同树根，两个端点都移动到新位置。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets the uniform margin around the document content. Negative values are treated as zero."
+msgstr "设置文档内容四周的统一边距。负值按零处理。"
+
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets the word boundary algorithm used for double-click text selection."
+msgstr "设置双击文本选择使用的词边界算法。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether activated HTTP and HTTPS links are opened with the system's default application."
+msgstr "设置是否使用系统默认应用打开激活的 HTTP 和 HTTPS 链接。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid "Sets whether drag-and-drop of selected text is enabled."
@@ -6620,12 +6796,20 @@ msgstr "设置是否启用内部垂直滚动。关闭后会禁用内部垂直滚
 msgid "Sets whether keyboard shortcuts (Ctrl+C to copy, Ctrl+A to select all) are enabled."
 msgstr "设置是否启用键盘快捷键（Ctrl+C 复制，Ctrl+A 全选）。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether rendered text can be selected. Disabling selection clears the current selection."
+msgstr "设置是否允许选择渲染文本。禁用选择时会清除当前选区。"
+
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "Sets whether scroll following for visible-character reveals is enabled. MarkdownLabel currently "
 "exposes this for RichTextLabel API parity; it has no effect until visible-character clipping is "
 "implemented."
 msgstr "设置是否启用逐字显示时的滚动跟随。MarkdownLabel 提供此属性以兼容 RichTextLabel API。实现按可见字符数裁剪前，该属性没有效果。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets whether selected text can be dragged to Godot controls that accept text drag-and-drop data."
+msgstr "设置是否允许将选中的文本拖放到支持文本拖放数据的 Godot 控件中。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
@@ -6653,7 +6837,11 @@ msgid "Sets whether the control reports its rendered content height as its minim
 msgstr "设置是否将渲染内容高度作为控件的最小高度。"
 
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "Returns [code]true[/code] if internal vertical scrolling is active."
+msgid "Sets whether the current text selection is cleared when the control loses focus."
+msgstr "设置控件失去焦点时是否清除当前文本选区。"
+
+# | msgid "Returns [code]true[/code] if internal vertical scrolling is active."
+#. doc_classes/RestructuredtextLabel.xml
 msgid "Sets whether the internal vertical scroll bar is active."
 msgstr "设置是否启用内部垂直滚动条。"
 
@@ -6817,6 +7005,12 @@ msgstr "CSS 动画名称。"
 msgid "The CSS property being transitioned."
 msgstr "正在过渡的 CSS 属性。"
 
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"The CSS source text. Changing it emits [signal Resource.changed] so layouts using this resource "
+"can refresh."
+msgstr "CSS 源文本。修改后会发出 [signal Resource.changed]，以便使用该资源的布局刷新。"
+
 #. doc_classes/HTMLLabel.xml
 msgid "The Godot audio bus for video playback."
 msgstr "用于视频播放的 Godot 音频总线。"
@@ -6904,6 +7098,10 @@ msgid ""
 msgstr ""
 "Windows x64 编辑器可以将 [code].pdf[/code] 文件导入为 [PDFTexture]。在导入面板中选择页码和 DPI 后，即可在接受 [Texture2D] "
 "的位置使用该资源。导出的项目直接加载烘焙后的像素，无需 PDFium。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths."
+msgstr "用于显示的 [RSTDocument] 资源。该资源的源文件路径用于解析相对资源路径。"
 
 #. doc_classes/HTMLClipboardEvent.xml
 msgid ""
@@ -7158,7 +7356,9 @@ msgid ""
 "the source text and its original project path so relative images and downloads continue to "
 "resolve in exported projects. Relative document links and [code]:ref:[/code] targets are indexed "
 "from configured document roots."
-msgstr "编辑器会将 UTF-8 [code].rst[/code] 文件导入为 [RSTDocument] 资源。资源会保存源文本和原始项目路径，因此导出项目后仍可解析相对图片和下载资源。相对文档链接和 [code]:ref:[/code] 目标会根据已配置的文档根目录建立索引。"
+msgstr ""
+"编辑器会将 UTF-8 [code].rst[/code] 文件导入为 [RSTDocument] 资源。资源会保存源文本和原始项目路径，因此导出项目后仍可解析相对图片和下载资源。相对文档链接和"
+" [code]:ref:[/code] 目标会根据已配置的文档根目录建立索引。"
 
 #. doc_classes/LatexDocument.xml
 msgid ""
@@ -7213,6 +7413,12 @@ msgstr "此触摸事件中最初作为目标的元素。"
 #. doc_classes/HTMLStyleSheet.xml
 msgid "The element that owns the associated stylesheet. A stale handle returns [code]null[/code]."
 msgstr "关联样式表的所属元素。句柄失效时返回 [code]null[/code]。"
+
+#. doc_classes/HTMLElement.xml
+msgid ""
+"The element's open shadow root, or [code]null[/code] if it has no open root. Closed roots are not"
+" exposed."
+msgstr "元素的开放影子根；没有开放影子根时为 [code]null[/code]。此属性不公开闭合影子根。"
 
 #. doc_classes/HTMLEvent.xml
 msgid "The event is at its target."
@@ -7397,8 +7603,8 @@ msgid ""
 "order."
 msgstr "本地视频源。省略时按顺序尝试 [code]<source>[/code] 子元素。"
 
+# | msgid "The live document node."
 #. doc_classes/RestructuredtextLabel.xml
-#| msgid "The live document node."
 msgid "The margin around the document content."
 msgstr "文档内容周围的边距。"
 
@@ -7493,11 +7699,23 @@ msgstr "数值，不可用时为 NaN。月份以 1970 年 1 月为起点计数�
 msgid "The operations permitted for this drag."
 msgstr "此拖动允许执行的操作。"
 
+#. doc_classes/RSTDocument.xml
+msgid ""
+"The optional generated [RSTReferenceIndex] used to resolve cross-document [code]:ref:[/code] "
+"targets."
+msgstr "用于解析跨文档 [code]:ref:[/code] 目标的可选生成 [RSTReferenceIndex]。"
+
 #. doc_classes/HTMLStyleElement.xml
 msgid ""
 "The original CSS text of the element. Read edited CSSOM rules using [method get_stylesheet_id] "
 "and [method HTMLLayout.get_css_rules]."
 msgstr "元素的原始 CSS 文本。使用 [method get_stylesheet_id] 和 [method HTMLLayout.get_css_rules] 读取编辑后的 CSSOM 规则。"
+
+#. doc_classes/CSSStyleSheet.xml
+msgid ""
+"The original [code].css[/code] source path recorded by the importer. Manually created resources "
+"leave it empty unless set."
+msgstr "导入器记录的原始 [code].css[/code] 源路径。手动创建资源时此属性为空，除非显式设置。"
 
 #. doc_classes/HTMLAnchorElement.xml
 msgid "The original [code]href[/code] attribute. An empty or missing value cannot be activated."
@@ -7516,6 +7734,12 @@ msgstr "原始基准地址。斜杠结尾表示目录。"
 #. doc_classes/HTMLVideoElement.xml
 msgid "The original local resource path of the selected video."
 msgstr "当前视频源原有的本地资源路径。"
+
+#. doc_classes/RSTDocument.xml
+msgid ""
+"The original project path of the imported [code].rst[/code] file. It is used to resolve relative "
+"resource paths."
+msgstr "导入的 [code].rst[/code] 文件在项目中的原始路径，用于解析相对资源路径。"
 
 #. doc_classes/HTMLLinkElement.xml
 msgid "The original resource address."
@@ -7764,8 +7988,8 @@ msgstr "失败项对应的源代码行号（如果可用）。"
 msgid "The source of this close request."
 msgstr "此关闭请求的来源。"
 
+# | msgid "The source of this close request."
 #. doc_classes/RSTDocument.xml
-#| msgid "The source of this close request."
 msgid "The source text."
 msgstr "源文本。"
 
@@ -7777,8 +8001,8 @@ msgstr "为此触点分配的稳定指针标识符。"
 msgid "The stroke [Color], CSS color string, [HTMLCanvasGradient], or [HTMLCanvasPattern]."
 msgstr "描边所用的 [Color]、CSS 颜色字符串、[HTMLCanvasGradient] 或 [HTMLCanvasPattern]。"
 
+# | msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 #. doc_classes/HTMLStyleSheet.xml
-#| msgid "Returns [code]animation[/code], [code]transition[/code], or [code]script[/code]."
 msgid ""
 "The stylesheet cascade origin: [code]author[/code], [code]author_extra[/code], or "
 "[code]user_agent[/code]."
@@ -7974,6 +8198,18 @@ msgstr "使用 Godot 用户数据命名空间作为默认相对资源路径的�
 msgid "Use the inherited element methods to edit the caption contents."
 msgstr "使用继承的元素方法编辑表格标题内容。"
 
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Uses Jieba for Simplified Chinese when available and TextServer for other languages."
+msgstr "简体中文可用时使用 Jieba，其他语言使用 TextServer。"
+
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Uses Jieba when available and falls back to TextServer otherwise."
+msgstr "使用可用的 Jieba；否则回退到 TextServer。"
+
 #. doc_classes/PDFReader.xml
 msgid "Uses PDFium's print rendering mode."
 msgstr "使用 PDFium 的打印渲染模式。"
@@ -7993,6 +8229,12 @@ msgstr "启用时使用独立公式样式，关闭时使用更紧凑的行内公
 #. doc_classes/HTMLLabel.xml
 msgid "Uses the FMOD audio player and bus list when the optional FMOD plugin is available."
 msgstr "可选 FMOD 插件可用时，使用 FMOD 播放器和总线列表。"
+
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Uses the active TextServer's word-break data for all languages."
+msgstr "对所有语言使用当前 TextServer 的分词边界数据。"
 
 #. doc_classes/MermaidLabel.xml
 msgid "Uses the dark palette."
@@ -8088,8 +8330,8 @@ msgstr "关联的样式表是否已禁用。设置所属元素的 disabled 属�
 msgid "Whether the audio output is muted. The HTML attribute provides the initial value."
 msgstr "音频输出是否静音。HTML 属性提供初始值。"
 
+# | msgid "Whether the disclosure is open."
 #. doc_classes/CSSStyleDeclaration.xml
-#| msgid "Whether the disclosure is open."
 msgid "Whether the declaration block handle is current."
 msgstr "声明块句柄是否仍然有效。"
 
@@ -8111,8 +8353,8 @@ msgstr "事件是否由引擎根据真实输入合成。脚本创建的事件为
 msgid "Whether the event repeats because the key is held down."
 msgstr "事件是否因按住按键而重复。"
 
+# | msgid "Returns whether the handle still refers to the associated stylesheet."
 #. doc_classes/CSSRule.xml
-#| msgid "Returns whether the handle still refers to the associated stylesheet."
 msgid "Whether the handle still refers to the current stylesheet revision."
 msgstr "句柄是否仍指向当前样式表版本。"
 
@@ -8220,7 +8462,13 @@ msgid ""
 "access] and [member root_subfolder] define their base directory.\n"
 "Internal document links emit [signal link_pressed]. Connect to that signal to load another "
 "document and scroll to any fragment in the destination."
-msgstr "[RestructuredtextLabel] 可以渲染已导入的 [RSTDocument] 资源或原始 reStructuredText 文本。支持标题与锚点、段落、列表、代码块、表格、告警块、图片、目录树、文档链接、下载、文本选择、搜索和外部 HTTP 链接。\n在项目设置中配置 [code]dockit/rst/document_roots[/code]，即可生成跨文档 [code]:ref:[/code] 链接和目录树导航所需的轻量引用索引。指定了源文件时，相对资源路径以源 [code].rst[/code] 文件所在目录为基准；否则由 [member access] 和 [member root_subfolder] 确定基准目录。\n激活内部文档链接时会发出 [signal link_pressed]。连接该信号后，宿主可以加载其他文档并滚动到目标片段。"
+msgstr ""
+"[RestructuredtextLabel] 可以渲染已导入的 [RSTDocument] 资源或原始 reStructuredText "
+"文本。支持标题与锚点、段落、列表、代码块、表格、告警块、图片、目录树、文档链接、下载、文本选择、搜索和外部 HTTP 链接。\n"
+"在项目设置中配置 [code]dockit/rst/document_roots[/code]，即可生成跨文档 [code]:ref:[/code] "
+"链接和目录树导航所需的轻量引用索引。指定了源文件时，相对资源路径以源 [code].rst[/code] 文件所在目录为基准；否则由 [member access] 和 [member "
+"root_subfolder] 确定基准目录。\n"
+"激活内部文档链接时会发出 [signal link_pressed]。连接该信号后，宿主可以加载其他文档并滚动到目标片段。"
 
 #. doc_classes/HTMLInputEvent.xml
 msgid ""
@@ -8253,142 +8501,3 @@ msgstr ""
 "[code]submit[/code] 在约束校验通过之后、收集表单条目之前执行。取消它会中止提交，因此不会发出 [signal "
 "HTMLLabel.form_submitted]。[code]reset[/code] 仅对重置按钮执行；在脚本中调用 [method HTMLFormElement.reset] "
 "不会派发它。"
-
-#. doc_classes/CSSStyleSheet.xml
-msgid ""
-"A [CSSStyleSheet] stores the source text of a project [code].css[/code] file imported by Dockit. "
-"The importer registers local [code]@import[/code] files as build dependencies so Godot can "
-"reimport the stylesheet when an imported file changes.\n"
-"HTML documents that link to the same imported stylesheet use the shared resource. Changing "
-"[member css_text] emits [signal Resource.changed], invalidating the styles of current layouts "
-"that use the resource so they can refresh. The changed text remains in memory and does not write "
-"back to the source [code].css[/code] file. Edit and reimport the source file to persist changes.\n"
-"[member source_path] records the source path assigned by the importer. It is empty for manually "
-"created resources unless set."
-msgstr ""
-"[CSSStyleSheet] 保存由 Dockit 导入的项目 [code].css[/code] 文件中的源文本。导入器会将本地 "
-"[code]@import[/code] 文件登记为构建依赖项，以便被导入文件发生更改时，Godot 可以重新导入该样式表。\n"
-"链接到同一导入样式表的 HTML 文档会共用此资源。修改 [member css_text] 会发出 "
-"[signal Resource.changed]，使当前使用该资源的布局中的样式失效并触发刷新。修改后的文本仅保留在内存中，"
-"不会写回源 [code].css[/code] 文件。要持久保存修改，请编辑源文件并重新导入。\n"
-"[member source_path] 记录导入器设置的源路径。手动创建的资源中此属性为空，除非显式设置。"
-
-#. doc_classes/CSSStyleSheet.xml
-msgid "A shared CSS resource imported from a project [code].css[/code] file."
-msgstr "从 Godot 项目中的 [code].css[/code] 文件导入的共享 CSS 资源。"
-
-#. doc_classes/CSSStyleSheet.xml
-msgid ""
-"The CSS source text. Changing it emits [signal Resource.changed] so layouts using this resource "
-"can refresh."
-msgstr "CSS 源文本。修改后会发出 [signal Resource.changed]，以便使用该资源的布局刷新。"
-
-#. doc_classes/CSSStyleSheet.xml
-msgid ""
-"The original [code].css[/code] source path recorded by the importer. Manually created resources "
-"leave it empty unless set."
-msgstr "导入器记录的原始 [code].css[/code] 源路径。手动创建资源时此属性为空，除非显式设置。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "If [code]true[/code], activated HTTP and HTTPS links are opened with the system's default application."
-msgstr "为 [code]true[/code] 时，激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "If [code]true[/code], clears the current text selection when the control loses focus."
-msgstr "为 [code]true[/code] 时，控件失去焦点后会清除当前文本选区。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "If [code]true[/code], enables selection of rendered text. Disabling selection clears the current selection."
-msgstr "为 [code]true[/code] 时，启用渲染文本选择；禁用选择时会清除当前选区。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Resolves [param path] relative to the current document's source directory, or to [member access] and [member root_subfolder] when no source directory is available."
-msgstr "根据当前文档的源目录解析 [param path]；没有可用的源目录时，则根据 [member access] 和 [member root_subfolder] 解析。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns [code]true[/code] if activated HTTP and HTTPS links are opened with the system's default application."
-msgstr "激活的 HTTP 和 HTTPS 链接会使用系统默认应用打开时，返回 [code]true[/code]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns [code]true[/code] if selected text can be dragged to Godot controls that accept text drag-and-drop data."
-msgstr "选中的文本可以拖放到支持文本拖放数据的 Godot 控件时，返回 [code]true[/code]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns [code]true[/code] if text selection is enabled."
-msgstr "已启用文本选择时返回 [code]true[/code]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns [code]true[/code] if the current selection is cleared when the control loses focus."
-msgstr "控件失去焦点时会清除当前选区，则返回 [code]true[/code]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns the additional font size applied to rendered text."
-msgstr "返回应用于渲染文本的额外字号。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns the uniform margin around the document content."
-msgstr "返回文档内容四周的统一边距。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Scrolls to the current search result, placing it at [param align] of the viewport. Returns [code]false[/code] when there is no current result."
-msgstr "滚动到当前搜索结果，并将其放置在视口的 [param align] 位置。没有当前搜索结果时返回 [code]false[/code]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets the additional font size applied to rendered text. The value is clamped to the range [code]0[/code] to [code]16[/code] and emits [signal extra_font_size_changed]."
-msgstr "设置应用于渲染文本的额外字号。值会限制在 [code]0[/code] 到 [code]16[/code] 范围内，并发出 [signal extra_font_size_changed]。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets the uniform margin around the document content. Negative values are treated as zero."
-msgstr "设置文档内容四周的统一边距。负值按零处理。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets whether activated HTTP and HTTPS links are opened with the system's default application."
-msgstr "设置是否使用系统默认应用打开激活的 HTTP 和 HTTPS 链接。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets whether rendered text can be selected. Disabling selection clears the current selection."
-msgstr "设置是否允许选择渲染文本。禁用选择时会清除当前选区。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets whether selected text can be dragged to Godot controls that accept text drag-and-drop data."
-msgstr "设置是否允许将选中的文本拖放到支持文本拖放数据的 Godot 控件中。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets whether the current text selection is cleared when the control loses focus."
-msgstr "设置控件失去焦点时是否清除当前文本选区。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths."
-msgstr "用于显示的 [RSTDocument] 资源。该资源的源文件路径用于解析相对资源路径。"
-
-#. doc_classes/RSTReferenceIndex.xml
-msgid "Cross-document [code]:ref:[/code] targets keyed by source document path and normalized label. Each target stores [code]path[/code], [code]uid[/code], and [code]anchor[/code]."
-msgstr "以源文档路径和规范化标签为键的跨文档 [code]:ref:[/code] 目标。每个目标包含 [code]path[/code]、[code]uid[/code] 和 [code]anchor[/code]。"
-
-#. doc_classes/RSTReferenceIndex.xml
-msgid "Fingerprint of configured document roots and indexed targets, used to skip unnecessary index writes."
-msgstr "已配置文档根目录和索引目标的指纹，用于跳过不必要的索引写入。"
-
-#. doc_classes/RSTReferenceIndex.xml
-msgid "Referenced document paths mapped to target dictionaries containing [code]path[/code], [code]uid[/code], and [code]anchor[/code]."
-msgstr "被引用的文档路径及其目标字典。每个目标字典包含 [code]path[/code]、[code]uid[/code] 和 [code]anchor[/code]。"
-
-#. doc_classes/RSTDocument.xml
-msgid "Returns the reference index used to resolve cross-document targets, or [code]null[/code] when none is assigned."
-msgstr "返回用于解析跨文档目标的引用索引；未分配时返回 [code]null[/code]。"
-
-#. doc_classes/RSTDocument.xml
-msgid "Sets the reference index used to resolve cross-document targets."
-msgstr "设置用于解析跨文档目标的引用索引。"
-
-#. doc_classes/RSTDocument.xml
-msgid "The optional generated [RSTReferenceIndex] used to resolve cross-document [code]:ref:[/code] targets."
-msgstr "用于解析跨文档 [code]:ref:[/code] 目标的可选生成 [RSTReferenceIndex]。"
-
-#. doc_classes/RSTDocument.xml
-msgid "The original project path of the imported [code].rst[/code] file. It is used to resolve relative resource paths."
-msgstr "导入的 [code].rst[/code] 文件在项目中的原始路径，用于解析相对资源路径。"
-
-#. doc_classes/HTMLElement.xml
-msgid "The element's open shadow root, or [code]null[/code] if it has no open root. Closed roots are not exposed."
-msgstr "元素的开放影子根；没有开放影子根时为 [code]null[/code]。此属性不公开闭合影子根。"

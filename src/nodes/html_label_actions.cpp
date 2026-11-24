@@ -1206,7 +1206,8 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 				const int64_t offset = target->layout->selection_point_at(point).offset;
 				const dockit::HTMLTextLanguageRange language = target->layout->get_text_language_range_at(
 					offset, dockit::get_project_word_language());
-				const auto boundary = dockit::word_boundary_at(text, offset, language.language, language.start, language.end);
+				const auto boundary = dockit::word_boundary_at(text, offset, language.language, language.start, language.end,
+					target->get_word_selection_mode());
 				if (boundary) target->set_selection_range(boundary->start, boundary->end);
 			}
 		}

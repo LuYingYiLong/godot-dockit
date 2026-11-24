@@ -234,6 +234,15 @@ public:
 		ACCESS_FILE_SYSTEM,
 	};
 
+	enum WordSelectionMode {
+		WORD_SELECTION_MODE_AUTO,
+		WORD_SELECTION_MODE_TEXT_SERVER,
+		WORD_SELECTION_MODE_JIEBA,
+	};
+
+	void set_word_selection_mode(WordSelectionMode p_mode);											// 设置鼠标选词使用的分词模式
+	WordSelectionMode get_word_selection_mode() const;											// 返回鼠标选词的分词模式
+
 private:
 	String rst_text;
 	Ref<RSTDocument> document;
@@ -246,6 +255,7 @@ private:
 	int32_t extra_font_size = 0;
 	bool open_external_links = true;
 	bool selection_enabled = true;
+	WordSelectionMode word_selection_mode = WORD_SELECTION_MODE_AUTO;
 	bool deselect_on_focus_loss_enabled = true;
 	bool drag_and_drop_selection_enabled = true;
 	bool context_menu_enabled = false;
@@ -262,6 +272,7 @@ private:
 
 protected:
 	static void _bind_methods();
+	void _validate_property(PropertyInfo& p_property) const;
 	void _notification(int p_what);
 
 public:
@@ -332,3 +343,4 @@ public:
 
 VARIANT_ENUM_CAST(RestructuredtextLabel::MenuItems);
 VARIANT_ENUM_CAST(RestructuredtextLabel::Access);
+VARIANT_ENUM_CAST(RestructuredtextLabel::WordSelectionMode);

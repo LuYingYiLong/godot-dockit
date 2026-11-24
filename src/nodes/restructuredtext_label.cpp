@@ -2487,7 +2487,8 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 						if (text_hit) break;
 					}
 					if (text_hit) {
-						const auto boundary = dockit::word_boundary_at(plain_text, selection_anchor, dockit::get_project_word_language());
+						const auto boundary = dockit::word_boundary_at(plain_text, selection_anchor, dockit::get_project_word_language(),
+							0, -1, document_view != nullptr ? document_view->get_word_selection_mode() : RestructuredtextLabel::WORD_SELECTION_MODE_AUTO);
 						if (boundary) {
 							selection_anchor = boundary->start;
 							selection_caret = boundary->end;
@@ -2634,6 +2635,8 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_open_external_links"), &RestructuredtextLabel::get_open_external_links);
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &RestructuredtextLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &RestructuredtextLabel::is_selection_enabled);
+	ClassDB::bind_method(D_METHOD("set_word_selection_mode", "mode"), &RestructuredtextLabel::set_word_selection_mode);
+	ClassDB::bind_method(D_METHOD("get_word_selection_mode"), &RestructuredtextLabel::get_word_selection_mode);
 	ClassDB::bind_method(D_METHOD("set_deselect_on_focus_loss_enabled", "enabled"), &RestructuredtextLabel::set_deselect_on_focus_loss_enabled);
 	ClassDB::bind_method(D_METHOD("is_deselect_on_focus_loss_enabled"), &RestructuredtextLabel::is_deselect_on_focus_loss_enabled);
 	ClassDB::bind_method(D_METHOD("set_drag_and_drop_selection_enabled", "enabled"), &RestructuredtextLabel::set_drag_and_drop_selection_enabled);
@@ -2688,6 +2691,8 @@ void RestructuredtextLabel::_bind_methods() {
 
 	ADD_GROUP("Text Selection", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled", PROPERTY_HINT_GROUP_ENABLE), "set_selection_enabled", "is_selection_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "word_selection_mode", PROPERTY_HINT_ENUM, "Auto:0,TextServer:1,Jieba:2"),
+		"set_word_selection_mode", "get_word_selection_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_on_focus_loss_enabled"), "set_deselect_on_focus_loss_enabled", "is_deselect_on_focus_loss_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"), "set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
@@ -2699,10 +2704,19 @@ void RestructuredtextLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ACCESS_RESOURCES);
 	BIND_ENUM_CONSTANT(ACCESS_USER_DATA);
 	BIND_ENUM_CONSTANT(ACCESS_FILE_SYSTEM);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_AUTO);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_TEXT_SERVER);
+	BIND_ENUM_CONSTANT(WORD_SELECTION_MODE_JIEBA);
 
 	ADD_SIGNAL(MethodInfo("link_pressed", PropertyInfo(Variant::STRING, "uri")));
 	ADD_SIGNAL(MethodInfo("render_warning", PropertyInfo(Variant::STRING, "message"), PropertyInfo(Variant::INT, "line")));
 	ADD_SIGNAL(MethodInfo("extra_font_size_changed", PropertyInfo(Variant::INT, "font_size")));
+}
+
+void RestructuredtextLabel::_validate_property(PropertyInfo& p_property) const {
+	if (p_property.name == StringName("word_selection_mode")) {
+		p_property.hint_string = dockit::get_word_selection_mode_hint();
+	}
 }
 
 void RestructuredtextLabel::_notification(int p_what) {
@@ -3231,6 +3245,17 @@ void RestructuredtextLabel::set_selection_enabled(bool p_enabled) {
 
 bool RestructuredtextLabel::is_selection_enabled() const {
 	return selection_enabled;
+}
+
+void RestructuredtextLabel::set_word_selection_mode(WordSelectionMode p_mode) {
+	if (p_mode < WORD_SELECTION_MODE_AUTO || p_mode > WORD_SELECTION_MODE_JIEBA) p_mode = WORD_SELECTION_MODE_AUTO;
+	if (word_selection_mode == p_mode) return;
+	word_selection_mode = p_mode;
+	notify_property_list_changed();
+}
+
+RestructuredtextLabel::WordSelectionMode RestructuredtextLabel::get_word_selection_mode() const {
+	return word_selection_mode;
 }
 
 void RestructuredtextLabel::set_deselect_on_focus_loss_enabled(bool p_enabled) {

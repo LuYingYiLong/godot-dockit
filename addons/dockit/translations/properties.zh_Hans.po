@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-23 01:09+0800\n"
+"POT-Creation-Date: 2026-11-24 21:53+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
@@ -240,8 +240,8 @@ msgstr "渲染"
 msgid "Root Subfolder"
 msgstr "根目录子文件夹"
 
+# | msgid "Text"
 #. src/nodes/restructuredtext_label.cpp
-#| msgid "Text"
 msgid "Rst Text"
 msgstr "RST 文本"
 
@@ -329,3 +329,9 @@ msgstr "视频后端"
 #. src/nodes/html_label.cpp
 msgid "Video Bus"
 msgstr "视频总线"
+
+#. src/nodes/html_label.cpp
+#. src/nodes/markdown_label.cpp
+#. src/nodes/restructuredtext_label.cpp
+msgid "Word Selection Mode"
+msgstr "选词模式"

@@ -376,6 +376,15 @@ public:
 		ACCESS_FILE_SYSTEM,
 	};
 
+	enum WordSelectionMode {
+		WORD_SELECTION_MODE_AUTO,
+		WORD_SELECTION_MODE_TEXT_SERVER,
+		WORD_SELECTION_MODE_JIEBA,
+	};
+
+	void set_word_selection_mode(WordSelectionMode p_mode);											// 设置鼠标选词使用的分词模式
+	WordSelectionMode get_word_selection_mode() const;											// 返回鼠标选词的分词模式
+
 private:
 	friend class ::HTMLLabelCanvas;
 	friend class HTMLAudioElement;
@@ -702,6 +711,7 @@ private:
 	bool capturing_node_selection = false;
 	bool layout_signal_pending = false;
 	bool selection_enabled = true;
+	WordSelectionMode word_selection_mode = WORD_SELECTION_MODE_AUTO;
 	bool drag_and_drop_selection_enabled = true;
 	bool transparent_canvas = false;
 	bool context_menu_enabled = true;
@@ -1059,3 +1069,4 @@ public:
 VARIANT_ENUM_CAST(::HTMLLabel::AnimationProcessMode);
 VARIANT_ENUM_CAST(::HTMLLabel::Access);
 VARIANT_ENUM_CAST(::HTMLLabel::VideoBackend);
+VARIANT_ENUM_CAST(::HTMLLabel::WordSelectionMode);

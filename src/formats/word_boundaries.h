@@ -23,6 +23,12 @@ struct WordBoundary {
 	int64_t end = 0;
 };
 
+enum WordSelectionMode : int64_t {
+	WORD_SELECTION_MODE_AUTO,
+	WORD_SELECTION_MODE_TEXT_SERVER,
+	WORD_SELECTION_MODE_JIEBA,
+};
+
 inline bool is_word_whitespace(char32_t p_character) {
 	return (p_character >= 0x0009 && p_character <= 0x000D) || p_character == 0x0020 ||
 		p_character == 0x0085 || p_character == 0x00A0 || p_character == 0x1680 ||
@@ -58,6 +64,17 @@ inline bool uses_simplified_chinese_words(const godot::String& p_language) {
 	return parts.size() == 1;
 }
 
+inline bool is_jieba_segmenter_available() {
+	static const godot::StringName class_name("JiebaSegment");
+	return godot::ClassDB::class_exists(class_name) && godot::ClassDB::can_instantiate(class_name) &&
+		godot::ClassDB::class_has_method(class_name, "cut_with_offsets") &&
+		godot::ClassDB::class_has_method(class_name, "initialize");
+}
+
+inline godot::String get_word_selection_mode_hint() {
+	return is_jieba_segmenter_available() ? "Auto:0,TextServer:1,Jieba:2" : "Auto:0,TextServer:1,Jieba (unavailable):2";
+}
+
 inline godot::Ref<godot::RefCounted> get_optional_jieba_segmenter() {
 	godot::Engine* engine = godot::Engine::get_singleton();
 	if (engine == nullptr) return {};
@@ -70,11 +87,7 @@ inline godot::Ref<godot::RefCounted> get_optional_jieba_segmenter() {
 		return {};
 	}
 	static const godot::StringName class_name("JiebaSegment");
-	if (!godot::ClassDB::class_exists(class_name) || !godot::ClassDB::can_instantiate(class_name) ||
-		!godot::ClassDB::class_has_method(class_name, "cut_with_offsets") ||
-		!godot::ClassDB::class_has_method(class_name, "initialize")) {
-		return {};
-	}
+	if (!is_jieba_segmenter_available()) return {};
 	godot::Ref<godot::RefCounted> segmenter(godot::ClassDB::instantiate(class_name));
 	if (segmenter.is_null()) return segmenter;
 	if (godot::ClassDB::class_has_method(class_name, "is_initialized") &&
@@ -146,7 +159,8 @@ inline std::optional<WordBoundary> word_boundary_at(
 		int64_t p_offset,
 		const godot::String& p_language,
 		int64_t p_scope_start = 0,
-		int64_t p_scope_end = -1) {
+		int64_t p_scope_end = -1,
+		int64_t p_selection_mode = WORD_SELECTION_MODE_AUTO) {
 	const int64_t length = p_text.length();
 	const int64_t scope_start = std::clamp<int64_t>(p_scope_start, 0, length);
 	const int64_t requested_end = p_scope_end < 0 ? length : p_scope_end;
@@ -165,7 +179,12 @@ inline std::optional<WordBoundary> word_boundary_at(
 	const godot::String segment = p_text.substr(start, end - start);
 	const int64_t local_offset = p_offset - start;
 	std::vector<WordBoundary> boundaries;
-	if (uses_simplified_chinese_words(p_language) && !get_jieba_word_boundaries(segment, boundaries)) boundaries.clear();
+	const bool use_jieba = p_selection_mode == WORD_SELECTION_MODE_JIEBA ||
+		(p_selection_mode == WORD_SELECTION_MODE_AUTO && uses_simplified_chinese_words(p_language));
+	if (p_selection_mode != WORD_SELECTION_MODE_TEXT_SERVER && use_jieba &&
+		!get_jieba_word_boundaries(segment, boundaries)) {
+		boundaries.clear();
+	}
 	if (boundaries.empty()) boundaries = get_text_server_word_boundaries(segment, p_language);
 	for (const WordBoundary& boundary : boundaries) {
 		if (local_offset >= boundary.start && local_offset < boundary.end) {
