@@ -212,8 +212,35 @@ namespace godot {
 		}
 	}
 
+	void DockitSourceEditorPlugin::ensure_html_syntax_highlighter_registered() {
+		if (!is_inside_tree()) {
+			return;
+		}
+		EditorInterface* editor = EditorInterface::get_singleton();
+		ScriptEditor* scripts = editor == nullptr ? nullptr : editor->get_script_editor();
+		if (scripts == nullptr) {
+			SceneTree* tree = get_tree();
+			if (tree != nullptr) {
+				const Callable retry = callable_mp(this, &DockitSourceEditorPlugin::ensure_html_syntax_highlighter_registered);
+				if (!tree->is_connected("process_frame", retry)) {
+					tree->connect("process_frame", retry, CONNECT_ONE_SHOT);
+				}
+			}
+			return;
+		}
+
+		if (!html_syntax_highlighter.is_valid()) {
+			html_syntax_highlighter.instantiate();
+		}
+		if (!html_syntax_highlighter_registered) {
+			scripts->register_syntax_highlighter(html_syntax_highlighter);
+			html_syntax_highlighter_registered = true;
+		}
+	}
+
 	void DockitSourceEditorPlugin::_enter_tree() {
 		editor_translations.load();
+		ensure_html_syntax_highlighter_registered();
 		video_exporter.instantiate();
 		add_export_plugin(video_exporter);
 		if (startup_latex_importer.is_valid()) {
@@ -275,6 +302,17 @@ namespace godot {
 
 	void DockitSourceEditorPlugin::_exit_tree() {
 		detach_source_editor();
+		if (html_syntax_highlighter_registered && html_syntax_highlighter.is_valid()) {
+			if (EditorInterface* editor = EditorInterface::get_singleton()) {
+				if (ScriptEditor* scripts = editor->get_script_editor()) {
+					scripts->unregister_syntax_highlighter(html_syntax_highlighter);
+				}
+			}
+			html_syntax_highlighter_registered = false;
+		}
+		if (html_syntax_highlighter.is_valid()) {
+			html_syntax_highlighter.unref();
+		}
 		remove_export_plugin(video_exporter);
 		video_exporter.unref();
 		{
@@ -437,8 +475,20 @@ namespace godot {
 		open_text_result.call(p_path, line + 1, column, column);
 		if (is_source_extension(p_path)) {
 			ScriptEditorBase* current = scripts->get_current_editor();
-			if (current != previous && current != nullptr && current->is_class("TextEditor")) {
-				remember_source(current, p_path);
+			if (current != nullptr && current->is_class("TextEditor")) {
+				if (current != previous) {
+					remember_source(current, p_path);
+				}
+				if (get_document_type(p_path) == HTMLDocument::get_class_static()) {
+					ensure_html_syntax_highlighter_registered();
+					CodeEdit* code = get_code_editor(current);
+					if (code != nullptr && html_syntax_highlighter.is_valid()) {
+						const Ref<EditorSyntaxHighlighter> highlighter = html_syntax_highlighter->_create();
+						if (highlighter.is_valid()) {
+							code->set_syntax_highlighter(highlighter);
+						}
+					}
+				}
 			}
 			restore_source_cache(p_path, imported);
 		}
