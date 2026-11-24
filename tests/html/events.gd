@@ -13,6 +13,8 @@ func _ready() -> void:
 	await _check_pointer_mouse_events()
 	await _check_pointer_capture()
 	await _check_double_click_events()
+	await _check_double_click_selection()
+	await _check_markdown_double_click_selection()
 	await _check_wheel_events()
 	await _check_touch_events()
 	await _check_dom_interactions()
@@ -655,6 +657,86 @@ func _check_double_click_events() -> void:
 	target.remove_event_listener(&"dblclick", on_double_click)
 
 
+func _check_double_click_selection() -> void:
+	label.text = "<p id=\"word\">Dockit<b>Label</b></p>"
+	label.size = Vector2(420.0, 160.0)
+	await _settle()
+	var target: HTMLElement = label.get_element_by_id("word")
+	if target == null:
+		_check(false, "the word selection target is available")
+		return
+	var bounds: Rect2 = target.get_bounding_rect()
+	var point: Vector2 = Vector2(bounds.position.x + 24.0, bounds.get_center().y)
+	_double_click_at(point)
+	_check(label.get_selected_text() == "DockitLabel", "double-click selects a word across inline HTML elements")
+
+	await get_tree().create_timer(0.55).timeout
+	label.clear_selection()
+	label.text = "<p id=\"space\"><span id=\"before\">before</span> <span id=\"after\">after</span></p>"
+	await _settle()
+	var before: HTMLElement = label.get_element_by_id("before")
+	var after: HTMLElement = label.get_element_by_id("after")
+	_check(before != null and after != null, "the whitespace selection fixture exposes both text spans")
+	if before != null and after != null:
+		var before_bounds: Rect2 = before.get_bounding_rect()
+		var after_bounds: Rect2 = after.get_bounding_rect()
+		var whitespace_point: Vector2 = Vector2((before_bounds.end.x + after_bounds.position.x) * 0.5, before_bounds.get_center().y)
+		_double_click_at(whitespace_point)
+		_check(label.get_selected_text().is_empty(), "double-clicking whitespace leaves the selection collapsed")
+
+	await get_tree().create_timer(0.55).timeout
+	label.text = "<p id=\"word\">Dockit<b>Label</b></p>"
+	await _settle()
+	target = label.get_element_by_id("word")
+	point = Vector2(target.get_bounding_rect().position.x + 24.0, target.get_bounding_rect().get_center().y)
+	label.clear_selection()
+	var cancel_selection: Callable = func(event: HTMLEvent) -> void:
+		event.prevent_default()
+	target.add_event_listener(&"dblclick", cancel_selection)
+	_double_click_at(point)
+	_check(label.get_selected_text().is_empty(), "cancelling dblclick keeps the selection collapsed")
+	target.remove_event_listener(&"dblclick", cancel_selection)
+
+	var chinese: String = "我喜欢自然语言处理"
+	var expected_word: String
+	var uses_jieba: bool = false
+	if ClassDB.class_exists("JiebaSegment") and ClassDB.can_instantiate("JiebaSegment"):
+		var segmenter: Object = ClassDB.instantiate("JiebaSegment")
+		uses_jieba = segmenter.call("initialize")
+		if uses_jieba:
+			var segments: Array = segmenter.call("cut_with_offsets", chinese, true)
+			if not segments.is_empty():
+				expected_word = segments[0].get("word", "")
+	if not uses_jieba:
+		var fallback_breaks: PackedInt32Array = TextServerManager.get_primary_interface().string_get_word_breaks(chinese, "zh-CN")
+		if not fallback_breaks.is_empty():
+			expected_word = chinese.substr(fallback_breaks[0], fallback_breaks[1] - fallback_breaks[0])
+	if not expected_word.is_empty():
+		label.text = "<p id=\"chinese\" lang=\"zh-CN\">%s</p>" % chinese
+		await _settle()
+		var chinese_target: HTMLElement = label.get_element_by_id("chinese")
+		var chinese_bounds: Rect2 = chinese_target.get_bounding_rect()
+		_double_click_at(Vector2(chinese_bounds.position.x + 12.0, chinese_bounds.get_center().y))
+		var source_name: String = "JiebaSegment" if uses_jieba else "TextServer fallback"
+		var selected_word: String = label.get_selected_text()
+		_check(selected_word == expected_word, "HTML lang uses " + source_name + " word boundaries for Chinese (selected '%s', expected '%s')" % [selected_word, expected_word])
+
+
+func _check_markdown_double_click_selection() -> void:
+	label.hide()
+	var markdown: MarkdownLabel = MarkdownLabel.new()
+	markdown.position = Vector2.ZERO
+	markdown.size = Vector2(420.0, 160.0)
+	markdown.text = "This is selectable text"
+	add_child(markdown)
+	await _settle()
+	_double_click_at(Vector2(24.0, 20.0))
+	_check(markdown.get_selected_text() == "This", "MarkdownLabel selects a word on native double-click input")
+	markdown.queue_free()
+	label.show()
+	await _settle()
+
+
 func _check_wheel_events() -> void:
 	var source: String = "<div id=\"wheel-target\">Wheel target</div>"
 	for index: int in range(30):
@@ -963,12 +1045,27 @@ func _event() -> HTMLEvent:
 func _click(id: String) -> void:
 	var element: HTMLElement = label.get_element_by_id(id)
 	var point: Vector2 = element.get_bounding_rect().get_center()
+	_click_at(point)
+
+
+func _click_at(point: Vector2) -> void:
 	for state: bool in [true, false]:
 		var click: InputEventMouseButton = InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
 		click.pressed = state
 		click.position = point
 		get_viewport().push_input(click, true)
+
+
+func _double_click_at(point: Vector2) -> void:
+	for click_index: int in range(2):
+		for state: bool in [true, false]:
+			var click: InputEventMouseButton = InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_LEFT
+			click.pressed = state
+			click.double_click = state and click_index == 1
+			click.position = point
+			get_viewport().push_input(click, true)
 
 
 func _key(code: Key, pressed: bool) -> void:

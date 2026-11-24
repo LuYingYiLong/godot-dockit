@@ -9,6 +9,7 @@
 #include "formats/html/events/html_event.h"
 #include "formats/html/html_layout.h"
 #include "formats/html/text/html_text_selection.h"
+#include "formats/word_boundaries.h"
 #include "nodes/html_selection_drag_preview.h"
 
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
@@ -970,7 +971,7 @@ void HTMLLabelCanvas::handle_pointer_press(const PointerInfo& p_info) {
 	pressed_blank = pressed_blank && hit.id == 0 && target_button.is_null() && form_target.is_null();
 	const Vector2i current_selection = label->get_selection_range();
 	if (p_info.button == MOUSE_BUTTON_LEFT && label->drag_and_drop_selection_enabled &&
-		current_selection.x != current_selection.y && selecting) {
+		current_selection.x != current_selection.y && selecting && p_info.detail < 2) {
 		for (const Rect2& rect : label->get_selection_rects()) {
 			if (!rect.has_point(point)) continue;
 			selection_drag_attempt = true;
@@ -1195,7 +1196,20 @@ void HTMLLabelCanvas::handle_pointer_release(const PointerInfo& p_info) {
 		}
 	}
 	if (clicked && p_info.detail == 2 && event_target.is_valid()) {
-		dispatch_pointer_event(StringName("dblclick"), event_target, p_info, true);
+		const bool default_allowed = dispatch_pointer_event(StringName("dblclick"), event_target, p_info, true);
+		HTMLLabel* target = Object::cast_to<HTMLLabel>(ObjectDB::get_instance(label_id));
+		if (default_allowed && target != nullptr && target->selection_enabled && target->layout.is_valid() &&
+			target->layout->hit_test_selectable_text(point)) {
+			const auto control = target->layout->text_control(event_target);
+			if (control == nullptr) {
+				const String text = target->layout->get_plain_text();
+				const int64_t offset = target->layout->selection_point_at(point).offset;
+				const dockit::HTMLTextLanguageRange language = target->layout->get_text_language_range_at(
+					offset, dockit::get_project_word_language());
+				const auto boundary = dockit::word_boundary_at(text, offset, language.language, language.start, language.end);
+				if (boundary) target->set_selection_range(boundary->start, boundary->end);
+			}
+		}
 	}
 }
 

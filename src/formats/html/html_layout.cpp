@@ -1633,6 +1633,64 @@ String HTMLLayout::get_plain_text() const {
 	return state->has_layout() ? state->container->get_paint_recorder().get_plain_text() : String();
 }
 
+dockit::HTMLTextLanguageRange HTMLLayout::get_text_language_range_at(int64_t p_offset, const String& p_fallback) const {
+	dockit::HTMLTextLanguageRange result{ p_fallback.strip_edges().replace("_", "-").to_lower(), 0, 0 };
+	if (!state->has_layout()) return result;
+	const auto& recorder = state->container->get_paint_recorder();
+	const String& text = recorder.get_plain_text();
+	const auto& spans = recorder.get_text_index_spans();
+	if (spans.empty() || text.is_empty()) return result;
+	const int64_t character_offset = CLAMP(p_offset == text.length() && p_offset > 0 ? p_offset - 1 : p_offset,
+		int64_t(0), text.length() - 1);
+	const auto at = std::lower_bound(spans.begin(), spans.end(), character_offset,
+		[](const auto& p_span, int64_t p_index) { return p_span.to <= p_index; });
+	std::size_t selected = at == spans.end() ? spans.size() - 1 : static_cast<std::size_t>(at - spans.begin());
+	if (character_offset < spans[selected].from && selected > 0) {
+		const int64_t previous_distance = character_offset - spans[selected - 1].to;
+		const int64_t next_distance = spans[selected].from - character_offset;
+		if (previous_distance <= next_distance) selected--;
+	}
+	const auto language_for_span = [&](std::size_t p_index) {
+		String language = result.language;
+		const auto source = spans[p_index].source.lock();
+		if (!source) return language;
+		Ref<HTMLNode> node = state->dom->make_node(source);
+		for (Ref<HTMLNode> ancestor = node.is_valid() ? node->get_parent_node() : Ref<HTMLNode>(); ancestor.is_valid(); ancestor = ancestor->get_parent_node()) {
+			HTMLElement* element = Object::cast_to<HTMLElement>(ancestor.ptr());
+			if (element == nullptr) continue;
+			const String declared = element->get_lang().strip_edges();
+			if (declared.is_empty()) continue;
+			return declared.replace("_", "-").to_lower();
+		}
+		return language;
+	};
+	result.language = language_for_span(selected);
+	int64_t line_start = character_offset;
+	int64_t line_end = character_offset;
+	while (line_start > 0 && text[line_start - 1] != '\n' && text[line_start - 1] != '\r' && text[line_start - 1] != '\t') line_start--;
+	while (line_end < text.length() && text[line_end] != '\n' && text[line_end] != '\r' && text[line_end] != '\t') line_end++;
+	result.start = std::max(spans[selected].from, line_start);
+	result.end = std::min(spans[selected].to, line_end);
+	const auto has_hard_separator = [&](int64_t p_from, int64_t p_to) {
+		for (int64_t index = p_from; index < p_to; index++) {
+			if (text[index] == '\n' || text[index] == '\r' || text[index] == '\t') return true;
+		}
+		return false;
+	};
+	for (std::size_t index = selected; index > 0;) {
+		const auto& previous = spans[index - 1];
+		if (previous.to < line_start || language_for_span(index - 1) != result.language || has_hard_separator(previous.to, result.start)) break;
+		result.start = std::max(previous.from, line_start);
+		index--;
+	}
+	for (std::size_t index = selected + 1; index < spans.size(); index++) {
+		const auto& next = spans[index];
+		if (next.from > line_end || language_for_span(index) != result.language || has_hard_separator(result.end, next.from)) break;
+		result.end = std::min(next.to, line_end);
+	}
+	return result;
+}
+
 bool HTMLLayout::has_current_layout() const {
 	return state->has_layout();
 }

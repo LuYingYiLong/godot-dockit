@@ -27,6 +27,11 @@ def create_project(project, repo):
     (addon / "bin").mkdir(parents=True)
     for asset in ("dockit.gdextension", "bin/dockit.windows.template_debug.x86_64.dll"):
         shutil.copyfile(repo / "addons/dockit" / asset, addon / asset)
+    icons = project / "addons/dockit/icons"
+    icons.mkdir(parents=True)
+    for name in ("task_checked.svg", "task_unchecked.svg", "file_broken.svg"):
+        shutil.copyfile(repo / "addons/dockit/icons" / name, icons / name)
+        shutil.copyfile(repo / "addons/dockit/icons" / f"{name}.import", icons / f"{name}.import")
     (project / ".godot").mkdir()
     write(project / ".godot/extension_list.cfg", "res://addons/dockit/dockit.gdextension\n")
     write(project / "project.godot", """config_version=5

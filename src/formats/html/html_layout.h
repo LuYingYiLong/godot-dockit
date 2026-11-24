@@ -43,6 +43,12 @@ namespace dockit {
 	class HTMLTextControlNode;
 	enum class HTMLControlIcon;
 
+	struct HTMLTextLanguageRange {
+		godot::String language;
+		int64_t start = 0;
+		int64_t end = 0;
+	};
+
 	struct HTMLAnchor {
 		godot::Rect2 bounds;
 		std::weak_ptr<const litehtml::element> element;
@@ -144,6 +150,7 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLAnimation;
 	friend class dockit::HTMLDOM;
 	
+	dockit::HTMLTextLanguageRange get_text_language_range_at(int64_t p_offset, const godot::String& p_fallback) const;
 	int64_t document_text_offset(const dockit::HTMLBoundary& p_boundary, bool p_forward = true) const;
 	dockit::HTMLBoundary text_boundary_at(int64_t p_offset) const;
 	godot::TypedArray<godot::Rect2> range_client_rects(const HTMLRange& p_range) const;

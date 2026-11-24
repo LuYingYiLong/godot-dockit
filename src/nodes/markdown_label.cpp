@@ -4,6 +4,7 @@
 #include "formats/html/markup/html_markup.h"
 #include "formats/html/resources/html_resource_paths.h"
 #include "formats/html/layout/html_geometry.h"
+#include "formats/word_boundaries.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -3945,13 +3946,15 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			}
 			if (mouse_button->is_pressed()) {
 				press_position = mouse_button->get_position();
+				const bool double_click = mouse_button->is_double_click();
 				pressed_blank = false;
 				selection_dragged = false;
 				selection_drag_attempt = false;
 				dragging_selection = false;
 				const bool visible = get_html_visible_rect().has_point(press_position);
 				Vector2 html_position;
-				pressed_html_layout = visible ? html_at_position(press_position, html_position) : Ref<HTMLLayout>();
+				int64_t html_text_offset = 0;
+				pressed_html_layout = visible ? html_at_position(press_position, html_position, &html_text_offset) : Ref<HTMLLayout>();
 				pressed_markdown = visible && pressed_html_layout.is_null();
 				bool over_selectable_text = false;
 				if (pressed_html_layout.is_valid()) {
@@ -3976,7 +3979,7 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 					pressed_blank = content == ParagraphHit::OUTSIDE;
 				}
 				const bool selectable = label->is_selection_enabled() && over_selectable_text;
-				if (selectable && pressed_markdown && label->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
+				if (selectable && pressed_markdown && !double_click && label->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
 					selection_drag_attempt = true;
 					pressed_markdown = false;
 					if (!has_focus()) {
@@ -3992,6 +3995,27 @@ void MarkdownLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 						const Vector2i selection = dockit::html_selection_between(selection_origin, selection_origin);
 						selection_anchor = selection.x;
 						selection_caret = selection.y;
+						if (double_click) {
+							std::optional<dockit::WordBoundary> boundary;
+							if (pressed_html_layout.is_valid()) {
+								const int64_t local_offset = pressed_html_layout->selection_point_at(html_position).offset;
+								const String text = pressed_html_layout->get_plain_text();
+								const dockit::HTMLTextLanguageRange language = pressed_html_layout->get_text_language_range_at(
+									local_offset, dockit::get_project_word_language());
+								boundary = dockit::word_boundary_at(text, local_offset, language.language, language.start, language.end);
+								if (boundary) {
+									selection_anchor = html_text_offset + boundary->start;
+									selection_caret = html_text_offset + boundary->end;
+								}
+							}
+							else {
+								boundary = dockit::word_boundary_at(plain_text, selection_origin.offset, dockit::get_project_word_language());
+								if (boundary) {
+									selection_anchor = boundary->start;
+									selection_caret = boundary->end;
+								}
+							}
+						}
 						queue_redraw();
 						if (!has_focus()) grab_focus();
 					}

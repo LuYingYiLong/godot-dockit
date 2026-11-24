@@ -590,6 +590,7 @@
     <ClInclude Include="src\formats\pdf\writer\pdf_writer.h" />
     <ClInclude Include="src\formats\pdf\writer\pdf_writer_internal.h" />
     <ClInclude Include="src\formats\remote_images.h" />
+    <ClInclude Include="src\formats\word_boundaries.h" />
     <ClInclude Include="src\gen\html\include\litehtml.h" />
     <ClInclude Include="src\gen\html\include\litehtml\background.h" />
     <ClInclude Include="src\gen\html\include\litehtml\borders.h" />

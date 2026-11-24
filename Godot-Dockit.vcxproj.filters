@@ -1733,6 +1733,9 @@
     <ClInclude Include="src\formats\remote_images.h">
       <Filter>Header Files\formats</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\word_boundaries.h">
+      <Filter>Header Files\formats</Filter>
+    </ClInclude>
     <ClInclude Include="src\gen\html\include\litehtml.h">
       <Filter>Header Files\gen\html\include</Filter>
     </ClInclude>

@@ -15,6 +15,11 @@ func _ready() -> void:
 
 	viewer.set_document(document)
 	viewer.refresh()
+	for _frame: int in range(4):
+		await get_tree().process_frame
+	_double_click_at(Vector2(48.0, 20.0))
+	_check(not viewer.get_selected_text().is_empty(), "RestructuredtextLabel selects a word on double-click")
+	viewer.clear_selection()
 	var index: Resource = document.get_reference_index()
 	_check(index != null, "the imported document includes the generated reference index")
 	var generated_index: Resource = load("res://dockit_generated/rst_reference_index.tres")
@@ -64,3 +69,14 @@ func _finish() -> void:
 	if failures == 0:
 		print("RST reference checks passed")
 	get_tree().quit(0 if failures == 0 else 1)
+
+
+func _double_click_at(point: Vector2) -> void:
+	for click_index: int in range(2):
+		for state: bool in [true, false]:
+			var click: InputEventMouseButton = InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_LEFT
+			click.pressed = state
+			click.double_click = state and click_index == 1
+			click.position = point
+			get_viewport().push_input(click, true)

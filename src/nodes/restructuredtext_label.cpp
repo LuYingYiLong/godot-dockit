@@ -3,6 +3,7 @@
 #include "formats/rst/rst_document_parser.h"
 #include "formats/rst/rst_reference_index.h"
 #include "formats/html/resources/html_resource_paths.h"
+#include "formats/word_boundaries.h"
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -2449,12 +2450,13 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		if (mouse_button->is_pressed()) {
 			rebuild_layout();
 			grab_focus();
+			const bool double_click = mouse_button->is_double_click();
 			const bool can_select = document_view == nullptr || document_view->is_selection_enabled();
 			selection_drag_attempt = false;
 			dragging_selection = false;
 			selection_dragged = false;
 			press_position = mouse_button->get_position();
-			if (can_select && document_view != nullptr && document_view->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
+			if (can_select && !double_click && document_view != nullptr && document_view->is_drag_and_drop_selection_enabled() && is_position_inside_selection(press_position)) {
 				selection_drag_attempt = true;
 				accept_event();
 				return;
@@ -2464,6 +2466,34 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			if (can_select) {
 				selection_anchor = hit_test_document(mouse_button->get_position());
 				selection_caret = selection_anchor;
+				if (double_click) {
+					bool text_hit = false;
+					for (const RSTCanvasItem& item : items) {
+						if (item.header_paragraph.is_valid() && item.header_text_rect.has_point(press_position)) {
+							text_hit = true;
+							break;
+						}
+						if (item.type == RST_CANVAS_ITEM_TABLE) {
+							for (const RSTTableCell& cell : item.cells) {
+								if (cell.paragraph.is_valid() && cell.text_rect.has_point(press_position)) {
+									text_hit = true;
+									break;
+								}
+							}
+						}
+						else if (item.type != RST_CANVAS_ITEM_IMAGE && item.paragraph.is_valid() && item.text_rect.has_point(press_position)) {
+							text_hit = true;
+						}
+						if (text_hit) break;
+					}
+					if (text_hit) {
+						const auto boundary = dockit::word_boundary_at(plain_text, selection_anchor, dockit::get_project_word_language());
+						if (boundary) {
+							selection_anchor = boundary->start;
+							selection_caret = boundary->end;
+						}
+					}
+				}
 			}
 			set_process_internal(true);
 			queue_redraw();
