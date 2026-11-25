@@ -1416,6 +1416,10 @@ static Ref<Font> first_valid_font(const Ref<Font>& p_primary, const Ref<Font>& p
 }
 
 static Ref<Font> get_span_font(RestructuredtextLabel* p_owner, const RSTInlineSpan& p_span, const Ref<Font>& p_normal_font, const Ref<Font>& p_mono_font) {
+	if (p_span.footnote_reference) {
+		const Ref<Font> footnote_font = get_theme_font_or(p_owner, "RestructuredtextLabel", "footnote_ref_font");
+		return footnote_font.is_valid() ? footnote_font : p_normal_font;
+	}
 	if (p_span.code) {
 		return p_mono_font.is_valid() ? p_mono_font : p_normal_font;
 	}
@@ -1432,16 +1436,21 @@ static Ref<Font> get_span_font(RestructuredtextLabel* p_owner, const RSTInlineSp
 	return p_normal_font;
 }
 
-static void add_spans_to_paragraph(const Ref<TextParagraph>& p_paragraph, const std::vector<RSTInlineSpan>& p_spans, RestructuredtextLabel* p_owner, const Ref<Font>& p_normal_font, const Ref<Font>& p_mono_font, int32_t p_font_size, int32_t p_code_font_size) {
+static void add_spans_to_paragraph(const Ref<TextParagraph>& p_paragraph, std::vector<RSTInlineSpan>& p_spans, RestructuredtextLabel* p_owner, const Ref<Font>& p_normal_font, const Ref<Font>& p_mono_font, int32_t p_font_size, int32_t p_code_font_size) {
 	Ref<StyleBox> inline_code_stylebox = get_theme_stylebox_or(p_owner, "RestructuredtextLabel", "inline_code_style");
 	if (!inline_code_stylebox.is_valid()) {
 		inline_code_stylebox = create_internal_stylebox(Color(0.16, 0.18, 0.20, 1.0), Color(0, 0, 0, 0), 0, 0, 0, 0, 2.0f, 1.0f, 2.0f, 1.0f);
 	}
+	const int32_t extra_font_size = p_owner == nullptr ? 0 : p_owner->get_extra_font_size();
+	const int32_t normal_font_base_size = get_theme_font_size_or(p_owner, "RestructuredtextLabel", "normal_font_size", 16);
+	const int32_t footnote_ref_fallback_size = std::max<int32_t>(1, normal_font_base_size - normal_font_base_size / 4);
+	const int32_t footnote_ref_font_size = std::max<int32_t>(1, get_theme_font_size_or(p_owner, "RestructuredtextLabel", "footnote_ref_font_size", footnote_ref_fallback_size) + extra_font_size);
 
 	int32_t object_index = 0;
-	for (const RSTInlineSpan& span : p_spans) {
+	for (RSTInlineSpan& span : p_spans) {
 		const Ref<Font> font = get_span_font(p_owner, span, p_normal_font, p_mono_font);
-		const int32_t font_size = span.code ? p_code_font_size : p_font_size;
+		const int32_t font_size = span.footnote_reference ? footnote_ref_font_size : (span.code ? p_code_font_size : p_font_size);
+		span.footnote_font_size = span.footnote_reference ? font_size : 0;
 		if (span.code) {
 			const float margin_left = get_stylebox_margin_or(inline_code_stylebox, SIDE_LEFT, 2.0f);
 			if (margin_left > 0.0f) {
@@ -1944,6 +1953,14 @@ void RSTDocumentCanvas::rebuild_layout() {
 			item_text = parse_inline_spans(block.text, document_view, item_spans, &footnotes);
 			break;
 		}
+		if (!block.footnote_label.is_empty()) {
+			const Ref<Font> footnote_text_font = get_theme_font_or(document_view, "RestructuredtextLabel", "footnote_text_font");
+			if (footnote_text_font.is_valid()) {
+				font = footnote_text_font;
+			}
+			font_size = std::max<int32_t>(1, get_theme_font_size_or(document_view, "RestructuredtextLabel", "footnote_text_font_size", body_base) + extra);
+			item.text_color = get_theme_color_or(document_view, "RestructuredtextLabel", "footnote_text_font_color", body_color);
+		}
 
 		if (item_text.is_empty()) {
 			continue;
@@ -1961,7 +1978,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 		item.spans = item_spans;
 		if (!block.footnote_label.is_empty()) {
 			item.footnote_id = block.footnote_label;
-			const int64_t definition_marker_end = item.text.find("]");
+			const int64_t definition_marker_end = item.text.find(".");
 			if (definition_marker_end >= 0) {
 				item.footnote_definition_start = item.paragraph_global_start;
 				item.footnote_definition_end = item.paragraph_global_end;
@@ -2182,17 +2199,21 @@ void RSTDocumentCanvas::draw_span_decorations(const Ref<TextParagraph>& p_paragr
 
 	const Color code_background_color = Color(0.16, 0.18, 0.20, 1.0);
 	Ref<StyleBox> code_stylebox;
+	Ref<StyleBox> footnote_ref_stylebox;
 	if (p_draw_code_backgrounds) {
 		code_stylebox = get_theme_stylebox_or(document_view, "RestructuredtextLabel", "inline_code_style");
 		if (!code_stylebox.is_valid()) {
 			code_stylebox = create_internal_stylebox(code_background_color, Color(0, 0, 0, 0), 0, 0, 0, 0, 2.0f, 1.0f, 2.0f, 1.0f);
 		}
+		footnote_ref_stylebox = get_theme_stylebox_or(document_view, "RestructuredtextLabel", "footnote_ref");
 	}
 	const Color link_color = get_theme_color_or(document_view, "RestructuredtextLabel", "link_color", Color(0.36, 0.62, 1.0, 1.0));
 
 	for (const RSTInlineSpan& span : p_spans) {
-		const bool is_interactive_footnote = span.footnote_reference || span.footnote_definition;
-		if ((!p_draw_code_backgrounds || !span.code) && (!p_draw_link_underlines || (span.link_uri.is_empty() && !is_interactive_footnote))) {
+		const bool draw_code_background = p_draw_code_backgrounds && span.code;
+		const bool draw_footnote_background = p_draw_code_backgrounds && span.footnote_reference && footnote_ref_stylebox.is_valid();
+		const bool draw_link_underline = p_draw_link_underlines && !span.link_uri.is_empty();
+		if (!draw_code_background && !draw_footnote_background && !draw_link_underline) {
 			continue;
 		}
 
@@ -2206,7 +2227,7 @@ void RSTDocumentCanvas::draw_span_decorations(const Ref<TextParagraph>& p_paragr
 				const PackedVector2Array selected_ranges = text_server->shaped_text_get_selection(p_paragraph->get_line_rid(line_index), local_from, local_to);
 				for (int32_t range_index = 0; range_index < selected_ranges.size(); range_index++) {
 					const Vector2 selected_range = selected_ranges[range_index];
-					if (p_draw_code_backgrounds && span.code) {
+					if (draw_code_background) {
 						const float margin_left = get_stylebox_margin_or(code_stylebox, SIDE_LEFT, 2.0f);
 						const float margin_top = get_stylebox_margin_or(code_stylebox, SIDE_TOP, 1.0f);
 						const float margin_right = get_stylebox_margin_or(code_stylebox, SIDE_RIGHT, 2.0f);
@@ -2214,7 +2235,16 @@ void RSTDocumentCanvas::draw_span_decorations(const Ref<TextParagraph>& p_paragr
 						const Rect2 code_rect = Rect2(p_text_rect.position.x + selected_range.x - margin_left, y + 1.0f - margin_top, selected_range.y - selected_range.x + margin_left + margin_right, line_size.y - 2.0f + margin_top + margin_bottom);
 						draw_stylebox_or_rect(code_stylebox, code_rect, code_background_color);
 					}
-					if (p_draw_link_underlines && (!span.link_uri.is_empty() || is_interactive_footnote)) {
+					if (draw_footnote_background) {
+						const float margin_left = get_stylebox_margin_or(footnote_ref_stylebox, SIDE_LEFT, 1.0f);
+						const float margin_top = get_stylebox_margin_or(footnote_ref_stylebox, SIDE_TOP, 0.0f);
+						const float margin_right = get_stylebox_margin_or(footnote_ref_stylebox, SIDE_RIGHT, 1.0f);
+						const float margin_bottom = get_stylebox_margin_or(footnote_ref_stylebox, SIDE_BOTTOM, 0.0f);
+						const float ref_offset = static_cast<float>(span.footnote_font_size) * 0.35f;
+						const Rect2 ref_rect = Rect2(p_text_rect.position.x + selected_range.x - margin_left, y - ref_offset - margin_top, selected_range.y - selected_range.x + margin_left + margin_right, line_size.y + margin_top + margin_bottom);
+						draw_stylebox_or_rect(footnote_ref_stylebox, ref_rect, Color());
+					}
+					if (draw_link_underline) {
 						const float underline_y = y + line_size.y - 2.0f;
 						draw_line(Vector2(p_text_rect.position.x + selected_range.x, underline_y), Vector2(p_text_rect.position.x + selected_range.y, underline_y), link_color, 1.0f);
 					}
@@ -2242,6 +2272,7 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 	const RID canvas = get_canvas_item();
 	const Color code_color = get_theme_color_or(document_view, "RestructuredtextLabel", "inline_code_font_color", Color(0.86, 0.88, 0.91, 1.0));
 	const Color link_color = get_theme_color_or(document_view, "RestructuredtextLabel", "link_color", Color(0.36, 0.62, 1.0, 1.0));
+	const Color footnote_ref_color = get_theme_color_or(document_view, "RestructuredtextLabel", "footnote_ref_font_color", Color(0.809f, 0.809f, 0.809f, 1.0f));
 
 	float y = p_text_rect.position.y;
 	for (int32_t line_index = 0; line_index < p_paragraph->get_line_count(); line_index++) {
@@ -2253,7 +2284,7 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 		}
 		else {
 			for (const RSTInlineSpan& span : p_spans) {
-				const Color span_color = (!span.link_uri.is_empty() || span.footnote_reference || span.footnote_definition) ? link_color : (span.code ? code_color : (span.custom_color ? span.color : p_default_color));
+				const Color span_color = span.footnote_reference ? footnote_ref_color : (!span.link_uri.is_empty() ? link_color : (span.code ? code_color : (span.custom_color ? span.color : p_default_color)));
 				const int64_t local_from = std::max<int64_t>(range.x, span.start);
 				const int64_t local_to = std::min<int64_t>(range.y, span.end);
 				if (local_from >= local_to) {
@@ -2262,7 +2293,11 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 				const PackedVector2Array selected_ranges = text_server->shaped_text_get_selection(line_rid, local_from, local_to);
 				for (int32_t range_index = 0; range_index < selected_ranges.size(); range_index++) {
 					const Vector2 selected_range = selected_ranges[range_index];
-					text_server->shaped_text_draw(line_rid, canvas, line_position, selected_range.x, selected_range.y, span_color);
+					Vector2 draw_position = line_position;
+					if (span.footnote_reference) {
+						draw_position.y -= static_cast<float>(span.footnote_font_size) * 0.35f;
+					}
+					text_server->shaped_text_draw(line_rid, canvas, draw_position, selected_range.x, selected_range.y, span_color);
 				}
 			}
 		}

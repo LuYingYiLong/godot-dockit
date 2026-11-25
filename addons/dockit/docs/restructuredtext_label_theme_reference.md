@@ -31,6 +31,20 @@ The item category is shown in the **RestructuredtextLabel** theme type. For exam
 | Constant | `paragraph_separation` | 10 | Default gap after a block. |
 | Constant | `text_space_before`, `text_space_after` | 0, `paragraph_separation` | Spacing around regular paragraphs. |
 
+### Footnotes
+
+| Category | Item | Default | Description |
+| --- | --- | --- | --- |
+| Font | `footnote_ref_font` | Body font | Font for the superscript reference number. |
+| Font Size | `footnote_ref_font_size` | About 75% of `normal_font_size` (12 px at 16 px) | Size of the superscript reference number. |
+| Color | `footnote_ref_font_color` | `Color(0.809, 0.809, 0.809)` | Reference number color. |
+| StyleBox | `footnote_ref` | Empty | Optional background and margins around a reference number. |
+| Font | `footnote_text_font` | Body font | Font for footnote definitions. |
+| Font Size | `footnote_text_font_size` | `normal_font_size` | Size of footnote definition text. |
+| Color | `footnote_text_font_color` | `font_color` | Color of footnote definition text. |
+
+`extra_font_size` is added to both footnote font sizes. Footnote references remain clickable when a reference StyleBox is assigned.
+
 ### Headings
 
 Headings use numbered item names in the same `RestructuredtextLabel` type. Each level supports `heading_N_font`, `heading_N_font_size`, `heading_N_font_color`, `heading_N_space_before`, and `heading_N_space_after`, where `N` is 1–5.

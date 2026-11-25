@@ -34,6 +34,7 @@ struct RSTInlineSpan {
 	String link_uri;
 	int64_t start = 0;
 	int64_t end = 0;
+	int32_t footnote_font_size = 0;
 	String footnote_id;
 	Color color;
 	bool bold = false;

@@ -51,22 +51,30 @@ func _ready() -> void:
 	_check(FileAccess.file_exists(image_path), "relative image paths resolve from the source document")
 	var download_uri: String = viewer.resolve_link_uri("download", "downloads/notes.txt")
 	_check(FileAccess.file_exists(download_uri), ":download: resolves a relative file path")
-	var footnote_document: String = "[1]_ Footnote reference.\n\n"
+	var footnote_document: String = "[alpha]_ Footnote reference, then [beta]_ second reference.\n\n"
 	for line_index: int in range(40):
 		footnote_document += "Padding paragraph " + str(line_index) + ".\n\n"
-	footnote_document += ".. [1] Footnote definition."
+	footnote_document += ".. [alpha] Alpha footnote definition.\n\n"
+	footnote_document += ".. [beta] Beta footnote definition."
 	viewer.set_rst_text(footnote_document)
 	viewer.refresh()
 	_check(viewer.get_rendered_block_count() > 40, "the footnote fixture is laid out before simulating clicks")
+	viewer.select_all()
+	var rendered_footnote_text: String = viewer.get_selected_text()
+	_check(rendered_footnote_text.contains("1 Footnote reference, then 2 second reference."), "footnote references display sequential numeric labels")
+	_check(rendered_footnote_text.contains("1. Alpha footnote definition.") and rendered_footnote_text.contains("2. Beta footnote definition."), "footnote definitions use Markdown-style number and period labels")
+	viewer.clear_selection()
 	for _frame: int in range(3):
 		await get_tree().process_frame
 	var footnote_scroll: VScrollBar = viewer.get_v_scroll_bar()
 	if footnote_scroll != null:
 		footnote_scroll.set_value(0.0)
-	await _click_at(Vector2(24.0, 20.0))
+	await _click_at(Vector2(16.0, 20.0))
 	_check(footnote_scroll != null and footnote_scroll.get_value() > 0.0, "clicking an RST footnote reference scrolls to its definition")
 	var definition_scroll: float = footnote_scroll.get_value() if footnote_scroll != null else 0.0
-	await _click_at(Vector2(24.0, viewer.size.y - 24.0))
+	if footnote_scroll != null:
+		footnote_scroll.set_value(footnote_scroll.get_max() - footnote_scroll.get_page())
+	await _click_at(Vector2(24.0, viewer.size.y - 80.0))
 	_check(footnote_scroll != null and footnote_scroll.get_value() < definition_scroll, "clicking an RST footnote definition scrolls back to its reference")
 
 	var document_targets: Dictionary = index.call("get_document_targets")

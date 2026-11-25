@@ -242,21 +242,20 @@ namespace {
 	}
 
 String format_footnote_label(const String& p_label, const RSTFootnoteMap* p_footnotes) {
-		return String("[") + get_footnote_display_label(p_label, p_footnotes) + "]";
+		return get_footnote_display_label(p_label, p_footnotes);
 	}
 
 	static String make_footnote_text(const String& p_label, const String& p_text, const RSTFootnoteMap* p_footnotes) {
 		const String display_label = format_footnote_label(p_label, p_footnotes);
 		if (p_text.is_empty()) {
-			return display_label;
+			return display_label + String(".");
 		}
 
-		return display_label + String(" ") + p_text;
+		return display_label + String(". ") + p_text;
 	}
 
 RSTFootnoteMap build_footnote_map(const std::vector<String>& p_lines) {
 		RSTFootnoteMap footnotes;
-		int32_t auto_number = 1;
 
 		for (const String& line : p_lines) {
 			String label;
@@ -278,14 +277,39 @@ RSTFootnoteMap build_footnote_map(const std::vector<String>& p_lines) {
 
 			RSTFootnoteEntry entry;
 			entry.label = label;
-			if (label.begins_with("#")) {
-				entry.display_label = String::num_int64(auto_number++);
-			}
-			else {
-				entry.display_label = label;
-			}
 			footnotes.entries.push_back(entry);
 		}
+
+	int32_t next_number = 1;
+	for (const String& line : p_lines) {
+		int64_t scan_position = 0;
+		while (scan_position < line.length()) {
+			const int64_t open_position = line.find("[", scan_position);
+			if (open_position < 0) {
+				break;
+			}
+
+			const int64_t close_position = line.find("]_", open_position + 1);
+			if (close_position < 0) {
+				break;
+			}
+
+			const String reference_label = line.substr(open_position + 1, close_position - open_position - 1).strip_edges();
+			for (RSTFootnoteEntry& entry : footnotes.entries) {
+				if (entry.label == reference_label && entry.display_label.is_empty()) {
+					entry.display_label = String::num_int64(next_number++);
+					break;
+				}
+			}
+			scan_position = close_position + 2;
+		}
+	}
+
+	for (RSTFootnoteEntry& entry : footnotes.entries) {
+		if (entry.display_label.is_empty()) {
+			entry.display_label = String::num_int64(next_number++);
+		}
+	}
 
 		return footnotes;
 	}
