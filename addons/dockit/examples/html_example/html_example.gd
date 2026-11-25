@@ -36,7 +36,6 @@ func _ready() -> void:
 			html_file_list.append("res://addons/dockit/examples/html_example/html/" + file_name)
 		file_name = directory.get_next()
 	directory.list_dir_end()
-	html_file_list.sort()
 
 	var root: TreeItem = tree.create_item()
 	for html_file: String in html_file_list:

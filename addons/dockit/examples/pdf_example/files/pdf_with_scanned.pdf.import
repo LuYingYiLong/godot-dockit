@@ -1,0 +1,16 @@
+[remap]
+
+importer="dockit.pdf_texture"
+type="PDFTexture"
+uid="uid://cr3ogsq2kwsye"
+path="res://.godot/imported/pdf_with_scanned.pdf-76cd8648673b69c696dc4a0c5da75d38.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/pdf_example/files/pdf_with_scanned.pdf"
+dest_files=["res://.godot/imported/pdf_with_scanned.pdf-76cd8648673b69c696dc4a0c5da75d38.res"]
+
+[params]
+
+page=1
+dpi=144

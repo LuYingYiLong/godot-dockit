@@ -1,0 +1,16 @@
+[remap]
+
+importer="dockit.pdf_texture"
+type="PDFTexture"
+uid="uid://ksydttyslk7i"
+path="res://.godot/imported/landscape_pdf.pdf-93f4116131683c6de99935cca4de8e3a.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/pdf_example/files/landscape_pdf.pdf"
+dest_files=["res://.godot/imported/landscape_pdf.pdf-93f4116131683c6de99935cca4de8e3a.res"]
+
+[params]
+
+page=1
+dpi=144

@@ -1,0 +1,16 @@
+[remap]
+
+importer="dockit.pdf_texture"
+type="PDFTexture"
+uid="uid://dt0muux83w1ld"
+path="res://.godot/imported/pdf_with_tables.pdf-b438df132fb3ce66ce00902dc7d02f69.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/pdf_example/files/pdf_with_tables.pdf"
+dest_files=["res://.godot/imported/pdf_with_tables.pdf-b438df132fb3ce66ce00902dc7d02f69.res"]
+
+[params]
+
+page=1
+dpi=144

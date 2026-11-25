@@ -53,7 +53,7 @@ Code
 .. code-block:: gdscript
 
    func greet(name: String) -> void:
-       print("Hello, ", name)
+	   print("Hello, ", name)
 
 Admonitions
 -----------

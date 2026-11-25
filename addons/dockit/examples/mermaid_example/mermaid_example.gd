@@ -31,7 +31,6 @@ func _ready() -> void:
 			diagram_file_list.append("res://addons/dockit/examples/mermaid_example/diagrams/" + file_name)
 		file_name = directory.get_next()
 	directory.list_dir_end()
-	diagram_file_list.sort()
 
 	var root: TreeItem = tree.create_item()
 	for html_file: String in diagram_file_list:

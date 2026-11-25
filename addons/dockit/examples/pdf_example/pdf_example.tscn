@@ -1,0 +1,91 @@
+[gd_scene format=3 uid="uid://qeddnlh15adb"]
+
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_141if"]
+[ext_resource type="Script" uid="uid://v1r7bqe3viqo" path="res://addons/dockit/examples/pdf_example/pdf_example.gd" id="2_nha8l"]
+
+[node name="PdfExample" type="Control" unique_id=1115670061]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_141if")
+script = ExtResource("2_nha8l")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=2039750426]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Background"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=634462795]
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="PanelContainer/VBoxContainer" unique_id=374931091]
+layout_mode = 2
+theme_type_variation = &"Sidebar"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/PanelContainer" unique_id=1870359460]
+layout_mode = 2
+
+[node name="FileLabel" type="Label" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=1324684268]
+layout_mode = 2
+text = "File:"
+
+[node name="FileOptionButton" type="OptionButton" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=2064236399]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PaginationContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=1209552892]
+layout_mode = 2
+size_flags_horizontal = 10
+
+[node name="BackButton" type="Button" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer" unique_id=867011379]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Back"
+
+[node name="ForwardButton" type="Button" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer" unique_id=1836703943]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Forward"
+
+[node name="PageNumberSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer" unique_id=278292759]
+unique_name_in_owner = true
+layout_mode = 2
+page = 1.0
+suffix = "/0"
+
+[node name="VSeparator" type="VSeparator" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=437679958]
+layout_mode = 2
+
+[node name="ScaleOptionButton" type="OptionButton" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=457542528]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 2
+popup/item_0/text = "Fit Page"
+popup/item_0/id = 0
+popup/item_1/text = "Fit Width"
+popup/item_1/id = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PanelContainer/VBoxContainer" unique_id=12105175]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PageContainer" type="VBoxContainer" parent="PanelContainer/VBoxContainer/ScrollContainer" unique_id=969932663]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[connection signal="item_selected" from="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/FileOptionButton" to="." method="_on_file_option_button_item_selected"]
+[connection signal="pressed" from="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer/BackButton" to="." method="_on_back_button_pressed"]
+[connection signal="pressed" from="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer/ForwardButton" to="." method="_on_forward_button_pressed"]
+[connection signal="value_changed" from="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/PaginationContainer/PageNumberSpinBox" to="." method="_on_page_number_spin_box_value_changed"]
+[connection signal="item_selected" from="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer/ScaleOptionButton" to="." method="_on_scale_option_button_item_selected"]
+[connection signal="resized" from="PanelContainer/VBoxContainer/ScrollContainer" to="." method="_on_scroll_container_resized"]
