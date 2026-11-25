@@ -116,11 +116,6 @@ namespace {
 			return explicit_font_size;
 		}
 
-		const int32_t explicit_constant = get_explicit_theme_constant(p_owner, p_type, p_name);
-		if (explicit_constant > 0) {
-			return explicit_constant;
-		}
-
 		return p_default;
 	}
 

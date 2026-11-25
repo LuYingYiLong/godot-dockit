@@ -48,6 +48,8 @@ Then configure the theme items below in the editor's theme panel or in a script.
 
 `MarkdownLabel.extra_font_size` is added to all font sizes. It defaults to 0.
 
+Add these items under **Font Sizes** in the Theme editor. In a `.tres` Theme resource, use the `MarkdownLabel/font_sizes/` section. Do not add them as constants; MarkdownLabel reads font sizes only from the font-size list.
+
 ### Colors
 
 | Property | Type | Default |

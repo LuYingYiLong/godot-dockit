@@ -12,6 +12,12 @@ font_weight = 700
 [sub_resource type="SystemFont" id="SystemFont_Monospace"]
 font_names = PackedStringArray("Monospace")
 
+[sub_resource type="SystemFont" id="SystemFont_nv72s"]
+font_names = PackedStringArray("Monospace")
+
+[sub_resource type="SystemFont" id="SystemFont_d45vb"]
+font_names = PackedStringArray("Sans-Serif")
+
 [sub_resource type="SystemFont" id="SystemFont_Italic"]
 font_names = PackedStringArray("Sans-Serif")
 font_italic = true
@@ -127,10 +133,10 @@ resource_name = "reStructuredText Theme"
 RestructuredtextLabel/colors/admonition_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/admonition_header_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/code_block_font_color = Color(1, 1, 1, 1)
-RestructuredtextLabel/colors/footnote_ref_font_color = Color(1, 1, 1, 1)
-RestructuredtextLabel/colors/footnote_text_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/font_separator_color = Color(1, 1, 1, 1)
+RestructuredtextLabel/colors/footnote_ref_font_color = Color(0.80784315, 0.80784315, 0.80784315, 1)
+RestructuredtextLabel/colors/footnote_text_font_color = Color(0.8745098, 0.8745098, 0.8745098, 0.5019608)
 RestructuredtextLabel/colors/heading_1_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/heading_2_font_color = Color(1, 1, 1, 1)
 RestructuredtextLabel/colors/heading_3_font_color = Color(1, 1, 1, 1)
@@ -175,8 +181,6 @@ RestructuredtextLabel/constants/text_space_after = 12
 RestructuredtextLabel/constants/text_space_before = 0
 RestructuredtextLabel/font_sizes/admonition_font_size = 16
 RestructuredtextLabel/font_sizes/code_block_font_size = 14
-RestructuredtextLabel/font_sizes/footnote_ref_font_size = 12
-RestructuredtextLabel/font_sizes/footnote_text_font_size = 16
 RestructuredtextLabel/font_sizes/heading_1_font_size = 30
 RestructuredtextLabel/font_sizes/heading_2_font_size = 24
 RestructuredtextLabel/font_sizes/heading_3_font_size = 21
@@ -190,8 +194,8 @@ RestructuredtextLabel/font_sizes/table_header_font_size = 16
 RestructuredtextLabel/fonts/bold_font = SubResource("SystemFont_Bold")
 RestructuredtextLabel/fonts/bold_italics_font = SubResource("SystemFont_BoldItalic")
 RestructuredtextLabel/fonts/code_block_font = SubResource("SystemFont_Monospace")
-RestructuredtextLabel/fonts/footnote_ref_font = SubResource("SystemFont_Body")
-RestructuredtextLabel/fonts/footnote_text_font = SubResource("SystemFont_Body")
+RestructuredtextLabel/fonts/footnote_ref_font = SubResource("SystemFont_nv72s")
+RestructuredtextLabel/fonts/footnote_text_font = SubResource("SystemFont_d45vb")
 RestructuredtextLabel/fonts/heading_1_font = SubResource("SystemFont_Bold")
 RestructuredtextLabel/fonts/heading_2_font = SubResource("SystemFont_Bold")
 RestructuredtextLabel/fonts/heading_3_font = SubResource("SystemFont_Bold")
