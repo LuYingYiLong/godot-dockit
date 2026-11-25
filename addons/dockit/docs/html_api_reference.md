@@ -166,8 +166,6 @@ The color input opens a canvas-drawn picker with saturation, brightness, hue, an
 
 File entries use the same `{name, value}` structure as text entries. Each file value is an `HTMLInputFile` with `name`, `size`, and `read_bytes(offset, count)`. The picker exposes the file name and content without exposing its system path. An image submitter contributes two coordinate entries, prefixed with its name when present.
 
-The [GDScript WPT ports](../../../tests/html/wpt/dom.gd) exercise selected tree and selector behaviors through the public API. Each case identifies its upstream source. [Building and running the HTML tests](../../../CONTRIBUTING.md#build-and-test)
-
 ## Lists and preformatted text
 
 `HTMLPreElement` and `HTMLUListElement` expose the shared `HTMLElement` API. `HTMLOListElement` reflects `start`, `reversed`, and `type`. `HTMLLIElement` reflects `value` and the legacy `type` attribute. When `start` is absent, the property reads as `1`, and a reversed list starts numbering from its item count. `<aside>` uses `HTMLElement`. [WHATWG grouping content](https://html.spec.whatwg.org/multipage/grouping-content.html)
