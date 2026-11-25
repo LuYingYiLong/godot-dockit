@@ -20,7 +20,7 @@ Connect the `link_pressed` signal on a `RestructuredtextLabel` node to load anot
 
 Assign an imported `HTMLDocument` to an `HTMLLabel` to render standalone `.html` or `.htm` files with CSS. Query and update DOM elements, listen for HTML events, and attach GDScript behavior scripts for interactive documents.
 
-HTMLLabel can play local videos with [EIRTeam.FFmpeg](https://github.com/EIRTeam/EIRTeam.FFmpeg/releases/tag/autobuild-2026-10-07-13-22) or [godot-vlc](https://github.com/xiSage/godot-vlc/releases/tag/v1.3.0). Install either add-on in your project and use `<video src="clip.mp4" controls>`. Imported HTML documents carry their local video sources into exports. For video paths set at runtime, include the files in the export preset. Without a decoder, the video box is black and its controls are disabled.
+HTMLLabel can play local videos when a compatible decoder add-on is installed. Use `<video src="clip.mp4" controls>`. Imported HTML documents carry their local video sources into exports. For video paths set at runtime, include the files in the export preset. Without a decoder, the video box is black and its controls are disabled. See [Optional Add-ons](#optional-add-ons) for supported integrations.
 
 ### <img src="addons/dockit/icons/latex_label.svg" width=18 /> <img src="addons/dockit/icons/latex_label_3d.svg" width=18 /> <img src="addons/dockit/icons/mermaid_label.svg" width=18 /> LaTeX formulas and Mermaid diagrams
 
@@ -29,6 +29,15 @@ Display them in Markdown or in standalone nodes. Use `LatexLabel` in UI, `LatexL
 ### <img src="addons/dockit/icons/pdf_texture.svg" width=18 /> PDF textures and scripting
 
 On Windows x64, import a PDF page as a `PDFTexture` or read and edit PDFs from GDScript. Add `dockit_pdf_reader` to a Windows x64 export preset to include PDFium for runtime reading and writing.
+
+## Optional Add-ons
+
+These integrations are detected at runtime.
+
+- **[Godot-FmodPlayer](https://github.com/LuYingYiLong/godot-fmodplayer)** — When the FMOD add-on is available, `HTMLLabel` can play FMOD audio resources and select FMOD buses with `use_fmod_bus`.
+- **[Godot-Jieba](https://github.com/LuYingYiLong/godot-jieba)** — Improves Simplified Chinese word selection on double-click in `MarkdownLabel`, `RestructuredtextLabel`, and `HTMLLabel`. Dockit falls back to Godot's TextServer word breaking when Jieba is unavailable.
+- **Video decoders** — [EIRTeam.FFmpeg](https://github.com/EIRTeam/EIRTeam.FFmpeg/releases/tag/autobuild-2026-10-07-13-22) and [godot-vlc](https://github.com/xiSage/godot-vlc/releases/tag/v1.3.0) enable local HTML `<video>` playback. `HTMLLabel` can select an available backend automatically or use a configured backend.
+- **[Godot-GIF](https://github.com/godothub/godot-gif)** — An add-on that provides `GIFTexture` or `GIFReader` enables animated GIF image handling in Markdown and remote image loading.
 
 ## Examples
 
