@@ -45,6 +45,6 @@ Behavior local storage now uses `user://dockit/html_storage/`. To retain existin
 Godot Dockit is licensed under the [MIT License](LICENSE.txt). Third-party components retain their upstream licenses:
 
 - litehtml: BSD 3-Clause; Gumbo and Material Icons: Apache 2.0
-- godot-cpp and the PDFium binary distribution: MIT; PDFium's bundled dependencies retain their upstream licenses
+- PDFium binary distribution: MIT; PDFium retains its upstream license and bundled dependencies retain theirs
 - Merman: MIT and Apache 2.0; bundled components retain their upstream licenses
 - Open Sans: SIL Open Font License; MicroTeX, TinyXML-2, Unicode data, and hyphenation data retain their upstream licenses

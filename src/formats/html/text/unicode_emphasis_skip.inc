@@ -1,6 +1,6 @@
 // Unicode 16.0.0 character categories and normalization for CSS text emphasis.
 // Source: https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 constexpr CodepointRange EMPHASIS_SKIP_RANGES[]{
 	{ 0x0000, 0x0022 },
 	{ 0x0027, 0x002A },

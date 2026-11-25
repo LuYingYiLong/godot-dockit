@@ -1,6 +1,6 @@
 // Unicode 15.1 General_Category, Script_Extensions, and East_Asian_Width data.
 // Data: https://www.unicode.org/Public/15.1.0/ucd/
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 { 0x0020, 0x0020, TextClass::separator },
 { 0x0021, 0x0023, TextClass::punctuation },
 { 0x0025, 0x002a, TextClass::punctuation },

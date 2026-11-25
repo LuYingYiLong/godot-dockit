@@ -1,7 +1,7 @@
 // Unicode 15.1 Line_Break and East_Asian_Width ranges used by CSS wrapping.
 // Data: https://www.unicode.org/Public/15.1.0/ucd/LineBreak.txt
 //       https://www.unicode.org/Public/15.1.0/ucd/EastAsianWidth.txt
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 { 0x0000, 0x0008, LineGroup::combining },
 { 0x0009, 0x0009, LineGroup::forbid_before },
 { 0x000e, 0x001f, LineGroup::combining },

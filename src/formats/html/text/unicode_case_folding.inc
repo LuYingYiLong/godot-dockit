@@ -1,6 +1,6 @@
 // Unicode 16.0.0 Default Case Folding, generated from CPython str.casefold().
 // Source data: https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 static constexpr CaseFoldRange CASE_FOLD_RANGES[] = {
 	{ 0x0041, 0x005A, 32, 1 },
 	{ 0x00B5, 0x00B5, 775, 1 },

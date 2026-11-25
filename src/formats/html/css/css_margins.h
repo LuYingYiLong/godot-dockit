@@ -1,7 +1,7 @@
 // Portions adapted from litehtml.
 // Copyright (c) 2013, Yuri Kobets (tordex). All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
-// See addons/dockit/LiteHTML-LICENSES/litehtml.txt for the license and disclaimer.
+// See README.md for the third-party license summary.
 
 #ifndef LH_CSS_MARGINS_H
 #define LH_CSS_MARGINS_H

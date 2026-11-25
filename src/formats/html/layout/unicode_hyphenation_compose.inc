@@ -1,6 +1,6 @@
 // Unicode 16.0.0 canonical spellings for the embedded dictionary alphabets.
 // Source: https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 	{ 0x0041, 0x0300, 0x00C0 },
 	{ 0x0041, 0x0301, 0x00C1 },
 	{ 0x0041, 0x0302, 0x00C2 },

@@ -1,6 +1,7 @@
 from hashlib import sha256
 from json import loads
 from pathlib import Path
+from pathlib import PurePosixPath
 from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -9,6 +10,14 @@ from zipfile import ZipFile
 VERSION = "0.9.3"
 ARCHIVE = "merman-sdk-native-full-x86_64-pc-windows-msvc.zip"
 SHA256 = "75c7f4d4b10a750152d93aead9d8c1d6bc44ef352d8d746f3bcbb1eaa622e5cf"
+
+
+def is_license_material(path: str) -> bool:
+    return any(
+        any(marker in part.casefold() for marker in ("licen", "notice", "copying", "copyright"))
+        or part.casefold() == "source_availability.md"
+        for part in PurePosixPath(path).parts
+    )
 
 
 def main() -> None:
@@ -35,7 +44,8 @@ def main() -> None:
             raise SystemExit("Merman SDK checksum mismatch")
         staging = Path(temp_dir) / "sdk"
         with ZipFile(archive) as package:
-            package.extractall(staging)
+            members = [member for member in package.infolist() if not is_license_material(member.filename)]
+            package.extractall(staging, members=members)
         staging.rename(sdk_dir)
     print(f"Installed Merman SDK in {sdk_dir}")
 

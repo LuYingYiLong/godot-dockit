@@ -1,6 +1,6 @@
 // Unicode 15.1 Word_Break classes for retaining punctuation inside words.
 // Source: https://www.unicode.org/Public/15.1.0/ucd/auxiliary/WordBreakProperty.txt
-// See addons/dockit/LiteHTML-LICENSES/unicode-case-folding.txt.
+// See README.md for the third-party license summary.
 	{ 0x0022, 0x0022, WordClass::hebrew_quote },
 	{ 0x0027, 0x0027, WordClass::shared_punctuation },
 	{ 0x002C, 0x002C, WordClass::number_punctuation },

@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from hashlib import file_digest
 from pathlib import Path
+from pathlib import PurePosixPath
 from shutil import copyfileobj
 from tarfile import open as open_archive
 from tempfile import TemporaryDirectory
@@ -11,7 +12,14 @@ from urllib.request import urlopen
 RELEASE = "chromium/8152"
 ARCHIVE = "pdfium-win-x64.tgz"
 SHA256 = "cee2b0e9990bc67c0721774932961b9dbf2766046c10eec925acd4cfba6fdfe3"
-SDK_FILES = ("include/fpdfview.h", "bin/pdfium.dll", "LICENSE", "licenses/pdfium.txt")
+SDK_FILES = ("include/fpdfview.h", "bin/pdfium.dll")
+
+
+def is_license_material(path: str) -> bool:
+    return any(
+        any(marker in part.casefold() for marker in ("licen", "notice", "copying", "copyright"))
+        for part in PurePosixPath(path).parts
+    )
 
 
 def check_sdk(directory: Path) -> bool:
@@ -47,7 +55,8 @@ def main() -> None:
             source.seek(0)
             staging = Path(temp_dir) / "sdk"
             with open_archive(fileobj=source, mode="r:gz") as package:
-                package.extractall(staging, filter="data")
+                members = (member for member in package.getmembers() if not is_license_material(member.name))
+                package.extractall(staging, members=members, filter="data")
 
         if not check_sdk(staging):
             raise SystemExit("PDFium SDK archive is missing required files")

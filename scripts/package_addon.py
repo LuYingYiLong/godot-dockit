@@ -9,15 +9,6 @@ from shutil import copy2, copytree, ignore_patterns
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDON = ROOT / "addons/dockit"
-PACKAGE_EXCLUDES = (
-    "bin",
-    "*.import",
-    ".godot",
-    "README*",
-    "*LICENSE*",
-    "*COPYING*",
-    "*NOTICE*",
-)
 
 
 def read_libraries():
@@ -68,25 +59,10 @@ def assemble(destination):
         ADDON,
         destination,
         dirs_exist_ok=True,
-        ignore=ignore_patterns(*PACKAGE_EXCLUDES),
+        ignore=ignore_patterns("bin", "*.import", ".godot"),
     )
 
     require_file(destination / "bin/pdfium.dll")
-    packaged_notices = [
-        path
-        for path in destination.rglob("*")
-        if path.is_file()
-        and any(marker in path.name.upper() for marker in ("LICENSE", "COPYING", "NOTICE", "README"))
-    ]
-    if packaged_notices:
-        raise SystemExit(f"Unexpected documentation or license files in package: {packaged_notices}")
-    packaged_notice_dirs = [
-        path
-        for path in destination.rglob("*")
-        if path.is_dir() and "LICENSE" in path.name.upper()
-    ]
-    if packaged_notice_dirs:
-        raise SystemExit(f"Unexpected license directories in package: {packaged_notice_dirs}")
     print(f"Verified all {len(libraries)} GDExtension libraries in {destination}")
 
 
