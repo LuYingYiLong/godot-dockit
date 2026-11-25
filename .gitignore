@@ -370,8 +370,5 @@ FodyWeavers.xsd
 /src/gen/html/
 /src/thirdparty/merman-sdk/
 /src/thirdparty/pdfium-sdk/
-AGENTS.md
 .vscode/
-!addons/markdown_label/bin
 
-CLAUDE.md
