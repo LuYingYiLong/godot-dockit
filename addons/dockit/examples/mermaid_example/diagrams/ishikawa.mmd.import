@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://vdvcv2g7u231"
+path="res://.godot/imported/ishikawa.mmd-909e62f5ccf2df3cdbed3d42aee464e7.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/ishikawa.mmd"
+dest_files=["res://.godot/imported/ishikawa.mmd-909e62f5ccf2df3cdbed3d42aee464e7.res"]
+
+[params]
+

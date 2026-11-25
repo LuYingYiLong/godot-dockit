@@ -1,0 +1,26 @@
+[gd_resource type="Theme" format=3 uid="uid://fuqrhbfft60e"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_f0fve"]
+
+[resource]
+resource_name = "LatexLabel Theme"
+LatexLabel/colors/font_color = Color(1, 1, 1, 1)
+LatexLabel/font_sizes/font_size = 24
+LatexLabel/styles/focus = SubResource("StyleBoxFlat_focus")
+LatexLabel/styles/normal = SubResource("StyleBoxEmpty_f0fve")

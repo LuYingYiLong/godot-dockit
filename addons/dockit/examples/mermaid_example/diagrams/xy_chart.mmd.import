@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://dpbn5buct3snt"
+path="res://.godot/imported/xy_chart.mmd-56f0dc0217e8bd13e9b3331951cc3960.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/xy_chart.mmd"
+dest_files=["res://.godot/imported/xy_chart.mmd-56f0dc0217e8bd13e9b3331951cc3960.res"]
+
+[params]
+

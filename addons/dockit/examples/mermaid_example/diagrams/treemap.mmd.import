@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://du337oame4o2m"
+path="res://.godot/imported/treemap.mmd-0f160e66aac623b23b990217475841f9.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/treemap.mmd"
+dest_files=["res://.godot/imported/treemap.mmd-0f160e66aac623b23b990217475841f9.res"]
+
+[params]
+

@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://vcheqh1xm2vu"
+path="res://.godot/imported/sequence_diagram.mmd-99324232e7dd51bf43f631a280843509.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/sequence_diagram.mmd"
+dest_files=["res://.godot/imported/sequence_diagram.mmd-99324232e7dd51bf43f631a280843509.res"]
+
+[params]
+

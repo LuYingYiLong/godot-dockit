@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://swomoo6ftovt"
+path="res://.godot/imported/user_journey.mmd-ebd5d2eadec5c31c261abec0b12c1547.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/user_journey.mmd"
+dest_files=["res://.godot/imported/user_journey.mmd-ebd5d2eadec5c31c261abec0b12c1547.res"]
+
+[params]
+

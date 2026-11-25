@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://bl25c05cnwxx2"
+path="res://.godot/imported/timeline.mmd-0c3b3848874a9399bc2ef115199fcf8a.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/timeline.mmd"
+dest_files=["res://.godot/imported/timeline.mmd-0c3b3848874a9399bc2ef115199fcf8a.res"]
+
+[params]
+

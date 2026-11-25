@@ -61,7 +61,7 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HeaderContainer" unique_id=1481249293]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"LargeLabel"
+theme_type_variation = &"HeaderLarge"
 text = "Title"
 
 [node name="ResetButton" type="Button" parent="PanelContainer/HSplitContainer/PanelContainer/VBoxContainer/HeaderContainer" unique_id=1472819447]

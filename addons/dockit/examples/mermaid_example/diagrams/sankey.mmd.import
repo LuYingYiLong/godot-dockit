@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://g7t46te65wfx"
+path="res://.godot/imported/sankey.mmd-15d86814f3c91e88d07b5e81fb76bb21.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/sankey.mmd"
+dest_files=["res://.godot/imported/sankey.mmd-15d86814f3c91e88d07b5e81fb76bb21.res"]
+
+[params]
+

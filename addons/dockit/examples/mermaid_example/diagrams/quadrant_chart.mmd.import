@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://c84hcqmoc4t0f"
+path="res://.godot/imported/quadrant_chart.mmd-74f96fba751825beef1c0ae7387ccc5f.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/quadrant_chart.mmd"
+dest_files=["res://.godot/imported/quadrant_chart.mmd-74f96fba751825beef1c0ae7387ccc5f.res"]
+
+[params]
+

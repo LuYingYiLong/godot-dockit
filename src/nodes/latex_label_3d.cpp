@@ -30,6 +30,8 @@ LatexLabel3D::LatexLabel3D() {
 	material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
 	material->set_texture_filter(BaseMaterial3D::TEXTURE_FILTER_LINEAR);
 	material->set_flag(BaseMaterial3D::FLAG_BILLBOARD_KEEP_SCALE, true);
+	empty_mesh.instantiate();
+	set_mesh(empty_mesh);
 	quad.instantiate();
 	quad->set_material(material);
 	set_cast_shadows_setting(SHADOW_CASTING_SETTING_OFF);
@@ -379,7 +381,7 @@ void LatexLabel3D::rebuild() {
 	render->parse(formula, font_size, display_mode ? TeXRender::STYLE_DISPLAY : TeXRender::STYLE_TEXT);
 	update_configuration_warnings();
 	if (!render->is_valid()) {
-		set_mesh(Ref<Mesh>());
+		set_mesh(empty_mesh);
 		if (viewport != nullptr) {
 			viewport->set_update_mode(SubViewport::UPDATE_DISABLED);
 			viewport->set_size(Vector2i(2, 2));

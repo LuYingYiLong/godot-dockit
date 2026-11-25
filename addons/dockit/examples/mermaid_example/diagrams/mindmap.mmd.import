@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://dquovqxeefucc"
+path="res://.godot/imported/mindmap.mmd-4edc56e93bd2d0acf88b1d2ef34abbce.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/mindmap.mmd"
+dest_files=["res://.godot/imported/mindmap.mmd-4edc56e93bd2d0acf88b1d2ef34abbce.res"]
+
+[params]
+

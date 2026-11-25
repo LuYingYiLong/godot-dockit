@@ -94,6 +94,7 @@ func _ready() -> void:
 	_code_scroll_bar.value_changed.connect(_on_code_scroll_changed)
 	_preview_scroll_bar.value_changed.connect(_on_preview_scroll_changed)
 
+	_code_edit.caret_blink = true
 	_code_edit.text = DEFAULT_RST
 	_update_preview()
 
@@ -137,15 +138,15 @@ func _sync_code_from_preview() -> void:
 	_syncing_scroll = false
 
 
-func _scroll_fraction(p_scroll_bar: VScrollBar) -> float:
-	var scroll_range: float = _scrollable_range(p_scroll_bar)
+func _scroll_fraction(scroll_bar: VScrollBar) -> float:
+	var scroll_range: float = _scrollable_range(scroll_bar)
 	if scroll_range <= 0.0:
 		return 0.0
-	return clampf(p_scroll_bar.value / scroll_range, 0.0, 1.0)
+	return clampf(scroll_bar.value / scroll_range, 0.0, 1.0)
 
 
-func _scrollable_range(p_scroll_bar: VScrollBar) -> float:
-	return maxf(0.0, p_scroll_bar.max_value - p_scroll_bar.page)
+func _scrollable_range(scroll_bar: VScrollBar) -> float:
+	return maxf(0.0, scroll_bar.max_value - scroll_bar.page)
 
 
 func _on_restructuredtext_label_link_pressed(uri: String) -> void:

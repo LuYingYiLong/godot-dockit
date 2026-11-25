@@ -1,0 +1,110 @@
+[gd_scene format=3 uid="uid://dcoi7535jkbov"]
+
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_84qmf"]
+[ext_resource type="Script" uid="uid://blo35nsm7bbsy" path="res://addons/dockit/examples/mermaid_example/mermaid_example.gd" id="2_rt17f"]
+[ext_resource type="Theme" uid="uid://dh02l0kc5xwy3" path="res://addons/dockit/examples/mermaid_example/mermaid_label_theme.tres" id="3_3hd6i"]
+[ext_resource type="MermaidDocument" uid="uid://bmhp4hwpqtowl" path="res://addons/dockit/examples/mermaid_example/diagrams/er_diagram.mmd" id="3_c127y"]
+
+[node name="MermaidExample" type="Control" unique_id=740938570]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_84qmf")
+script = ExtResource("2_rt17f")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=903196329]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Background"
+
+[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer" unique_id=254344621]
+layout_mode = 2
+split_offsets = PackedInt32Array(312)
+split_offset = 312
+
+[node name="Sidebar" type="PanelContainer" parent="PanelContainer/HSplitContainer" unique_id=43188131]
+layout_mode = 2
+theme_type_variation = &"Sidebar"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HSplitContainer/Sidebar" unique_id=155477420]
+layout_mode = 2
+
+[node name="SearchLineEdit" type="LineEdit" parent="PanelContainer/HSplitContainer/Sidebar/VBoxContainer" unique_id=1624302384]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Search"
+
+[node name="Tree" type="Tree" parent="PanelContainer/HSplitContainer/Sidebar/VBoxContainer" unique_id=830585547]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HSplitContainer" unique_id=1603503297]
+layout_mode = 2
+
+[node name="HeaderContainer" type="HBoxContainer" parent="PanelContainer/HSplitContainer/VBoxContainer" unique_id=381677350]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="PanelContainer/HSplitContainer/VBoxContainer/HeaderContainer" unique_id=1249939814]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeaderLarge"
+text = "Title"
+
+[node name="ResetButton" type="Button" parent="PanelContainer/HSplitContainer/VBoxContainer/HeaderContainer" unique_id=1018773813]
+layout_mode = 2
+size_flags_vertical = 4
+text = "Reset"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/HSplitContainer/VBoxContainer" unique_id=814867027]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer" unique_id=1173874856]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+gutters_draw_line_numbers = true
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer" unique_id=1992820142]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MermaidLabel" type="MermaidLabel" parent="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer/ScrollContainer" unique_id=1496968804]
+document = ExtResource("3_c127y")
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("3_3hd6i")
+
+[node name="ErrorHintLabel" type="Label" parent="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer" unique_id=2143448613]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+
+[node name="PreviewTimer" type="Timer" parent="." unique_id=788566768]
+unique_name_in_owner = true
+wait_time = 0.25
+one_shot = true
+
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/Sidebar/VBoxContainer/SearchLineEdit" to="." method="_on_search_line_edit_text_changed"]
+[connection signal="item_selected" from="PanelContainer/HSplitContainer/Sidebar/VBoxContainer/Tree" to="." method="_on_tree_item_selected"]
+[connection signal="pressed" from="PanelContainer/HSplitContainer/VBoxContainer/HeaderContainer/ResetButton" to="." method="_on_reset_button_pressed"]
+[connection signal="text_changed" from="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer/CodeEdit" to="." method="_on_code_edit_text_changed"]
+[connection signal="render_finished" from="PanelContainer/HSplitContainer/VBoxContainer/HBoxContainer/ScrollContainer/MermaidLabel" to="." method="_on_mermaid_label_render_finished"]
+[connection signal="timeout" from="PreviewTimer" to="." method="_on_preview_timer_timeout"]

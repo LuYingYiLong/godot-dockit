@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://cd8pwxiao1ksv"
+path="res://.godot/imported/requirement_diagram.mmd-b152d86a98cb588e36a2d200f529daf7.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/requirement_diagram.mmd"
+dest_files=["res://.godot/imported/requirement_diagram.mmd-b152d86a98cb588e36a2d200f529daf7.res"]
+
+[params]
+

@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://b3wx232o3gsvc"
+path="res://.godot/imported/gantt.mmd-4fa4e50ed5f03c326ddbc4a559f49e8d.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/gantt.mmd"
+dest_files=["res://.godot/imported/gantt.mmd-4fa4e50ed5f03c326ddbc4a559f49e8d.res"]
+
+[params]
+

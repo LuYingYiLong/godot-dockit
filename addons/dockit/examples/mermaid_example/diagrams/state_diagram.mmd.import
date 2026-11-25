@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://ciydx2xpgejel"
+path="res://.godot/imported/state_diagram.mmd-71015fe0304a3cbce188143a803d1af1.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/state_diagram.mmd"
+dest_files=["res://.godot/imported/state_diagram.mmd-71015fe0304a3cbce188143a803d1af1.res"]
+
+[params]
+

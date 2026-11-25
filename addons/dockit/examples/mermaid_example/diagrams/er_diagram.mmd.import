@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://bmhp4hwpqtowl"
+path="res://.godot/imported/er_diagram.mmd-f0428749e5ab9c4ddaecebefc67ce334.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/er_diagram.mmd"
+dest_files=["res://.godot/imported/er_diagram.mmd-f0428749e5ab9c4ddaecebefc67ce334.res"]
+
+[params]
+

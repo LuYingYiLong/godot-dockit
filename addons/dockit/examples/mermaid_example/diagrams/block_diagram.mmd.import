@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://ce1n31ev8jxan"
+path="res://.godot/imported/block_diagram.mmd-2be8dd0f65044bb41411575ecfe13075.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/block_diagram.mmd"
+dest_files=["res://.godot/imported/block_diagram.mmd-2be8dd0f65044bb41411575ecfe13075.res"]
+
+[params]
+

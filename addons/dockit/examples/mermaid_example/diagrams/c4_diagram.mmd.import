@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://dqkvdchq3svek"
+path="res://.godot/imported/c4_diagram.mmd-e2a6776aa6c345dc2dbbc25b715dbebb.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/c4_diagram.mmd"
+dest_files=["res://.godot/imported/c4_diagram.mmd-e2a6776aa6c345dc2dbbc25b715dbebb.res"]
+
+[params]
+

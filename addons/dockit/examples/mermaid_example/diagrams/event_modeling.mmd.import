@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://d2mxhb11r07eu"
+path="res://.godot/imported/event_modeling.mmd-0d86a10d97380810febdeb0201d7cbb7.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/event_modeling.mmd"
+dest_files=["res://.godot/imported/event_modeling.mmd-0d86a10d97380810febdeb0201d7cbb7.res"]
+
+[params]
+

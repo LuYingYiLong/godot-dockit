@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://qie1lr65x2q4"
+path="res://.godot/imported/pie_chart.mmd-4f2def8bd0692d87116fac84e35f7276.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/pie_chart.mmd"
+dest_files=["res://.godot/imported/pie_chart.mmd-4f2def8bd0692d87116fac84e35f7276.res"]
+
+[params]
+

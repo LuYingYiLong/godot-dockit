@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://0q6vvij6xoun"
+path="res://.godot/imported/zen_uml.mmd-509b009acf50042c5b697cf9ddc9848f.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/zen_uml.mmd"
+dest_files=["res://.godot/imported/zen_uml.mmd-509b009acf50042c5b697cf9ddc9848f.res"]
+
+[params]
+

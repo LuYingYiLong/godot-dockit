@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://w1ev6chwoj1l"
+path="res://.godot/imported/packet.mmd-0e0aa0c11c3d6455a3e68e23872e354a.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/packet.mmd"
+dest_files=["res://.godot/imported/packet.mmd-0e0aa0c11c3d6455a3e68e23872e354a.res"]
+
+[params]
+

@@ -298,6 +298,7 @@ LargeLabel/font_sizes/font_size = 32
 LargeLabel/fonts/font = SubResource("FontVariation_2q7up")
 LineEdit/styles/focus = SubResource("StyleBoxFlat_37pde")
 LineEdit/styles/normal = SubResource("StyleBoxFlat_fvvjf")
+OptionButton/constants/arrow_margin = 12
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_jel17")
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_g4o62")
 PopupMenu/styles/panel = SubResource("StyleBoxFlat_xqp8j")

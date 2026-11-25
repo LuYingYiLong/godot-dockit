@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://lexwub8ibbvv"
+path="res://.godot/imported/flowchart.mmd-ee8deefb59973e10e9b9991fcd1a500e.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/flowchart.mmd"
+dest_files=["res://.godot/imported/flowchart.mmd-ee8deefb59973e10e9b9991fcd1a500e.res"]
+
+[params]
+

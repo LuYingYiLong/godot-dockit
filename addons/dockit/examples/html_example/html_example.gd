@@ -108,14 +108,14 @@ func _on_reset_button_pressed() -> void:
 	_refresh_preview()
 
 
-func _load_example(p_html_path: String, p_title: String) -> void:
+func _load_example(html_path: String, title: String) -> void:
 	preview_timer.stop()
-	selected_html_path = p_html_path
-	title_label.text = p_title
-	var source_html: String = _read_file(p_html_path)
+	selected_html_path = html_path
+	title_label.text = title
+	var source_html: String = _read_file(html_path)
 	original_html_source = _remove_stylesheet_blocks(source_html)
 	original_css_source = _extract_stylesheet(source_html)
-	var script_info: Dictionary = _read_gdscript_info(source_html, p_html_path)
+	var script_info: Dictionary = _read_gdscript_info(source_html, html_path)
 	original_gdscript_source = script_info.get("source", "")
 
 	is_loading_source = true
@@ -164,12 +164,12 @@ func _refresh_preview() -> void:
 		_remove_preview_script(previous_script_path)
 
 
-func _compile_preview_script(p_source: String) -> GDScript:
-	if p_source.is_empty():
+func _compile_preview_script(source: String) -> GDScript:
+	if source.is_empty():
 		return null
 
 	var script: GDScript = GDScript.new()
-	script.source_code = p_source
+	script.source_code = source
 	var error: Error = script.reload()
 	if error != OK:
 		push_error("The edited GDScript could not be compiled for this preview.")
@@ -177,12 +177,12 @@ func _compile_preview_script(p_source: String) -> GDScript:
 	return script
 
 
-func _read_gdscript_info(p_html: String, p_html_path: String) -> Dictionary:
+func _read_gdscript_info(html: String, html_path: String) -> Dictionary:
 	var script_pattern: RegEx = RegEx.new()
 	if script_pattern.compile("(?is)<script\\b([^>]*)>(.*?)</script\\s*>") != OK:
 		return {}
 
-	for regex_match: RegExMatch in script_pattern.search_all(p_html):
+	for regex_match: RegExMatch in script_pattern.search_all(html):
 		var attributes: String = regex_match.get_string(1)
 		if _read_attribute(attributes, "type").nocasecmp_to("text/gdscript") != 0:
 			continue
@@ -191,7 +191,7 @@ func _read_gdscript_info(p_html: String, p_html_path: String) -> Dictionary:
 		var component_name: String = _read_attribute(attributes, "component")
 		var source: String = regex_match.get_string(2).strip_edges()
 		if not source_path.is_empty():
-			var resolved_path: String = _resolve_resource_path(source_path, p_html_path)
+			var resolved_path: String = _resolve_resource_path(source_path, html_path)
 			if resolved_path.is_empty():
 				push_warning("Could not resolve GDScript source: %s" % source_path)
 			else:
@@ -205,7 +205,7 @@ func _read_gdscript_info(p_html: String, p_html_path: String) -> Dictionary:
 	return {}
 
 
-func _write_preview_script(p_source: String) -> String:
+func _write_preview_script(source: String) -> String:
 	var directory_path: String = "user://dockit_html_preview"
 	var absolute_directory_path: String = ProjectSettings.globalize_path(directory_path)
 	var directory_error: Error = DirAccess.make_dir_recursive_absolute(absolute_directory_path)
@@ -218,20 +218,20 @@ func _write_preview_script(p_source: String) -> String:
 	if file == null:
 		push_error("Could not write the temporary preview script.")
 		return ""
-	file.store_string(p_source)
+	file.store_string(source)
 	file.close()
 	return path
 
 
-func _replace_gdscript_source(p_html: String, p_source: String) -> String:
+func _replace_gdscript_source(html: String, source: String) -> String:
 	var script_pattern: RegEx = RegEx.new()
 	if script_pattern.compile("(?is)<script\\b([^>]*)>(.*?)</script\\s*>") != OK:
-		return p_html
+		return html
 	var source_pattern: RegEx = RegEx.new()
 	if source_pattern.compile("(?is)(?<![\\w:-])src\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s>]+)") != OK:
-		return p_html
+		return html
 
-	for regex_match: RegExMatch in script_pattern.search_all(p_html):
+	for regex_match: RegExMatch in script_pattern.search_all(html):
 		var attributes: String = regex_match.get_string(1)
 		if _read_attribute(attributes, "type").nocasecmp_to("text/gdscript") != 0:
 			continue
@@ -240,33 +240,33 @@ func _replace_gdscript_source(p_html: String, p_source: String) -> String:
 		var source_start: int = regex_match.get_start(1)
 		if source_match == null:
 			source_start += attributes.length()
-			return p_html.substr(0, source_start) + " src=\"" + p_source + "\"" + p_html.substr(source_start)
+			return html.substr(0, source_start) + " src=\"" + source + "\"" + html.substr(source_start)
 
 		var start: int = source_start + source_match.get_start()
 		var end: int = source_start + source_match.get_end()
-		return p_html.substr(0, start) + "src=\"" + p_source + "\"" + p_html.substr(end)
-	return p_html
+		return html.substr(0, start) + "src=\"" + source + "\"" + html.substr(end)
+	return html
 
 
-func _remove_gdscript_script(p_html: String) -> String:
+func _remove_gdscript_script(html: String) -> String:
 	var script_pattern: RegEx = RegEx.new()
 	if script_pattern.compile("(?is)<script\\b([^>]*)>(.*?)</script\\s*>") != OK:
-		return p_html
+		return html
 
 	var result: String
 	var source_index: int
-	for regex_match: RegExMatch in script_pattern.search_all(p_html):
+	for regex_match: RegExMatch in script_pattern.search_all(html):
 		if _read_attribute(regex_match.get_string(1), "type").nocasecmp_to("text/gdscript") != 0:
 			continue
-		result += p_html.substr(source_index, regex_match.get_start() - source_index)
+		result += html.substr(source_index, regex_match.get_start() - source_index)
 		source_index = regex_match.get_end()
-	result += p_html.substr(source_index)
+	result += html.substr(source_index)
 	return result
 
 
-func _remove_preview_script(p_path: String) -> void:
-	if FileAccess.file_exists(p_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(p_path))
+func _remove_preview_script(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _read_attribute(p_attributes: String, p_name: String) -> String:
@@ -285,37 +285,37 @@ func _read_attribute(p_attributes: String, p_name: String) -> String:
 	return ""
 
 
-func _resolve_resource_path(p_source: String, p_html_path: String) -> String:
-	if p_source.begins_with("uid://"):
-		var uid: int = ResourceUID.text_to_id(p_source)
+func _resolve_resource_path(source: String, html_path: String) -> String:
+	if source.begins_with("uid://"):
+		var uid: int = ResourceUID.text_to_id(source)
 		if not ResourceUID.has_id(uid):
 			return ""
 		return ResourceUID.get_id_path(uid)
-	if p_source.contains("://"):
-		return p_source
-	return p_html_path.get_base_dir().path_join(p_source).simplify_path()
+	if source.contains("://"):
+		return source
+	return html_path.get_base_dir().path_join(source).simplify_path()
 
 
-func _extract_stylesheet(p_html: String) -> String:
+func _extract_stylesheet(html: String) -> String:
 	var style_pattern: RegEx = RegEx.new()
 	if style_pattern.compile("(?is)<style\\b[^>]*>(.*?)</style\\s*>") != OK:
 		return ""
 
 	var blocks: PackedStringArray
-	for regex_match: RegExMatch in style_pattern.search_all(p_html):
+	for regex_match: RegExMatch in style_pattern.search_all(html):
 		blocks.append(regex_match.get_string(1).strip_edges())
 	return "\n\n".join(blocks)
 
 
-func _remove_stylesheet_blocks(p_html: String) -> String:
+func _remove_stylesheet_blocks(html: String) -> String:
 	var style_pattern: RegEx = RegEx.new()
 	if style_pattern.compile("(?is)<style\\b[^>]*>.*?</style\\s*>(?:\\r?\\n){0,2}") != OK:
-		return p_html
-	return style_pattern.sub(p_html, "", true)
+		return html
+	return style_pattern.sub(html, "", true)
 
 
-func _read_file(p_path: String) -> String:
-	if not FileAccess.file_exists(p_path):
-		push_warning("Could not read example source: %s" % p_path)
+func _read_file(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		push_warning("Could not read example source: %s" % path)
 		return ""
-	return FileAccess.get_file_as_string(p_path)
+	return FileAccess.get_file_as_string(path)

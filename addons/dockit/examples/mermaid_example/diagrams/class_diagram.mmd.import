@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://b0hx0cj32snn6"
+path="res://.godot/imported/class_diagram.mmd-c38c293da45ac2f5c22ed6ce7a17df97.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/class_diagram.mmd"
+dest_files=["res://.godot/imported/class_diagram.mmd-c38c293da45ac2f5c22ed6ce7a17df97.res"]
+
+[params]
+

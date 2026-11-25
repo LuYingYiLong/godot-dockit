@@ -1,0 +1,14 @@
+[remap]
+
+importer="dockit.mermaid_document"
+type="MermaidDocument"
+uid="uid://bwwo17a2eosng"
+path="res://.godot/imported/kanban.mmd-1722400f82526303ba6699ec97fe110a.res"
+
+[deps]
+
+source_file="res://addons/dockit/examples/mermaid_example/diagrams/kanban.mmd"
+dest_files=["res://.godot/imported/kanban.mmd-1722400f82526303ba6699ec97fe110a.res"]
+
+[params]
+

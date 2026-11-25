@@ -107,37 +107,16 @@ var _syncing_scroll: bool
 
 
 func _ready() -> void:
-	_markdown_label.parse_latex = true
-	_markdown_label.parse_html = true
-	_markdown_label.parse_mermaid = true
-	_preview_theme = _markdown_label.theme.duplicate() as Theme
-	_merge_theme_type(preload("uid://fuqrhbfft60e"), &"LatexLabel")
-	_merge_theme_type(preload("uid://dh02l0kc5xwy3"), &"MermaidLabel")
-	_markdown_label.theme = _preview_theme
-
 	_code_scroll_bar = _code_edit.get_v_scroll_bar()
 	_preview_scroll_bar = _markdown_label.get_v_scroll_bar()
 	if _code_scroll_bar != null:
 		_code_scroll_bar.value_changed.connect(_on_code_scroll_changed)
 	if _preview_scroll_bar != null:
 		_preview_scroll_bar.value_changed.connect(_on_preview_scroll_changed)
-	_preview_timer.timeout.connect(_update_preview)
 
+	_code_edit.caret_blink = true
 	_code_edit.text = DEFAULT_MARKDOWN
-	_preview_timer.stop()
 	_update_preview()
-
-
-func _merge_theme_type(p_source: Theme, p_theme_type: StringName) -> void:
-	for color_text: String in p_source.get_color_list(p_theme_type):
-		var color_name: StringName = StringName(color_text)
-		_preview_theme.set_color(color_name, p_theme_type, p_source.get_color(color_name, p_theme_type))
-	for font_size_text: String in p_source.get_font_size_list(p_theme_type):
-		var font_size_name: StringName = StringName(font_size_text)
-		_preview_theme.set_font_size(font_size_name, p_theme_type, p_source.get_font_size(font_size_name, p_theme_type))
-	for stylebox_text: String in p_source.get_stylebox_list(p_theme_type):
-		var stylebox_name: StringName = StringName(stylebox_text)
-		_preview_theme.set_stylebox(stylebox_name, p_theme_type, p_source.get_stylebox(stylebox_name, p_theme_type))
 
 
 func _on_code_edit_text_changed() -> void:
@@ -198,12 +177,12 @@ func _sync_code_from_preview() -> void:
 	_syncing_scroll = false
 
 
-func _scroll_fraction(p_scroll_bar: VScrollBar) -> float:
-	var scroll_range: float = _scrollable_range(p_scroll_bar)
+func _scroll_fraction(scroll_bar: VScrollBar) -> float:
+	var scroll_range: float = _scrollable_range(scroll_bar)
 	if scroll_range <= 0.0:
 		return 0.0
-	return clampf(p_scroll_bar.value / scroll_range, 0.0, 1.0)
+	return clampf(scroll_bar.value / scroll_range, 0.0, 1.0)
 
 
-func _scrollable_range(p_scroll_bar: VScrollBar) -> float:
-	return maxf(0.0, p_scroll_bar.max_value - p_scroll_bar.page)
+func _scrollable_range(scroll_bar: VScrollBar) -> float:
+	return maxf(0.0, scroll_bar.max_value - scroll_bar.page)

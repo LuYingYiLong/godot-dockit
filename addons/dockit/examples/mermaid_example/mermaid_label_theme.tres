@@ -1,0 +1,8 @@
+[gd_resource type="Theme" format=3 uid="uid://dh02l0kc5xwy3"]
+
+[resource]
+resource_name = "MermaidLabel Theme"
+MermaidLabel/colors/line_color = Color(0.7, 0.7, 0.7, 1)
+MermaidLabel/colors/node_background_color = Color(0.3, 0.3, 0.3, 1)
+MermaidLabel/colors/node_border_color = Color(0.59, 0.59, 0.59, 1)
+MermaidLabel/colors/node_text_color = Color(1, 1, 1, 1)

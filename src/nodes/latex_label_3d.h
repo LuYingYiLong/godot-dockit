@@ -1,5 +1,6 @@
 #pragma once
 
+#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/quad_mesh.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
@@ -89,6 +90,7 @@ private:
 	godot::Vector2 offset;
 
 	godot::Ref<TeXRender> render;
+	godot::Ref<godot::ArrayMesh> empty_mesh;
 	godot::Ref<godot::QuadMesh> quad;
 	godot::Ref<godot::StandardMaterial3D> material;
 	godot::SubViewport* viewport = nullptr;
