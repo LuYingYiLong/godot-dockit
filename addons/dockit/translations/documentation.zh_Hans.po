@@ -1894,7 +1894,9 @@ msgid ""
 "Controls how double-click selection finds word boundaries. Auto uses Jieba for Simplified Chinese"
 " when the optional [code]JiebaSegment[/code] class is available and TextServer for other "
 "languages. Jieba mode falls back to TextServer if the class is unavailable."
-msgstr "控制双击选择文本时查找词语边界的方式。自动模式在可用的 [code]JiebaSegment[/code] 类时，对简体中文使用 Jieba；其他语言使用 TextServer。Jieba 模式在该类不可用时回退到 TextServer。"
+msgstr ""
+"控制双击选择文本时查找词语边界的方式。自动模式在可用的 [code]JiebaSegment[/code] 类时，对简体中文使用 Jieba；其他语言使用 TextServer。Jieba "
+"模式在该类不可用时回退到 TextServer。"
 
 # | msgid "Sets how rendered Markdown text wraps inside the control bounds."
 #. doc_classes/RestructuredtextLabel.xml
@@ -3210,6 +3212,13 @@ msgid ""
 "If [code]true[/code], the event propagates from the target's parent up to the document node after"
 " the target phase. Assignment is ignored while the event is being dispatched."
 msgstr "为 [code]true[/code] 时，事件在目标阶段结束后从目标的父节点向文档节点冒泡。派发期间赋值会被忽略。"
+
+#. doc_classes/PDFTexture.xml
+msgid ""
+"If [code]true[/code], the source PDF page contains transparent content. This describes the PDF "
+"page and does not guarantee that the baked image has an alpha channel when an opaque background "
+"is used."
+msgstr "如果为 [code]true[/code]，表示源 PDF 页面包含透明内容。这描述的是 PDF 页面本身；使用不透明背景时，烘焙图像不一定包含 Alpha 通道。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid "If [code]true[/code], the text selection is automatically cleared when the node loses focus."
@@ -7092,12 +7101,19 @@ msgstr "按键产生的 Unicode 码点；非打印键为 [code]0[/code]。"
 
 #. doc_classes/PDFTexture.xml
 msgid ""
-"The Windows x64 editor can import a [code].pdf[/code] file as a [PDFTexture]. Select the page and"
-" DPI in the Import dock, then use the resource anywhere a [Texture2D] is accepted. Exported "
-"projects load the baked pixels without PDFium."
+"The Windows x64 editor can import a [code].pdf[/code] file as a [PDFTexture]. Select the page, "
+"DPI, rotation, background color, and common rendering options in the Import dock, then use the "
+"resource anywhere a [Texture2D] is accepted. The resource stores page metadata and the settings "
+"used to bake its pixels. Exported projects load the baked pixels without PDFium."
 msgstr ""
-"Windows x64 编辑器可以将 [code].pdf[/code] 文件导入为 [PDFTexture]。在导入面板中选择页码和 DPI 后，即可在接受 [Texture2D] "
-"的位置使用该资源。导出的项目直接加载烘焙后的像素，无需 PDFium。"
+"Windows x64 编辑器可以将 [code].pdf[/code] 文件导入为 [PDFTexture]。在导入面板中选择页码、DPI、旋转角度、背景色和常用渲染选项后，即可在接受 "
+"[Texture2D] 的位置使用该资源。资源会保存页面元数据和烘焙像素时使用的设置。导出的项目直接加载烘焙后的像素，无需 PDFium。"
+
+#. doc_classes/PDFTexture.xml
+msgid ""
+"The [PDFReader] render flags used to bake this page. The default includes [constant "
+"PDFReader.RENDER_ANNOTATIONS]."
+msgstr "烘焙此页面时使用的 [PDFReader] 渲染标志。默认值包含 [constant PDFReader.RENDER_ANNOTATIONS]。"
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid "The [RSTDocument] resource to display. Its source path is used to resolve relative resource paths."
@@ -7111,6 +7127,12 @@ msgid ""
 msgstr ""
 "[member clipboard_data] 仅提供 [code]text/plain[/code] 数据。取消 [code]paste[/code] 会阻止默认插入；取消 "
 "[code]cut[/code] 会阻止删除选中文本。"
+
+#. doc_classes/PDFTexture.xml
+msgid ""
+"The additional rotation applied while rendering the page, in degrees. It is one of 0, 90, 180, or"
+" 270."
+msgstr "渲染页面时额外应用的旋转角度（度），可为 0、90、180 或 270。"
 
 #. doc_classes/HTMLLinkElement.xml
 #. doc_classes/HTMLStyleElement.xml
@@ -7131,6 +7153,10 @@ msgid ""
 msgstr ""
 "音频源 URL，可相对于 HTML 文档，也可使用 [code]res://[/code]、[code]user://[/code] 或 "
 "[code]uid://[/code]。省略属性时按子元素顺序尝试音频源。"
+
+#. doc_classes/PDFTexture.xml
+msgid "The background color used while rendering the imported page."
+msgstr "渲染导入页面时使用的背景色。"
 
 #. doc_classes/HTMLMouseEvent.xml
 msgid "The bit mask of buttons held when the event was produced."
@@ -7550,6 +7576,10 @@ msgstr "视频的固有高度，单位为像素。高度未知时为零。"
 #. doc_classes/HTMLVideoElement.xml
 msgid "The intrinsic video width in pixels, or zero while unknown."
 msgstr "视频的固有宽度，单位为像素。宽度未知时为零。"
+
+#. doc_classes/PDFTexture.xml
+msgid "The label assigned to this page by the source PDF, or an empty string if it has no label."
+msgstr "源 PDF 为此页面指定的标签；没有标签时为空字符串。"
 
 #. doc_classes/HTMLKeyboardEvent.xml
 msgid "The label of the key in the user's layout, using the [enum Key] values."
@@ -7988,6 +8018,25 @@ msgstr "失败项对应的源代码行号（如果可用）。"
 msgid "The source of this close request."
 msgstr "此关闭请求的来源。"
 
+#. doc_classes/PDFTexture.xml
+msgid ""
+"The source page boxes keyed by [code]media[/code], [code]crop[/code], [code]bleed[/code], "
+"[code]trim[/code], and [code]art[/code], with [code]bounds[/code] when available. Present entries"
+" contain [Rect2] values in PDF points."
+msgstr ""
+"源页面框字典，键包括 [code]media[/code]、[code]crop[/code]、[code]bleed[/code]、[code]trim[/code] 和 "
+"[code]art[/code]，并在可用时包含 [code]bounds[/code]。存在的条目以 PDF 点为单位，值为 [Rect2]。"
+
+#. doc_classes/PDFTexture.xml
+msgid ""
+"The source page size in PDF points, before the additional [member rotation] is applied. One PDF "
+"point is 1/72 of an inch."
+msgstr "源页面的 PDF 点尺寸，不包含额外应用的 [member rotation]。1 个 PDF 点等于 1/72 英寸。"
+
+#. doc_classes/PDFTexture.xml
+msgid "The source page's own rotation in degrees, before the additional [member rotation] is applied."
+msgstr "源页面自身的旋转角度（度），不包含额外应用的 [member rotation]。"
+
 # | msgid "The source of this close request."
 #. doc_classes/RSTDocument.xml
 msgid "The source text."
@@ -8041,6 +8090,10 @@ msgstr "启用 [member caret_blink] 时，插入光标每次切换显示状态�
 #. doc_classes/HTMLTitleElement.xml
 msgid "The title element of an HTML document."
 msgstr "HTML 文档的标题元素。"
+
+#. doc_classes/PDFTexture.xml
+msgid "The total page count of the source PDF at import time."
+msgstr "导入时源 PDF 的总页数。"
 
 #. doc_classes/HTMLErrorEvent.xml
 msgid "The underlying error value, when available."

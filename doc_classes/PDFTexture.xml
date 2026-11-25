@@ -4,14 +4,41 @@
 		A texture imported from a single PDF page.
 	</brief_description>
 	<description>
-		The Windows x64 editor can import a [code].pdf[/code] file as a [PDFTexture]. Select the page and DPI in the Import dock, then use the resource anywhere a [Texture2D] is accepted. Exported projects load the baked pixels without PDFium.
+		The Windows x64 editor can import a [code].pdf[/code] file as a [PDFTexture]. Select the page, DPI, rotation, background color, and common rendering options in the Import dock, then use the resource anywhere a [Texture2D] is accepted. The resource stores page metadata and the settings used to bake its pixels. Exported projects load the baked pixels without PDFium.
 	</description>
 	<members>
+		<member name="background_color" type="Color" setter="" getter="get_background_color" default="Color(1, 1, 1, 1)">
+			The background color used while rendering the imported page.
+		</member>
 		<member name="dpi" type="int" setter="" getter="get_dpi" default="144">
 			The resolution in dots per inch used to render the imported page.
 		</member>
+		<member name="has_transparency" type="bool" setter="" getter="get_has_transparency" default="false">
+			If [code]true[/code], the source PDF page contains transparent content. This describes the PDF page and does not guarantee that the baked image has an alpha channel when an opaque background is used.
+		</member>
 		<member name="page" type="int" setter="" getter="get_page" default="1">
 			The imported page number, starting at 1.
+		</member>
+		<member name="page_boxes" type="Dictionary" setter="" getter="get_page_boxes" default="{}">
+			The source page boxes keyed by [code]media[/code], [code]crop[/code], [code]bleed[/code], [code]trim[/code], and [code]art[/code], with [code]bounds[/code] when available. Present entries contain [Rect2] values in PDF points.
+		</member>
+		<member name="page_count" type="int" setter="" getter="get_page_count" default="0">
+			The total page count of the source PDF at import time.
+		</member>
+		<member name="page_label" type="String" setter="" getter="get_page_label" default="&quot;&quot;">
+			The label assigned to this page by the source PDF, or an empty string if it has no label.
+		</member>
+		<member name="page_rotation" type="int" setter="" getter="get_page_rotation" default="0">
+			The source page's own rotation in degrees, before the additional [member rotation] is applied.
+		</member>
+		<member name="page_size_pt" type="Vector2" setter="" getter="get_page_size_pt" default="Vector2(0, 0)">
+			The source page size in PDF points, before the additional [member rotation] is applied. One PDF point is 1/72 of an inch.
+		</member>
+		<member name="render_flags" type="int" setter="" getter="get_render_flags" default="1">
+			The [PDFReader] render flags used to bake this page. The default includes [constant PDFReader.RENDER_ANNOTATIONS].
+		</member>
+		<member name="rotation" type="int" setter="" getter="get_rotation" default="0">
+			The additional rotation applied while rendering the page, in degrees. It is one of 0, 90, 180, or 270.
 		</member>
 	</members>
 </class>

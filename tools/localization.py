@@ -19,6 +19,7 @@ LOCALE = "zh_Hans"
 EDITOR_TEXT = re.compile(r'\btr\(\s*("(?:\\.|[^"\\])*")\s*,\s*("Godot Dockit")\s*\)')
 PROPERTY = re.compile(r'\bADD_PROPERTYI?\(PropertyInfo\(Variant::\w+,\s*"([^"]+)"')
 PROPERTY_GROUP = re.compile(r'\bADD_(?:SUB)?GROUP\("([^"]+)"')
+IMPORT_OPTION = re.compile(r'\w+\["name"\]\s*=\s*"([^"]+)"')
 STOP_WORDS = set("a an and as at by for in not of on or over per the then to with".split())
 DOC_TAGS = {"brief_description", "description", "member", "constant", "theme_item"}
 DOC_MARKUP = re.compile(r'\[code\].*?\[/code\]|\[/?(?:member|method|signal|constant|theme_item|enum|param|b|i)(?: [^\]]+)?\]|\[[A-Z]\w*(?:\.\w+)?\]', re.DOTALL)
@@ -41,7 +42,7 @@ def format_godot_po(text):
 
 
 def inspector_label(name):
-    words = name.rsplit("/", 1)[-1].split("_")
+    words = [word for word in name.rsplit("/", 1)[-1].split("_") if word]
     return " ".join(
         word if 0 < index < len(words) - 1 and word in STOP_WORDS else word.capitalize()
         for index, word in enumerate(words)
@@ -58,12 +59,19 @@ def collect_sources():
             line = text.count("\n", 0, match.start()) + 1
             messages["editor"][key].add(f"{path.relative_to(ROOT).as_posix()}:{line}")
 
-    for path in sorted((ROOT / "src/nodes").glob("*.cpp")):
+    property_sources = sorted((ROOT / "src/nodes").glob("*.cpp"))
+    property_sources.append(ROOT / "src/formats/pdf/pdf_texture.cpp")
+    for path in property_sources:
         text = path.read_text(encoding="utf-8")
         for pattern in (PROPERTY, PROPERTY_GROUP):
             for match in pattern.finditer(text):
                 label = inspector_label(match[1]) if pattern is PROPERTY else match[1]
                 messages["properties"][label, None].add(path.relative_to(ROOT).as_posix())
+
+    importer_path = ROOT / "src/editor/importers/pdf_texture_importer.cpp"
+    importer_text = importer_path.read_text(encoding="utf-8")
+    for match in IMPORT_OPTION.finditer(importer_text):
+        messages["properties"][inspector_label(match[1]), None].add(importer_path.relative_to(ROOT).as_posix())
 
     for path in sorted((ROOT / "doc_classes").glob("*.xml")):
         root = ET.parse(path).getroot()

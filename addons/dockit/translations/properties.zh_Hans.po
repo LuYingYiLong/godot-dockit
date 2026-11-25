@@ -51,6 +51,11 @@ msgstr "自动换行模式"
 msgid "Autowrap Trim Flags"
 msgstr "自动换行修剪标志"
 
+#. src/editor/importers/pdf_texture_importer.cpp
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Background Color"
+msgstr "背景色"
+
 #. src/nodes/html_label.cpp
 msgid "Behavior"
 msgstr "行为"
@@ -136,6 +141,11 @@ msgstr "文档"
 msgid "Double Sided"
 msgstr "双面"
 
+#. src/editor/importers/pdf_texture_importer.cpp
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Dpi"
+msgstr "DPI"
+
 #. src/nodes/html_label.cpp
 #. src/nodes/markdown_label.cpp
 #. src/nodes/restructuredtext_label.cpp
@@ -163,6 +173,14 @@ msgstr "固定大小"
 #. src/nodes/latex_label_3d.cpp
 msgid "Font Size"
 msgstr "字体大小"
+
+#. src/editor/importers/pdf_texture_importer.cpp
+msgid "Grayscale"
+msgstr "灰度"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Has Transparency"
+msgstr "包含透明内容"
 
 #. src/nodes/latex_label.cpp
 #. src/nodes/latex_label_3d.cpp
@@ -202,6 +220,31 @@ msgstr "偏移"
 msgid "Open External Links"
 msgstr "打开外部链接"
 
+#. src/editor/importers/pdf_texture_importer.cpp
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page"
+msgstr "页码"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page Boxes"
+msgstr "页面框"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page Count"
+msgstr "总页数"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page Label"
+msgstr "页面标签"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page Rotation"
+msgstr "页面原始旋转"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Page Size Pt"
+msgstr "页面尺寸（PDF 点）"
+
 #. src/nodes/markdown_label.cpp
 msgid "Parse Gfm"
 msgstr "解析 GFM"
@@ -222,6 +265,18 @@ msgstr "解析 Mermaid"
 msgid "Pixel Size"
 msgstr "像素大小"
 
+#. src/editor/importers/pdf_texture_importer.cpp
+msgid "Render Annotations"
+msgstr "渲染批注"
+
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Render Flags"
+msgstr "渲染标志"
+
+#. src/editor/importers/pdf_texture_importer.cpp
+msgid "Render Form Widgets"
+msgstr "渲染表单控件"
+
 #. src/nodes/latex_label_3d.cpp
 msgid "Render Priority"
 msgstr "渲染优先级"
@@ -239,6 +294,11 @@ msgstr "渲染"
 #. src/nodes/restructuredtext_label.cpp
 msgid "Root Subfolder"
 msgstr "根目录子文件夹"
+
+#. src/editor/importers/pdf_texture_importer.cpp
+#. src/formats/pdf/pdf_texture.cpp
+msgid "Rotation"
+msgstr "旋转角度"
 
 # | msgid "Text"
 #. src/nodes/restructuredtext_label.cpp
