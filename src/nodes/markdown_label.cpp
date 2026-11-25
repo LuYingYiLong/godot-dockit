@@ -35,6 +35,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -796,6 +797,17 @@ namespace {
 		}
 
 		p_paragraph->set_break_flags(get_autowrap_break_flags(p_label, p_preserve_whitespace));
+	}
+
+	static void configure_code_block_tabs(const Ref<TextParagraph>& p_paragraph, const Ref<Font>& p_font, int32_t p_font_size) {
+		if (p_paragraph.is_null() || p_font.is_null()) {
+			return;
+		}
+
+		const float space_advance = p_font->get_char_size(' ', std::max<int32_t>(1, p_font_size)).x + static_cast<float>(p_font->get_spacing(TextServer::SPACING_SPACE));
+		PackedFloat32Array tab_stops;
+		tab_stops.push_back(std::max<float>(1.0f, 4.0f * space_advance));
+		p_paragraph->tab_align(tab_stops);
 	}
 
 	static Color get_span_color(const MarkdownInlineSpan& p_span, const MarkdownThemeCache& p_cache, const Color& p_default_color) {
@@ -2730,6 +2742,9 @@ void MarkdownLabelCanvas::rebuild_layout() {
 		item.paragraph->set_line_spacing(item.type == MARKDOWN_BLOCK_FOOTNOTES ? theme_cache.constant.footnote_line_separation : theme_cache.constant.line_separation);
 		if (!add_mermaid_to_paragraph(item.paragraph, mermaid_cache, block, paragraph_width, item.objects)) {
 			add_spans_to_paragraph(item.paragraph, item_text, item.spans, theme_cache, font, font_size, item.text_color, item.objects, paragraph_width, this);
+		}
+		if (item.code) {
+			configure_code_block_tabs(item.paragraph, font, font_size);
 		}
 		if (item.type == MARKDOWN_BLOCK_LATEX && !item.objects.formulas.is_empty()) {
 			item.paragraph->set_alignment(HORIZONTAL_ALIGNMENT_CENTER);

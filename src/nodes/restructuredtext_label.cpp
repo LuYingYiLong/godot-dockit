@@ -25,6 +25,7 @@
 #include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/char_string.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -162,6 +163,17 @@ namespace {
 		if (p_paragraph.is_valid()) {
 			p_paragraph->set_break_flags(get_autowrap_break_flags(p_owner, p_preserve_whitespace));
 		}
+	}
+
+	static void configure_code_block_tabs(const Ref<TextParagraph>& p_paragraph, const Ref<Font>& p_font, int32_t p_font_size) {
+		if (p_paragraph.is_null() || p_font.is_null()) {
+			return;
+		}
+
+		const float space_advance = p_font->get_char_size(' ', std::max<int32_t>(1, p_font_size)).x + static_cast<float>(p_font->get_spacing(TextServer::SPACING_SPACE));
+		PackedFloat32Array tab_stops;
+		tab_stops.push_back(std::max<float>(1.0f, 4.0f * space_advance));
+		p_paragraph->tab_align(tab_stops);
 	}
 
 	static float parse_scale_percent(const String& p_value, float p_fallback = 100.0f) {
@@ -1915,6 +1927,9 @@ void RSTDocumentCanvas::rebuild_layout() {
 		item.paragraph->set_width(std::max<float>(1.0f, width - left_padding - right_padding));
 		item.paragraph->set_line_spacing(line_separation);
 		add_spans_to_paragraph(item.paragraph, item.spans, document_view, font, inline_mono_font, font_size, inline_code_size);
+		if (item.code) {
+			configure_code_block_tabs(item.paragraph, font, font_size);
+		}
 
 		const Vector2 paragraph_size = item.paragraph->get_size();
 		if (y > 0.0f) {

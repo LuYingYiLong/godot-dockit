@@ -14,6 +14,13 @@ func _ready() -> void:
 		label.get_selected_text() == "func greet(name: String) -> void:\n    print(\"Hello, \", name)",
 		"Markdown fenced code preserves relative indentation",
 	)
+	label.set_markdown_text("~~~gdscript\nfunc greet(name: String) -> void:\n\tprint(\"Hello, \", name)\n~~~")
+	label.refresh()
+	label.select_all()
+	_check(
+		label.get_selected_text() == "func greet(name: String) -> void:\n\tprint(\"Hello, \", name)",
+		"Markdown fenced code retains tab characters",
+	)
 	_finish()
 
 
