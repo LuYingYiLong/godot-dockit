@@ -51,6 +51,23 @@ func _ready() -> void:
 	_check(FileAccess.file_exists(image_path), "relative image paths resolve from the source document")
 	var download_uri: String = viewer.resolve_link_uri("download", "downloads/notes.txt")
 	_check(FileAccess.file_exists(download_uri), ":download: resolves a relative file path")
+	var footnote_document: String = "[1]_ Footnote reference.\n\n"
+	for line_index: int in range(40):
+		footnote_document += "Padding paragraph " + str(line_index) + ".\n\n"
+	footnote_document += ".. [1] Footnote definition."
+	viewer.set_rst_text(footnote_document)
+	viewer.refresh()
+	_check(viewer.get_rendered_block_count() > 40, "the footnote fixture is laid out before simulating clicks")
+	for _frame: int in range(3):
+		await get_tree().process_frame
+	var footnote_scroll: VScrollBar = viewer.get_v_scroll_bar()
+	if footnote_scroll != null:
+		footnote_scroll.set_value(0.0)
+	await _click_at(Vector2(24.0, 20.0))
+	_check(footnote_scroll != null and footnote_scroll.get_value() > 0.0, "clicking an RST footnote reference scrolls to its definition")
+	var definition_scroll: float = footnote_scroll.get_value() if footnote_scroll != null else 0.0
+	await _click_at(Vector2(24.0, viewer.size.y - 24.0))
+	_check(footnote_scroll != null and footnote_scroll.get_value() < definition_scroll, "clicking an RST footnote definition scrolls back to its reference")
 
 	var document_targets: Dictionary = index.call("get_document_targets")
 	var guide_record: Dictionary = document_targets.get("res://docs/guide.rst", {})
@@ -70,11 +87,13 @@ func _ready() -> void:
 	_finish()
 
 
+
 func _check(condition: bool, message: String) -> void:
 	if condition:
 		return
 	failures += 1
 	push_error("RST reference check failed: " + message)
+
 
 
 func _finish() -> void:
@@ -83,12 +102,28 @@ func _finish() -> void:
 	get_tree().quit(0 if failures == 0 else 1)
 
 
+
 func _double_click_at(point: Vector2) -> void:
 	for click_index: int in range(2):
-		for state: bool in [true, false]:
+		for state: bool in [true, false,]:
 			var click: InputEventMouseButton = InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_LEFT
 			click.pressed = state
 			click.double_click = state and click_index == 1
 			click.position = point
 			get_viewport().push_input(click, true)
+
+
+
+func _click_at(point: Vector2) -> void:
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = point
+	get_viewport().push_input(click, true)
+	await get_tree().process_frame
+	click = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = point
+	get_viewport().push_input(click, true)
+	await get_tree().process_frame

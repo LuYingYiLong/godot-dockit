@@ -1017,6 +1017,7 @@ std::vector<RSTBlock> parse_rst_blocks(const String& p_text, RestructuredtextLab
 				RSTBlock block;
 				block.type = RST_BLOCK_PARAGRAPH;
 				block.line = index + 1;
+				block.footnote_label = footnote_label;
 				block.text = make_footnote_text(footnote_label, footnote_text, p_footnotes);
 				block.anchor = pending_anchor;
 				pending_anchor = String();

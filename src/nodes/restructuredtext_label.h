@@ -34,10 +34,13 @@ struct RSTInlineSpan {
 	String link_uri;
 	int64_t start = 0;
 	int64_t end = 0;
+	String footnote_id;
 	Color color;
 	bool bold = false;
 	bool italic = false;
 	bool code = false;
+	bool footnote_reference = false;
+	bool footnote_definition = false;
 	bool custom_color = false;
 };
 
@@ -95,6 +98,9 @@ struct RSTCanvasItem {
 	int64_t paragraph_global_end = 0;
 	int64_t header_global_start = 0;
 	int64_t header_global_end = 0;
+	int64_t footnote_definition_start = -1;
+	int64_t footnote_definition_end = -1;
+	String footnote_id;
 	Color text_color;
 	Color header_text_color;
 	Color background_color;
@@ -132,6 +138,8 @@ private:
 	float content_height = 1.0f;
 	float layout_width = 0.0f;
 	Dictionary anchor_offsets;
+	Dictionary footnote_reference_offsets;
+	Dictionary footnote_definition_offsets;
 
 	void rebuild_layout();
 	void draw_selection_for_item(const RSTCanvasItem& p_item);
@@ -178,6 +186,8 @@ private:
 	int64_t hit_test_document(const Vector2& p_position) const;
 	String link_uri_at_position(const Vector2& p_position) const;
 	String link_uri_at_character(int64_t p_character) const;
+	String footnote_id_at_character(int64_t p_character, bool p_reference) const;
+	float footnote_target_at_position(const Vector2& p_position);
 	int64_t line_column_to_offset(int32_t p_line, int32_t p_column) const;
 	Vector2i offset_to_line_column(int64_t p_offset) const;
 	bool has_selection() const;

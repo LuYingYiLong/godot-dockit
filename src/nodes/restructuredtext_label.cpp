@@ -321,14 +321,14 @@ namespace {
 		return true;
 	}
 
-	static void append_inline_span(std::vector<RSTInlineSpan>& r_spans, String& r_text, const String& p_text, bool p_bold = false, bool p_italic = false, bool p_code = false, const String& p_link_uri = String(), bool p_custom_color = false, const Color& p_color = Color()) {
+	static void append_inline_span(std::vector<RSTInlineSpan>& r_spans, String& r_text, const String& p_text, bool p_bold = false, bool p_italic = false, bool p_code = false, const String& p_link_uri = String(), bool p_custom_color = false, const Color& p_color = Color(), const String& p_footnote_id = String(), bool p_footnote_reference = false) {
 		if (p_text.is_empty()) {
 			return;
 		}
 
 		if (!r_spans.empty()) {
 			RSTInlineSpan& previous = r_spans.back();
-			if (previous.bold == p_bold && previous.italic == p_italic && previous.code == p_code && previous.link_uri == p_link_uri && previous.custom_color == p_custom_color && (!p_custom_color || previous.color == p_color) && previous.end == r_text.length()) {
+			if (previous.bold == p_bold && previous.italic == p_italic && previous.code == p_code && previous.link_uri == p_link_uri && previous.footnote_id == p_footnote_id && previous.footnote_reference == p_footnote_reference && !previous.footnote_definition && previous.custom_color == p_custom_color && (!p_custom_color || previous.color == p_color) && previous.end == r_text.length()) {
 				previous.text += p_text;
 				r_text += p_text;
 				previous.end = r_text.length();
@@ -345,6 +345,8 @@ namespace {
 		span.italic = p_italic;
 		span.code = p_code;
 		span.link_uri = p_link_uri;
+		span.footnote_id = p_footnote_id;
+		span.footnote_reference = p_footnote_reference;
 		span.custom_color = p_custom_color;
 		span.color = p_color;
 		r_spans.push_back(span);
@@ -390,7 +392,7 @@ namespace {
 			String footnote_label;
 			size_t footnote_next_index = 0;
 			if (parse_footnote_reference(text, index, footnote_label, footnote_next_index)) {
-				append_inline_span(r_spans, output, format_footnote_label(footnote_label, p_footnotes));
+				append_inline_span(r_spans, output, format_footnote_label(footnote_label, p_footnotes), false, false, false, String(), false, Color(), footnote_label, true);
 				index = footnote_next_index;
 				continue;
 			}
@@ -481,7 +483,7 @@ namespace {
 		std::vector<RSTInlineSpan> parsed_spans;
 		parse_inline_spans(p_text, p_owner, parsed_spans, p_footnotes);
 		for (const RSTInlineSpan& span : parsed_spans) {
-			append_inline_span(r_spans, r_text, span.text, span.bold, span.italic, span.code, span.link_uri);
+			append_inline_span(r_spans, r_text, span.text, span.bold, span.italic, span.code, span.link_uri, false, Color(), span.footnote_id, span.footnote_reference);
 		}
 	}
 
@@ -1034,6 +1036,8 @@ void RSTDocumentCanvas::clear_document() {
 	content_height = 1.0f;
 	layout_dirty = false;
 	anchor_offsets.clear();
+	footnote_reference_offsets.clear();
+	footnote_definition_offsets.clear();
 	set_custom_minimum_size(Vector2(1.0, content_height));
 	update_minimum_size();
 	queue_redraw();
@@ -1477,6 +1481,30 @@ static Vector2 get_inline_code_vertical_padding(RestructuredtextLabel* p_owner, 
 	return Vector2(std::max<float>(0.0f, margin_top - 1.0f), std::max<float>(0.0f, margin_bottom - 1.0f));
 }
 
+static float get_paragraph_y_for_character(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_character) {
+	if (p_paragraph.is_null()) {
+		return p_text_rect.position.y;
+	}
+
+	float paragraph_y = p_text_rect.position.y;
+	for (int32_t line_index = 0; line_index < p_paragraph->get_line_count(); line_index++) {
+		const Vector2i range = p_paragraph->get_line_range(line_index);
+		if (p_character >= range.x && p_character <= range.y) {
+			return paragraph_y;
+		}
+		paragraph_y += p_paragraph->get_line_size(line_index).y + p_paragraph->get_line_spacing();
+	}
+	return p_text_rect.position.y;
+}
+
+static void record_footnote_reference_offsets(Dictionary& r_offsets, const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<RSTInlineSpan>& p_spans) {
+	for (const RSTInlineSpan& span : p_spans) {
+		if (span.footnote_reference && !span.footnote_id.is_empty() && !r_offsets.has(span.footnote_id)) {
+			r_offsets[span.footnote_id] = get_paragraph_y_for_character(p_paragraph, p_text_rect, span.start);
+		}
+	}
+}
+
 void RSTDocumentCanvas::rebuild_layout() {
 	const float width = std::max<float>(1.0f, get_size().x);
 	if (!layout_dirty && std::abs(width - layout_width) < 0.01f) {
@@ -1489,6 +1517,9 @@ void RSTDocumentCanvas::rebuild_layout() {
 	lines.clear();
 	plain_text = String();
 	rendered_block_count = 0;
+	anchor_offsets.clear();
+	footnote_reference_offsets.clear();
+	footnote_definition_offsets.clear();
 
 	const int32_t extra = document_view == nullptr ? 0 : document_view->get_extra_font_size();
 	// Base font sizes resolved from theme (without extra), used as fallbacks.
@@ -1705,6 +1736,10 @@ void RSTDocumentCanvas::rebuild_layout() {
 			}
 
 			items.push_back(item);
+			record_footnote_reference_offsets(footnote_reference_offsets, item.header_paragraph, item.header_text_rect, item.header_spans);
+			if (item.paragraph.is_valid()) {
+				record_footnote_reference_offsets(footnote_reference_offsets, item.paragraph, item.text_rect, item.spans);
+			}
 			y += item.rect.size.y + static_cast<float>(block_spacing_after);
 			if (!block.anchor.is_empty()) { item.anchor = block.anchor; anchor_offsets[block.anchor] = item.rect.position.y; }
 			rendered_block_count++;
@@ -1825,6 +1860,9 @@ void RSTDocumentCanvas::rebuild_layout() {
 
 			item.rect = Rect2(0.0f, y, width, std::max<float>(1.0f, table_y - y + table_bottom));
 			items.push_back(item);
+			for (const RSTTableCell& cell : item.cells) {
+				record_footnote_reference_offsets(footnote_reference_offsets, cell.paragraph, cell.text_rect, cell.spans);
+			}
 			y += item.rect.size.y + static_cast<float>(block_spacing_after);
 			if (!block.anchor.is_empty()) { item.anchor = block.anchor; anchor_offsets[block.anchor] = item.rect.position.y; }
 			rendered_block_count++;
@@ -1921,6 +1959,37 @@ void RSTDocumentCanvas::rebuild_layout() {
 		item.paragraph_global_end = item.global_end;
 		item.text = item_text;
 		item.spans = item_spans;
+		if (!block.footnote_label.is_empty()) {
+			item.footnote_id = block.footnote_label;
+			const int64_t definition_marker_end = item.text.find("]");
+			if (definition_marker_end >= 0) {
+				item.footnote_definition_start = item.paragraph_global_start;
+				item.footnote_definition_end = item.paragraph_global_end;
+				for (int32_t span_index = 0; span_index < static_cast<int32_t>(item.spans.size()); span_index++) {
+					RSTInlineSpan& span = item.spans[span_index];
+					if (span.start == 0 && span.end >= definition_marker_end + 1) {
+						RSTInlineSpan remainder;
+						const bool has_remainder = span.end > definition_marker_end + 1;
+						if (has_remainder) {
+							remainder = span;
+							remainder.text = span.text.substr(definition_marker_end + 1);
+							remainder.start = definition_marker_end + 1;
+							remainder.footnote_id = String();
+							remainder.footnote_reference = false;
+							remainder.footnote_definition = false;
+							span.text = span.text.substr(0, definition_marker_end + 1);
+						}
+						span.footnote_id = item.footnote_id;
+						span.footnote_definition = true;
+						span.end = definition_marker_end + 1;
+						if (has_remainder) {
+							item.spans.insert(item.spans.begin() + span_index + 1, remainder);
+						}
+						break;
+					}
+				}
+			}
+		}
 
 		item.paragraph.instantiate();
 		configure_paragraph_autowrap(item.paragraph, document_view, item.code);
@@ -1979,6 +2048,10 @@ void RSTDocumentCanvas::rebuild_layout() {
 		}
 
 		items.push_back(item);
+		record_footnote_reference_offsets(footnote_reference_offsets, item.paragraph, item.text_rect, item.spans);
+		if (!item.footnote_id.is_empty() && !footnote_definition_offsets.has(item.footnote_id)) {
+			footnote_definition_offsets[item.footnote_id] = get_paragraph_y_for_character(item.paragraph, item.text_rect, 0);
+		}
 		y += item.rect.size.y + static_cast<float>(block_spacing_after);
 		if (!block.anchor.is_empty()) { item.anchor = block.anchor; anchor_offsets[block.anchor] = item.rect.position.y; }
 		rendered_block_count++;
@@ -2118,7 +2191,8 @@ void RSTDocumentCanvas::draw_span_decorations(const Ref<TextParagraph>& p_paragr
 	const Color link_color = get_theme_color_or(document_view, "RestructuredtextLabel", "link_color", Color(0.36, 0.62, 1.0, 1.0));
 
 	for (const RSTInlineSpan& span : p_spans) {
-		if ((!p_draw_code_backgrounds || !span.code) && (!p_draw_link_underlines || span.link_uri.is_empty())) {
+		const bool is_interactive_footnote = span.footnote_reference || span.footnote_definition;
+		if ((!p_draw_code_backgrounds || !span.code) && (!p_draw_link_underlines || (span.link_uri.is_empty() && !is_interactive_footnote))) {
 			continue;
 		}
 
@@ -2140,7 +2214,7 @@ void RSTDocumentCanvas::draw_span_decorations(const Ref<TextParagraph>& p_paragr
 						const Rect2 code_rect = Rect2(p_text_rect.position.x + selected_range.x - margin_left, y + 1.0f - margin_top, selected_range.y - selected_range.x + margin_left + margin_right, line_size.y - 2.0f + margin_top + margin_bottom);
 						draw_stylebox_or_rect(code_stylebox, code_rect, code_background_color);
 					}
-					if (p_draw_link_underlines && !span.link_uri.is_empty()) {
+					if (p_draw_link_underlines && (!span.link_uri.is_empty() || is_interactive_footnote)) {
 						const float underline_y = y + line_size.y - 2.0f;
 						draw_line(Vector2(p_text_rect.position.x + selected_range.x, underline_y), Vector2(p_text_rect.position.x + selected_range.y, underline_y), link_color, 1.0f);
 					}
@@ -2179,7 +2253,7 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 		}
 		else {
 			for (const RSTInlineSpan& span : p_spans) {
-				const Color span_color = !span.link_uri.is_empty() ? link_color : (span.code ? code_color : (span.custom_color ? span.color : p_default_color));
+				const Color span_color = (!span.link_uri.is_empty() || span.footnote_reference || span.footnote_definition) ? link_color : (span.code ? code_color : (span.custom_color ? span.color : p_default_color));
 				const int64_t local_from = std::max<int64_t>(range.x, span.start);
 				const int64_t local_to = std::min<int64_t>(range.y, span.end);
 				if (local_from >= local_to) {
@@ -2438,6 +2512,72 @@ String RSTDocumentCanvas::link_uri_at_character(int64_t p_character) const {
 	return String();
 }
 
+String RSTDocumentCanvas::footnote_id_at_character(int64_t p_character, bool p_reference) const {
+	auto find_reference_in_spans = [p_character, p_reference](const std::vector<RSTInlineSpan>& p_spans, int64_t p_global_start) {
+		const int64_t local_character = p_character - p_global_start;
+		for (const RSTInlineSpan& span : p_spans) {
+			if ((p_reference ? span.footnote_reference : span.footnote_definition) && !span.footnote_id.is_empty() && local_character >= span.start && local_character <= span.end) {
+				return span.footnote_id;
+			}
+		}
+		return String();
+	};
+
+	for (const RSTCanvasItem& item : items) {
+		if (p_character < item.global_start || p_character > item.global_end) {
+			continue;
+		}
+
+		if (item.type == RST_CANVAS_ITEM_TABLE) {
+			if (p_reference) {
+				for (const RSTTableCell& cell : item.cells) {
+					if (p_character >= cell.global_start && p_character <= cell.global_end) {
+						const String footnote_id = find_reference_in_spans(cell.spans, cell.global_start);
+						if (!footnote_id.is_empty()) {
+							return footnote_id;
+						}
+					}
+				}
+			}
+			continue;
+		}
+
+		if (p_reference && p_character >= item.header_global_start && p_character <= item.header_global_end) {
+			const String footnote_id = find_reference_in_spans(item.header_spans, item.header_global_start);
+			if (!footnote_id.is_empty()) {
+				return footnote_id;
+			}
+		}
+		if (p_character >= item.paragraph_global_start && p_character <= item.paragraph_global_end) {
+			const String footnote_id = find_reference_in_spans(item.spans, item.paragraph_global_start);
+			if (!footnote_id.is_empty()) {
+				return footnote_id;
+			}
+			if (!p_reference && !item.footnote_id.is_empty() && p_character >= item.footnote_definition_start && p_character <= item.footnote_definition_end) {
+				return item.footnote_id;
+			}
+		}
+	}
+
+	return String();
+}
+
+float RSTDocumentCanvas::footnote_target_at_position(const Vector2& p_position) {
+	rebuild_layout();
+	const int64_t character = hit_test_document(p_position);
+	const String reference_id = footnote_id_at_character(character, true);
+	if (!reference_id.is_empty() && footnote_definition_offsets.has(reference_id)) {
+		return footnote_definition_offsets[reference_id];
+	}
+
+	const String definition_id = footnote_id_at_character(character, false);
+	if (!definition_id.is_empty() && footnote_reference_offsets.has(definition_id)) {
+		return footnote_reference_offsets[definition_id];
+	}
+
+	return -1.0f;
+}
+
 void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventMouseButton> mouse_button = p_event;
 
@@ -2529,17 +2669,26 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			}
 
 			if (!selection_dragged) {
-				const String uri = link_uri_at_position(mouse_button->get_position());
+				const Vector2 release_position = mouse_button->get_position();
+				const String uri = link_uri_at_position(release_position);
 				if (!uri.is_empty() && document_view != nullptr) {
 					document_view->activate_link_uri(uri);
+				} else if (document_view != nullptr) {
+					const float footnote_target = footnote_target_at_position(release_position);
+					VScrollBar* v_scroll = document_view->get_v_scroll_bar();
+					if (footnote_target >= 0.0f && v_scroll != nullptr) {
+						const float max_scroll = std::max<float>(0.0f, v_scroll->get_max() - v_scroll->get_page());
+						v_scroll->set_value(std::min<float>(std::max<float>(0.0f, footnote_target - 8.0f), max_scroll));
+					}
 				}
 			}
 			dragging_selection = false;
 			selection_dragged = false;
 			set_process_internal(false);
 			// Restore cursor after interaction ends
-			const String uri = link_uri_at_position(mouse_button->get_position());
-			if (!uri.is_empty()) {
+			const Vector2 release_position = mouse_button->get_position();
+			const String uri = link_uri_at_position(release_position);
+			if (!uri.is_empty() || footnote_target_at_position(release_position) >= 0.0f) {
 				set_default_cursor_shape(CURSOR_POINTING_HAND);
 			} else {
 				set_default_cursor_shape(CURSOR_ARROW);
@@ -2572,8 +2721,9 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 
 	if (mouse_motion.is_valid()) {
 		// Update cursor based on what's under the mouse
-		const String uri = link_uri_at_position(mouse_motion->get_position());
-		if (!uri.is_empty()) {
+		const Vector2 mouse_position = mouse_motion->get_position();
+		const String uri = link_uri_at_position(mouse_position);
+		if (!uri.is_empty() || footnote_target_at_position(mouse_position) >= 0.0f) {
 			set_default_cursor_shape(CURSOR_POINTING_HAND);
 		} else {
 			set_default_cursor_shape(CURSOR_ARROW);

@@ -39,6 +39,7 @@ struct RSTBlock {
 	int32_t header_rows = 0;
 	int32_t line = 0;
 	String anchor;
+	String footnote_label;
 };
 
 struct RSTFootnoteEntry {
