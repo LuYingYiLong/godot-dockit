@@ -762,7 +762,7 @@ namespace {
 		return TextServer::BREAK_TRIM_INDENT | TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES;
 	}
 
-	static BitField<TextServer::LineBreakFlag> get_autowrap_break_flags(const MarkdownLabel* p_label) {
+	static BitField<TextServer::LineBreakFlag> get_autowrap_break_flags(const MarkdownLabel* p_label, bool p_preserve_whitespace = false) {
 		const TextServer::AutowrapMode mode = p_label == nullptr ? TextServer::AUTOWRAP_WORD_SMART : p_label->get_autowrap_mode();
 		BitField<TextServer::LineBreakFlag> flags = TextServer::BREAK_MANDATORY;
 
@@ -780,18 +780,22 @@ namespace {
 			break;
 		}
 
+		if (p_preserve_whitespace) {
+			return flags;
+		}
+
 		const BitField<TextServer::LineBreakFlag> trim_flags = p_label == nullptr
 				? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
 				: p_label->get_autowrap_trim_flags();
 		return flags | trim_flags;
 	}
 
-	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const MarkdownLabel* p_label) {
+	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const MarkdownLabel* p_label, bool p_preserve_whitespace = false) {
 		if (p_paragraph.is_null()) {
 			return;
 		}
 
-		p_paragraph->set_break_flags(get_autowrap_break_flags(p_label));
+		p_paragraph->set_break_flags(get_autowrap_break_flags(p_label, p_preserve_whitespace));
 	}
 
 	static Color get_span_color(const MarkdownInlineSpan& p_span, const MarkdownThemeCache& p_cache, const Color& p_default_color) {
@@ -2720,7 +2724,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 		item.spans = item_spans;
 
 		item.paragraph.instantiate();
-		configure_paragraph_autowrap(item.paragraph, label);
+		configure_paragraph_autowrap(item.paragraph, label, item.code);
 		const float paragraph_width = std::max<float>(1.0f, width - left_padding - right_padding);
 		item.paragraph->set_width(paragraph_width);
 		item.paragraph->set_line_spacing(item.type == MARKDOWN_BLOCK_FOOTNOTES ? theme_cache.constant.footnote_line_separation : theme_cache.constant.line_separation);

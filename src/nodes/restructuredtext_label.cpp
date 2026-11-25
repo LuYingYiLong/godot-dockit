@@ -130,7 +130,7 @@ namespace {
 		return TextServer::BREAK_TRIM_INDENT | TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES;
 	}
 
-	static BitField<TextServer::LineBreakFlag> get_autowrap_break_flags(const RestructuredtextLabel* p_owner) {
+	static BitField<TextServer::LineBreakFlag> get_autowrap_break_flags(const RestructuredtextLabel* p_owner, bool p_preserve_whitespace = false) {
 		const TextServer::AutowrapMode mode = p_owner == nullptr ? TextServer::AUTOWRAP_WORD_SMART : p_owner->get_autowrap_mode();
 		BitField<TextServer::LineBreakFlag> flags = TextServer::BREAK_MANDATORY;
 
@@ -148,15 +148,19 @@ namespace {
 				break;
 		}
 
+		if (p_preserve_whitespace) {
+			return flags;
+		}
+
 		const BitField<TextServer::LineBreakFlag> trim_flags = p_owner == nullptr
 				? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
 				: p_owner->get_autowrap_trim_flags();
 		return flags | trim_flags;
 	}
 
-	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const RestructuredtextLabel* p_owner) {
+	static void configure_paragraph_autowrap(const Ref<TextParagraph>& p_paragraph, const RestructuredtextLabel* p_owner, bool p_preserve_whitespace = false) {
 		if (p_paragraph.is_valid()) {
-			p_paragraph->set_break_flags(get_autowrap_break_flags(p_owner));
+			p_paragraph->set_break_flags(get_autowrap_break_flags(p_owner, p_preserve_whitespace));
 		}
 	}
 
@@ -1907,7 +1911,7 @@ void RSTDocumentCanvas::rebuild_layout() {
 		item.spans = item_spans;
 
 		item.paragraph.instantiate();
-		configure_paragraph_autowrap(item.paragraph, document_view);
+		configure_paragraph_autowrap(item.paragraph, document_view, item.code);
 		item.paragraph->set_width(std::max<float>(1.0f, width - left_padding - right_padding));
 		item.paragraph->set_line_spacing(line_separation);
 		add_spans_to_paragraph(item.paragraph, item.spans, document_view, font, inline_mono_font, font_size, inline_code_size);
