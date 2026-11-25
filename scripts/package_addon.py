@@ -1,4 +1,4 @@
-"""Stage and verify the addon files used by the full build workflow."""
+"""Stage and verify the addon archive used by the full build workflow."""
 
 from argparse import ArgumentParser
 from configparser import ConfigParser
@@ -9,6 +9,7 @@ from shutil import copy2, copytree, ignore_patterns
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDON = ROOT / "addons/dockit"
+ADDON_PACKAGE_PATH = Path("addons/dockit")
 PACKAGE_EXCLUDES = (
     "bin",
     "*.import",
@@ -54,29 +55,31 @@ def stage_build(destination, platform, arch, target):
     if library is None:
         raise SystemExit(f"No GDExtension library declared for {platform} {arch} {target}")
     binary = library_file(library)
-    copy_file(ADDON / binary, destination / binary)
+    package_root = destination / ADDON_PACKAGE_PATH
+    copy_file(ADDON / binary, package_root / binary)
 
     # The PDFium runtime is shared by the Windows x64 debug and release builds.
     if (platform, arch, target) == ("windows", "x86_64", "template_release"):
-        copy_file(ADDON / "bin/pdfium.dll", destination / "bin/pdfium.dll")
+        copy_file(ADDON / "bin/pdfium.dll", package_root / "bin/pdfium.dll")
 
 
 def assemble(destination):
+    package_root = destination / ADDON_PACKAGE_PATH
     libraries = read_libraries()
     for library in libraries.values():
-        require_file(destination / library_file(library))
+        require_file(package_root / library_file(library))
 
     copytree(
         ADDON,
-        destination,
+        package_root,
         dirs_exist_ok=True,
         ignore=ignore_patterns(*PACKAGE_EXCLUDES),
     )
 
-    require_file(destination / "bin/pdfium.dll")
+    require_file(package_root / "bin/pdfium.dll")
     package_notices = [
         path
-        for path in destination.rglob("*")
+        for path in package_root.rglob("*")
         if any(
             marker in path.name.upper()
             for marker in ("LICENSE", "LICENCE", "COPYING", "NOTICE", "README", "SOURCE_AVAILABILITY")
@@ -84,7 +87,7 @@ def assemble(destination):
     ]
     if package_notices:
         raise SystemExit(f"Unexpected documentation or license files in package: {package_notices}")
-    print(f"Verified all {len(libraries)} GDExtension libraries in {destination}")
+    print(f"Verified all {len(libraries)} GDExtension libraries in {package_root}")
 
 
 def main():

@@ -32,7 +32,7 @@ On Windows x64, import a PDF page as a `PDFTexture` or read and edit PDFs from G
 
 ## Install
 
-Copy the bundled `addons/dockit` folder into your Godot project. If you use the merged `godot-dockit` CI artifact, extract its contents into your project's `addons/dockit` folder. Choose a package that includes the GDExtension binary for your platform. [Build from source](CONTRIBUTING.md)
+Copy the bundled `addons/dockit` folder into your Godot project. If you use the merged `godot-dockit` release archive, extract it into your project root; it contains `addons/dockit`. Choose a package that includes the GDExtension binary for your platform. [Build from source](CONTRIBUTING.md)
 
 ## License
 
