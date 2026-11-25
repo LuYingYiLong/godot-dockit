@@ -30,9 +30,22 @@ Display them in Markdown or in standalone nodes. Use `LatexLabel` in UI, `LatexL
 
 On Windows x64, import a PDF page as a `PDFTexture` or read and edit PDFs from GDScript. Add `dockit_pdf_reader` to a Windows x64 export preset to include PDFium for runtime reading and writing.
 
+## Examples
+
+All of these examples are included in the plugin:
+
+|||
+|:---:|:---:|
+|![Markdown Preview](assets/previews/markdown_preview.png)|![HTML Preview](assets/previews/html_preview.png)|
+|[Markdown Example](addons/dockit/examples/markdown_example)|[HTML Example](addons/dockit/examples/html_example)|
+|![LaTeX Preview](assets/previews/latex_preview.png)|![Mermaid Preview](assets/previews/mermaid_preview.png)|
+|[LaTeX Example](addons/dockit/examples/latex_example)|[Mermaid Example](addons/dockit/examples/mermaid_example)|
+|![reStructuredText Preview](assets/previews/restructuredtext_preview.png)|![PDF Preview](assets/previews/pdf_preview.png)|
+|[reStructuredText Example](addons/dockit/examples/restructuredtext_example)|[PDF Example](addons/dockit/examples/pdf_example)|
+
 ## Install
 
-Copy the bundled `addons/dockit` folder into your Godot project. If you use the merged `godot-dockit` release archive, extract it into your project root; it contains `addons/dockit`. Choose a package that includes the GDExtension binary for your platform. [Build from source](CONTRIBUTING.md)
+Download the latest release from [GitHub Releases](https://github.com/LuYingYiLong/godot-dockit/releases) and extract the archive into your Godot project root. It contains the `addons/dockit` plugin. To build from source, see [Contributing](CONTRIBUTING.md).
 
 ## License
 
