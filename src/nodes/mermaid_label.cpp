@@ -9,22 +9,25 @@ MermaidLabel::MermaidLabel() {
 }
 
 void MermaidLabel::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_text", "text"), &MermaidLabel::set_text);
-	ClassDB::bind_method(D_METHOD("get_text"), &MermaidLabel::get_text);
-	ClassDB::bind_method(D_METHOD("set_document", "document"), &MermaidLabel::set_document);
-	ClassDB::bind_method(D_METHOD("get_document"), &MermaidLabel::get_document);
-	ClassDB::bind_method(D_METHOD("set_theme_mode", "mode"), &MermaidLabel::set_theme_mode);
-	ClassDB::bind_method(D_METHOD("get_theme_mode"), &MermaidLabel::get_theme_mode);
 	ClassDB::bind_method(D_METHOD("get_texture"), &MermaidLabel::get_texture);
 	ClassDB::bind_method(D_METHOD("get_render_error"), &MermaidLabel::get_render_error);
+
+	ClassDB::bind_method(D_METHOD("set_text", "text"), &MermaidLabel::set_text);
+	ClassDB::bind_method(D_METHOD("get_text"), &MermaidLabel::get_text);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
+	
+	ClassDB::bind_method(D_METHOD("set_document", "document"), &MermaidLabel::set_document);
+	ClassDB::bind_method(D_METHOD("get_document"), &MermaidLabel::get_document);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "MermaidDocument"), "set_document", "get_document");
+	
+	ClassDB::bind_method(D_METHOD("set_theme_mode", "mode"), &MermaidLabel::set_theme_mode);
+	ClassDB::bind_method(D_METHOD("get_theme_mode"), &MermaidLabel::get_theme_mode);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "theme_mode", PROPERTY_HINT_ENUM, "Auto,Light,Dark"), "set_theme_mode", "get_theme_mode");
 
 	BIND_ENUM_CONSTANT(THEME_AUTO);
 	BIND_ENUM_CONSTANT(THEME_LIGHT);
 	BIND_ENUM_CONSTANT(THEME_DARK);
-
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "document", PROPERTY_HINT_RESOURCE_TYPE, "MermaidDocument"), "set_document", "get_document");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "theme_mode", PROPERTY_HINT_ENUM, "Auto,Light,Dark"), "set_theme_mode", "get_theme_mode");
+	
 	ADD_SIGNAL(MethodInfo("render_finished"));
 }
 

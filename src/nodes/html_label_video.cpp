@@ -67,8 +67,8 @@ namespace {
 		}
 		if (!ClassDB::class_exists(VLC_PLAYER) || !ClassDB::class_exists("VLCMedia") ||
 			!ClassDB::can_instantiate(VLC_PLAYER) || !ClassDB::class_has_method("VLCMedia", "load_from_file")) return false;
-		for (const char* method : {"set_media", "get_texture", "play", "set_pause", "stop_async", "get_time",
-				"get_length", "set_time", "get_state", "is_seekable", "set_bus", "set_volume_db"}) {
+		for (const char* method : { "set_media", "get_texture", "play", "set_pause", "stop_async", "get_time",
+				"get_length", "set_time", "get_state", "is_seekable", "set_bus", "set_volume_db" }) {
 			if (!ClassDB::class_has_method(VLC_PLAYER, method)) return false;
 		}
 		return !ClassDB::class_exists("VLCInstance") || !ClassDB::class_has_method("VLCInstance", "has_instance") ||
@@ -145,7 +145,7 @@ HTMLLabel::VideoPlayback& HTMLLabel::video_entry(const Ref<HTMLVideoElement>& p_
 		}
 		return *entry;
 	}
-	return video_playbacks.emplace_back(VideoPlayback{p_element, paths});
+	return video_playbacks.emplace_back(VideoPlayback{ p_element, paths });
 }
 
 Error HTMLLabel::open_next_video(VideoPlayback& r_playback, bool p_play) {
@@ -700,23 +700,23 @@ void HTMLLabel::draw_video_fullscreen() {
 				Vector2(rect.position.x, rect.get_center().y + (font->get_ascent(14) - font->get_descent(14)) * 0.5f),
 				text, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x, 14);
 		},
-	}, video_surface->has_focus() && fullscreen_keyboard_focus);
+		}, video_surface->has_focus() && fullscreen_keyboard_focus);
 }
 
 void HTMLLabel::activate_video_part(const Ref<HTMLVideoElement>& p_element, HTMLVideoPart p_part) {
 	const auto node = p_element->get_video_node();
 	if (!node) return;
 	switch (p_part) {
-		case HTMLVideoPart::play:
-			if (node->paused) play_video(p_element);
-			else pause_video(*p_element.ptr());
-			break;
-		case HTMLVideoPart::mute: p_element->set_muted(!node->is_muted()); break;
-		case HTMLVideoPart::fullscreen:
-			if (node->fullscreen) leave_video_fullscreen();
-			else enter_video_fullscreen(p_element);
-			break;
-		default: break;
+	case HTMLVideoPart::play:
+		if (node->paused) play_video(p_element);
+		else pause_video(*p_element.ptr());
+		break;
+	case HTMLVideoPart::mute: p_element->set_muted(!node->is_muted()); break;
+	case HTMLVideoPart::fullscreen:
+		if (node->fullscreen) leave_video_fullscreen();
+		else enter_video_fullscreen(p_element);
+		break;
+	default: break;
 	}
 }
 
