@@ -12,6 +12,8 @@
 
 typedef struct GumboInternalOutput GumboOutput;
 
+namespace dockit { struct HTMLLayoutStatistics; }
+
 namespace litehtml
 {
 	struct css_text
@@ -91,7 +93,11 @@ namespace litehtml
 		document_mode						m_mode = no_quirks_mode;
 		size_t								m_quote_depth = 0;
 		uint64_t m_layout_generation = 0;
+		uint64_t m_measurement_generation = 0;
+		dockit::HTMLLayoutStatistics* layout_statistics = nullptr;
 	public:
+		void invalidate_measurements() { ++m_measurement_generation; }
+		void set_layout_statistics(dockit::HTMLLayoutStatistics* p_statistics) { layout_statistics = p_statistics; }
 		document(document_container* objContainer);
 		virtual ~document();
 

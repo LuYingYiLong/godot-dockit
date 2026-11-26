@@ -2843,6 +2843,13 @@ msgid "Enables LCD text rendering."
 msgstr "启用 LCD 文字渲染。"
 
 #. doc_classes/HTMLLabel.xml
+#. doc_classes/HTMLLayout.xml
+msgid ""
+"Enables cumulative layout statistics. Disabled by default. Enabling or disabling statistics does "
+"not reset counters or invalidate cached layout. Disabled statistics do not read phase timers."
+msgstr "启用累计布局统计，默认关闭。切换统计开关不会清空计数或使布局缓存失效。关闭统计时不读取阶段计时器"
+
+#. doc_classes/HTMLLabel.xml
 msgid ""
 "Enables local and registered [HTMLBehavior] scripts at runtime. Network script URLs are rejected."
 " Replacing the document, disabling behaviors, or leaving the scene tree detaches current "
@@ -3058,6 +3065,12 @@ msgid ""
 "pending text was flushed."
 msgstr "立即执行延迟的流式解析和排版更新。处理了待更新的文本时返回 [code]true[/code]。"
 
+#. doc_classes/MarkdownLabel.xml
+msgid ""
+"Flushes any pending incremental parse and layout update. Call this after the last [method "
+"append_text] call. Respects [member scroll_following] behavior."
+msgstr "刷新尚未处理的增量解析和布局更新。在最后一次调用 [method append_text] 后调用此方法。遵循 [member scroll_following] 的设置。"
+
 #. doc_classes/HTMLLabel.xml
 msgid ""
 "Focuses a visible, enabled element from this label and scrolls it into view. Returns "
@@ -3067,12 +3080,6 @@ msgstr "聚焦此控件中可见且已启用的元素并将其滚入视口。元
 #. doc_classes/LatexLabel3D.xml
 msgid "Font size used for formula layout, in pixels."
 msgstr "公式排版使用的字号，单位为像素。"
-
-#. doc_classes/MarkdownLabel.xml
-msgid ""
-"Flushes any pending incremental parse and layout update. Call this after the last [method "
-"append_text] call. Respects [member scroll_following] behavior."
-msgstr "刷新尚未处理的增量解析和布局更新。在最后一次调用 [method append_text] 后调用此方法。遵循 [member scroll_following] 的设置。"
 
 #. doc_classes/PDFReader.xml
 msgid "Forces halftone image scaling."
@@ -3495,8 +3502,8 @@ msgstr "匹配完整单词。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
-"Maximum number of unstable tail lines re-parsed in one streaming refresh. Open constructs such "
-"as fenced code blocks can extend this range. Clamped to [code][1, 256][/code]."
+"Maximum number of unstable tail lines re-parsed in one streaming refresh. Open constructs such as"
+" fenced code blocks can extend this range. Clamped to [code][1, 256][/code]."
 msgstr "每次流式刷新时重新解析的不稳定尾部行数上限。围栏代码块等未闭合结构可能会扩大此范围。取值限制在 [code][1, 256][/code]。"
 
 #. doc_classes/HTMLNode.xml
@@ -4447,6 +4454,13 @@ msgstr "启用内置控件。运行时和编辑器中都会在播放前读取视
 msgid "Requests playback. Returns [constant ERR_UNAVAILABLE] when the requested backend is missing."
 msgstr "请求播放。所需的后端缺失时，返回 [constant ERR_UNAVAILABLE]。"
 
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/HTMLLayout.xml
+msgid ""
+"Resets all layout counters and elapsed times without changing the statistics switch, document, or"
+" cached layout. Active timing scopes from before the reset are excluded."
+msgstr "清空全部布局计数和耗时，不改变统计开关、文档或布局缓存。清空前已经开始的计时范围不计入清空后的耗时"
+
 #. doc_classes/HTMLCanvasRenderingContext2D.xml
 msgid "Resets the current transform to the identity transform."
 msgstr "将当前变换重置为单位变换。"
@@ -4971,6 +4985,24 @@ msgid ""
 msgstr ""
 "返回行为挂载失败记录的快照。每个 Dictionary 都包含 [code]src[/code]、[code]path[/code] 和 "
 "[code]reason[/code]。发生失败时也会通过 [code]push_warning[/code] 报告。"
+
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/HTMLLayout.xml
+msgid ""
+"Returns a snapshot of cumulative phase counters and elapsed microseconds. Keys use the phase name"
+" followed by [code]_count[/code] or [code]_usec[/code]. Phases are [code]refresh_requests[/code],"
+" [code]refresh[/code], [code]style[/code], [code]render_tree[/code], [code]measurement[/code], "
+"[code]measurement_cache_hits[/code], [code]layout[/code], [code]geometry[/code], "
+"[code]paint[/code], [code]text_index[/code], [code]anchors[/code], [code]tab_order[/code], "
+"[code]scrollbar[/code], [code]interaction[/code], and [code]hover[/code]. Host phases are "
+"recorded by [HTMLLabel]; standalone [HTMLLayout] leaves them at zero. Count-only phases have zero"
+" elapsed time. Nested phase times overlap and must not be added together. Reading statistics does"
+" not flush pending updates. Counters survive parsing and clearing the document."
+msgstr ""
+"返回累计阶段计数和微秒耗时的快照。键由阶段名称加 [code]_count[/code] 或 [code]_usec[/code] 组成。阶段包括 "
+"[code]refresh_requests[/code]、[code]refresh[/code]、[code]style[/code]、[code]render_tree[/code]、[code]measurement[/code]、[code]measurement_cache_hits[/code]、[code]layout[/code]、[code]geometry[/code]、[code]paint[/code]、[code]text_index[/code]、[code]anchors[/code]、[code]tab_order[/code]、[code]scrollbar[/code]、[code]interaction[/code]"
+" 和 [code]hover[/code]。宿主阶段由 [HTMLLabel] 记录，独立 [HTMLLayout] "
+"的对应项保持为零。仅计数的阶段耗时为零。嵌套阶段的耗时存在重叠，不能直接相加。读取统计不会刷新待处理更新。解析或清空文档会保留计数"
 
 #. doc_classes/HTMLLayout.xml
 msgid "Returns a snapshot of elements matching all of the whitespace-separated class names."
@@ -6265,6 +6297,11 @@ msgstr "返回是否已打开文档。"
 #. doc_classes/HTMLDialogCloseRequest.xml
 msgid "Returns whether a listener canceled this request."
 msgstr "返回监听器是否已取消此请求。"
+
+#. doc_classes/HTMLLabel.xml
+#. doc_classes/HTMLLayout.xml
+msgid "Returns whether cumulative layout statistics are enabled."
+msgstr "返回是否启用了累计布局统计"
 
 #. doc_classes/MermaidRender.xml
 msgid "Returns whether the Merman backend is available in this build."

@@ -99,6 +99,8 @@ class HTMLLabel;
 class HTMLLabelCanvas;
 class HTMLPrintLayout;
 
+namespace dockit { struct HTMLLayoutStatistics; }
+
 class HTMLLayout : public godot::RefCounted {
 	GDCLASS(HTMLLayout, godot::RefCounted)
 
@@ -190,6 +192,13 @@ class HTMLLayout : public godot::RefCounted {
 	godot::Error reflow(const godot::Vector2i& p_viewport_size, const godot::Vector2i& p_media_size,
 		const godot::Vector2i& p_viewport_unit_size);
 	void record_paint();
+	void compute_document_styles();
+	void restyle_document();
+	void rebuild_render_tree();
+	void dom_mutated();
+	godot::Error prepare_viewport_styles(const godot::Vector2i& p_media_size);
+	bool can_reuse_viewport_layout(const godot::Vector2i& p_media_size) const;
+	dockit::HTMLLayoutStatistics* statistics();
 	bool update_auto_content_visibility(const godot::Vector2i& p_viewport_size,
 		const std::unordered_set<const litehtml::element*>& p_selected,
 		std::unordered_set<const litehtml::element*>& r_revealed, bool p_test_only = false);
@@ -369,6 +378,11 @@ public:
 		godot::String uri;
 		uintptr_t id = 0;
 	};
+
+	void set_layout_statistics_enabled(bool p_enabled);											// 设置布局性能统计开关
+	bool is_layout_statistics_enabled() const;													// 返回是否启用布局性能统计
+	godot::Dictionary get_layout_statistics() const;											// 获取累计阶段计数和微秒耗时
+	void reset_layout_statistics();																// 清空统计而不使布局缓存失效
 
 	HTMLLayout();
 	~HTMLLayout() override;

@@ -1,3 +1,4 @@
+#include "layout/html_layout_statistics.h"
 #include "html_layout.h"
 #include "elements/html_audio_element.h"
 #include "elements/html_dialog_element.h"
@@ -239,7 +240,20 @@ namespace {
 	}
 }
 
+using LayoutStats = dockit::HTMLLayoutStatistics;
+
 struct HTMLLayout::State {
+	LayoutStats statistics;
+	bool anchors_dirty = true;
+	bool tab_order_dirty = true;
+	bool text_index_dirty = true;
+	bool viewport_styles_prepared = false;
+	Vector2i prepared_viewport_units;
+	bool layout_resize_only = false;
+	bool reflow_running = false;
+	bool update_during_reflow = false;
+	std::vector<Ref<HTMLElement>> tab_order;
+	bool cached_has_focusable_elements = false;
 	enum class Update { NONE, LAYOUT, STYLE, HOVER_LAYOUT };
 	struct AnimationEventTrack {
 		std::weak_ptr<litehtml::element> target;
@@ -358,7 +372,7 @@ bool HTMLLayout::refresh_cssom() {
 		return layout_viewport(state->viewport_size, state->media_viewport_size, state->viewport_unit_size) == OK;
 	}
 	if (state->pending_update == State::Update::STYLE) {
-		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
+		restyle_document();
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
 		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
 		state->pending_update = State::Update::LAYOUT;
@@ -1109,6 +1123,10 @@ Ref<HTMLAnimation> HTMLLayout::animate(const Ref<HTMLElement>& p_element, const 
 }
 
 void HTMLLayout::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_layout_statistics_enabled", "enabled"), &HTMLLayout::set_layout_statistics_enabled);
+	ClassDB::bind_method(D_METHOD("is_layout_statistics_enabled"), &HTMLLayout::is_layout_statistics_enabled);
+	ClassDB::bind_method(D_METHOD("get_layout_statistics"), &HTMLLayout::get_layout_statistics);
+	ClassDB::bind_method(D_METHOD("reset_layout_statistics"), &HTMLLayout::reset_layout_statistics);
 	ClassDB::bind_method(D_METHOD("get_animations", "element"), &HTMLLayout::get_animations, DEFVAL(Ref<HTMLElement>()));
 	ClassDB::bind_method(D_METHOD("animate", "element", "keyframes", "options"), &HTMLLayout::animate, DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("get_computed_style", "element", "pseudo"), &HTMLLayout::get_computed_style, DEFVAL(String()));
@@ -1177,6 +1195,93 @@ HTMLLayout::HTMLLayout() :
 	set_dom_selection_change_callback({});
 }
 
+LayoutStats* HTMLLayout::statistics() { return &state->statistics; }
+
+void HTMLLayout::set_layout_statistics_enabled(bool p_enabled) {
+	if (state->statistics.enabled != p_enabled) ++state->statistics.epoch;
+	state->statistics.enabled = p_enabled;
+}
+
+bool HTMLLayout::is_layout_statistics_enabled() const { return state->statistics.enabled; }
+Dictionary HTMLLayout::get_layout_statistics() const { return state->statistics.snapshot(); }
+void HTMLLayout::reset_layout_statistics() { state->statistics.reset(); }
+
+void HTMLLayout::dom_mutated() {
+	state->text_index_dirty = true;
+	state->tab_order_dirty = true;
+	state->anchors_dirty = true;
+}
+
+void HTMLLayout::compute_document_styles() {
+	LayoutStats::Scope timing(statistics(), LayoutStats::STYLE);
+	dom_mutated();
+	const auto& document = state->dom->get_document();
+	document->invalidate_measurements();
+	DocumentAdapter::compute_styles(*document);
+}
+
+void HTMLLayout::rebuild_render_tree() {
+	LayoutStats::Scope timing(statistics(), LayoutStats::RENDER_TREE);
+	dom_mutated();
+	DocumentAdapter::rebuild_render_tree(*state->dom->get_document());
+}
+
+void HTMLLayout::restyle_document() {
+	LayoutStats::Scope timing(statistics(), LayoutStats::STYLE);
+	dom_mutated();
+	const auto& document = state->dom->get_document();
+	document->invalidate_measurements();
+	// Restyling may reconstruct generated content and the render tree.
+	LayoutStats::Scope tree_timing(statistics(), LayoutStats::RENDER_TREE);
+	DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
+}
+
+bool HTMLLayout::can_reuse_viewport_layout(const Vector2i& p_media_size) const {
+	return !LayoutStats::reference_mode() && state->has_layout() && state->media_viewport_size == p_media_size;
+}
+
+Error HTMLLayout::prepare_viewport_styles(const Vector2i& p_media_size) {
+	if (LayoutStats::reference_mode()) {
+		const bool skip = can_skip_hover_base_layout(p_media_size);
+		return skip && !update_preferred_color_scheme() ? OK : layout(p_media_size);
+	}
+	update_preferred_color_scheme();
+	const auto& document = state->dom->get_document();
+	if (!document || state->parse_error != OK || !state->container) return layout(p_media_size);
+	// Container queries and transitions need the original measurement/capture sequence.
+	if (state->has_css_transitions || state->animations.active() || state->transitions.active() ||
+		state->sampling_transitions || state->transitions.has_overrides() || state->animations.has_overrides() ||
+		DocumentAdapter::has_container_dependencies(*document)) return layout(p_media_size);
+	if (can_reuse_viewport_layout(p_media_size)) return OK;
+	try {
+		state->container->set_viewport(p_media_size, p_media_size);
+		DocumentAdapter::set_viewport_unit_size(*document, p_media_size);
+		if (state->pending_update == State::Update::STYLE || DocumentAdapter::media_changed(*document)) {
+			auto before = state->viewport_size.x > 0 ? dockit::css::TransitionState::capture(document->root()) :
+				dockit::css::TransitionState::Snapshot();
+			restyle_document();
+			state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
+			state->has_css_transitions = DocumentAdapter::has_transitions(*document);
+			if (state->has_css_transitions && state->animation_underlying.empty()) state->animation_underlying = std::move(before);
+			state->pending_update = State::Update::LAYOUT;
+		}
+		else if (state->pending_update != State::Update::HOVER_LAYOUT || state->viewport_unit_size != p_media_size) {
+			compute_document_styles();
+			if (state->hover_layout_active) rebuild_render_tree();
+		}
+		state->viewport_styles_prepared = true;
+		state->prepared_viewport_units = p_media_size;
+		if (uses_document_viewport) state->viewport_overflow = DocumentAdapter::propagate_viewport_overflow(*document);
+		if (state->has_css_transitions || DocumentAdapter::has_container_dependencies(*document)) return layout(p_media_size);
+		return OK;
+	}
+	catch (const std::exception& error) {
+		state->viewport_styles_prepared = false;
+		state->error = "Could not prepare HTML styles. " + String::utf8(error.what());
+		return ERR_INVALID_DATA;
+	}
+}
+
 HTMLDOM& HTMLLayout::get_dom() const {
 	return *state->dom;
 }
@@ -1242,6 +1347,7 @@ bool HTMLLayout::initialize_document(const CharString& p_html) {
 	if (const auto document = state->dom->get_document()) {
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
 		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
+		document->set_layout_statistics(statistics());
 	}
 	return bool(state->dom->get_document());
 }
@@ -1299,17 +1405,23 @@ Error HTMLLayout::layout_viewport(const Vector2i& p_viewport_size, const Vector2
 		return OK;
 	}
 	using Update = State::Update;
+	state->layout_resize_only = state->pending_update == Update::NONE &&
+		state->media_viewport_size == p_media_size && state->viewport_unit_size == p_viewport_unit_size;
 	if (state->pending_update == Update::NONE) {
 		state->pending_update = Update::LAYOUT;
 	}
 	if (state->dom->get_document() && !state->implicit_empty_document) {
 		try {
+			state->reflow_running = true;
+			state->update_during_reflow = false;
 			const Error result = reflow(p_viewport_size, p_media_size, p_viewport_unit_size);
+			state->reflow_running = false;
 			if (result != OK) {
 				return result;
 			}
 		}
 		catch (const std::exception& p_error) {
+			state->reflow_running = false;
 			state->anchors.clear();
 			state->container->clear_recording();
 			state->geometry.clear();
@@ -1320,7 +1432,9 @@ Error HTMLLayout::layout_viewport(const Vector2i& p_viewport_size, const Vector2
 	state->viewport_size = p_viewport_size;
 	state->media_viewport_size = p_media_size;
 	state->viewport_unit_size = p_viewport_unit_size;
-	state->pending_update = Update::NONE;
+	state->pending_update = state->update_during_reflow ? Update::STYLE : Update::NONE;
+	if (state->update_during_reflow) queue_reflow();
+	state->viewport_styles_prepared = false;
 	state->hover_viewport_style_changed = false;
 	return OK;
 }
@@ -1329,12 +1443,14 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	const Vector2i& p_viewport_unit_size) {
 	using Update = State::Update;
 	const bool hover_layout_update = state->pending_update == Update::HOVER_LAYOUT;
-	const bool viewport_units_changed = state->viewport_unit_size != p_viewport_unit_size;
+	const bool viewport_units_changed = (state->viewport_styles_prepared ? state->prepared_viewport_units :
+		state->viewport_unit_size) != p_viewport_unit_size;
 	state->container->begin_image_layout();
 	const auto& document = state->dom->get_document();
 	const double transition_time = animation_clock_time();
 	dockit::css::TransitionState::Snapshot before_transition;
-	if (!state->sampling_transitions && state->viewport_size.x > 0) {
+	if (!state->sampling_transitions && state->viewport_size.x > 0 &&
+		(state->has_css_transitions || state->transitions.active() || state->transitions.has_overrides())) {
 		before_transition = state->animation_underlying.empty() ?
 			dockit::css::TransitionState::capture(document->root()) : std::move(state->animation_underlying);
 	}
@@ -1382,34 +1498,39 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 	const auto selected_content = selected_auto_content();
 	state->anchors.clear();
 	state->container->clear_recording();
+	dom_mutated();
 	state->geometry.clear();
 	if (state->pending_update == Update::STYLE || image_hints_changed || DocumentAdapter::media_changed(*document)) {
 		state->pending_update = Update::STYLE;
-		DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
+		restyle_document();
 		state->selector_state_dependencies = DocumentAdapter::selector_state_dependencies(*document);
 		state->has_css_transitions = DocumentAdapter::has_transitions(*document);
 		state->pending_update = Update::LAYOUT;
 	}
-	else if (!hover_layout_update || viewport_units_changed || state->sampling_transitions) {
+	else if ((!state->viewport_styles_prepared && !hover_layout_update &&
+		(!state->layout_resize_only || LayoutStats::reference_mode())) || viewport_units_changed || state->sampling_transitions) {
 		// Viewport units also change when all media queries keep matching.
-		DocumentAdapter::compute_styles(*document);
-		if (state->hover_layout_active) DocumentAdapter::rebuild_render_tree(*document);
+		compute_document_styles();
+		if (state->hover_layout_active) rebuild_render_tree();
 	}
 	Vector2 overflow;
 	std::unordered_set<const litehtml::element*> revealed;
 	std::set<std::pair<std::vector<bool>, std::vector<std::array<litehtml::pixel_t, 2>>>> container_states;
 	for (;;) {
 		if (uses_document_viewport) state->viewport_overflow = DocumentAdapter::propagate_viewport_overflow(*document);
-		document->render(p_viewport_size.x);
+		{
+			LayoutStats::Scope timing(statistics(), LayoutStats::LAYOUT);
+			document->render(p_viewport_size.x);
+		}
 		auto containers = DocumentAdapter::measure_containers(*document);
 		if ((containers.rules_changed || containers.units_changed) &&
 			container_states.emplace(std::move(containers.rule_matches), std::move(containers.dimensions)).second) {
 			if (containers.rules_changed) {
-				DocumentAdapter::restyle(document, *state->container, state->master_styles, state->user_styles);
+				restyle_document();
 			}
 			else {
-				DocumentAdapter::compute_styles(*document);
-				DocumentAdapter::rebuild_render_tree(*document);
+				compute_document_styles();
+				rebuild_render_tree();
 			}
 			continue;
 		}
@@ -1451,12 +1572,12 @@ Error HTMLLayout::reflow(const Vector2i& p_viewport_size, const Vector2i& p_medi
 			state->container->set_animation_state(&state->animations);
 			container_states.clear();
 			state->geometry.clear();
-			DocumentAdapter::compute_styles(*document);
+			compute_document_styles();
 			continue;
 		}
 		state->geometry.clear();
-		DocumentAdapter::compute_styles(*document);
-		DocumentAdapter::rebuild_render_tree(*document);
+		compute_document_styles();
+		rebuild_render_tree();
 	}
 	const double width = std::ceil(overflow.x);
 	const double height = std::ceil(overflow.y);
@@ -1567,6 +1688,8 @@ void HTMLLayout::set_resource_layout_callback(const Callable& p_callback) {
 }
 
 void HTMLLayout::queue_resource_layout() {
+	if (state->reflow_running) state->update_during_reflow = true;
+	state->viewport_styles_prepared = false;
 	if (state->pending_update == State::Update::NONE) state->pending_update = State::Update::LAYOUT;
 	if (state->resource_layout_callback.is_valid()) state->resource_layout_callback.call();
 	else queue_reflow();
@@ -1622,12 +1745,19 @@ void HTMLLayout::remote_image_completed(const String& p_url, const Ref<Texture2D
 }
 
 void HTMLLayout::record_paint() {
+	LayoutStats::Scope timing(statistics(), LayoutStats::PAINT);
 	state->input_paint_pending = false;
-	state->anchors.clear();
-	collect_anchors(*state->dom->get_document()->root(), state->geometry, state->anchors);
+	if (state->anchors_dirty || LayoutStats::reference_mode()) {
+		LayoutStats::Scope anchor_timing(statistics(), LayoutStats::ANCHORS);
+		state->anchors.clear();
+		collect_anchors(*state->dom->get_document()->root(), state->geometry, state->anchors);
+		state->anchors_dirty = false;
+	}
 	state->container->set_gauge_animation_time(uses_owner_animation_clock ? state->animation_time :
 		Time::get_singleton()->get_ticks_msec() / 1000.0);
-	state->container->record(*state->dom->get_document(), state->content_size, state->geometry, state->viewport_gutters);
+	state->container->record(*state->dom->get_document(), state->content_size, state->geometry, state->viewport_gutters,
+		state->text_index_dirty || LayoutStats::reference_mode(), statistics());
+	state->text_index_dirty = false;
 	record_css_diagnostics();
 }
 
@@ -2268,6 +2398,9 @@ void HTMLLayout::invalidate_styles() {
 }
 
 void HTMLLayout::mark_styles_pending() {
+	if (state->reflow_running) state->update_during_reflow = true;
+	dom_mutated();
+	state->viewport_styles_prepared = false;
 	state->pending_update = State::Update::STYLE;
 	state->hover_viewport_style_changed = false;
 	state->anchors.clear();
@@ -2879,6 +3012,9 @@ void HTMLLayout::rebuild_scroll_geometry() {
 }
 
 void HTMLLayout::rebuild_document_geometry(const Vector2i& p_viewport_size, bool p_resolve_sticky) {
+	LayoutStats::Scope timing(statistics(), LayoutStats::GEOMETRY);
+	state->anchors_dirty = true;
+	state->text_index_dirty = true;
 	const auto& document = state->dom->get_document();
 	const auto& top = document->top_layer_render();
 	const Rect2 viewport = !top.empty() || (p_resolve_sticky && state->geometry.has_sticky())
@@ -3118,7 +3254,7 @@ void HTMLLayout::draw_viewport_background(CanvasItem& p_canvas, const Vector2& p
 dockit::HTMLViewportStyle HTMLLayout::get_viewport_style() const {
 	const auto& document = state->dom->get_document();
 	const bool hover_styles_current = state->pending_update == State::Update::HOVER_LAYOUT;
-	const auto root = document && (state->has_layout() || hover_styles_current) ? document->root() : nullptr;
+	const auto root = document && (state->has_layout() || hover_styles_current || state->viewport_styles_prepared) ? document->root() : nullptr;
 	if (!root || root->css().get_display() == litehtml::display_none) return {};
 	// Read the computed values, before viewport propagation changes the root box's used overflow.
 	const dockit::css::ComputedStyle& css = root->css();
@@ -3574,6 +3710,12 @@ Ref<HTMLElement> HTMLLayout::get_focus_ancestor(const Ref<HTMLElement>& p_elemen
 }
 
 std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable_elements) const {
+	if (!state->has_layout()) { r_has_focusable_elements = false; return {}; }
+	if (!state->tab_order_dirty && !LayoutStats::reference_mode()) {
+		r_has_focusable_elements = state->cached_has_focusable_elements;
+		return state->tab_order;
+	}
+	LayoutStats::Scope timing(&state->statistics, LayoutStats::TAB_ORDER);
 	struct TabElement {
 		Ref<HTMLElement> element;
 		int64_t index;
@@ -3614,6 +3756,9 @@ std::vector<Ref<HTMLElement>> HTMLLayout::get_tab_elements(bool& r_has_focusable
 	std::vector<Ref<HTMLElement>> result;
 	result.reserve(elements.size());
 	for (auto& entry : elements) result.push_back(std::move(entry.element));
+	state->tab_order = result;
+	state->cached_has_focusable_elements = r_has_focusable_elements;
+	state->tab_order_dirty = false;
 	return result;
 }
 
@@ -3760,6 +3905,7 @@ TypedArray<HTMLElement> HTMLLayout::get_hovered_elements() const {
 
 dockit::HTMLHoverUpdate HTMLLayout::update_hover(const std::optional<Vector2>& p_position,
 	const dockit::HTMLHitTestResult& p_hit_test) {
+	LayoutStats::Scope timing(statistics(), LayoutStats::HOVER);
 	const auto hit_element = p_position ? (p_hit_test ? *p_hit_test : hit_test_element(*p_position)) : nullptr;
 	const auto target = find_html_ancestor(hit_element);
 	std::vector<std::weak_ptr<litehtml::element>> next;
@@ -3804,12 +3950,15 @@ dockit::HTMLHoverUpdate HTMLLayout::update_hover(const std::optional<Vector2>& p
 	litehtml::position::vector redraw_boxes;
 	bool layout_required = false;
 	bool viewport_style_required = false;
-	const bool styles_changed = document->root()->find_styles_changes(redraw_boxes, &layout_required,
-		&viewport_style_required);
+	bool styles_changed;
+	{
+		LayoutStats::Scope style_timing(statistics(), LayoutStats::STYLE);
+		styles_changed = document->root()->find_styles_changes(redraw_boxes, &layout_required, &viewport_style_required);
+	}
 	if (!styles_changed) return dockit::HTMLHoverUpdate::state_changed;
 	layout_required |= viewport_style_required;
 	if (layout_required) {
-		DocumentAdapter::rebuild_render_tree(*document);
+		rebuild_render_tree();
 		state->pending_update = State::Update::HOVER_LAYOUT;
 		state->hover_viewport_style_changed = viewport_style_required;
 		state->hover_layout_active = true;
@@ -4011,6 +4160,12 @@ Ref<Resource> HTMLLayout::audio_resource(const String& p_path, bool p_fmod) cons
 }
 
 void HTMLLayout::clear() {
+	state->layout_resize_only = false;
+	state->reflow_running = false;
+	state->update_during_reflow = false;
+	dom_mutated();
+	state->tab_order.clear();
+	state->viewport_styles_prepared = false;
 	state->audio_streams.clear();
 	state->video_sources.clear();
 	state->imported_video_base_dir = String();

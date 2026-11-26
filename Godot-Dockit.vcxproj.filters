@@ -1424,6 +1424,9 @@
     <ClInclude Include="src\formats\html\layout\html_geometry.h">
       <Filter>Header Files\formats\html\layout</Filter>
     </ClInclude>
+    <ClInclude Include="src\formats\html\layout\html_layout_statistics.h">
+      <Filter>src\formats\html\layout</Filter>
+    </ClInclude>
     <ClInclude Include="src\formats\html\layout\html_hyphenation.h">
       <Filter>Header Files\formats\html\layout</Filter>
     </ClInclude>

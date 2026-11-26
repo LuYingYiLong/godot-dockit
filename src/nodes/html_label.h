@@ -894,6 +894,11 @@ protected:
 	void _notification(int p_what);
 
 public:
+	void set_layout_statistics_enabled(bool p_enabled);											// 设置布局性能统计开关
+	bool is_layout_statistics_enabled() const;													// 返回是否启用布局性能统计
+	godot::Dictionary get_layout_statistics() const;											// 获取布局和宿主累计阶段计数与微秒耗时
+	void reset_layout_statistics();																// 清空统计而不刷新文档
+
 	HTMLLabel();
 	~HTMLLabel() override;
 

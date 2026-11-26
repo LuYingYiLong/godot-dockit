@@ -298,6 +298,11 @@ namespace litehtml {
 		p_document.m_viewport_unit_size = { static_cast<pixel_t>(p_size.x), static_cast<pixel_t>(p_size.y) };
 	}
 
+	bool dockit_editor::has_container_dependencies(const document& p_document) {
+		return p_document.m_uses_container_units || p_document.m_styles.has_container_queries() ||
+			p_document.m_master_css.has_container_queries();
+	}
+
 	void dockit_editor::compute_styles(document& p_document) {
 		p_document.m_uses_container_units = false;
 		p_document.set_quote_depth(0);

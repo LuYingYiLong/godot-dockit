@@ -1,3 +1,4 @@
+#include "formats/html/layout/html_layout_statistics.h"
 #include "html_paint_recorder.h"
 #include "formats/html/elements/html_details_node.h"
 #include "html_depth_sort.h"
@@ -752,7 +753,20 @@ void fragment() {
 
 	} // namespace
 
-	void HTMLPaintRecorder::clear() {
+	void HTMLPaintRecorder::clear_text_index() {
+		auto_content_text.clear();
+		plain_text = String();
+		accessible_text = String();
+		excluded_selection.clear();
+		selection_scopes.clear();
+		text_index_spans.clear();
+		selection_scope_starts.clear();
+		separator_selectable.reset();
+		text_bindings.clear();
+		text_index_valid = false;
+	}
+
+	void HTMLPaintRecorder::clear(bool p_keep_text_index) {
 		recording_geometry = nullptr;
 		active_geometry = nullptr;
 		clips.clear();
@@ -771,14 +785,7 @@ void fragment() {
 		separate_run = false;
 		has_depth_scene = false;
 		diagnostic_runs.clear();
-		plain_text = String();
-		accessible_text = String();
-		excluded_selection.clear();
-		selection_scopes.clear();
-		text_index_spans.clear();
-		selection_scope_starts.clear();
-		separator_selectable.reset();
-		auto_content_text.clear();
+		if (!p_keep_text_index) clear_text_index();
 		embedded_object_text.clear();
 		text_runs.clear();
 		ellipses.clear();
@@ -788,8 +795,9 @@ void fragment() {
 		text_overflow_clip_active = false;
 	}
 
-	void HTMLPaintRecorder::begin(const HTMLGeometryIndex& p_geometry, const render_item* p_root, const OverflowTextShaper& p_shaper) {
-		clear();
+	void HTMLPaintRecorder::begin(const HTMLGeometryIndex& p_geometry, const render_item* p_root, const OverflowTextShaper& p_shaper, bool p_rebuild_text_index) {
+		reuse_text_index = !p_rebuild_text_index && text_index_valid && embedded_object_text.empty() && ellipses.empty();
+		clear(reuse_text_index);
 		recording_geometry = &p_geometry;
 		if (p_root) prepare_text_overflow(*p_root, p_shaper);
 	}
@@ -809,13 +817,16 @@ void fragment() {
 		paint_groups.swap(viewport_background_groups);
 	}
 
-	void HTMLPaintRecorder::finish(const element::ptr& p_root, const TextShaper& p_shape_text) {
+	void HTMLPaintRecorder::finish(const element::ptr& p_root, const TextShaper& p_shape_text, HTMLLayoutStatistics* p_statistics) {
 		clips.clear();
 		clip_material.unref();
 		active_geometry = nullptr;
+		std::vector<Text*> indexed_commands;
+		indexed_commands.reserve(text_bindings.size());
 		for (HTMLPaintRun& run : paint_runs) {
 			for (Command& command : run.commands) {
 				if (Text* text = std::get_if<Text>(&command)) {
+					indexed_commands.push_back(text);
 					const Rect2 rect(text->position, text->layout.size());
 					const Rect2 visible = run.clips.empty() && run.clip ? run.matrix.xform(rect).intersection(*run.clip) :
 						clipped_visual_bounds(rect, run.matrix, run.clips);
@@ -832,9 +843,33 @@ void fragment() {
 				}
 			}
 		}
-		String separator;
-		AccessibleTextIndex accessibility{ accessible_text,{} };
-		index_text(p_root, p_shape_text, separator, &accessibility);
+		bool reusable = reuse_text_index && embedded_object_text.empty() && ellipses.empty() &&
+			indexed_commands.size() == text_bindings.size();
+		for (size_t i = 0; reusable && i < indexed_commands.size(); ++i) {
+			const auto& text = *indexed_commands[i];
+			const auto& binding = text_bindings[i];
+			reusable = text.renderer == binding.renderer && text.layout.get_rid() == binding.layout &&
+				text.position == binding.position && text.length == binding.length && text.ellipsis == binding.ellipsis;
+		}
+		if (reusable) {
+			for (size_t i = 0; i < indexed_commands.size(); ++i) {
+				auto& text = *indexed_commands[i];
+				const auto& binding = text_bindings[i];
+				text.offset = binding.offset;
+				text.selectable = binding.selectable;
+				text.selection_owner = binding.selection_owner;
+			}
+		}
+		else {
+			clear_text_index();
+			HTMLLayoutStatistics::Scope timing(p_statistics, HTMLLayoutStatistics::TEXT_INDEX);
+			String separator;
+			AccessibleTextIndex accessibility{ accessible_text,{} };
+			index_text(p_root, p_shape_text, separator, &accessibility);
+			if (embedded_object_text.empty()) for (const auto* text : indexed_commands) text_bindings.push_back({ text->renderer, text->layout.get_rid(),
+				text->position, text->offset, text->length, text->ellipsis, text->selection_owner, text->selectable });
+			text_index_valid = true;
+		}
 		// Paint order can differ from document order for positioned or floating text.
 		// The DOM pass assigns offsets while the paint runs retain the exact clip geometry.
 		painted_text.clear();
@@ -1241,7 +1276,7 @@ void fragment() {
 		const bool folded = p_element->tag() == litehtml::_details_ && !p_element->get_attr("open");
 		const auto summary = folded ? details_summary(*p_element) : element::ptr();
 		if (!p_element->css().get_content_image()) {
-			for (const auto& child : p_element->children()) {
+			for (const auto& child : p_element->composed_children()) {
 				if (folded && child != summary && !litehtml::is_generated_tag(child->tag())) continue;
 				index_text(child, p_shape_text, r_separator, child_accessibility,
 					p_unlaid || p_element->css().has_auto_content_visibility(), selectable);

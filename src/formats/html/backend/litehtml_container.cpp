@@ -1,3 +1,4 @@
+#include "formats/html/layout/html_layout_statistics.h"
 #include "formats/html/elements/html_input_node.h"
 #include "formats/html/elements/html_select_node.h"
 #include "formats/html/elements/html_textarea_node.h"
@@ -303,7 +304,8 @@ namespace dockit {
 	}
 
 	void LiteHTMLContainer::record(litehtml::document& p_document, const Vector2i& p_content_size,
-		const HTMLGeometryIndex& p_geometry, const Vector2& p_viewport_gutters) {
+		const HTMLGeometryIndex& p_geometry, const Vector2& p_viewport_gutters, bool p_rebuild_text_index,
+		HTMLLayoutStatistics* p_statistics) {
 		resources.begin_image_paint();
 		const litehtml::position bounds(0, 0, std::max(p_content_size.x, viewport_size.x),
 			std::max(p_content_size.y, viewport_size.y));
@@ -312,7 +314,7 @@ namespace dockit {
 				if (!p_item) return fonts.shape_text(p_font, p_text);
 				return fonts.shape_styled_text(p_font, p_text, p_item->get_text_justification(), p_item->get_placement().width,
 					p_start, p_end, p_item->get_punctuation_trim()).layout;
-			});
+			}, p_rebuild_text_index);
 		p_document.draw(0, 0, 0, &bounds);
 		const auto& root_render = p_document.root_render();
 		if (p_viewport_gutters != Vector2() && root_render && root_render->is_visible()) {
@@ -333,7 +335,7 @@ namespace dockit {
 		paint.finish(p_document.root(), [this](const element& p_element, const String& p_text) {
 			const auto font = p_element.parent()->css().get_font();
 			return font ? fonts.shape_text(font, p_text) : HTMLTextLayout{};
-			});
+			}, p_statistics);
 		resources.end_image_paint();
 	}
 

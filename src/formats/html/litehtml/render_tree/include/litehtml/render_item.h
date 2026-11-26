@@ -23,6 +23,7 @@ namespace litehtml
         struct inline_measurement
         {
             uint64_t generation;
+            int context_idx;
             containing_block_context::typed_pixel height_basis;
             rendered_width content;
         };

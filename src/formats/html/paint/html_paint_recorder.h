@@ -23,6 +23,7 @@ namespace litehtml {
 }
 
 namespace dockit {
+	struct HTMLLayoutStatistics;
 	enum class HTMLControlIcon {
 		play,
 		pause,
@@ -148,6 +149,20 @@ namespace dockit {
 		void visit_pointer_targets(const godot::Vector2& p_point, const std::function<bool(const PointerTarget&)>& p_visitor) const;
 		const PointerTarget* overflow_control_at(const godot::Vector2& p_point) const;
 		godot::Rect2 overflow_control_bounds;
+		struct TextIndexBinding {
+			const litehtml::render_item* renderer;
+			godot::RID layout;
+			godot::Vector2 position;
+			int64_t offset;
+			int64_t length;
+			int64_t ellipsis;
+			const litehtml::element* selection_owner;
+			bool selectable;
+		};
+		std::vector<TextIndexBinding> text_bindings;
+		bool reuse_text_index = false;
+		bool text_index_valid = false;
+		void clear_text_index();
 		godot::String plain_text;
 		godot::String accessible_text;
 		std::vector<godot::Vector2i> excluded_selection;
@@ -210,11 +225,12 @@ namespace dockit {
 		bool push_content_clip(const godot::Rect2& p_box);
 
 	public:
-		void clear();																			// 清除当前存储的数据
+		void clear(bool p_keep_text_index = false);												// 清除当前存储的数据
 		void begin(
 			const HTMLGeometryIndex& p_geometry,
 			const litehtml::render_item* p_root,
-			const OverflowTextShaper& p_shaper
+			const OverflowTextShaper& p_shaper,
+			bool p_rebuild_text_index = true
 		);																						// 初始化绘制记录器并建立文本索引
 		void record_viewport_background(
 			const litehtml::render_item& p_root,
@@ -238,7 +254,8 @@ namespace dockit {
 		const RenderGeometry* resize_grip_at(const godot::Vector2& p_point) const;				// 查找指定坐标命中的调整大小手柄
 		void finish(
 			const std::shared_ptr<litehtml::element>& p_root,
-			const TextShaper& p_shape_text
+			const TextShaper& p_shape_text,
+			HTMLLayoutStatistics* p_statistics = nullptr
 		);																						// 完成绘制记录并生成文本索引
 
 		const std::vector<HTMLPaintRun>& get_paint_runs() const;								// 获取记录的绘制指令片段

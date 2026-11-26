@@ -38,6 +38,7 @@ namespace litehtml {
 		);																						// 解析 XML 裁剪源并计算独立的样式
 		static bool media_changed(document& p_document);										// 检查媒体条件的匹配结果是否改变
 		static void set_viewport_unit_size(document& p_document, const godot::Vector2i& p_size);// 设置视口百分比单位的参考尺寸
+		static bool has_container_dependencies(const document& p_document);						// 检查样式是否依赖容器测量
 		static void compute_styles(document& p_document);										// 按文档顺序更新计算样式与计数器
 		static void rebuild_render_tree(document& p_document);									// 用现有元素和样式重新建立渲染树
 		static void push_modal(document& p_document, const element::ptr& p_element);			// 将对话框加入文档顶层

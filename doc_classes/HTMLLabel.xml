@@ -23,6 +23,24 @@
 		Focused text fields support the [code]ui_undo[/code] and [code]ui_redo[/code] input actions. Undo and redo also restore the selection. Each IME commit is grouped into one edit. Assigning a new value from script or resetting the form clears the field's edit history.
 	</description>
 	<methods>
+		<method name="set_layout_statistics_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>Enables cumulative layout statistics. Disabled by default. Enabling or disabling statistics does not reset counters or invalidate cached layout. Disabled statistics do not read phase timers.</description>
+		</method>
+		<method name="is_layout_statistics_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>Returns whether cumulative layout statistics are enabled.</description>
+		</method>
+		<method name="get_layout_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>Returns a snapshot of cumulative phase counters and elapsed microseconds. Keys use the phase name followed by [code]_count[/code] or [code]_usec[/code]. Phases are [code]refresh_requests[/code], [code]refresh[/code], [code]style[/code], [code]render_tree[/code], [code]measurement[/code], [code]measurement_cache_hits[/code], [code]layout[/code], [code]geometry[/code], [code]paint[/code], [code]text_index[/code], [code]anchors[/code], [code]tab_order[/code], [code]scrollbar[/code], [code]interaction[/code], and [code]hover[/code]. Host phases are recorded by [HTMLLabel]; standalone [HTMLLayout] leaves them at zero. Count-only phases have zero elapsed time. Nested phase times overlap and must not be added together. Reading statistics does not flush pending updates. Counters survive parsing and clearing the document.</description>
+		</method>
+		<method name="reset_layout_statistics">
+			<return type="void" />
+			<description>Resets all layout counters and elapsed times without changing the statistics switch, document, or cached layout. Active timing scopes from before the reset are excluded.</description>
+		</method>
+
 		<method name="reload_components"><return type="void"/><description>Unmounts component instances and schedules registration and mounting again.</description></method>
 		<method name="get_component_diagnostics" qualifiers="const"><return type="Dictionary[]"/><description>Returns component registration failures with tag, src, and reason fields.</description></method>
 

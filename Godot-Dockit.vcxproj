@@ -494,6 +494,7 @@
     <ClInclude Include="src\formats\html\layout\grid\litehtml_grid_tracks.h" />
     <ClInclude Include="src\formats\html\layout\grid\litehtml_render_grid.h" />
     <ClInclude Include="src\formats\html\layout\html_geometry.h" />
+    <ClInclude Include="src\formats\html\layout\html_layout_statistics.h" />
     <ClInclude Include="src\formats\html\layout\html_hyphenation.h" />
     <ClInclude Include="src\formats\html\layout\html_hyphenation_dictionary.h" />
     <ClInclude Include="src\formats\html\layout\html_inline_text_fragment.h" />

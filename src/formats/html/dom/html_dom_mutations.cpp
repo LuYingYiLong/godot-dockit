@@ -56,7 +56,10 @@ void HTMLDOM::flush_changes() {
 		pending_change_indices.clear();
 		synchronize_slots();
 		const bool styles = std::exchange(changed_styles, false);
-		if (on_mutation && !batch.empty()) on_mutation(batch);
+		if (!batch.empty()) {
+			if (const auto layout = get_layout()) layout->dom_mutated();
+			if (on_mutation) on_mutation(batch);
+		}
 		if (styles && on_change) on_change();
 	}
 	flushing_changes = false;

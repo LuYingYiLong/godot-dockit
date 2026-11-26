@@ -1,3 +1,4 @@
+#include "formats/html/layout/html_layout_statistics.h"
 #include "render_item.h"
 #include "document.h"
 #include <algorithm>
@@ -70,11 +71,15 @@ litehtml::intrinsic_inline_sizes litehtml::render_item::resolve_intrinsic_inline
 	const auto needs_content = [](kind value) { return !is_one_of(value, kind::none, kind::stretch, kind::stretch_limit); };
 	if (needs_content(preferred) || needs_content(minimum) || needs_content(maximum))
 	{
-		const auto generation = src_el()->get_document()->m_layout_generation;
+		const auto document = src_el()->get_document();
+		const auto generation = document->layout_statistics && !dockit::HTMLLayoutStatistics::reference_mode() ?
+			document->m_measurement_generation : document->m_layout_generation;
 		if (!m_inline_measurement || m_inline_measurement->generation != generation ||
+			m_inline_measurement->context_idx != enclosing.context_idx ||
 			m_inline_measurement->height_basis.type != enclosing.height.type ||
 			m_inline_measurement->height_basis.value != enclosing.height.value)
 		{
+			dockit::HTMLLayoutStatistics::Scope timing(src_el()->get_document()->layout_statistics, dockit::HTMLLayoutStatistics::MEASUREMENT);
 			context probe;
 			probe.context_idx = enclosing.context_idx;
 			probe.width = 1 << 20;
@@ -84,11 +89,12 @@ litehtml::intrinsic_inline_sizes litehtml::render_item::resolve_intrinsic_inline
 			const auto measured = render(0, 0, probe, nullptr);
 			const auto max_width = std::max<pixel_t>(0, measured.natural_width - content_offset_width());
 			const auto min_width = std::clamp(measured.min_width - content_offset_width(), pixel_t(0), max_width);
-			const inline_measurement entry{ generation, enclosing.height, { max_width, min_width } };
+			const inline_measurement entry{ generation, enclosing.context_idx, enclosing.height, { max_width, min_width } };
 			if (m_inline_measurement) *m_inline_measurement = entry;
 			else m_inline_measurement = std::make_unique<inline_measurement>(entry);
 		}
-		// Reuse content measurements within this reflow. The final layout still runs at the used width.
+		else if (const auto statistics = src_el()->get_document()->layout_statistics) statistics->count(dockit::HTMLLayoutStatistics::MEASUREMENT_HIT);
+		// Reuse content measurements across unchanged layout constraints. The final layout still runs at the used width.
 		const auto& content = m_inline_measurement->content;
 		min_content = content.min_width;
 		max_content = content.natural_width;

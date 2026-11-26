@@ -1,3 +1,4 @@
+#include "formats/html/layout/html_layout_statistics.h"
 #include "html_label.h"
 
 #include "editor/dockit_source_editor.h"
@@ -705,7 +706,16 @@ HTMLLabel::HTMLLabel() {
 	set_mouse_filter(MOUSE_FILTER_IGNORE);
 }
 
+void HTMLLabel::set_layout_statistics_enabled(bool p_enabled) { layout->set_layout_statistics_enabled(p_enabled); }
+bool HTMLLabel::is_layout_statistics_enabled() const { return layout->is_layout_statistics_enabled(); }
+Dictionary HTMLLabel::get_layout_statistics() const { return layout->get_layout_statistics(); }
+void HTMLLabel::reset_layout_statistics() { layout->reset_layout_statistics(); }
+
 void HTMLLabel::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_layout_statistics_enabled", "enabled"), &HTMLLabel::set_layout_statistics_enabled);
+	ClassDB::bind_method(D_METHOD("is_layout_statistics_enabled"), &HTMLLabel::is_layout_statistics_enabled);
+	ClassDB::bind_method(D_METHOD("get_layout_statistics"), &HTMLLabel::get_layout_statistics);
+	ClassDB::bind_method(D_METHOD("reset_layout_statistics"), &HTMLLabel::reset_layout_statistics);
 	ClassDB::bind_method(D_METHOD("set_bus", "bus"), &HTMLLabel::set_bus);
 	ClassDB::bind_method(D_METHOD("get_bus"), &HTMLLabel::get_bus);
 	ClassDB::bind_method(D_METHOD("set_use_fmod_bus", "enabled"), &HTMLLabel::set_use_fmod_bus);
@@ -2295,6 +2305,7 @@ void HTMLLabel::poll_preferred_color_scheme() {
 }
 
 void HTMLLabel::queue_refresh(bool p_resource_only) {
+	layout->statistics()->count(dockit::HTMLLayoutStatistics::REFRESH_REQUEST);
 	hover_reflow = false;
 	hover_passes_remaining = HOVER_PASSES;
 	if (!canvas || !is_inside_tree()) return;
@@ -2517,6 +2528,8 @@ void HTMLLabel::draw_viewport_gutters() {
 }
 
 void HTMLLabel::refresh() {
+	const Ref<HTMLLayout> statistics_owner = layout;
+	dockit::HTMLLayoutStatistics::Scope timing(statistics_owner->statistics(), dockit::HTMLLayoutStatistics::REFRESH);
 	refresh_queued = false;
 	const bool resource_update = std::exchange(resource_refresh_only, false);
 	if (!is_inside_tree()) {
@@ -2550,11 +2563,9 @@ void HTMLLabel::refresh() {
 		update_view({}, {}, {}, { 1, 1 }, layout_changed);
 		return;
 	}
-	bool skip_base_layout = layout->can_skip_hover_base_layout(media_size);
-	if (skip_base_layout && layout->update_preferred_color_scheme()) {
-		skip_base_layout = false;
-	}
-	if (!skip_base_layout && layout->layout(media_size) != OK) {
+	layout->update_preferred_color_scheme();
+	const bool reuse_viewport = layout->can_reuse_viewport_layout(media_size);
+	if (layout->prepare_viewport_styles(media_size) != OK) {
 		update_view({}, {}, {}, { 1, 1 }, layout_changed, layout->get_render_error());
 		return;
 	}
@@ -2579,16 +2590,17 @@ void HTMLLabel::refresh() {
 		const Vector2 gutters((reserve || p_vertical ? bar_width : 0) + opposite_gutter, p_horizontal ? bar_height : 0);
 		return Vector2i((available - gutters).floor());
 		};
-	bool horizontal = visible_bar(style.overflow[0], false);
-	bool vertical = visible_bar(style.overflow[1], false);
+	bool horizontal = visible_bar(style.overflow[0], reuse_viewport && visible_viewport_bars.x);
+	bool vertical = visible_bar(style.overflow[1], reuse_viewport && visible_viewport_bars.y);
 	Vector2i viewport = client_size(horizontal, vertical);
 
-	// Measure with unconditional gutters before testing for bars that depend on overflowing content.
+	// Reuse a stable viewport only when no layout input changed; otherwise start with unconditional gutters.
 	for (;;) {
 		if (viewport.x <= 0 || viewport.y <= 0) {
 			update_view({}, {}, {}, { 1, 1 }, layout_changed);
 			return;
 		}
+		dockit::HTMLLayoutStatistics::Scope scrollbar_timing(layout->statistics(), dockit::HTMLLayoutStatistics::SCROLLBAR);
 		if (layout->layout_viewport(viewport, media_size, unit_size) != OK) {
 			update_view({}, {}, {}, { 1, 1 }, layout_changed, layout->get_render_error());
 			return;
@@ -2943,6 +2955,8 @@ void HTMLLabel::queue_interaction() {
 }
 
 void HTMLLabel::update_interaction() {
+	const Ref<HTMLLayout> statistics_owner = layout;
+	dockit::HTMLLayoutStatistics::Scope timing(statistics_owner->statistics(), dockit::HTMLLayoutStatistics::INTERACTION);
 	interaction_queued = false;
 	if (!is_inside_tree() || refresh_queued || view_update_pending) {
 		return;

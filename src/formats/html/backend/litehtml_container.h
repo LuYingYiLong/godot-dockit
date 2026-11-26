@@ -18,6 +18,7 @@
 #include <utility>
 
 namespace dockit {
+	struct HTMLLayoutStatistics;
 	namespace css {
 		class AnimationState;
 		class TransitionState;
@@ -80,7 +81,9 @@ namespace dockit {
 			litehtml::document& p_document,
 			const godot::Vector2i& p_content_size,
 			const HTMLGeometryIndex& p_geometry,
-			const godot::Vector2& p_viewport_gutters
+			const godot::Vector2& p_viewport_gutters,
+			bool p_rebuild_text_index,
+			HTMLLayoutStatistics* p_statistics
 		);																						// 记录已排版文档的绘制命令并建立可选择文本的索引
 		HTMLTextLayout shape_input(litehtml::uint_ptr p_font, const godot::String& p_text) {
 			return p_font && !p_text.is_empty() ? fonts.shape_text(p_font, p_text) : HTMLTextLayout{};
