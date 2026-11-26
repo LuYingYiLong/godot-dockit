@@ -112,6 +112,44 @@ func _run() -> void:
 	snapshot.stylesheet = sheet
 	await process_frame
 	_check(snapshot.get_content_height() >= 150.0, "Assigned stylesheet did not follow document styles")
+	var map_label: MarkdownLabel = MarkdownLabel.new()
+	map_label.size = Vector2(260.0, 600.0)
+	map_label.parse_html = true
+	map_label.parse_latex = true
+	map_label.parse_mermaid = true
+	get_root().add_child(map_label)
+	map_label.text = "# Mapping[^note]\n\n" + "A long source line that wraps in the preview and still needs to map by its actual rendered characters. ".repeat(4) + "\n\n| First | Second |\n| --- | --- |\n| table text | more text |\n\n~~~gdscript\nfunc greet():\n\tprint(\"Hello\")\n~~~\n\n<div style=\"height:72px;padding:8px\">Raw HTML text</div>\n\n$$\nx^2 + y^2\n$$\n\n[^note]: Footnote content mapped to its source line"
+	await process_frame
+	await process_frame
+	var source_line_count: int = map_label.text.split("\n", true).size()
+	var previous_source_y: float = -1.0
+	for source_line: int in range(source_line_count):
+		var source_y: float = map_label.get_scroll_offset_for_source_line(float(source_line), source_line_count)
+		_check(source_y + 0.01 >= previous_source_y, "Source-to-preview mapping moved backwards at line %d" % source_line)
+		_check(source_y >= 0.0 and source_y <= map_label.get_content_height() + 1.0, "Source line mapped outside preview bounds")
+		previous_source_y = source_y
+	var source_lines: PackedStringArray = map_label.text.split("\n", true)
+	var wrapped_line: int = source_lines.find("A long source line that wraps in the preview and still needs to map by its actual rendered characters. ".repeat(4))
+	var wrapped_start_y: float = map_label.get_scroll_offset_for_source_line(float(wrapped_line) + 0.05, source_line_count)
+	var wrapped_middle_y: float = map_label.get_scroll_offset_for_source_line(float(wrapped_line) + 0.5, source_line_count)
+	var wrapped_end_y: float = map_label.get_scroll_offset_for_source_line(float(wrapped_line) + 0.95, source_line_count)
+	_check(wrapped_start_y < wrapped_end_y and wrapped_start_y <= wrapped_middle_y and wrapped_middle_y <= wrapped_end_y, "Wrapped source line did not follow rendered character geometry")
+	var wrapped_roundtrip: float = map_label.get_source_line_at_scroll_offset(wrapped_middle_y, source_line_count)
+	_check(absf(wrapped_roundtrip - wrapped_line) <= 1.0, "Wrapped line did not round-trip through preview geometry")
+	var table_source_line: int = source_lines.find("| table text | more text |")
+	var footnote_source_line: int = source_lines.find("[^note]: Footnote content mapped to its source line")
+	var table_source_y: float = map_label.get_scroll_offset_for_source_line(float(table_source_line), source_line_count)
+	var footnote_source_y: float = map_label.get_scroll_offset_for_source_line(float(footnote_source_line), source_line_count)
+	_check(table_source_y > wrapped_end_y, "Table row did not map after the wrapped paragraph")
+	_check(absf(map_label.get_source_line_at_scroll_offset(table_source_y, source_line_count) - table_source_line) <= 1.0, "Table row did not round-trip through preview geometry")
+	_check(footnote_source_y > table_source_y, "Footnote source did not map to its rendered location")
+	var previous_preview_line: float = -1.0
+	for preview_y: int in range(0, int(map_label.get_content_height()), 12):
+		var preview_line: float = map_label.get_source_line_at_scroll_offset(float(preview_y), source_line_count)
+		_check(preview_line + 0.05 >= previous_preview_line, "Preview-to-source mapping moved backwards at y=%d: %.2f after %.2f" % [preview_y, preview_line, previous_preview_line])
+		_check(preview_line >= 0.0 and preview_line <= source_line_count, "Preview offset mapped outside source bounds")
+		previous_preview_line = preview_line
+	map_label.queue_free()
 	snapshot.queue_free()
 	label.queue_free()
 	await process_frame

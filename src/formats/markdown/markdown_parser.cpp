@@ -1504,6 +1504,7 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 			MarkdownFootnoteDefinition definition;
 			definition.id = footnote_id;
 			definition.text = footnote_text;
+			definition.line = index;
 			index++;
 
 			while (index < max_index) {
@@ -1527,6 +1528,7 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 			}
 
 			definition.text = definition.text.rstrip("\n \t");
+			definition.end_line = std::max(definition.line, index - 1);
 			footnote_definitions.push_back(definition);
 			continue;
 		}
@@ -1867,6 +1869,10 @@ void rebuild_tail(const String& p_raw_text, int32_t p_reparse_line, std::vector<
 		block.line += p_reparse_line;
 		if (block.end_line > 0) {
 			block.end_line += p_reparse_line;
+		}
+		for (MarkdownFootnoteDefinition& definition : block.footnotes) {
+			definition.line += p_reparse_line;
+			definition.end_line += p_reparse_line;
 		}
 	}
 

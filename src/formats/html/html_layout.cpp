@@ -1635,6 +1635,12 @@ Vector2i HTMLLayout::get_content_size() const {
 	return state->content_size;
 }
 
+Vector2i HTMLLayout::get_element_text_range(const Ref<HTMLElement>& p_element) const {
+	if (!state->has_layout() || p_element.is_null()) return {};
+	const auto element = p_element->lock_element();
+	return element ? state->container->get_paint_recorder().text_range_in_all(*element) : Vector2i();
+}
+
 void HTMLLayout::draw(CanvasItem* p_canvas, const Vector2& p_position, const Rect2& p_clip) {
 	draw_with_highlights(p_canvas, p_position, p_clip, get_node_selection_offsets(), nullptr, Color(0.2f, 0.45f, 0.85f, 0.4f));
 }

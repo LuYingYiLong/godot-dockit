@@ -39,6 +39,7 @@ namespace godot {
 
 namespace dockit {
 	class HTMLDOM;
+	class MarkdownLayoutDocument;
 	class HTMLPaintRecorder;
 	class HTMLTextControlNode;
 	enum class HTMLControlIcon;
@@ -149,8 +150,10 @@ class HTMLLayout : public godot::RefCounted {
 	friend class HTMLRange;
 	friend class HTMLAnimation;
 	friend class dockit::HTMLDOM;
+	friend class dockit::MarkdownLayoutDocument;
 	
 	dockit::HTMLTextLanguageRange get_text_language_range_at(int64_t p_offset, const godot::String& p_fallback) const;
+	godot::Vector2i get_element_text_range(const godot::Ref<HTMLElement>& p_element) const;	// 返回元素子树在排版文本中的字符范围
 	int64_t document_text_offset(const dockit::HTMLBoundary& p_boundary, bool p_forward = true) const;
 	dockit::HTMLBoundary text_boundary_at(int64_t p_offset) const;
 	godot::TypedArray<godot::Rect2> range_client_rects(const HTMLRange& p_range) const;

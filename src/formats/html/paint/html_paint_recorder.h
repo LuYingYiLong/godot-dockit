@@ -275,6 +275,7 @@ namespace dockit {
 			const litehtml::element* p_scope = nullptr
 		) const;																				// 返回指定坐标命中的文本偏移
 		godot::Vector2i text_range_in(const litehtml::element& p_scope) const;					// 获取指定 DOM 子树对应的文本范围
+		godot::Vector2i text_range_in_all(const litehtml::element& p_scope) const;
 		bool hit_test_selectable_text(
 			const godot::Vector2& p_point,
 			const litehtml::element& p_target,

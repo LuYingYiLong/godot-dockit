@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 using namespace godot;
 
@@ -50,6 +51,27 @@ namespace {
 			if (rect.has_area()) bounds = bounds.has_area() ? bounds.merge(rect) : rect;
 		}
 		return bounds;
+	}
+	std::vector<int64_t> source_line_starts(const String& p_source) {
+		std::vector<int64_t> starts{ 0 };
+		for (int64_t i = 0; i < p_source.length(); ++i) {
+			if (p_source[i] == '\n') starts.push_back(i + 1);
+		}
+		return starts;
+	}
+	int32_t source_line_at(const std::vector<int64_t>& p_starts, int64_t p_offset) {
+		if (p_starts.empty()) return 0;
+		const auto found = std::upper_bound(p_starts.begin(), p_starts.end(), p_offset);
+		return CLAMP(static_cast<int32_t>(found - p_starts.begin()) - 1, 0, static_cast<int32_t>(p_starts.size()) - 1);
+	}
+	std::optional<Rect2> text_character_rect(const Ref<HTMLLayout>& p_layout, int64_t p_offset) {
+		if (p_layout.is_null()) return std::nullopt;
+		const TypedArray<Rect2> rects = p_layout->get_selection_rects(p_offset, p_offset + 1);
+		for (int64_t i = 0; i < rects.size(); ++i) {
+			const Rect2 rect = rects[i];
+			if (rect.has_area()) return rect;
+		}
+		return std::nullopt;
 	}
 	String theme_stylesheet(const MarkdownThemeCache& p_theme, Dictionary& r_textures) {
 		String css = "html,body{margin:0;padding:0;background:transparent;} body{overflow-wrap:anywhere;} "
@@ -244,7 +266,8 @@ String MarkdownLayoutDocument::render_block(const MarkdownBlock& p_block, const 
 	}
 }
 
-Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks, const MarkdownParseOptions& p_options,
+Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks, const String& p_source,
+	const MarkdownParseOptions& p_options,
 	const MarkdownThemeCache& p_theme, Control* p_owner, MermaidRenderCache& p_mermaid,
 	const Vector2i& p_viewport, const String& p_base, const Ref<CSSStyleSheet>& p_stylesheet) {
 	Dictionary theme_textures;
@@ -261,14 +284,27 @@ Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks,
 		task_checked_icon_id != checked_icon_id || task_unchecked_icon_id != unchecked_icon_id;
 	if (reset) { textures.clear(); source_blocks.clear(); footnotes.clear(); }
 	textures.merge(theme_textures, true);
+	const std::vector<int64_t> line_starts = source_line_starts(p_source);
 	std::vector<MarkdownSourceBlock> blocks;
 	rebuilt_nodes = 0;
 	retained_nodes = 0;
 	for (size_t i = 0; i < p_blocks.size(); ++i) {
 		MarkdownSourceBlock block;
-		block.line = MAX(0, p_blocks[i].line - 1);
-		block.end_line = p_blocks[i].end_line > 0 ? p_blocks[i].end_line - 1 :
-			i + 1 < p_blocks.size() ? p_blocks[i + 1].line - 2 : block.line;
+		block.type = p_blocks[i].type;
+		block.line = MAX(0, p_blocks[i].line - (p_blocks[i].type == MARKDOWN_BLOCK_FOOTNOTES ? 0 : 1));
+		block.footnotes = p_blocks[i].footnotes;
+		const int32_t next_source_line = i + 1 < p_blocks.size()
+			? MAX(0, p_blocks[i + 1].line - (p_blocks[i + 1].type == MARKDOWN_BLOCK_FOOTNOTES ? 0 : 1))
+			: static_cast<int32_t>(line_starts.size()) - 1;
+		const int32_t source_end_line = i + 1 < p_blocks.size()
+			? CLAMP(next_source_line, block.line, static_cast<int32_t>(line_starts.size()) - 1)
+			: static_cast<int32_t>(line_starts.size()) - 1;
+		block.end_line = std::max(block.line, source_end_line - 1);
+		const int32_t bounded_start_line = CLAMP(block.line, 0, static_cast<int32_t>(line_starts.size()) - 1);
+		block.source_start = line_starts[bounded_start_line];
+		block.source_end = i + 1 < p_blocks.size()
+			? line_starts[std::max(bounded_start_line, source_end_line)]
+			: p_source.length();
 		block.content_hash = compute_block_hash(p_blocks[i]);
 		if (i < source_blocks.size() && source_blocks[i].content_hash == block.content_hash &&
 			p_blocks[i].type != MARKDOWN_BLOCK_FOOTNOTES && !(p_options.parse_mermaid && p_blocks[i].type == MARKDOWN_BLOCK_CODE)) block.html = source_blocks[i].html;
@@ -323,34 +359,260 @@ Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks,
 	author_css = author;
 	task_checked_icon_id = checked_icon_id;
 	task_unchecked_icon_id = unchecked_icon_id;
-	return layout->layout_embedded_block(p_viewport);
+	const Error layout_error = layout->layout_embedded_block(p_viewport);
+	if (layout_error == OK) rebuild_source_map(p_source);
+	return layout_error;
+}
+
+void MarkdownLayoutDocument::rebuild_source_map(const String& p_source) {
+	source_lines.clear();
+	visual_source_lines.clear();
+	const std::vector<int64_t> line_starts = source_line_starts(p_source);
+	if (line_starts.empty()) return;
+	source_lines.resize(line_starts.size());
+	for (size_t line = 0; line < source_lines.size(); ++line) source_lines[line].source_start = line_starts[line];
+	const String rendered_text = layout.is_valid() ? layout->get_plain_text() : String();
+	// 按字符顺序对齐源码与排版文本，语法标记没有可见字符时由相邻内容定位
+	const auto append_source_range = [&](int64_t p_source_start, int64_t p_source_end, int64_t p_rendered_start, int64_t p_rendered_end) {
+		const int64_t source_start = CLAMP(p_source_start, int64_t(0), p_source.length());
+		const int64_t source_end = CLAMP(p_source_end, source_start, p_source.length());
+		std::unordered_map<char32_t, std::vector<int64_t>> source_character_offsets;
+		for (int64_t offset = source_start; offset < source_end; ++offset) {
+			source_character_offsets[p_source[offset]].push_back(offset);
+		}
+		const int64_t rendered_start = CLAMP<int64_t>(p_rendered_start, 0, rendered_text.length());
+		const int64_t rendered_end = CLAMP<int64_t>(p_rendered_end, rendered_start, rendered_text.length());
+		int64_t source_cursor = source_start;
+		for (int64_t rendered_offset = rendered_start; rendered_offset < rendered_end; ++rendered_offset) {
+			const char32_t character = rendered_text[rendered_offset];
+			int64_t mapped_source = source_cursor;
+			const auto matches = source_character_offsets.find(character);
+			if (matches != source_character_offsets.end()) {
+				const auto candidate = std::lower_bound(matches->second.begin(), matches->second.end(), source_cursor);
+				if (candidate != matches->second.end()) {
+					mapped_source = *candidate;
+					source_cursor = mapped_source + 1;
+				}
+			}
+			if (source_end > source_start) mapped_source = CLAMP(mapped_source, source_start, source_end - 1);
+			const int32_t source_line = source_line_at(line_starts, mapped_source);
+			if (source_line >= 0 && source_line < static_cast<int32_t>(source_lines.size())) {
+				MarkdownSourceLineMap& line = source_lines[source_line];
+				line.rendered_offsets.push_back(rendered_offset);
+				if (line.first_source_offset < 0 || mapped_source < line.first_source_offset) {
+					line.first_source_offset = mapped_source;
+					line.first_rendered_offset = rendered_offset;
+				}
+				if (line.last_source_offset < 0 || mapped_source > line.last_source_offset ||
+					(mapped_source == line.last_source_offset && rendered_offset > line.last_rendered_offset)) {
+					line.last_source_offset = mapped_source;
+					line.last_rendered_offset = rendered_offset;
+				}
+			}
+		}
+	};
+	for (MarkdownSourceBlock& block : source_blocks) {
+		block.bounds = source_bounds(block);
+		Vector2i rendered_range(rendered_text.length(), 0);
+		bool has_rendered_text = false;
+		for (const Ref<HTMLNode>& node : block.nodes) {
+			HTMLElement* element = Object::cast_to<HTMLElement>(node.ptr());
+			if (element == nullptr) continue;
+			const Vector2i candidate = layout->get_element_text_range(Ref<HTMLElement>(element));
+			if (candidate.x >= candidate.y) continue;
+			if (!has_rendered_text) {
+				rendered_range = candidate;
+				has_rendered_text = true;
+			}
+			else {
+				rendered_range.x = std::min(rendered_range.x, candidate.x);
+				rendered_range.y = std::max(rendered_range.y, candidate.y);
+			}
+		}
+		if (block.type == MARKDOWN_BLOCK_FOOTNOTES) {
+			Ref<HTMLElement> list = block.element;
+			if (list.is_null()) {
+				for (const Ref<HTMLNode>& node : block.nodes) {
+					list = Ref<HTMLElement>(Object::cast_to<HTMLElement>(node.ptr()));
+					if (list.is_valid()) break;
+				}
+			}
+			const TypedArray<HTMLElement> items = list.is_valid() ? list->get_children() : TypedArray<HTMLElement>();
+			for (const MarkdownFootnoteDefinition& definition : block.footnotes) {
+				const String expected_id = "dockit-note-" + definition.id;
+				Ref<HTMLElement> item;
+				for (int64_t child = 0; child < items.size(); ++child) {
+					Ref<HTMLElement> candidate = items[child];
+					if (candidate.is_valid() && candidate->get_tag_name() == "li" && candidate->get_attribute("id") == expected_id) {
+						item = candidate;
+						break;
+					}
+				}
+				if (item.is_null()) continue;
+				const Vector2i range = layout->get_element_text_range(item);
+				if (range.x >= range.y) continue;
+				const int32_t first_line = CLAMP(definition.line, 0, static_cast<int32_t>(line_starts.size()) - 1);
+				const int32_t end_line = CLAMP(definition.end_line + 1, first_line, static_cast<int32_t>(line_starts.size()) - 1);
+				const int64_t source_start = line_starts[first_line];
+				const int64_t source_end = definition.end_line + 1 < static_cast<int32_t>(line_starts.size())
+					? line_starts[end_line]
+					: p_source.length();
+				append_source_range(source_start, source_end, range.x, range.y);
+			}
+			continue;
+		}
+		const int32_t first_line = source_line_at(line_starts, block.source_start);
+		const int32_t last_line = source_line_at(line_starts, block.source_end > block.source_start ? block.source_end - 1 : block.source_start);
+		if (!has_rendered_text) {
+			if (block.bounds.has_area()) {
+				for (int32_t line = first_line; line <= last_line; ++line) {
+					source_lines[line].has_object_bounds = true;
+					source_lines[line].object_bounds = block.bounds;
+				}
+			}
+			continue;
+		}
+
+		append_source_range(block.source_start, block.source_end, rendered_range.x, rendered_range.y);
+	}
+	for (MarkdownSourceLineMap& line : source_lines) {
+		std::sort(line.rendered_offsets.begin(), line.rendered_offsets.end());
+		line.rendered_offsets.erase(std::unique(line.rendered_offsets.begin(), line.rendered_offsets.end()), line.rendered_offsets.end());
+	}
+	int64_t preceding_source_offset = -1;
+	int64_t preceding_rendered_offset = -1;
+	std::vector<int64_t> preceding_source_offsets(source_lines.size(), -1);
+	std::vector<int64_t> preceding_rendered_offsets(source_lines.size(), -1);
+	for (size_t i = 0; i < source_lines.size(); ++i) {
+		const MarkdownSourceLineMap& line = source_lines[i];
+		if (line.last_source_offset >= 0 && line.last_source_offset < line.source_start && line.last_source_offset > preceding_source_offset) {
+			preceding_source_offset = line.last_source_offset;
+			preceding_rendered_offset = line.last_rendered_offset;
+		}
+		preceding_source_offsets[i] = preceding_source_offset;
+		preceding_rendered_offsets[i] = preceding_rendered_offset;
+	}
+	int64_t following_source_offset = -1;
+	int64_t following_rendered_offset = -1;
+	std::vector<int64_t> following_source_offsets(source_lines.size(), -1);
+	std::vector<int64_t> following_rendered_offsets(source_lines.size(), -1);
+	for (size_t i = source_lines.size(); i > 0; --i) {
+		const MarkdownSourceLineMap& line = source_lines[i - 1];
+		if (line.first_source_offset >= line.source_start &&
+			(following_source_offset < 0 || line.first_source_offset < following_source_offset)) {
+			following_source_offset = line.first_source_offset;
+			following_rendered_offset = line.first_rendered_offset;
+		}
+		following_source_offsets[i - 1] = following_source_offset;
+		following_rendered_offsets[i - 1] = following_rendered_offset;
+	}
+	for (size_t i = 0; i < source_lines.size(); ++i) {
+		MarkdownSourceLineMap& line = source_lines[i];
+		if (!line.rendered_offsets.empty() || line.has_object_bounds) continue;
+		const int64_t before = preceding_source_offsets[i];
+		const int64_t after = following_source_offsets[i];
+		if (before >= 0 && after >= 0) {
+			line.fallback_rendered_offset = line.source_start - before <= after - line.source_start
+				? preceding_rendered_offsets[i]
+				: following_rendered_offsets[i];
+		}
+		else line.fallback_rendered_offset = before >= 0 ? preceding_rendered_offsets[i] : following_rendered_offsets[i];
+	}
+
+	for (MarkdownSourceLineMap& line : source_lines) {
+		if (line.has_object_bounds && line.rendered_offsets.empty()) {
+			line.anchor_y = line.object_bounds.get_center().y;
+			line.has_geometry = true;
+			continue;
+		}
+		std::optional<Rect2> first_rect;
+		std::optional<Rect2> last_rect;
+		for (const int64_t offset : line.rendered_offsets) {
+			first_rect = text_character_rect(layout, offset);
+			if (first_rect.has_value()) break;
+		}
+		for (auto offset = line.rendered_offsets.rbegin(); offset != line.rendered_offsets.rend(); ++offset) {
+			last_rect = text_character_rect(layout, *offset);
+			if (last_rect.has_value()) break;
+		}
+		if (!first_rect.has_value() && line.fallback_rendered_offset >= 0) {
+			first_rect = text_character_rect(layout, line.fallback_rendered_offset);
+			last_rect = first_rect;
+		}
+		if (first_rect.has_value()) {
+			const double first_y = first_rect->get_center().y;
+			const double last_y = last_rect.has_value() ? last_rect->get_center().y : first_y;
+			line.anchor_y = (first_y + last_y) * 0.5;
+			line.has_geometry = true;
+			line.has_text_geometry = true;
+		}
+		else if (line.has_object_bounds) {
+			line.anchor_y = line.object_bounds.get_center().y;
+			line.has_geometry = true;
+		}
+	}
+	for (int32_t line_index = 0; line_index < static_cast<int32_t>(source_lines.size()); ++line_index) {
+		MarkdownSourceLineMap& line = source_lines[line_index];
+		if (line.has_geometry) continue;
+		for (const MarkdownSourceBlock& block : source_blocks) {
+			if (line_index < block.line || line_index > block.end_line || !block.bounds.has_area()) continue;
+			line.has_object_bounds = true;
+			line.object_bounds = block.bounds;
+			line.anchor_y = block.bounds.get_center().y;
+			line.has_geometry = true;
+			break;
+		}
+	}
+
+	for (int32_t line = 0; line < static_cast<int32_t>(source_lines.size()); ++line) {
+		if (source_lines[line].has_geometry) visual_source_lines.push_back({ source_lines[line].anchor_y, line });
+	}
+	std::sort(visual_source_lines.begin(), visual_source_lines.end(), [](const MarkdownVisualSourceLine& p_left, const MarkdownVisualSourceLine& p_right) {
+		return p_left.y < p_right.y || (p_left.y == p_right.y && p_left.source_line < p_right.source_line);
+	});
 }
 
 double MarkdownLayoutDocument::source_line_to_y(double p_line, int32_t p_line_count) const {
-	if (layout.is_null() || source_blocks.empty()) return 0;
-	for (size_t i = 0; i < source_blocks.size(); ++i) {
-		const auto& block = source_blocks[i];
-		const double end_line = i + 1 < source_blocks.size() ? source_blocks[i + 1].line : p_line_count;
-		if (p_line >= end_line && i + 1 < source_blocks.size()) continue;
-		const Rect2 rect = source_bounds(block);
-		return rect.position.y + rect.size.y * CLAMP((p_line - block.line) / MAX(1.0, end_line - block.line), 0.0, 1.0);
+	if (layout.is_null() || source_blocks.empty() || source_lines.empty()) return 0;
+	const int32_t mapped_line_count = std::min(p_line_count, static_cast<int32_t>(source_lines.size()));
+	const double line_value = CLAMP(p_line, 0.0, std::max(0.0, double(mapped_line_count - 1)));
+	const int32_t line_index = CLAMP(static_cast<int32_t>(line_value), 0, static_cast<int32_t>(source_lines.size()) - 1);
+	const double fraction = line_value - line_index;
+	const MarkdownSourceLineMap& line = source_lines[line_index];
+	if (line.has_object_bounds && !line.has_text_geometry) return line.object_bounds.get_center().y;
+	if (!line.rendered_offsets.empty()) {
+		const size_t offset_index = static_cast<size_t>(std::round(fraction * (line.rendered_offsets.size() - 1)));
+		if (const std::optional<Rect2> rect = text_character_rect(layout, line.rendered_offsets[offset_index])) return rect->get_center().y;
 	}
-	return layout->get_content_size().y;
+	if (line.fallback_rendered_offset >= 0) {
+		if (const std::optional<Rect2> rect = text_character_rect(layout, line.fallback_rendered_offset)) return rect->get_center().y;
+	}
+	if (line.has_geometry) return line.anchor_y;
+	for (const auto& block : source_blocks) {
+		if (line_index >= block.line && line_index <= block.end_line && block.bounds.has_area()) return block.bounds.position.y;
+	}
+	return 0.0;
 }
 
 double MarkdownLayoutDocument::y_to_source_line(double p_y, int32_t p_line_count) const {
-	for (size_t i = 0; i < source_blocks.size(); ++i) {
-		const auto& block = source_blocks[i];
-		const Rect2 rect = source_bounds(block);
-		if (p_y > rect.get_end().y && i + 1 < source_blocks.size()) continue;
-		const double end = i + 1 < source_blocks.size() ? source_blocks[i + 1].line : p_line_count;
-		return block.line + (end - block.line) * CLAMP((p_y - rect.position.y) / MAX(1.0, double(rect.size.y)), 0.0, 1.0);
-	}
-	return p_line_count;
+	if (source_lines.empty() || visual_source_lines.empty()) return p_line_count;
+	const auto clamp_source_line = [p_line_count](double p_line) {
+		return CLAMP(p_line, 0.0, std::max(0.0, double(p_line_count - 1)));
+	};
+	const auto next = std::lower_bound(visual_source_lines.begin(), visual_source_lines.end(), p_y,
+		[](const MarkdownVisualSourceLine& p_line, double p_position) { return p_line.y < p_position; });
+	if (next == visual_source_lines.begin()) return clamp_source_line(next->source_line);
+	if (next == visual_source_lines.end()) return clamp_source_line(visual_source_lines.back().source_line);
+	const int32_t after = next->source_line;
+	const int32_t before = (next - 1)->source_line;
+	const double y_before = (next - 1)->y;
+	const double y_after = next->y;
+	if (y_after <= y_before) return clamp_source_line(before);
+	return clamp_source_line(before + (after - before) * CLAMP((p_y - y_before) / (y_after - y_before), 0.0, 1.0));
 }
 
 void MarkdownLayoutDocument::clear() {
-	layout.unref(); source_blocks.clear(); textures.clear(); theme_css = String(); author_css = String(); footnotes.clear();
+	layout.unref(); source_blocks.clear(); source_lines.clear(); visual_source_lines.clear(); textures.clear(); theme_css = String(); author_css = String(); footnotes.clear();
 	task_checked_icon_id = 0; task_unchecked_icon_id = 0;
 }
 

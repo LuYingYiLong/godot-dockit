@@ -1908,7 +1908,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	const Ref<HTMLLayout> previous_html = layout_document.get_layout();
 	const dockit::HTMLBoundary previous_anchor = previous_html.is_valid() ? previous_html->text_boundary_at(selection_anchor) : dockit::HTMLBoundary();
 	const dockit::HTMLBoundary previous_caret = previous_html.is_valid() ? previous_html->text_boundary_at(selection_caret) : dockit::HTMLBoundary();
-	const Error error = layout_document.update(cached_blocks, options, theme_cache, label, mermaid_cache,
+	const Error error = layout_document.update(cached_blocks, raw_text, options, theme_cache, label, mermaid_cache,
 		Vector2i(std::max(1, int(width)), height), label ? label->get_resource_base_dir() : String("res://"),
 		label ? label->get_stylesheet() : Ref<CSSStyleSheet>());
 	items.clear();

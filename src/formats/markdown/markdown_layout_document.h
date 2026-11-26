@@ -13,16 +13,43 @@ namespace dockit {
 struct MarkdownSourceBlock {
 	uint64_t id = 0;
 	uint64_t content_hash = 0;
+	MarkdownBlockType type = MARKDOWN_BLOCK_PARAGRAPH;
 	int32_t line = 0;
 	int32_t end_line = 0;
+	int64_t source_start = 0;
+	int64_t source_end = 0;
+	godot::Rect2 bounds;
 	godot::String html;
 	godot::Ref<HTMLElement> element;
 	std::vector<godot::Ref<HTMLNode>> nodes;
+	std::vector<MarkdownFootnoteDefinition> footnotes;
+};
+
+struct MarkdownSourceLineMap {
+	int64_t source_start = 0;
+	int64_t first_source_offset = -1;
+	int64_t first_rendered_offset = -1;
+	int64_t last_source_offset = -1;
+	int64_t last_rendered_offset = -1;
+	int64_t fallback_rendered_offset = -1;
+	double anchor_y = 0.0;
+	bool has_geometry = false;
+	bool has_text_geometry = false;
+	bool has_object_bounds = false;
+	godot::Rect2 object_bounds;
+	std::vector<int64_t> rendered_offsets;
+};
+
+struct MarkdownVisualSourceLine {
+	double y = 0.0;
+	int32_t source_line = 0;
 };
 
 class MarkdownLayoutDocument {
 	godot::Ref<HTMLLayout> layout;
 	std::vector<MarkdownSourceBlock> source_blocks;
+	std::vector<MarkdownSourceLineMap> source_lines;
+	std::vector<MarkdownVisualSourceLine> visual_source_lines;
 	godot::Dictionary textures;
 	godot::String theme_css;
 	godot::String resource_base;
@@ -38,9 +65,11 @@ class MarkdownLayoutDocument {
 		const MarkdownThemeCache& p_theme, MermaidRenderCache& p_mermaid);
 	godot::String render_block(const MarkdownBlock& p_block, const MarkdownParseOptions& p_options,
 		const MarkdownThemeCache& p_theme, MermaidRenderCache& p_mermaid);
+	void rebuild_source_map(const godot::String& p_source);
 
 public:
-	godot::Error update(const std::vector<MarkdownBlock>& p_blocks, const MarkdownParseOptions& p_options,
+	godot::Error update(const std::vector<MarkdownBlock>& p_blocks, const godot::String& p_source,
+		const MarkdownParseOptions& p_options,
 		const MarkdownThemeCache& p_theme, godot::Control* p_owner, MermaidRenderCache& p_mermaid,
 		const godot::Vector2i& p_viewport, const godot::String& p_base, const godot::Ref<CSSStyleSheet>& p_stylesheet);
 	const godot::Ref<HTMLLayout>& get_layout() const { return layout; } // 获取全文共享的 HTML 排版对象

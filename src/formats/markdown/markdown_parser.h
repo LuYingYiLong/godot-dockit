@@ -37,6 +37,8 @@ enum MarkdownBlockType {
 struct MarkdownFootnoteDefinition {
 	String id;
 	String text;
+	int32_t line = 0;
+	int32_t end_line = 0;
 };
 
 struct MarkdownListItem;

@@ -1381,6 +1381,17 @@ void fragment() {
 		return offsets.x < offsets.y ? offsets : Vector2i();
 	}
 
+	Vector2i HTMLPaintRecorder::text_range_in_all(const element& p_scope) const {
+		Vector2i offsets(plain_text.length(), 0);
+		for (const TextRun& run : text_runs) {
+			if (text_belongs_to(run.selection_owner, p_scope)) {
+				offsets.x = std::min<int64_t>(offsets.x, run.offset);
+				offsets.y = std::max<int64_t>(offsets.y, run.offset + run.length);
+			}
+		}
+		return offsets.x < offsets.y ? offsets : Vector2i();
+	}
+
 	int64_t HTMLPaintRecorder::hit_test_text(const Vector2& p_point, const element* p_scope) const {
 		const TextRun* closest = nullptr;
 		real_t best_y = std::numeric_limits<real_t>::infinity();
