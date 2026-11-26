@@ -29,6 +29,8 @@ class MarkdownLayoutDocument {
 	godot::String author_css;
 	godot::HashMap<godot::String, int32_t> footnotes;
 	uint64_t next_id = 1;
+	uint64_t task_checked_icon_id = 0;
+	uint64_t task_unchecked_icon_id = 0;
 	int32_t rebuilt_nodes = 0;
 	int32_t retained_nodes = 0;
 

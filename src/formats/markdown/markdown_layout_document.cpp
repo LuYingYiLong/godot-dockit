@@ -8,6 +8,7 @@
 #include "markdown_formula_texture.h"
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -27,6 +28,19 @@ namespace {
 		r_textures.merge(converted.get("textures", Dictionary()), true);
 		return p_selector + String("{") + String(converted.get("css", "")) + "}";
 	}
+	String task_marker_html(bool p_checked, const MarkdownThemeCache& p_theme, Dictionary& r_textures) {
+		const Ref<Texture2D> icon = p_checked ? p_theme.icon.task_checked : p_theme.icon.task_unchecked;
+		const int32_t size = std::max(1, p_theme.font_size.list_marker);
+		if (icon.is_valid()) {
+			const String key = "res://__dockit_runtime/markdown-task-" + String::num_uint64(icon->get_instance_id()) + ".png";
+			r_textures[key] = icon;
+			return "<img class=\"dockit-task-marker\" src=\"" + key + "\" alt=\"\" width=\"" +
+				String::num_int64(size) + "\" height=\"" + String::num_int64(size) + "\">";
+		}
+		return String("<span class=\"dockit-task-marker dockit-task-marker-fallback\" role=\"checkbox\" aria-checked=\"") +
+			(p_checked ? "true" : "false") + "\" width=\"" + String::num_int64(size) + "\" height=\"" +
+			String::num_int64(size) + "\">" + (p_checked ? "✓" : String()) + "</span>";
+	}
 	Rect2 source_bounds(const MarkdownSourceBlock& p_block) {
 		Rect2 bounds;
 		for (const auto& node : p_block.nodes) {
@@ -44,16 +58,18 @@ namespace {
 			"pre code{font:inherit;color:inherit;white-space:inherit;background:none;border:0;padding:0;} "
 			"table{width:100%;border-collapse:separate;border-spacing:0;} th,td{padding:4px 6px;text-align:left;vertical-align:top;} "
 			"blockquote{margin-left:0;margin-right:0;} blockquote blockquote{margin-top:8px;} "
-			"hr{border:0;height:1px;} .dockit-footnotes{padding-left:2em;} .dockit-footnote-ref{font-size:.75em;vertical-align:super;} "
-			".dockit-footnotes{list-style:none;} .dockit-formula{display:inline-block;vertical-align:middle;} .dockit-display-formula{display:block;}";
-		css += "code{font-family:monospace;} pre,pre code{font-family:dockit-code-block;} th{font-family:dockit-table-header;} td{font-family:dockit-table-cell;} .dockit-footnotes{font-family:dockit-footnote-text;} .dockit-footnote-ref{font-family:dockit-footnote-ref;}";
+			"hr{border:0;height:1px;} .dockit-footnotes{list-style:none;padding-left:0;} .dockit-footnote-ref{font-size:.75em;vertical-align:super;} "
+			".dockit-formula{display:inline-block;vertical-align:middle;} .dockit-display-math{text-align:center;} .dockit-display-formula{display:inline-block;vertical-align:middle;} "
+			"ul.dockit-task-list{list-style:none;} ul.dockit-task-list>li{list-style:none;position:relative;}";
+		css += "code{font-family:monospace;} pre,pre code{font-family:dockit-code-block;} th{font-family:dockit-table-header;} td{font-family:dockit-table-cell;} .dockit-footnotes,.dockit-footnotes>li{font-family:dockit-footnote-text;} .dockit-footnote-ref{font-family:dockit-footnote-ref;}";
 		css += font_rule("html", p_theme.font_size.text, p_theme.color.text);
 		css += font_rule("code", p_theme.font_size.code, p_theme.color.code_text);
 		css += font_rule("pre", p_theme.font_size.code_block, p_theme.color.code_block);
 		css += font_rule("th", p_theme.font_size.table_header, p_theme.color.table_header_font);
 		css += font_rule("td", p_theme.font_size.table_cell, p_theme.color.table_cell_font);
-		css += font_rule(".dockit-footnotes", p_theme.font_size.footnote_text, p_theme.color.footnote_text);
-		css += font_rule(".dockit-footnote-ref", p_theme.font_size.footnote_ref, p_theme.color.footnote_ref);
+		css += font_rule(".dockit-footnotes,.dockit-footnotes>li", p_theme.font_size.footnote_text, p_theme.color.footnote_text);
+		css += font_rule("a.dockit-footnote-ref:link", p_theme.font_size.footnote_ref, p_theme.color.footnote_ref);
+		css += font_rule("a.dockit-footnote-backref:link", p_theme.font_size.footnote_text, p_theme.color.footnote_text);
 		css += "a:link{color:" + css_color(p_theme.color.link) + ";} mark{color:" + css_color(p_theme.color.highlight_font) + ";background:" + css_color(p_theme.color.highlight) + ";}";
 		for (int i = 0; i < 6; ++i) {
 			const String n = String::num_int64(i + 1);
@@ -71,7 +87,18 @@ namespace {
 		css += style_rule("mark", p_theme.stylebox.highlight, r_textures);
 		css += style_rule("hr", p_theme.stylebox.separator, r_textures);
 		css += style_rule(".dockit-footnote-ref", p_theme.stylebox.footnote_ref, r_textures);
+		const int32_t footnote_line_height = p_theme.font.footnote_text.is_valid()
+			? int32_t(std::ceil(p_theme.font.footnote_text->get_height(p_theme.font_size.footnote_text))) + p_theme.constant.footnote_line_separation
+			: p_theme.font_size.footnote_text + p_theme.constant.footnote_line_separation;
+		css += ".dockit-footnotes{padding-top:" + String::num_int64(p_theme.constant.footnote_space_before) + "px;margin-bottom:" +
+			String::num_int64(p_theme.constant.paragraph_separation) + "px;} .dockit-footnotes>li{line-height:" +
+			String::num_int64(footnote_line_height) + "px;} a.dockit-footnote-backref:link{color:" + css_color(p_theme.color.footnote_text) + ";} ";
+		css += "ul.dockit-task-list{list-style:none;padding-left:" + String::num_int64(p_theme.constant.list_indent) + "px;} .dockit-task-marker{position:absolute;left:-" + String::num_int64(p_theme.font_size.list_marker + p_theme.constant.list_marker_gap) +
+			"px;top:0;width:" + String::num_int64(p_theme.font_size.list_marker) + "px;height:" +
+			String::num_int64(p_theme.font_size.list_marker) + "px;} .dockit-task-marker-fallback{box-sizing:border-box;border:1px solid " +
+			css_color(p_theme.color.list_marker) + ";text-align:center;line-height:" + String::num_int64(p_theme.font_size.list_marker - 2) + "px;}";
 		css += "p,ul,ol,blockquote,pre,table{margin-bottom:" + String::num_int64(p_theme.constant.paragraph_separation) + "px;}";
+		css += ".dockit-display-math{margin:0 0 " + String::num_int64(p_theme.constant.paragraph_separation) + "px;}";
 		return css;
 	}
 }
@@ -168,7 +195,7 @@ String MarkdownLayoutDocument::render_block(const MarkdownBlock& p_block, const 
 			texture.instantiate();
 			if (texture->configure(p_block.argument, p_theme.font_size.text, p_theme.color.text, true) != OK) return "<pre>" + escape(p_block.text) + "</pre>";
 			textures[key] = texture;
-			return "<img class=\"dockit-display-formula\" src=\"" + key + "\" alt=\"" + escape(p_block.text) + "\">";
+			return "<div class=\"dockit-display-math\"><img class=\"dockit-display-formula\" src=\"" + key + "\" alt=\"" + escape(p_block.text) + "\"></div>";
 		}
 		case MARKDOWN_BLOCK_BLOCKQUOTE: {
 			String html = "<blockquote>";
@@ -179,20 +206,23 @@ String MarkdownLayoutDocument::render_block(const MarkdownBlock& p_block, const 
 		case MARKDOWN_BLOCK_ORDERED_LIST:
 		case MARKDOWN_BLOCK_UNORDERED_LIST:
 		case MARKDOWN_BLOCK_TASK_LIST: {
+			const bool task_list = p_block.type == MARKDOWN_BLOCK_TASK_LIST;
 			const String tag = p_block.type == MARKDOWN_BLOCK_ORDERED_LIST ? "ol" : "ul";
-			String html = "<" + tag + " start=\"" + String::num_int64(p_block.list_start) + "\">";
+			String html = "<" + tag + (task_list ? " class=\"dockit-task-list\" style=\"padding-left:" +
+				String::num_int64(std::max(1, p_block.indent + 1) * p_theme.constant.list_indent) + "px\"" : "") +
+				" start=\"" + String::num_int64(p_block.list_start) + "\">";
 			if (!p_block.list_items.empty()) {
 				for (const auto& item : p_block.list_items) {
-					html += "<li>";
-					if (p_block.type == MARKDOWN_BLOCK_TASK_LIST) html += item.checked ? "&#x2611; " : "&#x2610; ";
+					html += task_list ? "<li class=\"dockit-task-item\">" : "<li>";
+					if (task_list) html += task_marker_html(item.checked, p_theme, textures);
 					for (const auto& child : item.children) html += render_block(child, p_options, p_theme, p_mermaid);
 					html += "</li>";
 				}
 			}
 			else {
 				for (int i = 0; i < p_block.items.size(); ++i) {
-					html += "<li>";
-					if (p_block.type == MARKDOWN_BLOCK_TASK_LIST) html += i < int(p_block.task_checked.size()) && p_block.task_checked[i] ? "&#x2611; " : "&#x2610; ";
+					html += task_list ? "<li class=\"dockit-task-item\">" : "<li>";
+					if (task_list) html += task_marker_html(i < int(p_block.task_checked.size()) && p_block.task_checked[i], p_theme, textures);
 					html += inline_html(p_block.items[i]) + "</li>";
 				}
 			}
@@ -203,7 +233,7 @@ String MarkdownLayoutDocument::render_block(const MarkdownBlock& p_block, const 
 			for (int number = 1; number <= footnotes.size(); ++number) {
 				for (const auto& definition : p_block.footnotes) {
 					if (!footnotes.has(definition.id) || footnotes[definition.id] != number) continue;
-					html += "<li id=\"dockit-note-" + escape(definition.id) + "\"><a href=\"#dockit-ref-" + escape(definition.id) + "\">" + String::num_int64(number) + ".</a> " + inline_html(definition.text) + "</li>";
+					html += "<li id=\"dockit-note-" + escape(definition.id) + "\"><a class=\"dockit-footnote-backref\" href=\"#dockit-ref-" + escape(definition.id) + "\">" + String::num_int64(number) + ".</a> " + inline_html(definition.text) + "</li>";
 				}
 			}
 			return html + "</ol>";
@@ -225,7 +255,10 @@ Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks,
 	}
 	const String author = p_stylesheet.is_valid() ? p_stylesheet->get_css_text() : String();
 	const String stylesheet_path = p_stylesheet.is_valid() ? p_stylesheet->get_source_path() : String();
-	const bool reset = layout.is_null() || theme_css != css || resource_base != p_base || author_css != author;
+	const uint64_t checked_icon_id = p_theme.icon.task_checked.is_valid() ? uint64_t(p_theme.icon.task_checked->get_instance_id()) : 0;
+	const uint64_t unchecked_icon_id = p_theme.icon.task_unchecked.is_valid() ? uint64_t(p_theme.icon.task_unchecked->get_instance_id()) : 0;
+	const bool reset = layout.is_null() || theme_css != css || resource_base != p_base || author_css != author ||
+		task_checked_icon_id != checked_icon_id || task_unchecked_icon_id != unchecked_icon_id;
 	if (reset) { textures.clear(); source_blocks.clear(); footnotes.clear(); }
 	textures.merge(theme_textures, true);
 	std::vector<MarkdownSourceBlock> blocks;
@@ -288,6 +321,8 @@ Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks,
 	theme_css = css;
 	resource_base = p_base;
 	author_css = author;
+	task_checked_icon_id = checked_icon_id;
+	task_unchecked_icon_id = unchecked_icon_id;
 	return layout->layout_embedded_block(p_viewport);
 }
 
@@ -316,6 +351,7 @@ double MarkdownLayoutDocument::y_to_source_line(double p_y, int32_t p_line_count
 
 void MarkdownLayoutDocument::clear() {
 	layout.unref(); source_blocks.clear(); textures.clear(); theme_css = String(); author_css = String(); footnotes.clear();
+	task_checked_icon_id = 0; task_unchecked_icon_id = 0;
 }
 
 }
