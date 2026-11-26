@@ -1,0 +1,171 @@
+[gd_scene format=3 uid="uid://bpy5yr57jebpv"]
+
+[ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://bftdf8gg3poch" path="res://addons/dockit/examples/markdown_example/streaming_example.gd" id="2_script"]
+
+[node name="StreamingExample" type="Control" unique_id=453399688]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1133308680]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Background"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=707887937]
+layout_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+text = "Edit the Markdown source, then stream it into the preview in adjustable chunks. The sample mixes Markdown, HTML, LaTeX, Mermaid, and code blocks."
+
+[node name="ControlsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer" unique_id=1215303949]
+layout_mode = 2
+theme_type_variation = &"Sidebar"
+
+[node name="ControlsVBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel"]
+layout_mode = 2
+
+[node name="PlaybackControls" type="HBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox"]
+layout_mode = 2
+
+[node name="StartButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start stream"
+
+[node name="PauseButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Pause"
+
+[node name="ResetButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reset"
+
+[node name="ChunkSizeLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+layout_mode = 2
+text = "Characters per chunk"
+
+[node name="ChunkSizeSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 256.0
+value = 12.0
+
+[node name="IntervalLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+layout_mode = 2
+text = "Interval (ms)"
+
+[node name="IntervalSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 1000.0
+step = 1.0
+value = 45.0
+
+[node name="LayoutControls" type="HBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox"]
+layout_mode = 2
+
+[node name="DeferredLayoutCheckBox" type="CheckBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Deferred layout"
+
+[node name="ScrollFollowCheckBox" type="CheckBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Follow output"
+
+[node name="MaxUnstableLinesLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+layout_mode = 2
+text = "Unstable lines"
+
+[node name="MaxUnstableLinesSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 256.0
+value = 32.0
+
+[node name="FlushIntervalLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+layout_mode = 2
+text = "Layout flush (ms)"
+
+[node name="FlushIntervalSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 1000.0
+value = 33.0
+
+[node name="StatusRow" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ProgressBar" type="ProgressBar" parent="PanelContainer/VBoxContainer/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="StatusLabel" type="Label" parent="PanelContainer/VBoxContainer/StatusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+text = "Ready"
+horizontal_alignment = 2
+
+[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(480)
+split_offset = 480
+
+[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/VBoxContainer/HSplitContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+gutters_draw_line_numbers = true
+
+[node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/VBoxContainer/HSplitContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+parse_latex = true
+parse_html = true
+parse_mermaid = true
+streaming_enabled = true
+deferred_layout_enabled = true
+max_unstable_lines = 32
+layout_flush_interval_msec = 33
+scroll_following = true
+context_menu_enabled = true
+
+[node name="StreamTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 0.045
+
+[connection signal="timeout" from="StreamTimer" to="." method="_on_stream_timer_timeout"]
