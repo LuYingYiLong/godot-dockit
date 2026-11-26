@@ -63,7 +63,6 @@ func stream_message(label: MarkdownLabel, message: String) -> void:
 @onready var _deferred_layout: CheckBox = %DeferredLayoutCheckBox
 @onready var _scroll_follow: CheckBox = %ScrollFollowCheckBox
 @onready var _progress_bar: ProgressBar = %ProgressBar
-@onready var _status_label: Label = %StatusLabel
 @onready var _stream_timer: Timer = %StreamTimer
 
 
@@ -77,19 +76,13 @@ var _is_paused: bool = false
 
 func _ready() -> void:
 	_code_edit.text = DEFAULT_MARKDOWN
-	_pause_button.disabled = true
 	_stream_timer.wait_time = _interval.value / 1000.0
 	_markdown_label.streaming_enabled = true
+	_chunk_size.get_line_edit().caret_blink = true
+	_interval.get_line_edit().caret_blink = true
+	_max_unstable_lines.get_line_edit().caret_blink = true
+	_flush_interval.get_line_edit().caret_blink = true
 	_apply_layout_options()
-	_start_button.pressed.connect(_on_start_button_pressed)
-	_pause_button.pressed.connect(_on_pause_button_pressed)
-	_reset_button.pressed.connect(_on_reset_button_pressed)
-	_interval.value_changed.connect(_on_interval_changed)
-	_max_unstable_lines.value_changed.connect(_on_layout_option_changed)
-	_flush_interval.value_changed.connect(_on_layout_option_changed)
-	_deferred_layout.toggled.connect(_on_deferred_layout_toggled)
-	_scroll_follow.toggled.connect(_on_scroll_follow_toggled)
-	_update_status("Ready — edit the source, then start the stream")
 
 
 func _on_start_button_pressed() -> void:
@@ -120,11 +113,9 @@ func _on_pause_button_pressed() -> void:
 		_stream_timer.stop()
 		_markdown_label.flush_pending_layout()
 		_pause_button.text = "Resume"
-		_update_status("Paused — %d / %d characters" % [_next_character, _source_text.length()])
 	else:
 		_stream_timer.start()
 		_pause_button.text = "Pause"
-		_update_status("Streaming")
 
 
 func _on_reset_button_pressed() -> void:
@@ -139,12 +130,12 @@ func _on_reset_button_pressed() -> void:
 	_pause_button.disabled = true
 	_pause_button.text = "Pause"
 	_progress_bar.value = 0.0
-	_update_status("Ready — edit the source, then start the stream")
 
 
 func _on_stream_timer_timeout() -> void:
 	if not _is_streaming or _is_paused:
 		return
+	
 	var chunk_length: int = mini(int(_chunk_size.value), _source_text.length() - _next_character)
 	var chunk: String = _source_text.substr(_next_character, chunk_length)
 	_markdown_label.append_text(chunk)
@@ -187,7 +178,6 @@ func _finish_stream() -> void:
 	_pause_button.disabled = true
 	_pause_button.text = "Pause"
 	_update_progress()
-	_update_status("Finished — %d characters in %d chunks" % [_next_character, _chunk_count])
 
 
 func _update_progress() -> void:
@@ -195,13 +185,3 @@ func _update_progress() -> void:
 	_progress_bar.value = 100.0 if total_characters == 0 else 100.0 * float(_next_character) / float(total_characters)
 	var elapsed_msec: int = maxi(Time.get_ticks_msec() - _started_at_msec, 1)
 	var characters_per_second: float = 1000.0 * float(_next_character) / float(elapsed_msec)
-	_status_label.text = "%d / %d characters  •  %d chunks  •  %.0f chars/s" % [
-		_next_character,
-		total_characters,
-		_chunk_count,
-		characters_per_second,
-	]
-
-
-func _update_status(message: String) -> void:
-	_status_label.text = message

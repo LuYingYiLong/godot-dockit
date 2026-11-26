@@ -22,150 +22,139 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"Background"
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=707887937]
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer" unique_id=1837932980]
 layout_mode = 2
 
-[node name="DescriptionLabel" type="Label" parent="PanelContainer/VBoxContainer"]
-layout_mode = 2
-text = "Edit the Markdown source, then stream it into the preview in adjustable chunks. The sample mixes Markdown, HTML, LaTeX, Mermaid, and code blocks."
-
-[node name="ControlsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer" unique_id=1215303949]
+[node name="Sidebar" type="PanelContainer" parent="PanelContainer/HBoxContainer" unique_id=1215303949]
 layout_mode = 2
 theme_type_variation = &"Sidebar"
 
-[node name="ControlsVBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HBoxContainer/Sidebar" unique_id=727305681]
 layout_mode = 2
 
-[node name="PlaybackControls" type="HBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox"]
+[node name="ProgressBar" type="ProgressBar" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1414467919]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
 
-[node name="StartButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="StartButton" type="Button" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1429507295]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Start stream"
 
-[node name="PauseButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="PauseButton" type="Button" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1436291555]
 unique_name_in_owner = true
 layout_mode = 2
+disabled = true
 text = "Pause"
 
-[node name="ResetButton" type="Button" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="ResetButton" type="Button" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=124512578]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Reset"
 
-[node name="ChunkSizeLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="DeferredLayoutCheckBox" type="CheckBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=361526702]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Deferred layout"
+
+[node name="ScrollFollowCheckBox" type="CheckBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=388748603]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Follow output"
+
+[node name="ChunkSizeLabel" type="Label" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=94688652]
 layout_mode = 2
 text = "Characters per chunk"
 
-[node name="ChunkSizeSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="ChunkSizeSpinBox" type="SpinBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=315842891]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 256.0
 value = 12.0
+select_all_on_focus = true
 
-[node name="IntervalLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="IntervalLabel" type="Label" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1264151380]
 layout_mode = 2
-text = "Interval (ms)"
+text = "Interval"
 
-[node name="IntervalSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/PlaybackControls"]
+[node name="IntervalSpinBox" type="SpinBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1845229086]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 1000.0
-step = 1.0
 value = 45.0
+suffix = "ms"
+select_all_on_focus = true
 
-[node name="LayoutControls" type="HBoxContainer" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox"]
-layout_mode = 2
-
-[node name="DeferredLayoutCheckBox" type="CheckBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-text = "Deferred layout"
-
-[node name="ScrollFollowCheckBox" type="CheckBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-text = "Follow output"
-
-[node name="MaxUnstableLinesLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+[node name="MaxUnstableLinesLabel" type="Label" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=1550283254]
 layout_mode = 2
 text = "Unstable lines"
 
-[node name="MaxUnstableLinesSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+[node name="MaxUnstableLinesSpinBox" type="SpinBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=621390698]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 256.0
 value = 32.0
+select_all_on_focus = true
 
-[node name="FlushIntervalLabel" type="Label" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+[node name="FlushIntervalLabel" type="Label" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=823963103]
 layout_mode = 2
-text = "Layout flush (ms)"
+text = "Layout flush"
 
-[node name="FlushIntervalSpinBox" type="SpinBox" parent="PanelContainer/VBoxContainer/ControlsPanel/ControlsVBox/LayoutControls"]
+[node name="FlushIntervalSpinBox" type="SpinBox" parent="PanelContainer/HBoxContainer/Sidebar/VBoxContainer" unique_id=371606520]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 1000.0
 value = 33.0
+suffix = "ms"
+select_all_on_focus = true
 
-[node name="StatusRow" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="ProgressBar" type="ProgressBar" parent="PanelContainer/VBoxContainer/StatusRow"]
-unique_name_in_owner = true
+[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer/HBoxContainer" unique_id=797301708]
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
-
-[node name="StatusLabel" type="Label" parent="PanelContainer/VBoxContainer/StatusRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(330, 0)
-layout_mode = 2
-text = "Ready"
-horizontal_alignment = 2
-
-[node name="HSplitContainer" type="HSplitContainer" parent="PanelContainer/VBoxContainer"]
-layout_mode = 2
 size_flags_vertical = 3
-split_offsets = PackedInt32Array(480)
-split_offset = 480
+split_offsets = PackedInt32Array(512)
+split_offset = 512
 
-[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/VBoxContainer/HSplitContainer"]
+[node name="CodeEdit" type="CodeEdit" parent="PanelContainer/HBoxContainer/HSplitContainer" unique_id=766622525]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
 gutters_draw_line_numbers = true
 
-[node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/VBoxContainer/HSplitContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/HBoxContainer/HSplitContainer" unique_id=868686161]
 parse_latex = true
 parse_html = true
 parse_mermaid = true
-streaming_enabled = true
-deferred_layout_enabled = true
-max_unstable_lines = 32
-layout_flush_interval_msec = 33
-scroll_following = true
 context_menu_enabled = true
-
-[node name="StreamTimer" type="Timer" parent="."]
+streaming_enabled = true
+scroll_following = true
 unique_name_in_owner = true
-wait_time = 0.045
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_vertical = 3
 
+[node name="StreamTimer" type="Timer" parent="." unique_id=16925897]
+unique_name_in_owner = true
+wait_time = 0.05
+
+[connection signal="pressed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/StartButton" to="." method="_on_start_button_pressed"]
+[connection signal="pressed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/PauseButton" to="." method="_on_pause_button_pressed"]
+[connection signal="pressed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/ResetButton" to="." method="_on_reset_button_pressed"]
+[connection signal="toggled" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/DeferredLayoutCheckBox" to="." method="_on_deferred_layout_toggled"]
+[connection signal="toggled" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/ScrollFollowCheckBox" to="." method="_on_scroll_follow_toggled"]
+[connection signal="value_changed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/IntervalSpinBox" to="." method="_on_interval_changed"]
+[connection signal="value_changed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/MaxUnstableLinesSpinBox" to="." method="_on_layout_option_changed"]
+[connection signal="value_changed" from="PanelContainer/HBoxContainer/Sidebar/VBoxContainer/FlushIntervalSpinBox" to="." method="_on_layout_option_changed"]
 [connection signal="timeout" from="StreamTimer" to="." method="_on_stream_timer_timeout"]

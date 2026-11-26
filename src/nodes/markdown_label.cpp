@@ -2920,51 +2920,51 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_markdown_text", "text"), &MarkdownLabel::set_markdown_text);
 	ClassDB::bind_method(D_METHOD("get_markdown_text"), &MarkdownLabel::get_markdown_text);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_markdown_text", "get_markdown_text");
-	
+
 	ClassDB::bind_method(D_METHOD("set_access", "access"), &MarkdownLabel::set_access);
 	ClassDB::bind_method(D_METHOD("get_access"), &MarkdownLabel::get_access);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
-	
+
 	ClassDB::bind_method(D_METHOD("set_root_subfolder", "root_subfolder"), &MarkdownLabel::set_root_subfolder);
 	ClassDB::bind_method(D_METHOD("get_root_subfolder"), &MarkdownLabel::get_root_subfolder);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
-	
+
 	ClassDB::bind_method(D_METHOD("set_parse_latex", "enabled"), &MarkdownLabel::set_parse_latex);
 	ClassDB::bind_method(D_METHOD("is_parsing_latex"), &MarkdownLabel::is_parsing_latex);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_latex"), "set_parse_latex", "is_parsing_latex");
-	
+
 	ClassDB::bind_method(D_METHOD("set_parse_html", "enabled"), &MarkdownLabel::set_parse_html);
 	ClassDB::bind_method(D_METHOD("is_parsing_html"), &MarkdownLabel::is_parsing_html);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_html"), "set_parse_html", "is_parsing_html");
-	
+
 	ClassDB::bind_method(D_METHOD("set_parse_gfm", "enabled"), &MarkdownLabel::set_parse_gfm);
 	ClassDB::bind_method(D_METHOD("is_parsing_gfm"), &MarkdownLabel::is_parsing_gfm);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_gfm"), "set_parse_gfm", "is_parsing_gfm");
-	
+
 	ClassDB::bind_method(D_METHOD("set_parse_mermaid", "enabled"), &MarkdownLabel::set_parse_mermaid);
 	ClassDB::bind_method(D_METHOD("is_parsing_mermaid"), &MarkdownLabel::is_parsing_mermaid);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "parse_mermaid"), "set_parse_mermaid", "is_parsing_mermaid");
-	
+
 	ClassDB::bind_method(D_METHOD("set_stylesheet", "stylesheet"), &MarkdownLabel::set_stylesheet);
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &MarkdownLabel::get_stylesheet);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stylesheet", PROPERTY_HINT_RESOURCE_TYPE, "CSSStyleSheet"), "set_stylesheet", "get_stylesheet");
-	
+
 	ClassDB::bind_method(D_METHOD("set_content_margin", "margin"), &MarkdownLabel::set_content_margin);
 	ClassDB::bind_method(D_METHOD("get_content_margin"), &MarkdownLabel::get_content_margin);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "content_margin", PROPERTY_HINT_RANGE, "0,128"), "set_content_margin", "get_content_margin");
-	
+
 	ClassDB::bind_method(D_METHOD("set_extra_font_size", "size"), &MarkdownLabel::set_extra_font_size);
 	ClassDB::bind_method(D_METHOD("get_extra_font_size"), &MarkdownLabel::get_extra_font_size);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16"), "set_extra_font_size", "get_extra_font_size");
-	
+
 	ClassDB::bind_method(D_METHOD("set_open_external_links", "enabled"), &MarkdownLabel::set_open_external_links);
 	ClassDB::bind_method(D_METHOD("get_open_external_links"), &MarkdownLabel::get_open_external_links);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open_external_links"), "set_open_external_links", "get_open_external_links");
-	
+
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &MarkdownLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &MarkdownLabel::is_selection_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_word_selection_mode", "mode"), &MarkdownLabel::set_word_selection_mode);
 	ClassDB::bind_method(D_METHOD("get_word_selection_mode"), &MarkdownLabel::get_word_selection_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "word_selection_mode", PROPERTY_HINT_ENUM, "Auto:0,TextServer:1,Jieba:2"),
@@ -2973,35 +2973,35 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_deselect_on_focus_loss_enabled", "enabled"), &MarkdownLabel::set_deselect_on_focus_loss_enabled);
 	ClassDB::bind_method(D_METHOD("is_deselect_on_focus_loss_enabled"), &MarkdownLabel::is_deselect_on_focus_loss_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_on_focus_loss_enabled"), "set_deselect_on_focus_loss_enabled", "is_deselect_on_focus_loss_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_drag_and_drop_selection_enabled", "enabled"), &MarkdownLabel::set_drag_and_drop_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_drag_and_drop_selection_enabled"), &MarkdownLabel::is_drag_and_drop_selection_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_and_drop_selection_enabled"), "set_drag_and_drop_selection_enabled", "is_drag_and_drop_selection_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_context_menu_enabled", "enabled"), &MarkdownLabel::set_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &MarkdownLabel::is_context_menu_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_shortcut_keys_enabled", "enabled"), &MarkdownLabel::set_shortcut_keys_enabled);
 	ClassDB::bind_method(D_METHOD("is_shortcut_keys_enabled"), &MarkdownLabel::is_shortcut_keys_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shortcut_keys_enabled"), "set_shortcut_keys_enabled", "is_shortcut_keys_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_streaming_enabled", "enabled"), &MarkdownLabel::set_streaming_enabled);
 	ClassDB::bind_method(D_METHOD("is_streaming_enabled"), &MarkdownLabel::is_streaming_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "streaming_enabled"), "set_streaming_enabled", "is_streaming_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_max_unstable_lines", "lines"), &MarkdownLabel::set_max_unstable_lines);
 	ClassDB::bind_method(D_METHOD("get_max_unstable_lines"), &MarkdownLabel::get_max_unstable_lines);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_unstable_lines", PROPERTY_HINT_RANGE, "1,256"), "set_max_unstable_lines", "get_max_unstable_lines");
-	
+
 	ClassDB::bind_method(D_METHOD("set_deferred_layout_enabled", "enabled"), &MarkdownLabel::set_deferred_layout_enabled);
 	ClassDB::bind_method(D_METHOD("is_deferred_layout_enabled"), &MarkdownLabel::is_deferred_layout_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deferred_layout_enabled"), "set_deferred_layout_enabled", "is_deferred_layout_enabled");
-	
+
 	ClassDB::bind_method(D_METHOD("set_layout_flush_interval_msec", "msec"), &MarkdownLabel::set_layout_flush_interval_msec);
 	ClassDB::bind_method(D_METHOD("get_layout_flush_interval_msec"), &MarkdownLabel::get_layout_flush_interval_msec);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "layout_flush_interval_msec", PROPERTY_HINT_RANGE, "1,1000,1"), "set_layout_flush_interval_msec", "get_layout_flush_interval_msec");
-	
+
 	ClassDB::bind_method(D_METHOD("set_fit_content", "enabled"), &MarkdownLabel::set_fit_content);
 	ClassDB::bind_method(D_METHOD("is_fit_content_enabled"), &MarkdownLabel::is_fit_content_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "fit_content"), "set_fit_content", "is_fit_content_enabled");
@@ -3017,7 +3017,7 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_scroll_follow_visible_characters", "follow"), &MarkdownLabel::set_scroll_follow_visible_characters);
 	ClassDB::bind_method(D_METHOD("is_scroll_following_visible_characters"), &MarkdownLabel::is_scroll_following_visible_characters);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "scroll_following_visible_characters"), "set_scroll_follow_visible_characters", "is_scroll_following_visible_characters");
-	
+
 	ClassDB::bind_method(D_METHOD("set_autowrap_mode", "autowrap_mode"), &MarkdownLabel::set_autowrap_mode);
 	ClassDB::bind_method(D_METHOD("get_autowrap_mode"), &MarkdownLabel::get_autowrap_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "autowrap_mode", PROPERTY_HINT_ENUM, "Off,Arbitrary,Word,Word (Smart)"), "set_autowrap_mode", "get_autowrap_mode");
