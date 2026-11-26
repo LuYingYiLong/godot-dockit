@@ -3070,9 +3070,9 @@ msgstr "公式排版使用的字号，单位为像素。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
-"Forces a full re-parse of the entire document. Call this after the last [method append_text] call"
-" to ensure correct final layout. Respects [member scroll_following] behavior."
-msgstr "强制重新解析整篇文档。在最后一次调用 [method append_text] 后调用此方法，以生成正确的最终布局。遵循 [member scroll_following] 的设置。"
+"Flushes any pending incremental parse and layout update. Call this after the last [method "
+"append_text] call. Respects [member scroll_following] behavior."
+msgstr "刷新尚未处理的增量解析和布局更新。在最后一次调用 [method append_text] 后调用此方法。遵循 [member scroll_following] 的设置。"
 
 #. doc_classes/PDFReader.xml
 msgid "Forces halftone image scaling."
@@ -3197,8 +3197,8 @@ msgstr "为 [code]true[/code] 时，可以将选中文本拖放到其他控件�
 #. doc_classes/MarkdownLabel.xml
 msgid ""
 "If [code]true[/code], streaming appends are parsed and laid out in batches instead of on every "
-"[method append_text] call."
-msgstr "为 [code]true[/code] 时，流式追加的内容分批解析和排版，无需每次调用 [method append_text] 时立即处理。"
+"[method append_text] call. Enabled by default when streaming is used."
+msgstr "为 [code]true[/code] 时，流式追加的内容分批解析和排版，无需每次调用 [method append_text] 时立即处理。启用流式模式时默认开启。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid "If [code]true[/code], text can be selected with the mouse."
@@ -3468,15 +3468,15 @@ msgid ""
 "search, link handling, and streaming output. Images are scaled to fit the content area. When "
 "[member fit_content] is enabled, the control height grows with its content.\n"
 "Configure streaming with [member streaming_enabled], [method append_text], [member "
-"max_unstable_lines], and [member deferred_layout_enabled]. Call [method finish_stream] after the "
-"final append to parse and lay out the complete text.\n"
+"max_unstable_lines], and [member deferred_layout_enabled]. Streaming updates are coalesced by "
+"default. Call [method finish_stream] after the final append to flush pending work.\n"
 "At [constant Node.NOTIFICATION_ENTER_TREE], the node creates internal scrolling, margin, and "
 "drawing nodes. Avoid adding child nodes manually."
 msgstr ""
 "MarkdownLabel 是在 [Control] 节点中显示 Markdown 文本的控件，提供滚动、文本选择、搜索、链接处理和流式输出。图像会缩放到内容区域内；启用 [member "
 "fit_content] 时，控件高度会随内容增长。\n"
 "可通过 [member streaming_enabled]、[method append_text]、[member max_unstable_lines] 和 [member "
-"deferred_layout_enabled] 配置流式输出。最后一次追加后调用 [method finish_stream]，完成最终解析和布局。\n"
+"deferred_layout_enabled] 配置流式输出。默认会合并流式更新。最后一次追加后调用 [method finish_stream]，刷新待处理的更新。\n"
 "在 [constant Node.NOTIFICATION_ENTER_TREE] 通知时，节点会创建内部滚动、边距和绘制节点。请勿手动添加子节点。"
 
 #. doc_classes/MarkdownLabel.xml
@@ -3495,9 +3495,9 @@ msgstr "匹配完整单词。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
-"Maximum number of lines from the end of the document that are re-parsed on each [method "
-"append_text] call in streaming mode. Clamped to [code][1, 256][/code]."
-msgstr "流式模式下，每次调用 [method append_text] 最多从文档末尾重新解析的行数。取值限制在 [code][1, 256][/code]。"
+"Maximum number of unstable tail lines re-parsed in one streaming refresh. Open constructs such "
+"as fenced code blocks can extend this range. Clamped to [code][1, 256][/code]."
+msgstr "每次流式刷新时重新解析的不稳定尾部行数上限。围栏代码块等未闭合结构可能会扩大此范围。取值限制在 [code][1, 256][/code]。"
 
 #. doc_classes/HTMLNode.xml
 msgid ""

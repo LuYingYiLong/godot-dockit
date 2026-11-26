@@ -622,19 +622,32 @@ namespace {
 		return result.rstrip("-");
 	}
 
+	void split_source_lines_from(const String& p_text, int64_t p_start, std::vector<String>& r_lines,
+		std::vector<String>& r_html_lines) {
+		r_lines.clear();
+		r_html_lines.clear();
+		const int64_t length = p_text.length();
+		int64_t line_start = CLAMP<int64_t>(p_start, 0, length);
+		for (int64_t i = line_start; i < length; ++i) {
+			if (p_text[i] != '\n' && p_text[i] != '\r') continue;
+			const String raw_line = p_text.substr(line_start, i - line_start);
+			r_html_lines.push_back(raw_line);
+			r_lines.push_back(raw_line.rstrip(" \t"));
+			if (p_text[i] == '\r' && i + 1 < length && p_text[i + 1] == '\n') ++i;
+			line_start = i + 1;
+		}
+		const String raw_line = p_text.substr(line_start, length - line_start);
+		r_html_lines.push_back(raw_line);
+		r_lines.push_back(raw_line.rstrip(" \t"));
+	}
+
 } // namespace
 
 std::vector<String> split_lines(const String& p_text, bool p_keep_trailing_space) {
-	const String normalized = p_text.replace("\r\n", "\n").replace("\r", "\n");
-	const PackedStringArray split = normalized.split("\n", true);
 	std::vector<String> lines;
-
-	lines.reserve(split.size());
-	for (int32_t i = 0; i < split.size(); i++) {
-		lines.push_back(p_keep_trailing_space ? split[i] : split[i].rstrip(" \t"));
-	}
-
-	return lines;
+	std::vector<String> html_lines;
+	split_source_lines_from(p_text, 0, lines, html_lines);
+	return p_keep_trailing_space ? std::move(html_lines) : std::move(lines);
 }
 
 String slugify_heading(const String& p_text) {
@@ -1210,9 +1223,11 @@ MarkdownInlineSpanParseResult parse_inline_spans(const String& p_text, const Mar
 	return result;
 }
 
-MarkdownParseResult parse_markdown_document(const String& p_text, const MarkdownParserState* p_initial_state, int32_t p_max_lines, const MarkdownParseOptions& p_options) {
-	std::vector<String> lines = split_lines(p_text);
-	const std::vector<String> html_source_lines = split_lines(p_text, true);
+static MarkdownParseResult parse_markdown_document_from_offset(const String& p_text, int64_t p_start_offset,
+	const MarkdownParserState* p_initial_state, int32_t p_max_lines, const MarkdownParseOptions& p_options) {
+	std::vector<String> lines;
+	std::vector<String> html_source_lines;
+	split_source_lines_from(p_text, p_start_offset, lines, html_source_lines);
 	MarkdownParseResult result;
 	std::vector<MarkdownBlock>& blocks = result.blocks;
 
@@ -1796,16 +1811,20 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 	}
 
 	state.stable_block_count = static_cast<int32_t>(blocks.size());
-	state.stable_source_offset = p_text.length();
+	state.stable_source_offset = p_text.length() - CLAMP<int64_t>(p_start_offset, 0, p_text.length());
 	result.state = state;
 	return result;
+}
+
+MarkdownParseResult parse_markdown_document(const String& p_text, const MarkdownParserState* p_initial_state, int32_t p_max_lines, const MarkdownParseOptions& p_options) {
+	return parse_markdown_document_from_offset(p_text, 0, p_initial_state, p_max_lines, p_options);
 }
 
 std::vector<MarkdownBlock> parse_markdown_blocks(const String& p_text, const MarkdownParserState* p_initial_state, int32_t p_max_lines, const MarkdownParseOptions& p_options) {
 	return parse_markdown_document(p_text, p_initial_state, p_max_lines, p_options).blocks;
 }
 
-int32_t find_reparse_line(const std::vector<MarkdownBlock>& p_blocks, const std::vector<String>& p_lines, const MarkdownParserState& p_state, int32_t p_max_unstable_lines) {
+int32_t find_reparse_line(const std::vector<MarkdownBlock>& p_blocks, int32_t p_line_count, const MarkdownParserState& p_state, int32_t p_max_unstable_lines) {
 	auto include_open_block_start = [&](int32_t p_start) {
 		if (p_state.unclosed_latex_line > 0) {
 			p_start = std::min(p_start, p_state.unclosed_latex_line - 1);
@@ -1836,33 +1855,35 @@ int32_t find_reparse_line(const std::vector<MarkdownBlock>& p_blocks, const std:
 	if (p_blocks.empty()) {
 		return 0;
 	}
+	if (p_blocks.back().type == MARKDOWN_BLOCK_FOOTNOTES && !p_blocks.back().footnotes.empty()) {
+		int32_t first_definition_line = p_blocks.back().footnotes.front().line;
+		for (const MarkdownFootnoteDefinition& definition : p_blocks.back().footnotes) {
+			first_definition_line = std::min(first_definition_line, definition.line);
+		}
+		return include_open_block_start(std::max<int32_t>(0, first_definition_line));
+	}
 
 	if (p_blocks.back().type == MARKDOWN_BLOCK_TABLE) {
 		return include_open_block_start(std::max<int32_t>(0, p_blocks.back().line - 1));
 	}
 
 	int32_t last_block_line = p_blocks.back().line - 1;
-	int32_t tail_lines = std::min<int32_t>(p_max_unstable_lines, static_cast<int32_t>(p_lines.size()) - last_block_line);
-	int32_t reparse_start = std::max<int32_t>(0, static_cast<int32_t>(p_lines.size()) - tail_lines);
+	int32_t tail_lines = std::min<int32_t>(p_max_unstable_lines, p_line_count - last_block_line);
+	int32_t reparse_start = std::max<int32_t>(0, p_line_count - tail_lines);
 
 	return include_open_block_start(reparse_start);
 }
 
-void rebuild_tail(const String& p_raw_text, int32_t p_reparse_line, std::vector<MarkdownBlock>& r_blocks, MarkdownParserState& r_state, const MarkdownParseOptions& p_options) {
+void rebuild_tail(const String& p_raw_text, const std::vector<int64_t>& p_line_starts, int32_t p_previous_line_count,
+	int32_t p_reparse_line,
+	std::vector<MarkdownBlock>& r_blocks, MarkdownParserState& r_state, const MarkdownParseOptions& p_options) {
 	r_blocks.erase(std::remove_if(r_blocks.begin(), r_blocks.end(), [p_reparse_line](const MarkdownBlock& b) { return b.line >= p_reparse_line + 1; }), r_blocks.end());
 
 	r_state.reset();
-
-	std::vector<String> lines = split_lines(p_raw_text, p_options.parse_html);
-	String tail_text;
-	for (int32_t i = p_reparse_line; i < static_cast<int32_t>(lines.size()); i++) {
-		if (i > p_reparse_line) {
-			tail_text += "\n";
-		}
-		tail_text += lines[i];
-	}
-
-	MarkdownParseResult tail_result = parse_markdown_document(tail_text, nullptr, INT_MAX, p_options);
+	if (p_line_starts.empty()) return;
+	const int32_t start_line = CLAMP(p_reparse_line, 0, static_cast<int32_t>(p_line_starts.size()) - 1);
+	const int64_t start_offset = p_line_starts[start_line];
+	MarkdownParseResult tail_result = parse_markdown_document_from_offset(p_raw_text, start_offset, nullptr, INT_MAX, p_options);
 	std::vector<MarkdownBlock> tail_blocks = tail_result.blocks;
 
 	for (MarkdownBlock& block : tail_blocks) {
@@ -1875,6 +1896,36 @@ void rebuild_tail(const String& p_raw_text, int32_t p_reparse_line, std::vector<
 			definition.end_line += p_reparse_line;
 		}
 	}
+	if (!r_blocks.empty() && !tail_blocks.empty() && p_reparse_line > 0 &&
+		r_blocks.back().type == MARKDOWN_BLOCK_PARAGRAPH && tail_blocks.front().type == MARKDOWN_BLOCK_PARAGRAPH &&
+		tail_blocks.front().line == p_reparse_line + 1) {
+		const auto source_line_text = [&](int32_t p_line) {
+			const int64_t line_start = p_line_starts[p_line];
+			int64_t line_end = p_line + 1 < static_cast<int32_t>(p_line_starts.size())
+				? p_line_starts[p_line + 1]
+				: p_raw_text.length();
+			if (line_end > line_start && p_raw_text[line_end - 1] == '\n') --line_end;
+			if (line_end > line_start && p_raw_text[line_end - 1] == '\r') --line_end;
+			return p_raw_text.substr(line_start, line_end - line_start).rstrip(" \t");
+		};
+		const String previous_source_line = source_line_text(p_reparse_line - 1);
+		if (!is_blank_line(previous_source_line)) {
+			String previous_tail;
+			int32_t previous_end_line = CLAMP(p_previous_line_count, start_line, static_cast<int32_t>(p_line_starts.size()));
+			if (tail_blocks.size() > 1) previous_end_line = std::min(previous_end_line, tail_blocks[1].line - 1);
+			while (previous_end_line > start_line && is_blank_line(source_line_text(previous_end_line - 1))) --previous_end_line;
+			for (int32_t line = start_line; line < previous_end_line; ++line) {
+				const String source_line = source_line_text(line);
+				previous_tail = previous_tail.is_empty() ? source_line.strip_edges() : join_wrapped_line(previous_tail, source_line);
+			}
+			String& previous_text = r_blocks.back().text;
+			if (previous_tail.is_empty() || previous_text.ends_with(previous_tail)) {
+				if (!previous_tail.is_empty()) previous_text = previous_text.substr(0, previous_text.length() - previous_tail.length());
+				previous_text = join_wrapped_line(previous_text, tail_blocks.front().text);
+				tail_blocks.erase(tail_blocks.begin());
+			}
+		}
+	}
 
 	r_state = tail_result.state;
 	if (r_state.unclosed_latex_line > 0) {
@@ -1884,6 +1935,6 @@ void rebuild_tail(const String& p_raw_text, int32_t p_reparse_line, std::vector<
 		r_state.unclosed_html_line += p_reparse_line;
 	}
 	r_state.stable_block_count = static_cast<int32_t>(r_blocks.size() + tail_blocks.size());
-	r_state.stable_source_offset = p_raw_text.length();
+	r_state.stable_source_offset = start_offset + tail_result.state.stable_source_offset;
 	r_blocks.insert(r_blocks.end(), tail_blocks.begin(), tail_blocks.end());
 }

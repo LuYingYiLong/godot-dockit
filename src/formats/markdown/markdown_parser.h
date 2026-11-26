@@ -280,12 +280,14 @@ MarkdownInlineSpanParseResult parse_inline_spans(
 // 流式 Helper
 int32_t find_reparse_line(
 	const std::vector<MarkdownBlock>& p_blocks,
-	const std::vector<String>& p_lines,
+	int32_t p_line_count,
 	const MarkdownParserState& p_state,
 	int32_t p_max_unstable_lines
 );																								// 计算流式追加时需要重新解析的起始行索引
 void rebuild_tail(
 	const String& p_raw_text,
+	const std::vector<int64_t>& p_line_starts,
+	int32_t p_previous_line_count,
 	int32_t p_reparse_line,
 	std::vector<MarkdownBlock>& r_blocks,
 	MarkdownParserState& r_state,

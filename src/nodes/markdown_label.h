@@ -175,15 +175,18 @@ private:
 	MarkdownParserState parser_state;
 	dockit::MarkdownLayoutDocument layout_document;
 	std::vector<MarkdownBlock> cached_blocks;
+	std::vector<int64_t> source_line_starts{ 0 };
+	int32_t parsed_source_line_count = 0;
 	bool streaming_enabled = false;
-	bool deferred_layout_enabled = false;
+	bool deferred_layout_enabled = true;
 	bool pending_stream_parse = false;
-	bool layout_prefix_reuse_requested = false;
 	int32_t max_unstable_lines = 32;
 	int32_t layout_flush_interval_msec = 33;
 	double pending_layout_elapsed_msec = 0.0;
 
 	void mark_layout_dirty();
+	void reset_source_line_starts();
+	void append_source_line_starts(int64_t p_previous_length);
 	MarkdownParseOptions get_parse_options() const;
 	void parse_current_text_incremental();
 	void build_theme_cache();
@@ -328,7 +331,7 @@ private:
 	bool context_menu_enabled = false;
 	bool shortcut_keys_enabled = true;
 	bool streaming_enabled = false;
-	bool deferred_layout_enabled = false;
+	bool deferred_layout_enabled = true;
 	int32_t max_unstable_lines = 32;
 	int32_t layout_flush_interval_msec = 33;
 	bool fit_content = false;

@@ -4,6 +4,8 @@
 #include "formats/html/text/html_font_config.h"
 #include "formats/html/css/css_style_sheet.h"
 #include <godot_cpp/classes/control.hpp>
+#include <map>
+#include <utility>
 
 struct MarkdownThemeCache;
 class MermaidRenderCache;
@@ -40,16 +42,11 @@ struct MarkdownSourceLineMap {
 	std::vector<int64_t> rendered_offsets;
 };
 
-struct MarkdownVisualSourceLine {
-	double y = 0.0;
-	int32_t source_line = 0;
-};
-
 class MarkdownLayoutDocument {
 	godot::Ref<HTMLLayout> layout;
 	std::vector<MarkdownSourceBlock> source_blocks;
 	std::vector<MarkdownSourceLineMap> source_lines;
-	std::vector<MarkdownVisualSourceLine> visual_source_lines;
+	std::map<std::pair<double, int32_t>, int32_t> visual_source_lines;
 	godot::Dictionary textures;
 	godot::String theme_css;
 	godot::String resource_base;
@@ -60,15 +57,19 @@ class MarkdownLayoutDocument {
 	uint64_t task_unchecked_icon_id = 0;
 	int32_t rebuilt_nodes = 0;
 	int32_t retained_nodes = 0;
+	godot::Vector2i last_viewport_size;
+	bool has_last_viewport_size = false;
 
 	godot::String render_inline(const godot::String& p_text, const MarkdownParseOptions& p_options,
 		const MarkdownThemeCache& p_theme, MermaidRenderCache& p_mermaid);
 	godot::String render_block(const MarkdownBlock& p_block, const MarkdownParseOptions& p_options,
 		const MarkdownThemeCache& p_theme, MermaidRenderCache& p_mermaid);
-	void rebuild_source_map(const godot::String& p_source);
+	void rebuild_source_map(const godot::String& p_source, const std::vector<int64_t>& p_line_starts,
+		int32_t p_prefix_block_count);
 
 public:
 	godot::Error update(const std::vector<MarkdownBlock>& p_blocks, const godot::String& p_source,
+		const std::vector<int64_t>& p_line_starts,
 		const MarkdownParseOptions& p_options,
 		const MarkdownThemeCache& p_theme, godot::Control* p_owner, MermaidRenderCache& p_mermaid,
 		const godot::Vector2i& p_viewport, const godot::String& p_base, const godot::Ref<CSSStyleSheet>& p_stylesheet);

@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		MarkdownLabel displays Markdown text in a [Control] node and provides scrolling, text selection, search, link handling, and streaming output. Images are scaled to fit the content area. When [member fit_content] is enabled, the control height grows with its content.
-		Configure streaming with [member streaming_enabled], [method append_text], [member max_unstable_lines], and [member deferred_layout_enabled]. Call [method finish_stream] after the final append to parse and lay out the complete text.
+		Configure streaming with [member streaming_enabled], [method append_text], [member max_unstable_lines], and [member deferred_layout_enabled]. Streaming updates are coalesced by default. Call [method finish_stream] after the final append to flush pending work.
 		At [constant Node.NOTIFICATION_ENTER_TREE], the node creates internal scrolling, margin, and drawing nodes. Avoid adding child nodes manually.
 	</description>
 	<tutorials>
@@ -40,7 +40,7 @@
 		<method name="finish_stream">
 			<return type="void" />
 			<description>
-				Forces a full re-parse of the entire document. Call this after the last [method append_text] call to ensure correct final layout. Respects [member scroll_following] behavior.
+				Flushes any pending incremental parse and layout update. Call this after the last [method append_text] call. Respects [member scroll_following] behavior.
 			</description>
 		</method>
 		<method name="flush_pending_layout">
@@ -458,8 +458,8 @@
 		<member name="deselect_on_focus_loss_enabled" type="bool" setter="set_deselect_on_focus_loss_enabled" getter="is_deselect_on_focus_loss_enabled" default="true">
 			If [code]true[/code], the text selection is automatically cleared when the node loses focus.
 		</member>
-		<member name="deferred_layout_enabled" type="bool" setter="set_deferred_layout_enabled" getter="is_deferred_layout_enabled" default="false">
-			If [code]true[/code], streaming appends are parsed and laid out in batches instead of on every [method append_text] call.
+		<member name="deferred_layout_enabled" type="bool" setter="set_deferred_layout_enabled" getter="is_deferred_layout_enabled" default="true">
+			If [code]true[/code], streaming appends are parsed and laid out in batches instead of on every [method append_text] call. Enabled by default when streaming is used.
 		</member>
 		<member name="drag_and_drop_selection_enabled" type="bool" setter="set_drag_and_drop_selection_enabled" getter="is_drag_and_drop_selection_enabled" default="true">
 			If [code]true[/code], selected text can be dragged and dropped to other controls.
@@ -474,7 +474,7 @@
 			Deferred streaming layout flush interval in milliseconds. Clamped to [code][1, 1000][/code].
 		</member>
 		<member name="max_unstable_lines" type="int" setter="set_max_unstable_lines" getter="get_max_unstable_lines" default="32">
-			Maximum number of lines from the end of the document that are re-parsed on each [method append_text] call in streaming mode. Clamped to [code][1, 256][/code].
+			Maximum number of unstable tail lines re-parsed in one streaming refresh. Open constructs such as fenced code blocks can extend this range. Clamped to [code][1, 256][/code].
 		</member>
 		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true">
 			If [code]true[/code], clicking an http/https link opens it in the system default browser.

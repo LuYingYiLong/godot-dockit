@@ -1210,6 +1210,7 @@ void MarkdownLabelCanvas::set_label(MarkdownLabel* p_label) {
 void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 	layout_document.clear();
 	raw_text = p_text;
+	reset_source_line_starts();
 	selection_anchor = 0;
 	selection_caret = 0;
 	search_match_start = -1;
@@ -1220,15 +1221,39 @@ void MarkdownLabelCanvas::set_markdown_text(const String& p_text) {
 	pressed_markdown = false;
 	parser_state.reset();
 	cached_blocks.clear();
+	parsed_source_line_count = 0;
 	// A streaming append before the next redraw must start with a fresh layout.
 	items.clear();
 	pending_stream_parse = false;
 	pending_layout_elapsed_msec = 0.0;
-	layout_prefix_reuse_requested = false;
 	internal_processing_enabled = false;
 	set_process_internal(false);
 	update_internal_processing();
 	mark_layout_dirty();
+}
+
+void MarkdownLabelCanvas::reset_source_line_starts() {
+	source_line_starts.clear();
+	source_line_starts.push_back(0);
+	for (int64_t i = 0; i < raw_text.length(); ++i) {
+		if (raw_text[i] != '\n' && raw_text[i] != '\r') continue;
+		if (raw_text[i] == '\r' && i + 1 < raw_text.length() && raw_text[i + 1] == '\n') ++i;
+		source_line_starts.push_back(i + 1);
+	}
+}
+
+void MarkdownLabelCanvas::append_source_line_starts(int64_t p_previous_length) {
+	if (raw_text.length() <= p_previous_length) return;
+	int64_t scan_start = p_previous_length;
+	if (p_previous_length > 0 && raw_text[p_previous_length - 1] == '\r') {
+		if (source_line_starts.size() > 1 && source_line_starts.back() == p_previous_length) source_line_starts.pop_back();
+		scan_start = p_previous_length - 1;
+	}
+	for (int64_t i = scan_start; i < raw_text.length(); ++i) {
+		if (raw_text[i] != '\n' && raw_text[i] != '\r') continue;
+		if (raw_text[i] == '\r' && i + 1 < raw_text.length() && raw_text[i + 1] == '\n') ++i;
+		source_line_starts.push_back(i + 1);
+	}
 }
 
 String MarkdownLabelCanvas::resolve_image_uri(const String& p_uri, bool p_html) const {
@@ -1263,26 +1288,32 @@ MarkdownParseOptions MarkdownLabelCanvas::get_parse_options() const {
 void MarkdownLabelCanvas::parse_current_text_incremental() {
 	const MarkdownParseOptions options = get_parse_options();
 	if (streaming_enabled) {
-		std::vector<String> all_lines = split_lines(raw_text);
-		int32_t reparse_line = find_reparse_line(cached_blocks, all_lines, parser_state, max_unstable_lines);
+		const int32_t line_count = static_cast<int32_t>(source_line_starts.size());
+		int32_t reparse_line = find_reparse_line(cached_blocks, line_count, parser_state, max_unstable_lines);
+		if (parsed_source_line_count < line_count) {
+			const int32_t unparsed_prefix = std::max<int32_t>(0, parsed_source_line_count - max_unstable_lines);
+			reparse_line = std::min(reparse_line, unparsed_prefix);
+		}
 		if (options.parse_html && !cached_blocks.empty()) {
 			// The append can complete the previous last line and add more lines in the same chunk.
 			reparse_line = std::min(reparse_line, std::max(0, cached_blocks.back().line - 1));
 		}
-		rebuild_tail(raw_text, reparse_line, cached_blocks, parser_state, options);
-		layout_prefix_reuse_requested = true;
+		rebuild_tail(raw_text, source_line_starts, parsed_source_line_count, reparse_line, cached_blocks, parser_state, options);
+		parsed_source_line_count = line_count;
 	}
 	else {
 		parser_state.reset();
 		MarkdownParseResult result = parse_markdown_document(raw_text, nullptr, INT_MAX, options);
 		cached_blocks = result.blocks;
 		parser_state = result.state;
-		layout_prefix_reuse_requested = false;
+		parsed_source_line_count = static_cast<int32_t>(source_line_starts.size());
 	}
 }
 
 void MarkdownLabelCanvas::append_text_incremental(const String& p_delta) {
+	const int64_t previous_length = raw_text.length();
 	raw_text += p_delta;
+	append_source_line_starts(previous_length);
 
 	if (deferred_layout_enabled && streaming_enabled) {
 		pending_stream_parse = true;
@@ -1296,28 +1327,27 @@ void MarkdownLabelCanvas::append_text_incremental(const String& p_delta) {
 }
 
 void MarkdownLabelCanvas::finish_stream() {
+	const bool had_pending_parse = pending_stream_parse;
 	pending_stream_parse = false;
 	pending_layout_elapsed_msec = 0.0;
-	parser_state.reset();
-	MarkdownParseResult result = parse_markdown_document(raw_text, nullptr, INT_MAX, get_parse_options());
-	cached_blocks = result.blocks;
-	parser_state = result.state;
-	layout_prefix_reuse_requested = false;
+	if (!had_pending_parse) return;
+	parse_current_text_incremental();
 	mark_layout_dirty();
 }
 
 void MarkdownLabelCanvas::clear_document() {
 	layout_document.clear();
 	raw_text = String();
+	source_line_starts.assign(1, 0);
 	plain_text = String();
 	items.clear();
 	lines.clear();
 	cached_blocks.clear();
 	parser_state.reset();
+	parsed_source_line_count = 0;
 	mermaid_cache.update({}, {});
 	pending_stream_parse = false;
 	pending_layout_elapsed_msec = 0.0;
-	layout_prefix_reuse_requested = false;
 	rendered_block_count = 0;
 	selection_anchor = 0;
 	selection_caret = 0;
@@ -1423,7 +1453,6 @@ void MarkdownLabelCanvas::request_local_image(const String& p_uri) {
 }
 
 void MarkdownLabelCanvas::refresh_image_content() {
-	layout_prefix_reuse_requested = false;
 	mark_layout_dirty();
 }
 
@@ -1899,6 +1928,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 		MarkdownParseResult parsed = parse_markdown_document(raw_text, nullptr, INT_MAX, options);
 		cached_blocks = std::move(parsed.blocks);
 		parser_state = parsed.state;
+		parsed_source_line_count = static_cast<int32_t>(source_line_starts.size());
 	}
 	HashSet<String> mermaid_sources;
 	if (options.parse_mermaid && MermaidRender::is_available()) collect_mermaid_sources(cached_blocks, mermaid_sources);
@@ -1908,7 +1938,7 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	const Ref<HTMLLayout> previous_html = layout_document.get_layout();
 	const dockit::HTMLBoundary previous_anchor = previous_html.is_valid() ? previous_html->text_boundary_at(selection_anchor) : dockit::HTMLBoundary();
 	const dockit::HTMLBoundary previous_caret = previous_html.is_valid() ? previous_html->text_boundary_at(selection_caret) : dockit::HTMLBoundary();
-	const Error error = layout_document.update(cached_blocks, raw_text, options, theme_cache, label, mermaid_cache,
+	const Error error = layout_document.update(cached_blocks, raw_text, source_line_starts, options, theme_cache, label, mermaid_cache,
 		Vector2i(std::max(1, int(width)), height), label ? label->get_resource_base_dir() : String("res://"),
 		label ? label->get_stylesheet() : Ref<CSSStyleSheet>());
 	items.clear();
@@ -1948,7 +1978,6 @@ void MarkdownLabelCanvas::rebuild_layout() {
 	}
 	set_custom_minimum_size(Vector2(1.0, content_height));
 	update_minimum_size();
-	layout_prefix_reuse_requested = false;
 	update_internal_processing();
 	queue_pointer_update();
 	if (label) label->notify_canvas_layout_changed();
@@ -2028,7 +2057,6 @@ bool MarkdownLabelCanvas::is_rect_visible(const Rect2& p_rect, const Rect2& p_vi
 void MarkdownLabelCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_THEME_CHANGED) {
 		layout_document.clear();
-		layout_prefix_reuse_requested = false;
 	}
 	if (p_what == NOTIFICATION_RESIZED || p_what == NOTIFICATION_THEME_CHANGED) {
 		mark_layout_dirty();
@@ -2076,7 +2104,6 @@ void MarkdownLabelCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_INTERNAL_PROCESS) {
 		const double delta = get_process_delta_time();
 		if (mermaid_cache.poll()) {
-			layout_prefix_reuse_requested = false;
 			mark_layout_dirty();
 		}
 		if (pending_stream_parse) {
@@ -3246,7 +3273,6 @@ void MarkdownLabel::set_parse_mermaid(bool p_enabled) {
 	}
 	parse_mermaid = p_enabled;
 	if (canvas != nullptr) {
-		canvas->layout_prefix_reuse_requested = false;
 		canvas->mark_layout_dirty();
 	}
 	notify_canvas_layout_changed();
@@ -3261,7 +3287,6 @@ void MarkdownLabel::set_access(int32_t p_access) {
 	if (p_access < ACCESS_RESOURCES || p_access > ACCESS_FILE_SYSTEM || access == p_access) return;
 	access = p_access;
 	if (canvas != nullptr) {
-		canvas->layout_prefix_reuse_requested = false;
 		canvas->mark_layout_dirty();
 	}
 	notify_canvas_layout_changed();
@@ -3275,7 +3300,6 @@ void MarkdownLabel::set_root_subfolder(const String& p_root_subfolder) {
 	if (root_subfolder == p_root_subfolder) return;
 	root_subfolder = p_root_subfolder;
 	if (canvas != nullptr) {
-		canvas->layout_prefix_reuse_requested = false;
 		canvas->mark_layout_dirty();
 	}
 	notify_canvas_layout_changed();
@@ -3485,7 +3509,6 @@ void MarkdownLabel::set_extra_font_size(int32_t p_extra) {
 	extra_font_size = std::max<int32_t>(0, std::min<int32_t>(p_extra, 16));
 	emit_signal("extra_font_size_changed", extra_font_size);
 	if (canvas != nullptr) {
-		canvas->layout_prefix_reuse_requested = false;
 		canvas->mark_layout_dirty();
 	}
 }

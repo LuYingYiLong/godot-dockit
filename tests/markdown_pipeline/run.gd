@@ -90,14 +90,21 @@ func _run() -> void:
 	_check(label.get_content_height() > before_height + 70.0, "Author CSS did not affect the Markdown table")
 	label.clear_selection()
 	label.streaming_enabled = true
+	_check(label.deferred_layout_enabled, "Streaming updates were not coalesced by default")
 	label.text = "# Stream\n\n"
 	for character: String in "**Bold** and <span style=\"color:red\">HTML</span>\n\n|One|\n|--|\n|Cell|":
 		label.append_text(character)
+	var batch_lines: PackedStringArray = []
+	for line_index: int in range(48):
+		batch_lines.append("Batch line %d" % line_index)
+	label.append_text("\n\n" + "\n\n".join(batch_lines))
+	_check(label.flush_pending_layout(), "Batched stream update was not pending")
+	_check(not label.flush_pending_layout(), "Batched stream update was flushed more than once")
 	label.finish_stream()
 	await process_frame
 	label.select_all()
 	selected = label.get_selected_text()
-	_check(selected.contains("Bold") and selected.contains("HTML") and selected.contains("Cell"), "Streaming lost content")
+	_check(selected.contains("Bold") and selected.contains("HTML") and selected.contains("Cell") and selected.contains("Batch line 47"), "Streaming lost content from a coalesced append batch")
 	var snapshot: MarkdownLabel = MarkdownLabel.new()
 	snapshot.size = label.size
 	snapshot.parse_html = true
@@ -106,6 +113,31 @@ func _run() -> void:
 	await process_frame
 	snapshot.select_all()
 	_check(selected == snapshot.get_selected_text(), "Streaming output differs from parsing the same source at once")
+	var paragraph_stream: MarkdownLabel = MarkdownLabel.new()
+	paragraph_stream.size = Vector2(640.0, 500.0)
+	paragraph_stream.streaming_enabled = true
+	get_root().add_child(paragraph_stream)
+	var paragraph_lines: PackedStringArray = []
+	for line_index: int in range(40):
+		paragraph_lines.append("Paragraph continuation %d" % line_index)
+	paragraph_stream.text = "\n".join(paragraph_lines)
+	await process_frame
+	await process_frame
+	paragraph_stream.append_text("\nfinal continuation")
+	_check(paragraph_stream.flush_pending_layout(), "Long paragraph stream update was not pending")
+	await process_frame
+	await process_frame
+	paragraph_stream.select_all()
+	var streamed_paragraph: String = paragraph_stream.get_selected_text()
+	var paragraph_snapshot: MarkdownLabel = MarkdownLabel.new()
+	paragraph_snapshot.size = paragraph_stream.size
+	get_root().add_child(paragraph_snapshot)
+	paragraph_snapshot.text = paragraph_stream.text
+	await process_frame
+	paragraph_snapshot.select_all()
+	_check(streamed_paragraph == paragraph_snapshot.get_selected_text(), "Streaming split a long continuing paragraph into separate blocks")
+	paragraph_stream.queue_free()
+	paragraph_snapshot.queue_free()
 	snapshot.text = "<style>.sample {height:30px;}</style>\n\n<div class=\"sample\">CSS order</div>"
 	sheet = CSSStyleSheet.new()
 	sheet.css_text = ".sample {height:150px;}"
@@ -149,6 +181,19 @@ func _run() -> void:
 		_check(preview_line + 0.05 >= previous_preview_line, "Preview-to-source mapping moved backwards at y=%d: %.2f after %.2f" % [preview_y, preview_line, previous_preview_line])
 		_check(preview_line >= 0.0 and preview_line <= source_line_count, "Preview offset mapped outside source bounds")
 		previous_preview_line = preview_line
+	map_label.streaming_enabled = true
+	var first_line_y: float = map_label.get_scroll_offset_for_source_line(0.0, source_line_count)
+	map_label.append_text("\n\n# Streamed tail\n\nTail mapping text")
+	_check(map_label.flush_pending_layout(), "Source map stream update was not pending")
+	await process_frame
+	await process_frame
+	var extended_line_count: int = map_label.text.split("\n", true).size()
+	_check(is_equal_approx(map_label.get_scroll_offset_for_source_line(0.0, extended_line_count), first_line_y), "Appending a tail changed the cached source map for the prefix")
+	var streamed_tail_line: int = map_label.text.split("\n", true).find("# Streamed tail")
+	var streamed_tail_y: float = map_label.get_scroll_offset_for_source_line(float(streamed_tail_line), extended_line_count)
+	_check(streamed_tail_y > table_source_y, "Incremental source map did not include the appended tail")
+	map_label.select_all()
+	_check(map_label.get_selected_text().contains("Footnote content mapped to its source line"), "Appending after a footnote discarded its definition")
 	map_label.queue_free()
 	snapshot.queue_free()
 	label.queue_free()
