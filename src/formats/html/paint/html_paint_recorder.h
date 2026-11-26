@@ -155,6 +155,13 @@ namespace dockit {
 		std::vector<int64_t> selection_scope_starts;
 		std::optional<bool> separator_selectable;
 		std::vector<TextRun> text_runs;
+		struct EmbeddedObjectText {
+			godot::String text;
+			godot::Rect2 box;
+			HTMLPlaneTransform matrix;
+			std::vector<TransformedClip> clips;
+		};
+		std::unordered_map<const litehtml::element*, EmbeddedObjectText> embedded_object_text;
 		std::vector<HTMLTextIndexSpan> text_index_spans;
 		std::vector<std::pair<const litehtml::element*, godot::Vector2i>> auto_content_text;
 		std::vector<Ellipsis> ellipses;

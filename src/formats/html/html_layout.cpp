@@ -1264,6 +1264,16 @@ Error HTMLLayout::layout(const Vector2i& p_viewport_size) {
 	return layout_viewport(p_viewport_size, p_viewport_size, p_viewport_size);
 }
 
+bool HTMLLayout::advance_embedded_images(double p_delta) {
+	return state->container && state->container->advance_embedded_images(p_delta);
+}
+
+void HTMLLayout::update_embedded_textures(const Dictionary& p_textures) {
+	if (state->container && state->container->update_embedded_textures(p_textures)) {
+		state->pending_update = State::Update::LAYOUT;
+	}
+}
+
 Error HTMLLayout::layout_embedded_block(const Vector2i& p_viewport_size) {
 	state->embedded_block = true;
 	return layout(p_viewport_size);

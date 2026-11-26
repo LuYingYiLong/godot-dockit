@@ -36,6 +36,12 @@ Edit the source and watch the preview update. Scroll either pane to follow the m
 | Diagrams | Mermaid | Yes |
 | Editing | Markdown | Live |
 
+### HTML inside table cells
+| Content | CSS layout |
+| :-- | :-- |
+| **Markdown** and <span style="color: #60a5fa; font-size: 22px">styled HTML</span> | <div style="padding: 12px; border: 2px solid #60a5fa; border-radius: 8px">A real HTML box inside a Markdown cell</div> |
+
+
 ## LaTeX
 
 Inline math: $E = mc^2$ and $a^2 + b^2 = c^2$.

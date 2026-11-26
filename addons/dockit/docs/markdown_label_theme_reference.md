@@ -11,6 +11,8 @@ label.theme_type_variation = &"MarkdownLabel"
 
 Then configure the theme items below in the editor's theme panel or in a script.
 
+Theme items are converted to default CSS for the shared Markdown/HTML layout. Document CSS and `MarkdownLabel.stylesheet` can override these defaults, including inside Markdown tables. [StyleBox conversion](stylebox_css_conversion.md) documents supported mappings and conversion limits.
+
 ---
 
 ## Supported Theme Properties

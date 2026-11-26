@@ -36,6 +36,7 @@ namespace dockit {
 		godot::Dictionary image_orientations;
 		godot::Dictionary svg_clip_sources;
 		godot::HashMap<godot::String, godot::Ref<godot::Texture2D>> images;
+		godot::HashMap<uint64_t, double> image_elapsed;
 		godot::HashMap<godot::String, godot::Ref<godot::FontFile>> fonts;
 		godot::HashMap<godot::String, HTMLImageMetadata> image_metadata;
 		godot::HashSet<godot::String> pending_layout_images;
@@ -58,6 +59,8 @@ namespace dockit {
 		godot::Ref<godot::FontFile> load_font_file(const godot::String& p_path);
 
 	public:
+		bool advance_embedded_images(double p_delta); // 推进可选动画图像资源并报告是否需要继续处理
+		bool update_embedded_textures(const godot::Dictionary& p_textures); // 更新内存纹理资源并清除对应缓存
 		HTMLResources(const godot::String& p_base_dir, const godot::Dictionary& p_textures,
 			const godot::Dictionary& p_stylesheet_resources, const godot::Dictionary& p_local_fonts, const godot::Dictionary& p_image_dpi,
 			const godot::Dictionary& p_image_orientations, const godot::Dictionary& p_svg_clip_sources);

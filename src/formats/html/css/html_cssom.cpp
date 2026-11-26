@@ -271,6 +271,48 @@ namespace dockit::css {
 			if (value_color.css_data || value_color.system != system_color::none) return {};
 			return color(value_color, web_color::black);
 		}
+		if (value.is<css_border_image_source>()) {
+			const auto& source = value.get<css_border_image_source>().value;
+			if (source.type == image::type_none) return "none";
+			if (source.type != image::type_url) return {};
+			std::ostringstream stream;
+			stream << "url(" << std::quoted(source.url) << ")";
+			return stream.str();
+		}
+		if (value.is<css_border_image_slice>()) {
+			const auto& slice = value.get<css_border_image_slice>();
+			std::string result;
+			for (const auto& side : slice.sides) append_word(result, number(side.value) + (side.percentage ? "%" : ""));
+			if (slice.fill) append_word(result, "fill");
+			return result;
+		}
+		if (value.is<css_border_image_offsets>()) {
+			std::string result;
+			for (const auto& side : value.get<css_border_image_offsets>().sides)
+				append_word(result, std::visit([&](const auto& amount) -> std::string {
+					if constexpr (std::is_same_v<std::decay_t<decltype(amount)>, double>) return number(amount);
+					else return length(name, amount);
+				}, side));
+			return result;
+		}
+		if (value.is<css_border_image_repeat>()) {
+			const auto& repeat = value.get<css_border_image_repeat>();
+			const auto mode = [](border_image_tiling mode) {
+				return mode == border_image_tiling::repeat ? "repeat" : mode == border_image_tiling::round ? "round" :
+					mode == border_image_tiling::space ? "space" : "stretch";
+			};
+			return std::string(mode(repeat.horizontal)) + " " + mode(repeat.vertical);
+		}
+		if (value.is<std::vector<box_shadow>>()) {
+			std::string result;
+			for (const auto& shadow : value.get<std::vector<box_shadow>>()) {
+				if (!result.empty()) result += ", ";
+				if (shadow.inset) result += "inset ";
+				result += length(name, shadow.x) + " " + length(name, shadow.y) + " " +
+					length(name, shadow.blur) + " " + length(name, shadow.spread) + " " + color(shadow.color, web_color::black);
+			}
+			return result.empty() ? "none" : result;
+		}
 		if (value.is<css_transform_list>()) return transform(value.get<css_transform_list>());
 		if (value.is<css_font_families>()) return font_families(value.get<css_font_families>());
 		if (value.is<css_font_style>()) {
@@ -318,6 +360,12 @@ namespace dockit::css {
 			for (const auto longhand : css_longhands(name)) sides.push_back(serialize_computed(longhand, style));
 			return serialize_box_shorthand(std::move(sides));
 		}
+		const auto& border_image = style.get_border_image();
+		if (name == _id("border-image-source")) return serialize_value(name, property_value(border_image.source, false));
+		if (name == _id("border-image-slice")) return serialize_value(name, property_value(border_image.slice, false));
+		if (name == _id("border-image-width")) return serialize_value(name, property_value(border_image.width, false));
+		if (name == _id("border-image-outset")) return serialize_value(name, property_value(border_image.outset, false));
+		if (name == _id("border-image-repeat")) return serialize_value(name, property_value(border_image.repeat, false));
 		if (name == _id("font-width")) return number(style.get_font_width()) + "%";
 		for (const auto& property : animated_properties()) {
 			if (name != property.name) continue;

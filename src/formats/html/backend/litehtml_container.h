@@ -65,6 +65,8 @@ namespace dockit {
 		bool receive_remote_stylesheet(const godot::String& p_url, const godot::String& p_final_url, const godot::String& p_text) {
 			return resources.receive_remote_stylesheet(p_url, p_final_url, p_text);
 		}
+		bool advance_embedded_images(double p_delta) { return resources.advance_embedded_images(p_delta); } // 推进嵌入图像动画
+		bool update_embedded_textures(const godot::Dictionary& p_textures) { return resources.update_embedded_textures(p_textures); } // 更新宿主传入的内存纹理
 		void begin_image_layout() { resources.begin_image_layout(); }
 		int pending_resource_count() const { return resources.pending_resource_count(); }
 		int get_failed_remote_resource_count() const { return resources.get_failed_remote_resource_count(); }

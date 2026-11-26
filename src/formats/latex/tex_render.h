@@ -3,6 +3,8 @@
 #include <memory>
 
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/rid.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
 
 namespace godot {
 	class CanvasItem;
@@ -74,7 +76,10 @@ public:
 
 	static void shutdown_renderer();															// 释放 MicroTeX 的共享渲染资源
 
+	void draw_to_canvas(const godot::RID& p_canvas, const godot::Transform2D& p_transform) const; // 在给定画布和变换下绘制公式
+
 protected:
+
 	static void _bind_methods();
 
 private:

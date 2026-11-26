@@ -171,6 +171,46 @@ namespace dockit {
 		return read_html_source_text(p_path);
 	}
 
+	bool HTMLResources::advance_embedded_images(double p_delta) {
+		HashSet<uint64_t> visited;
+		bool animated = false;
+		for (const auto& entry : images) {
+			const auto& texture = entry.value;
+			if (texture.is_null() || !texture->has_method("get_frame_count") || !texture->has_method("get_frame") ||
+				!texture->has_method("get_frame_delay") || !texture->has_method("set_frame")) continue;
+			const uint64_t id = texture->get_instance_id();
+			if (visited.has(id)) continue;
+			visited.insert(id);
+			const int count = texture->call("get_frame_count");
+			if (count < 2) continue;
+			animated = true;
+			if (p_delta <= 0) continue;
+			double& elapsed = image_elapsed[id];
+			elapsed += p_delta;
+			int frame = texture->call("get_frame");
+			for (int advanced = 0; advanced < count; ++advanced) {
+				const double delay = std::max(0.01, double(texture->call("get_frame_delay", frame)));
+				if (elapsed < delay) break;
+				elapsed -= delay;
+				frame = (frame + 1) % count;
+				texture->call("set_frame", frame);
+			}
+		}
+		return animated;
+	}
+
+	bool HTMLResources::update_embedded_textures(const Dictionary& p_textures) {
+		bool changed = textures.size() != p_textures.size();
+		for (const auto& key : p_textures.keys()) {
+			if (!textures.has(key) || textures[key] != p_textures[key]) { changed = true; break; }
+		}
+		if (changed) {
+			textures = p_textures.duplicate();
+			images.clear();
+		}
+		return changed;
+	}
+
 	HTMLResources::HTMLResources(const String& p_base_dir, const Dictionary& p_textures, const Dictionary& p_stylesheet_resources,
 		const Dictionary& p_local_fonts, const Dictionary& p_image_dpi, const Dictionary& p_image_orientations,
 		const Dictionary& p_svg_clip_sources) :

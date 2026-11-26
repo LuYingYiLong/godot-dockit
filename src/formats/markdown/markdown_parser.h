@@ -72,6 +72,8 @@ struct MarkdownListItem {
 
 struct MarkdownInlineSpan {
 	String text;
+	String html_open;
+	String html_close;
 	String link_uri;
 	String image_uri;
 	String image_title;
@@ -241,6 +243,7 @@ struct MarkdownParseOptions {
 	bool parse_latex = false;
 	bool parse_gfm = true;
 	bool parse_html = false;
+	bool parse_mermaid = false;
 };
 
 // 解析 Markdown

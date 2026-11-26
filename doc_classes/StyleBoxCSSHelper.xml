@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="StyleBoxCSSHelper" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<brief_description>
+		Converts Godot StyleBoxes to CSS declarations and back.
+	</brief_description>
+	<description>
+		Converts [StyleBoxFlat], [StyleBoxEmpty], [StyleBoxLine], and [StyleBoxTexture] using Dockit's CSS parser and layout engine. Results contain an [enum Error] value in [code]error[/code] and a [PackedStringArray] in [code]diagnostics[/code]. A successful conversion may still report properties that cannot be represented exactly.
+		CSS contains standard declarations. Runtime textures are supplied separately; no private CSS properties or temporary files are generated. Conversion preserves the supported appearance, not the original resource's type or every Godot drawing parameter.
+	</description>
+	<methods>
+		<method name="stylebox_to_css" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="stylebox" type="StyleBox" />
+			<description>
+				Returns [code]css[/code], [code]textures[/code], [code]error[/code], and [code]diagnostics[/code]. Pass the texture dictionary to the matching HTML resource context. Texture regions and modulation are baked into an in-memory texture when needed. The conversion cache is invalidated when the StyleBox emits [signal Resource.changed].
+			</description>
+		</method>
+		<method name="css_to_stylebox" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="css" type="String" />
+			<param index="1" name="context" type="Dictionary" default="{}" />
+			<param index="2" name="target_type" type="StringName" default="&amp;&quot;auto&quot;" />
+			<description>
+				Converts a CSS declaration block in an isolated element context. Returns [code]stylebox[/code], [code]error[/code], and [code]diagnostics[/code]. [param target_type] accepts [code]auto[/code], [code]flat[/code], [code]empty[/code], [code]line[/code], or [code]texture[/code]. Auto chooses Texture for a border image and Flat otherwise.
+				[param context] accepts [code]textures[/code], [code]base_dir[/code], [code]viewport_size[/code], [code]box_size[/code], [code]font_size[/code], [code]root_font_size[/code], and [code]vertical[/code] for lines. Supply referenced border-image textures in [code]textures[/code]. CSS layout, fonts, multiple shadows, and properties unsupported by the selected StyleBox cannot be restored as equivalent StyleBox properties.
+			</description>
+		</method>
+	</methods>
+</class>

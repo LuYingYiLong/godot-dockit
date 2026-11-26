@@ -74,6 +74,7 @@ special_format_sources = [tex_render, mermaid_render] + html_sources
 sources = Glob("src/*.cpp") + [source for source in format_sources if source not in special_format_sources]
 sources += [source for source in Glob("src/nodes/*.cpp") if source not in html_sources]
 sources += Glob("src/editor/*.cpp") + Glob("src/editor/importers/*.cpp")
+sources += Glob("src/utils/*.cpp")
 mermaid_object = mermaid_env.StaticObject if env["platform"] == "ios" else mermaid_env.SharedObject
 sources += mermaid_object(mermaid_render)
 

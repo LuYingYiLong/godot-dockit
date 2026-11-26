@@ -1,0 +1,119 @@
+extends SceneTree
+
+
+var _failures: Array[String]
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _check(p_passed: bool, p_message: String) -> void:
+	if not p_passed:
+		_failures.append(p_message)
+		push_error(p_message)
+
+
+func _run() -> void:
+	var flat: StyleBoxFlat = StyleBoxFlat.new()
+	flat.bg_color = Color(0.2, 0.6, 0.3, 0.8)
+	flat.border_color = Color.RED
+	flat.set_border_width_all(3)
+	flat.set_content_margin_all(10.0)
+	flat.set_corner_radius_all(8)
+	var converted: Dictionary = StyleBoxCSSHelper.stylebox_to_css(flat)
+	_check(converted.error == OK, "Flat CSS conversion failed")
+	var restored: Dictionary = StyleBoxCSSHelper.css_to_stylebox(converted.css)
+	_check(restored.error == OK, "Flat restoration failed")
+	if restored.error == OK:
+		var roundtrip: StyleBoxFlat = restored.stylebox
+		_check((roundtrip.bg_color - flat.bg_color).r ** 2 + (roundtrip.bg_color - flat.bg_color).g ** 2 + (roundtrip.bg_color - flat.bg_color).b ** 2 < 0.0001, "Flat background changed")
+		_check(roundtrip.get_border_width(SIDE_LEFT) == 3, "Flat border width changed")
+		_check(is_equal_approx(roundtrip.get_content_margin(SIDE_LEFT), 10.0), "Content margins double-counted the border")
+
+	var empty: Dictionary = StyleBoxCSSHelper.css_to_stylebox("padding: 6px;", {}, &"empty")
+	_check(empty.error == OK and empty.stylebox is StyleBoxEmpty, "Empty StyleBox conversion failed")
+	var line: Dictionary = StyleBoxCSSHelper.css_to_stylebox("height: 4px; background-color: blue;", {}, &"line")
+	_check(line.error == OK and line.stylebox is StyleBoxLine and line.stylebox.thickness == 4, "Line StyleBox conversion failed")
+	var relative: Dictionary = StyleBoxCSSHelper.css_to_stylebox("padding: 10%;")
+	_check(relative.error != OK and not relative.diagnostics.is_empty(), "Unresolved relative sizes were silently guessed")
+	flat.bg_color = Color.BLUE
+	converted = StyleBoxCSSHelper.stylebox_to_css(flat)
+	_check(converted.css.contains("#0000ff"), "StyleBox changed did not invalidate conversion cache")
+
+	var image: Image = Image.create(12, 12, false, Image.FORMAT_RGBA8)
+	image.fill(Color.GREEN)
+	var nine_patch: StyleBoxTexture = StyleBoxTexture.new()
+	nine_patch.texture = ImageTexture.create_from_image(image)
+	nine_patch.set_texture_margin_all(3.0)
+	nine_patch.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	converted = StyleBoxCSSHelper.stylebox_to_css(nine_patch)
+	restored = StyleBoxCSSHelper.css_to_stylebox(converted.css, {"textures": converted.textures,})
+	_check(restored.error == OK, "Nine-patch restoration failed")
+	_check(restored.get("stylebox") is StyleBoxTexture, "Auto did not select a texture StyleBox")
+	if restored.error == OK and restored.stylebox is StyleBoxTexture:
+		var texture_style: StyleBoxTexture = restored.stylebox
+		_check(is_equal_approx(texture_style.get_texture_margin(SIDE_TOP), 3.0), "Nine-patch slice changed")
+		_check(texture_style.axis_stretch_horizontal == StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT, "Nine-patch repeat changed")
+
+	var label: MarkdownLabel = MarkdownLabel.new()
+	label.size = Vector2(640.0, 500.0)
+	label.parse_html = true
+	label.parse_latex = true
+	get_root().add_child(label)
+	label.text = "# Heading\n\n| One | Two |\n| -- | -- |\n| <div style=\"height:90px;padding:12px;background:red\">**Strong** <a href=\"https://example.com\">Link</a></div> | Text |\n\n~~~gdscript\nfunc greet():\n\tprint(\"Hello\")\n~~~\n\n$E=mc^2$"
+	await process_frame
+	await process_frame
+	label.select_all()
+	var selected: String = label.get_selected_text()
+	_check(selected.contains("Heading") and selected.contains("Strong") and selected.contains("Link"), "Mixed table text is missing")
+	_check(not selected.contains("<div") and not selected.contains("**"), "Source markup leaked into copied text")
+	_check(selected.contains("E=mc^2"), "Formula source is missing from copied text")
+	_check(selected.contains("\tprint"), "Code tab indentation was lost")
+	var found: Vector2i = label.search("Strong", 0, 0, 0)
+	_check(found.x >= 0, "Search did not find text inside a table HTML container")
+	var found_link: bool
+	for row: int in range(0, 400, 8):
+		for column: int in range(0, 640, 8):
+			if label.get_link_uri_at_point(Vector2(column, row)) == "https://example.com":
+				found_link = true
+				break
+		if found_link:
+			break
+	_check(found_link, "Link hit testing did not find the table link")
+	var before_height: float = label.get_content_height()
+	_check(before_height > 150.0, "HTML block height was ignored")
+	var sheet: CSSStyleSheet = CSSStyleSheet.new()
+	sheet.css_text = "td div {min-height:190px;}"
+	label.stylesheet = sheet
+	await process_frame
+	_check(label.get_content_height() > before_height + 70.0, "Author CSS did not affect the Markdown table")
+	label.clear_selection()
+	label.streaming_enabled = true
+	label.text = "# Stream\n\n"
+	for character: String in "**Bold** and <span style=\"color:red\">HTML</span>\n\n|One|\n|--|\n|Cell|":
+		label.append_text(character)
+	label.finish_stream()
+	await process_frame
+	label.select_all()
+	selected = label.get_selected_text()
+	_check(selected.contains("Bold") and selected.contains("HTML") and selected.contains("Cell"), "Streaming lost content")
+	var snapshot: MarkdownLabel = MarkdownLabel.new()
+	snapshot.size = label.size
+	snapshot.parse_html = true
+	get_root().add_child(snapshot)
+	snapshot.text = label.text
+	await process_frame
+	snapshot.select_all()
+	_check(selected == snapshot.get_selected_text(), "Streaming output differs from parsing the same source at once")
+	snapshot.text = "<style>.sample {height:30px;}</style>\n\n<div class=\"sample\">CSS order</div>"
+	sheet = CSSStyleSheet.new()
+	sheet.css_text = ".sample {height:150px;}"
+	snapshot.stylesheet = sheet
+	await process_frame
+	_check(snapshot.get_content_height() >= 150.0, "Assigned stylesheet did not follow document styles")
+	snapshot.queue_free()
+	label.queue_free()
+	await process_frame
+	print("Markdown pipeline regression: %d failures" % _failures.size())
+	quit(0 if _failures.is_empty() else 1)

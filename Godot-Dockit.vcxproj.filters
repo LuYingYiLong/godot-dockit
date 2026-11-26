@@ -1965,4 +1965,32 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{9FB4FF52-00A7-4F6E-89B7-B94D04A84814}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\utils">
+      <UniqueIdentifier>{9CD9006D-99A6-4DD6-AE3B-6698525E8E4A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\utils\style_box_css_helper.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClInclude Include="src\utils\style_box_css_helper.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClCompile Include="src\formats\markdown\markdown_layout_document.cpp">
+      <Filter>Source Files\formats\markdown</Filter>
+    </ClCompile>
+    <ClInclude Include="src\formats\markdown\markdown_layout_document.h">
+      <Filter>Header Files\formats\markdown</Filter>
+    </ClInclude>
+    <ClCompile Include="src\formats\markdown\markdown_formula_texture.cpp">
+      <Filter>Source Files\formats\markdown</Filter>
+    </ClCompile>
+    <ClInclude Include="src\formats\markdown\markdown_formula_texture.h">
+      <Filter>Header Files\formats\markdown</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

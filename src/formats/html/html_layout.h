@@ -359,6 +359,9 @@ public:
 	bool is_css_diagnostics_enabled() const;													// 返回是否收集 CSS 声明诊断
 	godot::TypedArray<godot::Dictionary> get_css_diagnostics() const;							// 返回最近一轮样式计算的诊断快照
 
+	bool advance_embedded_images(double p_delta); // 推进宿主嵌入图像动画
+	void update_embedded_textures(const godot::Dictionary& p_textures); // 更新宿主嵌入对象纹理并使布局失效
+
 	struct LinkHit {
 		godot::String uri;
 		uintptr_t id = 0;

@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Godot Dockit VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-24 21:53+0800\n"
+"POT-Creation-Date: 2026-11-26 15:37+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
@@ -342,6 +342,7 @@ msgid "Streaming Enabled"
 msgstr "启用流式输出"
 
 #. src/nodes/html_label.cpp
+#. src/nodes/markdown_label.cpp
 msgid "Stylesheet"
 msgstr "样式表"
 

@@ -683,4 +683,12 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="src\utils\style_box_css_helper.cpp" />
+    <ClInclude Include="src\utils\style_box_css_helper.h" />
+    <ClCompile Include="src\formats\markdown\markdown_layout_document.cpp" />
+    <ClInclude Include="src\formats\markdown\markdown_layout_document.h" />
+    <ClCompile Include="src\formats\markdown\markdown_formula_texture.cpp" />
+    <ClInclude Include="src\formats\markdown\markdown_formula_texture.h" />
+  </ItemGroup>
 </Project>

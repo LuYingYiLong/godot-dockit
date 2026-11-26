@@ -8,7 +8,7 @@
 
 Add a `MarkdownLabel` to a scene and set its `text` property. It supports selection, search, links, and streaming text. 
 
-Enable `parse_html` to render HTML blocks and supported inline tags in Markdown.
+Enable `parse_html` to render HTML and CSS throughout Markdown, including HTML containers inside table cells. Godot Theme styles provide the default CSS; `MarkdownLabel.stylesheet` can override them.
 
 ### <img src="addons/dockit/icons/restructuredtext_label.svg" width=18 /> reStructuredText documents
 

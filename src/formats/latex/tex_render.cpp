@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <godot_cpp/classes/canvas_item.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/font_file.hpp>
 #include <godot_cpp/classes/font_variation.hpp>
 #include <godot_cpp/classes/os.hpp>
@@ -116,8 +117,10 @@ namespace {
 	class GodotGraphics : public tex::Graphics2D {
 	public:
 		GodotGraphics(CanvasItem& p_canvas, const Vector2& p_position, float p_oversampling) :
-			canvas(p_canvas), transform(0.0f, p_position), oversampling(p_oversampling) {
+			canvas(p_canvas.get_canvas_item()), transform(0.0f, p_position), oversampling(p_oversampling) {
 		}
+
+		GodotGraphics(const RID& p_canvas, const Transform2D& p_transform) : canvas(p_canvas), transform(p_transform), oversampling(2.0f) {}
 
 		void setColor(tex::color p_color) override {
 			color = Color(tex::color_r(p_color) / 255.0f, tex::color_g(p_color) / 255.0f,
@@ -157,17 +160,17 @@ namespace {
 			const float glyph_scale = font->size / pixel_size;
 			const Ref<TextServer> server = TextServerManager::get_singleton()->get_primary_interface();
 			const int64_t glyph = server->font_get_glyph_index(font->glyph_font, pixel_size, p_character, 0);
-			canvas.draw_set_transform_matrix(transform.translated_local(Vector2(p_x, p_y)).scaled_local(
+			set_transform(transform.translated_local(Vector2(p_x, p_y)).scaled_local(
 				Vector2(glyph_scale, glyph_scale)));
-			server->font_draw_glyph(font->glyph_font, canvas.get_canvas_item(), pixel_size, Vector2(), glyph, color, oversampling);
+			server->font_draw_glyph(font->glyph_font, canvas, pixel_size, Vector2(), glyph, color, oversampling);
 		}
 
 		void drawText(const std::wstring& p_text, float p_x, float p_y) override;
 
 		void draw_text_line(const Ref<TextLine>& p_line, float p_scale, float p_x, float p_y) {
-			canvas.draw_set_transform_matrix(transform.translated_local(Vector2(p_x, p_y)).scaled_local(
+			set_transform(transform.translated_local(Vector2(p_x, p_y)).scaled_local(
 				Vector2(p_scale, p_scale)));
-			p_line->draw(canvas.get_canvas_item(), Vector2(0, -p_line->get_line_ascent()), color, oversampling);
+			p_line->draw(canvas, Vector2(0, -p_line->get_line_ascent()), color, oversampling);
 		}
 
 		void drawLine(float p_x1, float p_y1, float p_x2, float p_y2) override {
@@ -175,34 +178,35 @@ namespace {
 			const Vector2 to(p_x2, p_y2);
 			const Vector2 normal = (to - from).orthogonal().normalized();
 			const float width = stroke.lineWidth * transform.basis_xform(normal).length();
-			canvas.draw_set_transform_matrix(Transform2D());
-			canvas.draw_line(transform.xform(from), transform.xform(to), color, width, true);
+			set_transform(Transform2D());
+			RenderingServer::get_singleton()->canvas_item_add_line(canvas, transform.xform(from), transform.xform(to), color, width, true);
 		}
 
 		void drawRect(float p_x, float p_y, float p_width, float p_height) override {
-			canvas.draw_set_transform_matrix(transform);
-			canvas.draw_rect(Rect2(p_x, p_y, p_width, p_height), color, false, stroke.lineWidth);
+			set_transform(transform);
+			RenderingServer::get_singleton()->canvas_item_add_polyline(canvas, PackedVector2Array({Vector2(p_x,p_y), Vector2(p_x+p_width,p_y), Vector2(p_x+p_width,p_y+p_height), Vector2(p_x,p_y+p_height), Vector2(p_x,p_y)}), PackedColorArray({color}), stroke.lineWidth);
 		}
 
 		void fillRect(float p_x, float p_y, float p_width, float p_height) override {
-			canvas.draw_set_transform_matrix(transform);
-			canvas.draw_rect(Rect2(p_x, p_y, p_width, p_height), color);
+			set_transform(transform);
+			RenderingServer::get_singleton()->canvas_item_add_rect(canvas, Rect2(p_x, p_y, p_width, p_height), color);
 		}
 
 		void drawRoundRect(float p_x, float p_y, float p_width, float p_height, float p_rx, float p_ry) override {
 			PackedVector2Array points = rounded_rect(Rect2(p_x, p_y, p_width, p_height), Vector2(p_rx, p_ry));
 			points.push_back(points[0]);
-			canvas.draw_set_transform_matrix(Transform2D());
-			canvas.draw_polyline(transform.xform(points), color, stroke.lineWidth * sy(), true);
+			set_transform(Transform2D());
+			RenderingServer::get_singleton()->canvas_item_add_polyline(canvas, transform.xform(points), PackedColorArray({color}), stroke.lineWidth * sy(), true);
 		}
 
 		void fillRoundRect(float p_x, float p_y, float p_width, float p_height, float p_rx, float p_ry) override {
-			canvas.draw_set_transform_matrix(transform);
-			canvas.draw_colored_polygon(rounded_rect(Rect2(p_x, p_y, p_width, p_height), Vector2(p_rx, p_ry)), color);
+			set_transform(transform);
+			RenderingServer::get_singleton()->canvas_item_add_polygon(canvas, rounded_rect(Rect2(p_x, p_y, p_width, p_height), Vector2(p_rx, p_ry)), PackedColorArray({color}));
 		}
 
 	private:
-		CanvasItem& canvas;
+		RID canvas;
+		void set_transform(const Transform2D& p_transform) { RenderingServer::get_singleton()->canvas_item_add_set_transform(canvas, p_transform); }
 		Color color = Color(1, 1, 1);
 		tex::Stroke stroke;
 		const GodotTexFont* font = nullptr;
@@ -519,6 +523,18 @@ void TeXRender::draw_internal(CanvasItem* p_canvas, const Vector2& p_position, f
 		}
 		p_canvas->draw_set_transform_matrix(Transform2D());
 	}
+}
+
+void TeXRender::draw_to_canvas(const RID& p_canvas, const Transform2D& p_transform) const {
+	if (!render) return;
+	try {
+		GodotGraphics graphics(p_canvas, p_transform.translated_local(get_layout_offset()));
+		render->draw(graphics, 0, 0);
+	}
+	catch (const std::exception& error) {
+		ERR_PRINT(String::utf8(error.what()));
+	}
+	RenderingServer::get_singleton()->canvas_item_add_set_transform(p_canvas, Transform2D());
 }
 
 void TeXRender::shutdown_renderer() {

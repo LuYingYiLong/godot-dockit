@@ -3,6 +3,7 @@
 #include "formats/html/layout/html_geometry.h"
 #include "formats/html/text/html_text_selection.h"
 #include "formats/markdown/markdown_parser.h"
+#include "formats/markdown/markdown_layout_document.h"
 #include "formats/mermaid/mermaid_render.h"
 
 #include <godot_cpp/classes/control.hpp>
@@ -172,6 +173,7 @@ private:
 	MermaidRenderCache mermaid_cache;
 
 	MarkdownParserState parser_state;
+	dockit::MarkdownLayoutDocument layout_document;
 	std::vector<MarkdownBlock> cached_blocks;
 	bool streaming_enabled = false;
 	bool deferred_layout_enabled = false;
@@ -191,14 +193,6 @@ private:
 	void rebuild_layout();
 	double get_offset_for_source_line(double p_line, int32_t p_line_count);
 	double get_source_line_at_offset(double p_offset, int32_t p_line_count);
-	void draw_selection_for_item(const MarkdownCanvasItem& p_item);
-	void draw_selection_for_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_global_start, int64_t p_global_end);
-	void draw_search_highlight_for_item(const MarkdownCanvasItem& p_item);
-	void draw_range_background_for_paragraph(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, int64_t p_global_start, int64_t p_global_end, int64_t p_range_start, int64_t p_range_end, const Ref<StyleBox>& p_stylebox);
-	void draw_stylebox_or_rect(const Ref<StyleBox>& p_stylebox, const Rect2& p_rect, const Color& p_fallback_color);
-	void draw_paragraph_objects(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const MarkdownParagraphObjects& p_objects);
-	void draw_span_decorations(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<MarkdownInlineSpan>& p_spans, int64_t p_global_start, bool p_draw_code_backgrounds, bool p_draw_link_underlines);
-	void draw_paragraph_text(const Ref<TextParagraph>& p_paragraph, const Rect2& p_text_rect, const std::vector<MarkdownInlineSpan>& p_spans, int64_t p_global_start, const Color& p_default_color);
 	Rect2 get_visible_content_rect() const;
 	Rect2 get_html_visible_rect() const;
 	bool is_rect_visible(const Rect2& p_rect, const Rect2& p_visible_rect) const;
@@ -324,6 +318,7 @@ private:
 	bool open_external_links = true;
 	bool parse_latex = false;
 	bool parse_html = false;
+	Ref<CSSStyleSheet> stylesheet;
 	bool parse_gfm = true;
 	bool parse_mermaid = false;
 	bool selection_enabled = true;
@@ -367,6 +362,8 @@ public:
 	int32_t get_access() const;																	// 返回资源访问范围
 	void set_root_subfolder(const String& p_root_subfolder);									// 设置资源根子目录
 	String get_root_subfolder() const;															// 返回资源根子目录
+	void set_stylesheet(const Ref<CSSStyleSheet>& p_stylesheet); // 设置参与全文级联的作者样式表
+	Ref<CSSStyleSheet> get_stylesheet() const; // 获取作者样式表
 	void set_parse_latex(bool p_enabled);														// 设置是否解析 LaTeX 语法
 	void set_parse_html(bool p_enabled);														// 设置是否解析 HTML 语法
 	bool is_parsing_html() const;																// 返回是否解析 HTML

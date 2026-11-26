@@ -1026,6 +1026,9 @@ namespace dockit {
 				if (const auto* authored = faces_by_family.getptr(folded)) {
 					append_authored_fonts(choices, *authored, folded, p_description, size_dependent);
 				}
+				else if (const auto* named = fonts.named_fonts.getptr(folded)) {
+					append(with_style(*named));
+				}
 				else if (folded == "dockit-code-block" && fonts.code_block.is_valid()) {
 					append(with_style(fonts.code_block, true, folded));
 				}

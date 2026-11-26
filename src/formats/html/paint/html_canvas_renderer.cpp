@@ -392,6 +392,7 @@ void fragment() {
 							}
 						}
 					}
+					if (p_draw.object_only) return;
 					if (p_ink_canvas.is_valid()) p_draw.layout.draw(p_text_server, p_ink_canvas, p_draw.position + p_offset, Color(1, 1, 1));
 					else if (ink.a > 0) p_draw.layout.draw(p_text_server, p_canvas, p_draw.position + p_offset, ink);
 				}

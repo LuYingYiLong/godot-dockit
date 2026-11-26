@@ -41,6 +41,7 @@ namespace dockit {
 		const litehtml::render_item* renderer = nullptr;
 		int64_t ellipsis = -1;
 		bool selectable = true;
+		bool object_only = false;
 		std::optional<godot::Color> selection_foreground;
 		std::optional<godot::Color> selection_background;
 		const litehtml::element* selection_owner = nullptr;

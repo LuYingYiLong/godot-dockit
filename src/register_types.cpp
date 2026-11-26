@@ -1,6 +1,8 @@
 #include "formats/html/html_component.h"
 #include "formats/html/dom/html_shadow_root.h"
 #include "register_types.h"
+#include "utils/style_box_css_helper.h"
+#include "formats/markdown/markdown_formula_texture.h"
 
 #include "editor/dockit_source_editor.h"
 #include "editor/css_syntax_highlighter.h"
@@ -195,6 +197,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_ABSTRACT_CLASS(HTMLTableElement);
 		GDREGISTER_INTERNAL_CLASS(dockit::HTMLCanvasRenderer);
 		GDREGISTER_CLASS(HTMLLayout);
+		GDREGISTER_CLASS(dockit::StyleBoxCSSHelper);
 		GDREGISTER_VIRTUAL_CLASS(HTMLBehavior);
 		GDREGISTER_VIRTUAL_CLASS(HTMLComponent);
 		GDREGISTER_CLASS(HTMLDocument);
@@ -203,6 +206,7 @@ void initialize_dockit_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_INTERNAL_CLASS(HTMLSelectionDragPreview);
 		GDREGISTER_CLASS(HTMLLabel);
 		GDREGISTER_CLASS(TeXRender);
+		GDREGISTER_INTERNAL_CLASS(dockit::MarkdownFormulaTexture);
 		GDREGISTER_CLASS(LatexLabel);
 		GDREGISTER_CLASS(LatexLabel3D);
 		GDREGISTER_CLASS(MermaidRender);
@@ -258,6 +262,7 @@ void uninitialize_dockit_module(ModuleInitializationLevel p_level) {
 		dockit::shutdown_remote_stylesheets();
 		tex_loader.unref();
 		PDFReader::shutdown_backend();
+		dockit::StyleBoxCSSHelper::clear_cache();
 		TeXRender::shutdown_renderer();
 		dockit::release_html_paint_shader();
 	}

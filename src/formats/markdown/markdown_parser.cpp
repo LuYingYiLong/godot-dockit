@@ -514,7 +514,7 @@ namespace {
 
 	// The regular list path remains useful for text-only items. Collect child blocks
 	// when a list contains raw HTML, preserving the list's marker and source ranges.
-	static std::optional<MarkdownBlock> parse_html_list(const std::vector<String>& p_lines, int32_t p_start,
+	static std::optional<MarkdownBlock> parse_structured_list(const std::vector<String>& p_lines, int32_t p_start,
 		int32_t p_limit, const MarkdownParseOptions& p_options, int32_t& r_scan_end) {
 		const auto first = read_list_marker(p_lines[p_start], p_options.parse_gfm);
 		if (!first) {
@@ -565,9 +565,6 @@ namespace {
 			}
 		}
 		r_scan_end = index;
-		if (!contains_html && !contains_continuation) {
-			return std::nullopt;
-		}
 		return list;
 	}
 
@@ -695,9 +692,10 @@ MarkdownInlineSpanParseResult parse_inline_spans(const String& p_text, const Mar
 	auto append_span = [&result](const MarkdownInlineSpan& span) {
 		if (!result.spans.empty()) {
 			const MarkdownInlineSpan& last = result.spans.back();
-			if (last.latex.is_empty() && span.latex.is_empty() && !last.html_image && !span.html_image && last.link_uri == span.link_uri && last.image_uri == span.image_uri && last.image_title == span.image_title && last.footnote_id == span.footnote_id && last.footnote_number == span.footnote_number && last.footnote_ref == span.footnote_ref && last.bold == span.bold && last.italic == span.italic && last.code == span.code && last.strikethrough == span.strikethrough && last.highlight == span.highlight && last.custom_color == span.custom_color && (!last.custom_color || last.color == span.color) &&
+			if (last.html_close.is_empty() && span.html_open.is_empty() && last.latex.is_empty() && span.latex.is_empty() && !last.html_image && !span.html_image && last.link_uri == span.link_uri && last.image_uri == span.image_uri && last.image_title == span.image_title && last.footnote_id == span.footnote_id && last.footnote_number == span.footnote_number && last.footnote_ref == span.footnote_ref && last.bold == span.bold && last.italic == span.italic && last.code == span.code && last.strikethrough == span.strikethrough && last.highlight == span.highlight && last.custom_color == span.custom_color && (!last.custom_color || last.color == span.color) &&
 				last.custom_background == span.custom_background && (!last.custom_background || last.background_color == span.background_color) && last.end == span.start) {
 				result.spans.back().text += span.text;
+				result.spans.back().html_close = span.html_close;
 				result.spans.back().end = span.end;
 				return;
 			}
@@ -860,8 +858,9 @@ MarkdownInlineSpanParseResult parse_inline_spans(const String& p_text, const Mar
 				const bool highlight = name == "mark";
 				const bool link = name == "a" && !tag.href.is_empty();
 				const bool styled = name == "span";
+				const bool container = name != "img" && name != "br" && name != "input" && name != "hr" && name != "wbr";
 				size_t close_end = 0;
-				const size_t close = !tag.closing && !tag.self_closing && (bold || italic || strike || code || highlight || link || styled)
+				const size_t close = !tag.closing && !tag.self_closing && (bold || italic || strike || code || highlight || link || styled || container)
 					? dockit::find_markdown_html_close(raw, tag, close_end) : std::string::npos;
 				if (close == std::string::npos) {
 					emit_plain(pos, tag.end, false);
@@ -884,6 +883,9 @@ MarkdownInlineSpanParseResult parse_inline_spans(const String& p_text, const Mar
 				const dockit::HTMLInlineColors colors = styled
 					? dockit::parse_html_inline_colors(dockit::decode_html_entities(tag.style, true)) : dockit::HTMLInlineColors{};
 				const String uri = link ? dockit::decode_html_entities(tag.href, true) : String();
+				if (parsed.spans.empty()) parsed.spans.emplace_back();
+				parsed.spans.front().html_open = String::utf8(raw.data() + pos, tag.end - pos) + parsed.spans.front().html_open;
+				parsed.spans.back().html_close += String::utf8(raw.data() + close, close_end - close);
 				const int64_t start = output.length();
 				output += parsed.output_text;
 				for (MarkdownInlineSpan& span : parsed.spans) {
@@ -1210,7 +1212,7 @@ MarkdownInlineSpanParseResult parse_inline_spans(const String& p_text, const Mar
 
 MarkdownParseResult parse_markdown_document(const String& p_text, const MarkdownParserState* p_initial_state, int32_t p_max_lines, const MarkdownParseOptions& p_options) {
 	std::vector<String> lines = split_lines(p_text);
-	const std::vector<String> html_source_lines = p_options.parse_html ? split_lines(p_text, true) : std::vector<String>();
+	const std::vector<String> html_source_lines = split_lines(p_text, true);
 	MarkdownParseResult result;
 	std::vector<MarkdownBlock>& blocks = result.blocks;
 
@@ -1429,18 +1431,18 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 				blocks.push_back(std::move(block));
 				continue;
 			}
-			if (index >= html_list_scan_end) {
-				if (auto list = parse_html_list(html_source_lines, index, max_index, p_options, html_list_scan_end)) {
-					flush_all();
-					state.in_list = false;
-					state.in_blockquote = false;
-					if (html_list_scan_end == max_index) {
-						state.unclosed_html_line = list->line;
-					}
-					index = list->end_line;
-					blocks.push_back(std::move(*list));
-					continue;
+		}
+		if (index >= html_list_scan_end) {
+			if (auto list = parse_structured_list(html_source_lines, index, max_index, p_options, html_list_scan_end)) {
+				flush_all();
+				state.in_list = false;
+				state.in_blockquote = false;
+				if (html_list_scan_end == max_index) {
+					state.unclosed_html_line = list->line;
 				}
+				index = list->end_line;
+				blocks.push_back(std::move(*list));
+				continue;
 			}
 		}
 
@@ -1549,6 +1551,24 @@ MarkdownParseResult parse_markdown_document(const String& p_text, const Markdown
 			if (p_line.length() > 0 && p_line[0] == '|') start = 1;
 			int32_t pos = start;
 			for (int32_t j = start; j <= p_line.length(); j++) {
+				if (j < p_line.length() && p_line[j] == '\\' && j + 1 < p_line.length()) {
+					++j;
+					continue;
+				}
+				if (j < p_line.length() && p_line[j] == '`') {
+					int32_t count = 1;
+					while (j + count < p_line.length() && p_line[j + count] == '`') ++count;
+					const int64_t end = p_line.find(String("`").repeat(count), j + count);
+					if (end >= 0) { j = int32_t(end + count - 1); continue; }
+				}
+				if (p_options.parse_html && j < p_line.length() && p_line[j] == '<') {
+					const std::string raw = p_line.substr(j).utf8().get_data();
+					dockit::MarkdownHTMLTag tag;
+					if (dockit::scan_markdown_html_tag(raw, 0, tag)) {
+						j += int32_t(String::utf8(raw.data(), tag.end).length()) - 1;
+						continue;
+					}
+				}
 				if (p_options.parse_latex && j < p_line.length() && p_line[j] == '$') {
 					const int64_t end = find_inline_latex_end(p_line, j);
 					if (end >= 0) {

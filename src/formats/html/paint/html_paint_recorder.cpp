@@ -779,6 +779,7 @@ void fragment() {
 		selection_scope_starts.clear();
 		separator_selectable.reset();
 		auto_content_text.clear();
+		embedded_object_text.clear();
 		text_runs.clear();
 		ellipses.clear();
 		ellipses_by_context.clear();
@@ -1180,6 +1181,32 @@ void fragment() {
 			}
 			if (elided != elided_text_offsets.end()) append(String::utf8(node->get_source_text().c_str()));
 			else if (p_unlaid) append_unpainted(*node);
+			return;
+		}
+		if (const auto object = embedded_object_text.find(p_element.get()); object != embedded_object_text.end() && visible) {
+			const auto& value = object->second;
+			const auto shaped = p_shape_text(*p_element, value.text);
+			const int64_t start = index_source_text(value.text, r_separator, selectable, p_accessible);
+			text_index_spans.push_back({p_element, start, start + value.text.length()});
+			if (shaped.is_valid() && shaped.size().x > 0 && shaped.size().y > 0) {
+				const Vector2 scale = value.box.size / shaped.size();
+				const auto matrix = value.matrix * HTMLPlaneTransform(Transform2D(scale.x, 0, 0, scale.y, value.box.position.x, value.box.position.y));
+				HTMLPaintRun run;
+				run.matrix = matrix;
+				run.clips = value.clips;
+				HTMLText text;
+				text.layout = shaped;
+				text.position = Vector2();
+				text.color = Color(0, 0, 0, 0);
+				text.offset = start;
+				text.length = value.text.length();
+				text.selectable = selectable;
+				text.object_only = true;
+				text.selection_owner = p_element.get();
+				run.commands.emplace_back(std::move(text));
+				paint_runs.push_back(std::move(run));
+			}
+			if (selectable) selection_scopes[p_element.get()] = Vector2i(start, start + value.text.length());
 			return;
 		}
 		const auto annotation_parent = p_element->tag() == litehtml::_rt_ ? p_element->parent() : element::ptr();
@@ -1937,6 +1964,14 @@ void fragment() {
 		if (p_texture.is_null()) return;
 		const BackgroundTiles tiles(p_layer);
 		const Rect2 bounds = get_background_clip(p_layer);
+		if (active_geometry && p_texture->has_meta("_dockit_copy_text")) {
+			EmbeddedObjectText value;
+			value.text = p_texture->get_meta("_dockit_copy_text");
+			value.box = tiles.tile;
+			value.matrix = active_geometry->matrix;
+			for (const auto& clip : clips) value.clips.push_back(clip);
+			embedded_object_text[active_geometry->item->src_el().get()] = std::move(value);
+		}
 		Rect2 destination = tiles.bounds(bounds);
 		if (!destination.has_area()) return;
 
