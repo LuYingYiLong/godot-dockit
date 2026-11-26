@@ -2,6 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://d1l6du5yicrxt" path="res://addons/dockit/examples/theme.tres" id="1_theme"]
 [ext_resource type="Script" uid="uid://bftdf8gg3poch" path="res://addons/dockit/examples/markdown_example/streaming_example.gd" id="2_script"]
+[ext_resource type="Theme" uid="uid://b3kuthod8q46o" path="res://addons/dockit/examples/markdown_example/markdown_theme.tres" id="3_markdown_theme"]
 
 [node name="StreamingExample" type="Control" unique_id=453399688]
 layout_mode = 3
@@ -134,6 +135,7 @@ size_flags_vertical = 3
 gutters_draw_line_numbers = true
 
 [node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/HBoxContainer/HSplitContainer" unique_id=868686161]
+theme = ExtResource("3_markdown_theme")
 parse_latex = true
 parse_html = true
 parse_mermaid = true
