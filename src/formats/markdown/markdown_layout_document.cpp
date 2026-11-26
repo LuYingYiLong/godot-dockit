@@ -71,7 +71,7 @@ namespace {
 	String theme_stylesheet(const MarkdownThemeCache& p_theme, Dictionary& r_textures) {
 		String css = "html,body{margin:0;padding:0;background:transparent;} body{overflow-wrap:anywhere;} "
 			"p,ul,ol,blockquote,pre,table,figure{margin:0 0 10px;} img{max-width:100%;} "
-			"pre{white-space:pre;tab-size:4;overflow:auto;} code{white-space:pre-wrap;tab-size:4;} "
+			"pre{white-space:pre;tab-size:4;overflow:auto;scrollbar-width:thin;} code{white-space:pre-wrap;tab-size:4;} "
 			"pre code{font:inherit;color:inherit;white-space:inherit;background:none;border:0;padding:0;} "
 			"table{width:100%;border-collapse:separate;border-spacing:0;} th,td{padding:4px 6px;text-align:left;vertical-align:top;} "
 			"blockquote{margin-left:0;margin-right:0;} blockquote blockquote{margin-top:8px;} "
@@ -210,7 +210,8 @@ String MarkdownLayoutDocument::render_block(const MarkdownBlock& p_block, const 
 			const String key = "res://__dockit_runtime/display-formula-" + String::num_uint64(p_block.argument.hash()) + ".png";
 			Ref<MarkdownFormulaTexture> texture;
 			texture.instantiate();
-			if (texture->configure(p_block.argument, p_theme.font_size.text, p_theme.color.text, true) != OK) return "<pre>" + escape(p_block.text) + "</pre>";
+			if (texture->configure(p_block.argument, p_theme.font_size.text, p_theme.color.text, true) != OK)
+				return "<pre>" + escape(p_block.text) + "</pre>";
 			textures[key] = texture;
 			return "<div class=\"dockit-display-math\"><img class=\"dockit-display-formula\" src=\"" + key + "\" alt=\"" + escape(p_block.text) + "\"></div>";
 		}
@@ -351,6 +352,8 @@ Error MarkdownLayoutDocument::update(const std::vector<MarkdownBlock>& p_blocks,
 		if (error != OK) return error;
 	}
 	else layout->update_embedded_textures(textures);
+	layout->set_scrollbar_theme(p_theme.color.scrollbar_track, p_theme.color.scrollbar_thumb,
+		p_theme.color.scrollbar_hover, p_theme.color.scrollbar_pressed);
 	const auto body = layout->get_body();
 	Array children;
 	for (auto& block : blocks) {

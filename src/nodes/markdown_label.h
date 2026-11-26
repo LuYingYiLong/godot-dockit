@@ -66,6 +66,10 @@ struct MarkdownThemeCache {
 		Color code_text = Color(1.0f, 1.0f, 1.0f, 1.0f);
 		Color code_block = Color(1.0f, 1.0f, 1.0f, 1.0f);
 		Color code_block_background = Color(0.08f, 0.09f, 0.11f, 1.0f);
+		Color scrollbar_track = Color(0.1f, 0.1f, 0.1f, 0.6f);
+		Color scrollbar_thumb = Color(1.0f, 1.0f, 1.0f, 0.4f);
+		Color scrollbar_hover = Color(1.0f, 1.0f, 1.0f, 0.75f);
+		Color scrollbar_pressed = Color(0.75f, 0.75f, 0.75f, 0.75f);
 		Color highlight = Color(1.0f, 0.92f, 0.35f, 0.5f);
 		Color highlight_font = Color(1.0f, 0.700f, 0.211f, 1.0f);
 		Color strikethrough = Color(1.0f, 1.0f, 1.0f, 1.0f);

@@ -500,6 +500,8 @@ public:
 	) const;																					// 获取命中的滚动条和滑块抓取位置
 	void update_scrollbar_hover(const std::optional<godot::Vector2>& p_position,
 		const dockit::HTMLHitTestResult& p_hit_test = {});										// 更新滚动条的可见悬停状态
+	void set_scrollbar_theme(const godot::Color& p_track, const godot::Color& p_thumb,
+		const godot::Color& p_thumb_hover, const godot::Color& p_thumb_pressed);										// 设置布局滚动条的宿主主题颜色
 	void set_scrollbar_pressed(const std::optional<dockit::HTMLScrollbarDrag>& p_drag);			// 更新滚动条的可见按压状态
 	void drag_scrollbar(
 		const dockit::HTMLScrollbarDrag& p_drag,

@@ -3332,6 +3332,12 @@ void HTMLLayout::set_scrollbar_pressed(const std::optional<dockit::HTMLScrollbar
 	if (state->container && state->container->get_paint_recorder().set_scrollbar_pressed(p_drag)) repaint_input();
 }
 
+void HTMLLayout::set_scrollbar_theme(const Color& p_track, const Color& p_thumb,
+	const Color& p_thumb_hover, const Color& p_thumb_pressed) {
+	if (!state->container) return;
+	state->container->get_paint_recorder().set_scrollbar_theme(p_track, p_thumb, p_thumb_hover, p_thumb_pressed);
+}
+
 void HTMLLayout::drag_scrollbar(const dockit::HTMLScrollbarDrag& p_drag, const Vector2& p_position) {
 	if (!state->has_layout() || !p_position.is_finite()) return;
 	set_scrollbar_pressed(p_drag);

@@ -2394,6 +2394,11 @@ void fragment() {
 		return update_scrollbar_target(scrollbar_pressed, p_target);
 	}
 
+	void HTMLPaintRecorder::set_scrollbar_theme(const Color& p_track, const Color& p_thumb,
+		const Color& p_thumb_hover, const Color& p_thumb_pressed) {
+		scrollbar_theme = ScrollbarTheme{ p_track, p_thumb, p_thumb_hover, p_thumb_pressed };
+	}
+
 	void HTMLPaintRecorder::paint_scrollbar(const Rect2& p_track, const Rect2& p_thumb, int p_axis,
 		const HTMLScrollbarAppearance& p_appearance) {
 		const auto matches = [&](const auto& p_target) {
@@ -2402,6 +2407,15 @@ void fragment() {
 			};
 		const bool pressed = matches(scrollbar_pressed);
 		const bool hot = pressed || matches(scrollbar_hovered);
+		if (scrollbar_theme && !p_appearance.colors) {
+			const float track_radius = std::min(p_track.size.x, p_track.size.y) * 0.5f;
+			const float thumb_radius = std::min(p_thumb.size.x, p_thumb.size.y) * 0.5f;
+			fill_rounded_color(p_track, scrollbar_theme->track, track_radius);
+			const Color thumb_color = pressed ? scrollbar_theme->thumb_pressed
+				: hot ? scrollbar_theme->thumb_hover : scrollbar_theme->thumb;
+			fill_rounded_color(p_thumb, thumb_color, thumb_radius);
+			return;
+		}
 		fill_rect(p_track, p_appearance.track_color());
 		const Rect2 thumb = p_appearance.visible_thumb(p_thumb, p_axis, hot);
 		fill_rounded_color(thumb, p_appearance.thumb_color(pressed), std::min(thumb.size.x, thumb.size.y) * 0.5);

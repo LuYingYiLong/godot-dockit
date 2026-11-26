@@ -179,6 +179,13 @@ namespace {
 		return Ref<StyleBox>();
 	}
 
+	static Color get_theme_stylebox_color_or(Control* p_owner, const StringName& p_type, const StringName& p_name,
+		const Color& p_default) {
+		const Ref<StyleBox> stylebox = get_theme_stylebox_or(p_owner, p_type, p_name);
+		const auto* flat = stylebox.is_valid() ? Object::cast_to<StyleBoxFlat>(stylebox.ptr()) : nullptr;
+		return flat == nullptr ? p_default : flat->get_bg_color();
+	}
+
 	static Ref<Texture2D> get_theme_icon_or(Control* p_owner, const StringName& p_type, const StringName& p_name) {
 		const Ref<Theme> theme = p_owner == nullptr ? Ref<Theme>() : p_owner->get_theme();
 		if (theme.is_valid() && theme->has_icon(p_name, p_type)) {
@@ -1070,6 +1077,10 @@ void MarkdownThemeCache::build(Control* p_owner, int32_t p_extra_font_size) {
 	color.code_text = get_theme_color_or(p_owner, "MarkdownLabel", "code_text_font_color", Color(1.0f, 1.0f, 1.0f, 1.0f));
 	color.code_block = get_theme_color_or(p_owner, "MarkdownLabel", "code_block_font_color", Color(1.0f, 1.0f, 1.0f, 1.0f));
 	color.code_block_background = get_theme_color_or(p_owner, "MarkdownLabel", "code_block_background_color", Color(0.08f, 0.09f, 0.11f, 1.0f));
+	color.scrollbar_track = get_theme_stylebox_color_or(p_owner, "VScrollBar", "scroll", Color(0.1f, 0.1f, 0.1f, 0.6f));
+	color.scrollbar_thumb = get_theme_stylebox_color_or(p_owner, "VScrollBar", "grabber", Color(1.0f, 1.0f, 1.0f, 0.4f));
+	color.scrollbar_hover = get_theme_stylebox_color_or(p_owner, "VScrollBar", "grabber_highlight", Color(1.0f, 1.0f, 1.0f, 0.75f));
+	color.scrollbar_pressed = get_theme_stylebox_color_or(p_owner, "VScrollBar", "grabber_pressed", Color(0.75f, 0.75f, 0.75f, 0.75f));
 	color.highlight = get_theme_color_or(p_owner, "MarkdownLabel", "highlight_color", Color(1.0f, 0.92f, 0.35f, 0.5f));
 	color.highlight_font = get_theme_color_or(p_owner, "MarkdownLabel", "highlight_font_color", Color(1.0f, 0.700f, 0.211f, 1.0f));
 	color.strikethrough = get_theme_color_or(p_owner, "MarkdownLabel", "strikethrough_color", Color(1.0f, 1.0f, 1.0f, 1.0f));

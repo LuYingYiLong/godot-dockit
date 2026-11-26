@@ -135,6 +135,13 @@ namespace dockit {
 		void fill_rounded_color(const godot::Rect2& p_rect, const godot::Color& p_color, float p_radius);
 		std::optional<HTMLScrollbarDrag> scrollbar_hovered;
 		std::optional<HTMLScrollbarDrag> scrollbar_pressed;
+		struct ScrollbarTheme {
+			godot::Color track;
+			godot::Color thumb;
+			godot::Color thumb_hover;
+			godot::Color thumb_pressed;
+		};
+		std::optional<ScrollbarTheme> scrollbar_theme;
 		void paint_scrollbar(const godot::Rect2& p_track, const godot::Rect2& p_thumb, int p_axis,
 			const HTMLScrollbarAppearance& p_appearance);
 		bool active_decoration = false;
@@ -250,6 +257,8 @@ namespace dockit {
 			int p_axis, const HTMLScrollbarAppearance& p_appearance);							// 绘制输入滚动条
 		bool set_scrollbar_hover(const std::optional<HTMLScrollbarDrag>& p_target);				// 设置滚动条悬停
 		bool set_scrollbar_pressed(const std::optional<HTMLScrollbarDrag>& p_target);			// 设置滚动条按下状态
+		void set_scrollbar_theme(const godot::Color& p_track, const godot::Color& p_thumb,
+			const godot::Color& p_thumb_hover, const godot::Color& p_thumb_pressed);						// 设置布局滚动条的宿主主题颜色
 		std::optional<HTMLScrollbarDrag> scrollbar_at(const godot::Vector2& p_point) const;		// 查找指定坐标命中的滚动条
 		const RenderGeometry* resize_grip_at(const godot::Vector2& p_point) const;				// 查找指定坐标命中的调整大小手柄
 		void finish(
