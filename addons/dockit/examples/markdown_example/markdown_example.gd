@@ -191,3 +191,7 @@ func _scroll_fraction(scroll_bar: VScrollBar) -> float:
 
 func _scrollable_range(scroll_bar: VScrollBar) -> float:
 	return maxf(0.0, scroll_bar.max_value - scroll_bar.page)
+
+
+func _on_markdown_label_link_pressed(uri: String) -> void:
+	print("Link pressed: " + uri)
