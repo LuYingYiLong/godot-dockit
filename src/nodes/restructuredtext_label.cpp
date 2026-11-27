@@ -13,6 +13,7 @@
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/input_event_pan_gesture.hpp>
 #include <godot_cpp/classes/input_map.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/os.hpp>
@@ -360,6 +361,13 @@ namespace {
 		return Ref<StyleBox>();
 	}
 
+	static Color get_theme_stylebox_color_or(Control* p_owner, const StringName& p_type, const StringName& p_name,
+		const Color& p_default) {
+		const Ref<StyleBox> stylebox = get_theme_stylebox_or(p_owner, p_type, p_name);
+		const auto* flat = stylebox.is_valid() ? Object::cast_to<StyleBoxFlat>(stylebox.ptr()) : nullptr;
+		return flat == nullptr ? p_default : flat->get_bg_color();
+	}
+
 	static StringName get_admonition_theme_item_name(const String& p_directive, const String& p_item) {
 		String directive = p_directive.to_lower();
 		if (directive == "admonition") {
@@ -488,7 +496,39 @@ void RSTDocumentCanvas::clear_document() {
 }
 
 void RSTDocumentCanvas::mark_layout_dirty() {
+	update_html_scrollbar_hover(Ref<HTMLLayout>());
+	if (html_scrollbar_drag) {
+		html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
+		html_scrollbar_drag.reset();
+	}
 	layout_dirty = true;
+	queue_redraw();
+}
+
+void RSTDocumentCanvas::update_html_scrollbar_hover(const Ref<HTMLLayout>& p_layout, const Vector2& p_point) {
+	const bool was_hovered = html_scrollbar_hovered;
+	if (hovered_html_scrollbar_layout != p_layout) {
+		if (hovered_html_scrollbar_layout.is_valid()) hovered_html_scrollbar_layout->update_scrollbar_hover(std::nullopt);
+		hovered_html_scrollbar_layout = p_layout;
+	}
+	html_scrollbar_hovered = false;
+	if (p_layout.is_valid()) {
+		p_layout->update_scrollbar_hover(p_point);
+		html_scrollbar_hovered = p_layout->scrollbar_at(p_point).has_value();
+	}
+	if (was_hovered || html_scrollbar_hovered) queue_redraw();
+}
+
+void RSTDocumentCanvas::scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event) {
+	if (html_layout.is_null() || !Rect2(Vector2(), get_size()).has_point(p_position)) return;
+	const dockit::HTMLScrollInput result = html_layout->scroll_overflow_from_input(p_position, p_event, *this,
+		callable_mp(this, &RSTDocumentCanvas::queue_scroll_redraw));
+	if (result == dockit::HTMLScrollInput::ignored) return;
+	queue_redraw();
+	if (result == dockit::HTMLScrollInput::handled) accept_event();
+}
+
+void RSTDocumentCanvas::queue_scroll_redraw() {
 	queue_redraw();
 }
 
@@ -968,7 +1008,7 @@ static String rst_theme_stylesheet(RestructuredtextLabel* p_owner, Dictionary& r
 	const int32_t marker_min_width = std::max<int32_t>(0, get_theme_constant_or(p_owner, "RestructuredtextLabel", "list_marker_min_width", 14));
 	const int32_t list_indent = std::max<int32_t>(0, get_theme_constant_or(p_owner, "RestructuredtextLabel", "list_indent", 26));
 	css += String("ul.rst-list,ol.rst-list{padding-left:") + String::num_int64(std::max<int32_t>(list_indent, marker_min_width + marker_gap)) + String("px;}li{margin:0;}li::marker{font-family:rst-list-marker;font-size:") + String::num_int64(marker_size) + String("px;color:") + rst_css_color(get_theme_color_or(p_owner, "RestructuredtextLabel", "list_marker_color", body_color)) + String(";margin-right:") + String::num_int64(marker_gap) + String("px;}");
-	css += "pre{white-space:pre;tab-size:4;overflow:auto;font-family:rst-code;font-size:" + String::num_int64(std::max<int32_t>(1, get_theme_font_size_or(p_owner, "RestructuredtextLabel", "code_block_font_size", 16) + extra)) + String("px;color:") + rst_css_color(get_theme_color_or(p_owner, "RestructuredtextLabel", "code_block_font_color", Color(0.86, 0.88, 0.91, 1.0))) + String(";}pre code{font:inherit;color:inherit;white-space:inherit;background:none;border:0;padding:0;}");
+	css += "pre{white-space:pre;tab-size:4;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;font-family:rst-code;font-size:" + String::num_int64(std::max<int32_t>(1, get_theme_font_size_or(p_owner, "RestructuredtextLabel", "code_block_font_size", 16) + extra)) + String("px;color:") + rst_css_color(get_theme_color_or(p_owner, "RestructuredtextLabel", "code_block_font_color", Color(0.86, 0.88, 0.91, 1.0))) + String(";}pre code{font:inherit;color:inherit;white-space:inherit;background:none;border:0;padding:0;}");
 	css += "code{font-family:rst-inline-code;font-size:" + String::num_int64(std::max<int32_t>(1, get_theme_font_size_or(p_owner, "RestructuredtextLabel", "inline_code_font_size", 16) + extra)) + String("px;color:") + rst_css_color(get_theme_color_or(p_owner, "RestructuredtextLabel", "inline_code_font_color", Color(0.86, 0.88, 0.91, 1.0))) + String(";white-space:pre-wrap;}");
 	Ref<StyleBox> inline_code = get_theme_stylebox_or(p_owner, "RestructuredtextLabel", "inline_code_style");
 	if (!inline_code.is_valid()) inline_code = create_internal_stylebox(Color(0.16, 0.18, 0.20, 1.0), Color(0, 0, 0, 0), 0, 0, 0, 0, 2.0f, 1.0f, 2.0f, 1.0f);
@@ -1072,6 +1112,11 @@ void RSTDocumentCanvas::rebuild_layout() {
 		queue_redraw();
 		return;
 	}
+	const Color scrollbar_track = get_theme_stylebox_color_or(document_view, "VScrollBar", "scroll", Color(0.1f, 0.1f, 0.1f, 0.6f));
+	const Color scrollbar_thumb = get_theme_stylebox_color_or(document_view, "VScrollBar", "grabber", Color(1.0f, 1.0f, 1.0f, 0.4f));
+	const Color scrollbar_hover = get_theme_stylebox_color_or(document_view, "VScrollBar", "grabber_highlight", Color(1.0f, 1.0f, 1.0f, 0.75f));
+	const Color scrollbar_pressed = get_theme_stylebox_color_or(document_view, "VScrollBar", "grabber_pressed", Color(0.75f, 0.75f, 0.75f, 0.75f));
+	html_layout->set_scrollbar_theme(scrollbar_track, scrollbar_thumb, scrollbar_hover, scrollbar_pressed);
 
 	plain_text = html_layout->get_plain_text();
 	content_height = std::max<int32_t>(1, html_layout->get_content_size().y);
@@ -1091,9 +1136,24 @@ void RSTDocumentCanvas::rebuild_layout() {
 
 void RSTDocumentCanvas::_notification(int p_what) {
 	if (p_what == NOTIFICATION_RESIZED || p_what == NOTIFICATION_THEME_CHANGED) mark_layout_dirty();
+	if (p_what == NOTIFICATION_MOUSE_EXIT) {
+		update_html_scrollbar_hover(Ref<HTMLLayout>());
+		if (!html_scrollbar_drag) set_default_cursor_shape(CURSOR_ARROW);
+	}
+	if (p_what == NOTIFICATION_EXIT_TREE || (p_what == NOTIFICATION_VISIBILITY_CHANGED && !is_visible_in_tree())) {
+		update_html_scrollbar_hover(Ref<HTMLLayout>());
+		if (html_scrollbar_drag) {
+			html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
+			html_scrollbar_drag.reset();
+		}
+	}
 	if (p_what == NOTIFICATION_FOCUS_EXIT) {
 		if (document_view != nullptr && document_view->is_deselect_on_focus_loss_enabled()) clear_selection();
 		selection_drag_attempt = false;
+		if (html_scrollbar_drag) {
+			html_scrollbar_drag->layout->set_scrollbar_pressed(std::nullopt);
+			html_scrollbar_drag.reset();
+		}
 	}
 	if (p_what == NOTIFICATION_DRAG_END) selection_drag_attempt = false;
 	if (p_what == NOTIFICATION_INTERNAL_PROCESS) {
@@ -1211,6 +1271,30 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		accept_event();
 		return;
 	}
+	const Ref<InputEventPanGesture> pan = p_event;
+	if (pan.is_valid()) {
+		scroll_html_input(pan->get_position(), p_event);
+		return;
+	}
+	if (mouse_button.is_valid() &&
+		(mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP || mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN ||
+			mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_LEFT || mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_RIGHT)) {
+		scroll_html_input(mouse_button->get_position(), p_event);
+		return;
+	}
+
+	if (mouse_button.is_valid() && mouse_button->get_button_index() == MOUSE_BUTTON_LEFT && !mouse_button->is_pressed() && html_scrollbar_drag) {
+		const HTMLScrollbarGesture gesture = *html_scrollbar_drag;
+		html_scrollbar_drag.reset();
+		if (!mouse_button->is_canceled()) {
+			gesture.layout->drag_scrollbar(gesture.drag, mouse_button->get_position() - gesture.origin);
+			gesture.layout->finish_scrollbar_drag(gesture.drag);
+		}
+		gesture.layout->set_scrollbar_pressed(std::nullopt);
+		update_html_scrollbar_hover(Rect2(Vector2(), get_size()).has_point(mouse_button->get_position()) ? html_layout : Ref<HTMLLayout>(), mouse_button->get_position());
+		accept_event();
+		return;
+	}
 
 	if (mouse_button.is_valid() && mouse_button->get_button_index() == MOUSE_BUTTON_RIGHT && mouse_button->is_pressed() && document_view != nullptr && document_view->is_context_menu_enabled()) {
 		get_menu();
@@ -1226,6 +1310,18 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	if (mouse_button.is_valid() && mouse_button->get_button_index() == MOUSE_BUTTON_LEFT) {
 		if (mouse_button->is_pressed()) {
 			rebuild_layout();
+			const Vector2 point = mouse_button->get_position();
+			if (html_layout.is_valid()) {
+				if (const auto drag = html_layout->scrollbar_at(point)) {
+					html_scrollbar_drag = HTMLScrollbarGesture{ html_layout, *drag, point - point };
+					html_layout->set_scrollbar_pressed(*drag);
+					html_layout->drag_scrollbar(*drag, point);
+					update_html_scrollbar_hover(html_layout, point);
+					set_default_cursor_shape(CURSOR_ARROW);
+					accept_event();
+					return;
+				}
+			}
 			grab_focus();
 			const bool double_click = mouse_button->is_double_click();
 			const bool can_select = document_view == nullptr || document_view->is_selection_enabled();
@@ -1302,6 +1398,13 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	}
 
 	const Ref<InputEventMouseMotion> mouse_motion = p_event;
+	if (mouse_motion.is_valid() && html_scrollbar_drag) {
+		const HTMLScrollbarGesture& gesture = *html_scrollbar_drag;
+		gesture.layout->drag_scrollbar(gesture.drag, mouse_motion->get_position() - gesture.origin);
+		queue_redraw();
+		accept_event();
+		return;
+	}
 	if (mouse_motion.is_valid() && selection_drag_attempt) {
 		return;
 	}
@@ -1325,6 +1428,12 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	if (mouse_motion.is_valid()) {
 		// Update cursor based on what's under the mouse
 		const Vector2 mouse_position = mouse_motion->get_position();
+		const bool in_canvas = Rect2(Vector2(), get_size()).has_point(mouse_position);
+		update_html_scrollbar_hover(in_canvas ? html_layout : Ref<HTMLLayout>(), mouse_position);
+		if (html_layout.is_valid() && html_layout->scrollbar_at(mouse_position)) {
+			set_default_cursor_shape(CURSOR_ARROW);
+			return;
+		}
 		const String uri = link_uri_at_position(mouse_position);
 		if (!uri.is_empty() || footnote_target_at_position(mouse_position) >= 0.0f) {
 			set_default_cursor_shape(CURSOR_POINTING_HAND);

@@ -19,6 +19,7 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
+#include <optional>
 #include <vector>
 
 using namespace godot;
@@ -61,8 +62,19 @@ private:
 	float layout_width = 0.0f;
 	Dictionary anchor_offsets;
 	Ref<HTMLLayout> html_layout;
+	struct HTMLScrollbarGesture {
+		Ref<HTMLLayout> layout;
+		dockit::HTMLScrollbarDrag drag;
+		Vector2 origin;
+	};
+	std::optional<HTMLScrollbarGesture> html_scrollbar_drag;
+	Ref<HTMLLayout> hovered_html_scrollbar_layout;
+	bool html_scrollbar_hovered = false;
 
 	void rebuild_layout();
+	void update_html_scrollbar_hover(const Ref<HTMLLayout>& p_layout, const Vector2& p_point = Vector2());
+	void scroll_html_input(const Vector2& p_position, const Ref<InputEvent>& p_event);
+	void queue_scroll_redraw();
 	void _generate_context_menu();
 	void _update_context_menu();
 	Key _get_menu_action_accelerator(const String& p_action);
