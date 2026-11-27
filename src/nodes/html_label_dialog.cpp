@@ -22,7 +22,7 @@ void HTMLLabel::remember_dialog_focus(const Ref<HTMLDialogElement>& p_dialog, bo
 	const Ref<HTMLElement> focused = get_focused_element();
 	dialog_focus.push_back({ p_dialog, focused, layout->top_modal(),
 		native && native != this ? ObjectID(native->get_instance_id()) : ObjectID(),
-		p_modal, focused.is_valid() && focused->matches(":focus-visible") });
+		p_modal });
 }
 
 void HTMLLabel::on_dialog_opened() {
@@ -59,7 +59,6 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 				successor->previous = it->previous;
 				successor->previous_modal = it->previous_modal;
 				successor->previous_control = it->previous_control;
-				successor->keyboard = it->keyboard;
 			}
 		}
 		if (it->dialog == focused_modal ||
@@ -78,7 +77,7 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 			if (entry.dialog == top) pending = std::exchange(entry.pending, false);
 		}
 		if (restore && p_has_viewport && layout->is_focusable(restore->previous) && has_focus()) {
-			canvas->set_focused_element(restore->previous, restore->keyboard, false);
+			canvas->set_focused_element(restore->previous, false);
 		}
 		else if (pending || top_changed || restore || (has_focus() && !layout->is_focusable(canvas->focused_element))) {
 			focus_dialog(top);
@@ -96,7 +95,7 @@ void HTMLLabel::sync_dialog_focus(bool p_has_viewport) {
 	}
 	else if (restore && has_focus()) {
 		if (p_has_viewport && layout->is_focusable(restore->previous)) {
-			canvas->set_focused_element(restore->previous, restore->keyboard, false);
+			canvas->set_focused_element(restore->previous, false);
 		}
 		else {
 			canvas->set_focused_element({});

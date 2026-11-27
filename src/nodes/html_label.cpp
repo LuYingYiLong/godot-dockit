@@ -255,6 +255,7 @@ void HTMLLabelCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	const int button_index = int(button->get_button_index());
 	const bool wheel_button = button_index == MOUSE_BUTTON_WHEEL_UP || button_index == MOUSE_BUTTON_WHEEL_DOWN ||
 		button_index == MOUSE_BUTTON_WHEEL_LEFT || button_index == MOUSE_BUTTON_WHEEL_RIGHT;
+	if (!wheel_button && button->is_pressed()) note_pointer_input();
 	PointerInfo pointer;
 	pointer.position = point;
 	pointer.button = button_index;
@@ -397,6 +398,18 @@ void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
 		if (!ObjectDB::get_instance(host_id)) return;
 	}
 	const Ref<InputEventKey> key = p_event;
+	const Ref<InputEventMouseButton> mouse_button = p_event;
+	const Ref<InputEventScreenTouch> touch = p_event;
+	if (canvas && mouse_button.is_valid() && mouse_button->is_pressed()) {
+		const MouseButton button = mouse_button->get_button_index();
+		if (button != MOUSE_BUTTON_WHEEL_UP && button != MOUSE_BUTTON_WHEEL_DOWN &&
+			button != MOUSE_BUTTON_WHEEL_LEFT && button != MOUSE_BUTTON_WHEEL_RIGHT) canvas->note_pointer_input();
+	}
+	if (canvas && touch.is_valid() && touch->is_pressed()) canvas->note_pointer_input();
+	if (canvas && key.is_valid() && key->is_pressed() && !key->is_echo()) {
+		const auto direction = tab_direction(*key.ptr());
+		if (has_focus() || direction.has_value()) canvas->note_keyboard_input();
+	}
 	if (dialog_escape_held && key.is_valid() &&
 		(key->get_keycode() == KEY_ESCAPE || (key->get_keycode() == KEY_NONE && key->get_physical_keycode() == KEY_ESCAPE))) {
 		if (!key->is_pressed()) {
@@ -445,6 +458,7 @@ void HTMLLabel::_input(const Ref<InputEvent>& p_event) {
 void HTMLLabel::_gui_input(const Ref<InputEvent>& p_event) {
 	const Ref<InputEventKey> key = p_event;
 	if (canvas && key.is_valid()) {
+		if (key->is_pressed() && !key->is_echo()) canvas->note_keyboard_input();
 		if (canvas->handle_input_menu_key(*key.ptr())) accept_event();
 		else if (!canvas->handle_dom_key(*key.ptr())) canvas->handle_selection_key(*key.ptr());
 	}
@@ -494,7 +508,31 @@ bool HTMLLabelCanvas::handle_dom_key(const InputEventKey& p_key) {
 	return handle_key_default_action(p_key);
 }
 
-void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_keyboard, bool p_reveal) {
+void HTMLLabelCanvas::note_keyboard_input() {
+	if (input_modality == InputModality::KEYBOARD) return;
+	input_modality = InputModality::KEYBOARD;
+	update_focus_visible();
+}
+
+void HTMLLabelCanvas::note_pointer_input() {
+	if (input_modality == InputModality::POINTER) return;
+	input_modality = InputModality::POINTER;
+	label->reveal_focused_element = false;
+	update_focus_visible();
+}
+
+bool HTMLLabelCanvas::should_show_focus_visible(const Ref<HTMLElement>& p_element) const {
+	if (p_element.is_null()) return false;
+	if (input_modality == InputModality::KEYBOARD || p_element->is_content_editable()) return true;
+	const auto control = label->layout->text_control(p_element);
+	return control && control->is_text_control();
+}
+
+void HTMLLabelCanvas::update_focus_visible() {
+	set_element_pseudo(focused_element, "focus-visible", should_show_focus_visible(focused_element));
+}
+
+void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, bool p_reveal) {
 	if (focused_element != p_element) {
 		if (!label->layout->prepare_content_focus(p_element)) return;
 		const uint64_t transition = ++focus_transition;
@@ -521,6 +559,7 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		const auto input = label->layout->text_control(focused_element);
 		focused_reset_version = input ? input->editor.get_reset_version() : 0;
 		set_element_pseudo(focused_element, "focus", true);
+		set_element_pseudo(focused_element, "focus-visible", should_show_focus_visible(focused_element));
 		// focus/focusin 在焦点已经落位之后派发。
 		dispatch_focus_events(previous, p_element);
 		if (focus_transition != transition || focused_element != p_element) return;
@@ -528,8 +567,7 @@ void HTMLLabelCanvas::set_focused_element(const Ref<HTMLElement>& p_element, boo
 		label->layout->repaint_input();
 		update_ime();
 	}
-	set_element_pseudo(focused_element, "focus-visible", p_keyboard);
-	label->reveal_focused_element = focused_element.is_valid() && p_keyboard && p_reveal;
+	label->reveal_focused_element = focused_element.is_valid() && input_modality == InputModality::KEYBOARD && p_reveal;
 	if (label->reveal_focused_element) {
 		label->queue_interaction();
 	}
@@ -1862,7 +1900,7 @@ bool HTMLLabel::focus_element(const Ref<HTMLElement>& p_element) {
 	if (!canvas || !is_visible_in_tree() || !layout->is_focusable(p_element)) return false;
 	grab_focus();
 	if (!has_focus()) return false;
-	canvas->set_focused_element(p_element, true);
+	canvas->set_focused_element(p_element);
 	return canvas->focused_element == p_element;
 }
 

@@ -690,6 +690,7 @@ Ref<InputEventMouseButton> HTMLLabelCanvas::make_touch_mouse_event(const Pointer
 void HTMLLabelCanvas::handle_touch_press(const InputEventScreenTouch& p_touch) {
 	flush_move_events();
 	if (!label || label->layout.is_null()) return;
+	note_pointer_input();
 	const TouchKey key{ p_touch.get_device(), p_touch.get_index() };
 	if (active_touch_pointers.find(key) != active_touch_pointers.end()) cancel_touch_pointer(key.first, key.second);
 	auto id = touch_pointer_ids.find(key);

@@ -15,7 +15,7 @@
 			<return type="void" />
 			<param index="0" name="uri" type="String" />
 			<description>
-				Activates the given link URI. A [code]#id[/code] link scrolls to the matching anchor before emitting [signal link_pressed]. If [member open_external_links] is [code]true[/code] and the URI starts with [code]http://[/code] or [code]https://[/code], opens it in the system default browser.
+				Emits [signal link_pressed] for the given URI. Fragment links scroll to a matching anchor first. Other URIs are reported by the signal and are not opened automatically.
 			</description>
 		</method>
 		<method name="append_text">
@@ -114,12 +114,6 @@
 			<return type="PopupMenu" />
 			<description>
 				Returns the internal [PopupMenu] used for the context menu. The menu is lazily created on first access.
-			</description>
-		</method>
-		<method name="get_open_external_links" qualifiers="const">
-			<return type="bool" />
-			<description>
-				Returns [code]true[/code] if external links (http/https) are automatically opened in the system browser.
 			</description>
 		</method>
 		<method name="get_rendered_block_count" qualifiers="const">
@@ -369,13 +363,6 @@
 				Sets how often deferred streaming layout updates are flushed. Clamped to the range [code][1, 1000][/code]. The default value is [code]33[/code].
 			</description>
 		</method>
-		<method name="set_open_external_links">
-			<return type="void" />
-			<param index="0" name="enabled" type="bool" />
-			<description>
-				Sets whether external links (http/https) are automatically opened in the system default browser when clicked.
-			</description>
-		</method>
 		<method name="set_selection_enabled">
 			<return type="void" />
 			<param index="0" name="enabled" type="bool" />
@@ -460,9 +447,6 @@
 		<member name="max_unstable_lines" type="int" setter="set_max_unstable_lines" getter="get_max_unstable_lines" default="32">
 			Maximum number of unstable tail lines re-parsed in one streaming refresh. Open constructs such as fenced code blocks can extend this range. Clamped to [code][1, 256][/code].
 		</member>
-		<member name="open_external_links" type="bool" setter="set_open_external_links" getter="get_open_external_links" default="true">
-			If [code]true[/code], clicking an http/https link opens it in the system default browser.
-		</member>
 		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
 			The default resource directory for inline Markdown and a root path a host can pass to [FileDialog]. This does not restrict resources referenced by a loaded document.
 		</member>
@@ -519,7 +503,7 @@
 		<signal name="link_pressed">
 			<param index="0" name="uri" type="String" />
 			<description>
-				Emitted when a link is clicked. [param uri] is the target URL. If [member open_external_links] is [code]true[/code], http/https links are also opened in the browser automatically.
+				Emitted when a link is activated. [param uri] is its target URI. MarkdownLabel does not open links automatically; connect to this signal to handle navigation.
 			</description>
 		</signal>
 		<signal name="render_warning">

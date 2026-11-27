@@ -366,14 +366,10 @@ msgstr ""
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
-"Activates the given link URI. A [code]#id[/code] link scrolls to the matching anchor before "
-"emitting [signal link_pressed]. If [member open_external_links] is [code]true[/code] and the URI "
-"starts with [code]http://[/code] or [code]https://[/code], opens it in the system default "
-"browser."
+"Emits [signal link_pressed] for the given URI. Fragment links scroll to a matching anchor first. "
+"Other URIs are reported by the signal and are not opened automatically."
 msgstr ""
-"激活指定的链接 URI。[code]#id[/code] 链接会先滚动到对应锚点，再发出 [signal link_pressed] 信号。当 [member "
-"open_external_links] 为 [code]true[/code]，且 URI 以 [code]http://[/code] 或 [code]https://[/code] "
-"开头时，使用系统默认浏览器打开。"
+"为指定 URI 发出 [signal link_pressed] 信号。片段链接会先滚动到匹配的锚点。其他 URI 只通过信号报告，不会自动打开。"
 
 #. doc_classes/HTMLTouchEvent.xml
 msgid "Active contacts whose initial target matches this event's changed contact."
@@ -2737,11 +2733,10 @@ msgstr ""
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""
-"Emitted when a link is clicked. [param uri] is the target URL. If [member open_external_links] is"
-" [code]true[/code], http/https links are also opened in the browser automatically."
+"Emitted when a link is activated. [param uri] is its target URI. MarkdownLabel does not open "
+"links automatically; connect to this signal to handle navigation."
 msgstr ""
-"点击链接时发出。[param uri] 是目标 URL。[member open_external_links] 为 [code]true[/code] 时，还会在浏览器中自动打开 "
-"http/https 链接。"
+"激活链接时发出。[param uri] 是目标 URI。MarkdownLabel 不会自动打开链接；可连接此信号自行处理导航。"
 
 #. doc_classes/HTMLLabel.xml
 msgid "Emitted when a local or remote page cannot be loaded."
@@ -3145,10 +3140,6 @@ msgstr "为 [code]true[/code] 时，激活的 HTTP 和 HTTPS 链接会使用系�
 #. doc_classes/RestructuredtextLabel.xml
 msgid "If [code]true[/code], clears the current text selection when the control loses focus."
 msgstr "为 [code]true[/code] 时，控件失去焦点后会清除当前文本选区。"
-
-#. doc_classes/MarkdownLabel.xml
-msgid "If [code]true[/code], clicking an http/https link opens it in the system default browser."
-msgstr "为 [code]true[/code] 时，点击 http/https 链接会使用系统默认浏览器打开。"
 
 #. doc_classes/RestructuredtextLabel.xml
 msgid ""
@@ -4756,12 +4747,6 @@ msgid ""
 "Returns [code]true[/code] if drag-and-drop of selected text is enabled. The default value is "
 "[code]true[/code]."
 msgstr "允许拖放选中的文本时返回 [code]true[/code]。默认值为 [code]true[/code]。"
-
-#. doc_classes/MarkdownLabel.xml
-msgid ""
-"Returns [code]true[/code] if external links (http/https) are automatically opened in the system "
-"browser."
-msgstr "外部链接（http/https）会自动在系统浏览器中打开时，返回 [code]true[/code]。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid "Returns [code]true[/code] if internal vertical scrolling is active."
@@ -6843,12 +6828,6 @@ msgstr "设置是否使用系统默认应用打开激活的 HTTP 和 HTTPS 链�
 #. doc_classes/MarkdownLabel.xml
 msgid "Sets whether drag-and-drop of selected text is enabled."
 msgstr "设置是否允许拖放选中的文本。"
-
-#. doc_classes/MarkdownLabel.xml
-msgid ""
-"Sets whether external links (http/https) are automatically opened in the system default browser "
-"when clicked."
-msgstr "设置点击外部链接（http/https）时是否自动使用系统默认浏览器打开。"
 
 #. doc_classes/MarkdownLabel.xml
 msgid ""

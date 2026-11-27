@@ -321,7 +321,6 @@ private:
 	MarginContainer* margin_container = nullptr;
 	MarkdownLabelCanvas* canvas = nullptr;
 	int32_t extra_font_size = 0;
-	bool open_external_links = true;
 	bool parse_latex = false;
 	bool parse_html = false;
 	Ref<CSSStyleSheet> stylesheet;
@@ -434,9 +433,6 @@ public:
 	void set_shortcut_keys_enabled(bool p_enabled);												// 设置是否启用快捷键
 	bool is_shortcut_keys_enabled() const;														// 返回是否启用快捷键
 
-	void set_open_external_links(bool p_enabled);												// 设置自动打开外部链接功能
-	bool get_open_external_links() const;														// 返回自动打开外部链接功能
-
 	void select_all();																			// 选中当前文档中的全部可选文本
 	void clear_selection();																		// 清除当前文本选区
 	String get_selected_text() const;															// 返回当前选区中的文本
@@ -449,7 +445,7 @@ public:
 	);																							// 从指定行列开始查找符合条件的文本
 
 	String get_link_uri_at_point(const Vector2& p_position);									// 返回指定坐标处链接的 URI
-	void activate_link_uri(const String& p_uri);												// 打开或处理指定的链接 URI
+	void activate_link_uri(const String& p_uri);												// 发出链接信号并滚动到文内锚点
 
 	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
 	PackedStringArray get_anchors() const;														// 返回文档中所有锚点标识

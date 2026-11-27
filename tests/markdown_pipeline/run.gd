@@ -61,6 +61,10 @@ func _run() -> void:
 	label.parse_html = true
 	label.parse_latex = true
 	get_root().add_child(label)
+	var emitted_link_uris: Array[String] = []
+	label.link_pressed.connect(func(uri: String) -> void: emitted_link_uris.append(uri))
+	label.activate_link_uri("dockit-test://document")
+	_check(emitted_link_uris == ["dockit-test://document"], "Link activation did not emit link_pressed")
 	label.text = "# Heading\n\n| One | Two |\n| -- | -- |\n| <div style=\"height:90px;padding:12px;background:red\">**Strong** <a href=\"https://example.com\">Link</a></div> | Text |\n\n~~~gdscript\nfunc greet():\n\tprint(\"Hello\")\n~~~\n\n$E=mc^2$"
 	await process_frame
 	await process_frame

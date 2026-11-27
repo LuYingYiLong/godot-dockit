@@ -20,7 +20,6 @@
 #include <godot_cpp/classes/input_event_pan_gesture.hpp>
 #include <godot_cpp/classes/input_map.hpp>
 #include <godot_cpp/classes/label.hpp>
-#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/popup_menu.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -2964,10 +2963,6 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_extra_font_size"), &MarkdownLabel::get_extra_font_size);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16"), "set_extra_font_size", "get_extra_font_size");
 
-	ClassDB::bind_method(D_METHOD("set_open_external_links", "enabled"), &MarkdownLabel::set_open_external_links);
-	ClassDB::bind_method(D_METHOD("get_open_external_links"), &MarkdownLabel::get_open_external_links);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open_external_links"), "set_open_external_links", "get_open_external_links");
-
 	ClassDB::bind_method(D_METHOD("set_selection_enabled", "enabled"), &MarkdownLabel::set_selection_enabled);
 	ClassDB::bind_method(D_METHOD("is_selection_enabled"), &MarkdownLabel::is_selection_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selection_enabled"), "set_selection_enabled", "is_selection_enabled");
@@ -3567,14 +3562,6 @@ bool MarkdownLabel::is_shortcut_keys_enabled() const {
 	return shortcut_keys_enabled;
 }
 
-void MarkdownLabel::set_open_external_links(bool p_enabled) {
-	open_external_links = p_enabled;
-}
-
-bool MarkdownLabel::get_open_external_links() const {
-	return open_external_links;
-}
-
 PopupMenu* MarkdownLabel::get_menu() {
 	ensure_controls();
 	return canvas->get_menu();
@@ -3627,9 +3614,6 @@ void MarkdownLabel::activate_link_uri(const String& p_uri) {
 		scroll_to_anchor(dockit::decode_html_fragment(p_uri.substr(1)));
 	}
 	emit_signal("link_pressed", p_uri);
-	if (open_external_links && (p_uri.begins_with("http://") || p_uri.begins_with("https://"))) {
-		OS::get_singleton()->shell_open(p_uri);
-	}
 }
 
 bool MarkdownLabel::has_anchor(const String& p_anchor) const {

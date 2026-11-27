@@ -61,6 +61,7 @@ class HTMLLabelCanvas : public godot::Control {
 	GDCLASS(HTMLLabelCanvas, godot::Control)
 
 	friend class ::HTMLLabel;
+	enum class InputModality { POINTER, KEYBOARD };
 	enum class PointerKind { MOUSE, TOUCH, PEN };
 	struct PointerInfo {
 		godot::Vector2 position;
@@ -205,6 +206,7 @@ class HTMLLabelCanvas : public godot::Control {
 	godot::Ref<HTMLElement> input_menu_target;
 	bool checkbox_key_pressed = false;
 	godot::Ref<HTMLElement> focused_element;
+	InputModality input_modality = InputModality::POINTER;
 	uint64_t focus_transition = 0;
 	uint64_t focused_reset_version = 0;
 	std::vector<godot::Ref<HTMLElement>> tab_elements;
@@ -319,7 +321,11 @@ class HTMLLabelCanvas : public godot::Control {
 	void update_ime();
 	void close_ime();
 	void on_ime_update();
-	void set_focused_element(const godot::Ref<HTMLElement>& p_button, bool p_keyboard = false, bool p_reveal = true);
+	void note_keyboard_input();
+	void note_pointer_input();
+	bool should_show_focus_visible(const godot::Ref<HTMLElement>& p_element) const;
+	void update_focus_visible();
+	void set_focused_element(const godot::Ref<HTMLElement>& p_button, bool p_reveal = true);
 	void set_element_pseudo(const godot::Ref<HTMLElement>& p_button, const char* p_name, bool p_enabled);
 	void clear_tab_entry();
 	void focus_tab_endpoint(bool p_backward);
@@ -770,7 +776,6 @@ private:
 		godot::Ref<HTMLDialogElement> previous_modal;
 		godot::ObjectID previous_control;
 		bool modal = false;
-		bool keyboard = false;
 		bool pending = true;
 	};
 	std::vector<DialogFocus> dialog_focus;
