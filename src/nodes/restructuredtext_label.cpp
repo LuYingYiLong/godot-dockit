@@ -136,17 +136,17 @@ namespace {
 		BitField<TextServer::LineBreakFlag> flags = TextServer::BREAK_MANDATORY;
 
 		switch (mode) {
-			case TextServer::AUTOWRAP_WORD_SMART:
-				flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE | TextServer::BREAK_MANDATORY;
-				break;
-			case TextServer::AUTOWRAP_WORD:
-				flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_MANDATORY;
-				break;
-			case TextServer::AUTOWRAP_ARBITRARY:
-				flags = TextServer::BREAK_GRAPHEME_BOUND | TextServer::BREAK_MANDATORY;
-				break;
-			case TextServer::AUTOWRAP_OFF:
-				break;
+		case TextServer::AUTOWRAP_WORD_SMART:
+			flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE | TextServer::BREAK_MANDATORY;
+			break;
+		case TextServer::AUTOWRAP_WORD:
+			flags = TextServer::BREAK_WORD_BOUND | TextServer::BREAK_MANDATORY;
+			break;
+		case TextServer::AUTOWRAP_ARBITRARY:
+			flags = TextServer::BREAK_GRAPHEME_BOUND | TextServer::BREAK_MANDATORY;
+			break;
+		case TextServer::AUTOWRAP_OFF:
+			break;
 		}
 
 		if (p_preserve_whitespace) {
@@ -154,8 +154,8 @@ namespace {
 		}
 
 		const BitField<TextServer::LineBreakFlag> trim_flags = p_owner == nullptr
-				? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
-				: p_owner->get_autowrap_trim_flags();
+			? BitField<TextServer::LineBreakFlag>(TextServer::BREAK_TRIM_START_EDGE_SPACES | TextServer::BREAK_TRIM_END_EDGE_SPACES)
+			: p_owner->get_autowrap_trim_flags();
 		return flags | trim_flags;
 	}
 
@@ -1191,19 +1191,19 @@ bool RSTDocumentCanvas::is_menu_visible() const {
 
 void RSTDocumentCanvas::menu_option(int p_option) {
 	switch (p_option) {
-		case RestructuredtextLabel::MENU_COPY: {
-			String text = get_selected_text();
-			if (text.is_empty()) {
-				text = plain_text;
-			}
-			DisplayServer* display_server = DisplayServer::get_singleton();
-			if (display_server != nullptr && !text.is_empty()) {
-				display_server->clipboard_set(text);
-			}
-		} break;
-		case RestructuredtextLabel::MENU_SELECT_ALL: {
-			select_all();
-		} break;
+	case RestructuredtextLabel::MENU_COPY: {
+		String text = get_selected_text();
+		if (text.is_empty()) {
+			text = plain_text;
+		}
+		DisplayServer* display_server = DisplayServer::get_singleton();
+		if (display_server != nullptr && !text.is_empty()) {
+			display_server->clipboard_set(text);
+		}
+	} break;
+	case RestructuredtextLabel::MENU_SELECT_ALL: {
+		select_all();
+	} break;
 	}
 }
 
@@ -1412,21 +1412,21 @@ static String canvas_toctree_text(const RSTBlock& p_block) {
 	return text;
 }
 
-	static String canvas_block_theme_prefix(const RSTBlock& p_block) {
+static String canvas_block_theme_prefix(const RSTBlock& p_block) {
 	switch (p_block.type) {
 	case RST_BLOCK_HEADING:
 		return String("heading_") + String::num_int64(std::min<int32_t>(std::max<int32_t>(p_block.level, 1), 5));
 	case RST_BLOCK_BULLET_LIST:
 	case RST_BLOCK_ENUMERATED_LIST:
-			return "list";
+		return "list";
 	case RST_BLOCK_CODE:
-			return "code_block";
+		return "code_block";
 	case RST_BLOCK_ADMONITION:
-			return "admonition";
+		return "admonition";
 	case RST_BLOCK_TABLE:
-			return "table";
+		return "table";
 	default:
-			return "text";
+		return "text";
 	}
 }
 
@@ -2381,46 +2381,47 @@ void RSTDocumentCanvas::_notification(int p_what) {
 		selection_drag_attempt = false;
 	}
 
-		if (p_what == NOTIFICATION_INTERNAL_PROCESS) {
-			if (!dragging_selection || !selection_dragged || document_view == nullptr) {
-				return;
-			}
-
-			VScrollBar* v_scroll = document_view->get_v_scroll_bar();
-			if (v_scroll == nullptr) {
-				return;
-			}
-
-			const Size2 viewer_size = document_view->get_size();
-			const Vector2 viewer_mouse = document_view->get_local_mouse_position();
-
-			// Auto-scroll when the mouse enters the dead zone near the edge.
-			// scroll_margin defines how far from the edge scrolling begins.
-			const float scroll_margin = 24.0f;
-			float scroll_delta = 0.0f;
-			const float above = scroll_margin - viewer_mouse.y;
-			const float below = viewer_mouse.y - (viewer_size.y - scroll_margin);
-
-			if (above > 0.0f) {
-				const float base_speed = 80.0f;
-				scroll_delta = -base_speed * (above / scroll_margin) * static_cast<float>(get_process_delta_time());
-			} else if (below > 0.0f) {
-				const float base_speed = 80.0f;
-				scroll_delta = base_speed * (below / scroll_margin) * static_cast<float>(get_process_delta_time());
-			}
-
-			if (scroll_delta != 0.0f) {
-				const float max_scroll = v_scroll->get_max() - v_scroll->get_page();
-				const float new_value = std::max<float>(0.0f, std::min<float>(max_scroll, v_scroll->get_value() + scroll_delta));
-				v_scroll->set_value(new_value);
-
-				const Vector2 canvas_mouse = get_local_mouse_position();
-				selection_caret = hit_test_document(canvas_mouse);
-				queue_redraw();
-			}
-
+	if (p_what == NOTIFICATION_INTERNAL_PROCESS) {
+		if (!dragging_selection || !selection_dragged || document_view == nullptr) {
 			return;
 		}
+
+		VScrollBar* v_scroll = document_view->get_v_scroll_bar();
+		if (v_scroll == nullptr) {
+			return;
+		}
+
+		const Size2 viewer_size = document_view->get_size();
+		const Vector2 viewer_mouse = document_view->get_local_mouse_position();
+
+		// Auto-scroll when the mouse enters the dead zone near the edge.
+		// scroll_margin defines how far from the edge scrolling begins.
+		const float scroll_margin = 24.0f;
+		float scroll_delta = 0.0f;
+		const float above = scroll_margin - viewer_mouse.y;
+		const float below = viewer_mouse.y - (viewer_size.y - scroll_margin);
+
+		if (above > 0.0f) {
+			const float base_speed = 80.0f;
+			scroll_delta = -base_speed * (above / scroll_margin) * static_cast<float>(get_process_delta_time());
+		}
+		else if (below > 0.0f) {
+			const float base_speed = 80.0f;
+			scroll_delta = base_speed * (below / scroll_margin) * static_cast<float>(get_process_delta_time());
+		}
+
+		if (scroll_delta != 0.0f) {
+			const float max_scroll = v_scroll->get_max() - v_scroll->get_page();
+			const float new_value = std::max<float>(0.0f, std::min<float>(max_scroll, v_scroll->get_value() + scroll_delta));
+			v_scroll->set_value(new_value);
+
+			const Vector2 canvas_mouse = get_local_mouse_position();
+			selection_caret = hit_test_document(canvas_mouse);
+			queue_redraw();
+		}
+
+		return;
+	}
 
 	if (p_what != NOTIFICATION_DRAW) {
 		return;
@@ -2616,7 +2617,7 @@ String RSTDocumentCanvas::footnote_id_at_character(int64_t p_character, bool p_r
 			}
 		}
 		return String();
-	};
+		};
 
 	for (const RSTCanvasItem& item : items) {
 		if (p_character < item.global_start || p_character > item.global_end) {
@@ -2679,8 +2680,8 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 	// Ctrl+MouseWheel zoom: adjust extra_font_size on the parent viewer.
 	// Must intercept here before ScrollContainer consumes the wheel event.
 	if (mouse_button.is_valid() && mouse_button->is_ctrl_pressed() &&
-			(mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP ||
-			 mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN)) {
+		(mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP ||
+			mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN)) {
 		if (document_view != nullptr) {
 			const int32_t delta = (mouse_button->get_button_index() == MOUSE_BUTTON_WHEEL_UP) ? 1 : -1;
 			document_view->set_extra_font_size(document_view->get_extra_font_size() + delta);
@@ -2768,7 +2769,8 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 				const String uri = link_uri_at_position(release_position);
 				if (!uri.is_empty() && document_view != nullptr) {
 					document_view->activate_link_uri(uri);
-				} else if (document_view != nullptr) {
+				}
+				else if (document_view != nullptr) {
 					const float footnote_target = footnote_target_at_position(release_position);
 					VScrollBar* v_scroll = document_view->get_v_scroll_bar();
 					if (footnote_target >= 0.0f && v_scroll != nullptr) {
@@ -2785,7 +2787,8 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 			const String uri = link_uri_at_position(release_position);
 			if (!uri.is_empty() || footnote_target_at_position(release_position) >= 0.0f) {
 				set_default_cursor_shape(CURSOR_POINTING_HAND);
-			} else {
+			}
+			else {
 				set_default_cursor_shape(CURSOR_ARROW);
 			}
 		}
@@ -2820,7 +2823,8 @@ void RSTDocumentCanvas::_gui_input(const Ref<InputEvent>& p_event) {
 		const String uri = link_uri_at_position(mouse_position);
 		if (!uri.is_empty() || footnote_target_at_position(mouse_position) >= 0.0f) {
 			set_default_cursor_shape(CURSOR_POINTING_HAND);
-		} else {
+		}
+		else {
 			set_default_cursor_shape(CURSOR_ARROW);
 		}
 	}
@@ -3490,7 +3494,8 @@ void RestructuredtextLabel::set_selection_enabled(bool p_enabled) {
 			document_canvas->clear_selection();
 		}
 		set_focus_mode(FOCUS_ACCESSIBILITY);
-	} else {
+	}
+	else {
 		set_focus_mode(FOCUS_ALL);
 	}
 }
