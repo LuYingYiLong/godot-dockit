@@ -77,8 +77,40 @@ func _compare(p_layout: HTMLLayout, p_html: String, p_size: Vector2i, p_ids: Pac
 	_check(p_layout.get_selection_rects(0, count) == reference.get_selection_rects(0, count), "Fresh selection geometry differs")
 
 
+func _check_embedded_object_selection() -> void:
+	var image: Image = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	image.fill(Color.GREEN)
+	var inline_formula: ImageTexture = ImageTexture.create_from_image(image)
+	inline_formula.set_meta("_dockit_copy_text", "$E = mc^2$")
+	var display_formula: ImageTexture = ImageTexture.create_from_image(image)
+	display_formula.set_meta("_dockit_copy_text", "$$\\int_0^\\infty e^{-x^2} dx$$")
+	var mermaid: ImageTexture = ImageTexture.create_from_image(image)
+	mermaid.set_meta("_dockit_copy_text", "flowchart LR\nA --> B\nB --> C")
+	var textures: Dictionary = {
+		"res://__dockit_test/inline.png": inline_formula,
+		"res://__dockit_test/display.png": display_formula,
+		"res://__dockit_test/mermaid.png": mermaid,
+	}
+	var document: HTMLDocument = HTMLDocument.new()
+	document.text = "<p>Inline math: <img src='res://__dockit_test/inline.png'> and <img src='res://__dockit_test/inline.png'>.</p>"
+	document.text += "<p>A second display formula:</p><div style='text-align:center'><img src='res://__dockit_test/display.png'></div>"
+	document.text += "<h2>Mermaid</h2><figure><img src='res://__dockit_test/mermaid.png'></figure>"
+	document.text += "<h2>Code</h2><pre><code>func greet(name: String) -&gt; void:\n\tprint(\"Hello\", name)</code></pre>"
+	document.text += "<h2>HTML in Markdown</h2><details open><summary>HTML block inside the preview</summary><div><strong>Embedded HTML</strong><br><span>This content is rendered by the HTML layout.</span></div></details>"
+	document.text += "<p>The paragraph after this block is Markdown again.</p><h2>Links and footnotes</h2><p>Keep editing to try different Markdown, LaTeX, and Mermaid syntax.</p>"
+	document.set("_textures", textures)
+	var embedded_layout: HTMLLayout = document.create_layout()
+	_check(embedded_layout.layout(Vector2i(800, 600)) == OK, "Embedded object HTML layout failed")
+	var plain_text: String = embedded_layout.get_plain_text()
+	for needle: String in ["and", "A second display formula:", "Mermaid", "Code", "func greet", "HTML in Markdown", "The paragraph after", "Keep editing",]:
+		var offset: int = plain_text.find(needle)
+		var rects: Array[Rect2] = embedded_layout.get_selection_rects(offset, offset + needle.length())
+		_check(offset >= 0 and not rects.is_empty(), "Embedded object lost selection geometry for: " + needle)
+
+
 func _run() -> void:
 	get_root().size = Vector2i(800, 600)
+	_check_embedded_object_selection()
 	var viewport_size: Vector2i = Vector2i(320, 180)
 	var source: String = "<style>body{margin:0}.row{display:flex}.cell{width:max-content;max-width:160px}table{border-collapse:collapse}</style><div class='row'><div id='a' class='cell'>中文 alpha beta</div><div id='b'>Right</div></div><table><tr><td>One</td><td id='c'>Two</td></tr></table>"
 	var layout: HTMLLayout = _make_layout(source, viewport_size)

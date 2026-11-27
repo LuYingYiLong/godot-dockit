@@ -821,6 +821,8 @@ void fragment() {
 		clips.clear();
 		clip_material.unref();
 		active_geometry = nullptr;
+		// 索引公式等嵌入对象时会向 paint_runs 追加隐藏文本片段，先预留空间以稳定已有 Text 指针
+		paint_runs.reserve(paint_runs.size() + embedded_object_text.size());
 		std::vector<Text*> indexed_commands;
 		indexed_commands.reserve(text_bindings.size());
 		for (HTMLPaintRun& run : paint_runs) {
