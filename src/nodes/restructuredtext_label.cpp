@@ -872,7 +872,7 @@ static String rst_render_document_html(const std::vector<RSTBlock>& p_blocks, co
 		case RST_BLOCK_ADMONITION: {
 			const String directive = block.directive.to_lower();
 			const String title = block.argument.is_empty() ? directive.capitalize() : block.argument;
-			block_html = String("<aside class=\"rst-admonition rst-admonition-") + rst_html_escape(directive) + anchor + String(" >");
+			block_html = String("<aside class=\"rst-admonition rst-admonition-") + rst_html_escape(directive) + String("\"") + anchor + String(">");
 			block_html += String("<div class=\"rst-admonition-title\">") + rst_render_inline_html(title, p_owner, p_footnotes, footnote_reference_index) + String("</div>");
 			block_html += String("<div class=\"rst-admonition-body\">") + rst_render_inline_html(block.text, p_owner, p_footnotes, footnote_reference_index) + String("</div></aside>");
 		} break;
@@ -2017,21 +2017,24 @@ void RestructuredtextLabel::activate_link_uri(const String& p_uri) {
 		return;
 	}
 
-	emit_signal("link_pressed", p_uri);
 	const int64_t fragment_index = p_uri.find("#");
-	if (fragment_index >= 0 && document.is_valid()) {
+	if (fragment_index >= 0) {
 		String target_path = p_uri.substr(0, fragment_index);
-		String source_path = document->get_source_path();
+		String source_path;
+		if (document.is_valid()) {
+			source_path = document->get_source_path();
+		}
 		if (target_path.begins_with("uid://")) {
 			target_path = ResourceUID::uid_to_path(target_path);
 		}
 		if (source_path.begins_with("uid://")) {
 			source_path = ResourceUID::uid_to_path(source_path);
 		}
-		if (target_path.is_empty() || localize_project_path(target_path) == localize_project_path(source_path)) {
+		if (target_path.is_empty() || (document.is_valid() && localize_project_path(target_path) == localize_project_path(source_path))) {
 			scroll_to_anchor(p_uri.substr(fragment_index + 1));
 		}
 	}
+	emit_signal("link_pressed", p_uri);
 	if (open_external_links && is_external_link_uri(p_uri)) {
 		OS* os = OS::get_singleton();
 		if (os != nullptr) {

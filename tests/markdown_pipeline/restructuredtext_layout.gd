@@ -55,6 +55,14 @@ Footnote reference [1]_.
 	_check(selected_text.contains("A") and selected_text.contains("B") and selected_text.contains("C") and selected_text.contains("D"), "RST table cell text is missing")
 	_check(label.has_anchor("intro") and label.has_anchor("table"), "RST target anchors were not exposed by HTMLLayout")
 	_check(label.scroll_to_anchor("table"), "RST table anchor did not have a layout offset")
+	label.size.y = 120.0
+	await process_frame
+	await process_frame
+	var signal_scroll_values: Array[float] = []
+	label.link_pressed.connect(func(_uri: String) -> void: signal_scroll_values.append(label.get_v_scroll_bar().value))
+	label.get_v_scroll_bar().value = 0.0
+	label.activate_link_uri("#rst-footnote-def-1")
+	_check(not signal_scroll_values.is_empty() and signal_scroll_values[0] > 0.0, "RST footnote anchor was not scrolled into view before link_pressed")
 	var base_height: float = label.get_content_height()
 	var stylesheet: CSSStyleSheet = CSSStyleSheet.new()
 	stylesheet.css_text = ".rst-admonition-note { margin-bottom: 64px; }"
@@ -67,7 +75,16 @@ Footnote reference [1]_.
 	stylesheet.css_text = ".rst-admonition-note { margin-bottom: 96px; }"
 	await process_frame
 	await process_frame
-	_check(label.get_content_height() > styled_height + 20.0, "Editing an assigned CSSStyleSheet did not reapply its rules")
+	var reloaded_style_height: float = label.get_content_height()
+	_check(reloaded_style_height > styled_height + 20.0, "Editing an assigned CSSStyleSheet did not reapply its rules")
+	var theme: Theme = Theme.new()
+	var header_panel: StyleBoxFlat = StyleBoxFlat.new()
+	header_panel.set_content_margin(SIDE_TOP, 72.0)
+	theme.set_stylebox(&"admonition_note_header_panel", &"RestructuredtextLabel", header_panel)
+	label.theme = theme
+	await process_frame
+	await process_frame
+	_check(label.get_content_height() > reloaded_style_height + 50.0, "RST admonition header StyleBox did not reach its HTML title element")
 	label.rst_text = "x".repeat(180)
 	label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	await process_frame
