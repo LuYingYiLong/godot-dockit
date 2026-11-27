@@ -1882,6 +1882,14 @@ TypedArray<Rect2> HTMLLayout::get_selection_rects(int64_t p_from, int64_t p_to) 
 void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_position, const Rect2& p_clip,
 	const Vector2i& p_selection, const StyleBox* p_selection_style, const Color& p_selection_color,
 	const Vector2i& p_search, const StyleBox* p_search_style, const Vector2& p_viewport_origin) {
+	draw_with_text_effects(p_canvas, p_position, p_clip, p_selection, p_selection_style, p_selection_color,
+		p_search, p_search_style, p_viewport_origin, {});
+}
+
+void HTMLLayout::draw_with_text_effects(CanvasItem* p_canvas, const Vector2& p_position, const Rect2& p_clip,
+	const Vector2i& p_selection, const StyleBox* p_selection_style, const Color& p_selection_color,
+	const Vector2i& p_search, const StyleBox* p_search_style, const Vector2& p_viewport_origin,
+	const dockit::HTMLTextRenderEffects& p_text_effects) {
 	if (!state->has_layout() || !p_canvas || !p_canvas->is_inside_tree()) {
 		return;
 	}
@@ -1894,7 +1902,7 @@ void HTMLLayout::draw_with_highlights(CanvasItem* p_canvas, const Vector2& p_pos
 	const HTMLHighlight selection{ p_selection.x, p_selection.y, p_selection_style, p_selection_color };
 	const HTMLHighlight search{ p_search.x, p_search.y, p_search_style, Color(0, 0, 0, 0) };
 	state->canvas_renderer->submit(*p_canvas, p_position, p_clip, runs, state->container->get_paint_recorder().get_paint_groups(),
-		diagnostics, selection, search, p_viewport_origin);
+		diagnostics, selection, search, p_viewport_origin, false, p_text_effects);
 }
 
 void HTMLLayout::draw_selection_drag_image(CanvasItem* p_canvas, const Vector2i& p_selection,

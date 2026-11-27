@@ -79,5 +79,7 @@ namespace dockit {
 		int64_t hit_test(double p_x) const;														// 获取指定横坐标对应的文本偏移
 		void draw(const godot::TextServer* p_server, const godot::RID& p_canvas, const godot::Vector2& p_position,
 			const godot::Color& p_color) const;													// 绘制已排版的文本
+		void draw_outline(const godot::TextServer* p_server, const godot::RID& p_canvas, const godot::Vector2& p_position,
+			int32_t p_outline_size, const godot::Color& p_color) const;										// 绘制已排版文本的字形描边
 	};
 }

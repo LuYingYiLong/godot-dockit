@@ -46,6 +46,10 @@ struct MarkdownThemeCache {
 		int32_t table_striped = 1;
 		int32_t footnote_space_before = 16;
 		int32_t footnote_line_separation = 2;
+		int32_t outline_size = 0;
+		int32_t shadow_outline_size = 1;
+		int32_t shadow_offset_x = 1;
+		int32_t shadow_offset_y = 1;
 	} constant;
 
 	struct FontSizes {
@@ -72,6 +76,8 @@ struct MarkdownThemeCache {
 		Color scrollbar_pressed = Color(0.75f, 0.75f, 0.75f, 0.75f);
 		Color highlight = Color(1.0f, 0.92f, 0.35f, 0.5f);
 		Color highlight_font = Color(1.0f, 0.700f, 0.211f, 1.0f);
+		Color font_outline = Color(0.0f, 0.0f, 0.0f, 1.0f);
+		Color font_shadow = Color(0.0f, 0.0f, 0.0f, 0.0f);
 		Color strikethrough = Color(1.0f, 1.0f, 1.0f, 1.0f);
 		Color heading[6];
 		Color selection_color = Color(0.102f, 0.102f, 1.0f, 0.8f);

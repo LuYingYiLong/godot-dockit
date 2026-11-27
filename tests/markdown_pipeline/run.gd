@@ -199,6 +199,22 @@ func _run() -> void:
 	map_label.select_all()
 	_check(map_label.get_selected_text().contains("Footnote content mapped to its source line"), "Appending after a footnote discarded its definition")
 	map_label.queue_free()
+	var effect_label: MarkdownLabel = MarkdownLabel.new()
+	effect_label.size = Vector2(640.0, 520.0)
+	effect_label.add_theme_constant_override("outline_size", 16)
+	effect_label.add_theme_constant_override("shadow_outline_size", 16)
+	effect_label.add_theme_constant_override("shadow_offset_x", -1)
+	effect_label.add_theme_constant_override("shadow_offset_y", 2)
+	effect_label.add_theme_color_override("font_outline_color", Color.RED)
+	effect_label.add_theme_color_override("font_shadow_color", Color.BLUE)
+	get_root().add_child(effect_label)
+	var effect_lines: PackedStringArray = PackedStringArray()
+	for line_index in range(24):
+		effect_lines.append("Theme text effects line %d" % line_index)
+	effect_label.text = "\n".join(effect_lines)
+	await process_frame
+	_check(effect_label.get_rendered_block_count() > 0, "Large text effect overrides prevented Markdown rendering")
+	effect_label.queue_free()
 	snapshot.queue_free()
 	label.queue_free()
 	await process_frame

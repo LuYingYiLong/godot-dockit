@@ -11,7 +11,7 @@ label.theme_type_variation = &"MarkdownLabel"
 
 Then configure the theme items below in the editor's theme panel or in a script.
 
-Theme items are converted to default CSS for the shared Markdown/HTML layout. Document CSS and `MarkdownLabel.stylesheet` can override these defaults, including inside Markdown tables. [StyleBox conversion](stylebox_css_conversion.md) documents supported mappings and conversion limits.
+Theme items are converted to default CSS for the shared Markdown/HTML layout. Font outlines and shadows use Godot's shaped-text drawing API, while CSS `text-shadow` remains available for document styling. Document CSS and `MarkdownLabel.stylesheet` can override CSS-backed theme defaults, including inside Markdown tables. [StyleBox conversion](stylebox_css_conversion.md) documents supported mappings and conversion limits.
 
 ---
 
@@ -81,6 +81,8 @@ Add these items under **Font Sizes** in the Theme editor. In a `.tres` Theme res
 | `h1_font_color` … `h6_font_color` | Color | `text_font_color` |
 | `footnote_ref_font_color` | Color | `link_color` |
 | `footnote_text_font_color` | Color | `text_font_color` |
+| `font_outline_color` | Color | `Color.BLACK` |
+| `font_shadow_color` | Color | Transparent black |
 
 ### StyleBoxes
 
@@ -110,6 +112,17 @@ Missing StyleBoxes use their built-in fallback styles where provided. Set `table
 |--------|------|--------|------|
 | `line_separation` | int | 2 | Line spacing in pixels |
 | `paragraph_separation` | int | 10 | Paragraph spacing in pixels |
+
+#### Text Effects
+
+| Property | Type | Default | Description |
+|--------|------|--------|------|
+| `outline_size` | int | 0 | Glyph outline thickness in pixels, clamped to `[0, 16]` |
+| `shadow_outline_size` | int | 1 | Thickness of the glyph shadow outline, clamped to `[0, 16]` |
+| `shadow_offset_x` | int | 1 | Horizontal shadow offset in pixels |
+| `shadow_offset_y` | int | 1 | Vertical shadow offset in pixels |
+
+Shadow rendering is disabled by the default transparent `font_shadow_color`. Set that color to enable it. The outline uses `font_outline_color`.
 
 #### Lists
 
@@ -216,12 +229,18 @@ func _ready() -> void:
 	label.add_theme_color_override("code_block_font_color", Color(0.85, 0.86, 0.9))
 	label.add_theme_color_override("footnote_ref_font_color", Color(0.4, 0.65, 1.0))
 	label.add_theme_color_override("footnote_text_font_color", Color(0.75, 0.75, 0.75))
+	label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
+	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.5))
 
 	# Spacing
 	label.add_theme_constant_override("line_separation", 2)
 	label.add_theme_constant_override("paragraph_separation", 12)
 	label.add_theme_constant_override("blockquote_border_width", 4)
 	label.add_theme_constant_override("list_indent", 24)
+	label.add_theme_constant_override("outline_size", 1)
+	label.add_theme_constant_override("shadow_outline_size", 1)
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 2)
 ```
 
 ---

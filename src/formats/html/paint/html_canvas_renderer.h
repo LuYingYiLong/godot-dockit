@@ -109,7 +109,8 @@ namespace dockit {
 			const HTMLHighlight& p_selection,
 			const HTMLHighlight& p_search,
 			const godot::Vector2& p_viewport_origin,
-			bool p_selection_only = false
+			bool p_selection_only = false,
+			const HTMLTextRenderEffects& p_text_effects = {}
 		);																						// 将绘制指令和高亮内容提交到画布
 		void queue_redraws() const;																// 执行已排队的 Canvas 重绘回调
 	};

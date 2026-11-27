@@ -4,6 +4,7 @@
 #include "formats/html/markup/html_markup.h"
 #include "formats/html/resources/html_resource_paths.h"
 #include "formats/html/layout/html_geometry.h"
+#include "formats/html/paint/html_paint_run.h"
 #include "formats/word_boundaries.h"
 
 #include <godot_cpp/classes/display_server.hpp>
@@ -488,6 +489,8 @@ namespace {
 		p_cache.color.code_block_background = convert_editor_light_color(p_cache.color.code_block_background, p_theme_info);
 		p_cache.color.highlight = convert_editor_light_color(p_cache.color.highlight, p_theme_info);
 		p_cache.color.highlight_font = convert_editor_light_color(p_cache.color.highlight_font, p_theme_info);
+		p_cache.color.font_outline = convert_editor_light_color(p_cache.color.font_outline, p_theme_info);
+		p_cache.color.font_shadow = convert_editor_light_color(p_cache.color.font_shadow, p_theme_info);
 		p_cache.color.strikethrough = convert_editor_light_color(p_cache.color.strikethrough, p_theme_info);
 		p_cache.color.selection_color = convert_editor_light_color(p_cache.color.selection_color, p_theme_info);
 		p_cache.color.list_marker = convert_editor_light_color(p_cache.color.list_marker, p_theme_info);
@@ -1016,6 +1019,10 @@ void MarkdownThemeCache::build(Control* p_owner, int32_t p_extra_font_size) {
 	constant.table_striped = std::max<int32_t>(0, get_theme_constant_or(p_owner, "MarkdownLabel", "table_striped", 1));
 	constant.footnote_space_before = std::max<int32_t>(0, get_scaled_theme_constant_or(p_owner, "MarkdownLabel", "footnote_space_before", 16, base_scale));
 	constant.footnote_line_separation = std::max<int32_t>(0, get_theme_constant_or(p_owner, "MarkdownLabel", "footnote_line_separation", constant.line_separation));
+	constant.outline_size = std::clamp(get_theme_constant_or(p_owner, "MarkdownLabel", "outline_size", 0), 0, 16);
+	constant.shadow_outline_size = std::clamp(get_scaled_theme_constant_or(p_owner, "MarkdownLabel", "shadow_outline_size", 1, base_scale), 0, 16);
+	constant.shadow_offset_x = get_scaled_theme_constant_or(p_owner, "MarkdownLabel", "shadow_offset_x", 1, base_scale);
+	constant.shadow_offset_y = get_scaled_theme_constant_or(p_owner, "MarkdownLabel", "shadow_offset_y", 1, base_scale);
 
 	// Fonts
 	font.text = get_theme_font_or(p_owner, "MarkdownLabel", "text_font");
@@ -1082,6 +1089,8 @@ void MarkdownThemeCache::build(Control* p_owner, int32_t p_extra_font_size) {
 	color.scrollbar_pressed = get_theme_stylebox_color_or(p_owner, "VScrollBar", "grabber_pressed", Color(0.75f, 0.75f, 0.75f, 0.75f));
 	color.highlight = get_theme_color_or(p_owner, "MarkdownLabel", "highlight_color", Color(1.0f, 0.92f, 0.35f, 0.5f));
 	color.highlight_font = get_theme_color_or(p_owner, "MarkdownLabel", "highlight_font_color", Color(1.0f, 0.700f, 0.211f, 1.0f));
+	color.font_outline = get_theme_color_or(p_owner, "MarkdownLabel", "font_outline_color", Color(0.0f, 0.0f, 0.0f, 1.0f));
+	color.font_shadow = get_theme_color_or(p_owner, "MarkdownLabel", "font_shadow_color", Color(0.0f, 0.0f, 0.0f, 0.0f));
 	color.strikethrough = get_theme_color_or(p_owner, "MarkdownLabel", "strikethrough_color", Color(1.0f, 1.0f, 1.0f, 1.0f));
 	color.list_marker = get_theme_color_or(p_owner, "MarkdownLabel", "list_marker_color", color.text);
 	color.table_header_font = get_theme_color_or(p_owner, "MarkdownLabel", "table_header_font_color", color.text);
@@ -2034,6 +2043,12 @@ void MarkdownLabelCanvas::_draw() {
 	const Rect2 visible = get_html_visible_rect();
 	const int64_t selection_from = std::min(selection_anchor, selection_caret);
 	const int64_t selection_to = std::max(selection_anchor, selection_caret);
+	dockit::HTMLTextRenderEffects text_effects;
+	text_effects.outline_size = theme_cache.constant.outline_size;
+	text_effects.outline_color = theme_cache.color.font_outline;
+	text_effects.shadow_outline_size = theme_cache.constant.shadow_outline_size;
+	text_effects.shadow_offset = Vector2(theme_cache.constant.shadow_offset_x, theme_cache.constant.shadow_offset_y);
+	text_effects.shadow_color = theme_cache.color.font_shadow;
 	auto draw_html = [&](const Ref<HTMLLayout>& p_layout, const Rect2& p_rect, int64_t p_from, int64_t p_to) {
 		if (p_layout.is_valid()) {
 			const Rect2 clip = visible.intersection(p_rect);
@@ -2041,9 +2056,9 @@ void MarkdownLabelCanvas::_draw() {
 				const auto local_range = [&](int64_t p_start, int64_t p_end) {
 					return Vector2i(CLAMP(p_start, p_from, p_to) - p_from, CLAMP(p_end, p_from, p_to) - p_from);
 					};
-				p_layout->draw_with_highlights(this, p_rect.position, clip, local_range(selection_from, selection_to),
+				p_layout->draw_with_text_effects(this, p_rect.position, clip, local_range(selection_from, selection_to),
 					theme_cache.stylebox.selection.ptr(), theme_cache.color.selection_color,
-					local_range(search_match_start, search_match_end), theme_cache.stylebox.search_result.ptr());
+					local_range(search_match_start, search_match_end), theme_cache.stylebox.search_result.ptr(), {}, text_effects);
 			}
 		}
 		};

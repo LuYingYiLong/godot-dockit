@@ -43,6 +43,7 @@ namespace dockit {
 	class HTMLPaintRecorder;
 	class HTMLTextControlNode;
 	enum class HTMLControlIcon;
+	struct HTMLTextRenderEffects;
 
 	struct HTMLTextLanguageRange {
 		godot::String language;
@@ -438,6 +439,18 @@ public:
 		const godot::StyleBox* p_search_style = nullptr,
 		const godot::Vector2& p_viewport_origin = {}
 	);																							// 在指定画布上绘制 HTML，并显示选区与搜索高亮
+	void draw_with_text_effects(
+		godot::CanvasItem* p_canvas,
+		const godot::Vector2& p_position,
+		const godot::Rect2& p_clip,
+		const godot::Vector2i& p_selection,
+		const godot::StyleBox* p_selection_style,
+		const godot::Color& p_selection_color,
+		const godot::Vector2i& p_search,
+		const godot::StyleBox* p_search_style,
+		const godot::Vector2& p_viewport_origin,
+		const dockit::HTMLTextRenderEffects& p_text_effects
+	); // 在指定画布上使用主题文字效果绘制 HTML
 	void draw_selection_drag_image(godot::CanvasItem* p_canvas, const godot::Vector2i& p_selection,
 		const godot::Vector2& p_position, const godot::Rect2& p_clip);							// 绘制文本选区的拖拽预览图像
 	godot::String get_link_at(const godot::Vector2& p_position) const;							// 返回指定文档坐标处链接的原始 href

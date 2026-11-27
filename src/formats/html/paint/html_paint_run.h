@@ -47,6 +47,14 @@ namespace dockit {
 		const litehtml::element* selection_owner = nullptr;
 	};
 
+	struct HTMLTextRenderEffects {
+		int32_t outline_size = 0;
+		godot::Color outline_color{ 0, 0, 0, 0 };
+		int32_t shadow_outline_size = 0;
+		godot::Vector2 shadow_offset;
+		godot::Color shadow_color{ 0, 0, 0, 0 };
+	};
+
 	struct HTMLImage {
 		godot::Ref<godot::Texture2D> texture;
 		godot::Rect2 destination;
@@ -106,7 +114,8 @@ namespace dockit {
 			const HTMLHighlight& p_search,
 			const HTMLHighlight& p_selection,
 			const godot::RID& p_ink_canvas = {},
-			bool p_selection_only = false
+			bool p_selection_only = false,
+			const HTMLTextRenderEffects& p_text_effects = {}
 		) const;																				// 按绘制指令顺序回放绘制内容
 	};
 

@@ -362,7 +362,7 @@ void fragment() {
 
 	void HTMLPaintRun::draw(RenderingServer& p_server, const RID& p_canvas, const Vector2& p_offset,
 		const TextServer* p_text_server, const HTMLHighlight& p_search, const HTMLHighlight& p_selection, const RID& p_ink_canvas,
-		bool p_selection_only) const {
+		bool p_selection_only, const HTMLTextRenderEffects& p_text_effects) const {
 		for (const HTMLPaintCommand& command : commands) {
 			std::visit([&](const auto& p_draw) {
 				using Draw = std::decay_t<decltype(p_draw)>;
@@ -393,8 +393,17 @@ void fragment() {
 						}
 					}
 					if (p_draw.object_only) return;
+					const Vector2 position = p_draw.position + p_offset;
+					if (p_text_effects.shadow_color.a > 0.0f) {
+						const Vector2 shadow_position = position + p_text_effects.shadow_offset;
+						p_draw.layout.draw_outline(p_text_server, p_canvas, shadow_position,
+							p_text_effects.shadow_outline_size, p_text_effects.shadow_color);
+						p_draw.layout.draw(p_text_server, p_canvas, shadow_position, p_text_effects.shadow_color);
+					}
+					p_draw.layout.draw_outline(p_text_server, p_canvas, position,
+						p_text_effects.outline_size, p_text_effects.outline_color);
 					if (p_ink_canvas.is_valid()) p_draw.layout.draw(p_text_server, p_ink_canvas, p_draw.position + p_offset, Color(1, 1, 1));
-					else if (ink.a > 0) p_draw.layout.draw(p_text_server, p_canvas, p_draw.position + p_offset, ink);
+					else if (ink.a > 0) p_draw.layout.draw(p_text_server, p_canvas, position, ink);
 				}
 				else if constexpr (std::is_same_v<Draw, HTMLImage>) {
 					if (p_selection_only) return;
@@ -626,7 +635,8 @@ void fragment() {
 
 	void HTMLCanvasRenderer::submit(CanvasItem& p_canvas, const Vector2& p_position, const Rect2& p_clip,
 		const std::vector<HTMLPaintRun>& p_runs, const std::vector<HTMLPaintGroup>& p_groups, const std::vector<HTMLPaintRun>& p_diagnostics,
-		const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const Vector2& p_viewport_origin, bool p_selection_only) {
+		const HTMLHighlight& p_selection, const HTMLHighlight& p_search, const Vector2& p_viewport_origin, bool p_selection_only,
+		const HTMLTextRenderEffects& p_text_effects) {
 		const uint64_t instance_id = p_canvas.get_instance_id();
 		CanvasDrawing* drawing = drawings.getptr(instance_id);
 		if (!drawing) {
@@ -720,7 +730,7 @@ void fragment() {
 						if (p_run.material.is_valid()) server.canvas_item_set_material(source, p_run.material->get_rid());
 						configure_run_item(source, p_run);
 						p_run.draw(server, source, Vector2(), text_server.ptr(), p_search, p_selection,
-							add_ink_canvas(p_run, source, ink), p_selection_only);
+							add_ink_canvas(p_run, source, ink), p_selection_only, p_text_effects);
 
 						Ref<ShaderMaterial> material;
 						material.instantiate();
@@ -794,7 +804,7 @@ void fragment() {
 				previous_fixed_background = p_run.fixed_background;
 			}
 			p_run.draw(server, target, offset, text_server.ptr(), p_search, p_selection,
-				add_ink_canvas(p_run, target, ink), p_selection_only);
+				add_ink_canvas(p_run, target, ink), p_selection_only, p_text_effects);
 			if (ink.is_valid()) {
 				drawing->materials.push_back(ink);
 				target = RID();

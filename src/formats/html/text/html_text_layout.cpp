@@ -201,4 +201,16 @@ namespace dockit {
 		}
 		else if (!slice) line->draw(p_canvas, origin, p_color);
 	}
+
+	void HTMLTextLayout::draw_outline(const TextServer* p_server, const RID& p_canvas, const Vector2& p_position,
+		int32_t p_outline_size, const Color& p_color) const {
+		if (!line.is_valid() || p_outline_size <= 0 || p_color.a <= 0.0f) return;
+		const Vector2 origin = p_position - Vector2(inline_trim.x, 0);
+		if (p_server && (spacing || slice)) {
+			const Vector2 baseline = origin + Vector2(0, line_ascent());
+			if (spacing) spacing->draw_outline(*p_server, p_canvas, baseline, p_outline_size, p_color);
+			else p_server->shaped_text_draw_outline(slice->rid, p_canvas, baseline, -1, -1, p_outline_size, p_color);
+		}
+		else if (!slice) line->draw_outline(p_canvas, origin, p_outline_size, p_color);
+	}
 }

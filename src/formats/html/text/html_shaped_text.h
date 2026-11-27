@@ -50,6 +50,8 @@ namespace dockit {
 		float to_native(float p_x) const { return map(p_x, true); }								// 将 HTML 文本布局转换为 Godot 原生文本布局
 		void draw(const godot::TextServer& p_server, const godot::RID& p_canvas, const godot::Vector2& p_baseline,
 			const godot::Color& p_color) const;													// 绘制塑形后的 HTML 文本
+		void draw_outline(const godot::TextServer& p_server, const godot::RID& p_canvas, const godot::Vector2& p_baseline,
+			int32_t p_outline_size, const godot::Color& p_color) const;								// 绘制塑形后 HTML 文本的字形描边
 	};
 
 	struct HTMLShapedText {

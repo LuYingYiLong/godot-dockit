@@ -206,4 +206,14 @@ namespace dockit {
 			else p_server.font_draw_glyph(glyph.font, p_canvas, glyph.size, origin, glyph.index, p_color);
 		}
 	}
+
+	void HTMLTextSpacing::draw_outline(const TextServer& p_server, const RID& p_canvas, const Vector2& p_baseline,
+		int32_t p_outline_size, const Color& p_color) const {
+		if (p_outline_size <= 0 || p_color.a <= 0.0f) return;
+		for (const auto& glyph : glyphs) {
+			if (glyph.missing) continue;
+			p_server.font_draw_glyph_outline(glyph.font, p_canvas, glyph.size, p_outline_size,
+				p_baseline + glyph.position, glyph.index, p_color);
+		}
+	}
 }
