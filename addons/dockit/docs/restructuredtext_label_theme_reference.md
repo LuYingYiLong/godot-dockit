@@ -2,6 +2,12 @@
 
 `RestructuredtextLabel` uses Godot's theme system to style reStructuredText content. All RST styling items use one theme type: `RestructuredtextLabel`. Assign a `Theme` to the viewer or an ancestor `Control`, then edit that type in the Theme editor. The bundled example is [`restructuredtext_theme.tres`](../examples/restructuredtext_theme.tres).
 
+## Author Stylesheet
+
+Assign a `CSSStyleSheet` to `RestructuredtextLabel.stylesheet` to add CSS rules to the rendered document. The label converts its Theme fonts, colors, spacing, and StyleBoxes into the default CSS, then applies the author stylesheet afterward. This lets CSS override the defaults while Theme items continue to provide the baseline style.
+
+For example, a stylesheet can target standard elements such as `h1`, `pre`, `table`, and `td`, as well as RST admonition elements such as `.rst-admonition-note`. If the resource has a source path, its `@import` rules and relative URLs resolve from that stylesheet file.
+
 ## Apply the Example Theme
 
 1. Add a `RestructuredtextLabel` node to a scene.

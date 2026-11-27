@@ -1,6 +1,8 @@
 #pragma once
 
 #include "formats/rst/rst_document.h"
+#include "formats/html/html_layout.h"
+#include "formats/html/css/css_style_sheet.h"
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/font.hpp>
@@ -23,97 +25,18 @@ using namespace godot;
 
 class RestructuredtextLabel;
 
-enum RSTCanvasItemType {
-	RST_CANVAS_ITEM_TEXT,
-	RST_CANVAS_ITEM_IMAGE,
-	RST_CANVAS_ITEM_TABLE,
-};
-
 struct RSTInlineSpan {
 	String text;
 	String link_uri;
 	int64_t start = 0;
 	int64_t end = 0;
-	int32_t footnote_font_size = 0;
 	String footnote_id;
 	Color color;
 	bool bold = false;
 	bool italic = false;
 	bool code = false;
 	bool footnote_reference = false;
-	bool footnote_definition = false;
 	bool custom_color = false;
-};
-
-struct RSTCanvasLine {
-	int32_t item_index = -1;
-	int32_t paragraph_line = -1;
-	int64_t global_start = 0;
-	int64_t global_end = 0;
-	Vector2 position;
-	Vector2 size;
-};
-
-struct RSTTableCell {
-	Ref<TextParagraph> paragraph;
-	Ref<StyleBox> stylebox;
-	Rect2 rect;
-	Rect2 text_rect;
-	String text;
-	std::vector<RSTInlineSpan> spans;
-	int64_t global_start = 0;
-	int64_t global_end = 0;
-	float inline_code_padding_top = 0.0f;
-	float inline_code_padding_bottom = 0.0f;
-	Color text_color;
-	bool header = false;
-};
-
-struct RSTListMarker {
-	String text;
-	Vector2 position;
-	Ref<Font> font;
-	int32_t font_size = 16;
-	Color color;
-};
-
-struct RSTCanvasItem {
-	RSTCanvasItemType type = RST_CANVAS_ITEM_TEXT;
-	Ref<TextParagraph> paragraph;
-	Ref<TextParagraph> header_paragraph;
-	Ref<Texture2D> texture;
-	Ref<StyleBox> panel_stylebox;
-	Ref<StyleBox> header_stylebox;
-	std::vector<RSTInlineSpan> spans;
-	std::vector<RSTInlineSpan> header_spans;
-	std::vector<RSTTableCell> cells;
-	std::vector<RSTListMarker> list_markers;
-	Rect2 rect;
-	Rect2 text_rect;
-	Rect2 header_text_rect;
-	String text;
-	String header_text;
-	int64_t global_start = 0;
-	int64_t global_end = 0;
-	int64_t paragraph_global_start = 0;
-	int64_t paragraph_global_end = 0;
-	int64_t header_global_start = 0;
-	int64_t header_global_end = 0;
-	int64_t footnote_definition_start = -1;
-	int64_t footnote_definition_end = -1;
-	String footnote_id;
-	Color text_color;
-	Color header_text_color;
-	Color background_color;
-	Color border_color;
-	Color header_color;
-	bool framed = false;
-	bool code = false;
-	bool heading = false;
-	bool transition = false;
-	int32_t header_height = 0;
-	int32_t border_width = 0;
-	String anchor;
 };
 
 class RSTDocumentCanvas : public Control {
@@ -123,8 +46,6 @@ private:
 	RestructuredtextLabel* document_view = nullptr;
 	String rst_text;
 	String plain_text;
-	std::vector<RSTCanvasItem> items;
-	std::vector<RSTCanvasLine> lines;
 	bool layout_dirty = true;
 	bool dragging_selection = false;
 	bool selection_dragged = false;
@@ -139,55 +60,14 @@ private:
 	float content_height = 1.0f;
 	float layout_width = 0.0f;
 	Dictionary anchor_offsets;
-	Dictionary footnote_reference_offsets;
-	Dictionary footnote_definition_offsets;
+	Ref<HTMLLayout> html_layout;
 
 	void rebuild_layout();
-	void draw_selection_for_item(const RSTCanvasItem& p_item);
-	void draw_selection_for_paragraph(
-		const Ref<TextParagraph>& p_paragraph,
-		const Rect2& p_text_rect,
-		int64_t p_global_start,
-		int64_t p_global_end
-	);
-	void draw_search_highlight_for_item(const RSTCanvasItem& p_item);
-	void draw_range_background_for_paragraph(
-		const Ref<TextParagraph>& p_paragraph,
-		const Rect2& p_text_rect,
-		int64_t p_global_start,
-		int64_t p_global_end,
-		int64_t p_range_start,
-		int64_t p_range_end,
-		const Color& p_color
-	);
-	void draw_list_markers(const RSTCanvasItem& p_item);
-	void draw_stylebox_or_rect(
-		const Ref<StyleBox>& p_stylebox,
-		const Rect2& p_rect,
-		const Color& p_fallback_color
-	);
-	void draw_span_decorations(
-		const Ref<TextParagraph>& p_paragraph,
-		const Rect2& p_text_rect,
-		const std::vector<RSTInlineSpan>& p_spans,
-		int64_t p_global_start,
-		bool p_draw_code_backgrounds,
-		bool p_draw_link_underlines
-	);
-	void draw_paragraph_text(
-		const Ref<TextParagraph>& p_paragraph,
-		const Rect2& p_text_rect,
-		const std::vector<RSTInlineSpan>& p_spans,
-		int64_t p_global_start,
-		const Color& p_default_color
-	);
 	void _generate_context_menu();
 	void _update_context_menu();
 	Key _get_menu_action_accelerator(const String& p_action);
 	int64_t hit_test_document(const Vector2& p_position) const;
 	String link_uri_at_position(const Vector2& p_position) const;
-	String link_uri_at_character(int64_t p_character) const;
-	String footnote_id_at_character(int64_t p_character, bool p_reference) const;
 	float footnote_target_at_position(const Vector2& p_position);
 	int64_t line_column_to_offset(int32_t p_line, int32_t p_column) const;
 	Vector2i offset_to_line_column(int64_t p_offset) const;
@@ -257,6 +137,7 @@ public:
 private:
 	String rst_text;
 	Ref<RSTDocument> document;
+	Ref<CSSStyleSheet> stylesheet;
 	int32_t access = ACCESS_RESOURCES;
 	String root_subfolder;
 	ScrollContainer* scroll_container = nullptr;
@@ -294,6 +175,8 @@ public:
 	String get_resource_base_dir() const;														// 返回解析文档相对资源时使用的基础目录
 	void set_document(const Ref<RSTDocument>& p_document);										// 设置文档资源
 	Ref<RSTDocument> get_document() const;														// 返回文档资源
+	void set_stylesheet(const Ref<CSSStyleSheet>& p_stylesheet);									// 设置作者样式表
+	Ref<CSSStyleSheet> get_stylesheet() const;														// 返回作者样式表
 	void set_rst_text(const String& p_text);													// 设置要显示的 reStructuredText 文本
 	String get_rst_text() const;																// 返回当前 reStructuredText 文本
 	void set_extra_font_size(int32_t p_extra);													// 设置附加字号

@@ -7,6 +7,7 @@
 		[RestructuredtextLabel] renders imported [RSTDocument] resources or raw reStructuredText text. It supports headings and anchors, paragraphs, lists, code blocks, tables, admonitions, images, toctrees, document links, downloads, text selection, search, and external HTTP links.
 		Configure [code]dockit/rst/document_roots[/code] in Project Settings to generate the small reference index used by cross-document [code]:ref:[/code] links and toctree navigation. Relative resources resolve from the source [code].rst[/code] file when one is assigned; otherwise [member access] and [member root_subfolder] define their base directory.
 		Internal document links emit [signal link_pressed]. Connect to that signal to load another document and scroll to any fragment in the destination.
+		A [CSSStyleSheet] assigned to [member stylesheet] is applied after the theme-generated defaults, so CSS can refine the rendered HTML without changing the RST source.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -100,6 +101,12 @@
 			<return type="String" />
 			<description>
 				Returns the raw reStructuredText text currently displayed.
+			</description>
+		</method>
+		<method name="get_stylesheet" qualifiers="const">
+			<return type="CSSStyleSheet" />
+			<description>
+				Returns the author stylesheet applied after the theme-generated defaults.
 			</description>
 		</method>
 		<method name="has_anchor" qualifiers="const">
@@ -241,6 +248,13 @@
 			<param index="0" name="document" type="RSTDocument" />
 			<description>
 				Sets the document resource to display.
+			</description>
+		</method>
+		<method name="set_stylesheet">
+			<return type="void" />
+			<param index="0" name="stylesheet" type="CSSStyleSheet" />
+			<description>
+				Sets the author stylesheet for the rendered document. Changes to the resource reapply its CSS.
 			</description>
 		</method>
 		<method name="set_context_menu_enabled">
@@ -430,6 +444,9 @@
 		</member>
 		<member name="rst_text" type="String" setter="set_rst_text" getter="get_rst_text">
 			Raw reStructuredText displayed when no [RSTDocument] is assigned.
+		</member>
+		<member name="stylesheet" type="CSSStyleSheet" setter="set_stylesheet" getter="get_stylesheet">
+			Optional author stylesheet applied after the theme-generated defaults. Linked CSS imports use the stylesheet resource's source path.
 		</member>
 		<member name="scroll_active" type="bool" setter="set_scroll_active" getter="is_scroll_active" default="true">
 			If [code]false[/code], disables internal vertical scrolling.

@@ -1744,6 +1744,18 @@ msgstr "清除 [param type] 对应的 MIME 数据；该参数为空时清除全�
 msgid "Clears the current document and its rendered content."
 msgstr "清除当前文档及其渲染内容。"
 
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the author stylesheet applied after the theme-generated defaults."
+msgstr "返回应用在主题生成的默认样式之后的作者样式表。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Sets the author stylesheet for the rendered document. Changes to the resource reapply its CSS."
+msgstr "设置渲染文档使用的作者样式表。资源发生更改时会重新应用其中的 CSS。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Optional author stylesheet applied after the theme-generated defaults. Linked CSS imports use the stylesheet resource's source path."
+msgstr "可选的作者样式表，会在主题生成的默认样式之后应用。链接的 CSS 导入会以样式表资源的源路径解析。"
+
 #. doc_classes/HTMLCanvasRenderingContext2D.xml
 msgid "Clears the current path."
 msgstr "清空当前路径。"
@@ -8537,14 +8549,16 @@ msgid ""
 "resources resolve from the source [code].rst[/code] file when one is assigned; otherwise [member "
 "access] and [member root_subfolder] define their base directory.\n"
 "Internal document links emit [signal link_pressed]. Connect to that signal to load another "
-"document and scroll to any fragment in the destination."
+"document and scroll to any fragment in the destination.\n"
+"A [CSSStyleSheet] assigned to [member stylesheet] is applied after the theme-generated defaults, so CSS can refine the rendered HTML without changing the RST source."
 msgstr ""
 "[RestructuredtextLabel] 可以渲染已导入的 [RSTDocument] 资源或原始 reStructuredText "
 "文本。支持标题与锚点、段落、列表、代码块、表格、告警块、图片、目录树、文档链接、下载、文本选择、搜索和外部 HTTP 链接。\n"
 "在项目设置中配置 [code]dockit/rst/document_roots[/code]，即可生成跨文档 [code]:ref:[/code] "
 "链接和目录树导航所需的轻量引用索引。指定了源文件时，相对资源路径以源 [code].rst[/code] 文件所在目录为基准；否则由 [member access] 和 [member "
 "root_subfolder] 确定基准目录。\n"
-"激活内部文档链接时会发出 [signal link_pressed]。连接该信号后，宿主可以加载其他文档并滚动到目标片段。"
+"激活内部文档链接时会发出 [signal link_pressed]。连接该信号后，宿主可以加载其他文档并滚动到目标片段。\n"
+"分配给 [member stylesheet] 的 [CSSStyleSheet] 会在主题生成的默认样式后应用，因此可以用 CSS 调整 HTML 渲染效果，而不必修改 RST 源文档。"
 
 #. doc_classes/HTMLInputEvent.xml
 msgid ""
