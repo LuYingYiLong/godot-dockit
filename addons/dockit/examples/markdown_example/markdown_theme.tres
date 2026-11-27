@@ -120,11 +120,17 @@ bg_color = Color(1, 1, 1, 0.023529412)
 [resource]
 MarkdownLabel/colors/code_block_font_color = Color(1, 1, 1, 1)
 MarkdownLabel/colors/code_text_font_color = Color(1, 1, 1, 1)
+MarkdownLabel/colors/font_outline_color = Color(0, 0, 0, 1)
+MarkdownLabel/colors/font_shadow_color = Color(1, 1, 1, 1)
 MarkdownLabel/colors/footnote_ref_font_color = Color(0.8089983, 0.8089983, 0.8089982, 1)
 MarkdownLabel/colors/footnote_text_font_color = Color(0.8745098, 0.8745098, 0.8745098, 0.5019608)
 MarkdownLabel/colors/highlight_font_color = Color(1, 0.7000593, 0.21077639, 1)
 MarkdownLabel/colors/selection_color = Color(0.101960786, 0.101960786, 1, 0.8)
 MarkdownLabel/colors/strikethrough_color = Color(1, 1, 1, 1)
+MarkdownLabel/constants/outline_size = 0
+MarkdownLabel/constants/shadow_offset_x = 0
+MarkdownLabel/constants/shadow_offset_y = 0
+MarkdownLabel/constants/shadow_outline_size = 16
 MarkdownLabel/constants/table_striped = 1
 MarkdownLabel/font_sizes/h1_font_size = 36
 MarkdownLabel/font_sizes/h2_font_size = 26
