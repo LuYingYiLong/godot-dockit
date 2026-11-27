@@ -17,6 +17,17 @@ Theme items are converted to default CSS for the shared Markdown/HTML layout. Do
 
 ## Supported Theme Properties
 
+### Page Insets
+
+| Property | Type | Default |
+|--------|------|--------|
+| `margin_left` | int | 16 |
+| `margin_top` | int | 16 |
+| `margin_right` | int | 16 |
+| `margin_bottom` | int | 0 |
+
+These constants control the insets between the control edges and the rendered document.
+
 ### Fonts
 
 | Property | Type | Description | Fallback |

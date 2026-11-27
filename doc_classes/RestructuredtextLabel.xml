@@ -42,12 +42,6 @@
 				Returns the rendered content height in pixels.
 			</description>
 		</method>
-		<method name="get_content_margin" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns the uniform margin around the document content.
-			</description>
-		</method>
 		<method name="get_document" qualifiers="const">
 			<return type="RSTDocument" />
 			<description>
@@ -256,13 +250,6 @@
 				Sets whether the right-click context menu is enabled.
 			</description>
 		</method>
-		<method name="set_content_margin">
-			<return type="void" />
-			<param index="0" name="margin" type="int" />
-			<description>
-				Sets the uniform margin around the document content. Negative values are treated as zero.
-			</description>
-		</method>
 		<method name="set_access">
 			<return type="void" />
 			<param index="0" name="access" type="int" enum="RestructuredtextLabel.Access" />
@@ -416,9 +403,6 @@
 		</member>
 		<member name="autowrap_trim_flags" type="int" setter="set_autowrap_trim_flags" getter="get_autowrap_trim_flags" enum="TextServer.LineBreakFlag" is_bitfield="true" default="192">
 			Controls whether spaces at wrapped line edges are trimmed.
-		</member>
-		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
-			The margin around the document content.
 		</member>
 		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="false">
 			If [code]true[/code], a context menu with Copy and Select All options appears on right-click.

@@ -5441,10 +5441,6 @@ msgid ""
 "persistent behavior storage."
 msgstr "返回已配置的存储命名空间；未配置时返回持久化行为存储所用的文档来源和宿主标识。"
 
-#. doc_classes/MarkdownLabel.xml
-msgid "Returns the content margin in pixels. The default value is [code]16[/code]."
-msgstr "返回内容边距，单位为像素。默认值为 [code]16[/code]。"
-
 #. doc_classes/HTMLLayout.xml
 msgid ""
 "Returns the content size in pixels from the most recent successful layout of the current "
@@ -6220,10 +6216,6 @@ msgstr "返回布局总尺寸，单位为像素。"
 msgid "Returns the total layout width in pixels."
 msgstr "返回布局的总宽度，单位为像素。"
 
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Returns the uniform margin around the document content."
-msgstr "返回文档内容四周的统一边距。"
-
 #. doc_classes/HTMLElement.xml
 msgid ""
 "Returns the union of the rectangles from [method get_client_rects], or an empty rectangle if "
@@ -6743,12 +6735,6 @@ msgid ""
 "[code]0[/code] to [code]16[/code] and emits [signal extra_font_size_changed]."
 msgstr "设置应用于渲染文本的额外字号。值会限制在 [code]0[/code] 到 [code]16[/code] 范围内，并发出 [signal extra_font_size_changed]。"
 
-#. doc_classes/MarkdownLabel.xml
-msgid ""
-"Sets the content margin in pixels. Clamped to the range [code][0, 128][/code]. The default value "
-"is [code]16[/code]."
-msgstr "设置内容边距，单位为像素。取值限制在 [code][0, 128][/code]。默认值为 [code]16[/code]。"
-
 #. doc_classes/RestructuredtextLabel.xml
 msgid ""
 "Sets the default source for relative resource paths: project resources, user data, or the file "
@@ -6843,10 +6829,6 @@ msgid ""
 "Sets the start boundary. If it follows the end or has a different tree root, both endpoints move "
 "to the new boundary."
 msgstr "设置起点。如果起点位于终点之后或属于不同树根，两个端点都移动到新位置。"
-
-#. doc_classes/RestructuredtextLabel.xml
-msgid "Sets the uniform margin around the document content. Negative values are treated as zero."
-msgstr "设置文档内容四周的统一边距。负值按零处理。"
 
 #. doc_classes/HTMLLabel.xml
 #. doc_classes/MarkdownLabel.xml
@@ -7302,12 +7284,6 @@ msgstr "此事件中发生变化的触点。"
 msgid "The contact position in the label's local coordinates."
 msgstr "触点在标签局部坐标系中的位置。"
 
-#. doc_classes/MarkdownLabel.xml
-msgid ""
-"The content margin in pixels. Controls the padding between the MarkdownLabel edges and the "
-"rendered content."
-msgstr "内容边距，单位为像素。控制 MarkdownLabel 边缘与渲染内容之间的留白。"
-
 #. doc_classes/HTMLInputElement.xml
 msgid ""
 "The current checked state. Before a script or user sets it, the state follows the "
@@ -7705,11 +7681,6 @@ msgid ""
 "The local video source. If omitted, the player tries the child [code]<source>[/code] elements in "
 "order."
 msgstr "本地视频源。省略时按顺序尝试 [code]<source>[/code] 子元素。"
-
-# | msgid "The live document node."
-#. doc_classes/RestructuredtextLabel.xml
-msgid "The margin around the document content."
-msgstr "文档内容周围的边距。"
 
 #. doc_classes/HTMLLinkElement.xml
 #. doc_classes/HTMLStyleElement.xml

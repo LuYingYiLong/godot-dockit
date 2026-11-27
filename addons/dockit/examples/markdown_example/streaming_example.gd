@@ -33,10 +33,10 @@ $$
 
 ~~~mermaid
 flowchart LR
-    A["Receive chunk"] --> B{"Complete block?"}
-    B --> C["Update Markdown layout"]
-    B --> D["Keep parsing tail"]
-    C --> E["Mixed preview"]
+	A["Receive chunk"] --> B{"Complete block?"}
+	B --> C["Update Markdown layout"]
+	B --> D["Keep parsing tail"]
+	C --> E["Mixed preview"]
     D --> E
 ~~~
 

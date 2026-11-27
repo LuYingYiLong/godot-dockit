@@ -135,7 +135,6 @@ size_flags_vertical = 3
 gutters_draw_line_numbers = true
 
 [node name="MarkdownLabel" type="MarkdownLabel" parent="PanelContainer/HBoxContainer/HSplitContainer" unique_id=868686161]
-theme = ExtResource("3_markdown_theme")
 parse_latex = true
 parse_html = true
 parse_mermaid = true
@@ -143,9 +142,9 @@ context_menu_enabled = true
 streaming_enabled = true
 scroll_following = true
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("3_markdown_theme")
 
 [node name="StreamTimer" type="Timer" parent="." unique_id=16925897]
 unique_name_in_owner = true

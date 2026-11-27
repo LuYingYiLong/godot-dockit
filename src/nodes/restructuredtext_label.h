@@ -262,7 +262,6 @@ private:
 	ScrollContainer* scroll_container = nullptr;
 	MarginContainer* margin_container = nullptr;
 	RSTDocumentCanvas* document_canvas = nullptr;
-	int32_t content_margin = 16;
 	int32_t extra_font_size = 0;
 	bool open_external_links = true;
 	bool selection_enabled = true;
@@ -297,8 +296,6 @@ public:
 	Ref<RSTDocument> get_document() const;														// 返回文档资源
 	void set_rst_text(const String& p_text);													// 设置要显示的 reStructuredText 文本
 	String get_rst_text() const;																// 返回当前 reStructuredText 文本
-	void set_content_margin(int32_t p_margin);													// 设置内容边距
-	int32_t get_content_margin() const;															// 返回内容边距
 	void set_extra_font_size(int32_t p_extra);													// 设置附加字号
 	int32_t get_extra_font_size() const;														// 返回附加字号
 	void set_open_external_links(bool p_enabled);												// 设置自动打开外部链接功能

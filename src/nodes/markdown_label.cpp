@@ -2960,10 +2960,6 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stylesheet"), &MarkdownLabel::get_stylesheet);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stylesheet", PROPERTY_HINT_RESOURCE_TYPE, "CSSStyleSheet"), "set_stylesheet", "get_stylesheet");
 
-	ClassDB::bind_method(D_METHOD("set_content_margin", "margin"), &MarkdownLabel::set_content_margin);
-	ClassDB::bind_method(D_METHOD("get_content_margin"), &MarkdownLabel::get_content_margin);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "content_margin", PROPERTY_HINT_RANGE, "0,128"), "set_content_margin", "get_content_margin");
-
 	ClassDB::bind_method(D_METHOD("set_extra_font_size", "size"), &MarkdownLabel::set_extra_font_size);
 	ClassDB::bind_method(D_METHOD("get_extra_font_size"), &MarkdownLabel::get_extra_font_size);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16"), "set_extra_font_size", "get_extra_font_size");
@@ -3124,9 +3120,10 @@ void MarkdownLabel::apply_theme_settings() {
 		return;
 	}
 
-	margin_container->add_theme_constant_override("margin_left", content_margin);
-	margin_container->add_theme_constant_override("margin_right", content_margin);
-	margin_container->add_theme_constant_override("margin_top", content_margin);
+	margin_container->add_theme_constant_override("margin_left", get_theme_constant_or(this, "MarkdownLabel", "margin_left", 16));
+	margin_container->add_theme_constant_override("margin_top", get_theme_constant_or(this, "MarkdownLabel", "margin_top", 16));
+	margin_container->add_theme_constant_override("margin_right", get_theme_constant_or(this, "MarkdownLabel", "margin_right", 16));
+	margin_container->add_theme_constant_override("margin_bottom", get_theme_constant_or(this, "MarkdownLabel", "margin_bottom", 0));
 	if (fit_content) {
 		update_minimum_size();
 	}
@@ -3194,8 +3191,11 @@ Vector2 MarkdownLabel::_get_minimum_size() const {
 		return Vector2();
 	}
 
+	Control* self = const_cast<MarkdownLabel*>(this);
+	const int32_t top = get_theme_constant_or(self, "MarkdownLabel", "margin_top", 16);
+	const int32_t bottom = get_theme_constant_or(self, "MarkdownLabel", "margin_bottom", 0);
 	const float text_height = canvas == nullptr ? 1.0f : canvas->get_content_height();
-	return Vector2(0.0f, text_height + static_cast<float>(content_margin));
+	return Vector2(0.0f, text_height + top + bottom);
 }
 
 void MarkdownLabel::set_markdown_text(const String& p_text) {
@@ -3501,18 +3501,6 @@ void MarkdownLabel::set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> 
 
 BitField<TextServer::LineBreakFlag> MarkdownLabel::get_autowrap_trim_flags() const {
 	return autowrap_flags_trim;
-}
-
-void MarkdownLabel::set_content_margin(int32_t p_margin) {
-	content_margin = std::max<int32_t>(0, std::min<int32_t>(p_margin, 128));
-	apply_theme_settings();
-	if (fit_content) {
-		update_minimum_size();
-	}
-}
-
-int32_t MarkdownLabel::get_content_margin() const {
-	return content_margin;
 }
 
 void MarkdownLabel::set_extra_font_size(int32_t p_extra) {

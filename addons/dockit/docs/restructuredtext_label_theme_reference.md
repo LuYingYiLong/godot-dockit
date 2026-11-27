@@ -16,7 +16,7 @@ The item category is shown in the **RestructuredtextLabel** theme type. For exam
 
 | Category | Item | Default | Description |
 | --- | --- | --- | --- |
-| Constant | `margin_left`, `margin_top`, `margin_right`, `margin_bottom` | `content_margin` (16) | Insets around the document. Each side can be set independently. |
+| Constant | `margin_left`, `margin_top`, `margin_right`, `margin_bottom` | 16 | Insets around the document. Each side can be set independently. |
 | Font | `normal_font` | Godot fallback | Body text and admonition font. |
 | Font | `bold_font` | `normal_font` | Strong text font. |
 | Font | `italics_font` or `italic_font` | `normal_font` | Emphasis font. `italics_font` takes precedence if both are set. |

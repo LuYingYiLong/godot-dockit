@@ -96,11 +96,6 @@ msgstr "裁剪文本"
 msgid "Component Scripts"
 msgstr "组件脚本"
 
-#. src/nodes/markdown_label.cpp
-#. src/nodes/restructuredtext_label.cpp
-msgid "Content Margin"
-msgstr "内容边距"
-
 #. src/nodes/html_label.cpp
 #. src/nodes/markdown_label.cpp
 #. src/nodes/restructuredtext_label.cpp

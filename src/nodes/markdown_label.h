@@ -320,7 +320,6 @@ private:
 	ScrollContainer* scroll_container = nullptr;
 	MarginContainer* margin_container = nullptr;
 	MarkdownLabelCanvas* canvas = nullptr;
-	int32_t content_margin = 16;
 	int32_t extra_font_size = 0;
 	bool open_external_links = true;
 	bool parse_latex = false;
@@ -416,8 +415,6 @@ public:
 	void set_autowrap_trim_flags(BitField<TextServer::LineBreakFlag> p_flags);					// 设置自动换行裁剪标志
 	BitField<TextServer::LineBreakFlag> get_autowrap_trim_flags() const;						// 返回自动换行裁剪标志
 
-	void set_content_margin(int32_t p_margin);													// 设置内容边距
-	int32_t get_content_margin() const;															// 返回内容边距
 
 	void set_extra_font_size(int32_t p_extra);													// 设置附加字号
 	int32_t get_extra_font_size() const;														// 返回附加字号

@@ -2831,8 +2831,6 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_resource_base_dir"), &RestructuredtextLabel::get_resource_base_dir);
 	ClassDB::bind_method(D_METHOD("set_rst_text", "text"), &RestructuredtextLabel::set_rst_text);
 	ClassDB::bind_method(D_METHOD("get_rst_text"), &RestructuredtextLabel::get_rst_text);
-	ClassDB::bind_method(D_METHOD("set_content_margin", "margin"), &RestructuredtextLabel::set_content_margin);
-	ClassDB::bind_method(D_METHOD("get_content_margin"), &RestructuredtextLabel::get_content_margin);
 	ClassDB::bind_method(D_METHOD("set_extra_font_size", "extra"), &RestructuredtextLabel::set_extra_font_size);
 	ClassDB::bind_method(D_METHOD("get_extra_font_size"), &RestructuredtextLabel::get_extra_font_size);
 	ClassDB::bind_method(D_METHOD("set_open_external_links", "enabled"), &RestructuredtextLabel::set_open_external_links);
@@ -2885,7 +2883,6 @@ void RestructuredtextLabel::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "rst_text", PROPERTY_HINT_MULTILINE_TEXT), "set_rst_text", "get_rst_text");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "access", PROPERTY_HINT_ENUM, "Resources,User Data,File System"), "set_access", "get_access");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_subfolder", PROPERTY_HINT_DIR), "set_root_subfolder", "get_root_subfolder");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "content_margin", PROPERTY_HINT_RANGE, "0,128,1,or_greater"), "set_content_margin", "get_content_margin");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "extra_font_size", PROPERTY_HINT_RANGE, "0,16,1"), "set_extra_font_size", "get_extra_font_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "open_external_links"), "set_open_external_links", "get_open_external_links");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "autowrap_mode", PROPERTY_HINT_ENUM, "Off,Arbitrary,Word,Word (Smart)"), "set_autowrap_mode", "get_autowrap_mode");
@@ -2956,8 +2953,8 @@ Vector2 RestructuredtextLabel::_get_minimum_size() const {
 	}
 
 	Control* self = const_cast<RestructuredtextLabel*>(this);
-	const int32_t top = get_theme_constant_or(self, "RestructuredtextLabel", "margin_top", content_margin);
-	const int32_t bottom = get_theme_constant_or(self, "RestructuredtextLabel", "margin_bottom", content_margin);
+	const int32_t top = get_theme_constant_or(self, "RestructuredtextLabel", "margin_top", 16);
+	const int32_t bottom = get_theme_constant_or(self, "RestructuredtextLabel", "margin_bottom", 16);
 	const float text_height = document_canvas == nullptr ? 1.0f : document_canvas->get_content_height();
 	return Vector2(0.0f, text_height + top + bottom);
 }
@@ -2998,10 +2995,10 @@ void RestructuredtextLabel::apply_theme_settings() {
 		return;
 	}
 
-	const int32_t left = get_theme_constant_or(this, "RestructuredtextLabel", "margin_left", content_margin);
-	const int32_t top = get_theme_constant_or(this, "RestructuredtextLabel", "margin_top", content_margin);
-	const int32_t right = get_theme_constant_or(this, "RestructuredtextLabel", "margin_right", content_margin);
-	const int32_t bottom = get_theme_constant_or(this, "RestructuredtextLabel", "margin_bottom", content_margin);
+	const int32_t left = get_theme_constant_or(this, "RestructuredtextLabel", "margin_left", 16);
+	const int32_t top = get_theme_constant_or(this, "RestructuredtextLabel", "margin_top", 16);
+	const int32_t right = get_theme_constant_or(this, "RestructuredtextLabel", "margin_right", 16);
+	const int32_t bottom = get_theme_constant_or(this, "RestructuredtextLabel", "margin_bottom", 16);
 
 	margin_container->add_theme_constant_override("margin_left", left);
 	margin_container->add_theme_constant_override("margin_top", top);
@@ -3093,15 +3090,6 @@ void RestructuredtextLabel::set_rst_text(const String& p_text) {
 
 String RestructuredtextLabel::get_rst_text() const {
 	return rst_text;
-}
-
-void RestructuredtextLabel::set_content_margin(int32_t p_margin) {
-	content_margin = std::max(0, p_margin);
-	apply_theme_settings();
-}
-
-int32_t RestructuredtextLabel::get_content_margin() const {
-	return content_margin;
 }
 
 void RestructuredtextLabel::set_extra_font_size(int32_t p_extra) {

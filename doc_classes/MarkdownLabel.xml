@@ -79,12 +79,6 @@
 				Returns the total content height in pixels, or [code]1.0[/code] if the canvas has not been created yet.
 			</description>
 		</method>
-		<method name="get_content_margin" qualifiers="const">
-			<return type="int" />
-			<description>
-				Returns the content margin in pixels. The default value is [code]16[/code].
-			</description>
-		</method>
 		<method name="get_extra_font_size" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -326,13 +320,6 @@
 				Sets whether streaming layout updates are deferred and coalesced. This is useful for AI-style token streaming, especially when [member fit_content] is enabled.
 			</description>
 		</method>
-		<method name="set_content_margin">
-			<return type="void" />
-			<param index="0" name="margin" type="int" />
-			<description>
-				Sets the content margin in pixels. Clamped to the range [code][0, 128][/code]. The default value is [code]16[/code].
-			</description>
-		</method>
 		<method name="set_context_menu_enabled">
 			<return type="void" />
 			<param index="0" name="enabled" type="bool" />
@@ -448,9 +435,6 @@
 		</member>
 		<member name="access" type="int" setter="set_access" getter="get_access" enum="MarkdownLabel.Access" default="0">
 			Selects Resources, User Data, or File System as the default source for relative resource paths. A loaded Markdown file's directory takes precedence.
-		</member>
-		<member name="content_margin" type="int" setter="set_content_margin" getter="get_content_margin" default="16">
-			The content margin in pixels. Controls the padding between the MarkdownLabel edges and the rendered content.
 		</member>
 		<member name="context_menu_enabled" type="bool" setter="set_context_menu_enabled" getter="is_context_menu_enabled" default="false">
 			If [code]true[/code], a context menu with Copy and Select All options appears on right-click.
