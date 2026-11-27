@@ -23,6 +23,8 @@ The item category is shown in the **RestructuredtextLabel** theme type. For exam
 | Font | `bold_italics_font` or `bold_italic_font` | `bold_font` | Bold emphasis font. `bold_italics_font` takes precedence if both are set. |
 | Font Size | `normal_font_size` | 16 | Body font size in pixels. |
 | Color | `font_color` | White | Body text color. |
+| Color | `font_outline_color` | `Color(0, 0, 0, 1)` | Glyph outline color. |
+| Color | `font_shadow_color` | Transparent black | Shadow and shadow-outline color. |
 | Color | `link_color` | `Color(0.36, 0.62, 1.0)` | Link text and underline color. |
 | Color | `selection_color` | `Color(0.22, 0.45, 0.95, 0.45)` | Selected text background. |
 | Color | `search_result_color` | `Color(1.0, 0.72, 0.16, 0.42)` | Search match background. |
@@ -30,6 +32,16 @@ The item category is shown in the **RestructuredtextLabel** theme type. For exam
 | Constant | `line_separation` | 2 | Extra vertical space between lines. |
 | Constant | `paragraph_separation` | 10 | Default gap after a block. |
 | Constant | `text_space_before`, `text_space_after` | 0, `paragraph_separation` | Spacing around regular paragraphs. |
+
+### Text Effects
+
+Text effects use Godot's shaped-text drawing API, so they do not create extra shader drawing items. The shadow is disabled by the default transparent `font_shadow_color`.
+
+| Category | Item | Default | Description |
+| --- | --- | --- | --- |
+| Constant | `outline_size` | 0 | Glyph outline thickness in pixels, clamped to `[0, 16]`. |
+| Constant | `shadow_outline_size` | 1 | Shadow glyph outline thickness in pixels, clamped to `[0, 16]`. |
+| Constant | `shadow_offset_x`, `shadow_offset_y` | 1, 1 | Shadow offset in pixels. |
 
 ### Footnotes
 

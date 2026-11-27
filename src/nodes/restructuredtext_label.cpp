@@ -629,6 +629,9 @@ namespace {
 	}
 
 	static int32_t get_theme_constant_or(Control* p_owner, const StringName& p_type, const StringName& p_name, int32_t p_default) {
+		if (p_owner != nullptr && p_owner->has_theme_constant_override(p_name)) {
+			return p_owner->get_theme_constant(p_name, p_type);
+		}
 		const Ref<Theme> theme = p_owner == nullptr ? Ref<Theme>() : p_owner->get_theme();
 		if (theme.is_valid() && theme->has_constant(p_name, p_type)) {
 			return theme->get_constant(p_name, p_type);
@@ -641,6 +644,9 @@ namespace {
 	}
 
 	static Color get_theme_color_or(Control* p_owner, const StringName& p_type, const StringName& p_name, const Color& p_default) {
+		if (p_owner != nullptr && p_owner->has_theme_color_override(p_name)) {
+			return p_owner->get_theme_color(p_name, p_type);
+		}
 		const Ref<Theme> theme = p_owner == nullptr ? Ref<Theme>() : p_owner->get_theme();
 		if (theme.is_valid() && theme->has_color(p_name, p_type)) {
 			return theme->get_color(p_name, p_type);
@@ -650,6 +656,42 @@ namespace {
 		}
 
 		return p_default;
+	}
+
+	struct RSTTextEffects {
+		int32_t outline_size = 0;
+		Color outline_color = Color(0.0f, 0.0f, 0.0f, 1.0f);
+		int32_t shadow_outline_size = 1;
+		Vector2 shadow_offset = Vector2(1.0f, 1.0f);
+		Color shadow_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
+	};
+
+	static RSTTextEffects get_rst_text_effects(Control* p_owner) {
+		RSTTextEffects effects;
+		effects.outline_size = std::clamp(get_theme_constant_or(p_owner, "RestructuredtextLabel", "outline_size", 0), 0, 16);
+		effects.outline_color = get_theme_color_or(p_owner, "RestructuredtextLabel", "font_outline_color", effects.outline_color);
+		effects.shadow_outline_size = std::clamp(get_theme_constant_or(p_owner, "RestructuredtextLabel", "shadow_outline_size", 1), 0, 16);
+		effects.shadow_offset = Vector2(get_theme_constant_or(p_owner, "RestructuredtextLabel", "shadow_offset_x", 1),
+			get_theme_constant_or(p_owner, "RestructuredtextLabel", "shadow_offset_y", 1));
+		effects.shadow_color = get_theme_color_or(p_owner, "RestructuredtextLabel", "font_shadow_color", effects.shadow_color);
+		return effects;
+	}
+
+	static void draw_rst_text_effects(const Ref<TextServer>& p_text_server, const RID& p_canvas, const RID& p_line,
+		const Vector2& p_position, double p_clip_from, double p_clip_to, const RSTTextEffects& p_effects) {
+		if (p_text_server.is_null()) return;
+		if (p_effects.shadow_color.a > 0.0f) {
+			const Vector2 shadow_position = p_position + p_effects.shadow_offset;
+			if (p_effects.shadow_outline_size > 0) {
+				p_text_server->shaped_text_draw_outline(p_line, p_canvas, shadow_position, p_clip_from, p_clip_to,
+					p_effects.shadow_outline_size, p_effects.shadow_color);
+			}
+			p_text_server->shaped_text_draw(p_line, p_canvas, shadow_position, p_clip_from, p_clip_to, p_effects.shadow_color);
+		}
+		if (p_effects.outline_size > 0 && p_effects.outline_color.a > 0.0f) {
+			p_text_server->shaped_text_draw_outline(p_line, p_canvas, p_position, p_clip_from, p_clip_to,
+				p_effects.outline_size, p_effects.outline_color);
+		}
 	}
 
 	static Ref<Font> get_theme_font_or(Control* p_owner, const StringName& p_type, const StringName& p_name) {
@@ -2164,9 +2206,23 @@ void RSTDocumentCanvas::draw_selection_for_paragraph(const Ref<TextParagraph>& p
 
 void RSTDocumentCanvas::draw_list_markers(const RSTCanvasItem& p_item) {
 	const RID canvas = get_canvas_item();
+	const RSTTextEffects text_effects = get_rst_text_effects(document_view);
 	for (const RSTListMarker& marker : p_item.list_markers) {
 		if (marker.font.is_null() || marker.text.is_empty()) {
 			continue;
+		}
+		if (text_effects.shadow_color.a > 0.0f) {
+			const Vector2 shadow_position = marker.position + text_effects.shadow_offset;
+			if (text_effects.shadow_outline_size > 0) {
+				marker.font->draw_string_outline(canvas, shadow_position, marker.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					marker.font_size, text_effects.shadow_outline_size, text_effects.shadow_color);
+			}
+			marker.font->draw_string(canvas, shadow_position, marker.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				marker.font_size, text_effects.shadow_color);
+		}
+		if (text_effects.outline_size > 0 && text_effects.outline_color.a > 0.0f) {
+			marker.font->draw_string_outline(canvas, marker.position, marker.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				marker.font_size, text_effects.outline_size, text_effects.outline_color);
 		}
 		marker.font->draw_string(canvas, marker.position, marker.text, HORIZONTAL_ALIGNMENT_LEFT, -1, marker.font_size, marker.color);
 	}
@@ -2270,6 +2326,7 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 	}
 
 	const RID canvas = get_canvas_item();
+	const RSTTextEffects text_effects = get_rst_text_effects(document_view);
 	const Color code_color = get_theme_color_or(document_view, "RestructuredtextLabel", "inline_code_font_color", Color(0.86, 0.88, 0.91, 1.0));
 	const Color link_color = get_theme_color_or(document_view, "RestructuredtextLabel", "link_color", Color(0.36, 0.62, 1.0, 1.0));
 	const Color footnote_ref_color = get_theme_color_or(document_view, "RestructuredtextLabel", "footnote_ref_font_color", Color(0.809f, 0.809f, 0.809f, 1.0f));
@@ -2280,6 +2337,7 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 		const Vector2 line_position = Vector2(p_text_rect.position.x, y + p_paragraph->get_line_ascent(line_index));
 		const Vector2i range = p_paragraph->get_line_range(line_index);
 		if (p_spans.empty()) {
+			draw_rst_text_effects(text_server, canvas, line_rid, line_position, -1, -1, text_effects);
 			text_server->shaped_text_draw(line_rid, canvas, line_position, -1, -1, p_default_color);
 		}
 		else {
@@ -2297,6 +2355,8 @@ void RSTDocumentCanvas::draw_paragraph_text(const Ref<TextParagraph>& p_paragrap
 					if (span.footnote_reference) {
 						draw_position.y -= static_cast<float>(span.footnote_font_size) * 0.35f;
 					}
+					draw_rst_text_effects(text_server, canvas, line_rid, draw_position,
+						selected_range.x, selected_range.y, text_effects);
 					text_server->shaped_text_draw(line_rid, canvas, draw_position, selected_range.x, selected_range.y, span_color);
 				}
 			}
