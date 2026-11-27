@@ -48,6 +48,8 @@ Footnote reference [1]_.
 	await process_frame
 	var rendered_html: String = label.get_rendered_html()
 	_check(rendered_html.contains("<h1") and rendered_html.contains("<table") and rendered_html.contains("Footnote definition"), "RST rendered HTML did not expose the current layout DOM")
+	var html_layout: HTMLLayout = label.get_html_layout()
+	_check(html_layout != null and html_layout.get_body() != null, "RestructuredtextLabel did not expose its live HTMLLayout")
 	label.select_all()
 	var selected_text: String = label.get_selected_text()
 	_check(label.get_rendered_block_count() >= 7, "RST blocks did not reach the shared HTML renderer")

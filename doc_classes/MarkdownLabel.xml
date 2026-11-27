@@ -55,6 +55,12 @@
 				Returns the list of Markdown heading anchors and IDs from laid-out HTML blocks in the document.
 			</description>
 		</method>
+		<method name="get_html_layout" qualifiers="const">
+			<return type="HTMLLayout" />
+			<description>
+				Returns the internal [HTMLLayout] currently used by this control, or [code]null[/code] if its canvas has not been created yet. The layout is required by the control and is not a scene-tree child to remove. Do not call [method Object.free] on it or otherwise invalidate it, as doing so may cause a crash.
+			</description>
+		</method>
 		<method name="get_autowrap_mode" qualifiers="const">
 			<return type="int" enum="TextServer.AutowrapMode" />
 			<description>

@@ -449,6 +449,7 @@ void RSTDocumentCanvas::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &RSTDocumentCanvas::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &RSTDocumentCanvas::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &RSTDocumentCanvas::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_html_layout"), &RSTDocumentCanvas::get_html_layout);
 	ClassDB::bind_method(D_METHOD("get_rendered_html"), &RSTDocumentCanvas::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &RSTDocumentCanvas::get_content_height);
 	ClassDB::bind_method(D_METHOD("get_table_cell_count"), &RSTDocumentCanvas::get_table_cell_count);
@@ -717,6 +718,11 @@ String RSTDocumentCanvas::get_selected_text() const {
 int32_t RSTDocumentCanvas::get_rendered_block_count() {
 	rebuild_layout();
 	return rendered_block_count;
+}
+
+Ref<HTMLLayout> RSTDocumentCanvas::get_html_layout() {
+	rebuild_layout();
+	return html_layout;
 }
 
 String RSTDocumentCanvas::get_rendered_html() {
@@ -1553,6 +1559,7 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &RestructuredtextLabel::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &RestructuredtextLabel::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &RestructuredtextLabel::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_html_layout"), &RestructuredtextLabel::get_html_layout);
 	ClassDB::bind_method(D_METHOD("get_rendered_html"), &RestructuredtextLabel::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &RestructuredtextLabel::get_content_height);
 	ClassDB::bind_method(D_METHOD("resolve_document_path", "path"), &RestructuredtextLabel::resolve_document_path);
@@ -1939,6 +1946,10 @@ String RestructuredtextLabel::get_selected_text() const {
 
 int32_t RestructuredtextLabel::get_rendered_block_count() const {
 	return document_canvas == nullptr ? rendered_block_count : document_canvas->get_rendered_block_count();
+}
+
+Ref<HTMLLayout> RestructuredtextLabel::get_html_layout() const {
+	return document_canvas == nullptr ? Ref<HTMLLayout>() : document_canvas->get_html_layout();
 }
 
 String RestructuredtextLabel::get_rendered_html() const {

@@ -5983,6 +5983,11 @@ msgstr "返回已渲染的顶层内容块数量。"
 msgid "Returns the serialized inner HTML of the current rendered document body. It contains the HTML generated from reStructuredText and does not include the applied stylesheets."
 msgstr "返回当前已渲染文档 body 的序列化 HTML 内容。该内容包含由 reStructuredText 生成的 HTML，但不包含已应用的样式表。"
 
+#. doc_classes/MarkdownLabel.xml
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the internal [HTMLLayout] currently used by this control, or [code]null[/code] if its canvas has not been created yet. The layout is required by the control and is not a scene-tree child to remove. Do not call [method Object.free] on it or otherwise invalidate it, as doing so may cause a crash."
+msgstr "返回此控件当前使用的内部 [HTMLLayout]；画布尚未创建时返回 [code]null[/code]。该布局对象是控件正常工作的必需对象，不是要从场景树中移除的子节点。不要对它调用 [method Object.free]，也不要以其他方式使其失效，否则可能导致崩溃。"
+
 # | msgid "Returns the number of pages in this layout."
 #. doc_classes/CSSStyleDeclaration.xml
 msgid "Returns the number of unique property names in this declaration block."

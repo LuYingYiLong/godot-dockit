@@ -1214,6 +1214,7 @@ void MarkdownLabelCanvas::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &MarkdownLabelCanvas::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &MarkdownLabelCanvas::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &MarkdownLabelCanvas::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_html_layout"), &MarkdownLabelCanvas::get_html_layout);
 	ClassDB::bind_method(D_METHOD("get_rendered_html"), &MarkdownLabelCanvas::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &MarkdownLabelCanvas::get_content_height);
 	ClassDB::bind_method(D_METHOD("has_anchor", "anchor"), &MarkdownLabelCanvas::has_anchor);
@@ -1844,6 +1845,12 @@ int32_t MarkdownLabelCanvas::get_rendered_block_count() {
 	flush_pending_layout();
 	rebuild_layout();
 	return rendered_block_count;
+}
+
+Ref<HTMLLayout> MarkdownLabelCanvas::get_html_layout() {
+	flush_pending_layout();
+	rebuild_layout();
+	return layout_document.get_layout();
 }
 
 String MarkdownLabelCanvas::get_rendered_html() {
@@ -2946,6 +2953,7 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_markdown_file", "path"), &MarkdownLabel::load_markdown_file);
 	ClassDB::bind_method(D_METHOD("refresh"), &MarkdownLabel::refresh);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &MarkdownLabel::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_html_layout"), &MarkdownLabel::get_html_layout);
 	ClassDB::bind_method(D_METHOD("get_rendered_html"), &MarkdownLabel::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &MarkdownLabel::get_content_height);
 	ClassDB::bind_method(D_METHOD("get_h_scroll_bar"), &MarkdownLabel::get_h_scroll_bar);
@@ -3753,6 +3761,10 @@ int32_t MarkdownLabel::get_rendered_block_count() const {
 		return 0;
 	}
 	return canvas->get_rendered_block_count();
+}
+
+Ref<HTMLLayout> MarkdownLabel::get_html_layout() const {
+	return canvas == nullptr ? Ref<HTMLLayout>() : canvas->get_html_layout();
 }
 
 String MarkdownLabel::get_rendered_html() const {

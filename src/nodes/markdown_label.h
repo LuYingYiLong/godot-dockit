@@ -279,6 +279,7 @@ public:
 	);																							// 从指定行列开始查找符合条件的文本
 	String get_selected_text() const;															// 返回当前选区中的文本
 	int32_t get_rendered_block_count();															// 返回当前文档中已渲染的块数量
+	Ref<HTMLLayout> get_html_layout();															// 返回控件当前使用的内部 HTML 排版对象
 	String get_rendered_html();																	// 返回当前排版 DOM 中 body 的 HTML 内容
 	float get_content_height();																	// 返回当前文档内容的总高度
 	bool has_anchor(const String& p_anchor) const;												// 检查文档中是否存在指定锚点
@@ -466,6 +467,7 @@ public:
 	void notify_canvas_layout_changed();														// 通知画布尺寸或布局已发生变化
 
 	int32_t get_rendered_block_count() const;													// 返回当前文档中已渲染的块数量
+	Ref<HTMLLayout> get_html_layout() const;													// 返回控件当前使用的内部 HTML 排版对象
 	String get_rendered_html() const;															// 返回当前排版 DOM 中 body 的 HTML 内容
 	float get_content_height() const;															// 返回当前文档内容的总高度
 
