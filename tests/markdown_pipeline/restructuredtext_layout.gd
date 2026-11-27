@@ -46,6 +46,8 @@ Footnote reference [1]_.
 """
 	await process_frame
 	await process_frame
+	var rendered_html: String = label.get_rendered_html()
+	_check(rendered_html.contains("<h1") and rendered_html.contains("<table") and rendered_html.contains("Footnote definition"), "RST rendered HTML did not expose the current layout DOM")
 	label.select_all()
 	var selected_text: String = label.get_selected_text()
 	_check(label.get_rendered_block_count() >= 7, "RST blocks did not reach the shared HTML renderer")

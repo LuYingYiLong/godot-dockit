@@ -2,6 +2,7 @@
 
 #include "formats/rst/rst_document_parser.h"
 #include "formats/rst/rst_reference_index.h"
+#include "formats/html/elements/html_element.h"
 #include "formats/html/resources/html_resource_paths.h"
 #include "formats/html/text/html_font_config.h"
 #include "formats/html/paint/html_paint_run.h"
@@ -448,6 +449,7 @@ void RSTDocumentCanvas::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &RSTDocumentCanvas::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &RSTDocumentCanvas::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &RSTDocumentCanvas::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_rendered_html"), &RSTDocumentCanvas::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &RSTDocumentCanvas::get_content_height);
 	ClassDB::bind_method(D_METHOD("get_table_cell_count"), &RSTDocumentCanvas::get_table_cell_count);
 	ClassDB::bind_method(D_METHOD("get_table_cell_rect", "index"), &RSTDocumentCanvas::get_table_cell_rect);
@@ -715,6 +717,13 @@ String RSTDocumentCanvas::get_selected_text() const {
 int32_t RSTDocumentCanvas::get_rendered_block_count() {
 	rebuild_layout();
 	return rendered_block_count;
+}
+
+String RSTDocumentCanvas::get_rendered_html() {
+	rebuild_layout();
+	if (html_layout.is_null()) return String();
+	const Ref<HTMLElement> body = html_layout->get_body();
+	return body.is_valid() ? body->get_inner_html() : String();
 }
 
 float RSTDocumentCanvas::get_content_height() {
@@ -1544,6 +1553,7 @@ void RestructuredtextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &RestructuredtextLabel::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &RestructuredtextLabel::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &RestructuredtextLabel::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_rendered_html"), &RestructuredtextLabel::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &RestructuredtextLabel::get_content_height);
 	ClassDB::bind_method(D_METHOD("resolve_document_path", "path"), &RestructuredtextLabel::resolve_document_path);
 	ClassDB::bind_method(D_METHOD("get_h_scroll_bar"), &RestructuredtextLabel::get_h_scroll_bar);
@@ -1929,6 +1939,10 @@ String RestructuredtextLabel::get_selected_text() const {
 
 int32_t RestructuredtextLabel::get_rendered_block_count() const {
 	return document_canvas == nullptr ? rendered_block_count : document_canvas->get_rendered_block_count();
+}
+
+String RestructuredtextLabel::get_rendered_html() const {
+	return document_canvas == nullptr ? String() : document_canvas->get_rendered_html();
 }
 
 float RestructuredtextLabel::get_content_height() const {

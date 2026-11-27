@@ -110,6 +110,7 @@ public:
 	);																							// 从指定行列开始查找符合条件的文本
 	String get_selected_text() const;															// 返回当前选区中的文本
 	int32_t get_rendered_block_count();															// 返回当前文档中已渲染的块数量
+	String get_rendered_html();																	// 返回当前排版 DOM 中 body 的 HTML 内容
 	float get_content_height();																	// 返回当前文档内容的总高度
 	int32_t get_table_cell_count();																// 返回当前文档中表格单元格的数量
 	Rect2 get_table_cell_rect(int32_t p_index);													// 返回指定表格单元格在画布中的矩形
@@ -228,6 +229,7 @@ public:
 	) const;																					// 从指定行列开始查找符合条件的文本
 	String get_selected_text() const;															// 返回当前选区中的文本
 	int32_t get_rendered_block_count() const;													// 返回当前文档中已渲染的块数量
+	String get_rendered_html() const;															// 返回当前排版 DOM 中 body 的 HTML 内容
 	float get_content_height() const;															// 返回当前文档内容的总高度
 	String resolve_document_path(const String& p_path) const;									// 根据当前文档和资源访问范围解析路径
 	String resolve_link_uri(const String& p_role, const String& p_target) const;				// 根据链接角色和目标解析链接 URI

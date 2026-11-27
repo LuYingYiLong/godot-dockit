@@ -91,6 +91,12 @@
 				Returns the number of rendered top-level blocks.
 			</description>
 		</method>
+		<method name="get_rendered_html" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the serialized inner HTML of the current rendered document body. It contains the HTML generated from reStructuredText and does not include the applied stylesheets.
+			</description>
+		</method>
 		<method name="get_selected_text" qualifiers="const">
 			<return type="String" />
 			<description>

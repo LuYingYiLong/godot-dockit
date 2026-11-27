@@ -3,6 +3,7 @@
 
 #include "formats/html/markup/html_markup.h"
 #include "formats/html/resources/html_resource_paths.h"
+#include "formats/html/elements/html_element.h"
 #include "formats/html/layout/html_geometry.h"
 #include "formats/html/paint/html_paint_run.h"
 #include "formats/word_boundaries.h"
@@ -1213,6 +1214,7 @@ void MarkdownLabelCanvas::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search", "text", "flags", "from_line", "from_column"), &MarkdownLabelCanvas::search);
 	ClassDB::bind_method(D_METHOD("get_selected_text"), &MarkdownLabelCanvas::get_selected_text);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &MarkdownLabelCanvas::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_rendered_html"), &MarkdownLabelCanvas::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &MarkdownLabelCanvas::get_content_height);
 	ClassDB::bind_method(D_METHOD("has_anchor", "anchor"), &MarkdownLabelCanvas::has_anchor);
 	ClassDB::bind_method(D_METHOD("get_anchors"), &MarkdownLabelCanvas::get_anchors);
@@ -1842,6 +1844,15 @@ int32_t MarkdownLabelCanvas::get_rendered_block_count() {
 	flush_pending_layout();
 	rebuild_layout();
 	return rendered_block_count;
+}
+
+String MarkdownLabelCanvas::get_rendered_html() {
+	flush_pending_layout();
+	rebuild_layout();
+	const Ref<HTMLLayout> html = layout_document.get_layout();
+	if (html.is_null()) return String();
+	const Ref<HTMLElement> body = html->get_body();
+	return body.is_valid() ? body->get_inner_html() : String();
 }
 
 float MarkdownLabelCanvas::get_content_height() {
@@ -2935,6 +2946,7 @@ void MarkdownLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_markdown_file", "path"), &MarkdownLabel::load_markdown_file);
 	ClassDB::bind_method(D_METHOD("refresh"), &MarkdownLabel::refresh);
 	ClassDB::bind_method(D_METHOD("get_rendered_block_count"), &MarkdownLabel::get_rendered_block_count);
+	ClassDB::bind_method(D_METHOD("get_rendered_html"), &MarkdownLabel::get_rendered_html);
 	ClassDB::bind_method(D_METHOD("get_content_height"), &MarkdownLabel::get_content_height);
 	ClassDB::bind_method(D_METHOD("get_h_scroll_bar"), &MarkdownLabel::get_h_scroll_bar);
 	ClassDB::bind_method(D_METHOD("get_v_scroll_bar"), &MarkdownLabel::get_v_scroll_bar);
@@ -3741,6 +3753,10 @@ int32_t MarkdownLabel::get_rendered_block_count() const {
 		return 0;
 	}
 	return canvas->get_rendered_block_count();
+}
+
+String MarkdownLabel::get_rendered_html() const {
+	return canvas == nullptr ? String() : canvas->get_rendered_html();
 }
 
 float MarkdownLabel::get_content_height() const {

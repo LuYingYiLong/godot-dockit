@@ -122,6 +122,12 @@
 				Returns the number of rendered top-level Markdown blocks, or [code]0[/code] if the canvas has not been created yet.
 			</description>
 		</method>
+		<method name="get_rendered_html" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the serialized inner HTML of the current rendered document body. It includes HTML generated from Markdown and embedded HTML when parsing is enabled, but does not include the applied stylesheets.
+			</description>
+		</method>
 		<method name="get_scroll_offset_for_source_line">
 			<return type="float" />
 			<param index="0" name="line" type="float" />

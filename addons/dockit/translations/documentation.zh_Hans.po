@@ -3627,6 +3627,10 @@ msgstr "此规则代码块中的嵌套规则。"
 msgid "Nested script math style."
 msgstr "嵌套上下标样式。"
 
+#. doc_classes/MarkdownLabel.xml
+msgid "Returns the serialized inner HTML of the current rendered document body. It includes HTML generated from Markdown and embedded HTML when parsing is enabled, but does not include the applied stylesheets."
+msgstr "返回当前已渲染文档 body 的序列化 HTML 内容。该内容包含由 Markdown 生成的 HTML，以及启用 HTML 解析时嵌入的 HTML，但不包含已应用的样式表。"
+
 # | msgid "Returns the number of pages in this layout."
 #. doc_classes/CSSStyleDeclaration.xml
 msgid "Number of declarations in this block."
@@ -5974,6 +5978,10 @@ msgstr "返回已渲染的顶层 Markdown 块数量。绘制节点尚未创建�
 #. doc_classes/RestructuredtextLabel.xml
 msgid "Returns the number of rendered top-level blocks."
 msgstr "返回已渲染的顶层内容块数量。"
+
+#. doc_classes/RestructuredtextLabel.xml
+msgid "Returns the serialized inner HTML of the current rendered document body. It contains the HTML generated from reStructuredText and does not include the applied stylesheets."
+msgstr "返回当前已渲染文档 body 的序列化 HTML 内容。该内容包含由 reStructuredText 生成的 HTML，但不包含已应用的样式表。"
 
 # | msgid "Returns the number of pages in this layout."
 #. doc_classes/CSSStyleDeclaration.xml

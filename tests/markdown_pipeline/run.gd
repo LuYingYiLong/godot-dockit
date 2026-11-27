@@ -68,6 +68,8 @@ func _run() -> void:
 	label.text = "# Heading\n\n| One | Two |\n| -- | -- |\n| <div style=\"height:90px;padding:12px;background:red\">**Strong** <a href=\"https://example.com\">Link</a></div> | Text |\n\n~~~gdscript\nfunc greet():\n\tprint(\"Hello\")\n~~~\n\n$E=mc^2$"
 	await process_frame
 	await process_frame
+	var rendered_html: String = label.get_rendered_html()
+	_check(rendered_html.contains("<h1") and rendered_html.contains("<table") and rendered_html.contains("<div"), "Markdown rendered HTML did not expose the current layout DOM")
 	label.select_all()
 	var selected: String = label.get_selected_text()
 	_check(selected.contains("Heading") and selected.contains("Strong") and selected.contains("Link"), "Mixed table text is missing")
